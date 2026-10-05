@@ -1,17 +1,16 @@
 {
-  "measuredAt": "2026-10-04T09:25:53.013Z",
+  "measuredAt": "2026-10-05T08:56:55.294Z",
   "samples": {
     "tests/app-version.spec.ts": [5],
     "tests/checkout-freshness.spec.ts": [67],
+    "tests/engine/api-client.spec.ts": [263],
     "tests/engine/server.spec.ts": [38],
     "tests/engine/session.spec.ts": [15],
     "tests/launch-env.spec.ts": [2],
     "tests/shared-ears.spec.ts": [11]
   },
   "skipped": [],
-  "unmeasured": [
-    "tests/engine/api-client.spec.ts"
-  ],
+  "unmeasured": [],
   "machine": {
     "cpu": "Apple M1 Pro",
     "cores": 10

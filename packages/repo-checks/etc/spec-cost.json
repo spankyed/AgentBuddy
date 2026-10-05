@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-03T09:32:41.275Z",
+  "measuredAt": "2026-10-05T08:56:43.564Z",
   "samples": {
     "tests/bounded-spawn.integration.spec.ts": [2059],
     "tests/chain-graph.spec.ts": [6],
@@ -10,7 +10,7 @@
     "tests/chain-table.spec.ts": [498],
     "tests/component-contracts.integration.spec.ts": [2007],
     "tests/core-budget.spec.ts": [7],
-    "tests/decision-mutations.spec.ts": [712, 1247],
+    "tests/decision-mutations.spec.ts": [712, 1247, 1361],
     "tests/dep-files.integration.spec.ts": [2406],
     "tests/doc-links.spec.ts": [253],
     "tests/fingerprint-scope.integration.spec.ts": [1843],
@@ -33,6 +33,7 @@
     "tests/spec-placement.spec.ts": [1853],
     "tests/spec-plan-collect.spec.ts": [2421],
     "tests/spec-plan.spec.ts": [503],
+    "tests/spec-waits.spec.ts": [1373],
     "tests/specifier-fixes.spec.ts": [25],
     "tests/step-timing.spec.ts": [3],
     "tests/subprocess-inventory.spec.ts": [369],
@@ -47,9 +48,7 @@
     "tests/workspace-dirs.spec.ts": [3]
   },
   "skipped": [],
-  "unmeasured": [
-    "tests/spec-waits.spec.ts"
-  ],
+  "unmeasured": [],
   "machine": {
     "cpu": "Apple M1 Pro",
     "cores": 10

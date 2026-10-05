@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-04T11:05:27.447Z",
+  "measuredAt": "2026-10-05T08:56:47.602Z",
   "samples": {
     "tests/adapters/log-capture.spec.ts": [16],
     "tests/runtime/app-database-parity.spec.ts": [933],
@@ -18,13 +18,12 @@
     "tests/transport/claim.spec.ts": [9],
     "tests/transport/context.spec.ts": [2],
     "tests/transport/dev-reload-access.spec.ts": [168],
+    "tests/transport/emitter.spec.ts": [67],
     "tests/transport/encoder.spec.ts": [44],
     "tests/transport/sub-scope.spec.ts": [3]
   },
   "skipped": [],
-  "unmeasured": [
-    "tests/transport/emitter.spec.ts"
-  ],
+  "unmeasured": [],
   "machine": {
     "cpu": "Apple M1 Pro",
     "cores": 10

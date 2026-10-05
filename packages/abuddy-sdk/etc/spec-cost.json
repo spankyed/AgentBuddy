@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-04T09:56:53.700Z",
+  "measuredAt": "2026-10-05T08:57:07.842Z",
   "samples": {
     "tests/build/compile-engine.spec.ts": [14],
     "tests/build/declared-type-of.spec.ts": [453],
@@ -45,11 +45,13 @@
     "tests/services/secrets-client.spec.ts": [3],
     "tests/services/secrets-rules.spec.ts": [10],
     "tests/steps/merge.spec.ts": [3],
+    "tests/steps/result-truncator.spec.ts": [7],
     "tests/steps/utils.spec.ts": [4],
     "tests/testing/fake-inference.spec.ts": [184],
     "tests/testing/pack-fixture.spec.ts": [17],
     "tests/testing/population.spec.ts": [3],
     "tests/testing/seed-runtime.spec.ts": [414],
+    "tests/testing/serialisation-matrix.spec.ts": [5],
     "tests/testing/test-host.spec.ts": [14],
     "tests/testing/test-packs.spec.ts": [3],
     "tests/utils/cron.spec.ts": [2],
@@ -62,10 +64,7 @@
     "tests/utils/seed-registry.spec.ts": [9]
   },
   "skipped": [],
-  "unmeasured": [
-    "tests/steps/result-truncator.spec.ts",
-    "tests/testing/serialisation-matrix.spec.ts"
-  ],
+  "unmeasured": [],
   "machine": {
     "cpu": "Apple M1 Pro",
     "cores": 10
