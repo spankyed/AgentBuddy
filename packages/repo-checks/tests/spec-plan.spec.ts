@@ -938,12 +938,12 @@ describe('the ordinary run does not collect', () => {
  * command this belongs to spent four phases learning to refuse a quiet zero and could not run these at all.
  */
 describe('a named spec runs from the config for its half', () => {
-  const FAST = 'packages/repo-checks/tests/suite-split.spec.ts';
+  const FAST = 'packages/repo-checks/tests/spec-plan.spec.ts';
   const INTEGRATION = 'packages/repo-checks/tests/import-specifiers.integration.spec.ts';
   const argsOf = (target: string) => planTargets([target], [], REPO_ROOT).runs.at(-1)!.args;
 
   it('leaves the fast half alone, which is every package without a split', () => {
-    expect(argsOf(FAST)).toEqual(['test', '--', 'tests/suite-split.spec.ts']);
+    expect(argsOf(FAST)).toEqual(['test', '--', 'tests/spec-plan.spec.ts']);
   });
 
   it('points the integration half at its own config', () => {

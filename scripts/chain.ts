@@ -395,8 +395,8 @@ async function main(): Promise<void> {
 
   // **Refused before the run, not after it.** `recordTheCosts` asks this at the end, which is where the answer
   // arrives too late: twice on 2026-10-04 a `--all --record` spent 200 seconds and was then told the machine
-  // was 69% idle. `spec-cost:update` has always asked first — "it refuses to measure below IDLE_FLOOR, before
-  // running anything" — and this is the same gate in the same order.
+  // was 69% idle. The deleted `spec-cost:update` asked first — "it refuses to measure below IDLE_FLOOR,
+  // before running anything" — and this is the same gate in the same order, now the only one left.
   //
   // The late one stays, and both are needed: a box quiet now can be loaded by the end, and the chain is its own
   // load. This one saves the run when the answer is already no; that one catches a run disturbed while it ran.

@@ -71,13 +71,18 @@ No package colocates. `@app/default-setup` had six specs under `src/` with an in
 `scripts/lib/spec-cost.ts` still walks `src/` on purpose — nothing includes it now, so a colocated spec
 would never run, and the walk is what makes it show up as unrecorded instead of vanishing twice over.
 
-Two suites have an expensive half, selected by measured cost rather than by what a spec does:
-`@abuddy/cli` and `@app/repo-checks`, each with a `vitest.integration.config.ts` over
-`tests/**/*.integration.spec.ts`. The rule is in [`scripts/lib/spec-cost.ts`](../../scripts/lib/spec-cost.ts):
-a fast spec moves above 2.5s, an integration spec returns below 1.5s, and anything between stays — a dead
-band, because a file's cost is its wall time under whatever else its half is running.
-`repo-checks/tests/suite-split.spec.ts` fails a spec in the wrong half, has no recorded cost, or is
-recorded and gone.
+Three suites have an expensive half: `@abuddy/cli`, `@app/repo-checks` and `@app/publish-checks`, each with
+a `vitest.integration.config.ts` over `tests/**/*.integration.spec.ts`. What a spec gets there is a 60s
+per-test budget instead of 15s, a worker pool capped at half the cores, and separation from the per-change
+loop.
+
+**Which half a spec is in is a decision, declared by its filename**, and nothing re-derives it. It was
+decided by measured cost against fixed edges until 2026-10-05 — a record per spec, a window of readings, a
+band, two idle floors and a machine identity, all to stabilise a number that turned out not to be one
+number: a spec reads 2.8s in the fast pool and 0.64s in the integration pool, so each half's reading demanded
+a move the other took back. [`scripts/lib/spec-halves.ts`](../../scripts/lib/spec-halves.ts) is what
+survived, and it measures nothing. Slowness is visible instead of adjudicated: vitest prints any test over
+its 300ms threshold under its file, and the chain prints each step's five slowest.
 
 ## Categories
 

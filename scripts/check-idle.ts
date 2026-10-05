@@ -1,10 +1,10 @@
 /**
  * Whether this machine is quiet enough to measure on: `npm run check:idle`.
  *
- * **Three commands refuse a measurement when the box is busy and none of them could be asked in advance.**
- * `spec-cost:update` refuses before it runs anything, `npm run measure` refuses before its first run, and
- * `chain --record` refuses *after* the run — so the way to learn the answer was to spend 200 seconds and be
- * told no. That happened twice on 2026-10-04, which is what this is for.
+ * **Two commands refuse a measurement when the box is busy and neither could be asked in advance.**
+ * `npm run measure` refuses before its first run and `chain --record` refuses *after* the run — so the way
+ * to learn the answer was to spend 200 seconds and be told no. That happened twice on 2026-10-04, which is
+ * what this is for. A third, `spec-cost:update`, asked first and is gone with the record it maintained.
  *
  * **Two floors, because what a command leaves behind decides how quiet it needs to be.** A printed timing
  * carries its own conditions and is gone; a recorded one outlives the reading, and measured on this box a
@@ -35,7 +35,7 @@ const canRecord = idle >= RECORD_IDLE_FLOOR;
 
 process.stdout.write(`${asPercent(idle)} idle — `
   + `${canRecord ? 'quiet enough to record on' : canPrint ? 'quiet enough to print a timing, not to record one' : 'too busy to measure on'}\n`);
-process.stdout.write(`  recording needs ${asPercent(RECORD_IDLE_FLOOR)} (spec-cost:update, chain --record), `
+process.stdout.write(`  recording needs ${asPercent(RECORD_IDLE_FLOOR)} (chain --record), `
   + `printing needs ${asPercent(IDLE_FLOOR)} (measure, measure:loop)\n`);
 if (!canRecord) {
   process.stdout.write(`  What you would record now is the machine${canPrint ? ' — a printed timing is fine' : ''}.\n`);

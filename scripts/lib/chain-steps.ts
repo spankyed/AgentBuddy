@@ -423,9 +423,10 @@ const PACKAGES = PACKAGE_DIRS;
 
 /**
  * A package's own source, its tests, its own tooling, its recorded artifacts, and the files that say how it
- * compiles, tests and lints. `etc` is there because a spec reads it back: `suite-split.spec.ts` decides
- * which half every spec runs in from `etc/spec-cost.json`, so a change to that record has to re-run the
- * suite that asserts on it. The config files are inputs in the plain sense — a vitest config decides which specs run at all,
+ * compiles, tests and lints. `etc` is there because a spec reads it back — `api:check` regenerates the
+ * `*.api.md` reports it holds and compares, so a hand-edited report has to re-run what asserts on it. It
+ * was justified by `suite-split.spec.ts` reading `etc/spec-cost.json` until 2026-10-05; that record and that
+ * spec are gone, and several `etc` directories are now empty, which the walk skips. The config files are inputs in the plain sense — a vitest config decides which specs run at all,
  * and the renderer's tailwind and postcss configs decide what `build` emits. A name that the package does
  * not have costs nothing: the walk skips what is not there.
  *

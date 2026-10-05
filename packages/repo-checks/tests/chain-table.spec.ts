@@ -431,14 +431,11 @@ describe('a recorded artifact has both halves', () => {
 describe("the chain runs every artifact's check", () => {
   /** A `:check` script the chain does not run, and why. An entry that stops applying is reported. */
   const NOT_RUN_BY_THE_CHAIN: Record<string, string> = {
-    // These two are commands over a rule a spec already asserts, so the artifact is checked and the script is
-    // a way to ask by hand. Both say so themselves: `spec-cost.ts` records that `scripts/lib/spec-cost.ts`
-    // holds what it and `suite-split.spec.ts` share, "so a spec and this command cannot disagree".
+    // These are commands over a rule a spec already asserts, so the artifact is checked and the script is
+    // a way to ask by hand.
     'seed-parity:check': 'a wrapper for `npm test -- tests/seeds`; those specs run in test:unit:pack',
     'sdk-modules:check': 'a wrapper for `sdk-bridge-drift.spec.ts`, which compares the generated file against a fresh render; it runs in test:unit:host',
     'flow-export:check': 'a wrapper for `npm test -- tests/extensions/steps/export-example.spec.ts`; that spec runs in test:unit:pack, where it compares the flow DSL example rather than recording it',
-    'spec-cost:check': 'reads the records and runs nothing; suite-split.spec.ts asserts the same rule from '
-      + 'scripts/lib/spec-cost.ts, and it runs in test:unit:host',
   };
 
   /** Every `<artifact>:check` in the repo, as the label of the manifest declaring it and the script's name */
