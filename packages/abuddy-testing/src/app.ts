@@ -69,7 +69,8 @@ export interface TestApp {
    * alone; without one, the ask originated in the backend and the answer goes to the asking *system*. A real
    * client's send always carries one (the API stamps it per socket), and nothing sent from here does unless it
    * is given — so a spec standing in for a window or a driver passes one, and a spec standing in for a system
-   * does not. Any string: nothing here routes on its value, only on whether there is one.
+   * does not. Any non-empty string: nothing here routes on its value, only on whether there is one, and `''`
+   * is refused because it would claim a connection while naming none.
    */
   send(
     systemId: string,
@@ -392,9 +393,19 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       await settle();
     }),
     send: (systemId, event, options) => call(async () => {
+      // Whether there is a `client` is the whole of what `reply` reads it for, which makes '' the one string
+      // that lies: the field is present, so `reply` answers that connection, while the app delivers only to
+      // the connection whose id matches (`api/src/transport/bus.ts`) and none is ever named ''. Refused rather
+      // than passed, because the answer would otherwise be addressed to nobody and dropped in silence.
+      if (options?.client === '') {
+        throw new Error(
+          "app.send was given client: '', which says the ask arrived on a connection and names none, so the "
+          + 'reply would be addressed to nobody. Pass any non-empty name to stand in for a window or a driver, '
+          + 'or leave it out to stand in for a system.',
+        );
+      }
       const sender = options?.sender === undefined ? {} : { sender: resolveSystemId(options.sender, systems) };
-      // Passed through unresolved: a connection id is not a ref, and whether there is one is the whole of what
-      // `reply` reads it for
+      // Unresolved: a connection id is not a ref
       const client = options?.client === undefined ? {} : { client: options.client };
       testRootEvents.emitIncoming({ to: resolveSystemId(systemId, systems), event, ...sender, ...client });
       await settle();

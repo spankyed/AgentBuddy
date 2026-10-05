@@ -70,3 +70,20 @@ describe('events sent before a client connects', () => {
     expect(await app.nextEmit('memos', 'MEMOS_CONNECTED')).toMatchObject({ memos: [expect.objectContaining({ text: 'sent unconnected' })] });
   });
 });
+
+/**
+ * `client` is the field `reply` routes on, and the harness is the one place it is written by hand rather than
+ * stamped from a socket — so it is the one place an empty string can be passed. It is refused rather than
+ * documented because the failure it causes is silent: `reply` reads the field as present and answers that
+ * connection, while the app delivers only to the connection whose id matches and none is ever named `''`.
+ */
+describe('a client that names no connection', () => {
+  it('is refused, rather than producing an answer addressed to nobody', async () => {
+    const app = await startApp({ systems: ['memos'] });
+
+    await expect(app.send('memos', { type: 'ADD_MEMO', text: 'x' }, { sender: 'memos', client: '' }))
+      .rejects.toThrow('names none');
+
+    app.stop();
+  });
+});
