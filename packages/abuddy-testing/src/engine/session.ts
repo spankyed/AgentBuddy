@@ -41,6 +41,19 @@ export interface SessionPage {
   evaluateWith: <A>(fn: (arg: A) => unknown, arg: A) => Promise<unknown>;
   exposeFunction: (name: string, callback: (payload: unknown) => void) => Promise<void>;
   screenshot: (name: string) => Promise<unknown>;
+  /** Clicks what `selector` matches, waiting for it as Playwright's own click does */
+  click: (selector: string) => Promise<unknown>;
+  /** Replaces what `selector` matches with `text` */
+  fill: (selector: string, text: string) => Promise<unknown>;
+  /** A key, to `selector` when given and to the page otherwise */
+  press: (key: string, selector?: string) => Promise<unknown>;
+  /**
+   * The page's accessibility tree, as text.
+   *
+   * What a screenshot is for a person, this is for an agent: readable, diffable, and costing no image
+   * tokens. It is also the only one of the two that says what a thing *is* rather than where it is.
+   */
+  ariaSnapshot: () => Promise<string>;
   /**
    * Reloads the window and returns when it is usable again, onboarding included.
    *
@@ -86,6 +99,14 @@ export interface SessionDeps {
   readonly api: SessionApi;
   /** Renderer errors the fixture collected, read and cleared — see `drainErrors` */
   readonly takeErrors: () => readonly string[];
+  /**
+   * The app's own log, as text.
+   *
+   * A function rather than the text, because a session outlives any one reading of it. Reading the file
+   * is the caller's: the session takes ports, and `node:fs` in here would be the first of them to need a
+   * real filesystem to test against.
+   */
+  readonly readLog: () => string;
 }
 
 /** A message the app emitted, as the in-page bridge or the session's own connection reports it */
@@ -196,6 +217,14 @@ export interface EngineSession {
   wait: (target: WaitTarget, timeoutMs?: number) => Promise<EngineResult>;
   navigate: (pluginId: string) => Promise<EngineResult>;
   screenshot: (name: string) => Promise<EngineResult>;
+  /** A plugin's published state, or one dotted path into it */
+  plugin: (ref: string, select?: string) => Promise<EngineResult>;
+  click: (selector: string) => Promise<EngineResult>;
+  fill: (selector: string, text: string) => Promise<EngineResult>;
+  press: (key: string, selector?: string) => Promise<EngineResult>;
+  snapshot: () => Promise<EngineResult>;
+  /** The app's own log lines, newest last */
+  logs: (options: { since?: string; source?: string }) => EngineResult;
   /** Reloads the window and returns once it is connected again, with the in-page bridge back */
   reload: () => Promise<EngineResult>;
   drainEvents: () => EngineResult;
@@ -211,7 +240,7 @@ export interface EngineSession {
   stop: () => void;
 }
 
-export function createSession({ page, api, takeErrors }: SessionDeps): EngineSession {
+export function createSession({ page, api, takeErrors, readLog }: SessionDeps): EngineSession {
   const seen: SeenEvent[] = [];
   let dropped = 0;
   /** A round-trip in flight: how it hears an answer, and how it is told none is coming */
@@ -443,6 +472,44 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
     }),
 
     navigate: (pluginId) => attempt('navigate', () => sendToApp({ type: 'SELECT_PLUGIN', plugin: pluginId })),
+
+    /**
+     * A plugin's published state, which is what a view is actually showing.
+     *
+     * Over `evaluateExpression` rather than a port method of its own: the shell already holds every
+     * running plugin's actor, so this is a read of the page and not a new capability. Before it existed
+     * the same expression was written out by hand at every call site, which is four chances to get the
+     * ref or the optional chain wrong.
+     */
+    plugin: (ref, select) => attempt('plugin', () => page.evaluateExpression(`(() => {
+      const plugin = window.applicationState?.getSnapshot().children?.[${JSON.stringify(ref)}];
+      if (!plugin) return { running: false };
+      const context = plugin.getSnapshot().context ?? {};
+      const at = ${JSON.stringify(select ?? '')};
+      // No path asked for: the whole context, which is what a plugin publishes
+      if (!at) return { running: true, state: context };
+      const value = at.split('.').reduce((held, key) => (held == null ? held : held[key]), context);
+      return { running: true, state: value ?? null };
+    })()`)),
+
+    click: (selector) => attempt('click', async () => { await page.click(selector); return selector; }),
+    fill: (selector, text) => attempt('fill', async () => { await page.fill(selector, text); return selector; }),
+    press: (key, selector) => attempt('press', async () => { await page.press(key, selector); return key; }),
+    snapshot: () => attempt('snapshot', () => page.ariaSnapshot()),
+
+    /**
+     * The app's own log, which until now was a file an agent was told to go and open.
+     *
+     * `since` and `source` filter rather than page: a session's log is the run's, so what a reader wants
+     * is almost always "what happened after the thing I just did", which `since` answers by naming a line
+     * they already saw.
+     */
+    logs: ({ since, source }) => {
+      const lines = readLog().split('\n').filter(Boolean);
+      const from = since === undefined ? 0 : lines.findIndex((line) => line.includes(since)) + 1;
+      const after = lines.slice(from > 0 ? from : 0);
+      return { ok: true, value: source === undefined ? after : after.filter((line) => line.includes(source)) };
+    },
 
     screenshot: (name) => attempt('screenshot', async () => {
       await page.screenshot(name);

@@ -11,6 +11,7 @@
  * removal and the data-dir policy. So `/close` resolves this, and a signal resolves this, rather than
  * either killing the process where it stands.
  */
+import * as fs from 'node:fs';
 import type { Page } from '@playwright/test';
 import { DRIVE_REF, createSession, type SessionPage } from './session.ts';
 import { ENGINE_TOKEN_HEADER, startEngineServer, type ExtraVerbs } from './server.ts';
@@ -27,6 +28,8 @@ export type EngineAppHelper = {
 export interface DriveEngineOptions {
   /** The page the fixture opened */
   readonly page: Page;
+  /** The app's own log file, which `/logs` reads */
+  readonly logPath: string;
   /**
    * The fixture's `app`, passed whole.
    *
@@ -95,6 +98,10 @@ export const asSessionPage = (page: Page, app: EngineAppHelper): SessionPage => 
     page.evaluate(fn as (value: unknown) => unknown, arg as unknown),
   exposeFunction: (name, callback) => page.exposeFunction(name, callback),
   reload: () => reloadWindow(page),
+  click: (selector) => page.click(selector),
+  fill: (selector, text) => page.fill(selector, text),
+  press: (key, selector) => (selector === undefined ? page.keyboard.press(key) : page.press(selector, key)),
+  ariaSnapshot: () => page.locator('body').ariaSnapshot(),
   screenshot: (name) => app.screenshot(name),
   waitForState: (check, timeoutMs) => app.waitForState(check, timeoutMs),
   waitForPlugin: (pluginId, timeoutMs) => app.waitForPlugin(pluginId, timeoutMs),
@@ -131,7 +138,7 @@ async function apiAddressFromWindow(page: SessionPage): Promise<{ port: number; 
  * those errors out of that report. Two listeners cost nothing and leave the fixture untouched.
  */
 export async function runDriveEngine(options: DriveEngineOptions): Promise<void> {
-  const { page, app, outputDir, log = (line: string) => console.log(line) } = options;
+  const { page, app, outputDir, logPath, log = (line: string) => console.log(line) } = options;
 
   const errors: string[] = [];
   const onPageError = (error: Error): void => { errors.push(`pageerror: ${error.message}`); };
@@ -160,6 +167,8 @@ export async function runDriveEngine(options: DriveEngineOptions): Promise<void>
     page: sessionPage,
     api,
     takeErrors: () => errors.splice(0, errors.length),
+    // Read per call, not held: the app writes to it for as long as the session is up
+    readLog: () => (fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf-8') : ''),
   });
 
   // The server ends the session, after `/close` has been answered — see its `CLOSE_PATH`

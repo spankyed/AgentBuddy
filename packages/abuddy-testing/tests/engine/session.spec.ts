@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   BRIDGE_FLAG, BRIDGE_FUNCTION, createSession, DATABASE_SYSTEM, DRIVE_REF, evalSource, MAX_SEEN_EVENTS,
-  REPLY_TIMEOUT_MS, type SeenEvent, type SessionApi, type SessionPage,
+  REPLY_TIMEOUT_MS, type EngineResult, type SeenEvent, type SessionApi, type SessionPage,
 } from '../../src/engine/session.ts';
 import type { BusMessage } from '../../src/engine/api-client.ts';
 
@@ -13,6 +13,8 @@ import type { BusMessage } from '../../src/engine/api-client.ts';
 function fakePage() {
   let emit: ((payload: unknown) => void) | undefined;
   let reloaded = false;
+  /** What the page was asked to do, in order, so a verb's effect is what the assertions see */
+  const acted: string[] = [];
   const expressions: string[] = [];
   const evaluateExpression = vi.fn(async (source: string): Promise<unknown> => {
     expressions.push(source);
@@ -31,13 +33,17 @@ function fakePage() {
       emit = callback;
     }),
     screenshot: vi.fn(async () => Buffer.from('')),
+    click: vi.fn(async (selector: string) => { acted.push(`click ${selector}`); }),
+    fill: vi.fn(async (selector: string, text: string) => { acted.push(`fill ${selector}=${text}`); }),
+    press: vi.fn(async (key: string, selector?: string) => { acted.push(`press ${key}${selector ? ` @${selector}` : ''}`); }),
+    ariaSnapshot: vi.fn(async () => '- button "Send"'),
     // A real reload drops the page's globals; the flag the bridge guards itself with goes with them
     reload: vi.fn(async () => { reloaded = true; return undefined; }),
     waitForState: vi.fn(async () => undefined),
     waitForPlugin: vi.fn(async () => undefined),
   };
   return {
-    page, expressions, evaluateExpression, evaluateWith,
+    page, expressions, evaluateExpression, evaluateWith, acted,
     reload: page.reload as ReturnType<typeof vi.fn>,
     didReload: () => reloaded,
     waitForState: page.waitForState as ReturnType<typeof vi.fn>,
@@ -84,10 +90,16 @@ const sessionWith = (overrides: Partial<SessionPage> = {}) => {
   const fake = fakePage();
   const client = fakeApi();
   const errors = ['renderer blew up'];
+  const log = [
+    '[api] boot',
+    '[brain] started a flow',
+    '[api] a thing happened',
+  ].join('\n');
   const session = createSession({
     page: { ...fake.page, ...overrides },
     api: client.api,
     takeErrors: () => errors.splice(0, errors.length),
+    readLog: () => log,
   });
   return { ...fake, ...client, session };
 };
@@ -271,6 +283,78 @@ describe('reload', () => {
     await session.ready();
 
     expect(await session.reload()).toEqual({ ok: false, error: 'reload: window is gone' });
+  });
+});
+
+/**
+ * The verbs that were missing, and why each one is a verb rather than something to spell out with `/eval`.
+ *
+ * Driving used to mean sending bus events and evaluating expressions — there was no way to press a button
+ * a user presses, and reading what a view held took a hand-written expression that the session adding
+ * these wrote out four times for one question.
+ */
+describe('reading and using the page', () => {
+  it("answers with a plugin's published state, and says when it is not running", async () => {
+    const { session } = sessionWith({
+      evaluateExpression: async () => ({ running: true, state: { notes: ['welcome'] } }),
+    });
+
+    expect(await session.plugin('default-setup/notes')).toEqual({ ok: true, value: { running: true, state: { notes: ['welcome'] } } });
+  });
+
+  it('reads one path into that state when asked for one', async () => {
+    const { session, expressions } = sessionWith();
+    await session.plugin('default-setup/notes', 'notes.length');
+
+    const read = expressions.at(-1)!;
+    expect(read, 'the ref is quoted into the expression rather than interpolated raw').toContain('"default-setup/notes"');
+    expect(read).toContain('"notes.length"');
+  });
+
+  it('clicks, fills and presses', async () => {
+    const { session, acted } = sessionWith();
+
+    await session.click('button.send');
+    await session.fill('input.title', 'a note');
+    await session.press('Enter');
+    await session.press('Escape', 'input.title');
+
+    expect(acted).toEqual(['click button.send', 'fill input.title=a note', 'press Enter', 'press Escape @input.title']);
+  });
+
+  it('answers with the page as a tree rather than a picture', async () => {
+    const { session } = sessionWith();
+
+    expect(await session.snapshot()).toEqual({ ok: true, value: '- button "Send"' });
+  });
+
+  it('answers a verb that throws with the failure, rather than throwing', async () => {
+    const { session } = sessionWith({ click: async () => { throw new Error('no such element'); } });
+
+    expect(await session.click('button.missing')).toEqual({ ok: false, error: 'click: no such element' });
+  });
+});
+
+describe('the app log', () => {
+  const lines = (result: EngineResult) => (result as { value: string[] }).value;
+
+  it('answers with every line', () => {
+    const { session } = sessionWith();
+
+    expect(lines(session.logs({})).length).toBe(3);
+  });
+
+  it('answers with what followed a line the caller already saw', () => {
+    const { session } = sessionWith();
+
+    // `since` names a line rather than a time: what a reader wants is "after the thing I just did"
+    expect(lines(session.logs({ since: 'boot' }))).toEqual(['[brain] started a flow', '[api] a thing happened']);
+  });
+
+  it('narrows to one source', () => {
+    const { session } = sessionWith();
+
+    expect(lines(session.logs({ source: '[brain]' }))).toEqual(['[brain] started a flow']);
   });
 });
 

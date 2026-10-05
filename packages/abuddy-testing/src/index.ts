@@ -655,7 +655,14 @@ export { ENGINE_TOKEN_HEADER, MARKER_FILE, runDriveEngine, type DriveEngineOptio
 export const driveEngineBody = (options: { verbs?: ExtraVerbs } = {}) =>
   async (
     { app, appPage }: { app: AppHelper; appPage: Page },
-    testInfo: { project: { outputDir: string } },
+    testInfo: { project: { outputDir: string }; workerIndex: number },
   ): Promise<void> => {
-    await runDriveEngine({ page: appPage, app, outputDir: testInfo.project.outputDir, verbs: options.verbs });
+    await runDriveEngine({
+      page: appPage,
+      app,
+      outputDir: testInfo.project.outputDir,
+      // The same file the fixture writes the app's output to, so `/logs` answers from the run's own log
+      logPath: appLogPath(testInfo),
+      verbs: options.verbs,
+    });
   };

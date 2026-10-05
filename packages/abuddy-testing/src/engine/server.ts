@@ -89,6 +89,12 @@ const safeName = (body: Record<string, unknown>, field: string): string => {
   return value;
 };
 
+/** An optional string, refused when present and empty: a caller who sent one meant to narrow something */
+const optionalText = (body: Record<string, unknown>, field: string): string | undefined => {
+  if (body[field] === undefined) return undefined;
+  return required(body, field);
+};
+
 /** An optional positive number, so a timeout a caller sent as a string is refused rather than ignored */
 const optionalMs = (body: Record<string, unknown>, field: string): number | undefined => {
   const value = body[field];
@@ -125,6 +131,19 @@ export function engineVerbs(session: EngineSession): Record<string, Verb> {
     '/transact': { method: 'POST', run: (body) => session.tx(required(body, 'code')) },
     '/state': { method: 'GET', run: () => session.state() },
     '/navigate': { method: 'POST', run: (body) => session.navigate(required(body, 'plugin')) },
+    // What a view is actually showing, which was a hand-written `/eval` expression at every call site
+    '/plugin': {
+      method: 'POST',
+      run: (body) => session.plugin(required(body, 'plugin'), optionalText(body, 'select')),
+    },
+    '/click': { method: 'POST', run: (body) => session.click(required(body, 'selector')) },
+    '/fill': { method: 'POST', run: (body) => session.fill(required(body, 'selector'), required(body, 'text')) },
+    '/press': { method: 'POST', run: (body) => session.press(required(body, 'key'), optionalText(body, 'selector')) },
+    '/snapshot': { method: 'GET', run: () => session.snapshot() },
+    '/logs': {
+      method: 'POST',
+      run: (body) => session.logs({ since: optionalText(body, 'since'), source: optionalText(body, 'source') }),
+    },
     '/screenshot': { method: 'POST', run: (body) => session.screenshot(safeName(body, 'name')) },
     // Takes no body: there is one window and one thing to do to it
     '/reload': { method: 'POST', run: () => session.reload() },

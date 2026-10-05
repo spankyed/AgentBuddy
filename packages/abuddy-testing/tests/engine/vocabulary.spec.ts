@@ -26,10 +26,16 @@ const SHAPES: Record<string, 'reads' | 'verb' | 'drain'> = {
   '/transact': 'verb',
   '/wait': 'verb',
   '/navigate': 'verb',
+  '/plugin': 'verb',
+  '/click': 'verb',
+  '/fill': 'verb',
+  '/press': 'verb',
+  '/logs': 'verb',
   '/screenshot': 'verb',
   '/reload': 'verb',
   '/close': 'verb',
   '/state': 'reads',
+  '/snapshot': 'reads',
   '/events': 'drain',
   '/drops': 'drain',
   '/errors': 'drain',
@@ -41,7 +47,21 @@ const SHAPES: Record<string, 'reads' | 'verb' | 'drain'> = {
  * Closed on purpose: a verb that wants a field outside it is either reusing a concept under a new name —
  * the defect this list exists to stop — or introducing one, which is a line here and a moment's thought.
  */
-const VOCABULARY = ['code', 'event', 'to', 'plugin', 'state', 'name', 'timeoutMs'] as const;
+const VOCABULARY = [
+  'code',      // any source the session runs: in the window, or against the database
+  'event',     // a bus event
+  'to',        // a system's ref
+  'plugin',    // a plugin's ref, in requests and in responses alike
+  'select',    // a dotted path into a result, where the whole of it is more than the caller wanted
+  'state',     // a dotted path through a machine's state
+  'selector',  // a CSS selector into the page
+  'text',      // what to type
+  'key',       // what to press
+  'since',     // a line the caller already saw, so the answer is what followed it
+  'source',    // which part of the app a log line came from
+  'name',      // a file name
+  'timeoutMs',
+] as const;
 
 /** A session whose every verb answers, so what the assertions see is the table rather than the app */
 function fakeSession() {
@@ -50,6 +70,7 @@ function fakeSession() {
     ready: vi.fn(async () => undefined),
     evaluate: ok, send: ok, system: ok, qx: ok, tx: ok, state: ok, wait: ok, navigate: ok,
     screenshot: ok, reload: ok, drainEvents: ok, drainDrops: ok, drainErrors: ok, close: ok,
+    plugin: ok, click: ok, fill: ok, press: ok, snapshot: ok, logs: ok,
     stop: vi.fn(),
   } as unknown as EngineSession;
 }

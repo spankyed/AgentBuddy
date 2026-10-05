@@ -207,6 +207,12 @@ operation failed — a `4xx` means nothing ran at all.
 | `/state` | GET | — | the state value, the active `plugin` and the `plugins` list |
 | `/wait` | POST | `{ state }` or `{ plugin }`, `{ timeoutMs }` | waits for a dotted state path, or for a plugin to arrive |
 | `/navigate` | POST | `{ plugin }` | opens a plugin |
+| `/plugin` | POST | `{ plugin, select? }` | what that plugin published, or one dotted path into it |
+| `/click` | POST | `{ selector }` | clicks what it matches |
+| `/fill` | POST | `{ selector, text }` | types into it |
+| `/press` | POST | `{ key, selector? }` | a key, to an element or to the page |
+| `/snapshot` | GET | — | the page as an accessibility tree |
+| `/logs` | POST | `{ since?, source? }` | the app's own log, after a line you saw and from one source |
 | `/screenshot` | POST | `{ name }` | writes `drive/screenshots/<name>.png` |
 | `/reload` | POST | — | reloads the window and returns once it is connected again |
 | `/events` | POST | — | the app's events since you last asked, and how many were dropped |
@@ -214,7 +220,15 @@ operation failed — a `4xx` means nothing ran at all.
 | `/errors` | POST | — | renderer errors, and clears them |
 | `/close` | POST | — | ends the session and shuts the app down |
 
-The last three are POSTs because each one *clears* what it returns: draining is right for a session open
+**`/snapshot` is usually what you want over `/screenshot`.** It answers with the page as text: readable,
+diffable, cheap, and it says what a thing *is* rather than where it is. `/screenshot` is for a person
+looking at the result afterwards.
+
+**`/plugin` over `/eval`.** A plugin's state is what its view is showing, so reading it is the commonest
+question there is; doing it through `/eval` means writing the same expression, with the same ref and the
+same optional chain, every time.
+
+The three drains are POSTs because each one *clears* what it returns: draining is right for a session open
 for an hour, but a GET that answers differently on a retry is a trap.
 
 **Verbs of your own** go in the session file `--serve` scaffolds, which is written once and then yours:
