@@ -16,8 +16,11 @@
  * **Three flags, three different things, and none of them is a threshold on the write.** `--all` re-measures
  * every spec and *appends* what disagrees, so a quiet run still writes nothing and the history that rejects a
  * noisy reading is kept. `--forget` (with `--all`) throws that history away and starts again from this run,
- * which is the only thing that clears a *correlated* drift — one that adds a fifth to every spec sits under
- * every per-spec tolerance, so appending to the old readings would have the window argue with itself for a run.
+ * which is what clears a *correlated* drift — one that adds a fifth to every spec sits under every per-spec
+ * tolerance, so appending to the old readings would have the window argue with itself for a run. **Nothing
+ * here reports such a drift any more**, for the reason recorded beside `forgetWindows` below: the detector
+ * fired on one file's noise in five of the twelve suites. So the flag is for a change you already know about
+ * — a bundler bump, a worker-cap change — and the figure it protected carries its own `measuredAt`.
  * `--force` overrides the two refusals, the idle floor and the contention check, and nothing else.
  *
  * **Naming a spec selects its config, never the file alone.** A spec measured on its own is not comparable
@@ -39,7 +42,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { bodyDrift, drifted, idleNow, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
+import { idleNow, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { isMeasuredMachine, machineText, thisMachine, type Machine } from './lib/core-budget.ts';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import {
@@ -257,10 +260,16 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     const runs = plan.configs.map((config) => measure(suite, config));
     const costs = Object.assign({}, ...runs.map((run) => run.costs)) as Record<string, number>;
 
-    // What the per-spec tolerance cannot say. Each spec settling inside its threshold is the normal case and
-    // the reason the file is stable; all of them settling in the same direction is a uniform slowdown, and
-    // the only place it shows is the total. Undefined when nothing measured had a value to move from.
-    const body = bodyDrift(new Map(Object.entries(previous?.costs ?? {})), new Map(Object.entries(costs)));
+    // **No body-drift report here, and that is a decision rather than an omission.** `bodyDrift` asks
+    // whether a suite's total moved further than idle runs vary, on the premise that jitter cancels in a
+    // sum. Measured 2026-10-05 across all twelve records, that premise does not hold here: five suites have
+    // a single spec at 64% or more of their body (`@abuddy/ui` 93%, `main` 89%, `@abuddy/sdk` 86%), and the
+    // worst single spec moves 74% between two quiet runs, so on those suites the report cannot avoid firing
+    // on one file's noise. Observed the same day: +16% and -14% on one run, opposite directions.
+    // What it protected is an advisory total that `spec-dry.ts` says is "deliberately allowed to sit up to
+    // `DRIFT_SHARE` from the truth", and staleness of that figure is carried by the `measuredAt` which
+    // `spec:dry` prints beside it. `bodyDrift` keeps its one caller, the chain, whose steps are the subject
+    // its threshold was measured on. Re-adding it here needs a detector that tells one spec from the body.
     const forgetWindows = forgetsWindows({ all, forget });
     const { record, added, moved, appended, dropped } = settle({
       previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles,
@@ -302,7 +311,6 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     // `measuredFiles`, not `files`: over the whole suite this reports on specs the run never measured,
     // which is the same narrowing every other guard on this path already takes
     const budget = describeBudget(overBudget(dir, record.samples, measuredFiles), suite.dir);
-    const asBody = body === undefined ? '' : `, body ${body >= 0 ? '+' : ''}${(body * 100).toFixed(0)}%`;
     // Every way the record can differ from the one it replaced, for the same reason `settle` compares rather
     // than enumerates: a change nobody listed reads as "none moved" over a rewritten file, and a spec that
     // stops running is exactly that.
@@ -320,18 +328,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
       plan.prune.length > 0 ? `${plan.prune.length} gone` : '',
     ].filter(Boolean).join(', ');
     console.log(`${suite.workspace.padEnd(20)} ${String(files.length).padStart(3)} specs${record.skipped.length ? `, ${record.skipped.length} skipped` : ''}`
-      + `, ${did}${asBody} -> ${specCostFile(suite.dir)}${budget.tail ? `  (${budget.tail})` : ''}`);
-    // Two sentences, because the run that reports a drift and the run that clears it are not the same run.
-    // Advising `--all` to someone who just ran it, over a record it has already rewritten, describes a state
-    // that no longer holds — and this is the one place the reader learns which of the two happened.
-    if (drifted(body)) {
-      console.log(`  the suite moved ${(body * 100).toFixed(0)}% as a body, which is more than idle runs vary. `
-        + 'A drift this size sits under every per-spec tolerance, so no measurement re-records it on its own — '
-        + (forgetWindows
-          ? 'every window this measured has been dropped and started again from it.'
-          : 'until one does, anything reading the total reads a number that is no longer true. '
-            + '`npm run spec-cost:update -- --all --forget` forgets every window from this run.'));
-    }
+      + `, ${did} -> ${specCostFile(suite.dir)}${budget.tail ? `  (${budget.tail})` : ''}`);
     for (const line of budget.lines) console.log(line);
     if (budget.advice) console.log(budget.advice.split('\n').map((line) => `  ${line}`).join('\n'));
     for (const spec of measuredFiles) {
