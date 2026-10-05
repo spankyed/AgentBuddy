@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { PUBLISH_TREE } from '@abuddy/host/build/published-manifest';
 import { coresFor } from './core-budget.ts';
 import type { TimeoutClass } from './step-timeouts.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
@@ -498,6 +499,28 @@ const relative = repoRelative;
 const PACKAGE_BUILD_INPUTS = [...new Set(Object.values(BUILD_UNITS).flatMap((unit) => unit.inputs.map(relative)))].sort();
 const PACKAGE_BUILD_OUTPUTS = [...new Set(Object.values(BUILD_UNITS).flatMap((unit) => unit.outputs.map(relative)))].sort();
 
+/**
+ * What a *consumer* of the built packages reads: the outputs less the staged publish trees.
+ *
+ * `publish/` is a copy of what `files` names plus a derived manifest (`stagePublishTree`), written so a
+ * tarball ships no `src/` — and **only `packages:check` opens one**, running `publint --strict` and `attw`
+ * over each of the three staged trees by name. Nothing resolves *through* a staged tree: a
+ * published source branch is a resolution failure rather than a fallback, which is why the tree exists.
+ *
+ * Every consuming step declared the whole constant until 2026-10-05, which put 610 files into 26 keys that
+ * could not change any of their answers — 16470 declared file-slots of the chain's 59073. It cost two
+ * things: the walk and the hash carried them, and an edit to a package's `files` or `exports` map rewrote
+ * the derived `publish/package.json` and so invalidated 26 steps over the shape of a tarball, including
+ * steps that declare nothing else of that workspace. Dropping them moved no ordering edge and no mutex,
+ * probed per step against `dependsOn` and `conflictsOf`: the edge to `packages:ensure` runs through the
+ * `dist` trees, which every one of them does read.
+ *
+ * `chain-inputs.spec.ts` holds the rule, so a new step spreading the wrong constant is a failure rather
+ * than a key nobody looks at. The narrowing stops here deliberately — `dep-files.ts` records why the same
+ * move over a package's `dist` is a judgement this one is not.
+ */
+const PACKAGE_BUILD_READS = PACKAGE_BUILD_OUTPUTS.filter((out) => !out.endsWith(`/${PUBLISH_TREE}`));
+
 /** What `build` writes: the app that `needsApp` steps read */
 export const APP_OUTPUTS = ['packages/renderer/dist', 'packages/api/dist', 'packages/main/dist', 'packages/preload/dist'];
 
@@ -678,7 +701,7 @@ export function suiteInputs(suite: UnitSuite, half: Half): string[] {
     ...SUITE_RUNNER,
     ...suiteWorkspace(suite.dir),
     ...workspaceDeps(suite.dir).flatMap(dependencySource),
-    ...(reads.packages ? PACKAGE_BUILD_OUTPUTS : []),
+    ...(reads.packages ? PACKAGE_BUILD_READS : []),
     ...(reads.pack ? PACK_OUTPUTS : []),
     ...(reads.repo ? EVERY_SOURCE : []),
   ];
@@ -753,12 +776,12 @@ function inputsForSuites(suites: readonly UnitSuite[], half: Half): Pick<ChainSt
  * the half that would catch a scope narrower than the truth.
  */
 const legInputs = (leg: Leg): string[] => [...new Set(scopeOf(leg) === 'repo'
-  ? [...EVERY_SOURCE, ...PACKAGE_BUILD_OUTPUTS]
+  ? [...EVERY_SOURCE, ...PACKAGE_BUILD_READS]
   : [...ROOT,
     ...(leg.alsoReads ?? []),
     ...(scopeOf(leg) as readonly string[]).flatMap(suiteWorkspace),
     ...(scopeOf(leg) as readonly string[]).flatMap((dir) => workspaceDeps(dir)).flatMap(dependencySource),
-    ...PACKAGE_BUILD_OUTPUTS])].sort();
+    ...PACKAGE_BUILD_READS])].sort();
 
 /**
  * One step per typecheck leg, which is what makes the chain's scheduler the only one.
@@ -926,7 +949,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // `@abuddy/cli` build unit stale and `packages:ensure` rewrites the bundle this declares
     inputs: [...ROOT, 'packages/default-setup/src', 'packages/default-setup/abuddy.json',
       'packages/default-setup/package.json', 'packages/default-setup/tsconfig.json',
-      'packages/default-setup/dev-build.mjs', ...PACKAGE_BUILD_OUTPUTS] },
+      'packages/default-setup/dev-build.mjs', ...PACKAGE_BUILD_READS] },
   // The fixture packs depend on default-setup, so they need its snapshot from compile
   //
   // The third place in this chain with a cache inside a cached step, and the one that is benign: `abuddy
@@ -946,7 +969,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // by `:app`, changes every run, and is read by nothing
     excludes: FIXTURE_TEST_OUTPUT,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/packs', 'tests/scripts/test-external-pack-contract.sh',
-      'tests/scripts/lib', ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
+      'tests/scripts/lib', ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   // The widest inputs in the table, and honestly so: it compiles every workspace, the scripts and the
   // tests, and lints them. A change anywhere in the repo's TypeScript is a change to what it checks.
   ...TYPECHECK_STEPS,
@@ -970,7 +993,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'build:app', timeout: 'suite', seconds: 39, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
       'packages/api/tsup.config.ts', ...APP_ENTRY,
-      ...PACKAGE_BUILD_OUTPUTS, ...PACK_OUTPUTS] },
+      ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   { name: 'test:external-pack:app', timeout: 'scenario', seconds: 24,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
@@ -978,7 +1001,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // built bundle, which launches Electron, finds the window and bypasses onboarding. Reached by package
     // name rather than by path, so nothing that reads a step's text can see the edge
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/packs', 'tests/scripts/test-external-pack-app.sh',
-      'tests/scripts/lib', 'playwright.config.ts', ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
+      'tests/scripts/lib', 'playwright.config.ts', ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a
   // flaky pass cached green hides an intermittent failure indefinitely. 28s is cheap enough to always pay.
   // It declares what it writes although it is never cached and so never reads a stamp: the guard that a
@@ -1004,7 +1027,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'test:smoke', timeout: 'suite', seconds: 9,
     outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
-      'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
+      'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },
   // The rest of the E2E suite. **Opt-in, not a gate** — `npm run chain -- --e2e`.
   //
   // It was built to be driven: to watch the app while writing a feature, and to let an agent see what it
@@ -1020,8 +1043,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // reader must not observe. Declaring them is what makes that a mutex instead of a scheduling accident;
     // the step is never cached, so it buys the ordering and costs no precision
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY,
-      ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
+      ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },
   { name: 'test:packaged-authoring', timeout: 'scenario', seconds: 91,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring.sh', 'tests/scripts/lib',
-      ...PACKAGE_BUILD_OUTPUTS, ...APP_OUTPUTS] },
+      ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },
 ];
