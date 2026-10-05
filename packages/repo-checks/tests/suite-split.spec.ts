@@ -20,12 +20,12 @@ import {
   disagrees, nearEdge, worthKeeping, ratiosFromMoves, towardEdge, underBound, type SpecCost,
   namedIn, overBudget, parseArgs,
   planFor, readSpecCost,
-  pendingHere, recordedVerdict, recordMembership, refuseAbsent, forgetsWindows, settle, specCostFile, specFiles,
+  pendingHere, recordedVerdict, recordMembership, refuseAbsent, forgetsWindows, settle, specCostFile,
   stale, suiteCounts, suitesFor,
   writesMembershipOnly,
   unrecorded, WINDOW, appendSample, costOf, provisional, withCosts,
 } from '../../../scripts/lib/spec-cost.ts';
-import { halfOfPath, hasSplit } from '../../../scripts/lib/spec-halves.ts';
+import { halfOfPath, hasSplit, specFiles } from '../../../scripts/lib/spec-halves.ts';
 // The sample-recording primitives, shared with the chain's own cost table since 2026-10-02. The cases below
 // stay here rather than moving to `measure.spec.ts` with them, because what they check is these functions as
 // *this* record uses them — the body-drift case asserts `moved` says nothing about the same numbers, which is
@@ -35,7 +35,6 @@ import { halfOfPath, hasSplit } from '../../../scripts/lib/spec-halves.ts';
 // window now, so a fixture that set one would be setting a field nothing reads.
 import { bodyDrift, contended, drifted, refusesAsContended } from '../../../scripts/lib/measure.ts';
 import { isMeasuredMachine, machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
-import { priceSpecs } from '../../../scripts/lib/spec-dry.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
 /** Every suite's record, read once. A suite with no record is a failure below, not an empty pass. */
@@ -318,114 +317,6 @@ describe('a record anyone can add a spec to', () => {
       .toEqual(thisMachine());
   });
 });
-
-describe.skipIf(!ON_MEASURED_MACHINE)(`a spec runs in the half its cost puts it in${OFF_BOX}`, () => {
-  /**
-   * And every fast spec can *notice* a crossing, which is the half of this the band used to swallow.
-   *
-   * Over the real records rather than a fixture, because the defect was a property of the recorded values: the
-   * band is 35% of the cost and the edge is fixed, so the specs nearest the edge were the ones whose band
-   * reached past it. Measured 2026-10-03, before `worthKeeping` composed the edge in: 7 of 363 would have
-   * dropped a reading one millisecond past the edge, `spec-plan-collect` at 2421 being blind up to 3268. A
-   * dropped reading is a median that never moves, so the case above could not fire however slow the spec got.
-   *
-   * It asks the cheapest possible crossing — one millisecond over — because that is the reading the band is
-   * widest against, and a check that passed only for an extreme one would leave the hole where it was.
-   */
-  it('keeps a reading one millisecond past the edge, for every fast spec on record', () => {
-    const blind = suites
-      .filter(({ record }) => record)
-      .flatMap(({ suite, dir, record, files }) => files
-        .filter((file) => halfOfPath(file) === 'fast' && hasSplit(path.join('packages', dir))
-          && record!.samples[file] !== undefined)
-        .filter((file) => !worthKeeping(file, record!.costs[file]!, INTEGRATION_ABOVE_MS + 1))
-        .map((file) => `${suite.dir}/${file} costs ${record!.costs[file]}ms, whose band reaches past the edge`));
-    expect(blind, 'these could not notice a crossing, so their half could never be questioned').toEqual([]);
-  });
-
-  // The number the threshold is for, and it is a proxy — say so rather than let the next reader take it for
-  // elapsed time. It is summed *file* time across parallel workers, so 30s of it is roughly 13s of waiting;
-  // and it excludes collection, which the same run reports as 22.3s against 16.9s of tests, so the larger
-  // half of the work is not in it (`abuddy-sdk/tests/build/declared-type-of.spec.ts` moves fixture building
-  // into `beforeAll` for exactly that reason). It is kept because it is the stable statistic available:
-  // a sum moves 0.4-9.9% between idle runs where its members move 10-18% each, and a wall-clock sample of
-  // the same unchanged suite read 6.5, 10.3, 8.1 and 7.0s. `drift` is what watches the part this cannot.
-  const LOOP_BUDGET_MS = 30_000;
-
-  /**
-   * The budget asked of the worst case a gap could hold, rather than of the specs that happen to be priced.
-   *
-   * A parked spec counts as the most a fast spec may cost. It is a function so a case can hand it numbers
-   * the live record does not have — the rule itself, over whatever it is given.
-   */
-  const atWorst = (fileTimeMs: number, unpriced: number): number => fileTimeMs + unpriced * INTEGRATION_ABOVE_MS;
-
-  /** What the fast half of @abuddy/cli costs, and what it could cost if every parked spec were at its cap */
-  const cliFastHalf = () => {
-    const cli = suites.find(({ suite }) => suite.dir === 'abuddy-cli')!;
-    const fast = cli.files.filter((file) => halfOfPath(file) === 'fast');
-    return { cli, fast, priced: priceSpecs(fast.map((file) => path.join('packages', cli.suite.dir, file)), REPO_ROOT) };
-  };
-
-  it('leaves the fast half worth running in a loop', () => {
-    const { cli, fast, priced } = cliFastHalf();
-
-    // **It bounds the gap rather than vouching over it.** A missing cost used to sum as zero, so the total
-    // got smaller as the half got bigger — and the `unmeasured` list a busy run writes into is exactly a set
-    // of specs with no cost. The absent-record case was worse: `record?.costs[...] ?? 0` made the whole total
-    // 0 and this assertion passed over nothing at all. `priceSpecs`' doc has the rule — *"an unrecorded spec
-    // is named, never treated as zero: a total that quietly omits a file is a prediction that gets better the
-    // less it knows"* — and this is the same rule for a budget.
-    //
-    // It used to refuse outright, and that stopped being right when a busy box began *parking* a spec rather
-    // than refusing to record it: parking is legitimate and short-lived, and failing here re-blocked the
-    // landing parking exists to let through. So the budget is asked of the worst case instead. With nothing
-    // parked this is exactly the assertion it replaces; the bound loosens only by what is genuinely unknown.
-    //
-    // **What makes it sound, and the one thing it assumes.** A fast spec costs at most
-    // `INTEGRATION_ABOVE_MS` — above that the rename case above fires and it moves halves — so a parked spec
-    // cannot be worth more than that once priced. Until then this takes it for the fast spec its filename
-    // declares, which the next quiet bare update checks by pricing it (`pendingHere`, `lib/spec-cost.ts`).
-    // Measured 2026-10-04: 14.7s priced against a 30s budget, so six parked specs fit and a seventh does not.
-    //
-    // Through `priceSpecs` rather than a sum written here, because it already keeps that rule and already
-    // names what it could not price (`spec-dry.ts`). A second total would be a second place to get it wrong.
-    const parked = priced.unpriced.length > 0
-      ? `, plus ${priced.unpriced.length} not yet priced, counted at ${INTEGRATION_ABOVE_MS}ms each. `
-        + `Price them: npm run spec-cost:update -- --suite ${cli.suite.dir}`
-      : '';
-    expect(atWorst(priced.fileTimeMs, priced.unpriced.length),
-      `the fast half is ${(priced.fileTimeMs / 1000).toFixed(1)}s of file time across ${fast.length} specs${parked}`)
-      .toBeLessThan(LOOP_BUDGET_MS);
-  });
-
-  /**
-   * The firing case for the bound, derived from the live total so it cannot outlive the fact it rests on.
-   *
-   * Without it the clause above is an assertion nothing has watched fail: every live record has an empty
-   * `unmeasured`, so the gap it exists to bound is always zero and the arithmetic never runs over anything.
-   */
-  it('stops vouching once the gap alone could blow the budget', () => {
-    const { priced } = cliFastHalf();
-    const fits = Math.floor((LOOP_BUDGET_MS - priced.fileTimeMs) / INTEGRATION_ABOVE_MS);
-
-    expect(fits, 'no room for a parked spec at all would make the bound unreachable').toBeGreaterThan(0);
-    expect(atWorst(priced.fileTimeMs, fits), `${fits} parked specs still fit`).toBeLessThan(LOOP_BUDGET_MS);
-    expect(atWorst(priced.fileTimeMs, fits + 1), 'and one more does not, so this can fail')
-      .toBeGreaterThanOrEqual(LOOP_BUDGET_MS);
-  });
-});
-
-
-/**
- * What a run says it found. The defect this covers was a string: `spec-cost:update` told a package with one
- * half that two of its specs were "in the wrong half" and pointed each at `integration`, a half that
- * package has not got — and following it renames a file that still matches the same include glob, so the
- * spec keeps running where it was and the warning goes quiet.
- *
- * So the strings are the assertion. They are also the only reachable form of this: `--dry` reports no
- * finding at all, which left the wording exercised only by a measuring run that rewrites the records.
- */
 describe('what a run says about a spec it cannot place', () => {
   const OVER = { kind: 'over', file: 'tests/slow.spec.ts', ms: 9_000 } as const;
   const RENAME = {

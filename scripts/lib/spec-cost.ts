@@ -16,7 +16,7 @@ import * as path from 'node:path';
 import { isMeasuredMachine, thisMachine, type Machine } from './core-budget.ts';
 import { movedBeyondBand } from './measure.ts';
 // The half a spec runs in, which was never a measured quantity and now lives on its own
-import { CONFIG_BY_HALF, configsFor, halfOfPath, hasSplit, INTEGRATION_SUFFIX, type Half } from './spec-halves.ts';
+import { CONFIG_BY_HALF, configsFor, halfOfPath, hasSplit, INTEGRATION_SUFFIX, specFiles, type Half } from './spec-halves.ts';
 
 
 /**
@@ -497,33 +497,6 @@ export function configsOf(packageDir: string, specs: readonly string[]): string[
   const wanted = new Set(specs.map((spec) => CONFIG_BY_HALF[halfOfPath(spec)]));
   const known = all.filter((config) => wanted.has(config));
   return known.length === wanted.size ? known : all;
-}
-
-/**
- * Every spec a package owns, relative to the package.
- *
- * Both `tests/` and `src/`, and `src/` is now a net rather than a necessity. It was there because
- * `@app/default-setup` ran six colocated specs and walking only `tests/` reported them as
- * recorded-but-gone; those moved under `tests/` and no package colocates any more. Keeping the walk is
- * what stops the next one being silent twice over: no config includes `src/**` now, so such a spec would
- * never run, and if this did not see it the record would not report it missing either. As it is, it lands
- * here with no measured cost and `suite-split.spec.ts` says so by name.
- *
- * Ignoring what a package builds keeps the walk to sources: `dist` holds compiled copies, and `etc` is
- * where the record itself lives.
- */
-// `templates` holds the CLI's scaffold: `templates/pack/tests/*.spec.ts` is a spec a pack author will run,
-// not one of this package's, and vitest's own `include` already leaves it out
-const IGNORED = new Set(['node_modules', 'dist', 'etc', 'coverage', 'templates']);
-export function specFiles(packageDir: string): string[] {
-  const walk = (dir: string): string[] =>
-    fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-      if (entry.name.startsWith('.') || IGNORED.has(entry.name)) return [];
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) return walk(full);
-      return /\.(spec|test)\.ts$/.test(entry.name) ? [path.relative(packageDir, full)] : [];
-    });
-  return walk(packageDir).sort();
 }
 
 /**

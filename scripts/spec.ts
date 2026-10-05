@@ -140,55 +140,39 @@ function counted(run: Run, index: number): { args: string[]; env: NodeJS.Process
  * and not against a 3s one, which is why it is its own command rather than something the ordinary run pays.
  */
 if (dry) {
-  const { collectFor, priceSpecs, priceSuites, needsAppForRun, asDuration } = await import('./lib/spec-dry.ts');
-  let total = 0;
+  const { collectFor, checkedSpecs, specsOfSuites, needsAppForRun } = await import('./lib/spec-dry.ts');
   // Each distinct note once, as the run itself says them: two targets in one package carry the same sentence
   const predicted = new Set<string>();
-  const unpriced: string[] = [];
-  const outside: string[] = [];
-  const dates: string[] = [];
+  let listed = 0;
 
   for (const run of runs) {
     console.log(`\n→ ${run.label}${needsAppForRun(run, ROOT) === true ? '  [needs the app]' : ''}`);
-    // Three ways a run's file list is known, and a run that is none of them says so: collected from the
-    // graph, named by the target, or a suite's whole record. Without the last two a plan's most expensive
-    // runs — a named spec, `--full`'s pack suite — would contribute nothing and read as free
-    let priced;
+    let specs: readonly string[];
     if (run.collects !== undefined) {
-      priced = priceSpecs(await collectFor(run, ROOT), ROOT);
+      specs = checkedSpecs(await collectFor(run, ROOT));
     } else if (run.specs !== undefined) {
-      priced = priceSpecs([...run.specs].sort(), ROOT);
+      specs = checkedSpecs([...run.specs].sort());
     } else if (run.covers !== undefined) {
-      priced = priceSuites(run.covers, ROOT);
+      specs = specsOfSuites(run.covers, ROOT);
     } else {
       console.log('   no specs of its own: it builds, or makes the packages current');
       continue;
     }
-    const specs = priced.specs;
-    total += priced.fileTimeMs;
-    unpriced.push(...priced.unpriced);
-    outside.push(...priced.outside);
-    if (priced.measuredAt !== undefined) dates.push(priced.measuredAt);
+    listed += specs.length;
     for (const spec of specs) console.log(`   ${spec}`);
-    console.log(`   ${specs.length} spec${specs.length === 1 ? '' : 's'}, ${asDuration(priced.fileTimeMs)} of recorded file-time`);
-    // The same sentences the run itself prints, for the same reason: a prediction that stops at what it
-    // collected is the answer being refuted — a walk finding nothing over a build edge is not "nothing
-    // covers this", and a total that omits a seam reads as the whole cost of knowing
+    console.log(`   ${specs.length} spec${specs.length === 1 ? '' : 's'}`);
     for (const note of run.notes ?? []) if (!predicted.has(note)) { console.log(`   ${note}`); predicted.add(note); }
     if (run.beyond !== undefined) {
       console.log(`   not in this answer: ${run.beyond.covers} — ${run.beyond.how}`);
     }
   }
 
-  // File-time, and said to be: it is summed across workers, and the ratio to wall was 1.55:1 and 2.18:1 on
-  // one target three days apart, so any wall number derived from it would be wrong by a third within a week
-  console.log(`\n${asDuration(total)} of recorded file-time, summed across workers — not time to wait.`);
-  // The record is a sample kept with hysteresis, so this is a band and its age is the record's own field
-  if (dates.length > 0) console.log(`Read from records last measured ${dates.sort()[0]!.slice(0, 10)}; a row may sit up to 15% from the truth by design.`);
-  for (const spec of unpriced) console.error(`  no recorded cost: ${spec}`);
-  if (unpriced.length > 0) console.error(`  ${unpriced.length} unpriced, so the total is short — npm run spec-cost:update`);
-  // Said, and said differently: no record covers these, and no `spec-cost:update` ever will
-  for (const spec of outside) console.log(`  no cost recorded for ${spec} — it is in no unit suite`);
+  // **No time here, and that is an answer rather than a gap.** This printed a total summed from
+  // `spec-cost.json`, which is gone: the record held a millisecond per spec, and a spec reads 2.8s in the
+  // fast pool against 0.64s in the integration one, so there was never one number to store. What the command
+  // is for is which specs a change reaches, and that needs no sample. Vitest prints the real durations when
+  // the run happens.
+  console.log(`\n${listed} spec${listed === 1 ? '' : 's'} across ${runs.length} run${runs.length === 1 ? '' : 's'}.`);
   process.exit(0);
 }
 

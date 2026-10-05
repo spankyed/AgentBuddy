@@ -10,7 +10,7 @@ import { INTEGRATION_SUITES } from '../../../scripts/lib/chain-steps.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 import { population } from '@abuddy/sdk/testing';
-import { asDuration, priceSpecs, priceSuites, needsAppForRun } from '../../../scripts/lib/spec-dry.ts';
+import { checkedSpecs, needsAppForRun, specsOfSuites } from '../../../scripts/lib/spec-dry.ts';
 import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-halves.ts';
 
 /**
@@ -813,77 +813,53 @@ describe('a source file whose specs sit behind a second config', () => {
     });
 });
 
-describe('what the plan would cost', () => {
-  const SPEC = 'packages/repo-checks/tests/suite-split.spec.ts';
+describe('what the plan would list', () => {
+  const SPEC = 'packages/repo-checks/tests/spec-plan.spec.ts';
   const PACK = 'default-setup';
   const SEED = `packages/${PACK}/src/seeds/actions/claude-code/answer-question.ts`;
 
-  it('prices a spec from the record its package keeps', () => {
-    const priced = priceSpecs([SPEC], REPO_ROOT);
-    expect(priced.fileTimeMs, 'the recorded cost, which is not zero').toBeGreaterThan(0);
-    expect(priced.unpriced).toEqual([]);
-    expect(priced.measuredAt, 'and how old the band is').toMatch(/^\d{4}-\d{2}-\d{2}/);
-  });
-
-  // A total that quietly omits what it does not know is a prediction that improves the less it knows
-  it('names a spec the record has never seen rather than counting it free', () => {
-    const priced = priceSpecs([SPEC, 'packages/repo-checks/tests/not-recorded.spec.ts'], REPO_ROOT);
-    expect(priced.unpriced).toEqual(['packages/repo-checks/tests/not-recorded.spec.ts']);
-    expect(priced.outside, 'both are in a unit suite; only the row is missing').toEqual([]);
-    expect(priced.fileTimeMs, 'and the total is the part it does know').toBe(priceSpecs([SPEC], REPO_ROOT).fileTimeMs);
-  });
-
-  /**
-   * Two ways a spec has no cost, and they take different advice: `spec-cost:update` fixes a missing row and
-   * will never record an E2E spec. Telling a reader to run it for one sends them after a command that cannot
-   * help — the same defect as advising `--all` to someone who had just run it.
-   */
-  it('tells a missing row apart from a spec no record covers', () => {
-    const e2e = priceSpecs(['tests/e2e/smoke/smoke.spec.ts'], REPO_ROOT);
-    expect(e2e.outside, 'in no unit suite, so no record could hold it').toEqual(['tests/e2e/smoke/smoke.spec.ts']);
-    expect(e2e.unpriced, 'and not something an update would fix').toEqual([]);
-
-    const missing = priceSpecs(['packages/repo-checks/tests/not-recorded.spec.ts'], REPO_ROOT);
-    expect(missing.unpriced).toEqual(['packages/repo-checks/tests/not-recorded.spec.ts']);
-    expect(missing.outside).toEqual([]);
-  });
-
   // Every `covers` is derived from UNIT_SUITES, so this cannot fire — and a skipped one is a whole suite
-  // dropped from a total in silence, which is what the unpriced list exists to prevent one level up
-  it('refuses a covered workspace that is no unit suite, rather than pricing it at zero', () => {
-    expect(() => priceSuites(['@app/no-such-suite'], REPO_ROOT)).toThrow(/no unit suite/);
+  // dropped from the answer in silence
+  it('refuses a covered workspace that is no unit suite, rather than listing nothing for it', () => {
+    expect(() => specsOfSuites(['@app/no-such-suite'], REPO_ROOT)).toThrow(/no unit suite/);
+  });
+
+  // `Run.specs` promises spec files. A producer that hands it a directory is making a claim about files
+  // nobody enumerated, and the caller prints this as "the specs that would run"
+  it('refuses a path that is not a spec file', () => {
+    expect(() => checkedSpecs([`packages/${PACK}/tests/seeds`])).toThrow(/not a spec file/);
   });
 
   /**
    * The two halves composing, which is what neither of them alone could say.
    *
-   * `packBuildEdge` names the seed goldens as a *directory* and `priceSpecs` reads *files*, and both were
-   * right on their own: the seed run priced at one unrecorded spec — zero — which is the whole of what
-   * `--full` adds for a seed source. Asserted over the plan rather than over `packageRun`, because the
-   * directory is what the edge hands it and the expansion is what has to survive the trip.
+   * `packBuildEdge` names the seed goldens as a *directory* and the listing reads *files*, and both were
+   * right on their own: the seed run resolved to one unexpanded path, which is the whole of what `--full`
+   * adds for a seed source. Asserted over the plan rather than over `packageRun`, because the directory is
+   * what the edge hands it and the expansion is what has to survive the trip.
    */
-  it('prices the seed run the edge plans, over files rather than the directory it names', () => {
+  it('expands the seed run the edge plans into files rather than the directory it names', () => {
     const suiteRun = planTargets([SEED], [], REPO_ROOT, { full: true }).runs
       .find((run) => run.specs !== undefined)!;
 
     expect(suiteRun.specs, 'the directory was expanded').not.toContain(`packages/${PACK}/tests/seeds`);
     expect(suiteRun.specs!.length, 'every golden under it').toBeGreaterThan(10);
-
-    const priced = priceSpecs([...suiteRun.specs!].sort(), REPO_ROOT);
-    expect(priced.unpriced, 'and the record has a row for each').toEqual([]);
-    expect(priced.fileTimeMs, 'so the run `--full` exists for is not priced at zero').toBeGreaterThan(1000);
+    expect(checkedSpecs([...suiteRun.specs!].sort()), 'and every one of them is a spec file')
+      .toHaveLength(suiteRun.specs!.length);
   });
 
-  // `Run.specs` promises spec files. A producer that hands it anything else has a cost record with no row
-  // for it, so it would land in `unpriced` and advise a command that can never record one
-  it('refuses a path that is not a spec file, rather than calling it unpriced', () => {
-    expect(() => priceSpecs([`packages/${PACK}/tests/seeds`], REPO_ROOT)).toThrow(/not a spec file/);
-  });
+  /**
+   * A whole-suite run names no files, so its specs are walked from the packages it covers.
+   *
+   * This read the cost record until 2026-10-05 — a row per spec doubled as the suite's inventory. The walk
+   * is where that record came from, so the answer is the same without the millisecond.
+   */
+  it('lists a whole suite by walking it, since the run names no files', () => {
+    const listed = specsOfSuites(['@app/repo-checks'], REPO_ROOT);
 
-  it('reports the oldest record it drew on, since that is how stale the band is', () => {
-    const many = priceSpecs([SPEC, 'packages/abuddy-ears/tests/no-module-state.spec.ts'], REPO_ROOT);
-    expect(many.measuredAt).toBeDefined();
-    expect(many.measuredAt! <= priceSpecs([SPEC], REPO_ROOT).measuredAt!).toBe(true);
+    expect(listed.length, 'the suite has specs').toBeGreaterThan(10);
+    expect(listed.every((spec) => spec.startsWith('packages/repo-checks/'))).toBe(true);
+    expect(listed, 'including this one').toContain('packages/repo-checks/tests/spec-plan.spec.ts');
   });
 
   /**
@@ -953,23 +929,6 @@ describe('the ordinary run does not collect', () => {
  *
  * It costs one vitest node API, which is why there is one case and not four.
  */
-/**
- * How a duration is rendered, which is a correctness question and not a formatting one: a prediction whose
- * only sub-second rendering is `0.0s` says the same thing about a spec recorded at 3ms and a spec no record
- * holds, and those are opposite answers.
- */
-describe('what a predicted cost reads as', () => {
-  it.each([[0, '0ms'], [3, '3ms'], [999, '999ms'], [1000, '1.0s'], [2352, '2.4s'], [41_900, '41.9s']])(
-    'renders %ims as %s', (ms, expected) => {
-      expect(asDuration(ms)).toBe(expected);
-    });
-
-  // The one the rounding hid: two costs a reader has to tell apart, and one string for both
-  it('tells a recorded sub-second cost from nothing recorded at all', () => {
-    expect(asDuration(3)).not.toBe(asDuration(0));
-  });
-});
-
 /**
  * Which config a named spec is run from.
  *

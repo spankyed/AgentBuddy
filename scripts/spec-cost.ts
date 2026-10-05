@@ -55,10 +55,10 @@ import {
   writesMembershipOnly,
   readingsText,
   type SpecCost, type StoredSpecCost,
-  pendingHere, provisional, forgetsWindows, recordedVerdict, settle, specCostFile, specFiles, stale, suiteCounts,
+  pendingHere, provisional, forgetsWindows, recordedVerdict, settle, specCostFile, stale, suiteCounts,
   suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
-import { CONFIG_BY_HALF, halfOfPath, hasSplit } from './lib/spec-halves.ts';
+import { CONFIG_BY_HALF, halfOfPath, hasSplit, specFiles } from './lib/spec-halves.ts';
 
 const packageDir = (suite: UnitSuite): string => path.join(REPO_ROOT, 'packages', suite.dir);
 

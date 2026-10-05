@@ -58,3 +58,31 @@ export function configsFor(packageDir: string): string[] {
  * `chain-steps.ts` asks to build `INTEGRATION_SUITES`.
  */
 export const hasSplit = (packageDir: string): boolean => configsFor(packageDir).length > 1;
+
+/**
+ * Every spec a package owns, relative to the package.
+ *
+ * Both `tests/` and `src/`, and `src/` is now a net rather than a necessity. It was there because
+ * `@app/default-setup` ran six colocated specs and walking only `tests/` reported them as
+ * recorded-but-gone; those moved under `tests/` and no package colocates any more. Keeping the walk is
+ * what stops the next one being silent twice over: no config includes `src/**` now, so such a spec would
+ * never run, and if this did not see it the record would not report it missing either. As it is, it lands
+ * here with no measured cost and nothing reported it. `spec-dry.ts` is the consumer now: it is how a whole-suite run lists the specs it
+ * would execute, which used to be read from the deleted cost record.
+ *
+ * Ignoring what a package builds keeps the walk to sources: `dist` holds compiled copies, and `etc` holds
+ * recorded artifacts rather than specs.
+ */
+// `templates` holds the CLI's scaffold: `templates/pack/tests/*.spec.ts` is a spec a pack author will run,
+// not one of this package's, and vitest's own `include` already leaves it out
+const IGNORED = new Set(['node_modules', 'dist', 'etc', 'coverage', 'templates']);
+export function specFiles(packageDir: string): string[] {
+  const walk = (dir: string): string[] =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      if (entry.name.startsWith('.') || IGNORED.has(entry.name)) return [];
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) return walk(full);
+      return /\.(spec|test)\.ts$/.test(entry.name) ? [path.relative(packageDir, full)] : [];
+    });
+  return walk(packageDir).sort();
+}
