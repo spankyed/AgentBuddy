@@ -1,3 +1,8 @@
+// **The most expensive spec in this suite, and why that is the work rather than the test.** 94 tests: 91
+// call `generatePackFiles` with a different manifest each (~7.2s, different work every time and so not
+// cacheable), and 3 build TypeScript programs (2.5s, since they share a compiler host). Measured in
+// `docs/archive/goals/goal-one-job-pool.md` Phase 5, which also records why the split it proposed was not
+// done.
 import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
 import * as os from 'node:os';

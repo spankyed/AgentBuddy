@@ -1,5 +1,7 @@
 // A send missing a field is reported against the event its `type` names, not every event of the system,
 // so the error says which event the send is for.
+//
+// It builds a TypeScript program over the pack to check that diagnostic, which is what makes it slow.
 import * as path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
