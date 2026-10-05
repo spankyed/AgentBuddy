@@ -100,6 +100,59 @@ That was measured on `@app/repo-checks`' fast half. Measured 2026-10-05 across a
 
 **Removing the spec-cost caller orphans the threshold.** After this goal `bodyDrift` has one caller, `scripts/chain.ts:768`. Measured 2026-10-05, ten chain steps declare a `seconds` cost, totalling 266 s, with `test:packaged-authoring` at 91 s — **34% of the body, and the top three 62%**. That is the same concentration regime the premise fails in, the subject the threshold was calibrated on is the one this goal deletes, and nobody has measured the chain's own quiet-run body variance.
 
+## Spike results (2026-10-05)
+
+Machine: Apple M1 Pro, 10 cores. Quiet runs at 88-94% idle, loaded runs at 20% idle (eight `node` CPU burners, started and stopped by captured PID). Spike code is a throwaway Python probe under the session scratchpad; **do not reuse it** — it duplicates `FILE_LINE` by hand, and Phase 3 should use the JSON reporter instead (Q2).
+
+Commands: `npm run packages:ensure`; `npx tsx scripts/test-unit-pool.ts {host,pack,integration} --all` (the `--all` is required — the pools otherwise run only stale projects and a cached run prints nothing); `node scripts/with-source.mjs npx vitest run --reporter=default --reporter=json --outputFile=<path>`.
+
+### Q1 — Does every spec appear with a duration in a real pool run? **Yes.**
+
+415 file lines parsed across the three pools, 415 distinct specs, against 414 recorded across twelve suites. **No recorded spec is missing from a pool run.** One spec is seen with no duration: `default-setup/tests/features/code/be/claude-code-permission-flow.spec.ts`, which is fully skipped, so vitest prints no time for it — the case `scripts/spec-cost.ts:93` already handles, and it is in the record's `skipped` list rather than `samples`.
+
+The three pools print three different line shapes, all of which `FILE_LINE` already reads: the host and integration pools prefix `|@project|`, while the pack pool invokes `npm test -w <workspace>` per suite and prints no prefix, so suite identity there comes from the invocation and not the line. Phase 3 has to carry that distinction.
+
+### Q2 — Is a JSON reporter available and better? **Yes to both, and it should be used.**
+
+`--reporter=default --reporter=json --outputFile=<path>` runs both: the human output is unchanged and the JSON is written beside it. Verified on a pooled multi-project run (`@app/renderer` + `@app/main`, 11 of 11 files present) and on a single project, where the two agree to rounding (131/132 ms, 2/2, 11/11).
+
+`testResults[]` carries `name` as an **absolute path** plus `startTime`/`endTime`; the duration is their difference, and there is no `duration` field. It is better than the regex on three counts: the path is unambiguous so neither the `|project|` prefix nor the npm-banner tracking is needed, there is no ANSI to strip, and it does not depend on reporter formatting.
+
+### Q3 — What streak length is needed? **No consecutive-count N works. This refutes Decision 1's premise.**
+
+288 specs measured in all three runs (one quiet, two loaded). Nine specs' verdicts moved under load, and **three moved in both loaded runs**:
+
+| spec | quiet | busy 1 | busy 2 |
+|---|---|---|---|
+| `publish-checks/.../published-manifest-paths.spec.ts` | 2443 ms (fast) | 3532 ms (integration) | 3326 ms (integration) |
+| `repo-checks/tests/spec-waits.spec.ts` | 1658 ms (fast) | 2509 ms (integration) | 2920 ms (integration) |
+| `repo-checks/tests/suite-reads.spec.ts` | 1537 ms (fast) | 2530 ms (integration) | 2614 ms (integration) |
+
+Busy/quiet ratio over the 103 specs above 50 ms: **median 1.27x, p90 2.03x, max 3.29x.**
+
+A streak counts *consecutive* runs, and load persists — for hours on a working machine. Three specs flipped twice running, so N=2 files three wrong renames; nothing about N=3 or N=4 is different, because a box loaded for three runs flips three times. **The premise that a boolean verdict is machine-independent is false**: the edge is an absolute wall-clock threshold, and load moves durations across it by 2-3x, so the verdict is exactly as machine-dependent as the millisecond was.
+
+What the data does support is a **margin against the edge rather than repetition**. Load explains up to 3.29x here, so a spec over its edge by more than that is over it for reasons load cannot account for — `abuddy-sdk/tests/build/generate-entries.spec.ts` at 17 745 ms against a 2 500 ms edge is 7.1x and believable from one reading, where `spec-waits` at 2 509 ms is 1.004x and is noise. A ratio is machine-independent in the way a wall-clock threshold is not.
+
+**`CONTENTION_RATIO_MAX = 2.5` is not that ratio, despite the name.** Its doc records it as an upper bound on how much more a spec reads *in the fast half than in the integration half*, measured on an idle box with each spec moved alone — a placement conversion, not a load factor. The 3.29x above neither confirms nor contradicts it; they are different quantities, and conflating them would size the band on the wrong measurement.
+
+### Q4 — How far is any spec from its edge? **31 of 415, and the audit has two kinds, not one.**
+
+31 specs sit within a 2.5x swing of their edge; the other 384 cannot be moved by any plausible noise. Eight specs' *pooled* durations already disagree with their filenames while `spec-cost:check` passes — and the reason is a distinction Decision 1 does not model. `overBudget` (`spec-cost.ts:634`) dispatches on `hasSplit` (`:534`):
+
+- a package with two vitest configs gets **`misplaced`** — the spec is in the wrong half and a rename is the remedy;
+- a package with one config gets **`outgrown`** — the spec costs more than a fast half allows and there is nowhere to move it, so the entry records *what makes it expensive* instead. Explicitly "not a queue of packages to split".
+
+Only three packages have a split (`@abuddy/cli`, `@app/repo-checks`, `@app/publish-checks`), so nine of twelve suites can only ever produce `outgrown`. `generate-entries.spec.ts` at 17.7 s passes because it is `outgrown` with a recorded reason, not a misplacement.
+
+A second effect Q4 exposes: the recorded costs were measured by `measure()` running one `npx vitest` **per package**, while specs actually run pooled across eleven projects. `generate-entries` is recorded at 11 308 ms and reads 17 745 ms pooled. Decision 2 already says a spec should be timed in the pool it runs in; the gap is larger than the doc assumed.
+
+### What the spike did not cover
+
+- Whether a margin-against-the-edge rule is stable across machines, which is the question Decision 1's replacement turns on. One box only.
+- The pack pool's per-invocation suite identity under the JSON reporter (Q2 was verified on pooled and single-project runs, not on `npm test -w`).
+- `spec:dry`'s basis (Open decision 1), untouched.
+
 ## Decisions
 
 Final, except Open decision 1.
