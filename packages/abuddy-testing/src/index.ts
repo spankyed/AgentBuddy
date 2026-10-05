@@ -9,7 +9,7 @@ import { resolveAppContext } from '@abuddy/sdk/env';
 import { resolveName } from '@abuddy/sdk/ids';
 import { installPackFromLocal, PACK_LOAD_MESSAGES } from '@abuddy/host/packs';
 import { appVersion } from './app-version.ts';
-import { appLaunchEnv } from './launch-env.ts';
+import { appLaunchEnv, pinsViewport } from './launch-env.ts';
 import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
 
 export interface AppHelper {
@@ -407,9 +407,8 @@ export function createTest(options: CreateTestOptions = {}) {
 
     appPage: async ({ electronApp }, use) => {
       const page = await findMainWindow(electronApp);
-      // The main window's default size depends on how main was built (dev vs production mode);
-      // pin the viewport so layout and screenshot baselines are the same everywhere
-      await page.setViewportSize(E2E_VIEWPORT);
+      // Deterministic for a suite, and the window's own size for a run someone is watching — see `pinsViewport`
+      if (pinsViewport(process.env)) await page.setViewportSize(E2E_VIEWPORT);
 
       const rendererErrors: string[] = [];
       let rejectPackFeFailed: (err: Error) => void = () => {};
