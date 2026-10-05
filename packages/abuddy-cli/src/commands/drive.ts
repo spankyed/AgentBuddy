@@ -126,22 +126,27 @@ const ENGINE_CONFIG_FILE = 'engine.config.mts';
 
 const ENGINE_CONFIG = (): string => renderTemplate('drive/engine.config.mts');
 
-const ENGINE_SESSION = `import { drive, driveEngineBody } from '@abuddy/testing';
+const ENGINE_SESSION = `import { drive, driveEngineBody, optionalText, verb } from '@abuddy/testing';
 
 // Scaffolded once by \`abuddy drive --serve\`, then yours: this file is never rewritten.
 //
 // The core verbs are @abuddy/testing's and are true of any AgentBuddy app. Add your own below, in your
 // pack's own nouns — they are merged over the core table, so you can replace one too. A verb here saves
 // an agent spelling out the same several calls every time it wants one thing.
+//
+// A verb declares the fields it reads, and \`run\` receives those and nothing else: \`required\`,
+// \`optionalText\`, \`optionalMs\`, \`present\`, \`object\`, \`pixels\` and \`safeName\` are the readers, and a
+// field nobody declared is a compile error rather than an undefined at runtime.
 drive('drive engine', driveEngineBody({
   // The size to open at. Without it the window keeps its own, which is what you want while watching it.
   // viewport: { width: 1400, height: 900 },
   verbs: (session) => ({
     // 'POST /note': one call instead of a \`/tx\` whose code you have to get right each time
-    // '/note': {
+    // '/note': verb({
     //   method: 'POST',
+    //   fields: { title: optionalText },
     //   run: ({ title }) => session.tx(\`return createEntityWithDefaults(EARS.Entity.Note, { title: \${JSON.stringify(title)} }).id\`),
-    // },
+    // }),
   }),
 }));
 `;

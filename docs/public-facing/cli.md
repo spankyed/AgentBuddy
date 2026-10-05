@@ -251,7 +251,10 @@ for an hour, but a GET that answers differently on a retry is a trap.
 
 **Verbs of your own** go in the session file `--serve` scaffolds, which is written once and then yours:
 `driveEngineBody({ verbs })` takes a function over the session, merged over this table. A verb built out
-of your pack's nouns belongs there rather than here.
+of your pack's nouns belongs there rather than here. Build one with `verb({ method, fields, run })`: it
+declares the fields it reads and `run` receives those, checked, and nothing else — `required`,
+`optionalText`, `optionalMs`, `present`, `object`, `pixels` and `safeName` are the readers, all exported
+from `@abuddy/testing`.
 
 **A write does not update the UI; `/reload` is how you see it.** A plugin's state is what its system
 sent it, so a write made outside that system — `/transact`, the database console, `abuddy db exec` — changes

@@ -52,18 +52,66 @@ export interface RunningEngine {
   readonly verbs: Record<string, Verb>;
 }
 
-/** A verb, and whether it reads a JSON body */
 /**
  * One entry in the table a session answers from.
  *
  * Exported because the table is extensible: a verb built out of one app's nouns — "create a thread",
  * "approve the pending call" — belongs to whoever is driving, not to this package, and is added through
- * `runDriveEngine`'s `verbs`.
+ * `runDriveEngine`'s `verbs`. Build one with `verb()`, which is what fills `fields`.
  */
 export type Verb = {
   readonly method: 'GET' | 'POST';
+  /**
+   * The field names this verb reads, in the order it reads them.
+   *
+   * The wire's vocabulary is derived from this rather than scanned for. It used to be read out of
+   * `engineVerbs.toString()` with a regex, which was blind twice over: first to any helper the pattern
+   * did not list, then — once that was generalised — to any verb whose body parameter was not literally
+   * named `body`. A declaration cannot be blind to itself.
+   */
+  readonly fields: readonly string[];
   readonly run: (body: Record<string, unknown>) => EngineResult | Promise<EngineResult>;
 };
+
+/**
+ * Reads one field out of a request body, or raises the protocol error that names it.
+ *
+ * Every field helper below has this shape already, which is what makes a verb's fields declarable as data.
+ */
+export type Reader<T> = (body: Record<string, unknown>, field: string) => T;
+
+type Readers = Record<string, Reader<unknown>>;
+
+/** What `run` receives: each declared field, read by the reader declared beside it */
+type Read<F extends Readers> = { [K in keyof F]: F[K] extends Reader<infer T> ? T : never };
+
+/**
+ * A verb, from the fields it reads and what to do with them.
+ *
+ * **The declaration is the parsing**, which is the whole point: `run` receives only what `fields` names, so
+ * a field nobody declared cannot be read and the two cannot drift. The guard that keeps one concept to one
+ * name then derives its answer from the table instead of reading the table's source, and the drift it was
+ * written to catch became a compile error on the way.
+ *
+ * Fields are read in declaration order, so the first one missing is the one a caller is told about — which
+ * is what `required` already did when the reads were written out inside `run`.
+ *
+ * A rule *between* fields stays in `run`, because it is a relationship rather than a check on one value:
+ * `/wait`'s "exactly one of" and `/send`'s optional `to` are both that.
+ */
+export const verb = <F extends Readers>(spec: {
+  readonly method: 'GET' | 'POST';
+  readonly fields?: F;
+  readonly run: (values: Read<F>) => EngineResult | Promise<EngineResult>;
+}): Verb => ({
+  method: spec.method,
+  fields: Object.keys(spec.fields ?? {}),
+  run: (body) => {
+    const values: Record<string, unknown> = {};
+    for (const [field, read] of Object.entries(spec.fields ?? {})) values[field] = read(body, field);
+    return spec.run(values as Read<F>);
+  },
+});
 
 /** Verbs of a caller's own, over the session they drive. Merged over the core table, so one may be replaced */
 export type ExtraVerbs = (session: EngineSession) => Record<string, Verb>;
@@ -72,12 +120,16 @@ export type ExtraVerbs = (session: EngineSession) => Record<string, Verb>;
 class BadRequest extends Error {}
 
 /**
+ * The field readers a verb declares its `fields` with, named once so a missing one is reported the same way
+ * everywhere. Exported for the same reason `verb` is: a caller's own verb gets the checking the core table
+ * has, and under a declared table it could read nothing without them.
+ *
  * Which field each verb needs, named once so a missing one is reported the same way everywhere.
  *
  * A verb whose required field is absent is a protocol error, not a verb failure: nothing ran, and
  * answering `ok: false` would read as "the app refused" when the request never reached it.
  */
-const required = (body: Record<string, unknown>, field: string): string => {
+export const required = (body: Record<string, unknown>, field: string): string => {
   const value = body[field];
   if (typeof value !== 'string' || value === '') throw new BadRequest(`"${field}" must be a non-empty string`);
   return value;
@@ -90,7 +142,7 @@ const required = (body: Record<string, unknown>, field: string): string => {
  * joins it onto the screenshots directory — so `../../escaped` wrote outside it, measured. Refusing
  * says so; stripping the separators would quietly write a different file than the caller named.
  */
-const safeName = (body: Record<string, unknown>, field: string): string => {
+export const safeName = (body: Record<string, unknown>, field: string): string => {
   const value = required(body, field);
   if (!/^[\w.-]+$/.test(value) || value.includes('..')) {
     throw new BadRequest(`"${field}" must be a file name: letters, digits, dot, dash, underscore`);
@@ -105,19 +157,19 @@ const safeName = (body: Record<string, unknown>, field: string): string => {
  * may legitimately store, so the question is presence. Without this a caller who forgot `value` wrote
  * `undefined` into the settings and was told it worked.
  */
-const present = (body: Record<string, unknown>, field: string): unknown => {
+export const present = (body: Record<string, unknown>, field: string): unknown => {
   if (!(field in body)) throw new BadRequest(`"${field}" is required`);
   return body[field];
 };
 
 /** An optional string, refused when present and empty: a caller who sent one meant to narrow something */
-const optionalText = (body: Record<string, unknown>, field: string): string | undefined => {
+export const optionalText = (body: Record<string, unknown>, field: string): string | undefined => {
   if (body[field] === undefined) return undefined;
   return required(body, field);
 };
 
 /** An optional positive number, so a timeout a caller sent as a string is refused rather than ignored */
-const optionalMs = (body: Record<string, unknown>, field: string): number | undefined => {
+export const optionalMs = (body: Record<string, unknown>, field: string): number | undefined => {
   const value = body[field];
   if (value === undefined) return undefined;
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
@@ -133,7 +185,7 @@ const optionalMs = (body: Record<string, unknown>, field: string): number | unde
  * refused is different — a viewport of `0`, of `-1` or of `"1400"` is a caller who meant a size, and a
  * window told to be nought pixels wide answers nothing afterwards.
  */
-const pixels = (body: Record<string, unknown>, field: string): number => {
+export const pixels = (body: Record<string, unknown>, field: string): number => {
   const value = body[field];
   if (!isPixels(value)) throw new BadRequest(`"${field}" must be a whole number of pixels above zero`);
   return value;
@@ -148,7 +200,7 @@ const pixels = (body: Record<string, unknown>, field: string): number => {
 export const isPixels = (value: unknown): value is number =>
   typeof value === 'number' && Number.isInteger(value) && value > 0;
 
-const object = (body: Record<string, unknown>, field: string): Record<string, unknown> => {
+export const object = (body: Record<string, unknown>, field: string): Record<string, unknown> => {
   const value = body[field];
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     throw new BadRequest(`"${field}" must be an object`);
@@ -158,78 +210,90 @@ const object = (body: Record<string, unknown>, field: string): Record<string, un
 
 export function engineVerbs(session: EngineSession): Record<string, Verb> {
   return {
-    '/eval': { method: 'POST', run: (body) => session.evaluate(required(body, 'code')) },
+    '/eval': verb({ method: 'POST', fields: { code: required }, run: ({ code }) => session.evaluate(code) }),
     /**
      * One verb for one act. `to` names a system; without it the event goes to the app's root actor, which
      * is the only difference there ever was between this and the `/system` it replaced.
      */
-    '/send': {
+    '/send': verb({
       method: 'POST',
-      run: (body) => (body.to === undefined
-        ? session.send(object(body, 'event'))
-        : session.system(required(body, 'to'), object(body, 'event'))),
-    },
+      fields: { to: optionalText, event: object },
+      run: ({ to, event }) => (to === undefined ? session.send(event) : session.system(to, event)),
+    }),
     // `qx` and `tx` are the names of the code you write, not of the thing you ask for
-    '/query': { method: 'POST', run: (body) => session.qx(required(body, 'code')) },
-    '/transact': { method: 'POST', run: (body) => session.tx(required(body, 'code')) },
-    '/state': { method: 'GET', run: () => session.state() },
-    '/navigate': { method: 'POST', run: (body) => session.navigate(required(body, 'plugin')) },
+    '/query': verb({ method: 'POST', fields: { code: required }, run: ({ code }) => session.qx(code) }),
+    '/transact': verb({ method: 'POST', fields: { code: required }, run: ({ code }) => session.tx(code) }),
+    '/state': verb({ method: 'GET', run: () => session.state() }),
+    '/navigate': verb({ method: 'POST', fields: { plugin: required }, run: ({ plugin }) => session.navigate(plugin) }),
     // What a view is actually showing, which was a hand-written `/eval` expression at every call site
-    '/plugin': {
+    '/plugin': verb({
       method: 'POST',
-      run: (body) => session.plugin(required(body, 'plugin'), optionalText(body, 'path')),
-    },
-    '/click': { method: 'POST', run: (body) => session.click(required(body, 'selector')) },
-    '/fill': { method: 'POST', run: (body) => session.fill(required(body, 'selector'), required(body, 'text')) },
-    '/press': { method: 'POST', run: (body) => session.press(required(body, 'key'), optionalText(body, 'selector')) },
-    '/snapshot': { method: 'GET', run: () => session.snapshot() },
-    '/settings': { method: 'GET', run: () => session.settings() },
+      fields: { plugin: required, path: optionalText },
+      run: ({ plugin, path }) => session.plugin(plugin, path),
+    }),
+    '/click': verb({ method: 'POST', fields: { selector: required }, run: ({ selector }) => session.click(selector) }),
+    '/fill': verb({
+      method: 'POST',
+      fields: { selector: required, text: required },
+      run: ({ selector, text }) => session.fill(selector, text),
+    }),
+    '/press': verb({
+      method: 'POST',
+      fields: { key: required, selector: optionalText },
+      run: ({ key, selector }) => session.press(key, selector),
+    }),
+    '/snapshot': verb({ method: 'GET', run: () => session.snapshot() }),
+    '/settings': verb({ method: 'GET', run: () => session.settings() }),
     // What the app is rendering into, which is what decides whether a layout is the one a user would see
-    '/viewport': { method: 'GET', run: () => session.viewport() },
-    '/set-viewport': {
+    '/viewport': verb({ method: 'GET', run: () => session.viewport() }),
+    '/set-viewport': verb({
       method: 'POST',
-      run: (body) => session.setViewport(pixels(body, 'width'), pixels(body, 'height')),
-    },
+      fields: { width: pixels, height: pixels },
+      run: ({ width, height }) => session.setViewport(width, height),
+    }),
     // A write, so it is a verb of its own rather than a POST to the noun above
-    '/set-setting': {
+    '/set-setting': verb({
       method: 'POST',
-      run: (body) => session.setSetting(required(body, 'plugin'), required(body, 'path'), present(body, 'value')),
-    },
-    '/logs': {
+      fields: { plugin: required, path: required, value: present },
+      run: ({ plugin, path, value }) => session.setSetting(plugin, path, value),
+    }),
+    '/logs': verb({
       method: 'POST',
-      run: (body) => session.logs({ since: optionalText(body, 'since'), source: optionalText(body, 'source') }),
-    },
-    '/screenshot': { method: 'POST', run: (body) => session.screenshot(safeName(body, 'name')) },
+      fields: { since: optionalText, source: optionalText },
+      run: ({ since, source }) => session.logs({ since, source }),
+    }),
+    '/screenshot': verb({ method: 'POST', fields: { name: safeName }, run: ({ name }) => session.screenshot(name) }),
     // Takes no body: there is one window and one thing to do to it
-    '/reload': { method: 'POST', run: () => session.reload() },
+    '/reload': verb({ method: 'POST', run: () => session.reload() }),
     /**
      * One of `state` or `plugin`, never both: they wait on different things, and a request carrying
      * both is a caller who does not know which they meant rather than one asking for either.
+     *
+     * Both are declared optional, because which one is required depends on the other — a relationship
+     * between fields, which is what stays in `run` under a declared table.
      */
-    '/wait': {
+    '/wait': verb({
       method: 'POST',
-      run: (body) => {
-        const hasState = body.state !== undefined;
-        const hasPlugin = body.plugin !== undefined;
-        if (hasState === hasPlugin) throw new BadRequest('send exactly one of "state" or "plugin"');
-        const target = hasState
-          ? { state: required(body, 'state') }
-          : { plugin: required(body, 'plugin') };
-        return session.wait(target, optionalMs(body, 'timeoutMs'));
+      fields: { state: optionalText, plugin: optionalText, timeoutMs: optionalMs },
+      run: ({ state, plugin, timeoutMs }) => {
+        if ((state === undefined) === (plugin === undefined)) {
+          throw new BadRequest('send exactly one of "state" or "plugin"');
+        }
+        return session.wait(state === undefined ? { plugin: plugin! } : { state }, timeoutMs);
       },
-    },
+    }),
     // POST because each of these *clears* what it returns: a GET that answers differently on a retry is
     // a trap, and draining is right — a session open for an hour would otherwise collect every event
-    '/events': { method: 'POST', run: () => session.drainEvents() },
-    '/drops': { method: 'POST', run: () => session.drainDrops() },
-    '/errors': { method: 'POST', run: () => session.drainErrors() },
+    '/events': verb({ method: 'POST', run: () => session.drainEvents() }),
+    '/drops': verb({ method: 'POST', run: () => session.drainDrops() }),
+    '/errors': verb({ method: 'POST', run: () => session.drainErrors() }),
     /**
      * Answers, and the *caller* of `answer` ends the session once this reply has been written.
      *
      * Ending it here closed the socket before the response flushed, so `curl` reported a reset for a
      * request that had done exactly what was asked. Measured, not reasoned about.
      */
-    '/close': { method: 'POST', run: () => ({ ok: true, value: 'closing' }) },
+    '/close': verb({ method: 'POST', run: () => ({ ok: true, value: 'closing' }) }),
   };
 }
 

@@ -248,7 +248,8 @@ export async function runDriveEngine(options: DriveEngineOptions): Promise<void>
 }
 
 export { ENGINE_TOKEN_HEADER } from './server.ts';
-export type { ExtraVerbs, Verb } from './server.ts';
+export { object, optionalMs, optionalText, pixels, present, required, safeName, verb } from './server.ts';
+export type { ExtraVerbs, Reader, Verb } from './server.ts';
 export { connectApiClient, type ApiAddress, type ApiClient, type BusMessage } from './api-client.ts';
 export { MARKER_FILE, type EngineMarker } from './marker.ts';
 export type { EngineResult, EngineSession, SessionApi, SessionPage } from './session.ts';

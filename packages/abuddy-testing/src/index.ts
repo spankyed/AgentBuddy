@@ -635,7 +635,11 @@ export const drive = _default.test;
  */
 import { runDriveEngine, type EngineWindow, type ExtraVerbs } from './engine/index.ts';
 
-export { ENGINE_TOKEN_HEADER, MARKER_FILE, runDriveEngine, type DriveEngineOptions, type EngineMarker, type EngineWindow, type ExtraVerbs, type Verb } from './engine/index.ts';
+export {
+  ENGINE_TOKEN_HEADER, MARKER_FILE, object, optionalMs, optionalText, pixels, present, required,
+  runDriveEngine, safeName, verb,
+  type DriveEngineOptions, type EngineMarker, type EngineWindow, type ExtraVerbs, type Reader, type Verb,
+} from './engine/index.ts';
 
 /**
  * The app's own window, so `/set-viewport` resizes it rather than drawing into a corner of it.

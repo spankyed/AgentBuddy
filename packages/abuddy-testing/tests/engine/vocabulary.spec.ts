@@ -86,24 +86,6 @@ function fakeSession() {
 
 const verbs = () => engineVerbs(fakeSession());
 
-/**
- * Every field name a verb table reads, from its source.
- *
- * Two halves because there are two ways to read one: through a named helper, where the field is a string
- * literal, and as a plain property. The first is the robust half — the literals survive any transform —
- * and the second is why the case above asserts a count rather than trusting the scan.
- *
- * The helper half matches *any* name called with `(body, '<field>')` rather than a list of the helpers
- * there happen to be, because a list is a thing to forget: adding `pixels` for `/set-viewport` would have
- * left `width` and `height` unread while every case still passed. Over-matching costs a name that has to
- * be in the vocabulary, which fails out loud; under-matching is silent.
- */
-const fieldsRead = (source: string): string[] => {
-  const viaHelper = [...source.matchAll(/\b\w+\s*\(\s*body\s*,\s*['"]([^'"]+)['"]/g)];
-  const viaProperty = [...source.matchAll(/\bbody\.(\w+)/g)];
-  return [...new Set([...viaHelper, ...viaProperty].map((match) => match[1]))];
-};
-
 /** Asks a path with an empty body, which is what makes a required field report itself */
 const askEmpty = (path: string, method: string) => answer(
   verbs(),
@@ -127,38 +109,28 @@ describe('the drive wire', () => {
   });
 
   /**
-   * Every field the table reads, taken from the table's own source.
+   * Every field the table reads, asked of the table rather than read out of its source.
    *
-   * The first version of this asked each verb with an empty body and read the field its error named. That
-   * sees exactly *one* field per verb, because `required` throws on the first one missing — so `text`,
-   * `path`, `value`, `since`, `source` and `timeoutMs` were all declared below and never checked, and a
-   * verb could have introduced `txt` beside `text` and passed. Reading the source sees every one.
+   * Two scans came before this and each was blind in its own way. The first asked every verb with an empty
+   * body and read the field its error named, which sees exactly *one* field per verb because `required`
+   * throws on the first one missing — six of thirteen names were declared below and never checked. The
+   * second matched `(body, '<field>')` in `engineVerbs.toString()`, which is blind to any verb whose body
+   * parameter is not literally named `body`, and `Verb` names no parameter. A verb declares its fields now
+   * (`verb()`, `server.ts`), so there is nothing left to look for them in.
    */
   it('reads only fields in the shared vocabulary', () => {
-    const read = fieldsRead(engineVerbs.toString());
+    const read = [...new Set(Object.values(verbs()).flatMap((entry) => entry.fields))];
 
-    expect(read.length, 'the scan found almost nothing, so it is looking in the wrong place').toBeGreaterThan(9);
+    expect(read.length, 'the table declared almost nothing, so this checked almost nothing').toBeGreaterThan(9);
     for (const field of read) {
       expect(VOCABULARY, `"${field}" is a new name for something; add it here or reuse a name`).toContain(field);
     }
   });
 
-  // The scan is a scan, so it is mutated here rather than trusted: one that matched nothing would pass the
-  // case above over an empty list, and one that missed a helper would pass over a field it never saw
-  it('finds a field however the table asks for it', () => {
-    const doctored = `{
-      '/a': { run: (body) => required(body, 'txt') },
-      '/b': { run: (body) => optionalText(body, 'wat') },
-      '/c': { run: (body) => present(body, 'val') },
-      '/d': { run: (body) => body.raw },
-    }`;
-
-    expect(fieldsRead(doctored).sort()).toEqual(['raw', 'txt', 'val', 'wat']);
-  });
-
   /**
-   * The behavioural half: a required field says its own name when it is missing, so the names in the
-   * source are the ones a caller is actually told about.
+   * The behavioural half: a required field says its own name when it is missing, so the names a verb
+   * declares are the ones a caller is actually told about. This is what keeps the declaration honest about
+   * the readers — a verb could declare a field and ignore it, and this is where that would show.
    */
   it('names the field it wanted when a verb is asked with an empty body', async () => {
     const named: string[] = [];

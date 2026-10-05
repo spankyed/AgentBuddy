@@ -3,7 +3,7 @@
 // `.mts`, and that extension is the mechanism — `playwright.config.ts` here collects `**/*.ts`, which does
 // not match this file, so a plain `npm run drive` never picks the session up and hangs on it. The same
 // trick `abuddy drive --serve` uses inside a pack, where this file is scaffolded once and then kept.
-import { drive, driveEngineBody } from '@abuddy/testing';
+import { drive, driveEngineBody, optionalText, verb } from '@abuddy/testing';
 
 drive('drive engine', driveEngineBody({
   // The size to open at, applied before anything is served. Left out here on purpose: `npm run drive:serve`
@@ -19,11 +19,12 @@ drive('drive engine', driveEngineBody({
      * and the defaults right each time. That is what a verb here is for: the engine cannot ship it,
      * because `Note` is a pack's entity and not every app has one.
      */
-    '/note': {
-      method: 'POST' as const,
-      run: ({ title }: Record<string, unknown>) => session.tx(
-        `return createEntityWithDefaults(EARS.Entity.Note, { title: ${JSON.stringify(String(title ?? 'Untitled'))}, noteType: 'document', content: '' }).id`,
+    '/note': verb({
+      method: 'POST',
+      fields: { title: optionalText },
+      run: ({ title }) => session.tx(
+        `return createEntityWithDefaults(EARS.Entity.Note, { title: ${JSON.stringify(title ?? 'Untitled')}, noteType: 'document', content: '' }).id`,
       ),
-    },
+    }),
   }),
 }));

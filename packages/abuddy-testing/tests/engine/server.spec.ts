@@ -3,7 +3,8 @@
 // request was fine, the operation was not — against a protocol error answering 4xx, where no verb ran.
 import { describe, expect, it, vi } from 'vitest';
 import {
-  answer, engineVerbs, ENGINE_TOKEN_HEADER, MAX_BODY_BYTES, startEngineServer, tokenMatches, type Verb,
+  answer, engineVerbs, ENGINE_TOKEN_HEADER, MAX_BODY_BYTES, optionalMs, required, startEngineServer,
+  tokenMatches, verb, type Verb,
 } from '../../src/engine/server.ts';
 import type { EngineResult, EngineSession } from '../../src/engine/session.ts';
 
@@ -126,6 +127,53 @@ describe('routing', () => {
  * whoever is driving — which is why they arrive as a function over the session, and why they are merged
  * *over* the core table rather than under it: a caller who wants a different `/screenshot` is not wrong.
  */
+/**
+ * The factory the whole table is built from, which is machinery nothing would otherwise watch.
+ *
+ * It matters because the declaration is now the parsing: `run` receives what `fields` names and nothing
+ * else, which is what makes the vocabulary derivable and what makes a field read without being declared a
+ * compile error rather than a drift.
+ */
+describe('a verb built from its fields', () => {
+  const ask = (built: Verb, body: string) => answer(
+    { '/x': built }, TOKEN, { method: built.method, url: '/x', headers: { [ENGINE_TOKEN_HEADER]: TOKEN } },
+    async () => body,
+  );
+
+  it('hands run the fields it declared, read by the readers declared beside them', async () => {
+    const seen: unknown[] = [];
+    const built = verb({
+      method: 'POST',
+      fields: { code: required, timeoutMs: optionalMs },
+      run: (values) => { seen.push(values); return { ok: true, value: null }; },
+    });
+
+    expect(built.fields, 'declaration order, which is the order a missing one is reported in').toEqual(['code', 'timeoutMs']);
+    await ask(built, '{"code":"1 + 1","timeoutMs":50}');
+
+    expect(seen).toEqual([{ code: '1 + 1', timeoutMs: 50 }]);
+  });
+
+  it('refuses a body missing a declared field, before run is reached', async () => {
+    let ran = false;
+    const built = verb({
+      method: 'POST',
+      fields: { code: required },
+      run: () => { ran = true; return { ok: true, value: null }; },
+    });
+
+    expect(await ask(built, '{}')).toMatchObject({ status: 400, payload: { error: '"code" must be a non-empty string' } });
+    expect(ran, 'nothing ran, so ok:false would have misdescribed it').toBe(false);
+  });
+
+  it('declares no fields for a verb that takes no body, and hands run nothing', async () => {
+    const built = verb({ method: 'POST', run: () => ({ ok: true, value: 'done' }) });
+
+    expect(built.fields).toEqual([]);
+    expect(await ask(built, '{"ignored":1}')).toMatchObject({ status: 200, payload: { value: 'done' } });
+  });
+});
+
 describe("verbs of the caller's own", () => {
   const table = (session: EngineSession, extra: Record<string, Verb>) => ({ ...engineVerbs(session), ...extra });
 
@@ -134,7 +182,7 @@ describe("verbs of the caller's own", () => {
 
   it('answers at its own path, beside the core table', async () => {
     const { session } = fakeSession();
-    const verbs = table(session, { '/note': { method: 'POST', run: () => ({ ok: true, value: 'a note' }) } });
+    const verbs = table(session, { '/note': verb({ method: 'POST', run: () => ({ ok: true, value: 'a note' }) }) });
 
     expect(await askTable(verbs, '/note')).toMatchObject({ status: 200, payload: { ok: true, value: 'a note' } });
     expect(await askTable(verbs, '/state', 'GET')).toMatchObject({ status: 200 });
@@ -142,7 +190,7 @@ describe("verbs of the caller's own", () => {
 
   it('replaces a core verb when it takes its path', async () => {
     const { session, called } = fakeSession();
-    const verbs = table(session, { '/screenshot': { method: 'POST', run: () => ({ ok: true, value: 'mine' }) } });
+    const verbs = table(session, { '/screenshot': verb({ method: 'POST', run: () => ({ ok: true, value: 'mine' }) }) });
 
     expect(await askTable(verbs, '/screenshot')).toMatchObject({ payload: { value: 'mine' } });
     expect(called.map(([name]) => name), 'the core one never ran').toEqual([]);
@@ -343,7 +391,7 @@ describe('the bound server', () => {
   it("serves a caller's own verb", async () => {
     const { session } = fakeSession();
     const engine = await startEngineServer(session, () => undefined, () => ({
-      '/note': { method: 'POST', run: () => ({ ok: true, value: 'a note' }) },
+      '/note': verb({ method: 'POST', run: () => ({ ok: true, value: 'a note' }) }),
     }));
 
     try {

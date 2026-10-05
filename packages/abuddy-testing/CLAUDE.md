@@ -284,6 +284,15 @@ Things worth knowing before changing it:
   Its value is checked (`checkedViewport`, against the wire's own `isPixels`) rather than trusted, because
   `drive/` is outside every tsconfig here — `typecheck:scripts` is `scripts/`, `tests/`, repo-checks and
   publish-checks — so a session file's option is checked by an editor and by no chain step.
+- **A verb declares the fields it reads, and `run` receives those and nothing else** (`verb()`, `server.ts`).
+  That is what makes the wire's vocabulary derivable: `vocabulary.spec.ts` reads `verb.fields` off the table
+  rather than looking for field names in its source. Two scans came before it and each was blind in its own
+  way — asking a verb with an empty body sees one field, because `required` throws on the first one missing,
+  and matching `(body, '<field>')` in the source is blind to any verb whose parameter is not named `body`,
+  which `Verb` does not require. The drift those scans were watching for is a compile error now: a field
+  dropped from `fields` while `run` still reads it does not typecheck. The readers are exported, so a
+  caller's own verb gets the same checking; a rule *between* fields stays in `run`, which is where `/wait`'s
+  "exactly one of" and `/send`'s optional `to` live.
 - **`/screenshot` refuses a name that is not a name.** It is the one verb whose input becomes a path, and
   `app.screenshot` joins it onto the screenshots directory, so `../../escaped` wrote outside it.
 - **The body cap answers rather than hanging up.** It used to `destroy()` the request, which took the
