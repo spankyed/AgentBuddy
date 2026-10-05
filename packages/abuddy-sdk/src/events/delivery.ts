@@ -65,8 +65,8 @@ export function _currentDelivery(): _Delivery | undefined {
 /**
  * Runs `body` as the handling of `delivery`, restoring whatever was being handled before.
  *
- * @internal Called by the three places that hand a message to an actor: the bus's `routeIncoming`, its early
- * systems, and the renderer shell's `deliverPluginEvents`.
+ * @internal Called by the four doors named above: `deliverAs` on the backend, `sendToPluginActor` and
+ * `usePlugin` in a window.
  */
 export function _runDelivery<T>(delivery: _Delivery, body: () => T): T {
   const previous = synchronous;
