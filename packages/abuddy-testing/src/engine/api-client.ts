@@ -60,6 +60,14 @@ export interface ApiClient {
   send(message: { to: string; event: Record<string, unknown>; sender?: string }): Promise<void>;
   /** Every message the subscription delivers; returns the unsubscribe */
   onMessage(listener: (message: BusMessage) => void): () => void;
+  /**
+   * Told once, with why, when the channel finishes; returns the unsubscribe.
+   *
+   * `failure` alone is a state with no event, which is a state nothing can await — a reader has to ask again
+   * and again, or guess how long to wait. Only future finishes are announced, so a listener that may be late
+   * reads `failure` as well; that is what the shared waiter's first attempt does for free.
+   */
+  onFinished(listener: (reason: string) => void): () => void;
   /** Why the channel is finished, or null while it works. What a timed-out verb quotes instead of guessing. */
   readonly failure: string | null;
   close(): Promise<void>;
@@ -93,15 +101,18 @@ export async function connectApiClient({ port, token, host = API_HOST }: ApiAddr
 
   const pending = new Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void; what: string }>();
   const listeners = new Set<(message: BusMessage) => void>();
+  const finishListeners = new Set<(reason: string) => void>();
   let nextId = SUBSCRIPTION_ID + 1;
   let failure: string | null = null;
 
-  /** Finishes the channel once, failing whatever was in flight */
+  /** Finishes the channel once, failing whatever was in flight and telling whoever asked to be told */
   const finish = (reason: string): void => {
     if (failure !== null) return;
     failure = reason;
     for (const { reject, what } of pending.values()) reject(new Error(`${what}: ${reason}`));
     pending.clear();
+    for (const listener of finishListeners) listener(reason);
+    finishListeners.clear();
   };
 
   /**
@@ -197,6 +208,10 @@ export async function connectApiClient({ port, token, host = API_HOST }: ApiAddr
     onMessage: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
+    },
+    onFinished: (listener) => {
+      finishListeners.add(listener);
+      return () => finishListeners.delete(listener);
     },
     get failure() {
       return failure;
