@@ -159,6 +159,25 @@ describe('an outgoing value JSON refuses', () => {
     expect(sawMarker(frames), 'and the stream outlived it, which is the whole point').toBe(true);
   });
 
+  /**
+   * Depth is the one bound this encoder does not have, and the reason it needs none.
+   *
+   * `redactSecrets` caps a walk at 50 levels and `truncateResult` at 10, because each is building a value
+   * somebody reads. This one is putting a frame on a socket, where the honest answer to "too deep to serialise"
+   * is to say so — so both passes are allowed to blow the stack and the third tier catches it. Nothing else
+   * asserts that, and a depth cap added here later would be the thing that breaks it.
+   */
+  it('describes a structure too deep for either pass, rather than throwing', async () => {
+    let deep: Record<string, unknown> = { leaf: true };
+    for (let level = 0; level < 100_000; level++) deep = { next: deep };
+    payloads = [{ deep }];
+
+    const frames = await collect(subscribe, sawMarker);
+
+    expect(delivered(frames)[0]).toBe('[unserialisable]');
+    expect(sawMarker(frames), 'and the stream outlived it').toBe(true);
+  });
+
   // The same value twice side by side is not a cycle, and must not be cut as one
   it('keeps a value that merely appears twice', async () => {
     const shared = { id: 'n1' };
