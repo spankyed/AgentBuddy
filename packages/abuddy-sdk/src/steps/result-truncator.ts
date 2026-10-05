@@ -1,5 +1,9 @@
 // Bounds what a step records on its TNode, so a large result can't grow memory without limit. A
 // truncated value becomes `{ value, _truncated: true, ... }` describing what was cut.
+//
+// What it produces is written to the TNode (`@abuddy/sdk/repositories`' `tnodeRepository`), so it has to be a
+// value JSON can hold: a BigInt becomes its digits and a loop is cut where it closes. Neither may fail the
+// result — a step's row is the only record of what it returned.
 
 const MAX_STRING_LENGTH = 10240;  // 10KB for string values
 const MAX_OBJECT_SIZE = 51200;    // 50KB for serialized objects
@@ -7,12 +11,47 @@ const MAX_ARRAY_ITEMS = 100;      // Array items kept
 const MAX_OBJECT_KEYS = 20;       // Keys kept of an object over MAX_OBJECT_SIZE
 const MAX_DEPTH = 10;             // Object nesting kept
 
+/** Where a loop closes, cut in place so the rest of the value survives it */
+const CIRCULAR = '[Circular]';
+
+/**
+ * The serialised size of `record`, for deciding whether its keys have to be cut.
+ *
+ * An estimate rather than the output, which is why it may cut corners the walk below does not: it counts a
+ * BigInt as its digits and a repeated object once. **It must not throw.** `JSON.stringify` does on a BigInt or
+ * a loop, and measuring with a bare one is what used to discard the whole result and persist
+ * `_error: 'serialization_failed'` to the TNode in place of the row.
+ */
+function serialisedSize(record: object): number {
+  const seen = new WeakSet<object>();
+  return JSON.stringify(record, (_key, value: unknown) => {
+    if (typeof value === 'bigint') return value.toString();
+    if (value !== null && typeof value === 'object') {
+      if (seen.has(value)) return undefined;
+      seen.add(value);
+    }
+    return value;
+  })?.length ?? 0;
+}
+
 /** `result` with long strings, long arrays, large objects and deep nesting cut, each cut marked `_truncated` */
 export function truncateResult(result: unknown, depth = 0): unknown {
+  return walk(result, depth, new WeakSet());
+}
+
+/**
+ * `path` holds the objects between the root and here, so a value that reaches itself is cut where it closes
+ * rather than expanded until the depth cap stops it. An object merely reached twice is kept twice, as
+ * `redactSecrets` does and unlike the size estimate above, because the two are answering different questions.
+ */
+function walk(result: unknown, depth: number, path: WeakSet<object>): unknown {
   if (depth > MAX_DEPTH) {
     return { value: '[Max depth exceeded]', _truncated: true, _type: typeof result };
   }
   if (result === null || result === undefined) return result;
+
+  // JSON has no form for one, and this value is about to be stored as JSON
+  if (typeof result === 'bigint') return result.toString();
 
   if (typeof result === 'string') {
     if (result.length <= MAX_STRING_LENGTH) return result;
@@ -23,30 +62,36 @@ export function truncateResult(result: unknown, depth = 0): unknown {
   }
 
   if (Array.isArray(result)) {
-    if (result.length <= MAX_ARRAY_ITEMS) return result.map((item) => truncateResult(item, depth + 1));
-    return {
-      value: result.slice(0, MAX_ARRAY_ITEMS).map((item) => truncateResult(item, depth + 1)),
-      _truncated: true,
-      _originalLength: result.length,
-      _type: 'array',
-    };
+    if (path.has(result)) return CIRCULAR;
+    path.add(result);
+    try {
+      if (result.length <= MAX_ARRAY_ITEMS) return result.map((item) => walk(item, depth + 1, path));
+      return {
+        value: result.slice(0, MAX_ARRAY_ITEMS).map((item) => walk(item, depth + 1, path)),
+        _truncated: true,
+        _originalLength: result.length,
+        _type: 'array',
+      };
+    } finally {
+      path.delete(result);
+    }
   }
 
   if (typeof result === 'object') {
     const record = result as Record<string, unknown>;
-    let serialized: string;
-    try {
-      serialized = JSON.stringify(record);
-    } catch {
-      // Circular references, or a value JSON can't hold
-      return { value: '[Object with circular reference]', _truncated: true, _error: 'serialization_failed', _type: 'object' };
-    }
+    if (path.has(record)) return CIRCULAR;
+    const size = serialisedSize(record);
     const keys = Object.keys(record);
-    const kept = serialized.length <= MAX_OBJECT_SIZE ? keys : keys.slice(0, MAX_OBJECT_KEYS);
-    const truncated: Record<string, unknown> = {};
-    for (const key of kept) truncated[key] = truncateResult(record[key], depth + 1);
-    if (serialized.length <= MAX_OBJECT_SIZE) return truncated;
-    return { value: truncated, _truncated: true, _originalSize: serialized.length, _originalKeys: keys.length, _type: 'object' };
+    const kept = size <= MAX_OBJECT_SIZE ? keys : keys.slice(0, MAX_OBJECT_KEYS);
+    path.add(record);
+    try {
+      const truncated: Record<string, unknown> = {};
+      for (const key of kept) truncated[key] = walk(record[key], depth + 1, path);
+      if (size <= MAX_OBJECT_SIZE) return truncated;
+      return { value: truncated, _truncated: true, _originalSize: size, _originalKeys: keys.length, _type: 'object' };
+    } finally {
+      path.delete(record);
+    }
   }
 
   return result;
