@@ -15,7 +15,7 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BUILD_UNITS, covers, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, covers, excludedBySuffix, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, dependsOn, suiteInputs, SUITE_READS, WORKSPACE_PARTS, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
@@ -63,10 +63,22 @@ const filesUnder = (input: string): readonly string[] => {
   return found;
 };
 
-/** Every tracked file the steps' inputs reach, resolved the way a fingerprint resolves them */
-const coveredBy = (steps: readonly { inputs: readonly string[] }[]): Set<string> => {
+/**
+ * Every tracked file the steps' inputs reach, resolved the way a fingerprint resolves them.
+ *
+ * `excludeSuffixes` included, through the predicate the key itself uses: a step that declares a tree and
+ * says it reads one kind of file out of it does not cover the rest, and a guard that thought otherwise would
+ * report a module as declared while the step cached straight past it.
+ */
+const coveredBy = (steps: readonly Pick<ChainStep, 'inputs' | 'excludeSuffixes'>[]): Set<string> => {
   const covered = new Set<string>();
-  for (const step of steps) for (const input of step.inputs) for (const file of filesUnder(input)) covered.add(file);
+  for (const step of steps) {
+    for (const input of step.inputs) {
+      for (const file of filesUnder(input)) {
+        if (!excludedBySuffix(step.excludeSuffixes, file)) covered.add(file);
+      }
+    }
+  }
   return covered;
 };
 

@@ -73,6 +73,28 @@ export interface BuildUnit {
    * Distinct from `outputs`, which must exist for the unit to count as built. An exclusion need not exist.
    */
   readonly excludes?: readonly string[];
+  /**
+   * Suffixes inside `inputs` that are not part of the fingerprint — `excludes` by extension rather than by
+   * path, for a unit that reads one kind of file out of a tree holding several.
+   *
+   * `api:check` is the case and the reason this exists. An API report is a function of the `.d.ts` files a
+   * package built, and of nothing else it built; declaring `dist` keys it on the `.js` beside them too, so
+   * editing a function body — which moves the compiled output and not the declaration — re-ran a check that
+   * provably could not reach a different answer. Measured 2026-10-05, before this: 1438 declared files, of
+   * which 239 were the declarations it reads.
+   *
+   * It is sound here only because the declarations rebuild byte-identically (`KNOWN_IRREPRODUCIBLE` is
+   * empty, and `npm run check:repro` is what keeps that true). A unit narrowing its key this way over
+   * irreproducible output would cache on a file that moves on its own.
+   *
+   * **It reaches the key by removing files from the hashed set, and is deliberately not hashed itself.** So
+   * narrowing a unit's rule makes it stale — a file it used to hash stops being hashed — while a rule change
+   * with no effect on the tree, such as excluding a suffix nothing under the inputs has, changes nothing and
+   * re-runs nothing. Hashing the list as well was written first and a mutation check refuted it: deleting
+   * that `update` left all 88 cases green, because the set already carries every rule change that can matter,
+   * and what it added was an invalidation for a rule that cannot.
+   */
+  readonly excludeSuffixes?: readonly string[];
   /** Paths the build writes; all must exist for the unit to count as built */
   readonly outputs: readonly string[];
   /**
@@ -410,6 +432,16 @@ export const GUIDES_A_CHECK_READS: ReadonlySet<string> = new Set(['packages/repo
  * above walks the inputs and filters with this, where taking a real fingerprint of all twelve chain steps
  * to answer it cost 1.5s and pushed its own spec into the other cost half.
  */
+/**
+ * Whether a unit's `excludeSuffixes` puts this file outside its key.
+ *
+ * Exported for the same reason `skipsFingerprint` is: `chain-inputs.spec.ts` resolves a step's inputs to ask
+ * what it covers, and that walk and this key have to agree about what an input *means*. Two implementations
+ * of one rule is how they would stop agreeing.
+ */
+export const excludedBySuffix = (suffixes: readonly string[] | undefined, file: string): boolean =>
+  suffixes !== undefined && suffixes.some((suffix) => file.endsWith(suffix));
+
 export const skipsFingerprint = (file: string): boolean =>
   !GUIDES_A_CHECK_READS.has(file) && (file.endsWith(`/${GUIDE}`) || file === GUIDE);
 
@@ -418,10 +450,13 @@ export function fingerprintInputs(
   exclude: readonly string[] = [],
   collect?: (file: string, digest: string) => void,
   tree: TreeReader = readTree,
+  excludeSuffixes?: readonly string[],
 ): string {
   const hash = createHash('sha256');
   const excluded = exclude.map(repoRelative);
-  const isExcluded = (file: string): boolean => skipsFingerprint(file) || excluded.some((out) => covers(out, file));
+  const isExcluded = (file: string): boolean => skipsFingerprint(file)
+    || excludedBySuffix(excludeSuffixes, file)
+    || excluded.some((out) => covers(out, file));
   for (const file of [...new Set(inputs.flatMap((target) => tree.list(target)))].sort().filter((f) => !isExcluded(f))) {
     // A hash over each file's digest rather than over its bytes — the same thing Bazel and Buck2 build an
     // action key from, and the reason a file declared by several units is read and hashed once rather than
@@ -455,7 +490,7 @@ export function fingerprintUnit(unit: BuildUnit, collect?: (file: string, digest
     // surviving on the builds happening to be deterministic, and the pack build is already known not to be
     // (two lines of `Omit<…>` union ordering). Excluding self-output here means declaring `outputs`
     // honestly is the whole fix, rather than every such step needing its inputs hand-narrowed.
-    .update(fingerprintInputs(unit.inputs, [...unit.outputs, ...(unit.excludes ?? [])], collect, tree))
+    .update(fingerprintInputs(unit.inputs, [...unit.outputs, ...(unit.excludes ?? [])], collect, tree, unit.excludeSuffixes))
     .digest('hex');
 }
 

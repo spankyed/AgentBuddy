@@ -7,6 +7,7 @@ import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-cost.ts';
 import { dependencySource, PACKAGE_DIRS, workspaceDeps } from './workspace-deps.ts';
 import { LEG_TIMEOUT, scopeOf, TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
+import { API_CHECK_TIMEOUT } from './api-report-packages.ts';
 
 /**
  * The pre-merge chain's steps and what each is allowed to read. Separate from `scripts/chain.ts` because
@@ -48,6 +49,11 @@ export interface ChainStep {
    * the tree, so it belongs with evidence.
    */
   readonly excludes?: readonly string[];
+  /**
+   * Suffixes inside `inputs` this step does not read — `excludes` by extension rather than by path. The
+   * rule, what it is sound over and why it exists is on `BuildUnit.excludeSuffixes`, which carries it.
+   */
+  readonly excludeSuffixes?: readonly string[];
   /**
    * Paths this step writes that are not products: transient, not cached, and not safe to touch beside it.
    *
@@ -875,17 +881,33 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    */
   // `suite` rather than `quick`: it is three TypeScript compiles and three extractions, which is the
   // fan-out that rung names, and 20s on `quick` is 133% of it four times slower — `declaredShare` refuses it
-  { name: 'api:check', timeout: 'suite', seconds: 20,
-    // The extractor and its config decide what a report says, so they belong in the key beside the two trees
+  { name: 'api:check', timeout: API_CHECK_TIMEOUT, seconds: 20,
+    // The three packages it reports on, and nothing else that was built. It declared every build output
+    // (`PACKAGE_BUILD_OUTPUTS`) until 2026-10-05, which keyed it on the `@abuddy/cli` and `@abuddy/testing`
+    // bundles it never opens and on the `publish/` trees, a staged copy of the same declarations — so a CLI
+    // edit re-ran it and every declaration counted twice. Measured then: 1438 declared files, 239 of them
+    // read. Dropping `publish/` also drops a mutex, `packages:check` declaring those trees as `alsoWrites`.
     //
+    // Each package's own `package.json` is where the entry set comes from (`reportEntries` over `exports`),
+    // so it is declared outright. It used to be covered only by accident, through the derived
+    // `publish/package.json` — and an entry added to a map while that was the only cover is exactly the
+    // `./packs` defect the deleted stamp is remembered for.
+    //
+    // The extractor and its config decide what a report says, so they belong in the key beside the trees.
     // `component-contracts.ts` writes every `.component.md` and `api-entries.ts` decides which entries get a
     // report at all, so each is a module whose edit moves a report while the script that imports it does not.
     // The closure check in `chain-inputs.spec.ts` is what found them and what keeps the next one from hiding
-    inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS, 'scripts/api-reports.ts',
-      'scripts/component-contracts.ts', 'scripts/lib/api-entries.ts',
+    inputs: [...ROOT,
+      'packages/abuddy-ears/dist', 'packages/abuddy-sdk/dist', 'packages/abuddy-ui/dist',
+      'packages/abuddy-ears/package.json', 'packages/abuddy-sdk/package.json', 'packages/abuddy-ui/package.json',
+      'scripts/api-check.ts', 'scripts/lib/api-report-packages.ts', 'scripts/lib/exit-on-epipe.ts',
+      'scripts/api-reports.ts', 'scripts/component-contracts.ts', 'scripts/lib/api-entries.ts',
       'packages/abuddy-ears/etc', 'packages/abuddy-sdk/etc', 'packages/abuddy-ui/etc',
       'packages/abuddy-ears/tsconfig.api-extractor.json', 'packages/abuddy-sdk/tsconfig.api-extractor.json',
-      'packages/abuddy-ui/tsconfig.package.json'] },
+      'packages/abuddy-ui/tsconfig.package.json'],
+    // A report is a function of the declarations a package built. The compiled output beside them is what
+    // `declaration: true` emits past them, and no report has ever read one
+    excludeSuffixes: ['.js', '.mjs', '.cjs', '.js.map', '.mjs.map', '.cjs.map', '.css', '.css.map'] },
   { name: 'packages:check', timeout: 'quick', seconds: 6,
     // `attw --pack` packs a tarball inside each tree it checks and removes it again. Transient, so not an
     // output; real, so nothing may read those trees while it runs. This is what `exclusive: true` was.

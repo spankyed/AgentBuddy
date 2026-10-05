@@ -360,6 +360,62 @@ describe('the input fingerprint', () => {
     expect(fingerprintInputs(f.unit.inputs)).toBe(before);
   });
 
+  /**
+   * `excludeSuffixes` is `excludes` by extension, and these are its firing cases.
+   *
+   * The declared tree holds two kinds of file and the unit reads one of them — `api:check` over a package's
+   * `dist`, where a report is a function of the declarations and never of the compiled output beside them.
+   * The three cases are the three ways that claim can be wrong: the excluded kind still counting, the kept
+   * kind quietly not counting, and the rule itself sitting outside the key so that narrowing it leaves a
+   * stamp taken under the old rule answering for the new one.
+   */
+  describe('excludeSuffixes', () => {
+    /** A tree of both kinds, declared whole, with only the declarations read */
+    const bothKinds = (): { inputs: string[]; dts: string; js: string; unit: BuildUnit } => {
+      const root = tempDir();
+      fs.mkdirSync(root, { recursive: true });
+      const dts = path.join(root, 'a.d.ts');
+      const js = path.join(root, 'a.js');
+      fs.writeFileSync(dts, 'export declare const a: number;\n');
+      fs.writeFileSync(js, 'export const a = 1;\n');
+      return { inputs: [root], dts, js, unit: { inputs: [root], outputs: [], excludeSuffixes: ['.js'] } };
+    };
+
+    it('leaves the fingerprint where only an excluded suffix moved', () => {
+      const t = bothKinds();
+      const before = fingerprintUnit(t.unit);
+      fs.writeFileSync(t.js, 'export const a = 2;\n');
+      expect(fingerprintUnit(t.unit), 'the compiled output moved the key it is excluded from').toBe(before);
+    });
+
+    it('still moves it where a file it reads moved', () => {
+      const t = bothKinds();
+      const before = fingerprintUnit(t.unit);
+      fs.writeFileSync(t.dts, 'export declare const a: string;\n');
+      expect(fingerprintUnit(t.unit), 'a declaration moved and the key did not').not.toBe(before);
+    });
+
+    /**
+     * Narrowing a unit's rule makes it stale, which is what the step that introduced this needed: every
+     * stamp taken under the wider rule has to stop answering. It holds *through the file set* rather than by
+     * hashing the rule — a file it used to hash stops being hashed — which is also why the rule is not in
+     * the key itself. Hashing it as well was written first, and deleting that line left all of these green.
+     */
+    it('makes a unit stale when the rule narrows, through the set it hashes', () => {
+      const t = bothKinds();
+      const wide = fingerprintUnit({ ...t.unit, excludeSuffixes: undefined });
+      expect(fingerprintUnit(t.unit), 'the same tree under two rules hashed the same').not.toBe(wide);
+    });
+
+    /** And the other half of that: a rule the tree gives nothing to exclude costs no invalidation */
+    it('does not move a unit for a suffix nothing under its inputs has', () => {
+      const t = bothKinds();
+      const before = fingerprintUnit(t.unit);
+      expect(fingerprintUnit({ ...t.unit, excludeSuffixes: [...t.unit.excludeSuffixes!, '.graphql'] }),
+        'excluding a suffix the tree has none of re-keyed the unit').toBe(before);
+    });
+  });
+
   it('ignores a missing input consistently', () => {
     const f = fixture();
     const absent = path.join(f.root, 'tsdown.config.ts');
