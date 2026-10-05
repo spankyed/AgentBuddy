@@ -1,5 +1,11 @@
 // How `abuddy db` renders a result: values JSON has no form for, rows of differing shapes, and results that aren't
 // rows at all
+import {
+  _SERIALISATION_INPUTS,
+  _SERIALISATION_MATRIX,
+  _answer,
+  type _SerialisationInput,
+} from '@abuddy/sdk/testing/serialisation-matrix';
 import { describe, expect, it } from 'vitest';
 import { formatResult, outputFormat, toCSV, toJSON, toPretty } from '../../src/commands/db/output';
 
@@ -78,4 +84,20 @@ describe('the chosen format', () => {
     expect(formatResult(rows, 'csv')).toBe('id\nNote-1');
     expect(formatResult(rows, 'pretty')).toBe(toPretty(rows));
   });
+});
+
+/**
+ * The row this pass answers in the shared matrix (`@abuddy/sdk/testing/serialisation-matrix`).
+ *
+ * The cases above say why each answer is what it is; this says that it still *is*. The matrix is the data behind
+ * `docs/reference/value-serialisation.md`, declared once because no package can import all five passes, and
+ * asserted from the three suites that can each reach their own.
+ */
+describe('the row it answers in the serialisation matrix', () => {
+  it.each(Object.entries(_SERIALISATION_INPUTS) as Array<[_SerialisationInput, () => unknown]>)(
+    'for %s',
+    (name, make) => {
+      expect(_answer(() => JSON.parse(toJSON(make())))).toBe(_SERIALISATION_MATRIX.cliJson[name]);
+    },
+  );
 });

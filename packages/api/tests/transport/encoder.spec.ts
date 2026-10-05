@@ -14,6 +14,12 @@ import { WebSocketServer } from 'ws';
 import { initTRPC } from '@trpc/server';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { observable } from '@trpc/server/observable';
+import {
+  _SERIALISATION_INPUTS,
+  _SERIALISATION_MATRIX,
+  _answer,
+  type _SerialisationInput,
+} from '@abuddy/sdk/testing/serialisation-matrix';
 import { jsonSafeEncoder } from '@/transport/encoder';
 
 /** What a subscriber is told to emit, set per case before it subscribes */
@@ -222,4 +228,20 @@ describe('an outgoing value JSON refuses', () => {
 
     expect(frames.at(-1)?.result?.data).toEqual({ big: '7' });
   });
+});
+
+/**
+ * The row this pass answers in the shared matrix (`@abuddy/sdk/testing/serialisation-matrix`).
+ *
+ * The cases above say why each answer is what it is; this says that it still *is*. The matrix is the data behind
+ * `docs/reference/value-serialisation.md`, declared once because no package can import all five passes, and
+ * asserted from the three suites that can each reach their own.
+ */
+describe('the row it answers in the serialisation matrix', () => {
+  it.each(Object.entries(_SERIALISATION_INPUTS) as Array<[_SerialisationInput, () => unknown]>)(
+    'for %s',
+    (name, make) => {
+      expect(_answer(() => JSON.parse(jsonSafeEncoder.encode(make())))).toBe(_SERIALISATION_MATRIX.encoder[name]);
+    },
+  );
 });

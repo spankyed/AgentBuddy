@@ -176,6 +176,9 @@
     },
     "./testing/pack-fixture": {
       "@abuddy/source": "./src/testing/pack-fixture.ts"
+    },
+    "./testing/serialisation-matrix": {
+      "@abuddy/source": "./src/testing/serialisation-matrix.ts"
     }
   },
   "peerDependencies": {

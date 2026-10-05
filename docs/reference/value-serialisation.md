@@ -5,7 +5,12 @@ They are not copies of one another: each answers to a different consumer, and wh
 always on purpose. This table is so those decisions can be read in one place rather than reconstructed from
 five files — and so that a gap nobody decided shows up as an odd cell.
 
-Every cell below was derived by running the five passes over the same inputs, not read off the code.
+**The cells are data, not prose.** They live in `@abuddy/sdk/testing/serialisation-matrix` — a source-only
+export, so no pack can resolve it — and three suites assert their own rows against it: `@app/api`'s
+`encoder.spec.ts`, `@abuddy/cli`'s `db-output.spec.ts` and `@abuddy/sdk`'s `serialisation-matrix.spec.ts`. No
+package may import all five passes (`@app/repo-checks` is allowed `@abuddy/sdk` and `@abuddy/host` only), which
+is why it is declared once and checked from three places rather than derived in one. A wrong cell fails the suite
+that owns it; this table is the same answers in prose, and the data is what holds.
 
 | | BigInt | a true loop | the same object twice | Date | a throwing getter | depth | function | `undefined` |
 |---|---|---|---|---|---|---|---|---|
@@ -13,7 +18,7 @@ Every cell below was derived by running the five passes over the same inputs, no
 | **`toJSON`** / `safely`<br>`abuddy-cli/src/commands/db/output.ts` | digits | `[Repeated]` | `[Repeated]` | ISO string | throws | no cap | dropped | dropped |
 | **`serializable`**<br>`abuddy-sdk/src/logger/logger.ts` | digits | `[Repeated]`¹ | `[Repeated]`¹ | ISO string | throws | no cap | `[Function]` | `[Undefined]` |
 | **`redactSecrets`**<br>`abuddy-sdk/src/utils/redact.ts` | **kept as a BigInt** | `[Circular Reference]` where it closes | kept twice | kept as a Date | throws | 50 → `[Too deep]` | kept | kept |
-| **`truncateResult`**<br>`abuddy-sdk/src/steps/result-truncator.ts` | digits | `[Circular]` where it closes | kept twice | ISO string | throws | 10 → `[Max depth exceeded]` | kept | kept |
+| **`truncateResult`**<br>`abuddy-sdk/src/steps/result-truncator.ts` | digits | `[Circular]` where it closes | kept twice | ISO string | the field → `[Unreadable]` | 10 → `[Max depth exceeded]` | kept | kept |
 
 ¹ Unreachable through the logger, which is the only caller: `redactSecrets` runs first, cuts a loop and copies
 a repeat into a fresh object, so nothing reaches `serializable` twice. It stays because that function's
@@ -43,9 +48,14 @@ serialise" is to say so, and the placeholder is that answer.
 read by a later step and bounded on purpose; `redactSecrets` keeps 50 because it is protecting a stack rather
 than bounding a payload.
 
-**A throwing getter throws in four of the five.** That is recorded rather than fixed: no value this app
-produces has one, and only the encoder has a contract that forbids it. If one ever appears in a step result,
-`truncateResult` is where it would bite.
+**A throwing getter throws in three of the five**, and the two that survive one are the two whose contracts
+forbid failing: the encoder, whose throw would end a window's event stream, and `truncateResult`, whose output is
+the only record of what a step returned. The CLI, the logger and `redactSecrets` have no such contract, and no
+value this app produces has such a getter — recorded rather than fixed, so that the reason is on the page rather
+than rediscovered.
+
+**Depth is the one column the data does not carry.** The caps are 10, 50 and none, so one input cannot ask all
+five the same question; each pass's own spec covers its own cap.
 
 ## Adding a sixth
 
