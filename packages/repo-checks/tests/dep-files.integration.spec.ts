@@ -235,7 +235,7 @@ describe('the compiler says what it read', () => {
  * And the dep file is a proxy, so it is checked against itself.
  *
  * A proxy records what it believes its inputs were, which is a guess about someone else's behaviour.
- * `api:stamp` is the repo's other one and was bitten by exactly that — an input missing from its key let a
+ * The API report stamp, deleted since, was bitten by exactly that — an input missing from its key let a
  * change pass the stamp and the whole chain — so the rule it left behind is that a proxy needs a
  * self-check rather than only a comparison.
  */

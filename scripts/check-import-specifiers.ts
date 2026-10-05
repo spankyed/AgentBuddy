@@ -370,7 +370,8 @@ export function findUpwardImports(layers = LAYERS, root = repoRoot, unlayered = 
  *
  * **`workspaceDeps` is a proxy, and this is its self-check.** It reads manifests to answer "what does this
  * package compile", which is a guess about someone else's code, and this repo's rule for a proxy is that it
- * needs one (root `CLAUDE.md`, on `api:stamp`). The other direction has been checked for a while — an import
+ * needs one (root `CLAUDE.md`, "Three kinds of recorded artifact"). The other direction has been checked
+ * for a while — an import
  * with no declaration is `findUpwardImports`' `undeclared:` clause, and it is what caught `@abuddy/ui`'s peer
  * dependency. This is the direction nothing asked: a declaration no import needs, which silently widens every
  * cache key derived from it.
