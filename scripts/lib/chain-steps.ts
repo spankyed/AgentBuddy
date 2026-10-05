@@ -859,9 +859,11 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    * less than `typecheck:pack`, so the proxy's whole justification went with the speedup and the stamp is
    * gone. What the stamp cost while it lived: a doc-comment edit reddened it though no report could move, a
    * package's stamp fingerprinted its dependencies' declarations so fixing one left the next red, every fix
-   * wrote a committed file, and it raced the rebuild its own run triggered — observed failing under
-   * `npm run typecheck` while `packages:ensure` was still writing `dist`, with the remedy it named being the
-   * one command that would have recorded a hash of a half-written tree.
+   * wrote a committed file, and it raced a rebuild in flight — observed failing under `npm run typecheck`
+   * with all three packages' declarations rewritten inside that run's window, then passing twice after with
+   * nothing rebuilt. Whose build it was is not established (a second agent was in the tree), and the point
+   * does not need it: the remedy a proxy names is a *write*, so `api:update` in that window records a hash
+   * of a half-written tree and looks like it worked.
    *
    * Its inputs are the declarations it reads and the reports it compares against, so a hand-edited `etc/`
    * invalidates it — the one case the stamp could not see, since its key was the declarations alone.

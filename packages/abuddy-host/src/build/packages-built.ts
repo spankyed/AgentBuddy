@@ -347,7 +347,8 @@ const digestOf = (contents: Buffer | null): string =>
  * had a file newer than their stamp — a run of the chain is a run you made because something changed, so the
  * regression is the ordinary case and the saving is the rare one. And a per-file version, hashing only the
  * files whose stats moved, needs the fingerprint composed from per-file digests rather than a byte stream,
- * which moves every recorded fingerprint including the three committed `etc/declarations.sha256`.
+ * which moves every recorded fingerprint. That used to include three committed files, until the proxy that
+ * read them was deleted for the derivation it stood in for; the cost now falls on chain stamps alone.
  *
  * What did pay, for the same 5.1x overlap, was reading each distinct file once per sweep: see `freshnessSweep`.
  *

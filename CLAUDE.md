@@ -128,10 +128,15 @@ than `typecheck:pack`, so the proxy's whole justification went with the speedup.
 edit reddened it though no report could move. A package's stamp fingerprinted its *dependencies'*
 declarations, so clearing sdk's left ui's red — two round trips for one comment. Every fix wrote a
 committed file, including runs that changed no report. It could not see a hand-edited `etc/*.api.md`
-whose declarations never moved, which is now simply an input. And it raced the rebuild its own run
-triggered: observed failing under `npm run typecheck` while `packages:ensure` was still writing `dist`,
-with the remedy it named — `api:update` — being the one command that would have recorded a hash of a
-half-written tree. A derivation cannot do that: it compares and writes nothing.
+whose declarations never moved, which is now simply an input. And it raced a rebuild in flight:
+observed failing under `npm run typecheck` with all three packages' declarations rewritten inside that
+run's window, then passing twice straight after with nothing rebuilt. Which process was writing is not
+established — a second agent was working in the tree, so it was that build or this run's own
+`packages:ensure` — and it does not matter, because **the remedy a proxy names is a write.** `api:update`
+run in that window would have recorded a hash of a half-written tree into a committed file, and looked
+like it worked. A derivation cannot: it compares and writes nothing, so a racing read fails and the next
+run passes. More than one process touching this tree is the ordinary case now, which is the reason to
+state this rather than file it as a flake.
 
 **`packages:check` is a chain step, for the opposite reason**: publint and attw over the five published trees
 cost seconds together (its declared `seconds` is in `chain-steps.ts`, and the chain reports any run that
