@@ -36,7 +36,7 @@ export function createHostRuntime({ transport, appVersion, store, engine, packs 
     appVersion,
     redaction: secretRedaction,
     services: {
-      appData: createAppData(store, engine.admin, packs),
+      appData: createAppData(store, engine.admin, packs, transport.rootEvents),
       traceStore: createTraceStore(store),
       inference,
       secrets,

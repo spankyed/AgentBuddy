@@ -15,12 +15,23 @@ export type SystemEvents =
    * tells them. The feature's plugin gets it too (`FeatureSettingsUpdated`).
    */
   | { type: 'FEATURE_SETTINGS_UPDATED'; settings: unknown; changes?: ArrayChanges | null }
+  /**
+   * Every row the app holds was replaced — the data was reset, or a backup was imported. Sent once the new
+   * world is built: the packs' `onInit`, migrations and seeds have run, so a system reading its data reads
+   * what the user will see.
+   *
+   * **A system does not need to handle this to stay correct.** The bus answers it by asking every system for
+   * its startup data, exactly as a connecting client does, so a plugin's view is refreshed either way.
+   * Declare it only to do something re-reading cannot: work held over rows that are now gone — a flow part
+   * way through, a watcher on an id — has to be torn down rather than re-read.
+   */
+  | { type: 'DATA_REPLACED' }
 
 /**
  * The event types every system accepts, as a value: a send of one to a feature that runs no system is nobody's, and
  * dropped without a warning.
  */
-export const SYSTEM_EVENT_TYPES = eventTypes<SystemEvents>()('CLIENT_CONNECTED', 'PACK_CHANGED', 'FEATURE_SETTINGS_UPDATED');
+export const SYSTEM_EVENT_TYPES = eventTypes<SystemEvents>()('CLIENT_CONNECTED', 'PACK_CHANGED', 'FEATURE_SETTINGS_UPDATED', 'DATA_REPLACED');
 
 /**
  * What a system's contract declares. A feature exports one as `Contract` from its `be/contract.ts`, and `abuddy.json`

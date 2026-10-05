@@ -85,7 +85,9 @@
     "tests/services/inference.spec.ts": [1682]
   },
   "skipped": [],
-  "unmeasured": [],
+  "unmeasured": [
+    "tests/bus/data-replaced.spec.ts"
+  ],
   "machine": {
     "cpu": "Apple M1 Pro",
     "cores": 10

@@ -18,6 +18,8 @@ const { getAppVersion } = await import('@abuddy/sdk/env');
 const { services } = await import('@abuddy/sdk/services');
 const { flowRepository } = await import('@abuddy/sdk/repositories');
 const { untypedQx } = await import('@abuddy/ears');
+const { onIncoming } = await import('@abuddy/sdk/events');
+const { HOST } = await import('@abuddy/host/bus');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 
@@ -65,5 +67,24 @@ describe('services.appData.reset()', () => {
     expect(storedSettings()).toEqual(fresh.settings);
     expect(appState.get()).toMatchObject({ hasOnboarded: false, version: getAppVersion() });
     expect(services.appData.hasOnboarded()).toBe(false);
+  });
+
+  /**
+   * The rows every running system last described are gone, so something has to say so.
+   *
+   * Without this the Database plugin refreshed itself and nothing else did: a reset or a restored backup left
+   * Notes, Threads and the rest rendering the previous database until the app was restarted. The announcement
+   * is `services.appData`'s rather than each caller's, so a third way to replace the data cannot forget it.
+   */
+  it('tells the bus that every row was replaced', async () => {
+    const announced: string[] = [];
+    const stop = onIncoming((message) => {
+      if (message.event.type === 'DATA_REPLACED') announced.push(message.to);
+    });
+
+    await services.appData.reset();
+    stop();
+
+    expect(announced).toEqual([HOST.bus]);
   });
 });

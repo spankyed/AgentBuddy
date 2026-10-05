@@ -27,6 +27,8 @@ export type PackClientConnectedEvent = { type: 'PACK_CLIENT_CONNECTED'; packId: 
  * what it reads. Raised once the change is complete. Boot raises nothing: the systems start after it.
  */
 export type PackChangedEvent = { type: 'PACK_CHANGED'; packId: string };
+/** Raised once every row the app holds has been replaced and the new world is built (`services.appData`) */
+export type DataReplacedEvent = { type: 'DATA_REPLACED' };
 /** Raised after restarting a pack's systems, once they're in the actor system and can receive events */
 export type SystemsSpawnedEvent = { type: 'SYSTEMS_SPAWNED'; systemIds: string[] };
 
@@ -38,6 +40,7 @@ export type BackendEvents =
   | ActivatePackEvent
   | PackClientConnectedEvent
   | PackChangedEvent
+  | DataReplacedEvent
   | SystemsSpawnedEvent;
 
 /** The events a bus source can feed it: OUTGOING for sends to plugins from outside a system (`broadcastToPlugin`) */
@@ -227,6 +230,20 @@ export function createBusMachine(options: BusOptions) {
         if (event.type !== 'PACK_CHANGED') return;
         sendToRunning(system, systems().keys(), { type: 'PACK_CHANGED', packId: event.packId });
       },
+      /**
+       * Two sends, in this order, and the order is the point.
+       *
+       * `DATA_REPLACED` first, so a system holding work over rows that are gone can drop it before it is asked
+       * to describe itself; `CLIENT_CONNECTED` second, which is how every system already publishes its startup
+       * data. That second send is what makes this correct for systems that declare no handler at all — which is
+       * all of them but the ones with something to tear down, and is why replacing the data does not become a
+       * thing each of the thirteen has to remember.
+       */
+      sendDataReplaced: ({ system }) => {
+        const running = [...systems().keys()];
+        sendToRunning(system, running, { type: 'DATA_REPLACED' });
+        sendClientConnected(system, running);
+      },
       sendSpawnedConnected: ({ event, system }) => {
         if (event.type === 'SYSTEMS_SPAWNED') sendClientConnected(system, event.systemIds);
       },
@@ -278,6 +295,7 @@ export function createBusMachine(options: BusOptions) {
       ACTIVATE_PACK: { actions: 'activatePack' },
       PACK_CLIENT_CONNECTED: { actions: 'sendPackConnected' },
       PACK_CHANGED: { actions: 'sendPackChanged' },
+      DATA_REPLACED: { actions: 'sendDataReplaced' },
     },
     states: {
       awaitingClient: {
