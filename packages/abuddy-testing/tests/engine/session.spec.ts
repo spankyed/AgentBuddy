@@ -12,6 +12,7 @@ import type { BusMessage } from '../../src/engine/api-client.ts';
 /** A page that records what it was asked and lets a test answer for it, plus the bridge's own callback */
 function fakePage() {
   let emit: ((payload: unknown) => void) | undefined;
+  let reloaded = false;
   const expressions: string[] = [];
   const evaluateExpression = vi.fn(async (source: string): Promise<unknown> => {
     expressions.push(source);
@@ -30,11 +31,15 @@ function fakePage() {
       emit = callback;
     }),
     screenshot: vi.fn(async () => Buffer.from('')),
+    // A real reload drops the page's globals; the flag the bridge guards itself with goes with them
+    reload: vi.fn(async () => { reloaded = true; return undefined; }),
     waitForState: vi.fn(async () => undefined),
     waitForPlugin: vi.fn(async () => undefined),
   };
   return {
     page, expressions, evaluateExpression, evaluateWith,
+    reload: page.reload as ReturnType<typeof vi.fn>,
+    didReload: () => reloaded,
     waitForState: page.waitForState as ReturnType<typeof vi.fn>,
     waitForPlugin: page.waitForPlugin as ReturnType<typeof vi.fn>,
     emit: (event: SeenEvent) => emit?.(event),
@@ -238,6 +243,37 @@ describe('the in-page bridge', () => {
  * the right type therefore had to be this request's. That held only while nothing was abandoned, which
  * is the case the last two tests here are about.
  */
+/**
+ * Reloading is the one thing that makes a plugin re-read its data, so the verb has to leave the session
+ * usable. The port returns when the window is usable again — waiting, and dismissing the onboarding a
+ * reload brings back, belong to the implementation that knows Playwright. What is left here is the half
+ * the session owns: a reload that forgot the bridge would leave `/events` and every round-trip deaf for
+ * the rest of the session, over a document that no longer carries the hook.
+ */
+describe('reload', () => {
+  it('reloads and puts the bridge back over the fresh document', async () => {
+    const { session, didReload, expressions } = sessionWith();
+    await session.ready();
+    const before = expressions.filter((source) => source.includes(BRIDGE_FLAG)).length;
+
+    const result = await session.reload();
+
+    expect(result.ok).toBe(true);
+    expect(didReload(), 'the page was reloaded').toBe(true);
+    expect(
+      expressions.filter((source) => source.includes(BRIDGE_FLAG)).length,
+      'the bridge is installed again over the fresh document',
+    ).toBe(before + 1);
+  });
+
+  it('answers rather than throwing when the page will not come back', async () => {
+    const { session } = sessionWith({ reload: async () => { throw new Error('window is gone'); } });
+    await session.ready();
+
+    expect(await session.reload()).toEqual({ ok: false, error: 'reload: window is gone' });
+  });
+});
+
 describe('a bus round-trip', () => {
   /** The id the engine minted, read back off the send so a test can answer as the app would */
   const sentId = (calls: { mock: { calls: unknown[][] } }): string =>

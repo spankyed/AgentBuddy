@@ -55,6 +55,11 @@ declare global {
           appEventsLogPath: string;
         }>;
         relaunch: () => Promise<void>;
+        /**
+         * Reloads this window through the main process, which is the only way it can be done: the app
+         * blocks renderer-initiated navigation, so `location.reload()` returns having done nothing.
+         */
+        reload: () => Promise<void>;
         onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number; port?: number }) => void) => () => void;
       };
       rendererLog: {

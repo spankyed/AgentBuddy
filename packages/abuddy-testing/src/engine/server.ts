@@ -110,6 +110,8 @@ export function engineVerbs(session: EngineSession): Record<string, Verb> {
     '/state': { method: 'GET', run: () => session.state() },
     '/navigate': { method: 'POST', run: (body) => session.navigate(required(body, 'plugin')) },
     '/screenshot': { method: 'POST', run: (body) => session.screenshot(safeName(body, 'name')) },
+    // Takes no body: there is one window and one thing to do to it
+    '/reload': { method: 'POST', run: () => session.reload() },
     /**
      * One of `state` or `plugin`, never both: they wait on different things, and a request carrying
      * both is a caller who does not know which they meant rather than one asking for either.

@@ -43,6 +43,38 @@ export interface DriveEngineOptions {
 }
 
 /**
+ * Reloads the window and returns when the app is usable again.
+ *
+ * **Playwright's own reload, never `location.reload()` from inside the page.** The app blocks
+ * renderer-initiated navigation (`BlockNotAllowdOrigins`, `packages/main`), so that call returns having
+ * done nothing — which reads exactly like a reload that changed nothing.
+ *
+ * **Then onboarding, which is the part that is easy to miss.** The fixture dismisses it once, while the app
+ * launches, so a reloaded window comes back sitting in `onboarding` and never reaches `running.connected`.
+ * Waiting for that state alone hangs until its deadline and reports a reload that in fact worked.
+ *
+ * The deadlines only run when the app does not come back; a reload that works answers as soon as it has.
+ */
+async function reloadWindow(page: Page): Promise<void> {
+  const connectedOrOnboarding = () => {
+    const snapshot = (window as unknown as { applicationState?: { getSnapshot(): { value?: unknown } } }).applicationState?.getSnapshot();
+    const value = snapshot?.value;
+    if (typeof value !== 'object' || value === null) return false;
+    if ('running' in value) return (value as { running?: unknown }).running === 'connected';
+    return 'onboarding' in value;
+  };
+  const connected = () => {
+    const snapshot = (window as unknown as { applicationState?: { getSnapshot(): { value?: { running?: unknown } } } }).applicationState?.getSnapshot();
+    return snapshot?.value?.running === 'connected';
+  };
+
+  await page.reload();
+  await page.waitForFunction(connectedOrOnboarding, null, { timeout: 60_000 });
+  await page.evaluate(() => (window as unknown as { __disableOnboardingUI?: () => void }).__disableOnboardingUI?.());
+  await page.waitForFunction(connected, null, { timeout: 30_000 });
+}
+
+/**
  * Adapts a Playwright page to `SessionPage`. The two evaluation forms stay separate here because they are
  * separate in the port, for the reason `session.ts` gives there.
  */
@@ -54,6 +86,7 @@ export const asSessionPage = (page: Page, app: EngineAppHelper): SessionPage => 
   evaluateWith: (fn, arg) =>
     page.evaluate(fn as (value: unknown) => unknown, arg as unknown),
   exposeFunction: (name, callback) => page.exposeFunction(name, callback),
+  reload: () => reloadWindow(page),
   screenshot: (name) => app.screenshot(name),
   waitForState: (check, timeoutMs) => app.waitForState(check, timeoutMs),
   waitForPlugin: (pluginId, timeoutMs) => app.waitForPlugin(pluginId, timeoutMs),

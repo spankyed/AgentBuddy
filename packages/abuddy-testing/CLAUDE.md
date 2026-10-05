@@ -217,6 +217,12 @@ Things worth knowing before changing it:
   already run against the live engine with every installed pack's entity types. So a write is visible to
   the next read in the same session — which `abuddy db exec` cannot do, since it refuses while the app
   holds the write lock.
+- **A write is visible to the next read and not to the UI, and `/reload` is the difference.** A plugin's
+    state is what its system sent it, so a write that goes round every system reaches no view. Navigating
+    between plugins does not refresh one — the actor survives — while a new connection does, because the
+    bus sends every system `CLIENT_CONNECTED` and each answers with its startup data. `/reload` is that
+    connection. It must not be `window.location.reload()`: the app blocks renderer-initiated navigation
+    (`BlockNotAllowdOrigins`, `packages/main`), so that call returns having done nothing.
 - **A reply arrives addressed, and is still matched by the `requestId` the request minted.** Those are two
   different jobs and both are needed. The session claims `host/drive` and stamps `sender` on every bus
   send, so a system's `reply` comes back on this connection rather than to every window — which is what

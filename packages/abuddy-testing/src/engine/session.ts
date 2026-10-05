@@ -42,6 +42,19 @@ export interface SessionPage {
   exposeFunction: (name: string, callback: (payload: unknown) => void) => Promise<void>;
   screenshot: (name: string) => Promise<unknown>;
   /**
+   * Reloads the window and returns when it is usable again, onboarding included.
+   *
+   * It is the only thing that makes every plugin re-read its data: a plugin's state is what its system sent
+   * it, so a write made outside that system — `/tx`, the database console, `abuddy db exec` — is invisible
+   * to the view until something asks again. Navigating between plugins does not, because the actor
+   * survives; a new connection does, because the bus sends every system `CLIENT_CONNECTED` and each one
+   * answers with its startup data.
+   *
+   * Returning *usable* rather than merely reloaded is what an implementation owes: the fixture dismisses
+   * onboarding once, as the app launches, so a reloaded window comes back sitting in it.
+   */
+  reload: () => Promise<unknown>;
+  /**
    * The fixture's own waits, which are what `/wait` is for.
    *
    * They come from the `AppHelper` rather than being rebuilt here: a `page.waitForFunction` over the
@@ -183,6 +196,8 @@ export interface EngineSession {
   wait: (target: WaitTarget, timeoutMs?: number) => Promise<EngineResult>;
   navigate: (pluginId: string) => Promise<EngineResult>;
   screenshot: (name: string) => Promise<EngineResult>;
+  /** Reloads the window and returns once it is connected again, with the in-page bridge back */
+  reload: () => Promise<EngineResult>;
   drainEvents: () => EngineResult;
   drainDrops: () => Promise<EngineResult>;
   drainErrors: () => EngineResult;
@@ -309,6 +324,32 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
     return reply;
   };
 
+  /**
+   * Hooks the app's actor inspection up to `BRIDGE_FUNCTION`, which is a callback into this process rather
+   * than a buffer the engine reads back: a reply has to wake the request waiting for it.
+   *
+   * Idempotent through a flag on `window`, and called again after a reload, where a fresh document has
+   * dropped both the hook and the flag.
+   */
+  const installBridge = () => page.evaluateExpression(`(() => {
+    const win = window;
+    if (win.${BRIDGE_FLAG}) return null;
+    win.${BRIDGE_FLAG} = true;
+    win.applicationState?.system?.inspect?.((inspection) => {
+      if (inspection?.type !== '@xstate.event') return;
+      const event = inspection.event;
+      if (!event || typeof event.type !== 'string') return;
+      const to = inspection.actorRef?.id;
+      try {
+        win.${BRIDGE_FUNCTION}({ to, type: event.type, event: JSON.parse(JSON.stringify(event)) });
+      } catch {
+        // An event that will not serialise still happened, and that it did is worth reporting
+        win.${BRIDGE_FUNCTION}({ to, type: event.type, event: {} });
+      }
+    });
+    return null;
+  })()`);
+
   return {
     ready: async () => {
       /**
@@ -359,25 +400,16 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
        * `exposeFunction` gives the page a direct line here, so a round-trip resolves on the event rather
        * than on anything asking repeatedly whether it has arrived.
        */
-      await page.evaluateExpression(`(() => {
-        const win = window;
-        if (win.${BRIDGE_FLAG}) return null;
-        win.${BRIDGE_FLAG} = true;
-        win.applicationState?.system?.inspect?.((inspection) => {
-          if (inspection?.type !== '@xstate.event') return;
-          const event = inspection.event;
-          if (!event || typeof event.type !== 'string') return;
-          const to = inspection.actorRef?.id;
-          try {
-            win.${BRIDGE_FUNCTION}({ to, type: event.type, event: JSON.parse(JSON.stringify(event)) });
-          } catch {
-            // An event that will not serialise still happened, and that it did is worth reporting
-            win.${BRIDGE_FUNCTION}({ to, type: event.type, event: {} });
-          }
-        });
-        return null;
-      })()`);
+      await installBridge();
     },
+
+    reload: () => attempt('reload', async () => {
+      // The port returns when the window is usable again, so there is nothing to wait for here
+      await page.reload();
+      // A fresh document dropped the inspector and the flag that guards it; `exposeFunction` survives
+      await installBridge();
+      return null;
+    }),
 
     evaluate: (body) => attempt('eval', async () => {
       const result = await page.evaluateExpression(evalSource(body)) as Evaluated;

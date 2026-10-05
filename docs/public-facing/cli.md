@@ -204,10 +204,20 @@ curl -s -X POST http://$E/close -H "$H"
 | `/wait` | POST | `{ state }` or `{ plugin }`, `{ timeoutMs }` | waits for a dotted state path, or for a plugin to arrive |
 | `/navigate` | POST | `{ plugin }` | opens a plugin |
 | `/screenshot` | POST | `{ name }` | writes `drive/screenshots/<name>.png` |
+| `/reload` | POST | — | reloads the window and returns once it is connected again |
 | `/events` | GET | — | the app's events since you last asked, and how many were dropped |
 | `/drops` | GET | — | sends the bus dropped, and clears them |
 | `/errors` | GET | — | renderer errors, and clears them |
 | `/close` | POST | — | ends the session and shuts the app down |
+
+**A write does not update the UI; `/reload` is how you see it.** A plugin's state is what its system
+sent it, so a write made outside that system — `/tx`, the database console, `abuddy db exec` — changes
+the database and reaches no view. That is the console being a console rather than a fault, and it is not
+staleness that time fixes: navigating between plugins does not refresh one, because the plugin's actor
+survives. `/reload` does, because a new connection makes every system send its startup data again.
+
+`window.location.reload()` from `/eval` is not an alternative. The app blocks renderer-initiated
+navigation, so it returns having done nothing — which reads exactly like a reload that changed nothing.
 
 **`/wait` rather than re-asking `/state`.** `{"state":"running.connected"}` returns when the app gets
 there; `{"plugin":"default-setup/notes"}` returns when that plugin registers. One of the two, never both.
