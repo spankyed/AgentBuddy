@@ -16,9 +16,31 @@ describe('tx create', () => {
   it('creates an entity of a type with a new id and createdAt', () => {
     const id = e.query.tx('Task').put('title', 'Write specs').id();
     expect(id).toMatch(/^Task-[a-z0-9]+$/);
-    expect(e.query.findById(id)).toEqual({ id, createdAt: NOW, title: 'Write specs' });
+    expect(e.query.findById(id)).toEqual({ id, entityType: 'Task', createdAt: NOW, title: 'Write specs' });
     expect(e.query.getEntitiesOfType('Task')).toEqual([id]);
     expect(e.query.getAllEntities()).toEqual([id]);
+  });
+
+  /**
+   * The attribute is a copy of what the id already says, and the two must not disagree: the engine indexes
+   * an entity by its id's prefix, while features and the database console filter on the attribute. A row
+   * with one and not the other is found by `qx(type)` and skipped by everything reading rows.
+   */
+  it('stamps entityType to match the id, on both creation paths, without overriding an explicit one', () => {
+    const made = e.query.tx('Task').id();
+    expect(e.query.getAttr(made, 'entityType')).toBe('Task');
+
+    const given = e.query.tx('Task-custom' as Id, true).id();
+    expect(e.query.getAttr(given, 'entityType')).toBe('Task');
+
+    // Written before the caller's puts, so a caller that sets it still decides
+    const overridden = e.query.tx('Task').put('entityType', 'Project').id();
+    expect(e.query.getAttr(overridden, 'entityType')).toBe('Project');
+
+    // Writing to an existing row is not a creation, so nothing is stamped
+    const plain = e.query.tx('Task').id();
+    e.query.tx(plain).put('title', 'later');
+    expect(e.query.getAttr(plain, 'entityType')).toBe('Task');
   });
 
   it('gives each entity its own id', () => {
@@ -31,7 +53,7 @@ describe('tx create', () => {
   it('uses a provided id, with createdAt, when asked to', () => {
     const id = e.query.tx('Task-custom' as Id, true).put('title', 'Mine').id();
     expect(id).toBe('Task-custom');
-    expect(e.query.findById(id)).toEqual({ id, createdAt: NOW, title: 'Mine' });
+    expect(e.query.findById(id)).toEqual({ id, entityType: 'Task', createdAt: NOW, title: 'Mine' });
   });
 
   it('writes to an existing id without createdAt, and an unknown type name is taken as an id', () => {
@@ -46,8 +68,8 @@ describe('tx create', () => {
   it('batchPut, define and createEntityWithDefaults write several fields', () => {
     const a = e.query.tx('Task').batchPut({ title: 'A', done: false }).id();
     const b = e.query.tx('Task').define({ attributes: { title: 'B' }, links: ['blocks', a], roles: ['first', 'second'] }).id();
-    expect(e.query.findById(a)).toEqual({ id: a, createdAt: NOW, title: 'A', done: false });
-    expect(e.query.findById(b)).toEqual({ id: b, createdAt: NOW, title: 'B', role: ['first', 'second'] });
+    expect(e.query.findById(a)).toEqual({ id: a, entityType: 'Task', createdAt: NOW, title: 'A', done: false });
+    expect(e.query.findById(b)).toEqual({ id: b, entityType: 'Task', createdAt: NOW, title: 'B', role: ['first', 'second'] });
     expect(e.query.qx(b).linksTo('blocks').ids()).toEqual([a]);
 
     const created = e.query.createEntityWithDefaults('Project', { color: 'red' });
@@ -72,7 +94,7 @@ describe('tx update', () => {
     e.query.tx(id).put('tag', 'z');
     expect(e.query.getAttrs(id, 'tag')).toEqual(['z']);
     e.query.tx(id).update('tag', 'y').updateBatch({ tag: 'x', other: 1 });
-    expect(e.query.findById(id)).toEqual({ id, createdAt: NOW, tag: 'x', other: 1 });
+    expect(e.query.findById(id)).toEqual({ id, entityType: 'Task', createdAt: NOW, tag: 'x', other: 1 });
   });
 
   it('merge combines objects at an index and fills gaps with null', () => {
@@ -95,14 +117,14 @@ describe('tx update', () => {
     e.query.tx(id).drop('tag');
     expect(e.query.getAttrs(id, 'tag')).toEqual([]);
     expect(e.query.getAttr(id, 'tag')).toBeNull();
-    expect(e.query.findById(id)).toEqual({ id, createdAt: NOW });
+    expect(e.query.findById(id)).toEqual({ id, entityType: 'Task', createdAt: NOW });
   });
 
   it('updateEntity writes fields and updatedAt, drops nulls and replaces arrays', () => {
     const id = e.query.tx('Task').put('title', 'A').put('gone', 1).add('list', 1).add('list', 2).id();
     vi.setSystemTime(NOW + 10);
     e.query.updateEntity(id, { title: 'B', gone: null, list: [3], skipped: undefined });
-    expect(e.query.findById(id)).toEqual({ id, createdAt: NOW, updatedAt: NOW + 10, title: 'B', list: [3] });
+    expect(e.query.findById(id)).toEqual({ id, entityType: 'Task', createdAt: NOW, updatedAt: NOW + 10, title: 'B', list: [3] });
     e.query.updateEntity(id, { title: 'C' }, true);
     expect(e.query.getAttr(id, 'updatedAt')).toBe(NOW + 10);
   });
@@ -160,12 +182,12 @@ describe('finders', () => {
     const a = e.query.tx('Task').put('title', 'A').add('tag', 1).add('tag', 2).id();
     const p = e.query.tx('Project').id();
     e.query.tx(p).link('contains', a);
-    expect(e.query.getAll(a)).toEqual({ createdAt: NOW, title: 'A', tag: [1, 2] });
-    expect(e.query.getAllAttributeKinds()).toEqual(['createdAt', 'title', 'tag', 'relationDetails']);
+    expect(e.query.getAll(a)).toEqual({ entityType: 'Task', createdAt: NOW, title: 'A', tag: [1, 2] });
+    expect(e.query.getAllAttributeKinds()).toEqual(['entityType', 'createdAt', 'title', 'tag', 'relationDetails']);
     expect(e.query.getAttributeStats('tag')).toEqual({ entityCount: 1, totalValues: 2 });
     expect(e.query.getSchemaStats()).toEqual({
       entities: { Task: 1, Project: 1, Relation: 1 },
-      attributes: { createdAt: 2, title: 1, tag: 2, relationDetails: 1 },
+      attributes: { entityType: 2, createdAt: 2, title: 1, tag: 2, relationDetails: 1 },
       relations: { contains: 1 },
     });
     expect(e.query.queryEntitiesByAttribute('tag')).toEqual([a]);

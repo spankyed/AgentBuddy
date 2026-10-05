@@ -13,7 +13,12 @@ import { installedEngine } from './installed.ts';
 export const createEntity = <E extends EARS.Entity>(t: E): EARS.EntityId =>
   `${t}-${idSuffix()}` as EARS.EntityId;
 
-const entType = (id: EARS.EntityId) => {
+/**
+ * An entity's type, from its id, which is where an entity's type actually lives: `createEntity` builds
+ * `<Type>-<suffix>` and `entityIndex` is keyed by this. The `entityType` attribute is a denormalised copy
+ * of it, so the two must never disagree — `tx` stamps the attribute from this.
+ */
+export const entityTypeOf = (id: EARS.EntityId) => {
   const dash = id.indexOf('-');
   return dash === -1 ? id as unknown as EARS.Entity : id.substring(0, dash) as EARS.Entity;
 };
@@ -39,7 +44,7 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
   };
 
   const indexEntity = (id: EARS.EntityId) => {
-    const type = entType(id);
+    const type = entityTypeOf(id);
     const ids = entityIndex.get(type);
     if (ids) ids.add(id);
     else entityIndex.set(type, new Set([id]));
@@ -221,7 +226,7 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
 
   /** Whether the entity is in the engine, from its type's index rather than a scan of every entity */
   const hasEntity = (id: EARS.EntityId) =>
-    entityIndex.get(entType(id))?.has(id) ?? false;
+    entityIndex.get(entityTypeOf(id))?.has(id) ?? false;
 
   const queryEntitiesByRole = (role: string) =>
     getAllEntities().filter(id => getRoles(id).includes(role));
@@ -288,11 +293,11 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
       delete byTarget[id];
     }
     for (const [_k, b] of store) b.delete(id);
-    const entitySet = entityIndex.get(entType(id));
+    const entitySet = entityIndex.get(entityTypeOf(id));
     if (entitySet) {
       entitySet.delete(id);
       if (entitySet.size === 0) {
-        entityIndex.delete(entType(id));
+        entityIndex.delete(entityTypeOf(id));
       }
     }
     if (!skipPersistence) {

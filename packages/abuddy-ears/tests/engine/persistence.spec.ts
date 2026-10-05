@@ -26,11 +26,13 @@ describe('persistence sink', () => {
 
     expect(calls).toEqual([
       ['onCreateEntity', '#1', 'Task'],
+      ['onPutAttrArray', 'entityType', '#1', ['Task']],
       ['onPutAttrArray', 'createdAt', '#1', [1000]],
       ['onPutAttrArray', 'title', '#1', ['A']],
       ['onPutAttrArray', 'tag', '#1', ['x']],
       ['onPutAttrArray', 'tag', '#1', ['x', 'y']],
       ['onCreateEntity', '#2', 'Project'],
+      ['onPutAttrArray', 'entityType', '#2', ['Project']],
       ['onPutAttrArray', 'createdAt', '#2', [1000]],
       ['onPutAttrArray', 'title', '#2', ['P']],
       ['onPutAttrArray', 'meta', '#1', [{ k: 1 }]],
@@ -66,9 +68,13 @@ describe('persistence sink', () => {
     e.admin.updateAttr(a, 'x', 4);
     e.admin.dropIf(a, 'x', 4);
     e.admin.dropAttr(a, 'x');
-    // Each create: the entity, then its createdAt
-    expect(calls.slice(0, 2)).toEqual([['onCreateEntity', '#1', 'Task'], ['onPutAttrArray', 'createdAt', '#1', [1000]]]);
-    expect(calls.slice(6)).toEqual([
+    // Each create: the entity, then the two attributes every new entity gets
+    expect(calls.slice(0, 3)).toEqual([
+      ['onCreateEntity', '#1', 'Task'],
+      ['onPutAttrArray', 'entityType', '#1', ['Task']],
+      ['onPutAttrArray', 'createdAt', '#1', [1000]],
+    ]);
+    expect(calls.slice(9)).toEqual([
       ['onPutAttrArray', 'relationDetails', '#4', [{ sourceEntity: '#1', targetEntity: '#2', relationType: 'refs', info: undefined }]],
       ['onAddRelation', '#4', 'refs', '#1', '#2', undefined],
       ['onPutAttrArray', 'relationDetails', '#4', [{ sourceEntity: '#1', targetEntity: '#3', relationType: 'refs', info: 'why' }]],

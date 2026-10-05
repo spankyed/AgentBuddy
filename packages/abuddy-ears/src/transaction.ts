@@ -1,5 +1,5 @@
 import type { AttributeStorage } from './attribute-storage.ts';
-import { createEntity } from './attribute-storage.ts';
+import { createEntity, entityTypeOf } from './attribute-storage.ts';
 import type { EdgeStore } from './edge-store.ts';
 import type { qx as Qx } from './query.ts';
 import type { createGraph } from './graph.ts';
@@ -34,6 +34,12 @@ export function createTx({ storage, edgeStore, qx, graph, isEntityType: isEntity
     // A new entity: `tx(type)` creates one, `tx(id, true)` treats the id as new
     if (isEntityType || useProvidedId) {
       entityCreated(id, isEntityType ? typeOrId as EARS.Entity : undefined);
+      // Stamped from the id rather than from `typeOrId`, so both creation paths agree with the index, which
+      // is keyed the same way. Without it `tx(Entity.Note).put(...)` produced a row that the engine indexed
+      // as a Note and that every feature filtering on the attribute skipped — a row whose id said one thing
+      // and whose attributes said nothing. It is written before the caller's puts, so an explicit
+      // `.put('entityType', ...)` still wins.
+      putAttr(id, EARS.AttrKind.Custom('entityType'), entityTypeOf(id));
       putAttr(id, EARS.AttrKind.Custom('createdAt'), Date.now());
     }
 
