@@ -65,8 +65,11 @@ export interface SessionPage {
    * gets the emulation, and the session says what it wants rather than how.
    *
    * Reading the size needs no method of its own: `window.innerWidth` is true whichever of the two happened.
+   *
+   * It answers with the size that was *taken*, which need not be the size asked for — a window has a minimum
+   * and clamps to it.
    */
-  setViewport: (width: number, height: number) => Promise<unknown>;
+  setViewport: (width: number, height: number) => Promise<{ width: number; height: number }>;
   /**
    * Reloads the window and returns when it is usable again, onboarding included.
    *
@@ -529,12 +532,16 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
       '({ width: window.innerWidth, height: window.innerHeight })',
     )),
 
-    // Answers with what it was asked for, as `/click` answers with its selector: `/viewport` is the read,
-    // and a measurement taken a frame after a real window moved would sometimes be the size before it
-    setViewport: (width, height) => attempt('setViewport', async () => {
-      await page.setViewport(width, height);
-      return { width, height };
-    }),
+    /**
+     * Answers with the size that was taken, not the size that was asked for.
+     *
+     * It echoed its argument at first, on the reasoning that measuring after a real window moved would
+     * sometimes read the size before it. That race could not be reproduced — 12 set-then-read cycles, none
+     * stale — and the echo is wrong in a case that does occur: the main window has a 900x600 minimum, so
+     * `/set-viewport {400,300}` answered `{400,300}` while the window sat at `{900,600}`. The port asks
+     * whoever applied the size what it became, which costs no extra round trip either way.
+     */
+    setViewport: (width, height) => attempt('setViewport', () => page.setViewport(width, height)),
 
     /**
      * The app's own log, which until now was a file an agent was told to go and open.

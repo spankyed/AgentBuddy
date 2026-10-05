@@ -35,7 +35,8 @@ export type EngineAppHelper = {
  * decision of which run is which, and `driveEngineBody` is where it is read.
  */
 export type EngineWindow = {
-  readonly setContentSize: (width: number, height: number) => Promise<void>;
+  /** Resizes the window and answers with the size it actually took, which need not be the one asked for */
+  readonly setContentSize: (width: number, height: number) => Promise<{ width: number; height: number }>;
 };
 
 export interface DriveEngineOptions {
@@ -123,9 +124,15 @@ export const asSessionPage = (page: Page, app: EngineAppHelper, window?: EngineW
   fill: (selector, text) => page.fill(selector, text),
   press: (key, selector) => (selector === undefined ? page.keyboard.press(key) : page.press(selector, key)),
   ariaSnapshot: () => page.locator('body').ariaSnapshot(),
-  setViewport: (width, height) => (window === undefined
-    ? page.setViewportSize({ width, height })
-    : window.setContentSize(width, height)),
+  setViewport: async (width, height) => {
+    // An emulated viewport is applied exactly, and `setViewportSize` resolves once it has been; a real
+    // window clamps, so only it can say what the answer is
+    if (window === undefined) {
+      await page.setViewportSize({ width, height });
+      return { width, height };
+    }
+    return window.setContentSize(width, height);
+  },
   screenshot: (name) => app.screenshot(name),
   waitForState: (check, timeoutMs) => app.waitForState(check, timeoutMs),
   waitForPlugin: (pluginId, timeoutMs) => app.waitForPlugin(pluginId, timeoutMs),

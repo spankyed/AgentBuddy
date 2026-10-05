@@ -39,7 +39,11 @@ function fakePage() {
     fill: vi.fn(async (selector: string, text: string) => { acted.push(`fill ${selector}=${text}`); }),
     press: vi.fn(async (key: string, selector?: string) => { acted.push(`press ${key}${selector ? ` @${selector}` : ''}`); }),
     ariaSnapshot: vi.fn(async () => '- button "Send"'),
-    setViewport: vi.fn(async (width: number, height: number) => { acted.push(`viewport ${width}x${height}`); }),
+    // Clamps to 900x600 as the real window does, so what the session answers with is visibly not its argument
+    setViewport: vi.fn(async (width: number, height: number) => {
+      acted.push(`viewport ${width}x${height}`);
+      return { width: Math.max(width, 900), height: Math.max(height, 600) };
+    }),
     // A real reload drops the page's globals; the flag the bridge guards itself with goes with them
     reload: vi.fn(async () => { reloaded = true; return undefined; }),
     waitForState: vi.fn(async () => undefined),
@@ -383,6 +387,18 @@ describe('the viewport', () => {
   });
 
   /**
+   * The answer is the size that was *taken*. A window has a minimum and clamps to it — the main window's is
+   * 900x600 — so echoing the request reported a resize that had not happened, and `/viewport` immediately
+   * afterwards disagreed with it.
+   */
+  it('answers with the size the window took, not the size it was asked for', async () => {
+    const { session, acted } = sessionWith();
+
+    expect(await session.setViewport(400, 300)).toEqual({ ok: true, value: { width: 900, height: 600 } });
+    expect(acted, 'it still asked for what it was told to ask for').toEqual(['viewport 400x300']);
+  });
+
+  /**
    * The decision the port exists for, asserted at the adapter: a run whose window someone can see resizes
    * the window, and a run nobody is watching sets the emulated viewport.
    *
@@ -401,12 +417,17 @@ describe('the viewport', () => {
     } as unknown as Page;
     const app = { screenshot: async () => null, waitForState: async () => null, waitForPlugin: async () => null };
 
-    await asSessionPage(page, app).setViewport(1000, 700);
-    await asSessionPage(page, app, {
-      setContentSize: async (width, height) => { acted.push(`window ${width}x${height}`); },
-    }).setViewport(1000, 700);
+    // An emulated viewport is applied exactly, so the adapter answers with what it asked for
+    expect(await asSessionPage(page, app).setViewport(1000, 700)).toEqual({ width: 1000, height: 700 });
+    // A real window clamps, and only it can say what it took
+    expect(await asSessionPage(page, app, {
+      setContentSize: async (width, height) => {
+        acted.push(`window ${width}x${height}`);
+        return { width: Math.max(width, 900), height: Math.max(height, 600) };
+      },
+    }).setViewport(400, 300)).toEqual({ width: 900, height: 600 });
 
-    expect(acted).toEqual(['emulated 1000x700', 'window 1000x700']);
+    expect(acted).toEqual(['emulated 1000x700', 'window 400x300']);
   });
 
   /**

@@ -647,15 +647,25 @@ export {
  * `browserWindow(page)` hands back a handle to the `BrowserWindow` in the main process, and `evaluate` runs
  * there — which is the only way to reach it: the renderer cannot resize itself, and the app blocks the
  * navigation that would be the other way to try.
+ *
+ * **It reads the size back in that same evaluate**, because a window does not have to take what it is given:
+ * the main window has a 900x600 minimum (`packages/main`'s `WINDOW_CONFIG`), so asking for 400x300 leaves it
+ * at 900x600 while the request looks like it worked. Both calls are synchronous in the main process, so the
+ * clamp is known at once and there is nothing to wait for and no frame to race.
  */
+type MainWindow = {
+  setContentSize: (width: number, height: number) => void;
+  getContentSize: () => number[];
+};
+
 const electronWindow = (electronApp: ElectronApplication, page: Page): EngineWindow => ({
   setContentSize: async (width, height) => {
     const browserWindow = await electronApp.browserWindow(page);
-    await browserWindow.evaluate(
-      (window: { setContentSize: (width: number, height: number) => void }, size: { width: number; height: number }) =>
-        window.setContentSize(size.width, size.height),
-      { width, height },
-    );
+    return browserWindow.evaluate((window: MainWindow, size: { width: number; height: number }) => {
+      window.setContentSize(size.width, size.height);
+      const [took, andTook] = window.getContentSize();
+      return { width: took, height: andTook };
+    }, { width, height });
   },
 });
 
