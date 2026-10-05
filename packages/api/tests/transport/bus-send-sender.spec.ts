@@ -22,10 +22,20 @@ vi.mock('@abuddy/host/bus', () => ({
   receiveClientEvent: (_registry: unknown, message: Message) => { received.push(message); },
   UnknownClientEventError: class extends Error {},
 }));
-// The registered refs a `sender` is checked against, and nothing claimed
+/**
+ * The refs a `sender` is checked against: the two validation maps, and whatever `claimed` holds.
+ *
+ * `claimed` is a variable because the third clause is the one the drive engine lives on — it claims
+ * `host/drive`, which no pack registers, so it is in neither map — and a mock that always answers "nothing is
+ * claimed" cannot exercise it.
+ */
+let claimed: string | undefined;
 vi.mock('@/runtime', () => ({
-  appPacks: { systemIds: () => ['memo-pack/memos'], pluginIds: () => ['memo-pack/memos'] },
-  appClaims: { clientFor: () => undefined },
+  appPacks: {
+    getEventValidationMap: () => new Map([['memo-pack/memos', new Set(['ADD_MEMO'])]]),
+    getPluginEventValidationMap: () => new Map([['memo-pack/memos', new Set(['MEMO_ADDED'])]]),
+  },
+  appClaims: { clientFor: (ref: string) => (ref === claimed ? 'c-drive' : undefined) },
 }));
 vi.mock('@/transport/emitter', () => ({ rootEvents: { onOutgoing: () => () => {}, emitConnected: () => {}, emitPackClientConnected: () => {} } }));
 
@@ -69,6 +79,30 @@ describe('bus.send carries the sender across the boundary', () => {
   it('refuses a sender that names nothing addressable', async () => {
     await expect(caller.send({ to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, sender: 'memo-pack/typo' }))
       .rejects.toThrow(/names no registered system/);
+  });
+
+  /**
+   * A claimed name is a sender, and this is the clause the drive engine depends on entirely.
+   *
+   * `host/drive` is claimed on a connection rather than registered by a pack, so it appears in neither
+   * validation map. Drop the claims clause from `addressable` and every send the drive engine makes is refused
+   * — which nothing caught until this case, the mock having answered "nothing is claimed" for every ref.
+   */
+  it('accepts a sender a connection claimed, which no pack registers', async () => {
+    claimed = 'host/drive';
+    received.length = 0;
+    try {
+      await caller.send({ to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, sender: 'host/drive' });
+      expect(received).toEqual([{ to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, sender: 'host/drive', client: 'c-one' }]);
+    } finally {
+      claimed = undefined;
+    }
+  });
+
+  // And the same name is refused once nothing holds it, so the clause is a lookup and not a allow-list of one
+  it('refuses that same name when the claim has gone', async () => {
+    await expect(caller.send({ to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, sender: 'host/drive' }))
+      .rejects.toThrow(/no claimed participant/);
   });
 
   // The fields are named rather than the object made passthrough, so the boundary stays closed to the rest

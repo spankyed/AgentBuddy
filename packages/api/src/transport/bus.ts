@@ -18,10 +18,15 @@ const logger = createLogger('app-events');
  * connection claimed. The symmetric check to the one `receiveClientEvent` makes on `to` — without it a stale or
  * misspelled `sender` becomes an answer the bus drops into a diagnostic, one step removed from the send that
  * caused it.
+ *
+ * The two maps rather than `systemIds()`/`pluginIds()`, which spread a cached map's keys into a new array on
+ * every call: most of a window's sends carry a `sender`, so this runs on the common path and a lookup there
+ * should cost nothing. The third clause is the one the drive engine lives on — `host/drive` is claimed, never
+ * registered, so it appears in neither map.
  */
 const addressable = (ref: string): boolean =>
-  appPacks.systemIds().includes(ref as never)
-  || appPacks.pluginIds().includes(ref as never)
+  appPacks.getEventValidationMap().has(ref)
+  || appPacks.getPluginEventValidationMap().has(ref)
   || appClaims.clientFor(ref) !== undefined;
 
 export const systemBusRouter = router({
