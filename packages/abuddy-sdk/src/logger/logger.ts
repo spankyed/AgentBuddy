@@ -40,10 +40,10 @@ export function isDebugEnabled(source: string): boolean {
  * `undefined` become markers.
  *
  * `[Repeated]` covers an object that holds itself as well as one that merely appears twice, a seen-set having
- * no path to tell them apart. **On the logger's own path that branch is unreachable**: `redactSecrets` runs
- * first, cuts a loop as `[Circular Reference]` and copies a repeat into a fresh object, so nothing reaches here
- * twice. It stays because this function's contract is standalone — call it on a raw value, which nothing does
- * today, and it is the only thing between a loop and a throw.
+ * no path to tell them apart. That branch is what makes this function **total over any input**, which is the
+ * claim worth keeping: its one caller redacts first, and redaction cuts a loop and copies a repeat, so in
+ * practice nothing reaches here twice — but that is a fact about a caller, where totality is a fact about the
+ * function, and only one of the two survives somebody moving the call.
  *
  * The BigInt branch is what stops this throwing. `JSON.stringify` refuses one, and nothing caught that — so
  * `logger.info('a row', { count: 42n })` threw from inside the logger, on data this app's own database

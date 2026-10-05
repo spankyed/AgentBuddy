@@ -52,6 +52,11 @@ export interface Message {
    * WebSocket connection and stamps it on the way in (`createContext`, `packages/api/src/transport/context.ts`),
    * which is what makes it a return address a sender cannot forge. A client that puts a `client` on a send has
    * it dropped at the boundary, like any other field the input schema does not name.
+   *
+   * **A reload ends the connection, and an answer in flight for it is dropped.** The id is per connection, so a
+   * window that reloads mid-request is a different one and the subscription filters the reply out — where the
+   * old broadcast would have reached it. That is the trade an addressed answer makes, and the app already has
+   * the primitive for it: a view that asks for data asks again on `CLIENT_CONNECTED`.
    */
   client?: string;
   /**
