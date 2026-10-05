@@ -53,7 +53,7 @@ import {
   nearEdge, overBudget,
   CONFIG_BY_HALF, absentNamed, forStorage, namedIn, parseArgs, planFor, readSpecCost, recordMembership,
   writesMembershipOnly,
-  readingsText, renameAdvice,
+  readingsText,
   type SpecCost, type StoredSpecCost,
   pendingHere, provisional, forgetsWindows, recordedVerdict, settle, specCostFile, specFiles, stale, suiteCounts,
   suitesFor, unrecorded, type SpecCostPlan,
@@ -506,16 +506,34 @@ function check(only: string | undefined, named: readonly string[]): void {
     console.log(`\nOne agreeing reading from changing half, which is worth knowing before it does:`);
     for (const line of soon) console.log(line);
   }
-  if (problems.length > 0 || renames.length > 0) {
-    // The two kinds take different fixes, and telling them apart is the whole value of the advice: an
-    // update records what it can measure and cannot move a file, so a misplaced spec needs renaming and
-    // nothing else. Naming one command for both sent people to re-measure a suite that was already right.
-    const advice = [
-      problems.length > 0 ? `Run: npm run spec-cost:update${recordable.size === 1 ? ` -- --suite ${[...recordable][0]}` : ''}` : '',
-      renames.length > 0 ? renameAdvice(renames) : '',
-    ].filter(Boolean).join('\n');
-    const found = [...problems, ...renames.map(({ line }) => line)].join('\n');
-    throw new Error(`Spec costs are out of date (a fast spec moves above ${INTEGRATION_ABOVE_MS}ms, an integration one comes back below ${FAST_BELOW_MS}ms):\n${found}\n\n${advice}`);
+  /**
+   * **Placement is reported, never enforced — including on the machine that measured the cost.**
+   *
+   * It used to throw, and the reason it no longer does is a measurement rather than a preference. A spec's
+   * cost is not one number: `abuddy-cli`'s `run-install` reads 2.8s in the fast pool and 0.64s in the
+   * integration pool, a 4.37x move against a `CONTENTION_RATIO_MAX` of 2.5x — so it is over the upper edge
+   * in one half and under the lower edge in the other, and a gate acting on either reading demands a rename
+   * that the other reading immediately demands back. Measured 2026-10-05, once costs came from the pool
+   * that runs a spec (`measurePools`) rather than from one vitest per package.
+   *
+   * That is not a spec to fix. It is what an absolute millisecond edge does to a quantity that depends on
+   * which half you are asking from, and a gate cannot be right about it. So this takes `elsewhere`'s shape,
+   * which the comment above states for the same reason one level weaker — evidence that cannot be acted on
+   * is named, not enforced.
+   *
+   * **`problems` is still a gate**, and the split is the point: an unmeasured spec or a recorded one that
+   * has gone is a fact about which files exist, true on any machine and fixable by one command. Only the
+   * placement half depended on a number that moves.
+   */
+  if (renames.length > 0) {
+    console.log(`\nWorth a look, not a finding: these cost more than their half allows, read from the pool `
+      + 'that runs them. Whether a spec belongs in the other half is a judgement — a cost can be over the '
+      + 'upper edge in one half and under the lower edge in the other.');
+    for (const { line } of renames) console.log(line);
+  }
+  if (problems.length > 0) {
+    const advice = `Run: npm run spec-cost:update${recordable.size === 1 ? ` -- --suite ${[...recordable][0]}` : ''}`;
+    throw new Error(`Spec costs are out of date:\n${problems.join('\n')}\n\n${advice}`);
   }
   // **The tick says what was checked, not what the command is for.** Placement is enforced only against a
   // record this machine measured, so on any other box "in the half its cost implies" is a claim about work

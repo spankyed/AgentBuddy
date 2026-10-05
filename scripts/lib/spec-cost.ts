@@ -717,13 +717,23 @@ export const readingsText = (readings: number): string => {
   return readings === 2 ? '2 disagreeing, older standing' : `median of ${readings}`;
 };
 
+/**
+ * What to say about a spec whose cost names the other half — which is a suggestion and not an instruction.
+ *
+ * It read "Rename it into the half the cost implies" while `check` threw on the same finding. Both changed
+ * on 2026-10-05, for a measured reason: a spec's cost depends on which half is asking. `run-install` reads
+ * 2.8s in the fast pool and 0.64s in the integration pool, so it is over the upper edge in one half and
+ * under the lower edge in the other, and either reading demands a move the other demands back. The advice
+ * cannot promise the move is right, so it stops promising.
+ */
 export const renameAdvice = (renames: readonly { readonly readings: number }[]): string => {
   const it = renames.length === 1 ? 'it' : 'them';
-  const move = `Rename ${it} into the half the cost implies.`;
+  const move = `Consider moving ${it} into the half the cost implies — worth a look rather than a finding, `
+    + 'since a cost over the upper edge in one half can be under the lower edge in the other.';
   return renames.some((found) => found.readings === 1)
-    ? `${move} A cost resting on one reading can be a contended run, and a clean re-measurement inside the `
-      + 'band is dropped rather than recorded — so `npm run spec-cost:update -- --all --forget` on a quiet '
-      + 'machine is what replaces one, and re-measuring that spec alone will not.'
+    ? `${move} One of these rests on a single reading, which can be a contended run: a clean re-measurement `
+      + 'inside the band is dropped rather than recorded, so `npm run spec-cost:update -- --all --forget` on '
+      + 'a quiet machine is what replaces one.'
     : move;
 };
 

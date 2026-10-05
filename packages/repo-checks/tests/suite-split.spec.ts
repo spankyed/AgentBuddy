@@ -319,15 +319,6 @@ describe('a record anyone can add a spec to', () => {
 });
 
 describe.skipIf(!ON_MEASURED_MACHINE)(`a spec runs in the half its cost puts it in${OFF_BOX}`, () => {
-  it(`moves a fast spec above ${INTEGRATION_ABOVE_MS}ms, and brings an integration one back below ${FAST_BELOW_MS}ms`, () => {
-    const wrong = suites
-      .filter(({ record }) => record)
-      .flatMap(({ suite, dir, record, files }) => overBudget(dir, record!.samples, files)
-        .filter((found) => found.kind === 'rename')
-        .map((found) => `${suite.dir}/${found.file} costs ${(found.ms / 1000).toFixed(1)}s, which is ${found.belongs}, but it is in the ${halfOfPath(found.file)} half`));
-    expect(wrong, 'rename these, or re-measure if the cost has genuinely changed').toEqual([]);
-  });
-
   /**
    * And every fast spec can *notice* a crossing, which is the half of this the band used to swallow.
    *
@@ -448,10 +439,17 @@ describe('what a run says about a spec it cannot place', () => {
       .toContain('EXPENSIVE_BY_NATURE');
   });
 
-  it('tells a package with two halves to rename, and says which', () => {
+  /**
+   * It suggests rather than instructs, and that is the half worth asserting. A cost over the upper edge in
+   * one half can be under the lower edge in the other — measured 4.37x apart on `run-install` — so advice
+   * that told someone to rename was promising something the next reading takes back.
+   */
+  it('tells a package with two halves which half the cost names, without demanding the move', () => {
     const said = describeBudget([RENAME], 'any-suite');
     expect(said.tail).toContain('wrong half');
-    expect(said.advice.toLowerCase()).toContain('rename');
+    expect(said.advice.toLowerCase()).toContain('consider moving');
+    expect(said.advice.toLowerCase(), 'a suggestion, so it does not read as a finding')
+      .toContain('worth a look rather than a finding');
     expect(said.lines.join(' ')).toContain('integration');
   });
 
@@ -496,15 +494,16 @@ describe('what a run says about a spec it cannot place', () => {
     const said = describeBudget([{ ...RENAME, readings: 1 }], 'any-suite');
 
     expect(said.advice).toContain('npm run spec-cost:update -- --all --forget');
-    expect(said.advice, 'and says why the per-spec command is not the answer')
-      .toContain('re-measuring that spec alone will not');
+    expect(said.advice, 'and says why a reading inside the band cannot replace it')
+      .toContain('dropped rather than recorded');
   });
 
   it('says nothing about forgetting where every cost is corroborated', () => {
     const said = describeBudget([{ ...RENAME, readings: 3 }], 'any-suite');
 
     expect(said.advice, 'there is no single reading to replace').not.toContain('--forget');
-    expect(said.advice).toBe('Rename it into the half the cost implies.');
+    expect(said.advice).toBe('Consider moving it into the half the cost implies — worth a look rather than a '
+      + 'finding, since a cost over the upper edge in one half can be under the lower edge in the other.');
   });
 
   /**
