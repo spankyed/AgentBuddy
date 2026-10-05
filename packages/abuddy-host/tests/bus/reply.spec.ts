@@ -11,7 +11,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, fromPromise, setup, type AnyActorRef } from 'xstate';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '@abuddy/sdk/testing';
-import { _runDelivery, reply, untypedBroadcastToPlugin, type Message } from '@abuddy/sdk/events';
+import { _runDelivery, reply, untypedBroadcastToPlugin, untypedSendToSystem, type Message } from '@abuddy/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/registry.ts';
@@ -72,9 +72,25 @@ const invoking = setup({
   },
 });
 
+/**
+ * Asks the answering system and records what comes back: the asker in a system-to-system round trip.
+ *
+ * It has a plugin as well as a system, which is the point — a feature's two halves share one ref, so before
+ * `reply` routed on the connection the answer went to this *plugin*, in every window, and the system that
+ * asked got nothing. The case below asserts both halves of that: the system has it, and no window did.
+ */
+const answered: string[] = [];
+const asking = setup({}).createMachine({
+  on: {
+    GO: { actions: () => { untypedSendToSystem('memo-pack/memos', { type: 'PING', tag: 'from-a-system' }); } },
+    MEMO_ADDED: { actions: ({ event }) => { answered.push(String((event as { tag?: string }).tag ?? '')); } },
+  },
+});
+
 const memoFeatures = {
   memos: { system: { machine: answering, receives: ['PING', 'ANNOUNCE'] }, plugin: { receives: ['MEMOS_CONNECTED', 'MEMO_ADDED'] } },
   invoker: { system: { machine: invoking, receives: ['PING'] }, plugin: { receives: ['MEMO_ADDED'] } },
+  asker: { system: { machine: asking, receives: ['GO', 'MEMO_ADDED'] }, plugin: { receives: ['MEMO_ADDED'] } },
 };
 
 let bus: AnyActorRef;
@@ -88,6 +104,7 @@ const ask = (message: Message) => { bus.send({ type: 'INCOMING', message }); };
 
 beforeEach(async () => {
   outgoing.length = 0;
+  answered.length = 0;
   stopOutgoing = testRootEvents.onOutgoing((message) => { outgoing.push(message); });
   registry.registerPack({ id: 'memo-pack', features: memoFeatures });
   registry.registerPack(hostRegistration());
@@ -145,13 +162,28 @@ describe('reply', () => {
     ]);
   });
 
-  // An ask with no connection is a backend-to-backend send; the answer is then for every window, as before
-  it('answers every connection when the ask named none', async () => {
-    ask({ to: 'memo-pack/memos', event: { type: 'PING' }, sender: 'memo-pack/memos' });
+  /**
+   * The ask with no connection, which is a system's, and the case this routing exists for.
+   *
+   * It used to be answered outward and read as correct — "the answer is then for every window, as before" —
+   * which was wrong twice: the system that asked never got it, and because a feature's system and plugin share
+   * one ref, a private answer went to that feature's plugin in every open window. `answered` is the asking
+   * *system*; `answers()` is what the windows saw.
+   */
+  it('answers the asking system when the ask came from no connection', async () => {
+    bus.send({ type: 'INCOMING', message: { to: 'memo-pack/asker', event: { type: 'GO' } } });
     await after(20);
 
-    expect(answers()).toHaveLength(1);
-    expect(answers()[0].client, 'absent, which the subscription reads as every connection').toBeUndefined();
+    expect(answered, 'the system that asked has its answer').toEqual(['from-a-system']);
+    expect(answers(), 'and no window was sent it').toEqual([]);
+  });
+
+  it('still answers outward when the ask came from a connection', async () => {
+    ask({ to: 'memo-pack/memos', event: { type: 'PING', tag: 'from-a-window' }, sender: 'memo-pack/memos', client: 'c-main' });
+    await after(20);
+
+    expect(answers().map(({ client }) => client), 'one connection, not a broadcast').toEqual(['c-main']);
+    expect(answered, 'and no system was sent it').toEqual([]);
   });
 });
 

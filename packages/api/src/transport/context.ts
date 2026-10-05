@@ -10,12 +10,22 @@
 import { randomId } from '@abuddy/sdk/utils/pure';
 
 /**
- * What the WebSocket adapter hands this, narrowed to the one member used. The adapter aborts this signal from
- * `client.once('close')`, so it is the connection ending rather than any one call being cancelled.
+ * What the WebSocket adapter hands this, narrowed to the one member used.
+ *
+ * **Both members are required, and that is a fact about the adapter rather than a wish.** Read out of
+ * `@trpc/server@11.16.0`'s installed adapter (`dist/ws-*.mjs`) rather than from memory: it builds `info` as
+ * an object literal at its only call site with `signal: abortController.signal` always set, and its own
+ * types declare `info` and `info.signal` non-optional. The controller is per connection, created once in the
+ * handler and aborted from `client.once('close')` — a cancelled *operation* uses a different, inner one.
+ *
+ * They were optional until the type was checked against that, and the optionality was load-bearing in the
+ * wrong direction: `bus.ts` had to write `ctx.closed?.addEventListener`, so a signal that never arrived would
+ * have leaked every participant claim for the life of the process without a word. `context.spec.ts` runs a
+ * real adapter so that a tRPC bump which stops supplying it fails there rather than restoring that silence.
  */
-type ConnectionArgs = { info?: { signal?: AbortSignal } };
+type ConnectionArgs = { info: { signal: AbortSignal } };
 
-export const createContext = ({ info }: ConnectionArgs = {}) => ({
+export const createContext = ({ info }: ConnectionArgs) => ({
   client: randomId({ prefix: 'c-' }),
   /**
    * Fires when this connection ends, whatever ended it. Anything holding per-connection state releases it here.
@@ -24,7 +34,7 @@ export const createContext = ({ info }: ConnectionArgs = {}) => ({
    * both too eager — a client that stops subscribing while keeping its socket would lose its name — and too
    * narrow, since one that claims without ever subscribing would hold the name until the process exited.
    */
-  closed: info?.signal,
+  closed: info.signal,
 });
 
 export type Context = ReturnType<typeof createContext>;

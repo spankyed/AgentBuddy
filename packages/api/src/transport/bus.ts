@@ -100,7 +100,7 @@ export const systemBusRouter = router({
       }
       // Released when the connection ends, which is the only event that means the claimer is gone. A claim is
       // keyed by an id minted per socket, so there is nothing to reconcile: the name is free for the next one.
-      ctx.closed?.addEventListener('abort', () => appClaims.release(ctx.client), { once: true });
+      ctx.closed.addEventListener('abort', () => appClaims.release(ctx.client), { once: true });
       logger.info(`→ Claimed "${input.as}"`, { as: input.as });
     }),
   sub: procedure

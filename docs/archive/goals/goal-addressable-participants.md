@@ -351,8 +351,21 @@ also invalidates Phase 5's own criteria.
    real obstacle was that `actor.id` had to be the ref, which it is because the shell spawns a plugin with its ref
    as both `id` and `systemId`. The lesson is the obvious one: the claim cost a paragraph of documentation and the
    check cost one throwaway spec.
-3. **A reply to a *system*.** `reply` sends outbound (to a plugin or participant). No existing pair needs
-   system-to-system, so it throws rather than guessing.
+3. ~~**A reply to a *system*.**~~ — **done**, and this item was wrong twice. It said `reply` "throws rather
+   than guessing"; there was no such check, so an answer to a system went out on the plugin path. That is not a
+   silent loss either: a feature's system and plugin share one ref, so for any asker that also has a plugin —
+   the common case — the private answer was delivered to that plugin **in every open window**, which is the
+   failure `reply` exists to prevent. Found by review rather than by a case, because nothing in the repo asks a
+   system and replies, and because `reply.spec.ts` asserted the broadcast as correct ("the answer is then for
+   every window, as before").
+
+   `reply` now routes on `Message.client`: present means the asker is on a connection and the answer goes out
+   to that one, absent means the ask came from the backend and the answer goes **in**, to the asking system.
+   The decision recorded here — refuse rather than support — was reversed deliberately, because a handler whose
+   behaviour depends on who asked is the thing `reply` was built to remove. **The ref cannot make this
+   decision**, which is why routing on it was tried and abandoned: `systemIds()` and `pluginIds()` both hold
+   feature refs and are not disjoint. The harness gained a `client` on `app.send` so a spec can stand for a
+   window rather than only for a system.
 4. **Typed replies.** Still deferred, as the plan said: an `answers` contract field, a codegen reader and a rebuild
    of every pack.
 

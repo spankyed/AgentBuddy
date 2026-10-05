@@ -16,13 +16,22 @@ import { describe, expect, it } from 'vitest'
 import { startApp } from '@abuddy/testing/harness'
 
 const DATABASE = 'default-setup/database'
+/**
+ * The connection the ask arrived on, which is what makes these asks a *window's*.
+ *
+ * `reply` routes on it: with a connection the asker is a plugin or a driver and the answer goes out to that
+ * connection, without one the ask came from the backend and the answer goes to the asking system. A real
+ * client's send always carries one, stamped per socket by the API; a send made from a test carries nothing
+ * unless it says so. Every case here is a view running a query, so every case names one.
+ */
+const WINDOW = 'c-window'
 
 describe('a query run by a plugin', () => {
   it('is answered to the asker, carrying the id it asked with', async () => {
     const app = await startApp({ systems: ['database'] })
     await app.connect()
 
-    await app.send('database', { type: 'EXECUTE_QUERY', code: 'return 1 + 1', requestId: 'q-1' }, { sender: DATABASE })
+    await app.send('database', { type: 'EXECUTE_QUERY', code: 'return 1 + 1', requestId: 'q-1' }, { sender: DATABASE, client: WINDOW })
     const answer = await app.nextEmit('database', 'QUERY_RESULT')
 
     expect(answer).toMatchObject({ type: 'QUERY_RESULT', result: 2, requestId: 'q-1' })
@@ -33,7 +42,7 @@ describe('a query run by a plugin', () => {
     const app = await startApp({ systems: ['database'] })
     await app.connect()
 
-    await app.send('database', { type: 'EXECUTE_QUERY', code: 'return nope', requestId: 'q-2' }, { sender: DATABASE })
+    await app.send('database', { type: 'EXECUTE_QUERY', code: 'return nope', requestId: 'q-2' }, { sender: DATABASE, client: WINDOW })
     const answer = await app.nextEmit('database', 'QUERY_ERROR')
 
     expect(answer).toMatchObject({ type: 'QUERY_ERROR', requestId: 'q-2' })
@@ -51,7 +60,7 @@ describe('a query run by a plugin', () => {
   it('says why nothing arrived when no client has connected', async () => {
     const app = await startApp({ systems: ['database'] })
 
-    await app.send('database', { type: 'EXECUTE_QUERY', code: 'return 1', requestId: 'q-3' }, { sender: DATABASE })
+    await app.send('database', { type: 'EXECUTE_QUERY', code: 'return 1', requestId: 'q-3' }, { sender: DATABASE, client: WINDOW })
 
     await expect(app.nextEmit('database', 'QUERY_RESULT', { timeoutMs: 200 }))
       .rejects.toThrow(/No client has connected/)
@@ -71,7 +80,7 @@ describe('a query run by a plugin', () => {
     await app.send(
       'database',
       { type: 'EXECUTE_TRANSACTION', code: 'return 1', requestId: 't-1' },
-      { sender: DATABASE },
+      { sender: DATABASE, client: WINDOW },
     )
     await app.nextEmit('database', 'TRANSACTION_RESULT')
     await app.settle()

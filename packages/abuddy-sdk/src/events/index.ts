@@ -334,8 +334,21 @@ export function untypedSendToSystem(to: SystemTarget, event: { type: string; [ke
  *
  * This is the whole of a reply: no address is named, because the handler's own message already carries one. A
  * plugin that asked gets the answer in the window it asked from and in no other; a participant that claimed a
- * name (`host/drive`) gets it as itself. The same handler therefore answers a plugin and a driver identically,
- * which is the point — the alternative is every pair inventing a correlation id and a guard to match it.
+ * name (`host/drive`) gets it as itself; a system that asked gets it at its system. The same handler therefore
+ * answers all three identically, which is the point — the alternative is every pair inventing a correlation id
+ * and a guard to match it.
+ *
+ * **Which way the answer goes is decided by `client`, not by the ref**, and the ref could not decide it: a
+ * feature's system and its plugin share one, so `default-setup/database` is at once the system that handles
+ * `EXECUTE_QUERY` and the plugin that receives `QUERY_RESULT`. `client` is exact instead of incidental —
+ * it is the connection a message came from, so its presence means the asker is on one (a plugin in a window,
+ * or a claimed participant) and its absence means the ask originated in the backend, where the asker is a
+ * system. An answer to a system is a message sent *in*, which is why this is not a second branch in the bus's
+ * outgoing path: that would make something "sent out" reach a system.
+ *
+ * One difference the inward answer inherits: the incoming path runs no event-type check, so an answer a system
+ * does not declare is a warning and a drop rather than the `diagnostic` system error the plugin path raises.
+ * That is what an ordinary backend `sendToSystem` already does, so it is consistent rather than a new hole.
  *
  * Call it from the handler that was given the message, or from work that handler awaited. It reads the message
  * in scope rather than one it was passed, so a callback stored during one delivery and invoked from another
@@ -355,12 +368,17 @@ export function reply(event: { type: string; [key: string]: unknown }): void {
   if (!delivery.replyTo) {
     throw new Error(`reply() cannot answer the message that reached "${delivery.receiver}", which named no sender, so there is no address to answer at. Reach the target by name with broadcastToPlugin instead.`);
   }
-  boundHost().transport.rootEvents.emitPluginSend({
-    to: delivery.replyTo,
-    event,
-    sender: delivery.receiver,
-    ...(delivery.client ? { client: delivery.client } : {}),
-  });
+  const { rootEvents } = boundHost().transport;
+  // Outward, to the one connection that asked: a plugin in its own window, or a claimed participant as itself
+  if (delivery.client !== undefined) {
+    rootEvents.emitPluginSend({
+      to: delivery.replyTo, event, sender: delivery.receiver, client: delivery.client,
+    });
+    return;
+  }
+  // No connection, so a system asked, and a system is reached by a message sent in. `emitIncoming` directly
+  // rather than `sendIncoming`, which prefers the frontend-bound branch and would put a reply on the wire
+  rootEvents.emitIncoming({ to: delivery.replyTo, event, sender: delivery.receiver });
 }
 
 /** Calls `callback` each time a client connects; returns the unsubscribe (backend only) */

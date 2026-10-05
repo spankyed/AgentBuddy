@@ -63,8 +63,19 @@ export interface TestApp {
    * because it is made while handling something else (`createSends` reads the delivery in scope), and a send
    * made from here carries nothing unless it is given. Without it `reply` throws "named no sender", so a pack
    * test could not drive such a handler at all.
+   *
+   * `client` says the ask arrived on a connection, which is what decides where `reply` sends the answer: with
+   * one, the asker is a plugin in a window or a claimed participant and the answer goes to that connection
+   * alone; without one, the ask originated in the backend and the answer goes to the asking *system*. A real
+   * client's send always carries one (the API stamps it per socket), and nothing sent from here does unless it
+   * is given — so a spec standing in for a window or a driver passes one, and a spec standing in for a system
+   * does not. Any string: nothing here routes on its value, only on whether there is one.
    */
-  send(systemId: string, event: { type: string; [key: string]: unknown }, options?: { sender?: string }): Promise<void>;
+  send(
+    systemId: string,
+    event: { type: string; [key: string]: unknown },
+    options?: { sender?: string; client?: string },
+  ): Promise<void>;
   /**
    * The events delivered to one frontend plugin (by `broadcastToPlugin`, once connected), in order, exactly as
    * sent; the plugin named as the pack names it (its own by feature id, any other as `<packId>/<featureId>`).
@@ -382,7 +393,10 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     }),
     send: (systemId, event, options) => call(async () => {
       const sender = options?.sender === undefined ? {} : { sender: resolveSystemId(options.sender, systems) };
-      testRootEvents.emitIncoming({ to: resolveSystemId(systemId, systems), event, ...sender });
+      // Passed through unresolved: a connection id is not a ref, and whether there is one is the whole of what
+      // `reply` reads it for
+      const client = options?.client === undefined ? {} : { client: options.client };
+      testRootEvents.emitIncoming({ to: resolveSystemId(systemId, systems), event, ...sender, ...client });
       await settle();
     }),
     emitted(plugin) {
