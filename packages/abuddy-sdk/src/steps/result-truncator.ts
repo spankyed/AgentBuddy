@@ -25,23 +25,44 @@ const UNREADABLE = '[Unreadable]';
  * a loop, and measuring with a bare one is what used to discard the whole result and persist
  * `_error: 'serialization_failed'` to the TNode in place of the row.
  */
-function serialisedSize(record: object): number {
+/** A replacer that counts a BigInt as its digits and a repeated object once. Stateful, so one per pass. */
+function sizeReplacer(): (key: string, value: unknown) => unknown {
   const seen = new WeakSet<object>();
+  return (_key, value) => {
+    if (typeof value === 'bigint') return value.toString();
+    if (value !== null && typeof value === 'object') {
+      if (seen.has(value)) return undefined;
+      seen.add(value);
+    }
+    return value;
+  };
+}
+
+function serialisedSize(record: object): number {
   try {
-    return JSON.stringify(record, (_key, value: unknown) => {
-      if (typeof value === 'bigint') return value.toString();
-      if (value !== null && typeof value === 'object') {
-        if (seen.has(value)) return undefined;
-        seen.add(value);
-      }
-      return value;
-    })?.length ?? 0;
+    return JSON.stringify(record, sizeReplacer())?.length ?? 0;
   } catch {
-    // A field that throws when it is read, which `JSON.stringify` reaches before any size is known. Counted as
-    // nothing, so every key is kept and read one at a time below — where the one that throws becomes a marker
-    // and the rest of the row still arrives.
-    return 0;
+    // A field that throws when it is read, which `JSON.stringify` reaches before any size is known. Measured
+    // field by field instead rather than answered as 0: the size bound is the reason this function exists, and
+    // calling an unmeasurable object small would keep every key of one of any size.
+    return readableFieldsSize(record);
   }
+}
+
+/** The size of the fields that can be read, for an object one hostile field made unmeasurable as a whole */
+function readableFieldsSize(record: object): number {
+  let total = 0;
+  for (const key of Object.keys(record)) {
+    const field = readField(record as Record<string, unknown>, key);
+    if (!field) continue;
+    try {
+      total += JSON.stringify(field.value, sizeReplacer())?.length ?? 0;
+    } catch {
+      // A field whose own contents throw deeper down, or a loop a per-field pass cannot see. Counted as
+      // nothing, which understates the size by one field rather than losing the bound for the whole row.
+    }
+  }
+  return total;
 }
 
 /**

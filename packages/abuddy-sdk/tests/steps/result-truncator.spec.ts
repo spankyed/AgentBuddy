@@ -48,6 +48,23 @@ describe('a field that cannot be read', () => {
     expect(truncateResult(row)).toEqual({ id: 'Note-1', title: 'Beta', boom: '[Unreadable]' });
   });
 
+  /**
+   * And the size bound still applies to it, which answering "unmeasurable means small" would have lost.
+   *
+   * The whole object cannot be measured — `JSON.stringify` reaches the hostile field first — so the readable
+   * fields are summed instead. A big row with one bad getter is still cut to twenty keys.
+   */
+  it('still cuts the keys of a large row it cannot measure whole', () => {
+    const wide: Record<string, unknown> = {};
+    for (let index = 0; index < 60; index++) wide[`key${index}`] = 'x'.repeat(2000);
+    Object.defineProperty(wide, 'boom', { enumerable: true, get() { throw new Error('bang'); } });
+    const cut = truncateResult(wide) as { value: Record<string, unknown>; _originalKeys: number; _type: string };
+
+    expect(cut._type, 'truncated, not passed through whole').toBe('object');
+    expect(Object.keys(cut.value)).toHaveLength(20);
+    expect(cut._originalKeys).toBe(61);
+  });
+
   it('marks a value whose own toJSON throws, rather than failing the row around it', () => {
     const hostile = { toJSON() { throw new Error('bang'); } };
 
