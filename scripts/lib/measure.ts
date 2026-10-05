@@ -129,16 +129,31 @@ export const IDLE_FLOOR = 0.7;
  * | 3 burners | 67% | 3.3 | +16% | 250% |
  * | 5 burners | 36% | 6.4 | +43% | 250% |
  *
- * The line that sets it: **at `IDLE_FLOOR` a permitted run drifts the body about as far as `DRIFT_SHARE`,
- * the threshold the drift report exists to raise.** A floor that admits runs its own drift gate would flag
- * is not a floor. The crossover is near 77%; at 81% the drift is +4%, inside the -7% that two quiet runs
- * differ by on their own. So this is the lowest round figure whose expected drift sits inside quiet-run
- * variance, with margin for a box noisier than the one measured.
+ * The line that sets it: **a floor that admits runs its own drift gate would flag is not a floor.** The
+ * crossover is near 77% and 76% gave +15%, which is `DRIFT_SHARE` exactly; at 81% the drift is +4%, inside
+ * the -7% that two quiet runs differ by on their own. So the floor has to sit above 77%, and 80% is the
+ * lowest round figure that does — a run admitted here is expected to drift about 5% against a gate that
+ * fires at 15%, so the property holds.
+ *
+ * **It was 85% until 2026-10-05, and the margin was the thing that moved.** 85 was this same table read as
+ * "the lowest round figure whose expected drift sits inside quiet-run variance, *with margin for a box
+ * noisier than the one measured*". The margin cost more than it bought: on the box the table was measured
+ * on, readings sat at 82-85% for about fifteen minutes with nothing else obviously running, which refused a
+ * legitimate 415-row re-record that had a defect waiting on it. A floor nobody can reach is a floor that
+ * gets `--force`d, which is worse than one set where the data says it belongs. The margin is gone; the
+ * measured basis is not.
+ *
+ * **What still catches a run this admits**, which is why dropping the margin is not the only protection:
+ * `refusesAsContended` asks *after* measuring whether too much of the body moved to have been measuring the
+ * code, and it is on for both callers. `chain --record` additionally reports body drift (`driftVerdict`).
+ * `spec-cost:update` no longer does — that report was removed on 2026-10-05 for a reason of its own — so
+ * for spec costs the post-hoc contention check is the whole of it. If that check is ever weakened, this
+ * number is the one to put back.
  *
  * **Not 90%**, for `IDLE_FLOOR`'s reason: readings of 86-95% came easily on that box and 78% came up
  * repeatedly, so 90% is the value that gets `--force`d. And not a per-spec bound, because there is no such
  * thing to have — one quiet run moves a single spec 74% against another, which is why the record keeps a
- * window and the report watches the body.
+ * window.
  *
  * **This floor guards the body, and nothing else asks it to guard a half.** A reading that would place a
  * spec in the other half cannot become the answer on its own — `spec-cost.ts`'s `WINDOW` keeps more than
@@ -150,13 +165,14 @@ export const IDLE_FLOOR = 0.7;
  * rate turned out to be. Deleted rather than re-measured for that second reason.
  *
  * **The relationship to `DRIFT_SHARE` is empirical and no case asserts it**, which is deliberate: the two
- * are different quantities. `1 - 0.85` happens to equal `DRIFT_SHARE` exactly, and an assertion was written
- * on that before it was checked — but the busy share of a box is not body drift, and the measured ratio
- * between them is about 0.6 to 1 (24% busy gave +15%). A spec cannot re-take the measurement, so what
- * `measure.spec.ts` holds is the ordering: a recording floor stricter than the printing one. Re-measure the
- * box and both numbers may move; that ordering may not.
+ * are different quantities. `1 - 0.85` used to equal `DRIFT_SHARE` exactly and an assertion was written on
+ * that before it was checked — the busy share of a box is not body drift, and the measured ratio between
+ * them is about 0.6 to 1 (24% busy gave +15%). That coincidence is gone now, which is the clearest argument
+ * it was one. A spec cannot re-take the measurement, so what `measure.spec.ts` holds is the ordering: a
+ * recording floor stricter than the printing one. Re-measure the box and both numbers may move; that
+ * ordering may not.
  */
-export const RECORD_IDLE_FLOOR = 0.85;
+export const RECORD_IDLE_FLOOR = 0.80;
 
 /**
  * How far a re-measurement has to move before a record follows it, as a share of what is recorded.

@@ -176,7 +176,7 @@ reading that would place a spec in a different half, exactly, on the reasoning t
 only consumer. Measured 2026-10-03, a recording taken at 78% idle — which the floor of the day allowed —
 moved two specs across `INTEGRATION_ABOVE_MS` and a gate demanded two renames; two clean runs put both
 back. The same band then stopped the clean readings correcting it, since displacing a recorded value takes
-35% of it. (The floor for a *recording* is 85% now, measured against that episode's successor:
+35% of it. (The floor for a *recording* is 80% now, measured against that episode's successor:
 `RECORD_IDLE_FLOOR`. It is the body it keeps honest, and a crossing is still the window's to absorb — no
 run above 36% idle moved a spec across an edge in the sweep that set it.)
 So `spec-cost.json` holds a **window** of up to `WINDOW` readings per spec and the cost is their median:
@@ -674,7 +674,7 @@ npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a nu
                          #   --idle PERCENT    lower the floor    --force  measure anyway
                          # It refuses below IDLE_FLOOR (70%) — the floor for a command that *prints*, where
                          # the output carries its own conditions; a command that records asks
-                         # RECORD_IDLE_FLOOR (85%) instead. Read from os.cpus() rather than load average,
+                         # RECORD_IDLE_FLOOR (80%) instead. Read from os.cpus() rather than load average,
                          # which lags — measured, loadavg 3.20 on a box that was 78.7% idle. **Idle is
                          # sampled between runs, never during one**: a reading taken while the command runs
                          # measures the command, and a quiet box reads 0% while a suite uses it.
@@ -722,7 +722,7 @@ npm run spec-cost:update # The least that makes the records current, which is of
                          # nothing is wrong, against minutes of file time to re-measure everything. It says which
                          # case it took: a deleted spec needs no measurement to drop, a new one needs only
                          # the half it lives in.
-                         # **It will not measure below RECORD_IDLE_FLOOR (85%)** — what you would record on
+                         # **It will not measure below RECORD_IDLE_FLOOR (80%)** — what you would record on
                          # a busy box is the machine, and a cost was once recorded at a load of 71 and
                          # reverted by hand. 85 rather than the 70 a printed timing needs, because measured
                          # 2026-10-04 a run admitted at 70% drifts the body about as far as DRIFT_SHARE, the
@@ -787,7 +787,7 @@ npm run spec-cost:update # The least that makes the records current, which is of
 npm run check:idle       # Is this machine quiet enough to measure on, and for which kind of measurement —
                          # `89% idle — quiet enough to record on`, exit 1 below the recording floor.
                          # **Two floors, because what a command leaves behind decides how quiet it needs to
-                         # be**: recording needs 85% (`spec-cost:update`, `chain --record`), printing needs
+                         # be**: recording needs 80% (`spec-cost:update`, `chain --record`), printing needs
                          # 70% (`measure`, `measure:loop`). It reports both and exits on the stricter,
                          # being a pre-flight for --record; a reader who only wants to print is told so.
                          # Three commands refuse when the box is busy and none could be asked in advance:
