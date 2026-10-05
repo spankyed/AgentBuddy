@@ -175,10 +175,20 @@ export const DRIVE_REF = HOST.drive;
 const channelGone = (requestId: string, reason: string): Error =>
   new Error(`no answer for ${requestId}: ${reason}. The drive session's connection to the app is finished, so restart the session.`);
 
-const REPLIES = {
-  qx: { send: 'EXECUTE_QUERY', ok: 'QUERY_RESULT', bad: 'QUERY_ERROR' },
-  tx: { send: 'EXECUTE_TRANSACTION', ok: 'TRANSACTION_RESULT', bad: 'TRANSACTION_ERROR' },
-} as const;
+/**
+ * What a refusal says, whichever shape the answering system uses.
+ *
+ * The database answers with one `error`; the settings store answers with `problems`, a list, because a
+ * document can be wrong in several places at once. Both are the same thing to a caller — why it was refused —
+ * so they are read here rather than at each call site.
+ */
+const refusalText = (event: Record<string, unknown>): string => {
+  if (Array.isArray(event.problems)) return event.problems.join('; ');
+  return String(event.error ?? 'the system reported an error');
+};
+
+/** The system that runs query and transaction code, and the one that owns the settings document */
+const SETTINGS_SYSTEM = 'host/settings';
 
 /**
  * Runs a verb and turns any throw into the failure half of `EngineResult`.
@@ -321,7 +331,7 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
    * concurrent `/qx` calls can be told apart. An orphan matches nobody — a request that timed out and then
    * finished, or a reply to someone querying in the Database plugin while a session drives.
    */
-  const nextReply = (requestId: string, ok: string, bad: string): Promise<unknown> =>
+  const nextReply = (to: string, requestId: string, ok: string, bad: string): Promise<unknown> =>
     new Promise((resolve, reject) => {
       // Already gone, so there is nothing to wait for and no reason to make the caller wait for the timeout
       if (api.failure !== null) {
@@ -334,7 +344,7 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
           if (event.event.requestId !== requestId) return;
           clearTimeout(timer);
           waiting.delete(waiter);
-          if (event.type === bad) reject(new Error(String(event.event.error ?? 'the system reported an error')));
+          if (event.type === bad) reject(new Error(refusalText(event.event)));
           else resolve(event.event.result);
         },
         /** The channel finished while this was in flight: say so now rather than in fifteen seconds */
@@ -354,9 +364,9 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
           return;
         }
         reject(new Error(`no ${ok} or ${bad} for ${requestId} within ${REPLY_TIMEOUT_MS}ms. `
-          + `Either the query is still running, or no pack provides ${DATABASE_SYSTEM}, or its `
-          + `system answered with a broadcast rather than a reply — which an app built before ${DRIVE_REF} `
-          + 'existed does, and GET /events would then show the answer arriving unaddressed.'));
+          + `Either it is still running, or nothing provides ${to}, or that system answered with a `
+          + `broadcast rather than a reply — which an app built before ${DRIVE_REF} existed does, and `
+          + 'GET /events would then show the answer arriving unaddressed.'));
       }, REPLY_TIMEOUT_MS);
       waiting.add(waiter);
     });
@@ -372,18 +382,36 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
   const sendToSystem = (to: string, event: Record<string, unknown>): Promise<unknown> =>
     api.send({ to, event, sender: DRIVE_REF }).then(() => null);
 
-  const roundTrip = async (kind: keyof typeof REPLIES, code: string): Promise<unknown> => {
-    const { send, ok, bad } = REPLIES[kind];
+  /**
+   * Asks a system something and waits for the answer it addresses back, matched by the id the request minted.
+   *
+   * Taking the system and the event rather than a kind, because the database is no longer the only thing that
+   * answers: the settings system replies to whoever asked for a write, and `/set-setting` reporting success for
+   * a refused write was the whole reason it had to.
+   */
+  const roundTrip = async (
+    to: string,
+    prefix: string,
+    event: Record<string, unknown>,
+    ok: string,
+    bad: string,
+  ): Promise<unknown> => {
     // Minted here, by the requester: a reply can only name a request if the request named itself first
-    const requestId = randomId({ prefix: `${kind}-` });
+    const requestId = randomId({ prefix: `${prefix}-` });
     // Armed before the send, so a reply that arrives immediately is not missed
-    const reply = nextReply(requestId, ok, bad);
+    const answer = nextReply(to, requestId, ok, bad);
     // A send that never left means no answer is coming, and the armed waiter is abandoned — handled here so
     // its rejection is not an unhandled one when the timer finally fires
-    reply.catch(() => {});
-    await sendToSystem(DATABASE_SYSTEM, { type: send, code, requestId });
-    return reply;
+    answer.catch(() => {});
+    await sendToSystem(to, { ...event, requestId });
+    return answer;
   };
+
+  /** What the database answers with, which is the one round-trip shape used twice */
+  const runCode = (prefix: 'qx' | 'tx', type: string, code: string): Promise<unknown> =>
+    roundTrip(DATABASE_SYSTEM, prefix, { type, code },
+      prefix === 'qx' ? 'QUERY_RESULT' : 'TRANSACTION_RESULT',
+      prefix === 'qx' ? 'QUERY_ERROR' : 'TRANSACTION_ERROR');
 
   /**
    * Hooks the app's actor inspection up to `BRIDGE_FUNCTION`, which is a callback into this process rather
@@ -484,8 +512,8 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
 
     system: (to, event) => attempt('system', () => sendToSystem(to, event)),
 
-    qx: (code) => attempt('qx', () => roundTrip('qx', code)),
-    tx: (code) => attempt('tx', () => roundTrip('tx', code)),
+    qx: (code) => attempt('qx', () => runCode('qx', 'EXECUTE_QUERY', code)),
+    tx: (code) => attempt('tx', () => runCode('tx', 'EXECUTE_TRANSACTION', code)),
 
     state: () => attempt('state', () => page.evaluateExpression(`(() => {
       const snap = window.applicationState?.getSnapshot();
@@ -565,21 +593,32 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
      * query path that already works, where `GET_SETTINGS` answers by broadcasting to a *plugin* and would
      * need a second kind of waiter to catch.
      */
-    settings: () => attempt('settings', () => roundTrip('qx', `return qx('Settings-app').pickOne(['data'])?.data ?? {}`)),
+    settings: () => attempt('settings', () => runCode('qx', 'EXECUTE_QUERY', `return qx('Settings-app').pickOne(['data'])?.data ?? {}`)),
 
     /**
      * One setting, in a feature's slice or in a registered section.
      *
      * `entityType` is which arm of the target it is — the settings system branches on it between
      * `setForFeature` and `setInSection`, and hardcoding `'plugin'` was what made a section unwritable.
+     *
+     * **A round-trip, not a send.** It resolved as soon as the send was accepted, so a write the store
+     * refused — an unknown feature ref, a section nobody registered, a change while a backup is being
+     * imported — answered `ok: true` and wrote nothing. `/query` had made the opposite bargain since it
+     * existed, which is what left this one looking like it worked.
      */
-    setSetting: (target, at, value) => attempt('setSetting', () => sendToSystem('host/settings', {
-      type: 'UPDATE_SETTINGS',
-      entityType: 'plugin' in target ? 'plugin' : 'section',
-      label: 'plugin' in target ? target.plugin : target.section,
-      path: at.split('.'),
-      value,
-    })),
+    setSetting: (target, at, value) => attempt('setSetting', () => roundTrip(
+      SETTINGS_SYSTEM,
+      'set-setting',
+      {
+        type: 'UPDATE_SETTINGS',
+        entityType: 'plugin' in target ? 'plugin' : 'section',
+        label: 'plugin' in target ? target.plugin : target.section,
+        path: at.split('.'),
+        value,
+      },
+      'SETTINGS_SAVED',
+      'SETTINGS_REFUSED',
+    )),
 
     logs: ({ since, source }) => attempt('logs', async () => {
       const lines = readLog().split('\n').filter(Boolean);

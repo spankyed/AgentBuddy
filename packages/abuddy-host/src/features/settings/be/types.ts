@@ -9,9 +9,12 @@ import type { SettingsDocument } from './store.ts';
 
 export type IncomingSettingsEvents =
   | { type: 'GET_SETTINGS' }
-  | { type: 'UPDATE_SETTINGS'; entityType: 'section' | 'plugin'; label: string; path: string[]; value: any }
-  | { type: 'RESET_SETTINGS' }
-  | { type: 'REPLACE_SETTINGS'; data: unknown }
+  // `requestId` is how a sender tells its own answer from someone else's: addressing says which connection an
+  // answer came back on, never which request it answers. The Settings view sends none and needs none, having
+  // one write in flight at a time; a drive session may have several.
+  | { type: 'UPDATE_SETTINGS'; entityType: 'section' | 'plugin'; label: string; path: string[]; value: any; requestId?: string }
+  | { type: 'RESET_SETTINGS'; requestId?: string }
+  | { type: 'REPLACE_SETTINGS'; data: unknown; requestId?: string }
   | { type: 'RESET_APP' }
 
 // The host's secrets store sends this over the bus (`secrets/index.ts`, `forwardSecretsChanges`), so it arrives
@@ -33,10 +36,10 @@ export type OutgoingSettingsEvents =
   /** The installed packs changed, so what they answer with in Help has too */
   | { type: 'HELP_UPDATED'; help: HelpEntry[] }
   | { type: 'SETTINGS_UPDATED'; data: SettingsDocument }
-  /** A change (`UPDATE_SETTINGS`, `REPLACE_SETTINGS`) was stored */
-  | { type: 'SETTINGS_SAVED' }
+  /** A change (`UPDATE_SETTINGS`, `REPLACE_SETTINGS`, `RESET_SETTINGS`) was stored */
+  | { type: 'SETTINGS_SAVED'; requestId?: string }
   /** A change was refused, and stored nothing */
-  | { type: 'SETTINGS_REFUSED'; problems: string[] }
+  | { type: 'SETTINGS_REFUSED'; problems: string[]; requestId?: string }
   | { type: 'SETTINGS_RESET'; data: SettingsDocument }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
   // The four seed events are sent by the `packs` system, not this one: the work is pack-level and lives

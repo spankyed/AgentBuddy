@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-04T11:05:23.114Z",
+  "measuredAt": "2026-10-05T11:58:38.583Z",
   "samples": {
     "tests/branded-entity-id.spec.ts": [5],
     "tests/defs/database-console-globals.spec.ts": [4],
@@ -95,6 +95,7 @@
     "tests/seeds/notes/format.spec.ts": [16],
     "tests/seeds/seed-parity.spec.ts": [1419],
     "tests/send-to-system-diagnostics.spec.ts": [3315],
+    "tests/settings-answer-the-asker.spec.ts": [40],
     "tests/settings-broadcast.spec.ts": [18],
     "tests/settings-reset-app-state.spec.ts": [5],
     "tests/settings-secrets.spec.ts": [68],

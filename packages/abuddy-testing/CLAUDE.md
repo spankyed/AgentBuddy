@@ -284,6 +284,12 @@ Things worth knowing before changing it:
   Its value is checked (`checkedViewport`, against the wire's own `isPixels`) rather than trusted, because
   `drive/` is outside every tsconfig here — `typecheck:scripts` is `scripts/`, `tests/`, repo-checks and
   publish-checks — so a session file's option is checked by an editor and by no chain step.
+- **`/set-setting` is a round trip, not a send.** It resolved as soon as the API accepted the send, so a write
+  the store refused answered `ok: true` and wrote nothing — and the refusal went to the Settings plugin, where
+  the session could not see it. The settings system answers its sender now (`@abuddy/host`'s
+  `features/settings/be/answer.ts`), so the verb waits for `SETTINGS_SAVED`/`SETTINGS_REFUSED` by the id it
+  minted, exactly as `/query` waits for `QUERY_RESULT`. A refusal carries `problems` rather than one `error`,
+  because a document can be wrong in several places at once, which is why `refusalText` reads either shape.
 - **A verb declares the fields it reads, and `run` receives those and nothing else** (`verb()`, `server.ts`).
   That is what makes the wire's vocabulary derivable: `vocabulary.spec.ts` reads `verb.fields` off the table
   rather than looking for field names in its source. Two scans came before it and each was blind in its own

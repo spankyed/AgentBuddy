@@ -8,6 +8,7 @@ import {
   REPLY_TIMEOUT_MS, type EngineResult, type SeenEvent, type SessionApi, type SessionPage,
 } from '../../src/engine/session.ts';
 import type { BusMessage } from '../../src/engine/api-client.ts';
+import type { EngineSession, SettingsTarget } from '../../src/engine/session.ts';
 import { asSessionPage, checkedViewport } from '../../src/engine/index.ts';
 import type { Page } from '@playwright/test';
 
@@ -355,16 +356,32 @@ describe('settings', () => {
     await expect(reading).resolves.toEqual({ ok: true, value: { general: { personal: { name: 'Ada' } } } });
   });
 
+  /** Writes the setting, then answers it, which is the round trip a caller is told the outcome of */
+  const write = async (
+    session: EngineSession,
+    send: { mock: { calls: unknown[][] } },
+    answer: (event: Record<string, unknown> & { type: string }) => void,
+    target: SettingsTarget,
+    reply: Record<string, unknown> & { type: string },
+  ) => {
+    const writing = session.setSetting(target, 'personal.name', 'Ada');
+    await settle();
+    const sent = lastSend(send);
+    answer({ ...reply, requestId: String(sent.event.requestId) });
+    return { sent, result: await writing };
+  };
+
   it("writes one of a feature's settings, by the ref they are keyed under", async () => {
-    const { session, send } = sessionWith();
+    const { session, send, answer } = sessionWith();
     await session.ready();
 
-    await session.setSetting({ plugin: 'default-setup/code' }, 'baseDirectory', '/tmp/x');
+    const { sent, result } = await write(session, send, answer, { plugin: 'default-setup/code' }, { type: 'SETTINGS_SAVED' });
 
-    expect(lastSend(send)).toMatchObject({
+    expect(sent).toMatchObject({
       to: 'host/settings',
-      event: { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['baseDirectory'], value: '/tmp/x' },
+      event: { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['personal', 'name'], value: 'Ada' },
     });
+    expect(result).toEqual({ ok: true, value: undefined });
   });
 
   /**
@@ -373,15 +390,48 @@ describe('settings', () => {
    * the one field the settings system branches on to tell them apart.
    */
   it('writes a section the same way, which is what makes the document writable where it is readable', async () => {
-    const { session, send } = sessionWith();
+    const { session, send, answer } = sessionWith();
     await session.ready();
 
-    await session.setSetting({ section: 'general' }, 'personal.name', 'Ada');
+    const { sent } = await write(session, send, answer, { section: 'general' }, { type: 'SETTINGS_SAVED' });
 
-    expect(lastSend(send)).toMatchObject({
+    expect(sent).toMatchObject({
       to: 'host/settings',
       event: { type: 'UPDATE_SETTINGS', entityType: 'section', label: 'general', path: ['personal', 'name'], value: 'Ada' },
     });
+  });
+
+  /**
+   * The defect this round trip exists for. It resolved on the send being accepted, so a write the store
+   * refused answered `ok: true` and wrote nothing — and the refusal went to the Settings plugin, where the
+   * session could not see it. A refusal carries `problems` rather than one `error`, because a document can
+   * be wrong in more than one place.
+   */
+  it('answers with the refusal when the store would not take the write', async () => {
+    const { session, send, answer } = sessionWith();
+    await session.ready();
+
+    const { result } = await write(session, send, answer, { section: 'nope' }, {
+      type: 'SETTINGS_REFUSED',
+      problems: ['"nope" isn\'t a settings section: the settings hold plugins, general, assistant'],
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'setSetting: "nope" isn\'t a settings section: the settings hold plugins, general, assistant',
+    });
+  });
+
+  it('joins several reasons, since a document can be wrong in more than one place', async () => {
+    const { session, send, answer } = sessionWith();
+    await session.ready();
+
+    const { result } = await write(session, send, answer, { section: 'general' }, {
+      type: 'SETTINGS_REFUSED',
+      problems: ['first reason', 'second reason'],
+    });
+
+    expect(result).toEqual({ ok: false, error: 'setSetting: first reason; second reason' });
   });
 });
 

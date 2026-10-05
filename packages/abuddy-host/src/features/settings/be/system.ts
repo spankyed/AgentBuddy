@@ -10,6 +10,7 @@ import { services } from '@abuddy/sdk/services';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { SettingsRefusedError } from './document.ts';
+import { answerSettings, type SettingsAnswer } from './answer.ts';
 import type { SettingsDocument } from './store.ts';
 
 /**
@@ -33,12 +34,19 @@ const at = (document: SettingsDocument, path: readonly string[]): unknown =>
 const logger = createLogger('settings');
 
 /**
- * Tells the settings plugin a change wasn't stored, with the store's reasons: a refusal is the user's to fix, not a
- * system error, so only what the store didn't refuse (a bug here) is reported as one
+ * What a refusal answers with: the store's own reasons, which are the user's to fix rather than a system error,
+ * so only what the store *didn't* refuse (a bug here) is reported as one.
+ *
+ * It builds the answer rather than sending it, so the handlers can answer exactly once and from outside their
+ * `try` — see `updateSettings`.
  */
-function refuseSettings(error: unknown, what: string): void {
+function refusal(error: unknown, what: string, requestId?: string): Extract<SettingsAnswer, { type: 'SETTINGS_REFUSED' }> {
   if (!(error instanceof SettingsRefusedError)) reportError({ error: new Error(`${what}: ${(error as Error).message}`), source: 'settings' });
-  broadcastToPlugin('settings', { type: 'SETTINGS_REFUSED', problems: error instanceof SettingsRefusedError ? error.problems : [(error as Error).message] });
+  return {
+    type: 'SETTINGS_REFUSED',
+    problems: error instanceof SettingsRefusedError ? error.problems : [(error as Error).message],
+    ...(requestId === undefined ? {} : { requestId }),
+  };
 }
 
 /** Each plugin's settings as they apply: what features were last told */
@@ -150,41 +158,66 @@ export const settingsSystem = setup({
 
     // A change the store can't take now (`whileBusy`), with the reason the state gives
     refuseChange: (_: unknown, { reason }: { reason: string }) =>
-      broadcastToPlugin('settings', { type: 'SETTINGS_REFUSED', problems: [reason] }),
+      answerSettings({ type: 'SETTINGS_REFUSED', problems: [reason] }),
 
     getSettings: () => broadcastSettings('SETTINGS_LOADED'),
     
-    // The plugin hears whether the change was stored, and why not: a settings form says "Saved" only then
+    /**
+     * Whoever asked hears whether the change was stored, and why not: a settings form says "Saved" only then,
+     * and a drive session's `/set-setting` answers `ok: false` only then.
+     *
+     * **The outcome is a value and the answer is sent once, outside the `try`.** `reply()` throws for a message
+     * that named no sender, and an answer sent from inside the `try` that threw would land in the `catch`,
+     * which would answer again and throw out of the action. default-setup's database system says the same
+     * thing where it does the same thing.
+     */
     updateSettings: ({ event }) => {
       const ev = settingsSpec.typeOf('UPDATE_SETTINGS', event);
       // A plugin's settings are keyed by its ref, which the frontend resolves before sending and the store checks
-      try {
-        if (ev.entityType === 'plugin') services.settings.setForFeature(ev.label as `${string}/${string}`, ev.path, ev.value);
-        else services.settings.setInSection(ev.label, ev.path, ev.value);
-      } catch (error) {
-        refuseSettings(error, `Settings for ${ev.entityType} "${ev.label}" weren't saved`);
-        return;
-      }
+      const outcome = ((): SettingsAnswer => {
+        try {
+          if (ev.entityType === 'plugin') services.settings.setForFeature(ev.label as `${string}/${string}`, ev.path, ev.value);
+          else services.settings.setInSection(ev.label, ev.path, ev.value);
+        } catch (error) {
+          return refusal(error, `Settings for ${ev.entityType} "${ev.label}" weren't saved`, ev.requestId);
+        }
+        broadcastSettings('SETTINGS_UPDATED');
+        return { type: 'SETTINGS_SAVED', ...(ev.requestId === undefined ? {} : { requestId: ev.requestId }) };
+      })();
 
-      broadcastSettings('SETTINGS_UPDATED');
-      broadcastToPlugin('settings', { type: 'SETTINGS_SAVED' });
+      answerSettings(outcome);
     },
 
     replaceSettings: ({ event }) => {
       const ev = settingsSpec.typeOf('REPLACE_SETTINGS', event);
-      try {
-        services.settings.replaceAll(ev.data);
-      } catch (error) {
-        refuseSettings(error, "The settings weren't replaced");
-        return;
-      }
-      broadcastSettings('SETTINGS_UPDATED');
-      broadcastToPlugin('settings', { type: 'SETTINGS_SAVED' });
+      const outcome = ((): SettingsAnswer => {
+        try {
+          services.settings.replaceAll(ev.data);
+        } catch (error) {
+          return refusal(error, "The settings weren't replaced", ev.requestId);
+        }
+        broadcastSettings('SETTINGS_UPDATED');
+        return { type: 'SETTINGS_SAVED', ...(ev.requestId === undefined ? {} : { requestId: ev.requestId }) };
+      })();
+
+      answerSettings(outcome);
     },
 
-    resetSettings: () => {
-      services.settings.reset();
-      broadcastSettings('SETTINGS_RESET');
+    // Answered like the other two writes: it was the one that said nothing at all on success, so a caller
+    // could not tell a reset that worked from one that never arrived
+    resetSettings: ({ event }) => {
+      const ev = settingsSpec.typeOf('RESET_SETTINGS', event);
+      const outcome = ((): SettingsAnswer => {
+        try {
+          services.settings.reset();
+        } catch (error) {
+          return refusal(error, "The settings weren't reset", ev.requestId);
+        }
+        broadcastSettings('SETTINGS_RESET');
+        return { type: 'SETTINGS_SAVED', ...(ev.requestId === undefined ? {} : { requestId: ev.requestId }) };
+      })();
+
+      answerSettings(outcome);
     },
     
     // The stored keys changed: the view shows what there is now. What else acts on it hears the same event.
