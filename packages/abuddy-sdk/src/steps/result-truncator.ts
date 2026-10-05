@@ -14,6 +14,9 @@ const MAX_DEPTH = 10;             // Object nesting kept
 /** Where a loop closes, cut in place so the rest of the value survives it */
 const CIRCULAR = '[Circular]';
 
+/** A field that threw when it was read. A getter may, and one field is not worth the whole row. */
+const UNREADABLE = '[Unreadable]';
+
 /**
  * The serialised size of `record`, for deciding whether its keys have to be cut.
  *
@@ -24,15 +27,37 @@ const CIRCULAR = '[Circular]';
  */
 function serialisedSize(record: object): number {
   const seen = new WeakSet<object>();
-  return JSON.stringify(record, (_key, value: unknown) => {
-    if (typeof value === 'bigint') return value.toString();
-    if (value !== null && typeof value === 'object') {
-      if (seen.has(value)) return undefined;
-      seen.add(value);
-    }
-    return value;
-  })?.length ?? 0;
+  try {
+    return JSON.stringify(record, (_key, value: unknown) => {
+      if (typeof value === 'bigint') return value.toString();
+      if (value !== null && typeof value === 'object') {
+        if (seen.has(value)) return undefined;
+        seen.add(value);
+      }
+      return value;
+    })?.length ?? 0;
+  } catch {
+    // A field that throws when it is read, which `JSON.stringify` reaches before any size is known. Counted as
+    // nothing, so every key is kept and read one at a time below — where the one that throws becomes a marker
+    // and the rest of the row still arrives.
+    return 0;
+  }
 }
+
+/**
+ * `read()`'s result, or nothing when it throws. Only the read is wrapped, never the walk, so a bug in the walk
+ * still surfaces instead of becoming a marker on every field.
+ */
+function readFrom(read: () => unknown): { value: unknown } | undefined {
+  try {
+    return { value: read() };
+  } catch {
+    return undefined;
+  }
+}
+
+/** `record[key]`, or nothing when reading it throws — a getter may */
+const readField = (record: Record<string, unknown>, key: string) => readFrom(() => record[key]);
 
 /** `result` with long strings, long arrays, large objects and deep nesting cut, each cut marked `_truncated` */
 export function truncateResult(result: unknown, depth = 0): unknown {
@@ -84,14 +109,20 @@ function walk(result: unknown, depth: number, path: WeakSet<object>): unknown {
     // properties finds none, so it persisted as `{}` and a step's timestamps were lost. The other four passes
     // all keep one, three of them by going through `JSON.stringify`.
     const described = record as { toJSON?: (key?: string) => unknown };
-    if (typeof described.toJSON === 'function') return walk(described.toJSON(''), depth, path);
+    if (typeof described.toJSON === 'function') {
+      const described0 = readFrom(() => described.toJSON?.(''));
+      return described0 ? walk(described0.value, depth, path) : UNREADABLE;
+    }
     const size = serialisedSize(record);
     const keys = Object.keys(record);
     const kept = size <= MAX_OBJECT_SIZE ? keys : keys.slice(0, MAX_OBJECT_KEYS);
     path.add(record);
     try {
       const truncated: Record<string, unknown> = {};
-      for (const key of kept) truncated[key] = walk(record[key], depth + 1, path);
+      for (const key of kept) {
+        const field = readField(record, key);
+        truncated[key] = field ? walk(field.value, depth + 1, path) : UNREADABLE;
+      }
       if (size <= MAX_OBJECT_SIZE) return truncated;
       return { value: truncated, _truncated: true, _originalSize: size, _originalKeys: keys.length, _type: 'object' };
     } finally {

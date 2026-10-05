@@ -33,6 +33,28 @@ describe('a value JSON has no form for', () => {
   });
 });
 
+describe('a field that cannot be read', () => {
+  /**
+   * The row must survive one, because this output is the only record of what a step returned.
+   *
+   * A throwing getter throws in four of the five value-serialising passes
+   * (`docs/reference/value-serialisation.md`); this is the one whose contract forbids it. `JSON.stringify`
+   * reaches such a field while the size is still being measured, which is before any key has been read.
+   */
+  it('marks the field and keeps the rest of the row', () => {
+    const row: Record<string, unknown> = { id: 'Note-1', title: 'Beta' };
+    Object.defineProperty(row, 'boom', { enumerable: true, get() { throw new Error('bang'); } });
+
+    expect(truncateResult(row)).toEqual({ id: 'Note-1', title: 'Beta', boom: '[Unreadable]' });
+  });
+
+  it('marks a value whose own toJSON throws, rather than failing the row around it', () => {
+    const hostile = { toJSON() { throw new Error('bang'); } };
+
+    expect(truncateResult({ id: 'Note-1', at: hostile })).toEqual({ id: 'Note-1', at: '[Unreadable]' });
+  });
+});
+
 describe('a value that reaches itself', () => {
   it('cuts the loop where it closes and keeps the rest', () => {
     const row: Record<string, unknown> = { id: 'Note-1' };
