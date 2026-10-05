@@ -66,8 +66,11 @@ export interface Message {
    * that `MessageSender` is `Pick<Message, 'from' | 'via'>` and so does **not** include this — it is the type of
    * the sender *labels*, which say who to blame in a diagnostic, where this says where to send an answer.
    *
-   * A client may set it, unlike `client` — the API's `bus.send` names it in its input schema, and says there why
-   * trusting it costs nothing.
+   * A client may set it, unlike `client`, and the API's `bus.send` checks that it names something addressable —
+   * not that the caller is it. So this is an **address, not an authenticated identity**: a handler that branches
+   * on it is taking the sender's word. What bounds that word is `client`, since a reply goes to the connection
+   * the ask arrived on, so the most a forged one buys is making a system answer *you* while believing it
+   * answered somebody else. `bus.send` has the rest, including what closing it properly would take.
    */
   sender?: string;
 }

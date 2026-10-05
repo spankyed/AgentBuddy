@@ -8,8 +8,9 @@
 // is on the case, because the two halves of that defence overlap.
 //
 // `sender` sits on the named side although it routes, which looks like the exception to the rule and is not: the
-// client is the only one who knows which of its plugins asked, and every caller already holds the API token, so
-// a forged `sender` is a bug and not an escalation. `client` is withheld because the server knows it anyway.
+// client is the only one who knows which of its plugins asked. It is checked for **existence** — it must name
+// something a reply could reach, as `to` must — and not for identity, which is why the registry is mocked here
+// at all. What that leaves open, and the bound `client` puts on it, is on `bus.ts`.
 //
 // Note that the last case, dropping a field nothing declares, passes just as happily while the dropped field is
 // one the envelope *does* declare. It is not the guard for this; the `Required<…>` case is.
@@ -21,7 +22,11 @@ vi.mock('@abuddy/host/bus', () => ({
   receiveClientEvent: (_registry: unknown, message: Message) => { received.push(message); },
   UnknownClientEventError: class extends Error {},
 }));
-vi.mock('@/runtime', () => ({ appPacks: {} }));
+// The registered refs a `sender` is checked against, and nothing claimed
+vi.mock('@/runtime', () => ({
+  appPacks: { systemIds: () => ['memo-pack/memos'], pluginIds: () => ['memo-pack/memos'] },
+  appClaims: { clientFor: () => undefined },
+}));
 vi.mock('@/transport/emitter', () => ({ rootEvents: { onOutgoing: () => () => {}, emitConnected: () => {}, emitPackClientConnected: () => {} } }));
 
 const { systemBusRouter } = await import('@/transport/bus');
@@ -52,6 +57,18 @@ describe('bus.send carries the sender across the boundary', () => {
     received.length = 0;
     await caller.send({ to: 'memo-pack/memos', event: { type: 'ADD_MEMO' } });
     expect(received).toEqual([{ to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, client: 'c-one' }]);
+  });
+
+  /**
+   * A `sender` naming nothing is refused, which is the symmetric half of the check `to` already gets.
+   *
+   * Without it the send is accepted and the answer is what fails: `reply` addresses a ref no plugin holds, the
+   * bus drops it with a diagnostic, and the report is one step removed from the call that caused it. Refusing
+   * here puts the error on the send.
+   */
+  it('refuses a sender that names nothing addressable', async () => {
+    await expect(caller.send({ to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, sender: 'memo-pack/typo' }))
+      .rejects.toThrow(/names no registered system/);
   });
 
   // The fields are named rather than the object made passthrough, so the boundary stays closed to the rest

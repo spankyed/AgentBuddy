@@ -13,6 +13,17 @@ import { appClaims, appPacks } from '@/runtime';
 
 const logger = createLogger('app-events');
 
+/**
+ * Whether `ref` names something a reply could reach: a registered system, a registered plugin, or a name a
+ * connection claimed. The symmetric check to the one `receiveClientEvent` makes on `to` — without it a stale or
+ * misspelled `sender` becomes an answer the bus drops into a diagnostic, one step removed from the send that
+ * caused it.
+ */
+const addressable = (ref: string): boolean =>
+  appPacks.systemIds().includes(ref as never)
+  || appPacks.pluginIds().includes(ref as never)
+  || appClaims.clientFor(ref) !== undefined;
+
 export const systemBusRouter = router({
   send: procedure
     // Every field of `Message` beside `event` is named here rather than the object being made passthrough: zod
@@ -24,11 +35,24 @@ export const systemBusRouter = router({
     // knows it for free, so taking it from the wire would be strictly worse for no gain.
     //
     // `sender` is named, and that is not the same decision. It is where an answer goes, and a client has to be
-    // able to say — a window knows which of its plugins asked, and a participant which name it claimed. Trusting
-    // it costs nothing here: every caller already holds the API token, which lets it send anything to anything,
-    // so a forged `sender` is a bug rather than an escalation.
+    // able to say — a window knows which of its plugins asked, and a participant which name it claimed.
+    //
+    // **It is checked for existence and not for identity, and the difference is worth knowing.** A `sender` must
+    // name something addressable, the way `to` must; what it cannot do is prove the caller *is* that thing. One
+    // window could name another's plugin, and the bound on that is `client`: a reply goes to the connection the
+    // ask arrived on, so the worst a forged `sender` buys is making a system answer *you* while believing it
+    // answered somebody else. That is a bug rather than an escalation only while every caller is trusted, which
+    // today means every caller holds the API token and no pack exists outside this repo — a premise the root
+    // CLAUDE.md gives an expiry for. Closing it properly needs per-connection knowledge of which plugins a
+    // window actually loaded, which `packClientReady` does not keep.
     .input(z.object({ to: z.string().min(1), from: z.string().min(1).optional(), via: z.string().min(1).optional(), sender: z.string().min(1).optional(), event: z.object({ type: z.string().min(1) }).passthrough() }))
     .mutation(({ input, ctx }) => {
+      if (input.sender !== undefined && !addressable(input.sender)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `"${input.sender}" can't be a sender: it names no registered system, no registered plugin and no claimed participant. An answer to it would be sent nowhere and dropped.`,
+        });
+      }
       try {
         receiveClientEvent(appPacks, { ...input, client: ctx.client });
       } catch (error) {
