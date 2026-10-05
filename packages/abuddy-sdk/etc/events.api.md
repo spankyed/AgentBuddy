@@ -20,8 +20,18 @@ export function createSends(input?: SendBinding): {
     }): void;
 };
 
+// @internal
+export function _currentDelivery(): _Delivery | undefined;
+
 // @public
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S>;
+
+// @internal
+export interface _Delivery {
+    client?: string;
+    receiver: string;
+    replyTo?: string;
+}
 
 // @public
 export const eventTypes: <E extends {
@@ -90,14 +100,19 @@ export type HostSystemEvents = {
 // @public
 export type IncomingEventsOf<C> = ContractIncoming<C>;
 
+// @internal
+export function _installAsyncDeliveryReader(reader: () => _Delivery | undefined): void;
+
 // @public
 export interface Message {
+    client?: string;
     // (undocumented)
     event: {
         type: string;
         [key: string]: unknown;
     };
     from?: string;
+    sender?: string;
     // (undocumented)
     to: string;
     via?: string;
@@ -142,6 +157,15 @@ export type PublicPluginInboxOf<C> = C extends {
 export type Qualified<PackId extends string, M> = {
     [K in keyof M & string as `${PackId}/${K}`]: M[K];
 };
+
+// @public
+export function reply(event: {
+    type: string;
+    [key: string]: unknown;
+}): void;
+
+// @internal
+export function _runDelivery<T>(delivery: _Delivery, body: () => T): T;
 
 // @public
 export interface SendBinding {

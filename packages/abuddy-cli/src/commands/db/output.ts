@@ -15,14 +15,19 @@ export function outputFormat(value: unknown): OutputFormat {
 
 /**
  * JSON, with what JSON has no form for written as text: a date as its ISO string (JSON.stringify's own doing), a
- * bigint as digits, and an object that holds itself as `[Circular]` rather than a thrown error.
+ * bigint as digits, and an object already written once as `[Repeated]` rather than a thrown error.
+ *
+ * One marker for two conditions, deliberately. A seen-set has no path, so it cannot tell an object that holds
+ * itself from one that merely appears twice — and for rows out of a query the second is the common case, where
+ * `[Circular]` said something untrue. Telling them apart would mean tracking the path as well, which is a
+ * distinction `abuddy db` has no use for: a repeated row is a repeated row.
  */
 function safely(): (key: string, held: unknown) => unknown {
   const seen = new WeakSet<object>();
   return function replace(_key: string, held: unknown) {
     if (typeof held === 'bigint') return held.toString();
     if (held !== null && typeof held === 'object') {
-      if (seen.has(held)) return '[Circular]';
+      if (seen.has(held)) return '[Repeated]';
       seen.add(held);
     }
     return held;

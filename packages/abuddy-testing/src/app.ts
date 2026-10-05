@@ -55,8 +55,27 @@ export interface FlowRun {
 export interface TestApp {
   /** Sends CLIENT_CONNECTED, as a client connecting does; systems send their startup data */
   connect(): Promise<void>;
-  /** Sends a system an event, as a client's `sendToSystem` does (the pack's own by feature id, a dependency's as `<packId>/<featureId>`); the bus routes it whether or not a client connected */
-  send(systemId: string, event: { type: string; [key: string]: unknown }): Promise<void>;
+  /**
+   * Sends a system an event, as a client's `sendToSystem` does (the pack's own by feature id, a dependency's as
+   * `<packId>/<featureId>`); the bus routes it whether or not a client connected.
+   *
+   * `sender` is who the system should answer, and a handler that calls `reply` needs it: a real send carries one
+   * because it is made while handling something else (`createSends` reads the delivery in scope), and a send
+   * made from here carries nothing unless it is given. Without it `reply` throws "named no sender", so a pack
+   * test could not drive such a handler at all.
+   *
+   * `client` says the ask arrived on a connection, which is what decides where `reply` sends the answer: with
+   * one, the asker is a plugin in a window or a claimed participant and the answer goes to that connection
+   * alone; without one, the ask originated in the backend and the answer goes to the asking *system*. A real
+   * client's send always carries one (the API stamps it per socket), and nothing sent from here does unless it
+   * is given — so a spec standing in for a window or a driver passes one, and a spec standing in for a system
+   * does not. Any string: nothing here routes on its value, only on whether there is one.
+   */
+  send(
+    systemId: string,
+    event: { type: string; [key: string]: unknown },
+    options?: { sender?: string; client?: string },
+  ): Promise<void>;
   /**
    * The events delivered to one frontend plugin (by `broadcastToPlugin`, once connected), in order, exactly as
    * sent; the plugin named as the pack names it (its own by feature id, any other as `<packId>/<featureId>`).
@@ -350,13 +369,34 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     throw new Error(`The app didn't settle after ${SETTLE_LIMIT} event loop turns: a system keeps sending events`);
   };
 
+  /**
+   * The one cause of "Sent: nothing" the failure message cannot otherwise show, appended when it applies.
+   *
+   * The bus handles `OUTGOING` only in `clientSeen`; in `awaitingClient` the event has no transition, so XState
+   * discards it and nothing is logged, reported or recorded. Without this, a test whose system answered
+   * correctly fails with an empty `Sent:` list and no way to tell "my handler never ran" from "my handler ran
+   * and nobody was listening".
+   *
+   * Asked of the bus rather than tracked as a flag, because `CLIENT_CONNECTED` reaches every running bus — so
+   * another app's `connect()` in the same test would set a flag on this one. The actor's own state is the
+   * answer, read when the wait fails rather than when it started.
+   */
+  const heldForAClient = (): string => (bus.getSnapshot().value === 'awaitingClient'
+    ? ' No client has connected, and the bus holds sends to plugins until one does, so a reply had nowhere to go:'
+      + ' `await app.connect()` before the send.'
+    : '');
+
   const app: TestApp = {
     connect: () => call(async () => {
       testRootEvents.emitConnected();
       await settle();
     }),
-    send: (systemId, event) => call(async () => {
-      testRootEvents.emitIncoming({ to: resolveSystemId(systemId, systems), event });
+    send: (systemId, event, options) => call(async () => {
+      const sender = options?.sender === undefined ? {} : { sender: resolveSystemId(options.sender, systems) };
+      // Passed through unresolved: a connection id is not a ref, and whether there is one is the whole of what
+      // `reply` reads it for
+      const client = options?.client === undefined ? {} : { client: options.client };
+      testRootEvents.emitIncoming({ to: resolveSystemId(systemId, systems), event, ...sender, ...client });
       await settle();
     }),
     emitted(plugin) {
@@ -370,7 +410,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
         if (index === -1) return undefined;
         taken.add(index);
         return emitted[index].event;
-      }, timeoutMs, () => `No ${type} sent to ${id} within ${timeoutMs}ms. Sent: ${emitted.map((m) => `${m.to}:${m.event.type}`).join(', ') || 'nothing'}.`);
+      }, timeoutMs, () => `No ${type} sent to ${id} within ${timeoutMs}ms. Sent: ${emitted.map((m) => `${m.to}:${m.event.type}`).join(', ') || 'nothing'}.${heldForAClient()}`);
     }),
     settle: () => call(() => settle()),
     runFlow: (label, { event, data, timeoutMs = 10_000 } = {}) => call(async () => {

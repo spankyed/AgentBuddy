@@ -1,5 +1,11 @@
 // How `abuddy db` renders a result: values JSON has no form for, rows of differing shapes, and results that aren't
 // rows at all
+import {
+  _SERIALISATION_INPUTS,
+  _SERIALISATION_MATRIX,
+  _answer,
+  type _SerialisationInput,
+} from '@abuddy/sdk/testing/serialisation-matrix';
 import { describe, expect, it } from 'vitest';
 import { formatResult, outputFormat, toCSV, toJSON, toPretty } from '../../src/commands/db/output';
 
@@ -12,13 +18,13 @@ describe('json', () => {
     });
   });
 
-  it('writes an object that holds itself rather than throwing', () => {
+  it('writes an object already written once rather than throwing', () => {
     const row: Record<string, unknown> = { id: 'Note-1' };
     row.self = row;
-    expect(JSON.parse(toJSON(row))).toEqual({ id: 'Note-1', self: '[Circular]' });
-    // The same object twice isn't a cycle, but is reported once
+    expect(JSON.parse(toJSON(row))).toEqual({ id: 'Note-1', self: '[Repeated]' });
+    // The same marker for a plain repeat, which is what a seen-set can say: it has no path to tell the two apart
     const shared = { id: 'Note-2' };
-    expect(JSON.parse(toJSON([shared, shared]))).toEqual([{ id: 'Note-2' }, '[Circular]']);
+    expect(JSON.parse(toJSON([shared, shared]))).toEqual([{ id: 'Note-2' }, '[Repeated]']);
   });
 
   it('says undefined for a result that has no JSON at all', () => {
@@ -44,7 +50,7 @@ describe('csv', () => {
   it('keeps an object in a cell on one line, and copes with values JSON has no form for', () => {
     const row: Record<string, unknown> = { id: 'Note-1', count: 3n };
     row.self = row;
-    expect(toCSV([row])).toBe('id,count,self\nNote-1,3,"{""id"":""Note-1"",""count"":""3"",""self"":""[Circular]""}"\n');
+    expect(toCSV([row])).toBe('id,count,self\nNote-1,3,"{""id"":""Note-1"",""count"":""3"",""self"":""[Repeated]""}"\n');
   });
 
   it('writes a result that is not rows as cells', () => {
@@ -78,4 +84,20 @@ describe('the chosen format', () => {
     expect(formatResult(rows, 'csv')).toBe('id\nNote-1');
     expect(formatResult(rows, 'pretty')).toBe(toPretty(rows));
   });
+});
+
+/**
+ * The row this pass answers in the shared matrix (`@abuddy/sdk/testing/serialisation-matrix`).
+ *
+ * The cases above say why each answer is what it is; this says that it still *is*. The matrix is the data behind
+ * `docs/reference/value-serialisation.md`, declared once because no package can import all five passes, and
+ * asserted from the three suites that can each reach their own.
+ */
+describe('the row it answers in the serialisation matrix', () => {
+  it.each(Object.entries(_SERIALISATION_INPUTS) as Array<[_SerialisationInput, () => unknown]>)(
+    'for %s',
+    (name, make) => {
+      expect(_answer(() => JSON.parse(toJSON(make())))).toBe(_SERIALISATION_MATRIX.cliJson[name]);
+    },
+  );
 });

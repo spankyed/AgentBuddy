@@ -12,9 +12,10 @@
  * either killing the process where it stands.
  */
 import type { Page } from '@playwright/test';
-import { createSession, type SessionPage } from './session.ts';
+import { DRIVE_REF, createSession, type SessionPage } from './session.ts';
 import { ENGINE_TOKEN_HEADER, startEngineServer } from './server.ts';
 import { engineRecipe, publishEngineMarker, removeEngineMarker } from './marker.ts';
+import { connectApiClient } from './api-client.ts';
 
 /** The `AppHelper` members the engine serves, taken whole rather than one callback at a time */
 export type EngineAppHelper = {
@@ -42,11 +43,8 @@ export interface DriveEngineOptions {
 }
 
 /**
- * Adapts a Playwright page to the four methods the session needs.
- *
- * The two evaluation forms stay separate here as they are in the port: Playwright reads a string as an
- * expression and a function as something to serialise, and a string with an argument silently drops the
- * argument. Keeping them apart is what stops that being available at every call site.
+ * Adapts a Playwright page to `SessionPage`. The two evaluation forms stay separate here because they are
+ * separate in the port, for the reason `session.ts` gives there.
  */
 export const asSessionPage = (page: Page, app: EngineAppHelper): SessionPage => ({
   evaluateExpression: (source) => page.evaluate(source),
@@ -60,6 +58,29 @@ export const asSessionPage = (page: Page, app: EngineAppHelper): SessionPage => 
   waitForState: (check, timeoutMs) => app.waitForState(check, timeoutMs),
   waitForPlugin: (pluginId, timeoutMs) => app.waitForPlugin(pluginId, timeoutMs),
 });
+
+/**
+ * Where the API is, asked of the app window rather than read off disk.
+ *
+ * The port file would do, but the **token file is not always written**: `publishApiFiles` skips it unless
+ * `NODE_ENV` is development or the API invented its own token, and a packaged app satisfies neither. So reading
+ * from disk would work in a checkout and fail against `abuddy drive --app beta`, which is the worst split to
+ * ship. The window has both from the preload, which is also how `tests/e2e/app-integration/api-access.spec.ts`
+ * gets them.
+ */
+async function apiAddressFromWindow(page: SessionPage): Promise<{ port: number; token: string }> {
+  const found = await page.evaluateExpression(
+    '(() => { const api = window.electronAPI; return { port: api?.apiPort, token: api?.apiToken }; })()',
+  ) as { port?: number; token?: string };
+  if (typeof found?.port !== 'number' || !found.token) {
+    throw new Error(
+      "The app window didn't offer the API's port and token (window.electronAPI), so the drive session has no way "
+      + 'to reach the bus. That bridge is the preload\'s (packages/preload), and without it only the page verbs '
+      + '(/eval, /state, /wait, /navigate, /screenshot) could work.',
+    );
+  }
+  return { port: found.port, token: found.token };
+}
 
 /**
  * Runs the engine until something ends the session, then cleans up and returns.
@@ -82,8 +103,21 @@ export async function runDriveEngine(options: DriveEngineOptions): Promise<void>
   let end = (): void => {};
   const ended = new Promise<void>((resolve) => { end = resolve; });
 
+  const sessionPage = asSessionPage(page, app);
+
+  /**
+   * The session's own connection, opened before the server listens so a verb can never arrive without one.
+   *
+   * It subscribes inside `connectApiClient` and then claims, in that order: a reply addressed here before
+   * anything is listening would be delivered and dropped. The claim's *lifetime* needs no such care — the API
+   * releases it when this connection ends, whatever ends it.
+   */
+  const api = await connectApiClient(await apiAddressFromWindow(sessionPage));
+  await api.claim(DRIVE_REF);
+
   const session = createSession({
-    page: asSessionPage(page, app),
+    page: sessionPage,
+    api,
     takeErrors: () => errors.splice(0, errors.length),
   });
 
@@ -94,17 +128,10 @@ export async function runDriveEngine(options: DriveEngineOptions): Promise<void>
   log(engineRecipe(file, marker, ENGINE_TOKEN_HEADER));
 
   /**
-   * A signal also ends the session — but it is **not** what makes Ctrl-C safe, and the comment here
-   * used to claim it was.
-   *
-   * Measured 2026-10-04: `SIGINT` to `abuddy drive --serve` left no orphan — the app's API process was
-   * gone, the fixture's data-dir policy had run and the ephemeral instance was removed — and Playwright
-   * reported the session **interrupted** rather than passed. That verdict is the evidence: a body these
-   * handlers had resolved would have completed. So Playwright's own interrupt handling is what tears a
-   * session down, and it already runs fixture teardown.
-   *
-   * They stay because resolving the body first costs four lines and ends the run as a pass rather than
-   * an interruption where they win the race; nothing depends on their winning it.
+   * A signal also ends the session, though it is **not** what makes Ctrl-C safe: Playwright's own interrupt
+   * handling tears a session down and already runs fixture teardown, so nothing is orphaned without these.
+   * They stay because resolving the body first costs four lines and ends the run as a pass rather than an
+   * interruption when they win the race; nothing depends on their winning it.
    */
   const onSignal = (): void => end();
   process.once('SIGINT', onSignal);
@@ -119,9 +146,12 @@ export async function runDriveEngine(options: DriveEngineOptions): Promise<void>
     page.removeListener('console', onConsole);
     removeEngineMarker(outputDir);
     await engine.close();
+    session.stop();
+    await api.close();
   }
 }
 
 export { ENGINE_TOKEN_HEADER } from './server.ts';
+export { connectApiClient, type ApiAddress, type ApiClient, type BusMessage } from './api-client.ts';
 export { MARKER_FILE, type EngineMarker } from './marker.ts';
-export type { EngineResult, EngineSession, SessionPage } from './session.ts';
+export type { EngineResult, EngineSession, SessionApi, SessionPage } from './session.ts';

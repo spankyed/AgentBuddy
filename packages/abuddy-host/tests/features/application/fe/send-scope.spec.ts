@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup } from 'xstate';
 import type { Plugin } from '@abuddy/sdk/fe';
 import { createShellMachine } from '../../../../src/fe/index.ts';
+import { _currentDelivery } from '@abuddy/sdk/events';
 import { fakeShell, settle } from './fakes.ts';
 
 /** What each window's copy of the plugin heard */
@@ -42,6 +43,65 @@ beforeEach(() => {
   popout = windowNamed('popout');
 });
 afterEach(() => { main.app.stop(); popout.app.stop(); });
+
+/**
+ * The delivery scope on the shell's path, which is one of the four places a message gets named and the only one
+ * that runs in a browser.
+ *
+ * Without it a plugin's own `sendToSystem` carries no `Message.sender`, so the system it asks has no address to
+ * answer and `reply` throws — for the commonest request in the app, a view asking its own system for data. The
+ * scope is read here directly, because what this pins is whether it is set at all.
+ */
+describe('a plugin handling what the shell gave it', () => {
+  /** A window whose plugin records the delivery in scope for every event it handles */
+  function watching() {
+    const seen: Array<{ type: string; receiver: string | undefined }> = [];
+    const state = setup({}).createMachine({
+      on: { '*': { actions: ({ event }) => { seen.push({ type: event.type, receiver: _currentDelivery()?.receiver }); } } },
+    });
+    const shell = fakeShell({
+      plugins: [{ id: 'default-setup/notes', label: 'notes', icon: 'Zap', state, canvas: {} } as unknown as Plugin],
+    });
+    const app = createActor(createShellMachine(shell.options), { systemId: 'host/application', input: { ownsLastActivePlugin: false } }).start();
+    shell.client.connect();
+    return { seen, shell, app };
+  }
+
+  const receiverFor = (seen: Array<{ type: string; receiver: string | undefined }>, type: string) =>
+    seen.find((entry) => entry.type === type)?.receiver;
+
+  it('names it for a message the backend sent', async () => {
+    const w = watching();
+    try {
+      await settle();
+
+      w.shell.client.receive({ to: 'default-setup/notes', event: { type: 'SELECT_ARTIFACT', artifactId: 'a1' } });
+      await settle();
+
+      expect(receiverFor(w.seen, 'SELECT_ARTIFACT'), 'so a send the handler makes can be answered back here')
+        .toBe('default-setup/notes');
+    } finally {
+      w.app.stop();
+    }
+  });
+
+  /**
+   * And for the lifecycle, which is where it matters most: a view that asks its system for data when it opens is
+   * the commonest request in the app, and `PLUGIN_ACTIVATED` is when it asks.
+   */
+  it('names it for the activation the shell raises itself', async () => {
+    const w = watching();
+    try {
+      await settle();
+      w.app.send({ type: 'SELECT_PLUGIN', plugin: 'default-setup/notes' });
+      await settle();
+
+      expect(receiverFor(w.seen, 'PLUGIN_ACTIVATED')).toBe('default-setup/notes');
+    } finally {
+      w.app.stop();
+    }
+  });
+});
 
 describe('how far each send reaches', () => {
   it('delivers a backend send to that plugin in every window', async () => {

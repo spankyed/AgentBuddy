@@ -1,5 +1,6 @@
 /**
- * The timeout overrides a spec file declares, read from its syntax tree.
+ * The timing facts a spec file declares, read from its syntax tree: the timeout overrides it sets, and the bare
+ * waits it takes.
  *
  * A size budget lives in a vitest config; a third argument to `it()` overrides it for one test. A guard that
  * reads only configs sees the policy and not the escape, which is how fifteen overrides of 60s to 240s sat
@@ -67,6 +68,102 @@ export function timeoutOverrides(absFile: string, repoRoot: string): TimeoutOver
       }
     }
     ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return found;
+}
+
+/**
+ * A promise that resolves after a delay — a spec asserting on a duration rather than on the thing it waits for.
+ *
+ * A sleep puts a guess about how long something takes into every passing run, and when the guess is short the
+ * failure reads exactly like the bug it was meant to catch. `@abuddy/sdk/testing/waiting` is the alternative,
+ * and its header has the rule: a wait is driven by the thing it waits for and names what never happened — an
+ * event where there is one, a poll where there is none.
+ */
+export interface BareWait {
+  readonly file: string;
+  /** The named thing it sits in — a helper, or the test — so the exceptions list does not churn with line numbers */
+  readonly name: string;
+  readonly line: number;
+}
+
+/** How a bare wait is named in the exceptions lists, and in anything a person has to read */
+export const bareWaitKey = (wait: Pick<BareWait, 'file' | 'name'>): string => `${wait.file} > ${wait.name}`;
+
+/** Whether `fn` is how a promise's own `resolve` gets called — the identifier itself, or something calling it */
+function settles(fn: ts.Node, resolve: string): boolean {
+  if (ts.isIdentifier(fn)) return fn.text === resolve;
+  if (!ts.isArrowFunction(fn) && !ts.isFunctionExpression(fn)) return false;
+  let calls = false;
+  const look = (node: ts.Node): void => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === resolve) calls = true;
+    ts.forEachChild(node, look);
+  };
+  look(fn);
+  return calls;
+}
+
+/**
+ * Every bare wait in one spec file.
+ *
+ * **Why it reads the tree and what that buys.** A third of this repo's textual matches for a delayed
+ * `setTimeout` are inside string literals — subprocess bodies, an `actionFn`, a script the CLI runs — and a
+ * text scan would report every one. The tree knows a string from code.
+ *
+ * **A deadline is not a wait, and the difference is which function the timer calls.** `setTimeout(resolve, ms)`
+ * sleeps; `setTimeout(() => reject(…), ms)` is a kill deadline, which is the thing being promoted here, so only
+ * a timer that reaches the promise's own `resolve` counts. A literal `0` does not count either: it yields a turn
+ * and claims nothing about duration, so it cannot be wrong because the machine was slow.
+ */
+export function bareWaits(absFile: string, repoRoot: string): BareWait[] {
+  const source = ts.createSourceFile(absFile, fs.readFileSync(absFile, 'utf8'), ts.ScriptTarget.Latest, true);
+  const found: BareWait[] = [];
+  /** The named things enclosing the node being visited, so a finding is named rather than numbered */
+  const enclosing: string[] = [];
+
+  const sleepsIn = (executor: ts.Node, resolve: string): ts.Node | undefined => {
+    let timer: ts.Node | undefined;
+    const look = (node: ts.Node): void => {
+      if (timer) return;
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'setTimeout') {
+        const [fn, delay] = node.arguments;
+        const isTurn = delay !== undefined && ts.isNumericLiteral(delay) && Number(delay.text) === 0;
+        if (fn && !isTurn && settles(fn, resolve)) timer = node;
+      }
+      ts.forEachChild(node, look);
+    };
+    look(executor);
+    return timer;
+  };
+
+  const visit = (node: ts.Node): void => {
+    // A declaration's name, or a test's, so the key is stable across edits; a line number is the last resort
+    const named = (ts.isVariableDeclaration(node) || ts.isFunctionDeclaration(node)) && node.name && ts.isIdentifier(node.name)
+      ? node.name.text
+      : ts.isCallExpression(node) && node.arguments[0] && ts.isStringLiteralLike(node.arguments[0])
+        ? node.arguments[0].text
+        : undefined;
+    if (named !== undefined) enclosing.push(named);
+
+    if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'Promise') {
+      const executor = node.arguments?.[0];
+      const resolve = executor && (ts.isArrowFunction(executor) || ts.isFunctionExpression(executor))
+        ? executor.parameters[0] : undefined;
+      if (executor && resolve && ts.isIdentifier(resolve.name)) {
+        const timer = sleepsIn(executor, resolve.name.text);
+        if (timer) {
+          found.push({
+            file: path.relative(repoRoot, absFile),
+            name: enclosing.at(-1) ?? `line ${source.getLineAndCharacterOfPosition(timer.getStart(source)).line + 1}`,
+            line: source.getLineAndCharacterOfPosition(timer.getStart(source)).line + 1,
+          });
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit);
+    if (named !== undefined) enclosing.pop();
   };
   visit(source);
   return found;

@@ -34,14 +34,35 @@ transport, boot or composition belongs in `@abuddy/host`, which the same guard i
 
 ## tRPC and the root event emitter (`src/transport/`)
 
-- `trpc.ts` — `router` and `procedure` from `initTRPC`; `context.ts` — `createContext()` returns an empty context.
+- `trpc.ts` — `router` and `procedure` from `initTRPC`; `context.ts` — `createContext()` returns `{ client, closed }`:
+  an id minted per WebSocket connection, and the signal that fires when that connection ends. The adapter calls it
+  once per socket, so the id identifies the connection rather than the call, and it is never read from the wire —
+  which is what makes it a return address a sender cannot forge. `closed` is the adapter's per-connection abort
+  signal (it fires from `client.once('close')`), and is how anything holding per-connection state gives it back.
 - `index.ts` — `appRouter = router({ bus, packs, secrets })`; `AppRouter` is its type.
 - `packs.ts` (`packs.*`) — `registry` (query): `LoadedPackEntry[]` (typed from `@abuddy/host/packs`, so `AppRouter`'s declarations don't pull the pack runtime into the renderer's typecheck) from `getLoadedPackEntries()` (`@abuddy/host/packs/runtime`), the packs the renderer loads frontends from.
 - `bus.ts` (`bus.*`):
-  - `send` (mutation) — `receiveClientEvent(appPacks, event)` (`@abuddy/host/bus`), which checks `systemId` and `type` against the app's registered systems (a `*` entry accepts any type), logs the event through the `app-events` logger (arrays over 5 items summarized) and emits it on the bound root event bus. Its `UnknownClientEventError` becomes `BAD_REQUEST`.
+  - `send` (mutation) — `receiveClientEvent(appPacks, { ...input, client: ctx.client })` (`@abuddy/host/bus`), which checks `systemId` and `type` against the app's registered systems (a `*` entry accepts any type), logs the event through the `app-events` logger (arrays over 5 items summarized) and emits it on the bound root event bus. Its `UnknownClientEventError` becomes `BAD_REQUEST`.
   - `packClientReady({ packId })` — logs it and calls `rootEvents.emitPackClientConnected`, which the bus turns into `PACK_CLIENT_CONNECTED`.
-  - `sub` (subscription) — streams `rootEvents.onOutgoing` and calls `emitConnected()` for each new subscription (the bus's `CLIENT_CONNECTED`).
+  - `claim({ as })` — takes a name on this connection for something no pack registered, so a system can be told to
+    answer *it*: an agent driving the app claims `host/drive`. The name is checked against the ref grammar, a name
+    another live connection holds is refused with `CONFLICT` rather than taken over, and the claim is released when
+    **the connection** ends (`ctx.closed`) — so it lives exactly as long as its socket and a reconnect always finds
+    it free. Not when the subscription tears down, which was the first attempt and is wrong both ways: it took a
+    name from a client that had merely stopped subscribing, and it left one held forever by a client that claimed
+    without ever subscribing, so the next session was refused with nothing its user could close
+    (`tests/transport/claim.spec.ts`).
+  - `sub` (subscription) — streams `rootEvents.onOutgoing` and calls `emitConnected()` for each new subscription
+    (the bus's `CLIENT_CONNECTED`). It filters on the connection: a message whose `client` is absent goes to every
+    subscription, and one that names a connection goes only to that one. The filter is here rather than in the
+    renderer, so a window never receives a message that was not for it (`tests/transport/sub-scope.spec.ts`).
 - `secrets.ts` (`secrets.*`) — `list` (query), `add`, `replaceValue`, `select`, `rename`, `delete`, `allowUnprotected`. Each calls `secretsStore` (`@abuddy/host/secrets`) directly, never the bus, and returns `secretsSnapshot()` (metadata and status, no values). `provider` is validated against `providerLabels` plus `custom`. The boot calls host's `forwardSecretsChanges()`, which sends the `settings` designation `SECRETS_CHANGED` on every store change, once that system is registered.
+- `encoder.ts` — what the ws adapter serialises with (`experimental_encoder`), in place of its default bare
+  `JSON.stringify`. Only two values make that throw — a `BigInt` anywhere, and a circular structure — and it throws
+  from the loop that drains a subscription rather than from the send, so the throw ended the subscription and with
+  it that window's whole event stream. A replacer renders BigInts as digits on the fast path; a cycle falls back to
+  a copy with the loop cut, reported once. It never throws (`tests/transport/encoder.spec.ts`, which asserts
+  through a real adapter so that a tRPC bump dropping the option fails rather than silently restoring the bug).
 - `emitter.ts` — `rootEvents`, the single `RootEventEmitter` (it implements the SDK's `RootEvents`, and is the `transport` the app binds): `emitLog`/`onLog`, `emitConnected`/`onConnected`, `emitPackClientConnected`/`onPackClientConnected`, `emitIncoming`/`onIncoming`, `emitPluginSend`/`onPluginSend` (sends to plugins from outside a system, which `createAppBus()` routes through the bus actor), `emitOutgoing`/`onOutgoing` (what the clients receive). `emitLog` also appends the event to `$AGENTBUDDY_LOG_DIR/app-events.log` (skipped when unset; write errors are swallowed).
 
 Packs reach these modules only through the bound `HostRuntime` (`@abuddy/sdk/events` and `@abuddy/sdk/logger` send, log and report errors over `transport.rootEvents`), not by import.
@@ -101,7 +122,7 @@ Loggers and error reports are SDK code (`@abuddy/sdk/logger`): a bound `createLo
   `startPacks` with an argument it dropped long ago, three collected `Message`s into `Record<string, unknown>`
   arrays, two cast through types that no longer overlap — none of which a run could catch, since extra arguments
   and structural mismatches are invisible at runtime. A compile-time assertion about this package's own boundary
-  can therefore live with it: the `Required<Message>` sample in `tests/transport/bus-send-sender.spec.ts` stops
+  can therefore live with it: the `Required<Omit<Message, 'client'>>` sample in `tests/transport/bus-send-sender.spec.ts` stops
   compiling when the message envelope grows a field.
 
 ## Scripts (`package.json`)

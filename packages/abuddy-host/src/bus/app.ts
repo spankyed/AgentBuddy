@@ -10,6 +10,8 @@ import { getPacksWithClientLoadedFrontends } from '../packs/layout.ts';
 import { createBusMachine } from './machine.ts';
 import { pluginVisibility } from '../features/application/be/system.ts';
 import { HOST } from '../refs.ts';
+import { deliverAs } from './delivery.ts';
+import type { ParticipantClaims } from './participants.ts';
 
 /** Sent to the application plugin after each client connection: the app shell's state, which the window opens with */
 export type ApplicationConnectedEvent = Extract<HostPluginEvents['host/application'], { type: 'CLIENT_CONNECTED' }>;
@@ -25,9 +27,10 @@ export interface EarlySystems {
 const NO_EARLY_SYSTEMS: EarlySystems = { refs: new Set(), connected: () => {} };
 
 /** The app's bus: the systems in `registry`, clients over the root event bus on the shared bus core, and `early`'s connections */
-export function createAppBus(registry: PackRegistry, early: EarlySystems = NO_EARLY_SYSTEMS) {
+export function createAppBus(registry: PackRegistry, early: EarlySystems = NO_EARLY_SYSTEMS, claims?: ParticipantClaims) {
   return createBusMachine({
     registry,
+    participantClient: claims && ((ref) => claims.clientFor(ref)),
     onOutgoing: (message) => _rootEvents.emitOutgoing(message),
     listen: (send) => {
       const unsubscribes = [
@@ -73,7 +76,13 @@ export function startEarlySystems(registry: Pick<PackRegistry, 'getEarlySystems'
 } & EarlySystems {
   const actors = registry.getEarlySystems().map(({ id, machine }) => ({ id, actor: createActor(machine).start() as AnyActorRef }));
   const unsubscribes = [
-    _rootEvents.onIncoming(({ to, event }) => actors.find(({ id }) => id === to)?.actor.send(event)),
+    // Early systems route here rather than through the bus machine, so the delivery scope has to be set here
+    // too — a logs system that answered its sender would otherwise find nothing in scope.
+    _rootEvents.onIncoming((message) => {
+      const found = actors.find(({ id }) => id === message.to);
+      if (!found) return;
+      deliverAs({ receiver: message.to, replyTo: message.sender, client: message.client }, () => found.actor.send(message.event));
+    }),
   ];
   return {
     actors,

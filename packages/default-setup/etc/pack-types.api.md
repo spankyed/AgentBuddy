@@ -55,6 +55,14 @@ interface ActionTab {
 
 interface ActionsContext {
     selectedActionId?: EARS.EntityId;
+    /**
+     * The action a selection is waiting on, which is what makes `ACTION_SELECTED` identifiable.
+     *
+     * `selectedActionId` cannot do it: that is written *from* the reply, so until one lands there is
+     * nothing to compare an arriving one against — and two quick selections are then decided by which
+     * answer happens to arrive last.
+     */
+    pendingActionId?: EARS.EntityId;
     actions: ActionEntity[];
     selectedAction?: ActionEntity;
     totalCount: number;
@@ -350,20 +358,15 @@ type BlockMessageOptions = BlockMessageBase & AutoHideOptions;
  * so we encode the reality instead: a union of every observed shape
  * with no synthetic discriminator.
  *
- * Consumers MUST narrow before using the value. The canonical parse
- * helpers are the authoritative places to do that:
+ * Consumers MUST narrow before using the value, and each narrows where it
+ * reads it rather than through a shared parser. Approval is the worked
+ * example: `CC: Route Response` (seeds/actions/claude-code/route-response.ts)
+ * counts a response as a deny only when it says so —
+ * `approved === false || cancelled === true` — having already established
+ * that it answers the pending control request it is routing.
  *
- *   - `parseApprovalDecision` at
- *       packages/default-setup/src/actions/claude-code/_helpers/approval-response.ts
- *     — narrows to `{ allow, reason? }` for approval blocks
- *
- *   - `parseStepResponse` at
- *       packages/default-setup/src/actions/onboarding/_helpers/parse-step-response.ts
- *     — narrows per onboarding step with a `cancelled` flag
- *
- * When adding a new block type, extend this union first, then add a
- * matching parser in `_helpers/` and a unit test that pins the new
- * shape (see approval-response.spec.ts for the pattern).
+ * When adding a new block type, extend this union first and narrow at the
+ * site that reads it.
  *
  * `blockResponse?: unknown` at the storage boundary is more defensive than
  * assuming the union is exhaustive; the event-level and field-level types use
@@ -4422,6 +4425,13 @@ interface PromptsConnectedData {
 
 interface PromptsContext {
     selectedPromptId?: EARS.EntityId;
+    /**
+     * The prompt a selection is waiting on, which is what makes `PROMPT_SELECTED` identifiable.
+     *
+     * `selectedPromptId` cannot do it: that is written *from* the reply, so two quick selections are
+     * otherwise decided by whichever answer arrives last.
+     */
+    pendingPromptId?: EARS.EntityId;
     prompts: PromptEntity[];
     selectedPrompt?: PromptEntity;
     totalCount: number;

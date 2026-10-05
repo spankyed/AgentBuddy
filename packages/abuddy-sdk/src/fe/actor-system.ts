@@ -1,6 +1,7 @@
 import { computed, defineComponent, inject, provide, type ComputedRef, type InjectionKey } from 'vue'
 import type { AnyActorRef } from 'xstate'
 import { splitRef } from '../ids/refs.ts'
+import { _runDelivery } from '../events/delivery.ts'
 import { boundFeHost } from '../runtime/fe-host.ts'
 
 const PLUGIN: InjectionKey<ComputedRef<AnyActorRef>> = Symbol('plugin')
@@ -19,7 +20,55 @@ const PLUGIN: InjectionKey<ComputedRef<AnyActorRef>> = Symbol('plugin')
 export function usePlugin<T>(): T {
   const plugin = inject(PLUGIN, undefined)
   if (!plugin) throw new Error('usePlugin() runs in a component a plugin renders: its canvas, panel or chat, or one inside a <PluginScope>')
-  return plugin.value as T
+  return sendsAsItself(plugin.value) as T
+}
+
+/**
+ * One wrapper per actor, so two `usePlugin()` calls in one component hand back the same object. Keyed on the
+ * actor, so it goes when the actor does.
+ */
+const wrappers = new WeakMap<AnyActorRef, AnyActorRef>()
+
+/**
+ * The actor, with a send that says which plugin made it.
+ *
+ * A component sending to its own plugin is the one path that reaches a machine's actions from outside a
+ * delivery — the bus names the message it routes to a system and the shell names the one it hands a plugin, but
+ * a click goes straight to the actor. Running the send in a delivery means the action's own `sendToSystem`
+ * stamps this plugin's ref, so a system can answer *this* plugin in the window it was asked from. `actor.id` is
+ * that ref because the shell spawns a plugin with its ref as both `id` and `systemId`.
+ *
+ * Only `send` is wrapped; everything else passes through bound to the actor. `subscribe` and `getSnapshot` are
+ * what a selector is built on, so `plugin-send-scope.spec.ts` pins both reaching the real actor through the
+ * wrapper; the `bind` is what keeps a detached `const { send } = actor` working.
+ */
+function sendsAsItself(actor: AnyActorRef): AnyActorRef {
+  const existing = wrappers.get(actor)
+  if (existing) return existing
+  /**
+   * One function per member, kept, so `plugin.getSnapshot === plugin.getSnapshot`.
+   *
+   * Handing back a fresh binding on every read works with the `@xstate/vue` this repo has — it reads each
+   * member once — but that is a fact about somebody else's code at one version, and the failure if a later one
+   * memoises on identity is every selector in every plugin quietly ceasing to update. Keeping them removes the
+   * question. Only functions are kept: a plain property is read through each time, since the actor owns it.
+   */
+  const bound = new Map<PropertyKey, unknown>()
+  const wrapper = new Proxy(actor, {
+    get(target, prop, receiver) {
+      const kept = bound.get(prop)
+      if (kept !== undefined) return kept
+      const value = prop === 'send'
+        ? (event: unknown) => _runDelivery({ receiver: target.id }, () => target.send(event as never))
+        : Reflect.get(target, prop, receiver)
+      if (typeof value !== 'function') return value
+      const fn = prop === 'send' ? value : (value as (...args: unknown[]) => unknown).bind(target)
+      bound.set(prop, fn)
+      return fn
+    },
+  })
+  wrappers.set(actor, wrapper)
+  return wrapper
 }
 
 /**

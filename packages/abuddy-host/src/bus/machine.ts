@@ -4,6 +4,7 @@
 import { enqueueActions, fromCallback, setup, spawnChild, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { reportError } from '@abuddy/sdk/logger';
 import { HOST } from '../refs.ts';
+import { deliverAs } from './delivery.ts';
 import { SYSTEM_EVENT_TYPES } from '@abuddy/sdk/framework';
 import { PLUGIN_EVENT_TYPES, senderSuffix, type Message } from '@abuddy/sdk/events';
 import type { PackRegistry } from '../packs/registry.ts';
@@ -49,6 +50,12 @@ export interface BusOptions {
   systems?(): ReadonlyMap<string, AnyStateMachine>;
   /** Delivers a message a system sent to a frontend plugin */
   onOutgoing(message: Message): void;
+  /**
+   * The connection that claimed a ref, for a name no pack registered (`host/drive`). A message addressed to one
+   * is delivered to that connection rather than checked against a plugin's declared events, since no pack
+   * describes it. Absent in a bus with no claims, which is every bus but the app's.
+   */
+  participantClient?(ref: string): string | undefined;
   /** Feeds the bus client events (INCOMING, CLIENT_CONNECTED, PACK_CLIENT_CONNECTED) and sends to plugins (OUTGOING); returns the unsubscribe */
   listen(send: (event: BusSourceEvent) => void): () => void;
   /**
@@ -168,6 +175,15 @@ export function createBusMachine(options: BusOptions) {
           reportError({ source: 'bus', operation: 'broadcastToPlugin', severity: 'diagnostic', error: new Error(message) });
         };
         if (accepted === undefined) {
+          // A name a connection claimed rather than a pack registering it (`host/drive`). No pack describes it, so
+          // there is no declared event list to check against — what it is sent reaches it, addressed to the
+          // connection holding the name. An answer already carries that connection; a send made cold takes it from
+          // here, which is what makes such a participant addressable by name and not merely replyable to.
+          const claimed = options.participantClient?.(pluginId);
+          if (claimed !== undefined) {
+            options.onOutgoing({ ...event.message, client: event.message.client ?? claimed });
+            return;
+          }
           // An event every plugin takes (a feature's settings changing) is the feature's plugin's if it has one
           if ((PLUGIN_EVENT_TYPES as readonly string[]).includes(type)) return;
           reportDrop(`Dropped "${type}" sent${sender} to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`);
@@ -181,9 +197,12 @@ export function createBusMachine(options: BusOptions) {
       },
       routeIncoming: ({ event, system }) => {
         if (event.type !== 'INCOMING') return;
-        const { to, event: incoming } = event.message;
+        const { to, event: incoming, sender, client } = event.message;
         const actor = system.get(to);
-        if (actor) actor.send(incoming);
+        // Delivered inside a scope naming the message, so the system can answer its sender with `reply` and a
+        // send it makes while handling carries its own ref. The event itself is untouched: a return address on it
+        // would be a field of the event deciding where things go, which the envelope exists to prevent.
+        if (actor) deliverAs({ receiver: to, replyTo: sender, client }, () => actor.send(incoming));
         // An event every system accepts (a feature's settings changing) is the feature's system's if it runs one
         else if (!(SYSTEM_EVENT_TYPES as readonly string[]).includes(incoming.type)) {
           console.warn(`[bus] routeIncoming: system "${to}" not found (may be reloading), dropping event "${incoming.type}"`);

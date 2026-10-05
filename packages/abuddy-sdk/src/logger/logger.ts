@@ -35,12 +35,26 @@ export function isDebugEnabled(source: string): boolean {
   return debugEnabled.get(source) ?? process.env.NODE_ENV !== 'production';
 }
 
-/** A copy of `value` that JSON can hold: repeated objects, functions and undefined become markers */
+/**
+ * A copy of `value` that JSON can hold: a BigInt becomes its digits, and a repeated object, a function and
+ * `undefined` become markers.
+ *
+ * `[Repeated]` covers an object that holds itself as well as one that merely appears twice, a seen-set having
+ * no path to tell them apart. That branch is what makes this function **total over any input**, which is the
+ * claim worth keeping: its one caller redacts first, and redaction cuts a loop and copies a repeat, so in
+ * practice nothing reaches here twice — but that is a fact about a caller, where totality is a fact about the
+ * function, and only one of the two survives somebody moving the call.
+ *
+ * The BigInt branch is what stops this throwing. `JSON.stringify` refuses one, and nothing caught that — so
+ * `logger.info('a row', { count: 42n })` threw from inside the logger, on data this app's own database
+ * returns.
+ */
 function serializable(value: unknown): unknown {
   const seen = new WeakSet<object>();
   return JSON.parse(JSON.stringify(value, (_key, field: unknown) => {
+    if (typeof field === 'bigint') return field.toString();
     if (typeof field === 'object' && field !== null) {
-      if (seen.has(field)) return '[Circular Reference]';
+      if (seen.has(field)) return '[Repeated]';
       seen.add(field);
     }
     if (typeof field === 'function') return '[Function]';

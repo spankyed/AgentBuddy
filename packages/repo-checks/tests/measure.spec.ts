@@ -136,6 +136,16 @@ describe('when a measurement is refused', () => {
   });
 });
 
+/**
+ * Waiting for the box instead of refusing it, which is what `spec-cost:update` does now.
+ *
+ * The load a recording hits is nearly always the caller's own — they reach for it having just run the chain
+ * that proved the work. So the refusal's advice ("wait, then run it again") was the one thing the command
+ * could do itself. What must not change is *which* reading gets recorded: still one above the floor, never
+ * a reading taken while the box was busy.
+ *
+ * The clock and the reader are injected, so these drive it with no real load and no real time.
+ */
 describe('what a series says', () => {
   it('takes the middle of an odd series and the mean of the two middles of an even one', () => {
     expect(summarise([30, 10, 20])).toMatchObject({ median: 20, min: 10, max: 30, runs: 3 });

@@ -305,6 +305,14 @@ const MUTATIONS: readonly Mutation[] = [
     to: 'reason: \'current\'',
     call: (lib, tree) => lib.planFor(tree.root, 'mini', [], false),
   },
+  // Without this clause a cost the machine parked is owed for ever: `unrecorded` counts a parked spec as
+  // recorded, so a bare update plans nothing and reports "every record is current" over it.
+  {
+    why: 'planFor plans again a cost this machine parked while busy',
+    from: '[...unrecorded(previous, files), ...pendingHere(previous, files)]',
+    to: 'unrecorded(previous, files)',
+    call: (lib, tree) => lib.planFor(tree.root, 'parked', [], false),
+  },
   // The break this table was missing. `misplaced` and `outgrown` answer for two package shapes, and the
   // precondition choosing between them used to sit at each call site: of four callers, the one that forgot
   // told a one-half package its specs were "in the wrong half" and named a half that package has not got.
@@ -785,7 +793,18 @@ describe('every decision these modules make is one something can see', () => {
     for (const dir of UNSORTED) write(`packages/${dir}/${FAST}`, '');
     // `a` recorded and `b` not, which is what makes the unmeasured branch reachable. No live suite is in this
     // state — a green tree means every spec is recorded, so the branch a bare update takes needs a tree of its own
-    write(realSpecCost.specCostFile('mini'), `${JSON.stringify({ measuredAt: 'then', costs: { [FAST]: 100 }, skipped: [], unmeasured: [], machine: realCoreBudget.thisMachine() }, null, 2)}\n`);
+    write(realSpecCost.specCostFile('mini'), `${JSON.stringify({ measuredAt: 'then', samples: { [FAST]: [100] }, skipped: [], unmeasured: [], machine: realCoreBudget.thisMachine() }, null, 2)}\n`);
+    // A suite with a cost parked: `a` priced, `c` on disk and listed `unmeasured` by a record this machine
+    // owns. That is what a busy run leaves behind. `unrecorded` calls a parked spec recorded, so this shape
+    // is the only one where `pendingHere` is what plans anything — `mini` cannot show it, since there an
+    // unrecorded spec reaches the same branch either way.
+    write('packages/parked/vitest.config.ts', 'export default {};\n');
+    write('packages/parked/tests/a.spec.ts', '');
+    write('packages/parked/tests/c.spec.ts', '');
+    write(realSpecCost.specCostFile('parked'), `${JSON.stringify({
+      measuredAt: 'then', samples: { 'tests/a.spec.ts': [100] }, skipped: [],
+      unmeasured: ['tests/c.spec.ts'], machine: realCoreBudget.thisMachine(),
+    }, null, 2)}\n`);
     // A record from before `machine` landed, which is what a branch not yet rebased, a stash or a revert
     // hands `readSpecCost`. No live suite is in this state either, and the gate has no other input.
     //

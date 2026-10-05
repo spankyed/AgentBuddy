@@ -15,6 +15,12 @@ export const APP_UNBRIDGED: Readonly<Record<string, string>> = {
   // A pack directory on disk, for the specs whose subject is pack tooling. Source-only: the entry has no
   // published target and a pack's config may not declare the condition, so no pack can resolve it at all
   '@abuddy/sdk/testing/pack-fixture': 'repo test tooling, resolvable only under @abuddy/source',
+  // What each value-serialising pass answers, as data three suites assert their own rows against. Source-only
+  // for the same reason: it is this repo's test data about this repo's code, and no pack has a row in it
+  '@abuddy/sdk/testing/serialisation-matrix': 'repo test data, resolvable only under @abuddy/source',
+  // Waiting for an event rather than for a duration, shared by the suites that need it. Source-only for the
+  // same reason: it is this repo's test support, and a pack's tests wait through the harness instead
+  '@abuddy/sdk/testing/waiting': 'repo test support, resolvable only under @abuddy/source',
 };
 
 /** The shared-instance specifiers the app bridges, from each package's exports map as `fromFile` resolves it */

@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-02T20:13:33.314Z",
+  "measuredAt": "2026-10-04T09:56:53.700Z",
   "samples": {
     "tests/build/compile-engine.spec.ts": [14],
     "tests/build/declared-type-of.spec.ts": [453],
@@ -23,6 +23,7 @@
     "tests/fe/open-link.spec.ts": [4],
     "tests/fe/open-plugin.spec.ts": [3],
     "tests/fe/plugin-scope.spec.ts": [10],
+    "tests/fe/plugin-send-scope.spec.ts": [9],
     "tests/fe/plugin-state.spec.ts": [6],
     "tests/fe/settings.spec.ts": [7],
     "tests/fe/use-shell.spec.ts": [4],
@@ -61,7 +62,10 @@
     "tests/utils/seed-registry.spec.ts": [9]
   },
   "skipped": [],
-  "unmeasured": [],
+  "unmeasured": [
+    "tests/steps/result-truncator.spec.ts",
+    "tests/testing/serialisation-matrix.spec.ts"
+  ],
   "machine": {
     "cpu": "Apple M1 Pro",
     "cores": 10

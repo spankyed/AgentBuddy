@@ -4,9 +4,10 @@
 // request id — are handled before anything launches Electron.
 import { describe, expect, it, vi } from 'vitest';
 import {
-  BRIDGE_FLAG, BRIDGE_FUNCTION, createSession, DATABASE_SYSTEM, evalSource, MAX_SEEN_EVENTS,
-  REPLY_TIMEOUT_MS, type SeenEvent, type SessionPage,
+  BRIDGE_FLAG, BRIDGE_FUNCTION, createSession, DATABASE_SYSTEM, DRIVE_REF, evalSource, MAX_SEEN_EVENTS,
+  REPLY_TIMEOUT_MS, type SeenEvent, type SessionApi, type SessionPage,
 } from '../../src/engine/session.ts';
+import type { BusMessage } from '../../src/engine/api-client.ts';
 
 /** A page that records what it was asked and lets a test answer for it, plus the bridge's own callback */
 function fakePage() {
@@ -40,26 +41,54 @@ function fakePage() {
   };
 }
 
+/**
+ * A connection that records what it was asked to send and lets a test answer for it.
+ *
+ * The bus verbs travel over this now rather than through the page, so this is where a round-trip's send is
+ * asserted and where its reply comes from. `failure` is settable, because a timed-out round-trip is supposed to
+ * quote it rather than list possibilities.
+ */
+function fakeApi() {
+  let deliver: ((message: BusMessage) => void) | undefined;
+  const send = vi.fn(async (_message: { to: string; event: Record<string, unknown>; sender?: string }) => {});
+  let failure: string | null = null;
+  const api: SessionApi = {
+    send,
+    onMessage: (listener) => { deliver = listener; return () => { deliver = undefined; }; },
+    get failure() { return failure; },
+  };
+  return {
+    api,
+    send,
+    fail: (reason: string) => { failure = reason; },
+    /** What the app answered on the session's own connection */
+    answer: (event: Record<string, unknown> & { type: string }, to = DRIVE_REF) =>
+      deliver?.({ to, event, sender: DATABASE_SYSTEM }),
+  };
+}
+
 const sessionWith = (overrides: Partial<SessionPage> = {}) => {
   const fake = fakePage();
+  const client = fakeApi();
   const errors = ['renderer blew up'];
   const session = createSession({
     page: { ...fake.page, ...overrides },
+    api: client.api,
     takeErrors: () => errors.splice(0, errors.length),
   });
-  return { ...fake, session };
+  return { ...fake, ...client, session };
 };
 
 /**
- * The `[to, event]` tuple the page was last asked to send, or a failure that says nothing was sent.
+ * The envelope the connection was last asked to send, or a failure that says nothing was sent.
  *
- * Destructuring straight off `calls.at(-1)?.[1]` throws an opaque `TypeError` when no send happened,
- * which is the likeliest thing to go wrong in a test about sends.
+ * Reading straight off `calls.at(-1)?.[0]` throws an opaque `TypeError` when no send happened, which is the
+ * likeliest thing to go wrong in a test about sends — so it is named here instead.
  */
-const lastSend = (calls: { mock: { calls: unknown[][] } }): [string, Record<string, unknown>] => {
+const lastSend = (calls: { mock: { calls: unknown[][] } }): { to: string; event: Record<string, unknown>; sender?: string } => {
   const call = calls.mock.calls.at(-1);
-  if (call === undefined) throw new Error('nothing was sent to the page');
-  return call[1] as [string, Record<string, unknown>];
+  if (call === undefined) throw new Error('nothing was sent over the connection');
+  return call[0] as { to: string; event: Record<string, unknown>; sender?: string };
 };
 
 /** Lets the microtasks a verb queues run, without waiting on any real timer */
@@ -179,13 +208,13 @@ describe('the in-page bridge', () => {
   });
 
   it('still wakes a waiter when the buffer is full', async () => {
-    const { session, emit, evaluateWith } = sessionWith();
+    const { session, emit, send } = sessionWith();
     await session.ready();
 
     for (let n = 0; n < MAX_SEEN_EVENTS; n += 1) emit({ type: `E${n}`, event: {} });
     const pending = session.qx('return 1');
     await settle();
-    const requestId = String(lastSend(evaluateWith)[1].requestId);
+    const requestId = String(lastSend(send).event.requestId);
     // A reply arriving into a full buffer must still resolve the request waiting for it
     emit({ type: 'QUERY_RESULT', event: { result: 'through a full buffer', requestId } });
 
@@ -204,65 +233,81 @@ describe('the in-page bridge', () => {
 describe('a bus round-trip', () => {
   /** The id the engine minted, read back off the send so a test can answer as the app would */
   const sentId = (calls: { mock: { calls: unknown[][] } }): string =>
-    String(lastSend(calls)[1].requestId);
+    String(lastSend(calls).event.requestId);
 
   it('sends to the database system with an id, and resolves on the reply that carries it', async () => {
-    const { session, emit, evaluateWith } = sessionWith();
+    const { session, send, answer } = sessionWith();
     await session.ready();
 
     const pending = session.qx('return 42');
     await settle();
-    const [to, event] = lastSend(evaluateWith);
-    expect(to).toBe(DATABASE_SYSTEM);
-    expect(event).toMatchObject({ type: 'EXECUTE_QUERY', code: 'return 42' });
-    expect(event.requestId, 'minted by the requester, not the replier').toEqual(expect.any(String));
+    const sent = lastSend(send);
+    expect(sent.to).toBe(DATABASE_SYSTEM);
+    expect(sent.event).toMatchObject({ type: 'EXECUTE_QUERY', code: 'return 42' });
+    expect(sent.event.requestId, 'minted by the requester, not the replier').toEqual(expect.any(String));
+    // The field the system turns into a reply address: without it `reply` has nobody to answer
+    expect(sent.sender, 'so the system can answer this session').toBe(DRIVE_REF);
 
-    emit({ type: 'QUERY_RESULT', event: { result: 42, requestId: sentId(evaluateWith) } });
+    answer({ type: 'QUERY_RESULT', result: 42, requestId: sentId(send) });
     await expect(pending).resolves.toEqual({ ok: true, value: 42 });
   });
 
   it('turns the error reply into ok false, carrying the system message', async () => {
-    const { session, emit, evaluateWith } = sessionWith();
+    const { session, send, answer } = sessionWith();
     await session.ready();
 
     const pending = session.qx('return boom');
     await settle();
-    emit({
-      type: 'QUERY_ERROR',
-      event: { error: 'boom is not defined', requestId: sentId(evaluateWith) },
-    });
+    answer({ type: 'QUERY_ERROR', error: 'boom is not defined', requestId: sentId(send) });
 
     await expect(pending).resolves.toEqual({ ok: false, error: 'qx: boom is not defined' });
   });
 
   it('uses the transaction events for tx, not the query ones', async () => {
-    const { session, emit, evaluateWith } = sessionWith();
+    const { session, send, answer } = sessionWith();
     await session.ready();
 
     const pending = session.tx('return tx(...)');
     await settle();
-    const [, event] = lastSend(evaluateWith);
-    expect(event).toMatchObject({ type: 'EXECUTE_TRANSACTION', code: 'return tx(...)' });
+    expect(lastSend(send).event).toMatchObject({ type: 'EXECUTE_TRANSACTION', code: 'return tx(...)' });
 
-    const requestId = sentId(evaluateWith);
+    const requestId = sentId(send);
     // A QUERY_RESULT carrying the same id must not satisfy a transaction either: the type and the id
     // are both part of the answer, and only one of them is enough to be wrong
-    emit({ type: 'QUERY_RESULT', event: { result: 'wrong', requestId } });
-    emit({ type: 'TRANSACTION_RESULT', event: { result: 'right', requestId } });
+    answer({ type: 'QUERY_RESULT', result: 'wrong', requestId });
+    answer({ type: 'TRANSACTION_RESULT', result: 'right', requestId });
     await expect(pending).resolves.toEqual({ ok: true, value: 'right' });
+  });
+
+  /**
+   * The bridge is still a reply path, and this is the only case that says so.
+   *
+   * An app built before `host/drive` existed answers with a broadcast, which never reaches this session's
+   * connection — the in-page inspector is the only way to see it. `abuddy drive --app beta` can be exactly that
+   * app, so waiters hear both channels and this case is what stops the page path being deleted as redundant.
+   */
+  it('still resolves a round-trip from a reply seen only in the page', async () => {
+    const { session, emit, send } = sessionWith();
+    await session.ready();
+
+    const pending = session.qx('return 1');
+    await settle();
+    emit({ type: 'QUERY_RESULT', event: { result: 'through the bridge', requestId: sentId(send) } });
+
+    await expect(pending).resolves.toEqual({ ok: true, value: 'through the bridge' });
   });
 
   /** Someone else's query — a person in the Database plugin while a session drives */
   it('ignores a reply for a request it did not make', async () => {
-    const { session, emit, evaluateWith } = sessionWith();
+    const { session, send, answer } = sessionWith();
     await session.ready();
 
     const pending = session.qx('return mine');
     await settle();
-    emit({ type: 'QUERY_RESULT', event: { result: 'someone else', requestId: 'q-elsewhere' } });
+    answer({ type: 'QUERY_RESULT', result: 'someone else', requestId: 'q-elsewhere' });
     await settle();
 
-    emit({ type: 'QUERY_RESULT', event: { result: 'mine', requestId: sentId(evaluateWith) } });
+    answer({ type: 'QUERY_RESULT', result: 'mine', requestId: sentId(send) });
     await expect(pending).resolves.toEqual({ ok: true, value: 'mine' });
   });
 
@@ -276,29 +321,36 @@ describe('a bus round-trip', () => {
   it('does not give an abandoned request\'s late reply to the next one', async () => {
     vi.useFakeTimers();
     try {
-      const { session, emit, evaluateWith } = sessionWith();
+      const { session, send, answer } = sessionWith();
       await session.ready();
 
       const abandoned = session.qx('return slow');
       await vi.advanceTimersByTimeAsync(0);
-      const orphanId = sentId(evaluateWith);
+      const orphanId = sentId(send);
       await vi.advanceTimersByTimeAsync(REPLY_TIMEOUT_MS + 10);
       await expect(abandoned).resolves.toMatchObject({ ok: false });
 
       const next = session.qx('return quick');
       await vi.advanceTimersByTimeAsync(0);
       // The slow query finishes at last, with nobody waiting for it
-      emit({ type: 'QUERY_RESULT', event: { result: 'the abandoned one', requestId: orphanId } });
+      answer({ type: 'QUERY_RESULT', result: 'the abandoned one', requestId: orphanId });
       await vi.advanceTimersByTimeAsync(0);
 
-      emit({ type: 'QUERY_RESULT', event: { result: 'its own', requestId: sentId(evaluateWith) } });
+      answer({ type: 'QUERY_RESULT', result: 'its own', requestId: sentId(send) });
       await expect(next).resolves.toEqual({ ok: true, value: 'its own' });
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it('names the request and the diagnostics when no reply comes', async () => {
+  /**
+   * The causes changed when the send stopped going through the page, and the message had to change with them.
+   *
+   * It used to lead with a serialisation failure in the *renderer's* subscription, because that killed every
+   * later round-trip. It cannot any more — this session has its own connection — so that cause is gone from here
+   * entirely rather than demoted.
+   */
+  it('names what is left to go wrong when no reply comes', async () => {
     vi.useFakeTimers();
     try {
       const { session } = sessionWith();
@@ -308,13 +360,36 @@ describe('a bus round-trip', () => {
       const result = await pending;
 
       expect(result.ok).toBe(false);
-      expect(result, 'the root state').toMatchObject({ error: expect.stringContaining('/state') });
-      expect(result, 'and the renderer errors').toMatchObject({ error: expect.stringContaining('/errors') });
-      expect(result, 'the cause that actually happens').toMatchObject({
-        error: expect.stringContaining('BigInt'),
-      });
-      expect(result, 'the rare one is still named, last').toMatchObject({
+      expect(result, 'which request went unanswered').toMatchObject({ error: expect.stringContaining('qx-') });
+      expect(result, 'no pack providing it is still a cause').toMatchObject({
         error: expect.stringContaining(DATABASE_SYSTEM),
+      });
+      expect(result, 'and an app too old to answer a participant').toMatchObject({
+        error: expect.stringContaining(DRIVE_REF),
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /**
+   * When the channel itself is the reason, the message says so instead of listing possibilities.
+   *
+   * This is what `api.failure` is for: a dead connection is not a slow query, and an agent reading "restart the
+   * session" acts on it, where a list of three maybes sends it to `/state` for nothing.
+   */
+  it('quotes the channel when the connection is what failed', async () => {
+    vi.useFakeTimers();
+    try {
+      const { session, fail } = sessionWith();
+      await session.ready();
+      const pending = session.qx('return 1');
+      fail('the app ended the event subscription');
+      await vi.advanceTimersByTimeAsync(REPLY_TIMEOUT_MS + 10);
+
+      await expect(pending).resolves.toMatchObject({
+        ok: false,
+        error: expect.stringContaining('the app ended the event subscription'),
       });
     } finally {
       vi.useRealTimers();
@@ -322,18 +397,51 @@ describe('a bus round-trip', () => {
   });
 
   it('keeps serving after a request fails', async () => {
-    const { session, emit, evaluateWith } = sessionWith();
+    const { session, send, answer } = sessionWith();
     await session.ready();
 
     const bad = session.qx('return boom');
     await settle();
-    emit({ type: 'QUERY_ERROR', event: { error: 'nope', requestId: sentId(evaluateWith) } });
+    answer({ type: 'QUERY_ERROR', error: 'nope', requestId: sentId(send) });
     await expect(bad).resolves.toMatchObject({ ok: false });
 
     const good = session.qx('return 1');
     await settle();
-    emit({ type: 'QUERY_RESULT', event: { result: 'still here', requestId: sentId(evaluateWith) } });
+    answer({ type: 'QUERY_RESULT', result: 'still here', requestId: sentId(send) });
     await expect(good).resolves.toEqual({ ok: true, value: 'still here' });
+  });
+});
+
+describe('what /events says about an inbound message', () => {
+  /**
+   * The one case the page bridge cannot see at all.
+   *
+   * A message addressed to `host/drive` carries a `client`, so the subscription delivers it to this connection
+   * and nowhere else — the renderer never sees it, so the in-page inspector cannot report it. `/events` is
+   * therefore the only way an agent notices one, and without the sender it learns that something arrived for it
+   * but not who asked: enough to notice a question, not enough to answer it.
+   */
+  it('keeps the sender of a message addressed to the session', async () => {
+    const { session, answer } = sessionWith();
+    await session.ready();
+
+    answer({ type: 'DRIVER_QUESTION', question: 'which file?' });
+    await settle();
+
+    const [seen] = drained(session.drainEvents()).events;
+    expect(seen.to).toBe(DRIVE_REF);
+    expect(seen.sender, 'so an agent can answer whoever asked').toBe(DATABASE_SYSTEM);
+  });
+
+  // A bridged event is an event rather than an envelope, so it has no sender to keep and must not invent one
+  it('leaves it absent for an event seen only in the page', async () => {
+    const { session, emit } = sessionWith();
+    await session.ready();
+
+    emit({ type: 'TRAIL_UPDATE', event: {} });
+    await settle();
+
+    expect(drained(session.drainEvents()).events[0].sender).toBeUndefined();
   });
 });
 

@@ -5,6 +5,7 @@ import { WebSocketServer } from 'ws';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { appRouter } from '@/transport';
 import { createContext } from '@/transport/context';
+import { jsonSafeEncoder } from '@/transport/encoder';
 import { createLogger } from '@abuddy/sdk/logger';
 import { SERVER_CONFIG, apiToken, apiTokenIsOwn, isApiToken } from '@/boot/config';
 import { appPacks, appStore, backendActor } from '@/runtime';
@@ -149,7 +150,11 @@ export function createWebSocketServer() {
   const handler = applyWSSHandler({
     wss,
     router: appRouter,
-    createContext
+    createContext,
+    // In place of the adapter's `JSON.stringify`, which throws on a BigInt or a cycle — and throws from the loop
+    // that drains a subscription rather than from the send, so the throw ends the subscription and the window's
+    // whole event stream with it. `encoder.ts` has the measurements and what each case becomes.
+    experimental_encoder: jsonSafeEncoder,
   });
 
   // Safety net: always kill terminal processes before the API process exits
