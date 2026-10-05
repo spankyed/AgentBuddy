@@ -12,6 +12,8 @@ import * as http from 'node:http';
 import { WebSocketServer } from 'ws';
 import { initTRPC } from '@trpc/server';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
+import { observable } from '@trpc/server/observable';
+import { _byDeadline, _whenSatisfied } from '@abuddy/sdk/testing/waiting';
 import { createContext, type Context } from '@/transport/context';
 
 /** A connection as the adapter describes one, which is the only shape `createContext` accepts */
@@ -37,8 +39,20 @@ describe('createContext', () => {
  * What the adapter hands `createContext`, asserted through the adapter.
  *
  * The router is a local one so nothing boots — what is under test is the seam, not the app. The procedure
- * reports the context it was given and arms a listener on it, so one call answers both halves: the signal is
- * there, and it fires on close rather than on the call ending.
+ * reports the context it was given and arms a listener on it, so one call answers all three halves: the signal
+ * is there, it has *not* fired while the connection is open, and it fires once the socket closes.
+ *
+ * **The middle one is what says this is the connection's signal and not an operation's**, which is the whole
+ * reason `info.signal` may be required — the adapter keeps two controllers, one per connection and one per
+ * call, and `ctx.closed` must be the first. It is settled *causally* rather than by elapsed time: the case ends
+ * a whole operation, by starting a subscription and stopping it, and the `stopped` frame coming back is the
+ * evidence that it ended. The connection is still open at that point, so a per-call signal would have aborted
+ * and this one must not have.
+ *
+ * Nothing here waits for a duration — each step awaits the frame that says it happened, and the only number is
+ * a deadline that never runs when the code works. What that leaves unguarded is a signal with no relationship
+ * to anything, such as a stray timer; ruling that out would take waiting a while and finding nothing, which is
+ * the duration-shaped assertion these cases exist to avoid.
  */
 describe('the connection signal the adapter supplies', () => {
   let server: http.Server;
@@ -46,12 +60,19 @@ describe('the connection signal the adapter supplies', () => {
   let port: number;
   /** Set by the procedure, so a case can read what the adapter gave it after the socket is gone */
   let seen: { hasSignal: boolean; aborted: boolean } | undefined;
+  /** Settles when the signal the procedure was given fires, so the case awaits the abort rather than a delay */
+  let abortFired!: Promise<void>;
+  let fired: () => void = () => {};
+  /** The socket a case opened, so a failed case cannot leave the server waiting on it in teardown */
+  let open: WebSocket | undefined;
 
   const t = initTRPC.context<Context>().create();
   const router = t.router({
+    // Never completes on its own, so stopping it is the test's doing and the connection outlives it
+    feed: t.procedure.subscription(() => observable<number>(() => () => {})),
     look: t.procedure.query(({ ctx }) => {
       const record = { hasSignal: ctx.closed instanceof AbortSignal, aborted: false };
-      ctx.closed.addEventListener('abort', () => { record.aborted = true; }, { once: true });
+      ctx.closed.addEventListener('abort', () => { record.aborted = true; fired(); }, { once: true });
       seen = record;
       return { client: ctx.client };
     }),
@@ -59,6 +80,7 @@ describe('the connection signal the adapter supplies', () => {
 
   beforeEach(async () => {
     seen = undefined;
+    abortFired = new Promise<void>((resolve) => { fired = resolve; });
     server = http.createServer();
     wss = new WebSocketServer({ server });
     // This module's own createContext, which is the point: a stub would assert nothing about the adapter
@@ -68,31 +90,69 @@ describe('the connection signal the adapter supplies', () => {
   });
 
   afterEach(async () => {
+    if (open !== undefined && open.readyState === WebSocket.OPEN) open.close();
+    open = undefined;
     wss.close();
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
-  /** Opens a socket, makes one query, closes it, and gives the server a turn to notice */
-  async function askThenClose(): Promise<void> {
-    const socket = new WebSocket(`ws://127.0.0.1:${port}`);
-    await new Promise<void>((resolve, reject) => {
-      socket.addEventListener('open', () => resolve(), { once: true });
-      socket.addEventListener('error', () => reject(new Error('the socket would not open')), { once: true });
-    });
-    await new Promise<void>((resolve, reject) => {
-      socket.addEventListener('message', () => resolve(), { once: true });
-      socket.addEventListener('close', () => reject(new Error('the socket closed before answering')), { once: true });
-      socket.send(JSON.stringify({ id: 1, jsonrpc: '2.0', method: 'query', params: { path: 'look' } }));
-    });
-    socket.close();
-    // `client.once('close')` fires a turn after the client's close, so the abort is not synchronous with it
-    await new Promise<void>((resolve) => setTimeout(resolve, 50));
-  }
+type Frame = { id?: unknown; result?: { type?: string } };
 
-  it('is there, and ends with the connection', async () => {
-    await askThenClose();
+/** Every frame the server sent, accumulated for the socket's life so a waiter can read what has arrived */
+function framesOf(socket: WebSocket): Frame[] {
+  const frames: Frame[] = [];
+  socket.addEventListener('message', (message: MessageEvent) => {
+    const text = String(message.data);
+    // The adapter's keep-alive words are protocol, not JSON
+    if (text === 'PING' || text === 'PONG') return;
+    frames.push(JSON.parse(text) as Frame);
+  });
+  return frames;
+}
+
+/** Resolves once a frame of `type` has arrived, re-reading what has on each message rather than on a timer */
+const sawFrame = (socket: WebSocket, frames: Frame[], type: string, describe: string) => _whenSatisfied(
+  (notify) => {
+    socket.addEventListener('message', notify);
+    return () => socket.removeEventListener('message', notify);
+  },
+  () => frames.some((frame) => frame.result?.type === type) || undefined,
+  describe,
+);
+
+  it('is there, outlives one operation, and ends with the connection', async () => {
+    const socket = new WebSocket(`ws://127.0.0.1:${port}`);
+    open = socket;
+    const frames = framesOf(socket);
+    await _byDeadline(
+      new Promise<void>((resolve, reject) => {
+        socket.addEventListener('open', () => resolve(), { once: true });
+        socket.addEventListener('error', () => reject(new Error('the socket would not open')), { once: true });
+      }),
+      'the socket to open',
+    );
+
+    // One query, which is what arms the listener on the context's signal
+    socket.send(JSON.stringify({ id: 1, jsonrpc: '2.0', method: 'query', params: { path: 'look' } }));
+    await sawFrame(socket, frames, 'data', 'the query to be answered');
 
     expect(seen?.hasSignal, 'the adapter passed info.signal, which `closed` is not optional about').toBe(true);
-    expect(seen?.aborted, 'and it fired when the socket closed, which is what releases a claim').toBe(true);
+
+    /**
+     * One whole operation, begun and ended, while the connection stays open — which is the thing a per-call
+     * signal aborts on. The `stop` waits for `started`: sent in the same breath as the subscribe it raced the
+     * adapter registering it, and stopped nothing.
+     */
+    socket.send(JSON.stringify({ id: 2, jsonrpc: '2.0', method: 'subscription', params: { path: 'feed' } }));
+    await sawFrame(socket, frames, 'started', 'the subscription to start');
+    socket.send(JSON.stringify({ id: 2, jsonrpc: '2.0', method: 'subscription.stop' }));
+    await sawFrame(socket, frames, 'stopped', 'the subscription to report that it stopped');
+
+    expect(seen?.aborted, 'an operation ended and this did not fire, so it is the connection\'s').toBe(false);
+
+    socket.close();
+    await _byDeadline(abortFired, 'the connection signal to abort once the socket closed');
+
+    expect(seen?.aborted, 'and it fired on the close, which is what releases a claim').toBe(true);
   });
 });
