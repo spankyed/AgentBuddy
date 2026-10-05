@@ -60,7 +60,9 @@ export interface SessionPage {
 export interface SessionApi {
   send: (message: { to: string; event: Record<string, unknown>; sender?: string }) => Promise<void>;
   onMessage: (listener: (message: BusMessage) => void) => () => void;
-  /** Why the channel is finished, or null while it works. Quoted by a round-trip that times out. */
+  /** Told once, with why, when the channel finishes — which is what ends a round-trip at once rather than at its timeout */
+  onFinished: (listener: (reason: string) => void) => () => void;
+  /** Why the channel is finished, or null while it works */
   readonly failure: string | null;
 }
 
@@ -115,6 +117,13 @@ export const DATABASE_SYSTEM = 'default-setup/database';
 
 /** The name the session claims, so a system can answer *it* rather than broadcasting to every window */
 export const DRIVE_REF = HOST.drive;
+
+/**
+ * What a round-trip says when the channel is gone: the one cause a session can be certain of, so it is reported
+ * as a fact rather than as one of the three guesses a plain timeout has to offer.
+ */
+const channelGone = (requestId: string, reason: string): Error =>
+  new Error(`no answer for ${requestId}: ${reason}. The drive session's connection to the app is finished, so restart the session.`);
 
 const REPLIES = {
   qx: { send: 'EXECUTE_QUERY', ok: 'QUERY_RESULT', bad: 'QUERY_ERROR' },
@@ -190,9 +199,11 @@ export interface EngineSession {
 export function createSession({ page, api, takeErrors }: SessionDeps): EngineSession {
   const seen: SeenEvent[] = [];
   let dropped = 0;
-  const waiting = new Set<(event: SeenEvent) => void>();
+  /** A round-trip in flight: how it hears an answer, and how it is told none is coming */
+  const waiting = new Set<{ receive: (event: SeenEvent) => void; fail: (reason: string) => void }>();
   /** Set by `ready`; dropped by `stop`, so a session leaves no listener on a client it does not own */
   let stopApi: (() => void) | undefined;
+  let stopFinished: (() => void) | undefined;
 
   /**
    * Answers a waiting round-trip, from either channel.
@@ -202,7 +213,7 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
    * later microtask — so there is no entry this loop could visit too early.
    */
   const wake = (event: SeenEvent): void => {
-    for (const receive of waiting) receive(event);
+    for (const waiter of waiting) waiter.receive(event);
   };
 
   /** Puts an event in the buffer `/events` drains, oldest dropped past the cap */
@@ -236,20 +247,34 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
    */
   const nextReply = (requestId: string, ok: string, bad: string): Promise<unknown> =>
     new Promise((resolve, reject) => {
-      const receive = (event: SeenEvent): void => {
-        if (event.type !== ok && event.type !== bad) return;
-        if (event.event.requestId !== requestId) return;
-        clearTimeout(timer);
-        waiting.delete(receive);
-        if (event.type === bad) reject(new Error(String(event.event.error ?? 'the system reported an error')));
-        else resolve(event.event.result);
+      // Already gone, so there is nothing to wait for and no reason to make the caller wait for the timeout
+      if (api.failure !== null) {
+        reject(channelGone(requestId, api.failure));
+        return;
+      }
+      const waiter = {
+        receive: (event: SeenEvent): void => {
+          if (event.type !== ok && event.type !== bad) return;
+          if (event.event.requestId !== requestId) return;
+          clearTimeout(timer);
+          waiting.delete(waiter);
+          if (event.type === bad) reject(new Error(String(event.event.error ?? 'the system reported an error')));
+          else resolve(event.event.result);
+        },
+        /** The channel finished while this was in flight: say so now rather than in fifteen seconds */
+        fail: (reason: string): void => {
+          clearTimeout(timer);
+          waiting.delete(waiter);
+          reject(channelGone(requestId, reason));
+        },
       };
       const timer = setTimeout(() => {
-        waiting.delete(receive);
-        // A finished channel is the one cause the session can be certain of, so it is reported as a fact.
-        // Everything else is a guess between three, and the message below says which three.
+        waiting.delete(waiter);
+        // The fallback for a session whose `ready` never ran, so nothing is listening for the finish. The
+        // server awaits `ready` before it serves a verb, so this is reachable only from a test driving the
+        // session directly — remove `ready`'s `onFinished` subscription and every dead-channel case comes here
         if (api.failure !== null) {
-          reject(new Error(`no answer for ${requestId}: ${api.failure}. The drive session's connection to the app is finished, so restart the session.`));
+          reject(channelGone(requestId, api.failure));
           return;
         }
         reject(new Error(`no ${ok} or ${bad} for ${requestId} within ${REPLY_TIMEOUT_MS}ms. `
@@ -257,7 +282,7 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
           + `system answered with a broadcast rather than a reply — which an app built before ${DRIVE_REF} `
           + 'existed does, and GET /events would then show the answer arriving unaddressed.'));
       }, REPLY_TIMEOUT_MS);
-      waiting.add(receive);
+      waiting.add(waiter);
     });
 
   /**
@@ -277,6 +302,9 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
     const requestId = randomId({ prefix: `${kind}-` });
     // Armed before the send, so a reply that arrives immediately is not missed
     const reply = nextReply(requestId, ok, bad);
+    // A send that never left means no answer is coming, and the armed waiter is abandoned — handled here so
+    // its rejection is not an unhandled one when the timer finally fires
+    reply.catch(() => {});
     await sendToSystem(DATABASE_SYSTEM, { type: send, code, requestId });
     return reply;
   };
@@ -294,6 +322,18 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
        * Only what the inspector cannot see is recorded, so `/events` keeps its meaning — a message addressed to
        * `DRIVE_REF` never reaches the renderer, while a broadcast reaches both and would be counted twice.
        */
+      /**
+       * A finished channel ends every round-trip waiting on it, at once.
+       *
+       * Without this each one sat until `REPLY_TIMEOUT_MS` and then reported the same sentence fifteen seconds
+       * late — the state was observable only by asking, so the session discovered it on the next verb rather
+       * than being told. Iterated directly, for `wake`'s reason: a waiter removes *itself*, and a `Set`
+       * iterator handles an entry deleted at or before the cursor.
+       */
+      stopFinished = api.onFinished((reason) => {
+        for (const waiter of waiting) waiter.fail(reason);
+      });
+
       stopApi = api.onMessage((message) => {
         const event: SeenEvent = {
           to: message.to,
@@ -409,7 +449,9 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
 
     stop: () => {
       stopApi?.();
+      stopFinished?.();
       stopApi = undefined;
+      stopFinished = undefined;
     },
   };
 }

@@ -45,21 +45,29 @@ function fakePage() {
  * A connection that records what it was asked to send and lets a test answer for it.
  *
  * The bus verbs travel over this now rather than through the page, so this is where a round-trip's send is
- * asserted and where its reply comes from. `failure` is settable, because a timed-out round-trip is supposed to
- * quote it rather than list possibilities.
+ * asserted and where its reply comes from. `finish` sets `failure` *and* tells the listeners, as the real
+ * client does — the point of `onFinished` being that the state is announced rather than only readable.
  */
 function fakeApi() {
   let deliver: ((message: BusMessage) => void) | undefined;
+  const finishListeners = new Set<(reason: string) => void>();
   const send = vi.fn(async (_message: { to: string; event: Record<string, unknown>; sender?: string }) => {});
   let failure: string | null = null;
   const api: SessionApi = {
     send,
     onMessage: (listener) => { deliver = listener; return () => { deliver = undefined; }; },
+    onFinished: (listener) => { finishListeners.add(listener); return () => finishListeners.delete(listener); },
     get failure() { return failure; },
   };
   return {
     api,
     send,
+    /** The channel finishing, as the client reports it: the state, then everyone who asked to be told */
+    finish: (reason: string) => {
+      failure = reason;
+      for (const listener of finishListeners) listener(reason);
+    },
+    /** Only the state, for the case about a round-trip armed after the channel had already gone */
     fail: (reason: string) => { failure = reason; },
     /** What the app answered on the session's own connection */
     answer: (event: Record<string, unknown> & { type: string }, to = DRIVE_REF) =>
@@ -295,6 +303,40 @@ describe('a bus round-trip', () => {
     emit({ type: 'QUERY_RESULT', event: { result: 'through the bridge', requestId: sentId(send) } });
 
     await expect(pending).resolves.toEqual({ ok: true, value: 'through the bridge' });
+  });
+
+  /**
+   * The channel dying ends what is waiting on it, at once.
+   *
+   * It used to end at `REPLY_TIMEOUT_MS` instead: `failure` was a state nothing announced, so a round-trip
+   * could only discover it by being asked, and an agent sat fifteen seconds for a sentence that was true
+   * immediately. The real client tells its listeners from the same place it records the state
+   * (`ApiClient.onFinished`).
+   */
+  it('ends a round-trip in flight as soon as the channel finishes', async () => {
+    const { session, finish } = sessionWith();
+    await session.ready();
+
+    const pending = session.qx('return 1');
+    await settle();
+    finish('the app closed the connection');
+
+    await expect(pending).resolves.toMatchObject({
+      ok: false,
+      error: expect.stringContaining('the app closed the connection'),
+    });
+  });
+
+  // And one armed after it has gone needs no wait at all: there is nothing to wait for
+  it('refuses a round-trip started once the channel has finished', async () => {
+    const { session, fail } = sessionWith();
+    await session.ready();
+    fail('the app closed the connection');
+
+    await expect(session.qx('return 1')).resolves.toMatchObject({
+      ok: false,
+      error: expect.stringContaining('restart the session'),
+    });
   });
 
   /** Someone else's query — a person in the Database plugin while a session drives */
