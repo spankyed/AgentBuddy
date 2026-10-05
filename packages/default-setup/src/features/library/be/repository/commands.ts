@@ -386,34 +386,6 @@ export const libraryCommands = {
     }
   },
 
-  // ! todo remove - Migration: ensures all documents have shortcodes
-  migrateDocumentShortCodes(): void {
-    const allDocuments = qx(EARS.Entity.Document).pickAll()
-    allDocuments.forEach((doc, i) => {
-      if (!doc.shortCode) tx(doc.id as EARS.EntityId).put('shortCode', `DOC-${i + 1}` as DocumentShortCode)
-    })
-  },
-
-  // ! todo remove - Migration: fixes display order arrays and ensures all items have display orders
-  migrateDisplayOrders(): void {
-    let order = 1000
-    qx(EARS.Entity.Document).pickAll().forEach(doc => {
-      const d = doc.displayOrder
-      if (Array.isArray(d) || !d) {
-        tx(doc.id as EARS.EntityId).update('displayOrder', Array.isArray(d) ? (d[0] || order) : order)
-        order += 1000
-      }
-    })
-    order = 1000
-    qx(EARS.Entity.Collection).pickAll().forEach(col => {
-      const d = col.displayOrder
-      if (Array.isArray(d) || !d) {
-        tx(col.id as EARS.EntityId).update('displayOrder', Array.isArray(d) ? (d[0] || order) : order)
-        order += 1000
-      }
-    })
-  },
-
   createSymlinkCollection(
     name: string,
     symlinkPath: string,

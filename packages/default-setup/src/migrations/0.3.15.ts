@@ -18,7 +18,7 @@ const PACK_ID = 'default-setup';
 
 export const migration: PackMigration = {
   target: '0.3.15',
-  description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, unwrap general.projects, and point stored link blocks at plugins' refs",
+  description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, unwrap general.projects, point stored link blocks at plugins' refs, and give library rows the short codes and display orders the library used to backfill on every connection",
   up: () => {
     // ── The app's state (onboarding, versions, seed hashes) is the host's AppState now ──
     // The host's own 0.3.15 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
@@ -61,6 +61,10 @@ export const migration: PackMigration = {
     // It was `{ projects: [...] }` once, and the Settings view read both shapes on every render to cope. Moving
     // the stored value is what lets that view read one shape.
     unwrapStoredProjects();
+
+    // ── Short codes and display orders the library backfilled on every client connection ──
+    const backfilled = backfillLibraryOrdering();
+    if (backfilled > 0) logger.info(`[migration 0.3.15] backfilled ${backfilled} library row(s)`);
 
     // ── Link blocks name a plugin by its ref ──
     const relinked = addressStoredLinkBlocks();
@@ -133,6 +137,37 @@ function withoutDefaults(stored: unknown, defaults: unknown): unknown {
     if (rest !== undefined) kept[key] = rest;
   }
   return Object.keys(kept).length > 0 ? kept : undefined;
+}
+
+/**
+ * Documents gained a `shortCode`, and Documents and Collections an integer `displayOrder`, after some rows were
+ * already stored. The library answered that by backfilling inside the action that publishes its data — so it ran
+ * on every client connection and every pack change, for the life of the install, to do nothing. It runs here once.
+ *
+ * The same guards, so a second run writes nothing: a row that has the field is left alone, and `displayOrder` is
+ * taken from the array it used to be stored as when there is one.
+ */
+function backfillLibraryOrdering(): number {
+  let changed = 0;
+  // Untyped: these walk rows as they are stored, including ones written before the fields existed
+  (untypedQx(EARS.Entity.Document).pickAll() as Array<{ id: EARS.EntityId; shortCode?: unknown }>)
+    .forEach((document, index) => {
+      if (document.shortCode) return;
+      untypedTx(document.id).put('shortCode', `DOC-${index + 1}` as never);
+      changed++;
+    });
+
+  for (const entity of [EARS.Entity.Document, EARS.Entity.Collection]) {
+    let order = 1000;
+    for (const row of untypedQx(entity).pickAll() as Array<{ id: EARS.EntityId; displayOrder?: unknown }>) {
+      const stored = row.displayOrder;
+      if (!Array.isArray(stored) && stored) continue;
+      untypedTx(row.id).update('displayOrder', (Array.isArray(stored) ? stored[0] || order : order) as never);
+      order += 1000;
+      changed++;
+    }
+  }
+  return changed;
 }
 
 /** Every message's link blocks addressed (`addressLinkBlocks`); a second run finds nothing to change */

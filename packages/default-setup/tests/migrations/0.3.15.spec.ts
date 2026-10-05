@@ -46,6 +46,29 @@ describe('the 0.3.15 migration', () => {
     expect(stored()).toEqual({ general: { personal: { name: 'Ada' } } })
   })
 
+  /**
+   * The library ran this inside the action that publishes its data, so it fired on every client connection and
+   * every pack change for the life of an install, to do nothing. It belongs here, where it runs once.
+   */
+  it('gives library rows the short codes and display orders the library used to backfill', () => {
+    const old = createEntityWithDefaults(EARS.Entity.Document, { name: 'written before short codes' })
+    dropAttribute(old.id, 'shortCode')
+    dropAttribute(old.id, 'displayOrder')
+    // `displayOrder` was stored as an array once; the first entry is the order meant
+    const array = createEntityWithDefaults(EARS.Entity.Collection, { name: 'ordered by array' })
+    untypedTx(array.id).update('displayOrder', [7000] as never)
+
+    migration.up()
+
+    expect(attrs(old.id)).toMatchObject({ shortCode: expect.stringMatching(/^DOC-\d+$/), displayOrder: expect.any(Number) })
+    expect(attrs(array.id)).toMatchObject({ displayOrder: 7000 })
+
+    // Running again changes nothing: every row now has both
+    const before = { old: attrs(old.id), array: attrs(array.id) }
+    migration.up()
+    expect({ old: attrs(old.id), array: attrs(array.id) }).toEqual(before)
+  })
+
   it("drops the settings' root flow copies, keeping the plugins' other settings", () => {
     // As 0.3.14 stored them, once the host's 0.3.15 migration moved them onto the plugins' refs
     untypedTx('Settings-app' as SdkEARS.EntityId).update('data', {

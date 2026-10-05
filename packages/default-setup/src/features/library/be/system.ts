@@ -155,10 +155,6 @@ export const librarySystem = setup({
       notifyIfCommandsChanged(commandsBefore)
     },
     sendInitialData: async () => {
-      // Run migrations
-      repository.libraryCommands.migrateDocumentShortCodes()
-      repository.libraryCommands.migrateDisplayOrders()
-
       const librarySettings = services.settings.forFeature(ref('library'))
 
       broadcastToPlugin('library', {
