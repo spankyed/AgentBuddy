@@ -30,7 +30,7 @@ const opened: string[] = [];
 function connection(client: string) {
   opened.push(client);
   const ending = new AbortController();
-  return { caller: systemBusRouter.createCaller({ client, closed: ending.signal } as never), end: () => ending.abort() };
+  return { caller: systemBusRouter.createCaller({ client, closed: ending.signal }), end: () => ending.abort() };
 }
 
 // The registry is shared across cases because the mock is hoisted, so a case that claimed and never ended its

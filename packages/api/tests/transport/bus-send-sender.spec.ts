@@ -41,8 +41,12 @@ vi.mock('@/transport/emitter', () => ({ rootEvents: { onOutgoing: () => () => {}
 
 const { systemBusRouter } = await import('@/transport/bus');
 
-/** One connection's caller. `client` is the context the API mints per WebSocket connection. */
-const callerFor = (client: string) => systemBusRouter.createCaller({ client } as never);
+/**
+ * One connection's caller. `client` is the context the API mints per WebSocket connection, and `closed` the
+ * signal the adapter supplies with it — passed rather than cast away, so that a procedure which starts reading
+ * it fails this spec's typecheck instead of finding `undefined` at runtime.
+ */
+const callerFor = (client: string) => systemBusRouter.createCaller({ client, closed: new AbortController().signal });
 const caller = callerFor('c-one');
 
 describe('bus.send carries the sender across the boundary', () => {

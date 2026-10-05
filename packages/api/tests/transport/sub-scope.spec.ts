@@ -30,10 +30,16 @@ const { systemBusRouter } = await import('@/transport/bus');
 /** What the backend puts on the bus, reaching every live subscription's filter */
 const emitOutgoing = (message: Message) => { for (const callback of listeners) callback(message); };
 
-/** One window: its own connection id and whatever its subscription let through */
+/**
+ * One window: its own connection id and whatever its subscription let through.
+ *
+ * It passes a real `closed` signal rather than casting the context, even though `sub` never reads one: a cast
+ * hides a member the type requires, so the day a procedure does read it this would hand it `undefined` at
+ * runtime instead of failing the typecheck the signal was made non-optional to get.
+ */
 async function windowNamed(client: string) {
   const received: Message[] = [];
-  const observable = await systemBusRouter.createCaller({ client } as never).sub();
+  const observable = await systemBusRouter.createCaller({ client, closed: new AbortController().signal }).sub();
   observable.subscribe({ next: (message: Message) => { received.push(message); } });
   return { client, received, types: () => received.map((message) => message.event.type) };
 }
