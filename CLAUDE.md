@@ -120,9 +120,10 @@ Three things the chain cannot work out for you, because they rewrite files you c
 **`api:check` is a chain step, and it used to have a proxy.** It regenerates the reviewed reports and
 compares, so it is a derivation and needs no staleness record of its own. `api:stamp` was that record —
 a hash of the declarations a report is a function of, run as a typecheck leg because this cost 55s and
-that cost 0.6s. It costs **13.1s** now, measured 2026-10-05, after one compiler state per package
-replaced one per entry (`31473b49d`: sdk's 28 entries 12.3s -> 1.1s, ui's 68 30s -> 0.9s). That is less
-than `typecheck:pack`, so the proxy's whole justification went with the speedup.
+that cost 0.6s. It costs **6.9s** now — median of 5, 6.7-7.0s, measured 2026-10-05 — after two changes:
+one compiler state per package replaced one per entry (`31473b49d`: sdk's 28 entries 12.3s -> 1.1s, ui's
+68 30s -> 0.9s), and the three packages' extractions, which npm ran in series, now run at once. That is
+less than `typecheck:pack`, so the proxy's whole justification went with the speedup.
 
 **What the proxy cost while it lived is the argument against reaching for one again.** A doc-comment
 edit reddened it though no report could move. A package's stamp fingerprinted its *dependencies'*
@@ -158,7 +159,7 @@ perturbing the recorded file would only prove that `!==` works.
 A **proxy** records a hash of what it *believes* the inputs are. **Nothing here is one any more**, and the
 one that was is why: a proxy's key is a list of someone else's inputs, so it can go stale from an input
 nobody listed, and its remedy *writes*. `api:stamp` was a proxy for `api:check` purely because that cost
-55s; at 13.1s the derivation is the cheaper thing to keep. Before reaching for one, price the derivation
+55s; at 6.9s the derivation is the cheaper thing to keep. Before reaching for one, price the derivation
 again — the paragraph above has what this one cost.
 
 A **sample** records a measurement, which cannot re-derive, so neither check is available to it.
@@ -614,8 +615,9 @@ npm run db:query -- "<code>"   # abuddy db query on the dev app's data (also db:
 npm run api:check        # CI: fails if a public entry's API changed without updating reports
 npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.component.md for UI components),
                          # Both read an @abuddy dependency's built declarations: npm run packages:build first
-                         # All three take ~12s (measured 2026-10-04; 48s before one API Extractor compiler
-                         # state was shared across a package's entries instead of one being built per entry).
+                         # All three take 6.9s (median of 5, 2026-10-05), run at once by scripts/api-check.ts
+                         # rather than in the series npm's `-w a -w b -w c` gives; 12s in that series, and 48s
+                         # before one API Extractor compiler state was shared across a package's entries.
                          # A chain step, so a merge runs it and an unchanged tree pays nothing for it
 
 # Built-in pack facade types (after `abuddy build`; from packages/default-setup or with -w @app/default-setup)
