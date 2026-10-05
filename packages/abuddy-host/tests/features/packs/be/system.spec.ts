@@ -161,14 +161,14 @@ describe('a pack that ships with the app', () => {
   });
 });
 
-// Five of default-setup's systems re-send their data on PACK_CHANGED; the system whose whole job is
-// listing packs did not, so an open Packs view stayed stale after an `abuddy run` reload — the one way a
-// pack changes without this system doing it.
-describe('a pack changing underneath the packs system', () => {
+// The system whose whole job is listing packs once did not re-send it, so an open Packs view stayed stale
+// after an `abuddy run` reload. It publishes on the one ask now, whatever caused it — the bus sends that
+// after a pack changes, a client connects or the data is replaced (`tests/bus/send-state.spec.ts`).
+describe('the packs system asked to publish', () => {
   it('sends the list again', () => {
     const system = runPacksSystem();
     try {
-      system.send({ type: 'PACK_CHANGED', packId: 'anything' });
+      system.send({ type: 'SEND_STATE' });
 
       expect(emitted(system.sent).map(e => e.type)).toEqual(['PACKS_LIST']);
     } finally {

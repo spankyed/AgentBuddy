@@ -612,11 +612,7 @@ export const notesSystem = setup({
     idle: {
       entry: ['bootstrapReferences', 'cleanupExpiredNotes'],
       on: {
-        CLIENT_CONNECTED: {
-          actions: 'sendNotesConnectedData',
-        },
-        // A pack's seeds can add or change notes
-        PACK_CHANGED: {
+        SEND_STATE: {
           actions: 'sendNotesConnectedData',
         },
       },

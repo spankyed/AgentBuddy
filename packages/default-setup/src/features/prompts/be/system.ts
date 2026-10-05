@@ -284,11 +284,7 @@ export const promptsSystem = setup({
     states: {
       idle: {
         on: {
-          CLIENT_CONNECTED: {
-            actions: 'sendPromptsConnectedData',
-          },
-          // A pack's seeds can add or change prompts
-          PACK_CHANGED: {
+          SEND_STATE: {
             actions: 'sendPromptsConnectedData',
           },
         },

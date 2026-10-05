@@ -69,10 +69,10 @@ describe('the host application system', () => {
     expect(system.visibilitySent()).toEqual([]);
   });
 
-  it("sends the visibility again when a pack comes or goes, since it brings or takes its features' defaults", () => {
+  it("sends the visibility when asked to publish, since a pack brings or takes its features' defaults", () => {
     const system = runApplicationSystem({ 'memo-pack/memos': false });
 
-    system.send({ type: 'PACK_CHANGED', packId: 'memo-pack' });
+    system.send({ type: 'SEND_STATE' });
 
     expect(system.visibilitySent()).toEqual([{ to: 'host/application', from: 'host', event: expect.objectContaining({ pluginVisibility: { 'memo-pack/memos': false } }) }]);
   });

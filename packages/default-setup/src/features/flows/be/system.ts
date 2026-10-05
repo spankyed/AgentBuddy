@@ -382,11 +382,7 @@ export const flowsSystem = setup({
   states: {
     idle: {
       on: {
-        CLIENT_CONNECTED: {
-          actions: 'handleClientConnection',
-        },
-        // A pack's seeds can add or change flows
-        PACK_CHANGED: {
+        SEND_STATE: {
           actions: 'handleClientConnection',
         },
         FLOW_SELECT: {

@@ -416,11 +416,7 @@ export const librarySystem = setup({
     currentPath: [],
   }),
   on: {
-    CLIENT_CONNECTED: {
-      actions: ['sendInitialData'],
-    },
-    // A pack's seeds can add or change the library's documents
-    PACK_CHANGED: {
+    SEND_STATE: {
       actions: ['sendInitialData'],
     },
     FEATURE_SETTINGS_UPDATED: {

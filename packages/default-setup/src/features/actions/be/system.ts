@@ -296,11 +296,7 @@ export const actionsSystem = setup({
     states: {
       idle: {
         on: {
-          CLIENT_CONNECTED: {
-            actions: 'sendActionsStartupData',
-          },
-          // A pack's seeds can add or change actions
-          PACK_CHANGED: {
+          SEND_STATE: {
             actions: 'sendActionsStartupData',
           },
         },

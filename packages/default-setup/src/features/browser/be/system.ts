@@ -40,7 +40,7 @@ export const browserSystem = setup({
   initial: 'active',
   context: {},
   on: {
-    CLIENT_CONNECTED: {
+    SEND_STATE: {
       actions: ['sendBrowserConnected'],
     },
     SYNC_TABS: {

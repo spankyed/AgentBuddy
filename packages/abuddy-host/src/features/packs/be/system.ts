@@ -419,7 +419,7 @@ export function createPacksSystem(registry: PackRegistry) {
     states: {
       idle: {
         on: {
-          CLIENT_CONNECTED: {
+          SEND_STATE: {
             actions: 'sendPacksList',
           },
           GET_INSTALLED_PACKS: {
@@ -427,9 +427,6 @@ export function createPacksSystem(registry: PackRegistry) {
           },
           // A pack activated, reloaded or torn down changes this list, and a reload is the one that
           // reaches here no other way: it comes from `abuddy run`, not from an action of this system
-          PACK_CHANGED: {
-            actions: 'sendPacksList',
-          },
           INSTALL_PACK: {
             actions: 'installPack',
           },
@@ -458,7 +455,7 @@ export function createPacksSystem(registry: PackRegistry) {
 }
 
 export const packsEvents = new Set([
-  'CLIENT_CONNECTED',
+  'SEND_STATE',
   'INSTALL_PACK',
   'UNINSTALL_PACK',
   'TOGGLE_PACK_ENABLED',

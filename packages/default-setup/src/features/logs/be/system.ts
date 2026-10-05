@@ -130,7 +130,7 @@ export const logsSystem = setup({
   },
   entry: ['setupEventListeners'],
   on: {
-    CLIENT_CONNECTED: {
+    SEND_STATE: {
       actions: ['sendLogsConnected'],
     },
     FEATURE_SETTINGS_UPDATED: {

@@ -18,8 +18,8 @@ type ApplicationClientEvent =
   | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }
   | { type: 'SET_LAST_ACTIVE_PLUGIN'; plugin: string };
 
-/** What the system handles: a client's events, and the bus's news of a pack */
-type ApplicationEvent = ApplicationClientEvent | { type: 'PACK_CHANGED'; packId: string };
+/** What the system handles: a client's events, and the bus asking it to publish */
+type ApplicationEvent = ApplicationClientEvent | { type: 'SEND_STATE' };
 
 /** The events a client may send this system, which the bus checks a client's send against */
 export const APPLICATION_SYSTEM_EVENTS = eventTypes<ApplicationClientEvent>()('SET_PLUGIN_VISIBILITY', 'SET_LAST_ACTIVE_PLUGIN');
@@ -52,7 +52,7 @@ export function createApplicationSystem(registry: Pick<PackRegistry, 'settingsDe
         actions: ({ event }) => appState.update({ lastActivePlugin: event.plugin }),
       },
       // A pack coming or going brings or takes its features' defaults
-      PACK_CHANGED: { actions: 'sendVisibility' },
+      SEND_STATE: { actions: 'sendVisibility' },
     },
   });
 }

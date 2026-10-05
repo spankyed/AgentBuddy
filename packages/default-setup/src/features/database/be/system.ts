@@ -278,7 +278,7 @@ export const databaseSystem = setup({
   initial: 'idle',
   context: () => ({}),
   on: {
-    CLIENT_CONNECTED: {
+    SEND_STATE: {
       actions: 'sendDatabaseRefresh',
     },
   },

@@ -228,13 +228,14 @@ describe('slash commands from the library commands folder', () => {
     expect(app.emitted('threads').filter((event) => event.type === 'COMMANDS_UPDATED')).toEqual([])
   })
 
-  it("sends the library plugin its index again when a pack changes, with what the pack seeded", async () => {
+  it("sends the library plugin its index again when asked to publish, with what the pack seeded", async () => {
     const app = await seededApp()
     importCompiledSeeds({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
 
     const sentBefore = app.emitted('library').filter((event) => event.type === 'LIBRARY_CONNECTED').length
 
-    await app.send('library', { type: 'PACK_CHANGED', packId: 'team-notes' })
+    // What a pack change comes down to for this system: the bus asks every system to publish after one
+    await app.send('library', { type: 'SEND_STATE' })
     await app.settle()
 
     const sent = app.emitted('library').filter((event) => event.type === 'LIBRARY_CONNECTED') as unknown as Array<{ data: { index: { documents: Array<{ name: string }> } } }>
