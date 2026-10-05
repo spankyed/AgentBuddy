@@ -230,15 +230,9 @@ export function createBusMachine(options: BusOptions) {
         if (event.type !== 'PACK_CHANGED') return;
         sendToRunning(system, systems().keys(), { type: 'PACK_CHANGED', packId: event.packId });
       },
-      /**
-       * Two sends, in this order, and the order is the point.
-       *
-       * `DATA_REPLACED` first, so a system holding work over rows that are gone can drop it before it is asked
-       * to describe itself; `CLIENT_CONNECTED` second, which is how every system already publishes its startup
-       * data. That second send is what makes this correct for systems that declare no handler at all — which is
-       * all of them but the ones with something to tear down, and is why replacing the data does not become a
-       * thing each of the thirteen has to remember.
-       */
+      // Told first, so a system can drop work held over rows that are gone before it is asked to describe
+      // itself; asked second, which is how a system publishes its startup data — and is why one that declares
+      // no handler is refreshed anyway
       sendDataReplaced: ({ system }) => {
         const running = [...systems().keys()];
         sendToRunning(system, running, { type: 'DATA_REPLACED' });

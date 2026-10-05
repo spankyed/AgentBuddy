@@ -20,26 +20,15 @@ export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: Pac
   }
 
   /**
-   * Replaces everything the app holds, and tells the running systems once the new world is built.
-   *
-   * **One owner for "the stored data was replaced", rather than a reminder at each call site.** A system's
-   * state is what it last published, so wiping the rows underneath it leaves every plugin rendering a
-   * database that no longer exists — which is what reset and import both did, each announcing only to the
-   * Database plugin. Whoever replaces the data next gets the announcement by going through here.
-   *
-   * **After `rebuild`, never before.** The packs' `onInit`, migrations and seeds have to have run, or every
-   * system faithfully republishes the empty database it was asked about.
-   *
-   * It sends through the bus it was given rather than the bound one, so what this service needs is in its
-   * signature and a caller assembling a runtime does not also have to have bound it.
+   * Both of these replace every row, so the systems still describing the old ones are told — once `rebuild`
+   * has run, or they would republish the empty database. Here rather than at each call site, so the next
+   * operation that replaces the data cannot forget.
    */
-  async function replacingData<T>(rebuild: () => Promise<T> | T): Promise<T> {
+  async function replacingData<T>(rebuild: () => Promise<T>): Promise<T> {
     try {
       return await rebuild();
     } finally {
-      // `finally`, because the rows are gone either way: a failed import has already cleared the engine and
-      // reloaded the files it put back, so the systems are describing a database that was rebuilt underneath
-      // them whether or not the operation they were asked for succeeded
+      // Also on failure: a failed import has already cleared the engine and reloaded what it put back
       rootEvents.emitIncoming({ to: HOST.bus, event: { type: 'DATA_REPLACED' } });
     }
   }

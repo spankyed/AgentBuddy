@@ -242,14 +242,11 @@ export type SystemEvents = {
     changes?: ArrayChanges | null;
 }
 /**
-* Every row the app holds was replaced — the data was reset, or a backup was imported. Sent once the new
-* world is built: the packs' `onInit`, migrations and seeds have run, so a system reading its data reads
-* what the user will see.
+* Every row the app holds was replaced — reset, or a backup imported — and the new world is built.
 *
-* **A system does not need to handle this to stay correct.** The bus answers it by asking every system for
-* its startup data, exactly as a connecting client does, so a plugin's view is refreshed either way.
-* Declare it only to do something re-reading cannot: work held over rows that are now gone — a flow part
-* way through, a watcher on an id — has to be torn down rather than re-read.
+* Handling it is optional: the bus also asks every system for its startup data, so a plugin's view is
+* refreshed either way. Declare it only for what re-reading cannot fix, such as work held over rows that
+* are now gone.
 */
 | {
     type: 'DATA_REPLACED';

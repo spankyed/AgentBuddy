@@ -55,23 +55,26 @@ export interface DriveEngineOptions {
  *
  * The deadlines only run when the app does not come back; a reload that works answers as soon as it has.
  */
+/** The app's state value as the window exposes it, which is all these waits read */
+type AppWindow = {
+  applicationState?: { getSnapshot(): { value?: Record<string, unknown> | string } };
+  __disableOnboardingUI?: () => void;
+};
+
 async function reloadWindow(page: Page): Promise<void> {
-  const connectedOrOnboarding = () => {
-    const snapshot = (window as unknown as { applicationState?: { getSnapshot(): { value?: unknown } } }).applicationState?.getSnapshot();
-    const value = snapshot?.value;
+  // `onboardingCounts` is passed as the argument, not closed over: the predicate is serialised and run in
+  // the page, where nothing from this scope exists
+  const settled = (onboardingCounts: boolean, timeout: number) => page.waitForFunction((counts) => {
+    const value = (window as unknown as AppWindow).applicationState?.getSnapshot().value;
     if (typeof value !== 'object' || value === null) return false;
-    if ('running' in value) return (value as { running?: unknown }).running === 'connected';
-    return 'onboarding' in value;
-  };
-  const connected = () => {
-    const snapshot = (window as unknown as { applicationState?: { getSnapshot(): { value?: { running?: unknown } } } }).applicationState?.getSnapshot();
-    return snapshot?.value?.running === 'connected';
-  };
+    if ('running' in value) return value.running === 'connected';
+    return counts && 'onboarding' in value;
+  }, onboardingCounts, { timeout });
 
   await page.reload();
-  await page.waitForFunction(connectedOrOnboarding, null, { timeout: 60_000 });
-  await page.evaluate(() => (window as unknown as { __disableOnboardingUI?: () => void }).__disableOnboardingUI?.());
-  await page.waitForFunction(connected, null, { timeout: 30_000 });
+  await settled(true, 60_000);
+  await page.evaluate(() => (window as unknown as AppWindow).__disableOnboardingUI?.());
+  await settled(false, 30_000);
 }
 
 /**

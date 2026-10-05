@@ -69,13 +69,8 @@ describe('services.appData.reset()', () => {
     expect(services.appData.hasOnboarded()).toBe(false);
   });
 
-  /**
-   * The rows every running system last described are gone, so something has to say so.
-   *
-   * Without this the Database plugin refreshed itself and nothing else did: a reset or a restored backup left
-   * Notes, Threads and the rest rendering the previous database until the app was restarted. The announcement
-   * is `services.appData`'s rather than each caller's, so a third way to replace the data cannot forget it.
-   */
+  // Without this the Database plugin refreshed itself and nothing else did, so a reset left Notes, Threads
+  // and the rest rendering the previous database until the app was restarted
   it('tells the bus that every row was replaced', async () => {
     const announced: string[] = [];
     const stop = onIncoming((message) => {
