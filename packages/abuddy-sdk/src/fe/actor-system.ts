@@ -45,13 +45,26 @@ const wrappers = new WeakMap<AnyActorRef, AnyActorRef>()
 function sendsAsItself(actor: AnyActorRef): AnyActorRef {
   const existing = wrappers.get(actor)
   if (existing) return existing
+  /**
+   * One function per member, kept, so `plugin.getSnapshot === plugin.getSnapshot`.
+   *
+   * Handing back a fresh binding on every read works with the `@xstate/vue` this repo has — it reads each
+   * member once — but that is a fact about somebody else's code at one version, and the failure if a later one
+   * memoises on identity is every selector in every plugin quietly ceasing to update. Keeping them removes the
+   * question. Only functions are kept: a plain property is read through each time, since the actor owns it.
+   */
+  const bound = new Map<PropertyKey, unknown>()
   const wrapper = new Proxy(actor, {
     get(target, prop, receiver) {
-      if (prop === 'send') {
-        return (event: unknown) => _runDelivery({ receiver: target.id }, () => target.send(event as never))
-      }
-      const value = Reflect.get(target, prop, receiver)
-      return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(target) : value
+      const kept = bound.get(prop)
+      if (kept !== undefined) return kept
+      const value = prop === 'send'
+        ? (event: unknown) => _runDelivery({ receiver: target.id }, () => target.send(event as never))
+        : Reflect.get(target, prop, receiver)
+      if (typeof value !== 'function') return value
+      const fn = prop === 'send' ? value : (value as (...args: unknown[]) => unknown).bind(target)
+      bound.set(prop, fn)
+      return fn
     },
   })
   wrappers.set(actor, wrapper)

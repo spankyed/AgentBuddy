@@ -130,6 +130,31 @@ describe("a component's send", () => {
     expect(seen, 'and a subscriber was told, which is what a selector relies on').toContain(1);
   });
 
+  /**
+   * Its members keep their identity too, which is what stops this depending on a library's internals.
+   *
+   * `@xstate/vue` reads `getSnapshot` and `subscribe` once, so a fresh binding per read happens to work there —
+   * but a version that memoised on identity would make every selector in every plugin stop updating, silently
+   * and visually only. Keeping the bindings removes the question rather than re-checking it on each bump.
+   */
+  it('hands back the same member each time it is read', async () => {
+    let stable: boolean | undefined;
+    let sendStable: boolean | undefined;
+    const Reads = defineComponent({
+      setup: () => {
+        const plugin = usePlugin<AnyActorRef>();
+        stable = plugin.getSnapshot === plugin.getSnapshot && plugin.subscribe === plugin.subscribe;
+        sendStable = plugin.send === plugin.send;
+        return () => '';
+      },
+    });
+
+    await render(() => h(PluginScope, { plugin: 'memo-pack/counter' }, () => h(Reads)));
+
+    expect(stable, 'a selector may hold on to either').toBe(true);
+    expect(sendStable, 'and the wrapped send is one function, not one per read').toBe(true);
+  });
+
   // The wrapper is per actor, so a component calling usePlugin() twice compares equal either way
   it('hands back the same object each time', async () => {
     let first: unknown;
