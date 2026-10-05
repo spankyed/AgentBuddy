@@ -31,12 +31,14 @@
       },
       "Collection:advanced": {
         "displayOrder": 1000,
+        "entityType": "Collection",
         "name": "advanced",
         "sourceHash": "08f76a29861feea7"
       },
       "Collection:Guides": {
         "description": "How-to guides",
         "displayOrder": 1000,
+        "entityType": "Collection",
         "name": "Guides",
         "sourceHash": "36c6bfb727430718"
       },
@@ -48,6 +50,7 @@
           }
         ],
         "displayOrder": 2000,
+        "entityType": "Document",
         "name": "2024",
         "shortCode": "DOC-3",
         "sourceHash": "950a0c99b4ad4a53",
@@ -63,6 +66,7 @@
           }
         ],
         "displayOrder": 1000,
+        "entityType": "Document",
         "name": "deep dive",
         "shortCode": "DOC-1",
         "sourceHash": "ab5447ee2e9df227",
@@ -103,6 +107,7 @@
           }
         ],
         "displayOrder": 2000,
+        "entityType": "Document",
         "name": "Getting Started",
         "shortCode": "DOC-2",
         "sourceHash": "ef063cc892ae028c",
@@ -292,12 +297,14 @@
       },
       "Collection:advanced": {
         "displayOrder": 1000,
+        "entityType": "Collection",
         "name": "advanced",
         "sourceHash": "08f76a29861feea7"
       },
       "Collection:Guides": {
         "description": "How-to guides",
         "displayOrder": 1000,
+        "entityType": "Collection",
         "name": "Guides",
         "sourceHash": "36c6bfb727430718"
       },
@@ -309,6 +316,7 @@
           }
         ],
         "displayOrder": 2000,
+        "entityType": "Document",
         "name": "2024",
         "shortCode": "DOC-3",
         "sourceHash": "950a0c99b4ad4a53",
@@ -324,6 +332,7 @@
           }
         ],
         "displayOrder": 1000,
+        "entityType": "Document",
         "name": "deep dive",
         "shortCode": "DOC-1",
         "sourceHash": "ab5447ee2e9df227",
@@ -364,6 +373,7 @@
           }
         ],
         "displayOrder": 2000,
+        "entityType": "Document",
         "name": "Getting Started",
         "shortCode": "DOC-2",
         "sourceHash": "ef063cc892ae028c",
@@ -554,12 +564,14 @@
       },
       "Collection:advanced": {
         "displayOrder": 1000,
+        "entityType": "Collection",
         "name": "advanced",
         "sourceHash": "62a5dc465126ce53"
       },
       "Collection:Guides": {
         "description": "How-to guides",
         "displayOrder": 1000,
+        "entityType": "Collection",
         "name": "Guides",
         "sourceHash": "08da17cea563b63b"
       },
@@ -571,6 +583,7 @@
           }
         ],
         "displayOrder": 2000,
+        "entityType": "Document",
         "name": "2024",
         "shortCode": "DOC-4",
         "sourceHash": "950a0c99b4ad4a53",
@@ -586,6 +599,7 @@
           }
         ],
         "displayOrder": 1000,
+        "entityType": "Document",
         "name": "deep dive",
         "shortCode": "DOC-1",
         "sourceHash": "1180aa1e38e2be8a",
@@ -601,6 +615,7 @@
           }
         ],
         "displayOrder": 2000,
+        "entityType": "Document",
         "name": "Getting Started",
         "shortCode": "DOC-2",
         "sourceHash": "4c10c7f6d5d0f9ce",
@@ -618,6 +633,7 @@
           }
         ],
         "displayOrder": 3000,
+        "entityType": "Document",
         "name": "New Doc",
         "shortCode": "DOC-3",
         "sourceHash": "2fe501d1e4d0a0fe",

@@ -17,12 +17,14 @@
       },
       "Collection:advanced": {
         "displayOrder": 1000,
+        "entityType": "Collection",
         "name": "advanced",
         "sourceHash": "08f76a29861feea7"
       },
       "Collection:Guides": {
         "description": "How-to guides",
         "displayOrder": 1000,
+        "entityType": "Collection",
         "name": "Guides",
         "sourceHash": "36c6bfb727430718"
       },
@@ -34,6 +36,7 @@
           }
         ],
         "displayOrder": 1000,
+        "entityType": "Document",
         "name": "deep dive",
         "shortCode": "DOC-1",
         "sourceHash": "ab5447ee2e9df227",
@@ -74,6 +77,7 @@
           }
         ],
         "displayOrder": 2000,
+        "entityType": "Document",
         "name": "Getting Started",
         "shortCode": "DOC-2",
         "sourceHash": "ef063cc892ae028c",

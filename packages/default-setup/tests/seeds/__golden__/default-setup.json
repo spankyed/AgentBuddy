@@ -1518,11 +1518,13 @@
       },
       "Collection:commands": {
         "displayOrder": 1000,
+        "entityType": "Collection",
         "name": "commands",
         "sourceHash": "ae90c6c91270080d"
       },
       "Collection:internal": {
         "displayOrder": 1000,
+        "entityType": "Collection",
         "name": "internal",
         "sourceHash": "d3f36b087ed6c5e1"
       },
@@ -1619,6 +1621,7 @@
           }
         ],
         "displayOrder": 1000,
+        "entityType": "Document",
         "name": "Claude Code commands",
         "shortCode": "DOC-1",
         "sourceHash": "3fc83fb798ad55f1",
@@ -1691,6 +1694,7 @@
           }
         ],
         "displayOrder": 2000,
+        "entityType": "Document",
         "name": "Codex commands",
         "shortCode": "DOC-2",
         "sourceHash": "be84d534decc5f7d",
