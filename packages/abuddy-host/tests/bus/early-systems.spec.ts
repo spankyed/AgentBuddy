@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
 import { startTestRuntime, testRootEvents } from '@abuddy/sdk/testing';
-import { untypedBroadcastToPlugin } from '@abuddy/sdk/events';
+import { reply, untypedBroadcastToPlugin, type Message } from '@abuddy/sdk/events';
 import { createAppBus, startEarlySystems } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/registry.ts';
@@ -73,5 +73,36 @@ it("delivers what an early system sends in answer to the first client connection
     expect(outgoing).toContainEqual({ to: 'boot-pack/boot', event: { type: 'BOOT_LOGS' } });
   } finally {
     registry.unregisterPack('boot-pack');
+  }
+});
+
+/**
+ * An early system answers its sender like any other system, which takes the delivery scope being set on **this**
+ * path too. The host delivers these messages itself (`startEarlySystems`), so nothing the bus's own routing does
+ * covers it — and a system that cannot answer is the kind of gap that shows up only when a handler tries.
+ */
+it('lets an early system answer whoever asked, on the connection they asked from', () => {
+  const answering = setup({}).createMachine({
+    on: { CLEAR: { actions: () => { reply({ type: 'BOOT_LOGS' }); } } },
+  });
+  bus.stop();
+  early.stop();
+  registry.registerPack({
+    id: 'ask-pack',
+    features: { boot: { system: { machine: answering, receives: ['CLEAR'], early: true }, plugin: { receives: ['BOOT_LOGS'] } } },
+  });
+  try {
+    early = startEarlySystems(registry);
+    bus = createActor(createAppBus(registry, early), { systemId: 'host/bus' }).start();
+    testRootEvents.emitConnected();
+    const outgoing: Message[] = [];
+    const stop = testRootEvents.onOutgoing((message) => { outgoing.push(message); });
+
+    testRootEvents.emitIncoming({ to: 'ask-pack/boot', event: { type: 'CLEAR' }, sender: 'ask-pack/boot', client: 'c-main' });
+
+    stop();
+    expect(outgoing).toContainEqual({ to: 'ask-pack/boot', event: { type: 'BOOT_LOGS' }, sender: 'ask-pack/boot', client: 'c-main' });
+  } finally {
+    registry.unregisterPack('ask-pack');
   }
 });

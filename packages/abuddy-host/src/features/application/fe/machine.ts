@@ -14,10 +14,9 @@ import {
   chatMaximized, chatRestored, initialPanelSizes, inspectionToggled, resized,
 } from './layout.ts';
 import { announcePackClientReady, PACK_FRONTEND_LOADER_ID, packFrontendLoader } from './pack-frontends.ts';
-import { historyAfter, neighbourOf, spawnPluginActor, withHostLast } from './plugins.ts';
+import { historyAfter, neighbourOf, sendToPluginActor, spawnPluginActor, withHostLast } from './plugins.ts';
 import { computeCrumbs, pluginTrailer } from './trail.ts';
 import type { PluginRequest, ShellContext, ShellEvent, ShellOptions, ShellParams } from './types.ts';
-import { _runDelivery } from '@abuddy/sdk/events';
 
 const typeOf = safeEvents<ShellEvent>();
 
@@ -255,7 +254,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
 
         if (needsNavigate) {
           enqueue(({ system }) => {
-            system.get(activePlugin.id)?.send({ type: 'PLUGIN_ACTIVATED' });
+            sendToPluginActor(system.get(activePlugin.id), activePlugin.id, { type: 'PLUGIN_ACTIVATED' });
           });
         }
       }),
@@ -322,13 +321,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         const { plugin, events } = typeOf('DELIVER_PLUGIN_EVENTS', event);
         // A registered plugin's actor is running: the shell spawns it in the same step that registers the plugin
         const actor = system.get(plugin);
-        // Named while its events are handled, so a `sendToSystem` the plugin makes carries the plugin's own ref
-        // and the system it asks can answer this plugin in the window it asked from. `_runDelivery` rather than the host's
-        // `deliverAs`: this runs in a browser, which has no AsyncLocalStorage, and a plugin machine's handlers
-        // send synchronously — nothing here uses `fromPromise`.
-        _runDelivery({ receiver: plugin }, () => {
-          for (const e of events) actor?.send(e);
-        });
+        for (const e of events) sendToPluginActor(actor, plugin, e);
       },
 
       processGlobalHotkey: ({ self, context, event }) => {
@@ -350,7 +343,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       setHotkeysDisabled: assign({ hotkeysDisabled: (_, value: boolean) => value }),
 
       forwardNavToPlugin: ({ context, system, event }) => {
-        system.get(context.activePlugin.id)?.send({ type: event.type as 'NAVIGATE_BACK' | 'NAVIGATE_FORWARD' });
+        sendToPluginActor(system.get(context.activePlugin.id), context.activePlugin.id, { type: event.type as 'NAVIGATE_BACK' | 'NAVIGATE_FORWARD' });
       },
 
       switchPluginByDirection: ({ context, event, self }) => {
@@ -364,10 +357,10 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         for (const plugin of context.plugins) {
           if (plugin.id === context.activePlugin.id) continue;
           const globalActions = plugin.hotkeys?.filter(h => h.global).map(h => h.action);
-          if (globalActions?.length) system.get(plugin.id).send({ ...hotkeyEvent, allowedActions: new Set(globalActions) });
+          if (globalActions?.length) sendToPluginActor(system.get(plugin.id), plugin.id, { ...hotkeyEvent, allowedActions: new Set(globalActions) });
         }
         // The plugin open receives all of them
-        system.get(context.activePlugin.id).send(hotkeyEvent);
+        sendToPluginActor(system.get(context.activePlugin.id), context.activePlugin.id, hotkeyEvent);
       },
 
       setTargetView: assign(({ event }) => ({ targetView: (event as { target: string }).target })),
@@ -392,8 +385,8 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         }
 
         if (context.activePlugin.id !== newPlugin.id) {
-          system.get(context.activePlugin.id).send({ type: 'PLUGIN_DEACTIVATED' });
-          system.get(newPlugin.id).send({ type: 'PLUGIN_ACTIVATED' });
+          sendToPluginActor(system.get(context.activePlugin.id), context.activePlugin.id, { type: 'PLUGIN_DEACTIVATED' });
+          sendToPluginActor(system.get(newPlugin.id), newPlugin.id, { type: 'PLUGIN_ACTIVATED' });
         }
 
         enqueue.assign(({ context }) => ({
@@ -480,7 +473,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
     entry: [
       'spawnPluginActors',
       ({ context, system }) => {
-        system.get(context.activePlugin.id).send({ type: 'PLUGIN_ACTIVATED' });
+        sendToPluginActor(system.get(context.activePlugin.id), context.activePlugin.id, { type: 'PLUGIN_ACTIVATED' });
       },
       'trailActivePlugin',
       spawnChild('hotkeyListener', { id: 'hotkeyListener' }),

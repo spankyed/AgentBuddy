@@ -9,7 +9,7 @@
 // else here would also pass if the scope were a single module-level variable; only that one fails, because a
 // handler that awaits before answering is the ordinary shape of backend work and two of them overlap constantly.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createActor, setup, type AnyActorRef } from 'xstate';
+import { createActor, fromPromise, setup, type AnyActorRef } from 'xstate';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '@abuddy/sdk/testing';
 import { _runDelivery, reply, untypedBroadcastToPlugin, type Message } from '@abuddy/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
@@ -42,8 +42,39 @@ const answering = setup({}).createMachine({
   },
 });
 
+/**
+ * A system that answers from inside an **invoked** actor rather than from the action itself.
+ *
+ * This is the shape the SDK's licence for the synchronous holder does not cover — its comment reads "none uses
+ * `fromPromise`", which is a claim about today's pack code and not an invariant, and `host/settings` already
+ * invokes one. The promise is created while the transition is being processed, which is inside the delivery, so
+ * the question is whether that is enough for the scope to reach it.
+ */
+const invoking = setup({
+  actors: {
+    answerLater: fromPromise(async ({ input }: { input: { tag?: string } }) => {
+      await after(5);
+      reply({ type: 'MEMO_ADDED', tag: input.tag });
+    }),
+  },
+}).createMachine({
+  initial: 'idle',
+  states: {
+    idle: { on: { PING: 'working' } },
+    working: {
+      invoke: {
+        src: 'answerLater',
+        input: ({ event }) => ({ tag: (event as { tag?: string }).tag }),
+        onDone: 'idle',
+        onError: 'idle',
+      },
+    },
+  },
+});
+
 const memoFeatures = {
   memos: { system: { machine: answering, receives: ['PING', 'ANNOUNCE'] }, plugin: { receives: ['MEMOS_CONNECTED', 'MEMO_ADDED'] } },
+  invoker: { system: { machine: invoking, receives: ['PING'] }, plugin: { receives: ['MEMO_ADDED'] } },
 };
 
 let bus: AnyActorRef;
@@ -97,6 +128,21 @@ describe('reply', () => {
     const byTag = new Map(answers().map((message) => [message.event.tag as string, message.client]));
     expect(byTag.get('fast'), 'the second ask is answered on the second connection').toBe('c-popout');
     expect(byTag.get('slow'), 'and the first on the first, though it finished later').toBe('c-main');
+  });
+
+  /**
+   * An answer sent from inside an invoked actor, which is the one delivery shape nothing asserted.
+   *
+   * It matters because `invoke` is ordinary XState and a system reaching for it has no reason to suspect that
+   * answering becomes harder. If this ever regresses, a handler that looks correct stops being able to reply.
+   */
+  it('answers from inside an invoked actor', async () => {
+    ask({ to: 'memo-pack/invoker', event: { type: 'PING', tag: 'invoked' }, sender: 'memo-pack/memos', client: 'c-main' });
+    await after(40);
+
+    expect(answers()).toEqual([
+      { to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', tag: 'invoked' }, sender: 'memo-pack/invoker', client: 'c-main' },
+    ]);
   });
 
   // An ask with no connection is a backend-to-backend send; the answer is then for every window, as before

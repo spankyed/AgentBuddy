@@ -1,4 +1,6 @@
 // The shell's plugins: their order, which show, spawning each one's actor, and moving between them.
+import type { AnyActorRef, AnyEventObject } from 'xstate';
+import { _runDelivery } from '@abuddy/sdk/events';
 import type { Plugin } from '@abuddy/sdk/fe';
 import { HOST_PACK_ID, splitRef } from '@abuddy/sdk/ids';
 import type { ShellContext } from './types.ts';
@@ -46,4 +48,22 @@ export function historyAfter(
   const history = context.pluginHistory.slice(0, context.historyIndex + 1);
   if (history[history.length - 1] === plugin) return { pluginHistory: context.pluginHistory, historyIndex: context.historyIndex };
   return { pluginHistory: [...history, plugin], historyIndex: history.length };
+}
+
+/**
+ * Hands a plugin's actor an event, naming that plugin for as long as it is handled.
+ *
+ * **Every send to a plugin's actor in this window goes through here**, which is the point: a send a handler then
+ * makes carries the plugin's ref as `Message.sender`, so the system it asks can answer *this* plugin in the
+ * window it was asked from. Reaching an actor directly skips that, and the handler's own `sendToSystem` then
+ * stamps nothing — a failure with no symptom until a system tries to `reply`.
+ *
+ * One function rather than a wrapper at each call site, because the list of call sites was the bug: it was
+ * documented as four places and was nine, and the eight that reach a plugin from the shell are not something a
+ * reader can enumerate. `usePlugin` is the one other scope-setter in a window, and it wraps the actor it hands
+ * out rather than a send it makes.
+ */
+export function sendToPluginActor(actor: AnyActorRef | undefined, ref: string, event: AnyEventObject): void {
+  if (!actor) return;
+  _runDelivery({ receiver: ref }, () => actor.send(event));
 }

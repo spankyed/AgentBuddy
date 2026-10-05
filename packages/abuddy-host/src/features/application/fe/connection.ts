@@ -1,8 +1,11 @@
 // This window's subscription to the bus, held by a child actor over the shell's client: the connection's lifecycle
-// becomes the shell's events, and each message goes to the plugin it's for.
+// becomes the shell's events, and each message goes to the plugin it's for — named as it is handled, so a send
+// that plugin makes in answer carries its own ref (`sendToPluginActor`). This is the path every backend
+// `broadcastToPlugin` takes, and it set no name until it was tested for one.
 import { fromCallback } from 'xstate';
 import { senderSuffix } from '@abuddy/sdk/events';
 import type { ShellClient } from '../../../fe/client.ts';
+import { sendToPluginActor } from './plugins.ts';
 import { HOST } from '../../../refs.ts';
 import type { ShellEvent } from './types.ts';
 
@@ -20,7 +23,7 @@ export function connectionListener(client: ShellClient) {
         return;
       }
       const plugin = system.get(to);
-      if (plugin) plugin.send(event);
+      if (plugin) sendToPluginActor(plugin, to, event);
       // The sender survives the subscription, which carries the message whole: name it when the send stamped one
       else {
         const suffix = senderSuffix(message);

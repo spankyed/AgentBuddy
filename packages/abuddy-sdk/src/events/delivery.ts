@@ -8,14 +8,23 @@
  * `pluginId` collision. So the address is kept *beside* the handler instead, and this is where.
  *
  * **Two readers, because one module serves two runtimes.** The default is a plain variable set and restored
- * around the delivery, exact for a handler that sends synchronously, as every plugin machine in this repo does.
- * A backend handler may `await` before it answers, which a variable cannot survive, so `@abuddy/host/bus`
- * installs an `AsyncLocalStorage` reader over the same interface. This module stays free of `node:` imports
- * because `@abuddy/sdk/events` is bundled into pack frontends.
+ * around the delivery, which is exact for a handler that answers before it yields. One that `await`s first —
+ * the ordinary shape of backend work — needs more than a variable can give, so `@abuddy/host/bus` installs an
+ * `AsyncLocalStorage` reader over the same interface. What then inherits the scope is anything the handler's
+ * own code creates inside the delivery, an **invoked actor included**, since its promise is created while the
+ * transition is being processed; `reply.spec.ts` pins that one, and removing the async reader fails it along
+ * with every other awaited answer. This module stays free of `node:` imports because `@abuddy/sdk/events` is
+ * bundled into pack frontends.
  *
- * **Four places run a delivery**, and together they cover every send pack code makes: the bus routing a message
- * to a system, its early systems, the renderer shell handing a plugin events it routed, and `usePlugin`, so that
- * a component's own send — a click reaching a machine's action — is named like anything else.
+ * **Four doors set it, and that they are doors rather than call sites is the point.** On the backend,
+ * `@abuddy/host/bus`'s `deliverAs`: the bus routing a message to a system, and the host handing one to an early
+ * system. In a window, `sendToPluginActor` — the one function every send to a plugin's actor goes through — and
+ * `usePlugin`, which wraps the actor it gives a component rather than any one send.
+ *
+ * It was a list of four *places* until a test asked each of them to answer, and the real number was nine: the
+ * shell reached plugins from eight sites and named them at one, so a plugin handling anything the backend
+ * broadcast, or its own `PLUGIN_ACTIVATED`, sent on with no `sender` and could not be answered. A count a
+ * reader has to keep is the failure; `sendToPluginActor` is the correction.
  *
  * **What does not work** is storing a function during one delivery for somebody else to call later. An `await`
  * is fine, and so is a timer the handler itself schedules: both create their async resource inside the scope and
