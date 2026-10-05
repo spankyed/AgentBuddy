@@ -902,14 +902,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    * Its inputs are the declarations it reads and the reports it compares against, so a hand-edited `etc/`
    * invalidates it — the one case the stamp could not see, since its key was the declarations alone.
    */
-  // `suite` rather than `quick`, and **for the kind of work rather than for the share**: it runs its three
-  // extractions at once (`scripts/api-check.ts`), where a rung's `stretches` is a measurement of a *pool*
-  // losing workers — which is what `suite` names, against `quick`'s single compiler losing CPU share.
-  //
-  // The share used to say the same thing and no longer does, which is why this now says which one is the
-  // reason. Serial, at 20s, `quick` was 133% of the rung four times slower and `declaredShare` refused it
-  // outright; at 8s it is 53% and `quick` would admit it. The number stopped arguing for this rung while the
-  // kind of work went on doing so.
+  // `suite` because it fans out — three extractions at once (`scripts/api-check.ts`) — which is the kind of
+  // work that rung names. `chain-graph.spec.ts` holds every step to the rung its work implies
   { name: 'api:check', timeout: API_CHECK_TIMEOUT, seconds: 8,
     // The three packages it reports on, and nothing else that was built. It declared every build output
     // (`PACKAGE_BUILD_OUTPUTS`) until 2026-10-05, which keyed it on the `@abuddy/cli` and `@abuddy/testing`

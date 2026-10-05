@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-05T08:01:44.737Z",
+  "measuredAt": "2026-10-05T08:43:07.735Z",
   "samples": {
     "tests/boundaries.spec.ts": [42],
     "tests/build/own-module-specifiers.spec.ts": [71],
@@ -14,6 +14,7 @@
     "tests/bus/outgoing-events.spec.ts": [197],
     "tests/bus/participants.spec.ts": [28],
     "tests/bus/reply.spec.ts": [197],
+    "tests/bus/send-state.spec.ts": [27],
     "tests/bus/startup-sends.spec.ts": [6],
     "tests/database/installed-schema.spec.ts": [19],
     "tests/database/open-app-database.spec.ts": [1326, 823],
@@ -85,9 +86,7 @@
     "tests/services/inference.spec.ts": [1682]
   },
   "skipped": [],
-  "unmeasured": [
-    "tests/bus/send-state.spec.ts"
-  ],
+  "unmeasured": [],
   "machine": {
     "cpu": "Apple M1 Pro",
     "cores": 10

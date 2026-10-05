@@ -11,10 +11,10 @@ import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, chainSteps, conflictsOf, dependsOn, orderedSteps, STEP_TABLES, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { declaredAt } from '../../../scripts/lib/chain-output.ts';
-import { withoutComments } from '../../../scripts/lib/npm-scripts.ts';
+import { reachableText, rootScripts, withoutComments } from '../../../scripts/lib/npm-scripts.ts';
 import { population } from '@abuddy/sdk/testing';
-import { machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
-import { ASSUMED_RUNGS, declaredShare, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
+import { machineText, POOL_WIDTH, thisMachine } from '../../../scripts/lib/core-budget.ts';
+import { ASSUMED_RUNGS, declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
 
 describe('the chain graph', () => {
   it('orders every step after the steps it depends on', () => {
@@ -361,6 +361,93 @@ describe('every spawn an orchestrator makes is bounded', () => {
         + `${TIMEOUT_MS[step.timeout].stretches} times slower`);
     expect(tight, 'move these to a longer class — a step past 100% of its rung on the machine that rung is'
       + ' sized for is one whose deadline is no longer a ceiling there').toEqual([]);
+  });
+
+  /**
+   * And the rung a step declares is the one its *kind of work* puts it on.
+   *
+   * **The case above bounds; this one classifies, and nothing asked this until 2026-10-05.** Every other
+   * rung check here is about the deadline fitting — the class exists, the declared cost has room, the
+   * measured cost has not outgrown it. The criterion `step-timeouts.ts` actually states is a kind of work,
+   * and whether a step is on the right kind was carried by prose. The comment above says so from the other
+   * side: `packages:ensure` and `compile` sat on `quick` while being bundles, and were found *"by reading
+   * the table, not by this"* — caught at 93% and 87% by proximity to a bound rather than by kind. The
+   * opposite direction was unwatched outright: one compiler declared `suite` gets 300s to die rather than
+   * 60s, and nothing would have said a word.
+   *
+   * The three facts are gathered here and the criterion is `rungForKind`'s, beside the ladder it formalizes.
+   * `fansOut` is whether a `POOL_WIDTH` entry is *declared*, never what `coresFor` returns — that resolves
+   * against the running machine, so on a one-core box every width-declaring step reads as one core and this
+   * answer would change with the hardware.
+   */
+  describe('the rung matches the kind of work', () => {
+    /** A step whose rung the facts cannot derive, and why. An entry that stops applying is reported. */
+    const DECLARED_AGAINST_THE_FACTS: Record<string, string> = {
+      'test:external-pack:app': 'drives the built app once per fixture pack, where `test:smoke` also launches '
+        + 'an app and is a suite — no fact in the table separates them, so this is a judgement rather than a '
+        + 'rule to widen',
+    };
+
+    const all = rootScripts();
+    /** An install, and not `attw --pack`, which is a tarball being analysed rather than a dependency tree */
+    const installs = (name: string): boolean => /npm (ci|install)\b/.test(reachableText(name, all).text);
+    const factsFor = (step: ChainStep) => ({
+      installs: installs(step.name),
+      fansOut: POOL_WIDTH[step.name] !== undefined,
+      builds: (step.outputs ?? []).length > 0,
+    });
+
+    /** One path for the rule and for the mutations, so a mutation exercises the rule rather than a copy */
+    const misdeclared = (steps: readonly ChainStep[]): string[] => steps.flatMap((step) => {
+      const derived = rungForKind(factsFor(step));
+      if (derived === step.timeout || DECLARED_AGAINST_THE_FACTS[step.name] !== undefined) return [];
+      return [`${step.name} declares ${step.timeout} and its work is ${derived}`];
+    });
+
+    it('declares the rung its work implies', () => {
+      expect(misdeclared(CHAIN_STEPS), 'a rung is chosen by kind of work (`step-timeouts.ts`), so one of '
+        + 'these is a step bounded as something it is not — a bundle on `quick` dies too early, one compiler '
+        + 'on `suite` takes five minutes to die').toEqual([]);
+    });
+
+    it('asks it of every step, so the rule passes over nothing', () => {
+      const asked = CHAIN_STEPS.filter((step) => DECLARED_AGAINST_THE_FACTS[step.name] === undefined);
+      expect(asked.length, 'the exception table swallowed the table').toBe(CHAIN_STEPS.length - 1);
+    });
+
+    it('lists no exception that has stopped applying', () => {
+      const stale = Object.keys(DECLARED_AGAINST_THE_FACTS).flatMap((name) => {
+        const step = CHAIN_STEPS.find((candidate) => candidate.name === name);
+        if (step === undefined) return [`${name}: no step declares it any more`];
+        return rungForKind(factsFor(step)) === step.timeout
+          ? [`${name}: the facts derive its rung now, so it needs no exception`] : [];
+      });
+      expect(stale).toEqual([]);
+    });
+
+    /**
+     * The three firing cases, mutating the data rather than trusting that the rule could fail. Each is the
+     * shape of a real mistake: a build left on `quick` is the 2026-10-03 defect, a check moved to `suite`
+     * is the unwatched direction, and an installing step on either is a scenario bounded as something else.
+     */
+    it('names a build left on quick', () => {
+      const lint = CHAIN_STEPS.find((step) => step.name === 'lint:check')!;
+      expect(misdeclared([{ ...lint, outputs: ['packages/abuddy-sdk/dist'] }]))
+        .toEqual(['lint:check declares quick and its work is suite']);
+    });
+
+    it('names one compiler left on suite', () => {
+      const lint = CHAIN_STEPS.find((step) => step.name === 'lint:check')!;
+      expect(misdeclared([{ ...lint, timeout: 'suite' }]))
+        .toEqual(['lint:check declares suite and its work is quick']);
+    });
+
+    it('names an installing step that is not a scenario', () => {
+      const authoring = CHAIN_STEPS.find((step) => step.name === 'test:packaged-authoring')!;
+      expect(factsFor(authoring).installs, 'it stopped installing, so this case is about nothing').toBe(true);
+      expect(misdeclared([{ ...authoring, timeout: 'suite' }]))
+        .toEqual(['test:packaged-authoring declares suite and its work is scenario']);
+    });
   });
 
   /**

@@ -86,13 +86,16 @@ export interface Rung {
  * because three kinds are nameable, and what distinguishes them is not how long they take but what they
  * start:
  *
- * - `quick` — one compiler, one linter, one codegen pass. Eighteen of the chain's twenty-nine steps, and all
- *   of them already sat on the old 60s floor, so this rung changes nothing for most of the table.
- * - `suite` — a test suite or a bundle: the three unit pools, `build:app`, the smoke and E2E suites, and the
- *   two that build things rather than check one thing (`packages:ensure`, `compile`). These fan out across
- *   workers or processes, so they are the rung that stretches most on a smaller box.
- * - `scenario` — starts an app or runs an install: the external-pack pair and `test:packaged-authoring`.
- *   `npm install`, Electron and a packed tarball, mostly serial and mostly waiting.
+ * - `quick` — one compiler, one linter, one codegen pass. Most of the table, and all of it already sat on
+ *   the old 60s floor, so this rung changes nothing for those steps.
+ * - `suite` — a test suite or a bundle: it fans out across workers or processes, which makes it the rung
+ *   that stretches most on a smaller box. A step that *builds* is a bundle and not one compiler.
+ * - `scenario` — runs an install: `npm install`, a packed tarball, mostly serial and mostly waiting.
+ *
+ * **Which steps are on which rung is `rungForKind`'s answer and not a list here.** It used to be a list, and
+ * all three rows had drifted from the table by 2026-10-05: `quick` claimed eighteen of twenty-nine where it
+ * was seventeen, `suite` named eight of its ten, and `scenario` said "the external-pack pair" when only
+ * `:app` is on it. A membership anyone can derive is one nobody should copy.
  *
  * **One `stretches` per rung, because one number was answering three questions.** The 4× is a measurement of
  * a *pool* losing workers, which is `suite` and nothing else; `quick` is single compilers losing CPU share
@@ -110,6 +113,28 @@ export interface Rung {
  * The values are Bazel's own ladder minus its `short`, which nothing here wants: its `moderate` is 300s and
  * its `long` 900s. A rung whose membership would be "whatever is left over" is the rung not to add.
  */
+/**
+ * Which rung a step's *kind of work* puts it on — the criterion the three rows above state, as something a
+ * check can run rather than prose a reader has to apply.
+ *
+ * **The facts come in rather than being read here**, which is the same reason `timedOutBecause` takes
+ * `MEASURED_ON` as a parameter: this module stays underneath `chain-steps.ts` and `core-budget.ts` rather
+ * than importing either. `chain-graph.spec.ts` gathers them — `installs` from a scan of the step's script
+ * text, `fansOut` from whether it declares a `POOL_WIDTH` entry, `builds` from whether it declares
+ * `outputs`.
+ *
+ * **`fansOut` asks whether a width is declared, never what `coresFor` returns.** That resolves against the
+ * running machine, so on a one-core box every width-declaring step reads as one core and this answer would
+ * change with the hardware.
+ *
+ * It is a check and not the declaration: `ChainStep.timeout` stays written down, because a rung is a kill
+ * deadline and deriving it from `POOL_WIDTH` would let a change to what a step *costs* silently move when it
+ * is *killed*. Those are two facts, and the redundancy is cheaper than the coupling. One step disagrees on
+ * purpose, and `chain-graph.spec.ts` carries it with its reason.
+ */
+export const rungForKind = (work: { installs: boolean; fansOut: boolean; builds: boolean }): TimeoutClass =>
+  work.installs ? 'scenario' : (work.fansOut || work.builds) ? 'suite' : 'quick';
+
 export const TIMEOUT_MS = {
   quick: {
     ms: 60_000,
