@@ -18,6 +18,9 @@ export const APP_UNBRIDGED: Readonly<Record<string, string>> = {
   // What each value-serialising pass answers, as data three suites assert their own rows against. Source-only
   // for the same reason: it is this repo's test data about this repo's code, and no pack has a row in it
   '@abuddy/sdk/testing/serialisation-matrix': 'repo test data, resolvable only under @abuddy/source',
+  // Waiting for an event rather than for a duration, shared by the suites that need it. Source-only for the
+  // same reason: it is this repo's test support, and a pack's tests wait through the harness instead
+  '@abuddy/sdk/testing/waiting': 'repo test support, resolvable only under @abuddy/source',
 };
 
 /** The shared-instance specifiers the app bridges, from each package's exports map as `fromFile` resolves it */

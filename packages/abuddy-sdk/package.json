@@ -179,6 +179,9 @@
     },
     "./testing/serialisation-matrix": {
       "@abuddy/source": "./src/testing/serialisation-matrix.ts"
+    },
+    "./testing/waiting": {
+      "@abuddy/source": "./src/testing/waiting.ts"
     }
   },
   "peerDependencies": {
