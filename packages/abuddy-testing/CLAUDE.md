@@ -213,7 +213,7 @@ Four modules, and the split is what each one is allowed to know:
 
 Things worth knowing before changing it:
 
-- **`/qx` and `/tx` go over the bus**, to default-setup's `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`, which
+- **`/query` and `/transact` go over the bus**, to default-setup's `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`, which
   already run against the live engine with every installed pack's entity types. So a write is visible to
   the next read in the same session — which `abuddy db exec` cannot do, since it refuses while the app
   holds the write lock.
@@ -227,7 +227,7 @@ Things worth knowing before changing it:
   different jobs and both are needed. The session claims `host/drive` and stamps `sender` on every bus
   send, so a system's `reply` comes back on this connection rather than to every window — which is what
   stops a person querying in the Database plugin from being mistaken for the session. But addressing
-  answers *which connection*, never *which request*: three concurrent `/qx` calls produce three replies
+  answers *which connection*, never *which request*: three concurrent `/query` calls produce three replies
   with identical envelopes, so the id is what tells them apart. Two cases cover the pair: a reply for a
   request the engine did not make, and an abandoned request's late answer.
 - **Waiters hear both the connection and the page bridge, and that is not redundancy.** An app built

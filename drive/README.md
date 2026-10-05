@@ -39,10 +39,10 @@ abuddy drive --serve --instance probe     # from inside a pack
 
 It prints the address and a `curl` line and writes `results/engine.json` with the address and a token.
 `POST /close` ends the session and shuts the app down. `docs/public-facing/cli.md` has the verbs; the
-short version is `/eval` `/send` `/system` `/qx` `/tx` `/wait` `/navigate` `/screenshot` `/reload`
-`/close` and `/state` `/events` `/drops` `/errors`.
+short version is `/eval` `/send` `/query` `/transact` `/wait` `/navigate` `/screenshot` `/reload`
+`/events` `/drops` `/errors` `/close`, and `GET /state`.
 
-`/qx` and `/tx` reach the **live** database, so a write shows up in the next read of the same session —
+`/query` and `/transact` reach the **live** database, so a write shows up in the next read of the same session —
 `abuddy db exec` cannot, because it refuses while the app holds the write lock.
 
 A write does **not** show up in the UI. A plugin holds what its system sent it, and a console write goes

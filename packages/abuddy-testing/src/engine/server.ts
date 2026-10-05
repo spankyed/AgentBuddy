@@ -109,14 +109,20 @@ const object = (body: Record<string, unknown>, field: string): Record<string, un
 
 export function engineVerbs(session: EngineSession): Record<string, Verb> {
   return {
-    '/eval': { method: 'POST', run: (body) => session.evaluate(required(body, 'body')) },
-    '/send': { method: 'POST', run: (body) => session.send(object(body, 'event')) },
-    '/system': {
+    '/eval': { method: 'POST', run: (body) => session.evaluate(required(body, 'code')) },
+    /**
+     * One verb for one act. `to` names a system; without it the event goes to the app's root actor, which
+     * is the only difference there ever was between this and the `/system` it replaced.
+     */
+    '/send': {
       method: 'POST',
-      run: (body) => session.system(required(body, 'to'), object(body, 'event')),
+      run: (body) => (body.to === undefined
+        ? session.send(object(body, 'event'))
+        : session.system(required(body, 'to'), object(body, 'event'))),
     },
-    '/qx': { method: 'POST', run: (body) => session.qx(required(body, 'code')) },
-    '/tx': { method: 'POST', run: (body) => session.tx(required(body, 'code')) },
+    // `qx` and `tx` are the names of the code you write, not of the thing you ask for
+    '/query': { method: 'POST', run: (body) => session.qx(required(body, 'code')) },
+    '/transact': { method: 'POST', run: (body) => session.tx(required(body, 'code')) },
     '/state': { method: 'GET', run: () => session.state() },
     '/navigate': { method: 'POST', run: (body) => session.navigate(required(body, 'plugin')) },
     '/screenshot': { method: 'POST', run: (body) => session.screenshot(safeName(body, 'name')) },
@@ -138,9 +144,11 @@ export function engineVerbs(session: EngineSession): Record<string, Verb> {
         return session.wait(target, optionalMs(body, 'timeoutMs'));
       },
     },
-    '/events': { method: 'GET', run: () => session.drainEvents() },
-    '/drops': { method: 'GET', run: () => session.drainDrops() },
-    '/errors': { method: 'GET', run: () => session.drainErrors() },
+    // POST because each of these *clears* what it returns: a GET that answers differently on a retry is
+    // a trap, and draining is right — a session open for an hour would otherwise collect every event
+    '/events': { method: 'POST', run: () => session.drainEvents() },
+    '/drops': { method: 'POST', run: () => session.drainDrops() },
+    '/errors': { method: 'POST', run: () => session.drainErrors() },
     /**
      * Answers, and the *caller* of `answer` ends the session once this reply has been written.
      *

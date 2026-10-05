@@ -188,30 +188,41 @@ E=$(node -p "const m=require('./drive/results/engine.json');m.host+':'+m.port")
 H="x-abuddy-drive-token: $(node -p "require('./drive/results/engine.json').token")"
 
 curl -s http://$E/state -H "$H"
-curl -s http://$E/eval -H "$H" -d '{"body":"return window.appVersion"}'
-curl -s http://$E/qx   -H "$H" -d '{"code":"return qx(EARS.Entity.Note).count()"}'
+curl -s http://$E/eval  -H "$H" -d '{"code":"return window.appVersion"}'
+curl -s http://$E/query -H "$H" -d '{"code":"return qx(EARS.Entity.Note).count()"}'
 curl -s -X POST http://$E/close -H "$H"
 ```
 
+**Three rules, so a verb is guessable.** A POST is a verb and a GET is a noun; one concept has one field
+name, in requests and in responses (`code` is any source the session runs, `plugin` names a plugin
+whichever direction it travels); and every answer is `{ ok, value }`, or `{ ok: false, error }` when the
+operation failed — a `4xx` means nothing ran at all.
+
 | verb | method | body | does |
 |---|---|---|---|
-| `/eval` | POST | `{ body }` | runs the body in the window and returns what it returns |
-| `/send` | POST | `{ event }` | sends an event to the app's root actor |
-| `/system` | POST | `{ to, event }` | sends an event to a system, by ref |
-| `/qx` | POST | `{ code }` | runs query code against the live database |
-| `/tx` | POST | `{ code }` | runs transaction code against the live database |
-| `/state` | GET | — | the state value, the active plugin and the plugin list |
+| `/eval` | POST | `{ code }` | runs the code in the window and returns what it returns |
+| `/send` | POST | `{ event, to? }` | sends an event to a system by ref, or to the app's root actor without `to` |
+| `/query` | POST | `{ code }` | runs query code against the live database |
+| `/transact` | POST | `{ code }` | runs transaction code against the live database |
+| `/state` | GET | — | the state value, the active `plugin` and the `plugins` list |
 | `/wait` | POST | `{ state }` or `{ plugin }`, `{ timeoutMs }` | waits for a dotted state path, or for a plugin to arrive |
 | `/navigate` | POST | `{ plugin }` | opens a plugin |
 | `/screenshot` | POST | `{ name }` | writes `drive/screenshots/<name>.png` |
 | `/reload` | POST | — | reloads the window and returns once it is connected again |
-| `/events` | GET | — | the app's events since you last asked, and how many were dropped |
-| `/drops` | GET | — | sends the bus dropped, and clears them |
-| `/errors` | GET | — | renderer errors, and clears them |
+| `/events` | POST | — | the app's events since you last asked, and how many were dropped |
+| `/drops` | POST | — | sends the bus dropped, and clears them |
+| `/errors` | POST | — | renderer errors, and clears them |
 | `/close` | POST | — | ends the session and shuts the app down |
 
+The last three are POSTs because each one *clears* what it returns: draining is right for a session open
+for an hour, but a GET that answers differently on a retry is a trap.
+
+**Verbs of your own** go in the session file `--serve` scaffolds, which is written once and then yours:
+`driveEngineBody({ verbs })` takes a function over the session, merged over this table. A verb built out
+of your pack's nouns belongs there rather than here.
+
 **A write does not update the UI; `/reload` is how you see it.** A plugin's state is what its system
-sent it, so a write made outside that system — `/tx`, the database console, `abuddy db exec` — changes
+sent it, so a write made outside that system — `/transact`, the database console, `abuddy db exec` — changes
 the database and reaches no view. That is the console being a console rather than a fault, and it is not
 staleness that time fixes: navigating between plugins does not refresh one, because the plugin's actor
 survives. `/reload` does, because a new connection makes every system send its startup data again.
@@ -225,10 +236,10 @@ there; `{"plugin":"default-setup/notes"}` returns when that plugin registers. On
 **Replies come to the session, and each names the request it answers.** Both matter. The session has its
 own connection to the app and a name on it, so an answer is addressed here rather than to every window —
 a person querying in the Database plugin while you drive is no longer mistaken for you. And because three
-concurrent `/qx` calls would otherwise be indistinguishable, each reply still names its request, so they
+concurrent `/query` calls would otherwise be indistinguishable, each reply still names its request, so they
 may run together and one you stopped waiting for is ignored.
 
-**`/qx` and `/tx` reach the live database**, not the files on disk — they go to the running app, so a
+**`/query` and `/transact` reach the live database**, not the files on disk — they go to the running app, so a
 write is visible to the next read in the same session. `abuddy db exec` cannot do that: it refuses while
 the app holds the write lock.
 

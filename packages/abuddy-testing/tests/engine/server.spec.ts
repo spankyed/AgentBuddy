@@ -59,19 +59,21 @@ describe('routing', () => {
   it('reaches each verb at its own path', async () => {
     const { session, called } = fakeSession();
 
-    await ask(session, '/eval', { body: '{"body":"return 1"}' });
+    await ask(session, '/eval', { body: '{"code":"return 1"}' });
     await ask(session, '/send', { body: '{"event":{"type":"X"}}' });
-    await ask(session, '/system', { body: '{"to":"a/b","event":{"type":"X"}}' });
-    await ask(session, '/qx', { body: '{"code":"return 1"}' });
-    await ask(session, '/tx', { body: '{"code":"return 1"}' });
+    await ask(session, '/send', { body: '{"to":"a/b","event":{"type":"X"}}' });
+    await ask(session, '/query', { body: '{"code":"return 1"}' });
+    await ask(session, '/transact', { body: '{"code":"return 1"}' });
     await ask(session, '/state', { method: 'GET' });
     await ask(session, '/wait', { body: '{"state":"running.connected"}' });
     await ask(session, '/navigate', { body: '{"plugin":"notes"}' });
     await ask(session, '/screenshot', { body: '{"name":"shot"}' });
-    await ask(session, '/events', { method: 'GET' });
-    await ask(session, '/drops', { method: 'GET' });
-    await ask(session, '/errors', { method: 'GET' });
+    await ask(session, '/events');
+    await ask(session, '/drops');
+    await ask(session, '/errors');
 
+    // `/send` twice: with `to` it reaches a system, without it the app's root actor — one verb, because
+    // that destination is the only thing that ever differed
     expect(called.map(([name]) => name)).toEqual([
       'evaluate', 'send', 'system', 'qx', 'tx', 'state', 'wait',
       'navigate', 'screenshot', 'events', 'drops', 'errors',
@@ -80,7 +82,7 @@ describe('routing', () => {
 
   it('passes the body through to the verb', async () => {
     const { session, called } = fakeSession();
-    await ask(session, '/system', { body: '{"to":"host/packs","event":{"type":"PING","n":1}}' });
+    await ask(session, '/send', { body: '{"to":"host/packs","event":{"type":"PING","n":1}}' });
 
     expect(called[0]?.[1]).toEqual(['host/packs', { type: 'PING', n: 1 }]);
   });
@@ -97,7 +99,7 @@ describe('routing', () => {
 
   it('refuses the wrong method rather than running the verb', async () => {
     const { session, called } = fakeSession();
-    const result = await ask(session, '/qx', { method: 'GET' });
+    const result = await ask(session, '/query', { method: 'GET' });
 
     expect(result.status).toBe(405);
     expect(called).toEqual([]);
@@ -149,7 +151,7 @@ describe("verbs of the caller's own", () => {
 describe('a bad body is a protocol error, not a verb failure', () => {
   it('refuses a missing required field', async () => {
     const { session, called } = fakeSession();
-    const result = await ask(session, '/qx', { body: '{}' });
+    const result = await ask(session, '/query', { body: '{}' });
 
     expect(result.status).toBe(400);
     expect(result.payload).toMatchObject({ error: expect.stringContaining('"code"') });
@@ -158,7 +160,7 @@ describe('a bad body is a protocol error, not a verb failure', () => {
 
   it('refuses an empty string as a required field', async () => {
     const { session } = fakeSession();
-    expect((await ask(session, '/eval', { body: '{"body":""}' })).status).toBe(400);
+    expect((await ask(session, '/eval', { body: '{"code":""}' })).status).toBe(400);
   });
 
   it('refuses an event that is not an object', async () => {
@@ -169,7 +171,7 @@ describe('a bad body is a protocol error, not a verb failure', () => {
 
   it('refuses a body that is not JSON, and says so', async () => {
     const { session } = fakeSession();
-    const result = await ask(session, '/qx', { body: 'not json' });
+    const result = await ask(session, '/query', { body: 'not json' });
 
     expect(result.status).toBe(400);
     expect(result.payload).toMatchObject({ error: expect.stringContaining('not JSON') });
@@ -177,12 +179,12 @@ describe('a bad body is a protocol error, not a verb failure', () => {
 
   it('refuses a JSON body that is not an object', async () => {
     const { session } = fakeSession();
-    expect((await ask(session, '/qx', { body: '[1,2]' })).status).toBe(400);
+    expect((await ask(session, '/query', { body: '[1,2]' })).status).toBe(400);
   });
 
   it('treats an empty body as an empty object, so a verb needing nothing needs no body', async () => {
     const { session } = fakeSession();
-    const result = await ask(session, '/events', { method: 'GET', body: '' });
+    const result = await ask(session, '/events', { body: '' });
 
     expect(result.status).toBe(200);
     expect(result.payload).toEqual({ ok: true, value: 'events' });
@@ -210,7 +212,7 @@ describe('close', () => {
     const { session } = fakeSession();
 
     expect((await ask(session, '/state', { method: 'GET' })).ending).toBeUndefined();
-    expect((await ask(session, '/qx', { body: '{"code":"return 1"}' })).ending).toBeUndefined();
+    expect((await ask(session, '/query', { body: '{"code":"return 1"}' })).ending).toBeUndefined();
   });
 
   it('does not end the session when the request was refused', async () => {
@@ -280,7 +282,7 @@ describe('a verb that fails', () => {
     const { session } = fakeSession({
       qx: async () => ({ ok: false, error: 'qx: boom is not defined' }),
     });
-    const result = await ask(session, '/qx', { body: '{"code":"return boom"}' });
+    const result = await ask(session, '/query', { body: '{"code":"return boom"}' });
 
     expect(result.status, 'the request was fine; the operation was not').toBe(200);
     expect(result.payload).toEqual({ ok: false, error: 'qx: boom is not defined' });

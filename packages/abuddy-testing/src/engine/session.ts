@@ -430,8 +430,8 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
       const snap = window.applicationState?.getSnapshot();
       return {
         value: snap?.value,
-        activePluginId: snap?.context?.activePlugin?.id ?? '',
-        pluginIds: (snap?.context?.plugins ?? []).map((p) => p.id),
+        plugin: snap?.context?.activePlugin?.id ?? '',
+        plugins: (snap?.context?.plugins ?? []).map((p) => p.id),
       };
     })()`)),
 
