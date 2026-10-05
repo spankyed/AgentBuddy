@@ -8,7 +8,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
-import { covers, GUIDES_A_CHECK_READS, inputFiles, REPO_ROOT, skipsFingerprint } from '@abuddy/host/build/packages-built';
+import { covers, GUIDES_A_CHECK_READS, inputFiles, READS_MARKDOWN, REPO_ROOT, skipsFingerprint } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, SUITE_READS, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { repoFiles } from './_support/repo-files.ts';
 
@@ -78,6 +78,10 @@ describe('a guard over the whole repo', () => {
 
 describe('prose costs nothing', () => {
   const guides = (): string[] => repoFiles().filter((file) => path.basename(file) === 'CLAUDE.md');
+  /** Every tracked markdown file, which is what the rule is about since 2026-10-05 */
+  const markdown = (): string[] => repoFiles().filter((file) => file.endsWith('.md'));
+  const underAContentTree = (file: string): boolean =>
+    file.split('/').some((segment) => READS_MARKDOWN.has(segment));
 
   /**
    * Every file in a step's fingerprint, which is what its cache key is taken over — the walk the hash is
@@ -123,6 +127,27 @@ describe('prose costs nothing', () => {
   });
 
   /**
+   * And the same of prose that is not named `CLAUDE.md`, which is what the rule was widened to cover.
+   *
+   * It was a rule about one filename, so four files that are plainly documentation — two `README.md` and an
+   * example under `default-setup/src/features/` — cost 9 steps each for a typo. Measured 2026-10-05, before:
+   * 176 tracked markdown files were in some step's key; after, 172, and the four are the difference.
+   */
+  it('keeps prose that is not a guide out of every step\'s cache key', () => {
+    const costly: string[] = [];
+    for (const step of CHAIN_STEPS) {
+      const inside = fingerprinted(step);
+      for (const file of markdown()) {
+        if (underAContentTree(file) || GUIDES_A_CHECK_READS.has(file) || !inside.has(file)) continue;
+        costly.push(`${file} -> ${step.name}`);
+      }
+    }
+    expect([...new Set(costly.map((row) => row.split(' -> ')[0]!))],
+      'a step keys on these and nothing reads them. If something now does, put the directory in '
+      + 'READS_MARKDOWN; if a check asserts the text, GUIDES_A_CHECK_READS is the other half').toEqual([]);
+  });
+
+  /**
    * The other direction, and the one that fails silently: an exemption protects nothing unless the guide is
    * actually in a step's fingerprint. It was not — `WORKSPACE_PARTS` lists a package's subparts and not its
    * root, so `packages/repo-checks/CLAUDE.md` sat outside every input while a spec asserted its contents.
@@ -132,6 +157,52 @@ describe('prose costs nothing', () => {
     expect(lapsed, 'these are exempted from the skip but in no step, so the check that reads them can run '
       + 'cached over a stale doc. Add each to the inputs of the step that runs that check, or drop it from '
       + 'GUIDES_A_CHECK_READS').toEqual([]);
+  });
+
+  /**
+   * The other half, and the silent one: markdown something *reads* must stay in the key.
+   *
+   * **Its subject cannot come from `READS_MARKDOWN`, which is the rule under test.** Written that way first
+   * and it could not fail: drop `etc` from the list and the case asking "is content skipped" no longer counts
+   * an API report as content, so three cases passed over a rule that had stopped protecting the reports
+   * `api:check` compares. The subject has to be a fact that holds whatever the rule says — so it is one real
+   * file per tree, named with the step that must key on it, and an entry whose file has moved is reported.
+   */
+  const CONTENT_IN_A_KEY: Record<string, string> = {
+    // A hand-edited report is the one hole the deleted API stamp could not see, so `api:check` keys on them
+    'packages/abuddy-sdk/etc/index.api.md': 'api:check',
+    // Seed sources compile into the rows a user gets
+    'packages/default-setup/src/seeds/notes/welcome.md': 'compile',
+    // The CLI's scaffold, rendered into a new pack and read by the specifier rules
+    'packages/abuddy-cli/templates/pack/README.md': 'check:specifiers',
+    // Test input, read by the seed-parity goldens
+    'packages/default-setup/tests/_support/fixtures/seed-parity/v1/notes/welcome.md': 'test:unit:pack',
+  };
+
+  it('keeps markdown a build reads in the key of the step that reads it', () => {
+    const lost = Object.entries(CONTENT_IN_A_KEY).flatMap(([file, stepName]) => {
+      if (!markdown().includes(file)) return [`${file}: no longer tracked, so this row checks nothing`];
+      const step = CHAIN_STEPS.find((candidate) => candidate.name === stepName);
+      if (step === undefined) return [`${file}: no step named ${stepName}`];
+      return fingerprinted(step).has(file) ? [] : [`${file} left ${stepName}'s key, so it can cache over a change to it`];
+    });
+    expect(lost, 'something reads or ships these; a tree missing from READS_MARKDOWN is how they go quiet')
+      .toEqual([]);
+  });
+
+  it('covers every tree in the list, so no entry is checked over nothing', () => {
+    const uncovered = [...READS_MARKDOWN]
+      .filter((tree) => !Object.keys(CONTENT_IN_A_KEY).some((file) => file.split('/').includes(tree)))
+      .map((tree) => `${tree}: no row above names a file under it, so dropping it would fail nothing`);
+    expect(uncovered).toEqual([]);
+  });
+
+  /** Two guides sit inside a content tree, and the first draft of the widened rule started keying on them */
+  it('still treats a guide inside a content tree as prose', () => {
+    for (const guide of ['packages/default-setup/src/seeds/CLAUDE.md', 'packages/default-setup/tests/seeds/CLAUDE.md']) {
+      expect(guides(), `${guide} moved, so this case is about nothing`).toContain(guide);
+      expect(skipsFingerprint(guide), `${guide} is in a key for a sentence of prose`).toBe(true);
+    }
   });
 
   // The subject is a walk, and a walk that reaches nothing reports no offence. The guide this once cost the

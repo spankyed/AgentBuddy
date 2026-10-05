@@ -396,22 +396,45 @@ const digestOf = (contents: Buffer | null): string =>
  * 9ms is the cheaper of the two.
  */
 /**
- * Guidance for whoever opens a directory, and never an input: skipped wherever a unit's inputs are hashed.
+ * Prose for whoever opens a directory, and never an input: skipped wherever a unit's inputs are hashed.
  *
  * It is the first entry in the root `CLAUDE.md`'s list of time-wasters — a prose edit runs nothing — and that
- * was a claim about the chain that the chain did not hold. Five of these sit *inside* a declared tree rather
- * than at a package root (`default-setup/src/seeds`, `abuddy-host/src/migrations` and `src/packs/runtime`,
+ * was a claim about the chain that the chain did not hold. Guides sit *inside* declared trees rather than at
+ * a package root (`default-setup/src/seeds`, `abuddy-host/src/migrations` and `src/packs/runtime`,
  * `default-setup/tests/seeds`, `tests/e2e`), so a sentence of prose re-ran up to four steps, `compile` among
  * them. Skipped here rather than excluded per step, because the steps that reach them take their inputs from
  * derived lists where there is no literal array to add an entry to.
  *
+ * **It was a rule about one filename until 2026-10-05, and the cost it left behind was the same cost.** Only
+ * files named `CLAUDE.md` were skipped, so the prose that is not — two `README.md` and an example under
+ * `default-setup/src/features/` — kept 9 steps each honest about a typo. The rule is now about markdown
+ * rather than about a name, which skips exactly those four and no other tracked file (measured).
+ *
+ * `READS_MARKDOWN` is the other half: directory names whose markdown is **content**, read or shipped rather
+ * than read by a person. `etc` holds the recorded API reports `api:check` compares against — a hand-edited
+ * one must invalidate it, which is the one hole the deleted stamp could not see. `seeds` is a pack's seed
+ * sources, compiled into rows a user gets. `templates` is the CLI's scaffold, rendered into a new pack.
+ * `fixtures` is test input.
+ *
  * **The condition that would make this wrong** is a check that asserts one of these files' *text*: it would
  * then be a real input, and skipping it would let that check cache over a doc that had gone stale. One
  * exists — `spec-plan.spec.ts` holds `packages/repo-checks/CLAUDE.md` to naming every spec in that package —
- * and it is outside every step's fingerprint already, so this neither creates nor closes that gap. A second
- * one, inside a fingerprinted tree, is the case to come back here for.
+ * which `GUIDES_A_CHECK_READS` takes back. A second, and a new tree whose markdown something starts reading,
+ * are both the case to come back here for; a wrong entry is *silent*, so
+ * `fingerprint-scope.integration.spec.ts` holds each of these trees to being unskippable rather than
+ * trusting the list, and mutates it to prove it can fail.
  */
+export const READS_MARKDOWN: ReadonlySet<string> = new Set(['etc', 'seeds', 'templates', 'fixtures']);
+
 const GUIDE = 'CLAUDE.md';
+
+const isProse = (file: string): boolean => {
+  if (!file.endsWith('.md')) return false;
+  // A guide is prose wherever it sits, a content tree included: two live under a `seeds/` directory
+  // (`default-setup/src/seeds`, `default-setup/tests/seeds`), and keying on them was this rule's first draft
+  if (file === GUIDE || file.endsWith(`/${GUIDE}`)) return true;
+  return !file.split('/').some((segment) => READS_MARKDOWN.has(segment));
+};
 
 /**
  * The exception the comment above names, arrived: a guide some check asserts the *text* of, which makes it a
@@ -426,13 +449,6 @@ const GUIDE = 'CLAUDE.md';
 export const GUIDES_A_CHECK_READS: ReadonlySet<string> = new Set(['packages/repo-checks/CLAUDE.md']);
 
 /**
- * Whether a file under a unit's inputs is left out of its fingerprint whatever that unit declares.
- *
- * Exported so a check can ask the same question without hashing anything: the gate that holds the rule
- * above walks the inputs and filters with this, where taking a real fingerprint of all twelve chain steps
- * to answer it cost 1.5s and pushed its own spec into the other cost half.
- */
-/**
  * Whether a unit's `excludeSuffixes` puts this file outside its key.
  *
  * Exported for the same reason `skipsFingerprint` is: `chain-inputs.spec.ts` resolves a step's inputs to ask
@@ -442,8 +458,15 @@ export const GUIDES_A_CHECK_READS: ReadonlySet<string> = new Set(['packages/repo
 export const excludedBySuffix = (suffixes: readonly string[] | undefined, file: string): boolean =>
   suffixes !== undefined && suffixes.some((suffix) => file.endsWith(suffix));
 
+/**
+ * Whether a file under a unit's inputs is left out of its fingerprint whatever that unit declares.
+ *
+ * Exported so a check can ask the same question without hashing anything: the gate that holds the rule
+ * above walks the inputs and filters with this, where taking a real fingerprint of all twelve chain steps
+ * to answer it cost 1.5s and pushed its own spec into the other cost half.
+ */
 export const skipsFingerprint = (file: string): boolean =>
-  !GUIDES_A_CHECK_READS.has(file) && (file.endsWith(`/${GUIDE}`) || file === GUIDE);
+  !GUIDES_A_CHECK_READS.has(file) && isProse(file);
 
 export function fingerprintInputs(
   inputs: readonly string[],

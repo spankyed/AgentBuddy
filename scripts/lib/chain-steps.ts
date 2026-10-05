@@ -456,7 +456,7 @@ export const WORKSPACE_PARTS = [
 const workspace = (pkg: string): string[] => WORKSPACE_PARTS.map((part) => `packages/${pkg}/${part}`);
 
 /**
- * What a *suite* reads, which is the workspace plus its guide. A fingerprint skips a `CLAUDE.md` (see `GUIDE`
+ * What a *suite* reads, which is the workspace plus its guide. A fingerprint skips prose (see `READS_MARKDOWN`
  * in `packages-built.ts`), so for all but one package this adds a path and no bytes — and that one is
  * `packages/repo-checks/CLAUDE.md`, whose "What is here" table `spec-plan.spec.ts` asserts. Here and not in
  * `WORKSPACE_PARTS`, so `typecheck`, which compiles the repo and reads no guide, does not take it on.
