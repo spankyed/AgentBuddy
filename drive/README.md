@@ -46,6 +46,9 @@ short version is `/eval` `/send` `/query` `/transact` `/wait` `/navigate` `/plug
 `/query` and `/transact` reach the **live** database, so a write shows up in the next read of the same session —
 `abuddy db exec` cannot, because it refuses while the app holds the write lock.
 
+`driveEngineBody({ viewport: { width, height } })` in `engine-session.mts` opens the session at a size,
+applied before the first request is served; `/set-viewport` changes it afterwards.
+
 `npm run drive` shows the window, so `/set-viewport` resizes the window itself; a session nobody is
 watching gets Playwright's emulated viewport instead, which is what keeps a suite's layout deterministic.
 Asking for a viewport in a shown window the other way would letterbox the app against the desktop.

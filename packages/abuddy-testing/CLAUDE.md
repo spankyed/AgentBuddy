@@ -247,6 +247,10 @@ Things worth knowing before changing it:
   `engine/` never sees Electron's types. `/viewport` needs no port at all: `window.innerWidth` is true
   whichever of the two happened, where `page.viewportSize()` reports the emulation and never moves when
   the window does.
+  A session can also open at a size: `driveEngineBody({ viewport })`, applied before the server listens.
+  Its value is checked (`checkedViewport`, against the wire's own `isPixels`) rather than trusted, because
+  `drive/` is outside every tsconfig here — `typecheck:scripts` is `scripts/`, `tests/`, repo-checks and
+  publish-checks — so a session file's option is checked by an editor and by no chain step.
 - **`/screenshot` refuses a name that is not a name.** It is the one verb whose input becomes a path, and
   `app.screenshot` joins it onto the screenshots directory, so `../../escaped` wrote outside it.
 - **The body cap answers rather than hanging up.** It used to `destroy()` the request, which took the

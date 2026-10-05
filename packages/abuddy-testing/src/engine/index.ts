@@ -14,7 +14,7 @@
 import * as fs from 'node:fs';
 import type { Page } from '@playwright/test';
 import { DRIVE_REF, createSession, type SessionPage } from './session.ts';
-import { ENGINE_TOKEN_HEADER, startEngineServer, type ExtraVerbs } from './server.ts';
+import { ENGINE_TOKEN_HEADER, isPixels, startEngineServer, type ExtraVerbs } from './server.ts';
 import { engineRecipe, publishEngineMarker, removeEngineMarker } from './marker.ts';
 import { connectApiClient } from './api-client.ts';
 
@@ -66,6 +66,12 @@ export interface DriveEngineOptions {
   readonly verbs?: ExtraVerbs;
   /** The real window, where one is shown; absent for a run nobody is watching — see `EngineWindow` */
   readonly window?: EngineWindow;
+  /**
+   * The size to open at, so a session that always wants one says so once instead of posting
+   * `/set-viewport` as its first call. Applied through the same port that verb uses, so it moves the
+   * window where one is shown and sets the emulated viewport where none is.
+   */
+  readonly viewport?: { readonly width: number; readonly height: number };
 }
 
 /**
@@ -149,6 +155,22 @@ async function apiAddressFromWindow(page: SessionPage): Promise<{ port: number; 
 }
 
 /**
+ * The size a session was told to open at, refused rather than passed on.
+ *
+ * Checked at all because `drive/` is outside every tsconfig in this repo — `typecheck:scripts` covers
+ * `scripts/`, `tests/`, repo-checks and publish-checks — so a session file's option is checked by whatever
+ * editor is open on it and by nothing in the chain. `isPixels` is the wire's own rule, shared so a size the
+ * `/set-viewport` verb would refuse is not one the session may be started with.
+ */
+export const checkedViewport = (viewport: { width: number; height: number }): { width: number; height: number } => {
+  if (!isPixels(viewport.width) || !isPixels(viewport.height)) {
+    throw new Error("The drive session's viewport must be whole numbers of pixels above zero, not "
+      + `${JSON.stringify(viewport)}.`);
+  }
+  return viewport;
+};
+
+/**
  * Runs the engine until something ends the session, then cleans up and returns.
  *
  * Renderer errors are collected here rather than drained from the fixture's own array, deliberately:
@@ -170,6 +192,12 @@ export async function runDriveEngine(options: DriveEngineOptions): Promise<void>
   const ended = new Promise<void>((resolve) => { end = resolve; });
 
   const sessionPage = asSessionPage(page, app, options.window);
+  // Before the address is read and before anything is served, so the first verb to arrive already sees
+  // the size the session asked for and nothing has to be re-measured after a resize
+  if (options.viewport !== undefined) {
+    const { width, height } = checkedViewport(options.viewport);
+    await sessionPage.setViewport(width, height);
+  }
 
   /**
    * The session's own connection, opened before the server listens so a verb can never arrive without one.

@@ -8,7 +8,7 @@ import {
   REPLY_TIMEOUT_MS, type EngineResult, type SeenEvent, type SessionApi, type SessionPage,
 } from '../../src/engine/session.ts';
 import type { BusMessage } from '../../src/engine/api-client.ts';
-import { asSessionPage } from '../../src/engine/index.ts';
+import { asSessionPage, checkedViewport } from '../../src/engine/index.ts';
 import type { Page } from '@playwright/test';
 
 /** A page that records what it was asked and lets a test answer for it, plus the bridge's own callback */
@@ -407,6 +407,20 @@ describe('the viewport', () => {
     }).setViewport(1000, 700);
 
     expect(acted).toEqual(['emulated 1000x700', 'window 1000x700']);
+  });
+
+  /**
+   * The `viewport` option's own gate, which exists because nothing else watches that value: `drive/` is
+   * outside every tsconfig here, so a session file's option is checked by an editor and by no chain step.
+   * Both halves, because the likeliest mistake is checking one and forgetting the other.
+   */
+  it('refuses a size the /set-viewport verb would refuse, rather than opening at it', () => {
+    expect(checkedViewport({ width: 1400, height: 900 })).toEqual({ width: 1400, height: 900 });
+
+    for (const size of [{ width: 0, height: 900 }, { width: 1400, height: 0 }, { width: 1400.5, height: 900 },
+      { width: 1400, height: -900 }, { width: '1400' as unknown as number, height: 900 }]) {
+      expect(() => checkedViewport(size), JSON.stringify(size)).toThrow(/whole numbers of pixels above zero/);
+    }
   });
 });
 

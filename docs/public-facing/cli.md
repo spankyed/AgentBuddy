@@ -237,6 +237,11 @@ emulation inside the window: the app would draw into one corner and leave the de
 rest. A session nobody is watching gets that emulation, which is what makes a suite's layout the same
 everywhere. Either way `/viewport` answers with what the layout has, read from the window.
 
+**A session can open at a size rather than being told one.** `driveEngineBody({ viewport })` in the
+session file `--serve` scaffolds takes `{ width, height }` and applies it before the first request is
+served, so a session that always wants one size says so once instead of posting `/set-viewport` as its
+opening call. It goes through the same path that verb does, so it moves the window where one is shown.
+
 **`/plugin` over `/eval`.** A plugin's state is what its view is showing, so reading it is the commonest
 question there is; doing it through `/eval` means writing the same expression, with the same ref and the
 same optional chain, every time.

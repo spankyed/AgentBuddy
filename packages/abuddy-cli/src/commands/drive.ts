@@ -159,6 +159,8 @@ const ENGINE_SESSION = `import { drive, driveEngineBody } from '@abuddy/testing'
 // pack's own nouns — they are merged over the core table, so you can replace one too. A verb here saves
 // an agent spelling out the same several calls every time it wants one thing.
 drive('drive engine', driveEngineBody({
+  // The size to open at. Without it the window keeps its own, which is what you want while watching it.
+  // viewport: { width: 1400, height: 900 },
   verbs: (session) => ({
     // 'POST /note': one call instead of a \`/tx\` whose code you have to get right each time
     // '/note': {

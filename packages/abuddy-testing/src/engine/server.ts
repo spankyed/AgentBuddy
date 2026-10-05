@@ -126,11 +126,18 @@ const optionalMs = (body: Record<string, unknown>, field: string): number | unde
  */
 const pixels = (body: Record<string, unknown>, field: string): number => {
   const value = body[field];
-  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
-    throw new BadRequest(`"${field}" must be a whole number of pixels above zero`);
-  }
+  if (!isPixels(value)) throw new BadRequest(`"${field}" must be a whole number of pixels above zero`);
   return value;
 };
+
+/**
+ * What counts as a length in pixels, so the wire and the session's own `viewport` option agree.
+ *
+ * Exported because the option is the half nothing else checks: `drive/` is outside every tsconfig in this
+ * repo, so a session file's value is checked by whatever editor is open on it and by nothing in the chain.
+ */
+export const isPixels = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value > 0;
 
 const object = (body: Record<string, unknown>, field: string): Record<string, unknown> => {
   const value = body[field];

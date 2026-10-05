@@ -6,6 +6,9 @@
 import { drive, driveEngineBody } from '@abuddy/testing';
 
 drive('drive engine', driveEngineBody({
+  // The size to open at, applied before anything is served. Left out here on purpose: `npm run drive:serve`
+  // shows the window, and a session someone is watching is better off at whatever size they gave it.
+  // viewport: { width: 1400, height: 900 },
   // This repo's own verbs, merged over @abuddy/testing's core table — which holds what is true of any
   // AgentBuddy app, where these are built out of default-setup's nouns.
   verbs: (session) => ({

@@ -669,7 +669,7 @@ const electronWindow = (electronApp: ElectronApplication, page: Page): EngineWin
  * is for — adding verbs of its own — is a typechecked argument at that file. A new option is then a
  * compile error there instead of the failure above.
  */
-export const driveEngineBody = (options: { verbs?: ExtraVerbs } = {}) =>
+export const driveEngineBody = (options: { verbs?: ExtraVerbs; viewport?: { width: number; height: number } } = {}) =>
   async (
     { app, appPage, electronApp }: { app: AppHelper; appPage: Page; electronApp: ElectronApplication },
     testInfo: { project: { outputDir: string }; workerIndex: number },
@@ -681,6 +681,7 @@ export const driveEngineBody = (options: { verbs?: ExtraVerbs } = {}) =>
       // The same file the fixture writes the app's output to, so `/logs` answers from the run's own log
       logPath: appLogPath(testInfo),
       verbs: options.verbs,
+      viewport: options.viewport,
       // The same question the fixture asked when it decided whether to pin: a window someone can see is
       // resized for real, and one nobody can gets the emulated viewport a suite needs
       window: pinsViewport(process.env) ? undefined : electronWindow(electronApp, appPage),
