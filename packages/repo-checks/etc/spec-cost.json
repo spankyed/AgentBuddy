@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-05T08:56:43.564Z",
+  "measuredAt": "2026-10-05T11:22:03.025Z",
   "samples": {
     "tests/bounded-spawn.integration.spec.ts": [2059],
     "tests/chain-graph.spec.ts": [6],
@@ -24,13 +24,14 @@
     "tests/orchestrator-exit.spec.ts": [7],
     "tests/pack-test-config.spec.ts": [169],
     "tests/packaged-app-files.spec.ts": [177],
+    "tests/playwright-config.spec.ts": [308],
     "tests/published-imports.spec.ts": [9],
     "tests/record-seconds.spec.ts": [14],
     "tests/repo-check-boundary.spec.ts": [1060],
     "tests/repo-files.spec.ts": [213],
     "tests/repro.spec.ts": [24],
     "tests/slow-tests.spec.ts": [7],
-    "tests/spec-placement.spec.ts": [1853],
+    "tests/spec-placement.spec.ts": [1853, 1177],
     "tests/spec-plan-collect.spec.ts": [2421],
     "tests/spec-plan.spec.ts": [503],
     "tests/spec-waits.spec.ts": [1373],
@@ -48,9 +49,7 @@
     "tests/workspace-dirs.spec.ts": [3]
   },
   "skipped": [],
-  "unmeasured": [
-    "tests/playwright-config.spec.ts"
-  ],
+  "unmeasured": [],
   "machine": {
     "cpu": "Apple M1 Pro",
     "cores": 10
