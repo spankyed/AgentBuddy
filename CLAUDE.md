@@ -184,14 +184,27 @@ one reading is kept but cannot become the answer, and two that agree can. That m
 *derivation* over a sample rather than a sample read directly, and it is the shape to copy if a second
 sample is ever added — a band alone leaves whichever reading landed first in charge.
 
-**A sum of that record is a separate question.** Jitter cancels, so a suite's total is stable (0.4-9.9%
-between idle runs while its members moved 10-18%). Correlated drift does not: a dependency bump adding a
-fifth to every spec sits under every per-spec tolerance, so nothing re-records and the total quietly stops
-being true. `drift` reports the body's movement on every run, and `spec-cost:update --all --forget` clears
-it by dropping every window and starting again from that run (`--forget` takes any scope that measures, so one
-spec is `--forget <path>`) — the one thing a window cannot do for itself,
-since it is built to be slow to forget and a correlated drift is exactly the case where the old readings
-describe code that is gone. `--all` without it re-measures everything and appends, which keeps the protection.
+**A sum of that record is a separate question, and the answer here is that nothing asks it any more.**
+Correlated drift is real — a dependency bump adding a fifth to every spec sits under every per-spec
+tolerance, so nothing re-records and the total quietly stops being true — and a body-drift report used to
+raise it on every `spec-cost:update`. **It was removed on 2026-10-05, because its premise does not hold for
+most of these records.** "Jitter cancels in a sum" needs no member to dominate, and the 0.4-9.9% that was
+measured for it is `@app/repo-checks`' fast half: 46 specs, the largest 12% of the body. Measured across all
+twelve, five have one spec at 64% or more — `@abuddy/ui` 93%, `main` 89%, `@abuddy/sdk` 86% — and the worst
+single spec moves 74% between two quiet runs, so on those the report fired on one file's noise. Watched the
+same day: +16% on one suite and -14% on another in a single run, opposite directions. It also printed
+`--all --forget` on every branch, which that flag's own doc calls the wrong move for a drift you cannot
+explain. What it guarded is `spec:dry`'s total, which `spec-dry.ts` says is "deliberately allowed to sit up
+to `DRIFT_SHARE` from the truth" and which prints its own `measuredAt`; nothing gated on it.
+`spec-cost.ts` records what a replacement would have to do first — tell one spec's movement from the body's.
+**The chain kept the question**, because its table is the subject `DRIFT_SHARE` was measured against and its
+report now answers that exact objection: `driftVerdict` recomputes the drift without the largest mover, so
+a movement one step carried is named as that step's with `--forget --step <name>` as the remedy, and only a
+movement that survives the exclusion is called the table's.
+`spec-cost:update --all --forget` still drops every window and starts again from that run (`--forget` takes
+any scope that measures, so one spec is `--forget <path>`) — the one thing a window cannot do for itself,
+since it is built to be slow to forget. It is now for a change you already know about rather than a drift
+something reported. `--all` without it re-measures everything and appends, which keeps the protection.
 
 The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
@@ -537,17 +550,21 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             not to chase a drift you do not.** It replaces the whole table from one
                          #             run, so a run that measured the machine writes the machine into every
                          #             row: watched 2026-10-04 putting `build:app` at 78s against the ~39s six
-                         #             other runs agreed on, which then failed `declaredShare`. When the drift
-                         #             report says the body moved, its own advice is the answer — re-run on an
-                         #             idle machine until it settles. `scripts/chain.ts` records the three
-                         #             cheaper guards that were tried and do not separate the two cases
+                         #             other runs agreed on, which then failed `declaredShare`.
+                         #             **The drift report now says which of the two you have**, so you need not
+                         #             guess: `driftVerdict` recomputes the movement without the largest mover,
+                         #             and a movement that does not survive that is one step's — reported with
+                         #             `--forget --step <name>` as the remedy. Only a movement that does
+                         #             survive is the table's, where the answer is to re-run on an idle machine
+                         #             until it settles. `scripts/chain.ts` records the three cheaper guards
+                         #             that were tried and do not separate the two cases
                          #   --step <name>  with --forget: write that one step and no other. **The usual
-                         #             form**, because none of those three guards works and this is what is
-                         #             left — a wrong number confined to the row you named cannot reach the
-                         #             other twenty-eight, and `declaredShare` catches the one. Bare --forget
-                         #             stays for a correlated drift, which is all-rows by nature. Refused
-                         #             where it names no step in the run, which would record nothing and
-                         #             report a quiet table
+                         #             form**, and now the one the report names for you — a wrong number
+                         #             confined to the row you named cannot reach the other twenty-eight, and
+                         #             `declaredShare` catches the one. Bare --forget stays for a correlated
+                         #             drift, which is all-rows by nature and is the other branch the report
+                         #             distinguishes. Refused where it names no step in the run, which would
+                         #             record nothing and report a quiet table
                          #   --adopt   record on another machine, writing `MEASURED_ON` with the costs.
                          #             The table and the box it was measured on are one fact, so one
                          #             operation writes both — without this the costs moved and the
@@ -750,8 +767,11 @@ npm run spec-cost:update # The least that makes the records current, which is of
                          #                 its window's median to be kept, so a quiet --all writes nothing
                          #   --forget      drop the recorded readings and start again from this run, for
                          #                 whatever the run measures: `--all` (narrow it with `--suite`), or a
-                         #                 spec path. The only thing that clears a correlated drift, since a
-                         #                 fifth added to every spec sits under every per-spec tolerance.
+                         #                 spec path. Still the only thing that clears a correlated drift,
+                         #                 since a fifth added to every spec sits under every per-spec
+                         #                 tolerance — but **nothing reports such a drift here any more**
+                         #                 (see "A sum of that record" above), so this is for a change you
+                         #                 already know about rather than one a report raised.
                          #                 **Its own flag, not `--force`**: that one silences the idle and
                          #                 contention refusals, and forgetting writes a cost from a single
                          #                 reading — the state with no history to outvote a bad one — so it is
