@@ -39,11 +39,19 @@ abuddy drive --serve --instance probe     # from inside a pack
 
 It prints the address and a `curl` line and writes `results/engine.json` with the address and a token.
 `POST /close` ends the session and shuts the app down. `docs/public-facing/cli.md` has the verbs; the
-short version is `/eval` `/send` `/system` `/qx` `/tx` `/wait` `/navigate` `/screenshot` `/reload`
-`/close` and `/state` `/events` `/drops` `/errors`.
+short version is `/eval` `/send` `/query` `/transact` `/wait` `/navigate` `/plugin` `/click` `/fill`
+`/press` `/logs` `/set-setting` `/set-viewport` `/screenshot` `/reload` `/events` `/drops` `/errors`
+`/close`, and `GET /state`, `GET /snapshot`, `GET /settings` and `GET /viewport`.
 
-`/qx` and `/tx` reach the **live** database, so a write shows up in the next read of the same session —
+`/query` and `/transact` reach the **live** database, so a write shows up in the next read of the same session —
 `abuddy db exec` cannot, because it refuses while the app holds the write lock.
+
+`driveEngineBody({ viewport: { width, height } })` in `engine-session.mts` opens the session at a size,
+applied before the first request is served; `/set-viewport` changes it afterwards.
+
+`npm run drive` shows the window, so `/set-viewport` resizes the window itself; a session nobody is
+watching gets Playwright's emulated viewport instead, which is what keeps a suite's layout deterministic.
+Asking for a viewport in a shown window the other way would letterbox the app against the desktop.
 
 A write does **not** show up in the UI. A plugin holds what its system sent it, and a console write goes
 round every system, so nothing tells the view. `/reload` is what makes every plugin ask again; navigating
@@ -54,4 +62,10 @@ CLI's `--serve` wants a pack directory and this repo is not one. The session fil
 `npm run drive`, which collects `**/*.ts`, never picks it up and hangs on it.
 
 A pack author gets the same thing from `abuddy drive`, which also takes `--instance <name>` to keep the
-app's data between sessions. Everything here but this file and `playwright.config.ts` is gitignored.
+app's data between sessions. In a pack everything here but this file and `playwright.config.ts` is
+gitignored; this directory also tracks the serving pair, which `drive/.gitignore` negates, so the
+repo's own copies are typechecked and are chain inputs.
+
+Both configs are calls to `@abuddy/testing/playwright` — `defineDriveConfig` and `defineEngineConfig` —
+so a setting lives in the package rather than going stale in a copy here. The engine's four handshake
+settings cannot be overridden at all; the rest take an argument.

@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { callsHelper, declaresKey } from './_support/config-code.ts';
 import { repoFiles } from './_support/repo-files.ts';
 
 /**
@@ -37,35 +38,9 @@ const packConfigs = (): string[] => tracked('*abuddy.json')
   .filter((config) => fs.existsSync(path.join(REPO_ROOT, config)))
   .sort();
 
-/**
- * A config's code, with its comments removed.
- *
- * Both halves of this check read text, and both were fooled by prose on the first mutation run: the
- * scaffolded template *mentions* `definePackTestConfig()` in a comment explaining it, so a template that had
- * gone back to assembling its own config still passed, and a `test:` written mid-line — which is what
- * spreading the helper's result looks like — was missed by a pattern anchored to the line start. A check on
- * what code says has to read only the code.
- */
-const codeOf = (source: string): string => source
-  .replace(/\/\*[\s\S]*?\*\//g, '')
-  .split('\n')
-  .map((line) => {
-    let quote: string | null = null;
-    for (let i = 0; i < line.length; i += 1) {
-      const ch = line[i]!;
-      if (quote !== null) {
-        if (ch === '\\') i += 1;
-        else if (ch === quote) quote = null;
-      } else if (ch === '\'' || ch === '"' || ch === '`') quote = ch;
-      else if (ch === '/' && line[i + 1] === '/') return line.slice(0, i);
-    }
-    return line;
-  })
-  .join('\n');
-
 /** Whether the code calls the helper, and whether it declares a `test` block of its own */
-const calls = (source: string): boolean => new RegExp(`\\b${HELPER}\\s*\\(`).test(codeOf(source));
-const declaresTestBlock = (source: string): boolean => /\btest\s*:/.test(codeOf(source));
+const calls = (source: string): boolean => callsHelper(source, HELPER);
+const declaresTestBlock = (source: string): boolean => declaresKey(source, 'test');
 
 const read = (file: string): string => fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8');
 

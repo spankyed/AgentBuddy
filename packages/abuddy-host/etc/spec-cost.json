@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-10-05T08:43:07.735Z",
+  "measuredAt": "2026-10-05T11:58:47.012Z",
   "samples": {
     "tests/boundaries.spec.ts": [42],
     "tests/build/own-module-specifiers.spec.ts": [71],
@@ -37,6 +37,7 @@
     "tests/features/packs/fe/frontends.spec.ts": [6],
     "tests/features/packs/fe/install-url.spec.ts": [4],
     "tests/features/packs/fe/machine.spec.ts": [10],
+    "tests/features/settings/answer.spec.ts": [2],
     "tests/features/settings/document.spec.ts": [5],
     "tests/features/settings/fe/plugin-select.spec.ts": [7],
     "tests/features/settings/fe/replacement.spec.ts": [11],

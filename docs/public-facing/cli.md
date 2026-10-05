@@ -188,30 +188,86 @@ E=$(node -p "const m=require('./drive/results/engine.json');m.host+':'+m.port")
 H="x-abuddy-drive-token: $(node -p "require('./drive/results/engine.json').token")"
 
 curl -s http://$E/state -H "$H"
-curl -s http://$E/eval -H "$H" -d '{"body":"return window.appVersion"}'
-curl -s http://$E/qx   -H "$H" -d '{"code":"return qx(EARS.Entity.Note).count()"}'
+curl -s http://$E/eval  -H "$H" -d '{"code":"return window.appVersion"}'
+curl -s http://$E/query -H "$H" -d '{"code":"return qx(EARS.Entity.Note).count()"}'
 curl -s -X POST http://$E/close -H "$H"
 ```
 
+**Three rules, so a verb is guessable.** A POST is a verb and a GET is a noun; one concept has one field
+name, in requests and in responses (`code` is any source the session runs, `plugin` names a plugin
+whichever direction it travels); and every answer is `{ ok, value }`, or `{ ok: false, error }` when the
+operation failed — a `4xx` means nothing ran at all.
+
 | verb | method | body | does |
 |---|---|---|---|
-| `/eval` | POST | `{ body }` | runs the body in the window and returns what it returns |
-| `/send` | POST | `{ event }` | sends an event to the app's root actor |
-| `/system` | POST | `{ to, event }` | sends an event to a system, by ref |
-| `/qx` | POST | `{ code }` | runs query code against the live database |
-| `/tx` | POST | `{ code }` | runs transaction code against the live database |
-| `/state` | GET | — | the state value, the active plugin and the plugin list |
+| `/eval` | POST | `{ code }` | runs the code in the window and returns what it returns |
+| `/send` | POST | `{ event, to? }` | sends an event to a system by ref, or to the app's root actor without `to` |
+| `/query` | POST | `{ code }` | runs query code against the live database |
+| `/transact` | POST | `{ code }` | runs transaction code against the live database |
+| `/state` | GET | — | the state value, the active `plugin` and the `plugins` list |
 | `/wait` | POST | `{ state }` or `{ plugin }`, `{ timeoutMs }` | waits for a dotted state path, or for a plugin to arrive |
 | `/navigate` | POST | `{ plugin }` | opens a plugin |
+| `/plugin` | POST | `{ plugin, path? }` | what that plugin published, or one dotted path into it |
+| `/click` | POST | `{ selector }` | clicks what it matches |
+| `/fill` | POST | `{ selector, text }` | types into it |
+| `/press` | POST | `{ key, selector? }` | a key, to an element or to the page |
+| `/snapshot` | GET | — | the page as an accessibility tree |
+| `/logs` | POST | `{ since?, source? }` | the app's own log, after a line you saw and from one source |
+| `/settings` | GET | — | the settings as stored: what the user changed from the defaults |
+| `/viewport` | GET | — | the size the app is rendering into |
+| `/set-viewport` | POST | `{ width, height }` | changes it |
+| `/set-setting` | POST | `{ plugin } or { section }`, `{ path, value }` | writes one setting |
 | `/screenshot` | POST | `{ name }` | writes `drive/screenshots/<name>.png` |
 | `/reload` | POST | — | reloads the window and returns once it is connected again |
-| `/events` | GET | — | the app's events since you last asked, and how many were dropped |
-| `/drops` | GET | — | sends the bus dropped, and clears them |
-| `/errors` | GET | — | renderer errors, and clears them |
+| `/events` | POST | — | the app's events since you last asked, and how many were dropped |
+| `/drops` | POST | — | sends the bus dropped, and clears them |
+| `/errors` | POST | — | renderer errors, and clears them |
 | `/close` | POST | — | ends the session and shuts the app down |
 
+**`/snapshot` is usually what you want over `/screenshot`.** It answers with the page as text: readable,
+diffable, cheap, and it says what a thing *is* rather than where it is. `/screenshot` is for a person
+looking at the result afterwards.
+
+**`/settings` answers with the *stored* document**, not the effective one: it is what a write lands in, so
+it is what says whether your write landed. The defaults it is merged over are the registry's.
+
+**A refused write answers `ok: false`, with the reasons.** The settings store checks the whole next
+document and refuses what it will not take — an unknown feature ref, a section nobody registered, a change
+while a backup is being imported — and `/set-setting` waits for that answer rather than for the send to be
+accepted. It used to resolve on the send, so every refusal read as success.
+
+**`/set-setting` writes either half of that document.** A feature's settings live under its ref
+(`{"plugin":"default-setup/code"}`) and a pack's section lives at the top of it
+(`{"section":"general"}`) — one of the two, never both, as `/wait` takes one of its two. Writing only
+features left `general` and `assistant` readable and unwritable.
+
+**`/set-viewport` resizes whichever thing the run actually has.** A session whose window is shown — a
+person watching `npm run drive` — has its *window* resized, because a viewport Playwright sets is an
+emulation inside the window: the app would draw into one corner and leave the desktop showing through the
+rest. A session nobody is watching gets that emulation, which is what makes a suite's layout the same
+everywhere. Either way `/viewport` answers with what the layout has, read from the window.
+
+**A session can open at a size rather than being told one.** `driveEngineBody({ viewport })` in the
+session file `--serve` scaffolds takes `{ width, height }` and applies it before the first request is
+served, so a session that always wants one size says so once instead of posting `/set-viewport` as its
+opening call. It goes through the same path that verb does, so it moves the window where one is shown.
+
+**`/plugin` over `/eval`.** A plugin's state is what its view is showing, so reading it is the commonest
+question there is; doing it through `/eval` means writing the same expression, with the same ref and the
+same optional chain, every time.
+
+The three drains are POSTs because each one *clears* what it returns: draining is right for a session open
+for an hour, but a GET that answers differently on a retry is a trap.
+
+**Verbs of your own** go in the session file `--serve` scaffolds, which is written once and then yours:
+`driveEngineBody({ verbs })` takes a function over the session, merged over this table. A verb built out
+of your pack's nouns belongs there rather than here. Build one with `verb({ method, fields, run })`: it
+declares the fields it reads and `run` receives those, checked, and nothing else — `required`,
+`optionalText`, `optionalMs`, `present`, `object`, `pixels` and `safeName` are the readers, all exported
+from `@abuddy/testing`.
+
 **A write does not update the UI; `/reload` is how you see it.** A plugin's state is what its system
-sent it, so a write made outside that system — `/tx`, the database console, `abuddy db exec` — changes
+sent it, so a write made outside that system — `/transact`, the database console, `abuddy db exec` — changes
 the database and reaches no view. That is the console being a console rather than a fault, and it is not
 staleness that time fixes: navigating between plugins does not refresh one, because the plugin's actor
 survives. `/reload` does, because a new connection makes every system send its startup data again.
@@ -225,10 +281,10 @@ there; `{"plugin":"default-setup/notes"}` returns when that plugin registers. On
 **Replies come to the session, and each names the request it answers.** Both matter. The session has its
 own connection to the app and a name on it, so an answer is addressed here rather than to every window —
 a person querying in the Database plugin while you drive is no longer mistaken for you. And because three
-concurrent `/qx` calls would otherwise be indistinguishable, each reply still names its request, so they
+concurrent `/query` calls would otherwise be indistinguishable, each reply still names its request, so they
 may run together and one you stopped waiting for is ignored.
 
-**`/qx` and `/tx` reach the live database**, not the files on disk — they go to the running app, so a
+**`/query` and `/transact` reach the live database**, not the files on disk — they go to the running app, so a
 write is visible to the next read in the same session. `abuddy db exec` cannot do that: it refuses while
 the app holds the write lock.
 

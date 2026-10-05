@@ -5,14 +5,19 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   BRIDGE_FLAG, BRIDGE_FUNCTION, createSession, DATABASE_SYSTEM, DRIVE_REF, evalSource, MAX_SEEN_EVENTS,
-  REPLY_TIMEOUT_MS, type SeenEvent, type SessionApi, type SessionPage,
+  REPLY_TIMEOUT_MS, type EngineResult, type SeenEvent, type SessionApi, type SessionPage,
 } from '../../src/engine/session.ts';
 import type { BusMessage } from '../../src/engine/api-client.ts';
+import type { EngineSession, SettingsTarget } from '../../src/engine/session.ts';
+import { asSessionPage, checkedViewport } from '../../src/engine/index.ts';
+import type { Page } from '@playwright/test';
 
 /** A page that records what it was asked and lets a test answer for it, plus the bridge's own callback */
 function fakePage() {
   let emit: ((payload: unknown) => void) | undefined;
   let reloaded = false;
+  /** What the page was asked to do, in order, so a verb's effect is what the assertions see */
+  const acted: string[] = [];
   const expressions: string[] = [];
   const evaluateExpression = vi.fn(async (source: string): Promise<unknown> => {
     expressions.push(source);
@@ -31,13 +36,22 @@ function fakePage() {
       emit = callback;
     }),
     screenshot: vi.fn(async () => Buffer.from('')),
+    click: vi.fn(async (selector: string) => { acted.push(`click ${selector}`); }),
+    fill: vi.fn(async (selector: string, text: string) => { acted.push(`fill ${selector}=${text}`); }),
+    press: vi.fn(async (key: string, selector?: string) => { acted.push(`press ${key}${selector ? ` @${selector}` : ''}`); }),
+    ariaSnapshot: vi.fn(async () => '- button "Send"'),
+    // Clamps to 900x600 as the real window does, so what the session answers with is visibly not its argument
+    setViewport: vi.fn(async (width: number, height: number) => {
+      acted.push(`viewport ${width}x${height}`);
+      return { width: Math.max(width, 900), height: Math.max(height, 600) };
+    }),
     // A real reload drops the page's globals; the flag the bridge guards itself with goes with them
     reload: vi.fn(async () => { reloaded = true; return undefined; }),
     waitForState: vi.fn(async () => undefined),
     waitForPlugin: vi.fn(async () => undefined),
   };
   return {
-    page, expressions, evaluateExpression, evaluateWith,
+    page, expressions, evaluateExpression, evaluateWith, acted,
     reload: page.reload as ReturnType<typeof vi.fn>,
     didReload: () => reloaded,
     waitForState: page.waitForState as ReturnType<typeof vi.fn>,
@@ -84,10 +98,16 @@ const sessionWith = (overrides: Partial<SessionPage> = {}) => {
   const fake = fakePage();
   const client = fakeApi();
   const errors = ['renderer blew up'];
+  const log = [
+    '[api] boot',
+    '[brain] started a flow',
+    '[api] a thing happened',
+  ].join('\n');
   const session = createSession({
     page: { ...fake.page, ...overrides },
     api: client.api,
     takeErrors: () => errors.splice(0, errors.length),
+    readLog: () => log,
   });
   return { ...fake, ...client, session };
 };
@@ -271,6 +291,260 @@ describe('reload', () => {
     await session.ready();
 
     expect(await session.reload()).toEqual({ ok: false, error: 'reload: window is gone' });
+  });
+});
+
+/**
+ * The verbs that were missing, and why each one is a verb rather than something to spell out with `/eval`.
+ *
+ * Driving used to mean sending bus events and evaluating expressions — there was no way to press a button
+ * a user presses, and reading what a view held took a hand-written expression that the session adding
+ * these wrote out four times for one question.
+ */
+describe('reading and using the page', () => {
+  it("answers with a plugin's published state, and says when it is not running", async () => {
+    const { session } = sessionWith({
+      evaluateExpression: async () => ({ running: true, state: { notes: ['welcome'] } }),
+    });
+
+    expect(await session.plugin('default-setup/notes')).toEqual({ ok: true, value: { running: true, state: { notes: ['welcome'] } } });
+  });
+
+  it('reads one path into that state when asked for one', async () => {
+    const { session, expressions } = sessionWith();
+    await session.plugin('default-setup/notes', 'notes.length');
+
+    const read = expressions.at(-1)!;
+    expect(read, 'the ref is quoted into the expression rather than interpolated raw').toContain('"default-setup/notes"');
+    expect(read).toContain('"notes.length"');
+  });
+
+  it('clicks, fills and presses', async () => {
+    const { session, acted } = sessionWith();
+
+    await session.click('button.send');
+    await session.fill('input.title', 'a note');
+    await session.press('Enter');
+    await session.press('Escape', 'input.title');
+
+    expect(acted).toEqual(['click button.send', 'fill input.title=a note', 'press Enter', 'press Escape @input.title']);
+  });
+
+  it('answers with the page as a tree rather than a picture', async () => {
+    const { session } = sessionWith();
+
+    expect(await session.snapshot()).toEqual({ ok: true, value: '- button "Send"' });
+  });
+
+  it('answers a verb that throws with the failure, rather than throwing', async () => {
+    const { session } = sessionWith({ click: async () => { throw new Error('no such element'); } });
+
+    expect(await session.click('button.missing')).toEqual({ ok: false, error: 'click: no such element' });
+  });
+});
+
+describe('settings', () => {
+  it('reads the stored document through the database, since the row is an entity', async () => {
+    const { session, send, answer } = sessionWith();
+    await session.ready();
+
+    const reading = session.settings();
+    await settle();
+    expect(lastSend(send).event).toMatchObject({ type: 'EXECUTE_QUERY' });
+    answer({ type: 'QUERY_RESULT', result: { general: { personal: { name: 'Ada' } } }, requestId: String(lastSend(send).event.requestId) });
+
+    await expect(reading).resolves.toEqual({ ok: true, value: { general: { personal: { name: 'Ada' } } } });
+  });
+
+  /** Writes the setting, then answers it, which is the round trip a caller is told the outcome of */
+  const write = async (
+    session: EngineSession,
+    send: { mock: { calls: unknown[][] } },
+    answer: (event: Record<string, unknown> & { type: string }) => void,
+    target: SettingsTarget,
+    reply: Record<string, unknown> & { type: string },
+  ) => {
+    const writing = session.setSetting(target, 'personal.name', 'Ada');
+    await settle();
+    const sent = lastSend(send);
+    answer({ ...reply, requestId: String(sent.event.requestId) });
+    return { sent, result: await writing };
+  };
+
+  it("writes one of a feature's settings, by the ref they are keyed under", async () => {
+    const { session, send, answer } = sessionWith();
+    await session.ready();
+
+    const { sent, result } = await write(session, send, answer, { plugin: 'default-setup/code' }, { type: 'SETTINGS_SAVED' });
+
+    expect(sent).toMatchObject({
+      to: 'host/settings',
+      event: { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['personal', 'name'], value: 'Ada' },
+    });
+    expect(result).toEqual({ ok: true, value: undefined });
+  });
+
+  /**
+   * The other half of the document. `/settings` reads the whole of it, sections included, so a write that
+   * could only reach features left `general` and `assistant` readable and unwritable — and `entityType` is
+   * the one field the settings system branches on to tell them apart.
+   */
+  it('writes a section the same way, which is what makes the document writable where it is readable', async () => {
+    const { session, send, answer } = sessionWith();
+    await session.ready();
+
+    const { sent } = await write(session, send, answer, { section: 'general' }, { type: 'SETTINGS_SAVED' });
+
+    expect(sent).toMatchObject({
+      to: 'host/settings',
+      event: { type: 'UPDATE_SETTINGS', entityType: 'section', label: 'general', path: ['personal', 'name'], value: 'Ada' },
+    });
+  });
+
+  /**
+   * The defect this round trip exists for. It resolved on the send being accepted, so a write the store
+   * refused answered `ok: true` and wrote nothing — and the refusal went to the Settings plugin, where the
+   * session could not see it. A refusal carries `problems` rather than one `error`, because a document can
+   * be wrong in more than one place.
+   */
+  it('answers with the refusal when the store would not take the write', async () => {
+    const { session, send, answer } = sessionWith();
+    await session.ready();
+
+    const { result } = await write(session, send, answer, { section: 'nope' }, {
+      type: 'SETTINGS_REFUSED',
+      problems: ['"nope" isn\'t a settings section: the settings hold plugins, general, assistant'],
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'setSetting: "nope" isn\'t a settings section: the settings hold plugins, general, assistant',
+    });
+  });
+
+  it('joins several reasons, since a document can be wrong in more than one place', async () => {
+    const { session, send, answer } = sessionWith();
+    await session.ready();
+
+    const { result } = await write(session, send, answer, { section: 'general' }, {
+      type: 'SETTINGS_REFUSED',
+      problems: ['first reason', 'second reason'],
+    });
+
+    expect(result).toEqual({ ok: false, error: 'setSetting: first reason; second reason' });
+  });
+});
+
+describe('the viewport', () => {
+  it('answers with what the app is rendering into, read from the window', async () => {
+    const { session, evaluateExpression } = sessionWith();
+    evaluateExpression.mockResolvedValueOnce({ width: 1400, height: 900 });
+
+    expect(await session.viewport()).toEqual({ ok: true, value: { width: 1400, height: 900 } });
+    // `innerWidth` rather than Playwright's `viewportSize()`, which answers null until something sets one
+    // and never moves when the window itself is resized
+    expect(String(evaluateExpression.mock.calls.at(-1)?.[0])).toContain('window.innerWidth');
+  });
+
+  it('resizes through the port, so a shown window is moved rather than drawn into', async () => {
+    const { session, acted } = sessionWith();
+
+    expect(await session.setViewport(1200, 800)).toEqual({ ok: true, value: { width: 1200, height: 800 } });
+    expect(acted).toEqual(['viewport 1200x800']);
+  });
+
+  /**
+   * The answer is the size that was *taken*. A window has a minimum and clamps to it — the main window's is
+   * 900x600 — so echoing the request reported a resize that had not happened, and `/viewport` immediately
+   * afterwards disagreed with it.
+   */
+  it('answers with the size the window took, not the size it was asked for', async () => {
+    const { session, acted } = sessionWith();
+
+    expect(await session.setViewport(400, 300)).toEqual({ ok: true, value: { width: 900, height: 600 } });
+    expect(acted, 'it still asked for what it was told to ask for').toEqual(['viewport 400x300']);
+  });
+
+  /**
+   * The decision the port exists for, asserted at the adapter: a run whose window someone can see resizes
+   * the window, and a run nobody is watching sets the emulated viewport.
+   *
+   * Both directions, because each is wrong in the other's run. Emulating inside a shown window draws the
+   * app into its top-left corner and leaves the desktop showing through the rest — what `npm run drive`
+   * looked like before `pinsViewport` — and moving a hidden window buys nothing while making a suite's
+   * layout depend on whatever size the window happened to open at.
+   */
+  it('sets the emulated viewport for a window nobody is watching, and moves one someone is', async () => {
+    const acted: string[] = [];
+    const page = {
+      setViewportSize: async ({ width, height }: { width: number; height: number }) => {
+        acted.push(`emulated ${width}x${height}`);
+      },
+      locator: () => ({ ariaSnapshot: async () => '' }),
+    } as unknown as Page;
+    const app = { screenshot: async () => null, waitForState: async () => null, waitForPlugin: async () => null };
+
+    // An emulated viewport is applied exactly, so the adapter answers with what it asked for
+    expect(await asSessionPage(page, app).setViewport(1000, 700)).toEqual({ width: 1000, height: 700 });
+    // A real window clamps, and only it can say what it took
+    expect(await asSessionPage(page, app, {
+      setContentSize: async (width, height) => {
+        acted.push(`window ${width}x${height}`);
+        return { width: Math.max(width, 900), height: Math.max(height, 600) };
+      },
+    }).setViewport(400, 300)).toEqual({ width: 900, height: 600 });
+
+    expect(acted).toEqual(['emulated 1000x700', 'window 400x300']);
+  });
+
+  /**
+   * The `viewport` option's own gate, which exists because nothing else watches that value: `drive/` is
+   * outside every tsconfig here, so a session file's option is checked by an editor and by no chain step.
+   * Both halves, because the likeliest mistake is checking one and forgetting the other.
+   */
+  it('refuses a size the /set-viewport verb would refuse, rather than opening at it', () => {
+    expect(checkedViewport({ width: 1400, height: 900 })).toEqual({ width: 1400, height: 900 });
+
+    for (const size of [{ width: 0, height: 900 }, { width: 1400, height: 0 }, { width: 1400.5, height: 900 },
+      { width: 1400, height: -900 }, { width: '1400' as unknown as number, height: 900 }]) {
+      expect(() => checkedViewport(size), JSON.stringify(size)).toThrow(/whole numbers of pixels above zero/);
+    }
+  });
+});
+
+describe('the app log', () => {
+  const lines = async (result: Promise<EngineResult>) => ((await result) as { value: string[] }).value;
+
+  it('answers with every line', async () => {
+    const { session } = sessionWith();
+
+    expect((await lines(session.logs({}))).length).toBe(3);
+  });
+
+  it('answers with what followed a line the caller already saw', async () => {
+    const { session } = sessionWith();
+
+    // `since` names a line rather than a time: what a reader wants is "after the thing I just did"
+    expect(await lines(session.logs({ since: 'boot' }))).toEqual(['[brain] started a flow', '[api] a thing happened']);
+  });
+
+  it('narrows to one source', async () => {
+    const { session } = sessionWith();
+
+    expect(await lines(session.logs({ source: '[brain]' }))).toEqual(['[brain] started a flow']);
+  });
+
+  /**
+   * Answering with the whole log would be the same bytes as a right answer and a different meaning: a
+   * reader asking "what happened since X" would take every line before X as new.
+   */
+  it('fails when `since` names a line the log does not hold, rather than answering with all of it', async () => {
+    const { session } = sessionWith();
+
+    expect(await session.logs({ since: 'a line nobody wrote' })).toEqual({
+      ok: false,
+      error: 'logs: no line contains "a line nobody wrote", so there is nothing to answer "since"',
+    });
   });
 });
 

@@ -54,15 +54,37 @@ export function removeEngineMarker(outputDir: string): void {
  * The engine's whole point is being driven from a shell, and an agent that has to work out the header
  * name and the body shape from a file path will write the wrong request first. One copyable line.
  */
-export const engineRecipe = (file: string, marker: EngineMarker, tokenHeader: string): string => {
+export const RECIPE_READ_PATH = '/state';
+
+/** The one verb the recipe shows a body for, and that body. A spec holds both to the real table. */
+export const RECIPE_WRITE_PATH = '/query';
+export const RECIPE_WRITE_BODY = '{"code":"return qx(EARS.Entity.Note).count()"}';
+
+export const engineRecipe = (
+  file: string,
+  marker: EngineMarker,
+  tokenHeader: string,
+  /** The table the engine answers from, so the list printed is the list served */
+  verbs: Record<string, { readonly method: string }>,
+): string => {
   const where = path.relative(process.cwd(), file).split(path.sep).join('/');
   // The token is read from the marker rather than printed: this goes to a terminal and into whatever
   // captures it, and the line is just as copyable with the substitution in it
   const auth = `-H "${tokenHeader}: $(node -p "require('./${where}').token")"`;
+  const at = `http://${marker.host}:${marker.port}`;
+  // A method the table has none of prints no line at all, rather than a label with nothing after it
+  const listing = (method: string, label: string): string[] => {
+    const found = Object.entries(verbs)
+      .filter(([, verb]) => verb.method === method)
+      .map(([verbPath]) => verbPath)
+      .sort();
+    return found.length === 0 ? [] : [`  ${label} ${found.join(' ')}`];
+  };
   return [
-    `drive engine listening on http://${marker.host}:${marker.port} — ${where}`,
-    `  curl -s http://${marker.host}:${marker.port}/state ${auth}`,
-    `  curl -s http://${marker.host}:${marker.port}/qx ${auth} -d '{"code":"return qx(EARS.Entity.Note).count()"}'`,
-    '  POST /eval /send /system /qx /tx /wait /navigate /screenshot /close   GET /state /events /drops /errors',
+    `drive engine listening on ${at} — ${where}`,
+    `  curl -s ${at}${RECIPE_READ_PATH} ${auth}`,
+    `  curl -s ${at}${RECIPE_WRITE_PATH} ${auth} -d '${RECIPE_WRITE_BODY}'`,
+    ...listing('POST', 'POST'),
+    ...listing('GET', 'GET '),
   ].join('\n');
 };

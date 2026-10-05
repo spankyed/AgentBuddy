@@ -1,8 +1,5 @@
-import { defineConfig } from '@playwright/test';
+import { definePackE2EConfig } from '@abuddy/testing/playwright';
 
-export default defineConfig({
-  testDir: 'tests/e2e',
-  timeout: 60_000,
-  workers: 1,
-  outputDir: 'tests/results',
-});
+// Everything a pack's E2E suite needs: `tests/e2e`, the suite's timeout, one worker — the app locks its
+// data dir, so two would fight over it — and output beside the suite. Pass anything Playwright takes.
+export default definePackE2EConfig();

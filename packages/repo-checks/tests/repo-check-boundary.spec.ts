@@ -72,6 +72,9 @@ const LAYOUT_CHECKS: Record<string, string> = {
     + 'the doc tree, read from git, with no scripts/ module behind it either',
   'tests/pack-test-config.spec.ts': 'that every pack\'s vitest config calls definePackTestConfig rather than '
     + 'restating it — a property of the packs in the tree, read from git and the manifests',
+  'tests/playwright-config.spec.ts': 'that every Playwright config in the tree calls the helper for its '
+    + 'kind of run rather than restating its settings — the same property as the row above for the other '
+    + 'runner, read from git, over the repo\'s own config as well as the packs\'',
   'tests/lint-scope.spec.ts': 'what the root lint command excludes from packages/ — a property of the '
     + 'script at the tree\'s root and the templates it names, with no scripts/ module behind it',
   'tests/identity-guard.spec.ts': 'that only @abuddy/sdk/env decides the app\'s environment and data '

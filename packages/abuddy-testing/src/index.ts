@@ -9,7 +9,7 @@ import { resolveAppContext } from '@abuddy/sdk/env';
 import { resolveName } from '@abuddy/sdk/ids';
 import { installPackFromLocal, PACK_LOAD_MESSAGES } from '@abuddy/host/packs';
 import { appVersion } from './app-version.ts';
-import { appLaunchEnv } from './launch-env.ts';
+import { appLaunchEnv, pinsViewport } from './launch-env.ts';
 import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
 
 export interface AppHelper {
@@ -407,9 +407,8 @@ export function createTest(options: CreateTestOptions = {}) {
 
     appPage: async ({ electronApp }, use) => {
       const page = await findMainWindow(electronApp);
-      // The main window's default size depends on how main was built (dev vs production mode);
-      // pin the viewport so layout and screenshot baselines are the same everywhere
-      await page.setViewportSize(E2E_VIEWPORT);
+      // Deterministic for a suite, and the window's own size for a run someone is watching — see `pinsViewport`
+      if (pinsViewport(process.env)) await page.setViewportSize(E2E_VIEWPORT);
 
       const rendererErrors: string[] = [];
       let rejectPackFeFailed: (err: Error) => void = () => {};
@@ -634,9 +633,41 @@ export const drive = _default.test;
  * this module, and the engine is the same job done interactively, so a second entry would be a second
  * name for one thing. `src/engine/` has what it does and why.
  */
-import { runDriveEngine } from './engine/index.ts';
+import { runDriveEngine, type EngineWindow, type ExtraVerbs } from './engine/index.ts';
 
-export { ENGINE_TOKEN_HEADER, MARKER_FILE, runDriveEngine, type DriveEngineOptions, type EngineMarker } from './engine/index.ts';
+export {
+  ENGINE_TOKEN_HEADER, MARKER_FILE, object, optionalMs, optionalText, pixels, present, required,
+  runDriveEngine, safeName, verb,
+  type DriveEngineOptions, type EngineMarker, type EngineWindow, type ExtraVerbs, type Reader, type Verb,
+} from './engine/index.ts';
+
+/**
+ * The app's own window, so `/set-viewport` resizes it rather than drawing into a corner of it.
+ *
+ * `browserWindow(page)` hands back a handle to the `BrowserWindow` in the main process, and `evaluate` runs
+ * there — which is the only way to reach it: the renderer cannot resize itself, and the app blocks the
+ * navigation that would be the other way to try.
+ *
+ * **It reads the size back in that same evaluate**, because a window does not have to take what it is given:
+ * the main window has a 900x600 minimum (`packages/main`'s `WINDOW_CONFIG`), so asking for 400x300 leaves it
+ * at 900x600 while the request looks like it worked. Both calls are synchronous in the main process, so the
+ * clamp is known at once and there is nothing to wait for and no frame to race.
+ */
+type MainWindow = {
+  setContentSize: (width: number, height: number) => void;
+  getContentSize: () => number[];
+};
+
+const electronWindow = (electronApp: ElectronApplication, page: Page): EngineWindow => ({
+  setContentSize: async (width, height) => {
+    const browserWindow = await electronApp.browserWindow(page);
+    return browserWindow.evaluate((window: MainWindow, size: { width: number; height: number }) => {
+      window.setContentSize(size.width, size.height);
+      const [took, andTook] = window.getContentSize();
+      return { width: took, height: andTook };
+    }, { width, height });
+  },
+});
 
 /**
  * The body of a serving session: everything `abuddy drive --serve`'s generated script does.
@@ -647,10 +678,26 @@ export { ENGINE_TOKEN_HEADER, MARKER_FILE, runDriveEngine, type DriveEngineOptio
  * `page.waitForState is not a function` against a running app rather than as a compile error. And
  * `drive(...)` is still called from the script, so Playwright reports the session at the caller's file
  * instead of at a line inside this bundle, which is what a reader needs when a run is interrupted.
+ *
+ * **It takes options and returns the body**, rather than being the body, so the one thing a session file
+ * is for — adding verbs of its own — is a typechecked argument at that file. A new option is then a
+ * compile error there instead of the failure above.
  */
-export const driveEngineBody = async (
-  { app, appPage }: { app: AppHelper; appPage: Page },
-  testInfo: { project: { outputDir: string } },
-): Promise<void> => {
-  await runDriveEngine({ page: appPage, app, outputDir: testInfo.project.outputDir });
-};
+export const driveEngineBody = (options: { verbs?: ExtraVerbs; viewport?: { width: number; height: number } } = {}) =>
+  async (
+    { app, appPage, electronApp }: { app: AppHelper; appPage: Page; electronApp: ElectronApplication },
+    testInfo: { project: { outputDir: string }; workerIndex: number },
+  ): Promise<void> => {
+    await runDriveEngine({
+      page: appPage,
+      app,
+      outputDir: testInfo.project.outputDir,
+      // The same file the fixture writes the app's output to, so `/logs` answers from the run's own log
+      logPath: appLogPath(testInfo),
+      verbs: options.verbs,
+      viewport: options.viewport,
+      // The same question the fixture asked when it decided whether to pin: a window someone can see is
+      // resized for real, and one nobody can gets the emulated viewport a suite needs
+      window: pinsViewport(process.env) ? undefined : electronWindow(electronApp, appPage),
+    });
+  };

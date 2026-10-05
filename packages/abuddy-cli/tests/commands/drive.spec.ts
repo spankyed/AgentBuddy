@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { driveScripts, DRIVE_USAGE, takeServeFlag } from '../../src/commands/drive';
+import { driveScripts, DRIVE_USAGE, scaffold, takeServeFlag, writeEngineFiles } from '../../src/commands/drive';
 
 let root: string;
 
@@ -56,6 +56,43 @@ describe('the driving scripts a pack has', () => {
  * Everything left over is forwarded to the Playwright CLI verbatim (`flags.args`), which would be asked
  * about a flag it has never heard of — and Playwright's answer to that is to fail the run.
  */
+/**
+ * The session file is where a verb of the pack's own goes, so it is a file its owner keeps.
+ *
+ * It was rewritten on every `--serve`, which made the one file worth extending the one that could not be:
+ * an agent added a verb, ran the session again, and the verb was gone with no diagnostic. The rule used
+ * for every other scaffolded file — write when absent — is what it needed.
+ */
+describe('the engine files the serve flag scaffolds', () => {
+  const session = () => path.join(root, 'drive', 'engine-session.mts');
+
+  it('writes the pair the first time', () => {
+    writeEngineFiles(root);
+
+    expect(fs.readFileSync(session(), 'utf-8')).toContain('driveEngineBody');
+    expect(fs.existsSync(path.join(root, 'drive', 'engine.config.mts'))).toBe(true);
+  });
+
+  it('keeps a session file that has been extended, rather than writing over it', () => {
+    writeEngineFiles(root);
+    const extended = `${fs.readFileSync(session(), 'utf-8')}\n// a verb of my own\n`;
+    fs.writeFileSync(session(), extended);
+
+    writeEngineFiles(root);
+
+    expect(fs.readFileSync(session(), 'utf-8')).toBe(extended);
+  });
+
+  it('writes one that was deleted, so a pack is never left without it', () => {
+    writeEngineFiles(root);
+    fs.rmSync(session());
+
+    writeEngineFiles(root);
+
+    expect(fs.readFileSync(session(), 'utf-8')).toContain('driveEngineBody');
+  });
+});
+
 describe('the serve flag', () => {
   it('is off by default, and takes nothing with it', () => {
     expect(takeServeFlag(['look.ts', '--instance', 'x'])).toEqual({
@@ -97,5 +134,66 @@ describe('the help text', () => {
 
   it('says how a session ends, which is the one thing a caller cannot guess', () => {
     expect(DRIVE_USAGE).toContain('/close');
+  });
+});
+
+/**
+ * What a scaffolder says about a config it kept.
+ *
+ * Both files are write-if-absent, which is right — one holds a pack's own verbs and the other is a call
+ * to a helper that owns every setting — but it means one written before the helper existed is never
+ * updated and nothing notices. That was the finding: "never regenerated and nothing owns it". Reporting
+ * is what makes the delegation reachable for a pack that already has a config.
+ */
+describe('a config that has stopped delegating', () => {
+  const writeConfig = (name: string, body: string) => {
+    fs.mkdirSync(path.join(root, 'drive'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'drive', name), body);
+  };
+
+  it('is named, with the engine config it kept', () => {
+    writeConfig('engine.config.mts', "import { defineConfig } from '@playwright/test';\nexport default defineConfig({ workers: 1 });\n");
+
+    expect(writeEngineFiles(root).keptStale).toEqual([path.join('drive', 'engine.config.mts')]);
+  });
+
+  it('is named for the driving config too, which scaffold keeps', () => {
+    writeConfig('playwright.config.ts', "import { defineConfig } from '@playwright/test';\nexport default defineConfig({ testDir: '.' });\n");
+
+    expect(scaffold(root).keptStale).toEqual([path.join('drive', 'playwright.config.ts')]);
+  });
+
+  /**
+   * The case a plain `includes` gets wrong, and the reason this reads the code. The config this command
+   * writes *mentions* its helper in the comment above the call, so a config that went back to assembling
+   * its own and kept the comment would have passed.
+   *
+   * Mutation check: drop `codeOf` from `configCallsHelper` and this is the case that fails.
+   */
+  it('is still named when it only mentions the helper in a comment', () => {
+    writeConfig('engine.config.mts', "// every setting is defineEngineConfig()'s\nimport { defineConfig } from '@playwright/test';\nexport default defineConfig({ workers: 1 });\n");
+
+    expect(writeEngineFiles(root).keptStale).toEqual([path.join('drive', 'engine.config.mts')]);
+  });
+
+  it('is silent about one that delegates', () => {
+    writeConfig('engine.config.mts', "import { defineEngineConfig } from '@abuddy/testing/playwright';\nexport default defineEngineConfig();\n");
+
+    expect(writeEngineFiles(root).keptStale).toEqual([]);
+  });
+
+  it('is silent about the session file, which is the pack author\'s to write however they like', () => {
+    writeConfig('engine-session.mts', 'whatever the author put here');
+
+    expect(writeEngineFiles(root).keptStale).toEqual([]);
+  });
+
+  it('reports what it created, so a caller can tell a first run from a later one', () => {
+    const first = writeEngineFiles(root);
+    const second = writeEngineFiles(root);
+
+    expect(first.created).toEqual([path.join('drive', 'engine.config.mts'), path.join('drive', 'engine-session.mts')]);
+    expect(second.created).toEqual([]);
+    expect(second.keptStale, 'what it wrote itself calls the helper').toEqual([]);
   });
 });

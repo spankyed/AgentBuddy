@@ -41,6 +41,35 @@ export interface SessionPage {
   evaluateWith: <A>(fn: (arg: A) => unknown, arg: A) => Promise<unknown>;
   exposeFunction: (name: string, callback: (payload: unknown) => void) => Promise<void>;
   screenshot: (name: string) => Promise<unknown>;
+  /** Clicks what `selector` matches, waiting for it as Playwright's own click does */
+  click: (selector: string) => Promise<unknown>;
+  /** Replaces what `selector` matches with `text` */
+  fill: (selector: string, text: string) => Promise<unknown>;
+  /** A key, to `selector` when given and to the page otherwise */
+  press: (key: string, selector?: string) => Promise<unknown>;
+  /**
+   * The page's accessibility tree, as text.
+   *
+   * What a screenshot is for a person, this is for an agent: readable, diffable, and costing no image
+   * tokens. It is also the only one of the two that says what a thing *is* rather than where it is.
+   */
+  ariaSnapshot: () => Promise<string>;
+  /**
+   * Resizes what the app renders into.
+   *
+   * **A port method rather than `page.setViewportSize` at the call site**, because the right act depends on
+   * whether anyone is looking at the window. Playwright's viewport is an emulation *inside* the real
+   * window, so in a visible run it draws the app into a corner and leaves the desktop showing through the
+   * rest — which is the defect `pinsViewport` (`src/launch-env.ts`) was written for, and which asking for a
+   * viewport would otherwise reintroduce by hand. So a shown window is resized for real and a hidden one
+   * gets the emulation, and the session says what it wants rather than how.
+   *
+   * Reading the size needs no method of its own: `window.innerWidth` is true whichever of the two happened.
+   *
+   * It answers with the size that was *taken*, which need not be the size asked for — a window has a minimum
+   * and clamps to it.
+   */
+  setViewport: (width: number, height: number) => Promise<{ width: number; height: number }>;
   /**
    * Reloads the window and returns when it is usable again, onboarding included.
    *
@@ -86,6 +115,14 @@ export interface SessionDeps {
   readonly api: SessionApi;
   /** Renderer errors the fixture collected, read and cleared — see `drainErrors` */
   readonly takeErrors: () => readonly string[];
+  /**
+   * The app's own log, as text.
+   *
+   * A function rather than the text, because a session outlives any one reading of it. Reading the file
+   * is the caller's: the session takes ports, and `node:fs` in here would be the first of them to need a
+   * real filesystem to test against.
+   */
+  readonly readLog: () => string;
 }
 
 /** A message the app emitted, as the in-page bridge or the session's own connection reports it */
@@ -138,10 +175,20 @@ export const DRIVE_REF = HOST.drive;
 const channelGone = (requestId: string, reason: string): Error =>
   new Error(`no answer for ${requestId}: ${reason}. The drive session's connection to the app is finished, so restart the session.`);
 
-const REPLIES = {
-  qx: { send: 'EXECUTE_QUERY', ok: 'QUERY_RESULT', bad: 'QUERY_ERROR' },
-  tx: { send: 'EXECUTE_TRANSACTION', ok: 'TRANSACTION_RESULT', bad: 'TRANSACTION_ERROR' },
-} as const;
+/**
+ * What a refusal says, whichever shape the answering system uses.
+ *
+ * The database answers with one `error`; the settings store answers with `problems`, a list, because a
+ * document can be wrong in several places at once. Both are the same thing to a caller — why it was refused —
+ * so they are read here rather than at each call site.
+ */
+const refusalText = (event: Record<string, unknown>): string => {
+  if (Array.isArray(event.problems)) return event.problems.join('; ');
+  return String(event.error ?? 'the system reported an error');
+};
+
+/** The system that runs query and transaction code, and the one that owns the settings document */
+const SETTINGS_SYSTEM = 'host/settings';
 
 /**
  * Runs a verb and turns any throw into the failure half of `EngineResult`.
@@ -186,6 +233,14 @@ type Evaluated = { cloneable: true; value: unknown }
 /** What `/wait` waits for: a dotted state path, or a plugin arriving. Exactly one, which `server.ts` checks */
 export type WaitTarget = { readonly state: string } | { readonly plugin: string };
 
+/**
+ * Where a setting lives: in a feature's slice, by its ref, or in a section a pack registered.
+ *
+ * The settings document has both and `/settings` reads all of it, so a write that could only reach features
+ * left `general` and `assistant` readable and unwritable. Exactly one, as `WaitTarget` is.
+ */
+export type SettingsTarget = { readonly plugin: string } | { readonly section: string };
+
 export interface EngineSession {
   evaluate: (body: string) => Promise<EngineResult>;
   send: (event: Record<string, unknown>) => Promise<EngineResult>;
@@ -196,6 +251,22 @@ export interface EngineSession {
   wait: (target: WaitTarget, timeoutMs?: number) => Promise<EngineResult>;
   navigate: (pluginId: string) => Promise<EngineResult>;
   screenshot: (name: string) => Promise<EngineResult>;
+  /** A plugin's published state, or one dotted path into it */
+  plugin: (ref: string, path?: string) => Promise<EngineResult>;
+  click: (selector: string) => Promise<EngineResult>;
+  fill: (selector: string, text: string) => Promise<EngineResult>;
+  press: (key: string, selector?: string) => Promise<EngineResult>;
+  snapshot: () => Promise<EngineResult>;
+  /** What the app is rendering into, in CSS pixels */
+  viewport: () => Promise<EngineResult>;
+  /** Resizes it — the real window where one is shown, the emulated viewport where none is */
+  setViewport: (width: number, height: number) => Promise<EngineResult>;
+  /** The settings as stored */
+  settings: () => Promise<EngineResult>;
+  /** Writes one setting, in a feature's slice or in a registered section */
+  setSetting: (target: SettingsTarget, path: string, value: unknown) => Promise<EngineResult>;
+  /** The app's own log lines, newest last; fails when `since` names a line the log does not hold */
+  logs: (options: { since?: string; source?: string }) => Promise<EngineResult>;
   /** Reloads the window and returns once it is connected again, with the in-page bridge back */
   reload: () => Promise<EngineResult>;
   drainEvents: () => EngineResult;
@@ -211,7 +282,7 @@ export interface EngineSession {
   stop: () => void;
 }
 
-export function createSession({ page, api, takeErrors }: SessionDeps): EngineSession {
+export function createSession({ page, api, takeErrors, readLog }: SessionDeps): EngineSession {
   const seen: SeenEvent[] = [];
   let dropped = 0;
   /** A round-trip in flight: how it hears an answer, and how it is told none is coming */
@@ -260,7 +331,7 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
    * concurrent `/qx` calls can be told apart. An orphan matches nobody — a request that timed out and then
    * finished, or a reply to someone querying in the Database plugin while a session drives.
    */
-  const nextReply = (requestId: string, ok: string, bad: string): Promise<unknown> =>
+  const nextReply = (to: string, requestId: string, ok: string, bad: string): Promise<unknown> =>
     new Promise((resolve, reject) => {
       // Already gone, so there is nothing to wait for and no reason to make the caller wait for the timeout
       if (api.failure !== null) {
@@ -273,7 +344,7 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
           if (event.event.requestId !== requestId) return;
           clearTimeout(timer);
           waiting.delete(waiter);
-          if (event.type === bad) reject(new Error(String(event.event.error ?? 'the system reported an error')));
+          if (event.type === bad) reject(new Error(refusalText(event.event)));
           else resolve(event.event.result);
         },
         /** The channel finished while this was in flight: say so now rather than in fifteen seconds */
@@ -293,9 +364,9 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
           return;
         }
         reject(new Error(`no ${ok} or ${bad} for ${requestId} within ${REPLY_TIMEOUT_MS}ms. `
-          + `Either the query is still running, or no pack provides ${DATABASE_SYSTEM}, or its `
-          + `system answered with a broadcast rather than a reply — which an app built before ${DRIVE_REF} `
-          + 'existed does, and GET /events would then show the answer arriving unaddressed.'));
+          + `Either it is still running, or nothing provides ${to}, or that system answered with a `
+          + `broadcast rather than a reply — which an app built before ${DRIVE_REF} existed does, and `
+          + 'GET /events would then show the answer arriving unaddressed.'));
       }, REPLY_TIMEOUT_MS);
       waiting.add(waiter);
     });
@@ -311,18 +382,36 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
   const sendToSystem = (to: string, event: Record<string, unknown>): Promise<unknown> =>
     api.send({ to, event, sender: DRIVE_REF }).then(() => null);
 
-  const roundTrip = async (kind: keyof typeof REPLIES, code: string): Promise<unknown> => {
-    const { send, ok, bad } = REPLIES[kind];
+  /**
+   * Asks a system something and waits for the answer it addresses back, matched by the id the request minted.
+   *
+   * Taking the system and the event rather than a kind, because the database is no longer the only thing that
+   * answers: the settings system replies to whoever asked for a write, and `/set-setting` reporting success for
+   * a refused write was the whole reason it had to.
+   */
+  const roundTrip = async (
+    to: string,
+    prefix: string,
+    event: Record<string, unknown>,
+    ok: string,
+    bad: string,
+  ): Promise<unknown> => {
     // Minted here, by the requester: a reply can only name a request if the request named itself first
-    const requestId = randomId({ prefix: `${kind}-` });
+    const requestId = randomId({ prefix: `${prefix}-` });
     // Armed before the send, so a reply that arrives immediately is not missed
-    const reply = nextReply(requestId, ok, bad);
+    const answer = nextReply(to, requestId, ok, bad);
     // A send that never left means no answer is coming, and the armed waiter is abandoned — handled here so
     // its rejection is not an unhandled one when the timer finally fires
-    reply.catch(() => {});
-    await sendToSystem(DATABASE_SYSTEM, { type: send, code, requestId });
-    return reply;
+    answer.catch(() => {});
+    await sendToSystem(to, { ...event, requestId });
+    return answer;
   };
+
+  /** What the database answers with, which is the one round-trip shape used twice */
+  const runCode = (prefix: 'qx' | 'tx', type: string, code: string): Promise<unknown> =>
+    roundTrip(DATABASE_SYSTEM, prefix, { type, code },
+      prefix === 'qx' ? 'QUERY_RESULT' : 'TRANSACTION_RESULT',
+      prefix === 'qx' ? 'QUERY_ERROR' : 'TRANSACTION_ERROR');
 
   /**
    * Hooks the app's actor inspection up to `BRIDGE_FUNCTION`, which is a callback into this process rather
@@ -423,15 +512,15 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
 
     system: (to, event) => attempt('system', () => sendToSystem(to, event)),
 
-    qx: (code) => attempt('qx', () => roundTrip('qx', code)),
-    tx: (code) => attempt('tx', () => roundTrip('tx', code)),
+    qx: (code) => attempt('qx', () => runCode('qx', 'EXECUTE_QUERY', code)),
+    tx: (code) => attempt('tx', () => runCode('tx', 'EXECUTE_TRANSACTION', code)),
 
     state: () => attempt('state', () => page.evaluateExpression(`(() => {
       const snap = window.applicationState?.getSnapshot();
       return {
         value: snap?.value,
-        activePluginId: snap?.context?.activePlugin?.id ?? '',
-        pluginIds: (snap?.context?.plugins ?? []).map((p) => p.id),
+        plugin: snap?.context?.activePlugin?.id ?? '',
+        plugins: (snap?.context?.plugins ?? []).map((p) => p.id),
       };
     })()`)),
 
@@ -443,6 +532,105 @@ export function createSession({ page, api, takeErrors }: SessionDeps): EngineSes
     }),
 
     navigate: (pluginId) => attempt('navigate', () => sendToApp({ type: 'SELECT_PLUGIN', plugin: pluginId })),
+
+    /**
+     * A plugin's published state, which is what a view is actually showing.
+     *
+     * Over `evaluateExpression` rather than a port method of its own: the shell already holds every
+     * running plugin's actor, so this is a read of the page and not a new capability. Before it existed
+     * the same expression was written out by hand at every call site, which is four chances to get the
+     * ref or the optional chain wrong.
+     */
+    plugin: (ref, at) => attempt('plugin', () => page.evaluateExpression(`(() => {
+      const plugin = window.applicationState?.getSnapshot().children?.[${JSON.stringify(ref)}];
+      if (!plugin) return { running: false };
+      const context = plugin.getSnapshot().context ?? {};
+      const at = ${JSON.stringify(at ?? '')};
+      // No path asked for: the whole context, which is what a plugin publishes
+      if (!at) return { running: true, state: context };
+      const value = at.split('.').reduce((held, key) => (held == null ? held : held[key]), context);
+      return { running: true, state: value ?? null };
+    })()`)),
+
+    click: (selector) => attempt('click', async () => { await page.click(selector); return selector; }),
+    fill: (selector, text) => attempt('fill', async () => { await page.fill(selector, text); return selector; }),
+    press: (key, selector) => attempt('press', async () => { await page.press(key, selector); return key; }),
+    snapshot: () => attempt('snapshot', () => page.ariaSnapshot()),
+
+    /**
+     * What the app is rendering into, asked of the window rather than of Playwright.
+     *
+     * `page.viewportSize()` answers `null` until something has set one, and a resized *window* never moves
+     * it at all — so it reports the emulation and not the app. `window.innerWidth` is the size the layout
+     * actually has, which is the question.
+     */
+    viewport: () => attempt('viewport', () => page.evaluateExpression(
+      '({ width: window.innerWidth, height: window.innerHeight })',
+    )),
+
+    /**
+     * Answers with the size that was taken, not the size that was asked for.
+     *
+     * It echoed its argument at first, on the reasoning that measuring after a real window moved would
+     * sometimes read the size before it. That race could not be reproduced — 12 set-then-read cycles, none
+     * stale — and the echo is wrong in a case that does occur: the main window has a 900x600 minimum, so
+     * `/set-viewport {400,300}` answered `{400,300}` while the window sat at `{900,600}`. The port asks
+     * whoever applied the size what it became, which costs no extra round trip either way.
+     */
+    setViewport: (width, height) => attempt('setViewport', () => page.setViewport(width, height)),
+
+    /**
+     * The app's own log, which until now was a file an agent was told to go and open.
+     *
+     * `since` and `source` filter rather than page: a session's log is the run's, so what a reader wants
+     * is almost always "what happened after the thing I just did", which `since` answers by naming a line
+     * they already saw.
+     */
+    /**
+     * The settings as stored — what the user changed from the defaults, which is what a write lands in.
+     *
+     * Read through the database rather than the settings system: the row is an entity, so this is the
+     * query path that already works, where `GET_SETTINGS` answers by broadcasting to a *plugin* and would
+     * need a second kind of waiter to catch.
+     */
+    settings: () => attempt('settings', () => runCode('qx', 'EXECUTE_QUERY', `return qx('Settings-app').pickOne(['data'])?.data ?? {}`)),
+
+    /**
+     * One setting, in a feature's slice or in a registered section.
+     *
+     * `entityType` is which arm of the target it is — the settings system branches on it between
+     * `setForFeature` and `setInSection`, and hardcoding `'plugin'` was what made a section unwritable.
+     *
+     * **A round-trip, not a send.** It resolved as soon as the send was accepted, so a write the store
+     * refused — an unknown feature ref, a section nobody registered, a change while a backup is being
+     * imported — answered `ok: true` and wrote nothing. `/query` had made the opposite bargain since it
+     * existed, which is what left this one looking like it worked.
+     */
+    setSetting: (target, at, value) => attempt('setSetting', () => roundTrip(
+      SETTINGS_SYSTEM,
+      'set-setting',
+      {
+        type: 'UPDATE_SETTINGS',
+        entityType: 'plugin' in target ? 'plugin' : 'section',
+        label: 'plugin' in target ? target.plugin : target.section,
+        path: at.split('.'),
+        value,
+      },
+      'SETTINGS_SAVED',
+      'SETTINGS_REFUSED',
+    )),
+
+    logs: ({ since, source }) => attempt('logs', async () => {
+      const lines = readLog().split('\n').filter(Boolean);
+      const at = since === undefined ? -1 : lines.findIndex((line) => line.includes(since));
+      // A marker nobody can find is a failure, not an empty filter: answering with the whole log would be
+      // read as "everything here is new", which is the same bytes as a right answer and a wrong meaning
+      if (since !== undefined && at === -1) {
+        throw new Error(`no line contains ${JSON.stringify(since)}, so there is nothing to answer "since"`);
+      }
+      const after = lines.slice(at + 1);
+      return source === undefined ? after : after.filter((line) => line.includes(source));
+    }),
 
     screenshot: (name) => attempt('screenshot', async () => {
       await page.screenshot(name);

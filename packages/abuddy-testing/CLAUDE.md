@@ -17,7 +17,7 @@ The repo's own E2E imports it the same way a pack does:
 import { test, expect } from '@abuddy/testing';
 ```
 
-Every spec (`tests/e2e/{smoke,app-integration,ui}/*.spec.ts`) imports `@abuddy/testing` directly. `@abuddy/testing` is the `packages/abuddy-testing` workspace package, and its three entries resolve its built bundle under every condition — so the repo's own E2E runs the same fixture a pack does, and `npm test` runs `packages:ensure` first to build it from the checkout's current sources.
+Every spec (`tests/e2e/{smoke,app-integration,ui}/*.spec.ts`) imports `@abuddy/testing` directly. `@abuddy/testing` is the `packages/abuddy-testing` workspace package, and its four entries resolve its built bundle under every condition — so the repo's own E2E runs the same fixture a pack does, and `npm test` runs `packages:ensure` first to build it from the checkout's current sources.
 
 ### How external packs use it
 
@@ -25,6 +25,39 @@ External packs add `@abuddy/testing` and `@playwright/test` as devDependencies (
 ```ts
 import { test, expect } from '@abuddy/testing';
 ```
+
+## Playwright configs (`@abuddy/testing/playwright`)
+
+A pack's Playwright configs are calls to a helper, not copies of one — the same answer `definePackTestConfig`
+gives for vitest, for the same reason. There were six copies (the repo's own E2E config, the one
+`abuddy init-tests` scaffolds, both fixture packs', and the drive layer's pair), and the repo's own had
+already drifted to a `use` block giving it screenshots and traces the three packs' lacked. Nobody decided
+that; it is what six copies do. `@app/repo-checks`' `playwright-config.spec.ts` is the gate.
+
+One helper per kind of run, because a setting means something different to each:
+
+| Helper | For | Overrides |
+|---|---|---|
+| `definePackE2EConfig` | a pack's suite, run by `abuddy test` | anything Playwright takes; the pack's word is last |
+| `defineDriveConfig` | driving scripts, run by `abuddy drive` | the same, **except** that the engine's session is always ignored |
+| `defineEngineConfig` | the serving session, `abuddy drive --serve` | everything but the four its handshake depends on |
+
+- **`timeout` in `definePackE2EConfig` has to stay a literal.** `suite-timeouts.spec.ts` reads a config's
+  timeouts as text rather than importing one (importing creates a temp data dir), follows the delegation to
+  this module and holds the value to the large size budget. It reads **one helper's body**, not the file:
+  two of the three declare `timeout: 0`, and reading the file whole reported the root suite's budget as 0ms.
+- **`defineDriveConfig` ignores the session whatever `testMatch` says**, and that is the one thing a pack
+  cannot undo. A driving run that collected the engine would start it and hang on a request nobody watching
+  has reason to send. Before this helper the only guard was the session's `.mts` extension falling outside
+  the `**/*.ts` glob — an accident of two defaults that a pack widening its own `testMatch` would have
+  undone silently, and unfixable while a `testIgnore` could reach only newly scaffolded packs.
+- **`EngineConfigOptions` omits `testDir`, `testMatch`, `workers`, `timeout` and `outputDir`**, so setting
+  one is a compile error rather than a value quietly discarded; the handshake is also spread last, so a cast
+  cannot break a session either. What each one breaks is on the type. The rule for which settings are
+  locked: **the ones the tool or its own docs read back.**
+- **The session's filename is declared twice**, here for `testMatch` and in `@abuddy/cli`'s `drive.ts` for
+  the file that command writes. Making it one declaration would mean the CLI importing this package at
+  runtime — a dependency on the published CLI for one string — so the gate compares the two instead.
 
 ## Vitest: isolated data dirs (`@abuddy/testing/vitest`)
 
@@ -213,7 +246,7 @@ Four modules, and the split is what each one is allowed to know:
 
 Things worth knowing before changing it:
 
-- **`/qx` and `/tx` go over the bus**, to default-setup's `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`, which
+- **`/query` and `/transact` go over the bus**, to default-setup's `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`, which
   already run against the live engine with every installed pack's entity types. So a write is visible to
   the next read in the same session — which `abuddy db exec` cannot do, since it refuses while the app
   holds the write lock.
@@ -227,7 +260,7 @@ Things worth knowing before changing it:
   different jobs and both are needed. The session claims `host/drive` and stamps `sender` on every bus
   send, so a system's `reply` comes back on this connection rather than to every window — which is what
   stops a person querying in the Database plugin from being mistaken for the session. But addressing
-  answers *which connection*, never *which request*: three concurrent `/qx` calls produce three replies
+  answers *which connection*, never *which request*: three concurrent `/query` calls produce three replies
   with identical envelopes, so the id is what tells them apart. Two cases cover the pair: a reply for a
   request the engine did not make, and an abandoned request's late answer.
 - **Waiters hear both the connection and the page bridge, and that is not redundancy.** An app built
@@ -238,6 +271,34 @@ Things worth knowing before changing it:
 - **`/wait` is the fixture's own wait**, so a state is awaited rather than re-requested. Without it the
   only way to wait is to ask `/state` repeatedly, which is the polling this repo avoids where something
   event-driven exists.
+- **`/set-viewport` resizes the window where one is shown and the emulated viewport where none is**, and
+  that split is the whole reason `SessionPage` has a method for it rather than the adapter calling
+  `page.setViewportSize`. Playwright's viewport is an emulation *inside* the real window, so in a visible
+  run it draws the app into the top-left and leaves the desktop showing through the rest — the defect
+  `pinsViewport` (`src/launch-env.ts`) was written for. `driveEngineBody` reads that same predicate to
+  decide which port the session gets; the real window arrives as `EngineWindow`, one method wide, so
+  `engine/` never sees Electron's types. `/viewport` needs no port at all: `window.innerWidth` is true
+  whichever of the two happened, where `page.viewportSize()` reports the emulation and never moves when
+  the window does.
+  A session can also open at a size: `driveEngineBody({ viewport })`, applied before the server listens.
+  Its value is checked (`checkedViewport`, against the wire's own `isPixels`) rather than trusted, because
+  `drive/` is outside every tsconfig here — `typecheck:scripts` is `scripts/`, `tests/`, repo-checks and
+  publish-checks — so a session file's option is checked by an editor and by no chain step.
+- **`/set-setting` is a round trip, not a send.** It resolved as soon as the API accepted the send, so a write
+  the store refused answered `ok: true` and wrote nothing — and the refusal went to the Settings plugin, where
+  the session could not see it. The settings system answers its sender now (`@abuddy/host`'s
+  `features/settings/be/answer.ts`), so the verb waits for `SETTINGS_SAVED`/`SETTINGS_REFUSED` by the id it
+  minted, exactly as `/query` waits for `QUERY_RESULT`. A refusal carries `problems` rather than one `error`,
+  because a document can be wrong in several places at once, which is why `refusalText` reads either shape.
+- **A verb declares the fields it reads, and `run` receives those and nothing else** (`verb()`, `server.ts`).
+  That is what makes the wire's vocabulary derivable: `vocabulary.spec.ts` reads `verb.fields` off the table
+  rather than looking for field names in its source. Two scans came before it and each was blind in its own
+  way — asking a verb with an empty body sees one field, because `required` throws on the first one missing,
+  and matching `(body, '<field>')` in the source is blind to any verb whose parameter is not named `body`,
+  which `Verb` does not require. The drift those scans were watching for is a compile error now: a field
+  dropped from `fields` while `run` still reads it does not typecheck. The readers are exported, so a
+  caller's own verb gets the same checking; a rule *between* fields stays in `run`, which is where `/wait`'s
+  "exactly one of" and `/send`'s optional `to` live.
 - **`/screenshot` refuses a name that is not a name.** It is the one verb whose input becomes a path, and
   `app.screenshot` joins it onto the screenshots directory, so `../../escaped` wrote outside it.
 - **The body cap answers rather than hanging up.** It used to `destroy()` the request, which took the

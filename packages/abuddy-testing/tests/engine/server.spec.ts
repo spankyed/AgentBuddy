@@ -3,7 +3,8 @@
 // request was fine, the operation was not — against a protocol error answering 4xx, where no verb ran.
 import { describe, expect, it, vi } from 'vitest';
 import {
-  answer, engineVerbs, ENGINE_TOKEN_HEADER, MAX_BODY_BYTES, startEngineServer, tokenMatches,
+  answer, engineVerbs, ENGINE_TOKEN_HEADER, MAX_BODY_BYTES, optionalMs, required, startEngineServer,
+  tokenMatches, verb, type Verb,
 } from '../../src/engine/server.ts';
 import type { EngineResult, EngineSession } from '../../src/engine/session.ts';
 
@@ -12,16 +13,17 @@ const TOKEN = 'a-token';
 /** A session that records what it was asked and answers ok, so routing is what the assertions see */
 function fakeSession(overrides: Partial<EngineSession> = {}) {
   const called: Array<[string, unknown[]]> = [];
-  const verb = (name: string) => (...args: unknown[]): EngineResult => {
+  const makes = (name: string) => (...args: unknown[]): EngineResult => {
     called.push([name, args]);
     return { ok: true, value: name };
   };
   const session = {
     ready: vi.fn(async () => undefined),
-    evaluate: verb('evaluate'), send: verb('send'), system: verb('system'),
-    qx: verb('qx'), tx: verb('tx'), state: verb('state'), wait: verb('wait'), navigate: verb('navigate'),
-    screenshot: verb('screenshot'), drainEvents: verb('events'), drainDrops: verb('drops'),
-    drainErrors: verb('errors'), close: verb('close'),
+    evaluate: makes('evaluate'), send: makes('send'), system: makes('system'),
+    qx: makes('qx'), tx: makes('tx'), state: makes('state'), wait: makes('wait'), navigate: makes('navigate'),
+    screenshot: makes('screenshot'), drainEvents: makes('events'), drainDrops: makes('drops'),
+    drainErrors: makes('errors'), close: makes('close'),
+    viewport: makes('viewport'), setViewport: makes('setViewport'), setSetting: makes('setSetting'),
     ...overrides,
   } as unknown as EngineSession;
   return { session, called };
@@ -59,19 +61,21 @@ describe('routing', () => {
   it('reaches each verb at its own path', async () => {
     const { session, called } = fakeSession();
 
-    await ask(session, '/eval', { body: '{"body":"return 1"}' });
+    await ask(session, '/eval', { body: '{"code":"return 1"}' });
     await ask(session, '/send', { body: '{"event":{"type":"X"}}' });
-    await ask(session, '/system', { body: '{"to":"a/b","event":{"type":"X"}}' });
-    await ask(session, '/qx', { body: '{"code":"return 1"}' });
-    await ask(session, '/tx', { body: '{"code":"return 1"}' });
+    await ask(session, '/send', { body: '{"to":"a/b","event":{"type":"X"}}' });
+    await ask(session, '/query', { body: '{"code":"return 1"}' });
+    await ask(session, '/transact', { body: '{"code":"return 1"}' });
     await ask(session, '/state', { method: 'GET' });
     await ask(session, '/wait', { body: '{"state":"running.connected"}' });
     await ask(session, '/navigate', { body: '{"plugin":"notes"}' });
     await ask(session, '/screenshot', { body: '{"name":"shot"}' });
-    await ask(session, '/events', { method: 'GET' });
-    await ask(session, '/drops', { method: 'GET' });
-    await ask(session, '/errors', { method: 'GET' });
+    await ask(session, '/events');
+    await ask(session, '/drops');
+    await ask(session, '/errors');
 
+    // `/send` twice: with `to` it reaches a system, without it the app's root actor — one verb, because
+    // that destination is the only thing that ever differed
     expect(called.map(([name]) => name)).toEqual([
       'evaluate', 'send', 'system', 'qx', 'tx', 'state', 'wait',
       'navigate', 'screenshot', 'events', 'drops', 'errors',
@@ -80,7 +84,7 @@ describe('routing', () => {
 
   it('passes the body through to the verb', async () => {
     const { session, called } = fakeSession();
-    await ask(session, '/system', { body: '{"to":"host/packs","event":{"type":"PING","n":1}}' });
+    await ask(session, '/send', { body: '{"to":"host/packs","event":{"type":"PING","n":1}}' });
 
     expect(called[0]?.[1]).toEqual(['host/packs', { type: 'PING', n: 1 }]);
   });
@@ -97,7 +101,7 @@ describe('routing', () => {
 
   it('refuses the wrong method rather than running the verb', async () => {
     const { session, called } = fakeSession();
-    const result = await ask(session, '/qx', { method: 'GET' });
+    const result = await ask(session, '/query', { method: 'GET' });
 
     expect(result.status).toBe(405);
     expect(called).toEqual([]);
@@ -118,10 +122,85 @@ describe('routing', () => {
   });
 });
 
+/**
+ * The core table is what is true of any AgentBuddy app. A verb built out of one app's nouns belongs to
+ * whoever is driving — which is why they arrive as a function over the session, and why they are merged
+ * *over* the core table rather than under it: a caller who wants a different `/screenshot` is not wrong.
+ */
+/**
+ * The factory the whole table is built from, which is machinery nothing would otherwise watch.
+ *
+ * It matters because the declaration is now the parsing: `run` receives what `fields` names and nothing
+ * else, which is what makes the vocabulary derivable and what makes a field read without being declared a
+ * compile error rather than a drift.
+ */
+describe('a verb built from its fields', () => {
+  const ask = (built: Verb, body: string) => answer(
+    { '/x': built }, TOKEN, { method: built.method, url: '/x', headers: { [ENGINE_TOKEN_HEADER]: TOKEN } },
+    async () => body,
+  );
+
+  it('hands run the fields it declared, read by the readers declared beside them', async () => {
+    const seen: unknown[] = [];
+    const built = verb({
+      method: 'POST',
+      fields: { code: required, timeoutMs: optionalMs },
+      run: (values) => { seen.push(values); return { ok: true, value: null }; },
+    });
+
+    expect(built.fields, 'declaration order, which is the order a missing one is reported in').toEqual(['code', 'timeoutMs']);
+    await ask(built, '{"code":"1 + 1","timeoutMs":50}');
+
+    expect(seen).toEqual([{ code: '1 + 1', timeoutMs: 50 }]);
+  });
+
+  it('refuses a body missing a declared field, before run is reached', async () => {
+    let ran = false;
+    const built = verb({
+      method: 'POST',
+      fields: { code: required },
+      run: () => { ran = true; return { ok: true, value: null }; },
+    });
+
+    expect(await ask(built, '{}')).toMatchObject({ status: 400, payload: { error: '"code" must be a non-empty string' } });
+    expect(ran, 'nothing ran, so ok:false would have misdescribed it').toBe(false);
+  });
+
+  it('declares no fields for a verb that takes no body, and hands run nothing', async () => {
+    const built = verb({ method: 'POST', run: () => ({ ok: true, value: 'done' }) });
+
+    expect(built.fields).toEqual([]);
+    expect(await ask(built, '{"ignored":1}')).toMatchObject({ status: 200, payload: { value: 'done' } });
+  });
+});
+
+describe("verbs of the caller's own", () => {
+  const table = (session: EngineSession, extra: Record<string, Verb>) => ({ ...engineVerbs(session), ...extra });
+
+  const askTable = (verbs: Record<string, Verb>, url: string, method = 'POST') =>
+    answer(verbs, TOKEN, { method, url, headers: { [ENGINE_TOKEN_HEADER]: TOKEN } }, async () => '{}');
+
+  it('answers at its own path, beside the core table', async () => {
+    const { session } = fakeSession();
+    const verbs = table(session, { '/note': verb({ method: 'POST', run: () => ({ ok: true, value: 'a note' }) }) });
+
+    expect(await askTable(verbs, '/note')).toMatchObject({ status: 200, payload: { ok: true, value: 'a note' } });
+    expect(await askTable(verbs, '/state', 'GET')).toMatchObject({ status: 200 });
+  });
+
+  it('replaces a core verb when it takes its path', async () => {
+    const { session, called } = fakeSession();
+    const verbs = table(session, { '/screenshot': verb({ method: 'POST', run: () => ({ ok: true, value: 'mine' }) }) });
+
+    expect(await askTable(verbs, '/screenshot')).toMatchObject({ payload: { value: 'mine' } });
+    expect(called.map(([name]) => name), 'the core one never ran').toEqual([]);
+  });
+});
+
 describe('a bad body is a protocol error, not a verb failure', () => {
   it('refuses a missing required field', async () => {
     const { session, called } = fakeSession();
-    const result = await ask(session, '/qx', { body: '{}' });
+    const result = await ask(session, '/query', { body: '{}' });
 
     expect(result.status).toBe(400);
     expect(result.payload).toMatchObject({ error: expect.stringContaining('"code"') });
@@ -130,7 +209,7 @@ describe('a bad body is a protocol error, not a verb failure', () => {
 
   it('refuses an empty string as a required field', async () => {
     const { session } = fakeSession();
-    expect((await ask(session, '/eval', { body: '{"body":""}' })).status).toBe(400);
+    expect((await ask(session, '/eval', { body: '{"code":""}' })).status).toBe(400);
   });
 
   it('refuses an event that is not an object', async () => {
@@ -141,7 +220,7 @@ describe('a bad body is a protocol error, not a verb failure', () => {
 
   it('refuses a body that is not JSON, and says so', async () => {
     const { session } = fakeSession();
-    const result = await ask(session, '/qx', { body: 'not json' });
+    const result = await ask(session, '/query', { body: 'not json' });
 
     expect(result.status).toBe(400);
     expect(result.payload).toMatchObject({ error: expect.stringContaining('not JSON') });
@@ -149,12 +228,12 @@ describe('a bad body is a protocol error, not a verb failure', () => {
 
   it('refuses a JSON body that is not an object', async () => {
     const { session } = fakeSession();
-    expect((await ask(session, '/qx', { body: '[1,2]' })).status).toBe(400);
+    expect((await ask(session, '/query', { body: '[1,2]' })).status).toBe(400);
   });
 
   it('treats an empty body as an empty object, so a verb needing nothing needs no body', async () => {
     const { session } = fakeSession();
-    const result = await ask(session, '/events', { method: 'GET', body: '' });
+    const result = await ask(session, '/events', { body: '' });
 
     expect(result.status).toBe(200);
     expect(result.payload).toEqual({ ok: true, value: 'events' });
@@ -182,7 +261,7 @@ describe('close', () => {
     const { session } = fakeSession();
 
     expect((await ask(session, '/state', { method: 'GET' })).ending).toBeUndefined();
-    expect((await ask(session, '/qx', { body: '{"code":"return 1"}' })).ending).toBeUndefined();
+    expect((await ask(session, '/query', { body: '{"code":"return 1"}' })).ending).toBeUndefined();
   });
 
   it('does not end the session when the request was refused', async () => {
@@ -246,13 +325,62 @@ describe('wait', () => {
   });
 });
 
+describe('a setting', () => {
+  it('needs exactly one target, since a feature and a section are different places', async () => {
+    const { session, called } = fakeSession();
+
+    for (const body of ['{"path":"x","value":1}', '{"plugin":"p/f","section":"general","path":"x","value":1}']) {
+      const { status, payload } = await ask(session, '/set-setting', { body });
+      expect(status, body).toBe(400);
+      expect((payload as { error: string }).error).toBe('send exactly one of "plugin" or "section"');
+    }
+    expect(called, 'nothing reached the app').toEqual([]);
+  });
+
+  it('passes whichever one it was given', async () => {
+    const { session, called } = fakeSession();
+
+    await ask(session, '/set-setting', { body: '{"plugin":"default-setup/code","path":"a","value":1}' });
+    await ask(session, '/set-setting', { body: '{"section":"general","path":"b","value":2}' });
+
+    expect(called).toEqual([
+      ['setSetting', [{ plugin: 'default-setup/code' }, 'a', 1]],
+      ['setSetting', [{ section: 'general' }, 'b', 2]],
+    ]);
+  });
+});
+
+describe('a viewport', () => {
+  it('refuses a size that is not one, rather than passing it to the window', async () => {
+    const { session, called } = fakeSession();
+
+    // A fractional or zero size is a caller who meant something else, and a string is a caller who sent
+    // the shape `/wait`'s `timeoutMs` already refuses
+    for (const size of [{ width: '1400', height: 900 }, { width: 0, height: 900 }, { width: 1400 },
+      { width: 1400.5, height: 900 }, { width: 1400, height: null }]) {
+      const body = JSON.stringify(size);
+      expect((await ask(session, '/set-viewport', { body })).status, body).toBe(400);
+    }
+    expect(called, 'nothing reached the window').toEqual([]);
+  });
+
+  it('passes a size through, and answers the read with a GET', async () => {
+    const { session, called } = fakeSession();
+
+    await ask(session, '/set-viewport', { body: '{"width":1200,"height":800}' });
+    expect(called).toEqual([['setViewport', [1200, 800]]]);
+
+    expect((await ask(session, '/viewport', { method: 'GET' })).status).toBe(200);
+  });
+});
+
 /** The distinction the whole status scheme rests on */
 describe('a verb that fails', () => {
   it('answers 200 with ok false, so the reason is what the caller reads', async () => {
     const { session } = fakeSession({
       qx: async () => ({ ok: false, error: 'qx: boom is not defined' }),
     });
-    const result = await ask(session, '/qx', { body: '{"code":"return boom"}' });
+    const result = await ask(session, '/query', { body: '{"code":"return boom"}' });
 
     expect(result.status, 'the request was fine; the operation was not').toBe(200);
     expect(result.payload).toEqual({ ok: false, error: 'qx: boom is not defined' });
@@ -278,6 +406,26 @@ describe('the bound server', () => {
 
       const refused = await fetch(`http://127.0.0.1:${engine.address.port}/state`);
       expect(refused.status, 'a request with no token').toBe(401);
+    } finally {
+      await engine.close();
+    }
+  });
+
+  // Through the server rather than a table built here: the merge is `startEngineServer`'s, and a case that
+  // composes the table itself passes whether or not the server does it
+  it("serves a caller's own verb", async () => {
+    const { session } = fakeSession();
+    const engine = await startEngineServer(session, () => undefined, () => ({
+      '/note': verb({ method: 'POST', run: () => ({ ok: true, value: 'a note' }) }),
+    }));
+
+    try {
+      const response = await fetch(`http://127.0.0.1:${engine.address.port}/note`, {
+        method: 'POST',
+        headers: { [ENGINE_TOKEN_HEADER]: engine.address.token },
+        body: '{}',
+      });
+      expect(await response.json()).toEqual({ ok: true, value: 'a note' });
     } finally {
       await engine.close();
     }
