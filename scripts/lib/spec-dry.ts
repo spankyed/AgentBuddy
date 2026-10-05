@@ -6,17 +6,22 @@
  * behind an `await import` in the command, which is what keeps the ordinary run from paying for vitest's
  * node API or the chain steps the app label reads.
  *
- * **It used to predict a cost too, and does not any more.** It summed `spec-cost.json`, which recorded what
- * every spec cost in milliseconds; that record is gone, because the quantity it stored was not one number —
- * a spec read 2.8s in the fast pool and 0.64s in the integration pool, so each half's reading contradicted
- * the other. What the prediction was worth is also what it cost to keep: file-time summed across workers,
- * never a wall estimate, at a measured 1.55:1 and 2.18:1 ratio to the wall on one target three days apart.
- * The answer worth having is which specs run, and that needs no sample.
+ * **It prices the plan from the last run on this machine**, and that is a different thing from what it used
+ * to do. It summed `spec-cost.json`, a committed record of what every spec cost, compared across runs and
+ * machines against a fixed edge; the quantity was not one number — a spec read 2.8s in the fast pool and
+ * 0.64s in the integration pool — and nothing in the file said which machine it described. What it reads
+ * now is a cache this machine's own last run wrote (`spec-durations.ts`), so there is no record to go
+ * stale, nothing to re-record, and a fresh clone is simply unpriced rather than wrong.
+ *
+ * The caveat the old one carried is still true and still has to be said: this is **file time summed across
+ * workers, never a wall estimate**. Measured on one target three days apart, the ratio between the two was
+ * 1.55:1 and 2.18:1.
  */
 import * as path from 'node:path';
 import { CHAIN_STEPS , needsApp as needsAppStep } from './chain-steps.ts';
 import { UNIT_SUITES } from './unit-suites.ts';
-import { specFiles } from './spec-halves.ts';
+import { halfOfPath, specFiles } from './spec-halves.ts';
+import { readDurations, type DurationRecord } from './spec-durations.ts';
 import { IS_SPEC, type Run } from './spec-plan.ts';
 
 /**
@@ -94,4 +99,52 @@ export async function collectFor(run: Run, root: string): Promise<string[]> {
   } finally {
     await vitest.close();
   }
+}
+
+export interface Priced {
+  /** File time summed across workers for the specs this machine has measured, never a wall estimate */
+  readonly ms: number;
+  readonly priced: number;
+  /** The specs no run on this machine has measured, named rather than counted as free */
+  readonly unpriced: readonly string[];
+  /** The oldest run any of these prices came from, so a reader can say how old the answer is */
+  readonly measuredAt: string | undefined;
+}
+
+/**
+ * What the specs a run would execute cost, from what the last run on this machine measured.
+ *
+ * A named bucket beside the total rather than a quiet sum: a spec nothing has measured here is listed, in
+ * the shape the root `CLAUDE.md` gives for a partial result, because a fresh clone has measured nothing and
+ * a total over three of twelve specs that does not say so is the wrong answer rather than a small one.
+ */
+export function pricedSpecs(specs: readonly string[], root: string): Priced {
+  const records = new Map<string, DurationRecord | undefined>();
+  const unpriced: string[] = [];
+  let ms = 0;
+  let priced = 0;
+  let measuredAt: string | undefined;
+  for (const spec of specs) {
+    const parts = spec.split(path.sep === '\\' ? /[\\/]/ : '/');
+    // A spec outside `packages/` belongs to no suite, so no pool measured it and no record could hold it
+    const [, dir, ...rest] = parts[0] === 'packages' ? parts : [];
+    const relative = rest.join('/');
+    const half = halfOfPath(spec);
+    const key = `${dir}\u0000${half}`;
+    if (dir === undefined || relative === '') {
+      unpriced.push(spec);
+      continue;
+    }
+    if (!records.has(key)) records.set(key, readDurations(root, dir, half));
+    const record = records.get(key);
+    const found = record?.ms[relative];
+    if (record === undefined || found === undefined) {
+      unpriced.push(spec);
+      continue;
+    }
+    ms += found;
+    priced += 1;
+    if (measuredAt === undefined || record.measuredAt < measuredAt) measuredAt = record.measuredAt;
+  }
+  return { ms, priced, unpriced, measuredAt };
 }

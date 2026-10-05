@@ -218,7 +218,7 @@ export function bodyDrift(recorded: ReadonlyMap<string, number>, measured: Reado
  * `@app/repo-checks`' fast half — 46 specs, the largest 12% of the body — and the spec-cost records stopped
  * asking this question on 2026-10-05, because for most of them the premise behind it is false: five of the
  * twelve had one spec at 64% or more of their body, so there was nothing for that file's jitter to cancel
- * against. `scripts/spec-cost.ts` records that removal where the report used to be.
+ * against. That record and the command over it went with the question.
  *
  * What is left is the chain's table, which is less concentrated and not immune: ten steps declare a cost,
  * the largest is 34% of the total and the top three are 62%. That is why this is tolerable rather than

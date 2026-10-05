@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
@@ -10,7 +11,8 @@ import { INTEGRATION_SUITES } from '../../../scripts/lib/chain-steps.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 import { population } from '@abuddy/sdk/testing';
-import { checkedSpecs, needsAppForRun, specsOfSuites } from '../../../scripts/lib/spec-dry.ts';
+import { checkedSpecs, needsAppForRun, pricedSpecs, specsOfSuites } from '../../../scripts/lib/spec-dry.ts';
+import { writeDurations } from '../../../scripts/lib/spec-durations.ts';
 import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-halves.ts';
 
 /**
@@ -702,13 +704,70 @@ describe('a pack file whose specs sit behind a build', () => {
 });
 
 /**
- * What `spec:dry` predicts, without collecting anything.
+ * What `spec:dry` prices, without collecting anything.
  *
- * The pricing is pure so it can be asserted here; the collecting half is in the command, because it loads
- * vitest's node API and the ordinary run must not pay for that. What the prediction rests on is a *sample* —
- * `spec-cost.json` is kept with hysteresis, so a row may sit up to `DRIFT_SHARE` from the truth — which is
- * why it reports the record's own `measuredAt` rather than a confidence computed here.
+ * The pricing is pure over a root it is given, so it is asserted here; the collecting half is in the
+ * command, because it loads vitest's node API and the ordinary run must not pay for that.
+ *
+ * What it reads is the cache this machine's last pool run wrote, not a committed record — so there is no
+ * hysteresis, no band and no confidence to report, and the one thing it has to get right is the honest
+ * handling of a spec nothing here has measured. These cases run against a temp root, so they price
+ * fixtures rather than whatever this machine last ran.
  */
+describe('pricedSpecs', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-dry-'));
+  writeDurations(root, [
+    { dir: 'abuddy-host', file: 'tests/a.spec.ts', half: 'fast', ms: 1200 },
+    { dir: 'abuddy-host', file: 'tests/b.spec.ts', half: 'fast', ms: 300 },
+  ], '2026-10-05T21:07:00.000Z');
+  writeDurations(root, [
+    { dir: 'abuddy-cli', file: 'tests/c.integration.spec.ts', half: 'integration', ms: 40_000 },
+  ], '2026-10-04T09:00:00.000Z');
+
+  it('sums what this machine measured, and reports when it measured it', () => {
+    const priced = pricedSpecs(['packages/abuddy-host/tests/a.spec.ts', 'packages/abuddy-host/tests/b.spec.ts'], root);
+    expect(priced).toEqual({ ms: 1500, priced: 2, unpriced: [], measuredAt: '2026-10-05T21:07:00.000Z' });
+  });
+
+  // The half is in the key, so a spec is priced from the run that measured *it* rather than from whichever
+  // of its suite's two records was written last
+  it('prices a spec from its own half\'s record', () => {
+    const priced = pricedSpecs(['packages/abuddy-cli/tests/c.integration.spec.ts'], root);
+    expect(priced.ms).toBe(40_000);
+    expect(priced.measuredAt, 'the record its own half came from').toBe('2026-10-04T09:00:00.000Z');
+  });
+
+  it('reports the oldest run its prices came from, since that is how stale the answer is', () => {
+    const priced = pricedSpecs(['packages/abuddy-host/tests/a.spec.ts', 'packages/abuddy-cli/tests/c.integration.spec.ts'], root);
+    expect(priced.measuredAt).toBe('2026-10-04T09:00:00.000Z');
+  });
+
+  // Named rather than counted free, which is the difference between a partial total and a wrong one: a
+  // fresh clone has measured nothing, and a sum over none of twelve specs that does not say so is worse
+  // than no sum at all
+  it('names a spec no run here has measured instead of pricing it at zero', () => {
+    const priced = pricedSpecs(['packages/abuddy-host/tests/a.spec.ts', 'packages/abuddy-host/tests/never-ran.spec.ts'], root);
+    expect(priced.ms).toBe(1200);
+    expect(priced.priced).toBe(1);
+    expect(priced.unpriced).toEqual(['packages/abuddy-host/tests/never-ran.spec.ts']);
+  });
+
+  it('prices nothing at all where no run has written a cache', () => {
+    const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-dry-empty-'));
+    try {
+      const priced = pricedSpecs(['packages/abuddy-host/tests/a.spec.ts'], empty);
+      expect(priced).toEqual({ ms: 0, priced: 0, unpriced: ['packages/abuddy-host/tests/a.spec.ts'], measuredAt: undefined });
+    } finally {
+      fs.rmSync(empty, { recursive: true, force: true });
+    }
+  });
+
+  // A spec outside `packages/` belongs to no unit suite, so no pool measured it and no record could hold it
+  it('names a spec outside any package rather than reaching for a record it cannot have', () => {
+    expect(pricedSpecs(['tests/e2e/smoke/launch.spec.ts'], root).unpriced).toEqual(['tests/e2e/smoke/launch.spec.ts']);
+  });
+});
+
 /**
  * The other seam a root run cannot reach, and the one nothing said anything about.
  *

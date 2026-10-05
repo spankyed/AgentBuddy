@@ -123,11 +123,13 @@ against a band of 2.5x, so each half's reading demanded a move the other took ba
 sample section has what the apparatus cost and what to read before adding another.
 
 Slowness is visible rather than adjudicated: vitest prints any test over its 300ms threshold under its
-file, and the chain prints each step's five slowest. If this package's fast half stops being worth running
-in a loop, that is what shows it.
+file, the chain prints each step's five slowest tests, and the pool that runs this suite ranks its five
+slowest *files* per half. If this package's fast half stops being worth running in a loop, that is what
+shows it. A spec that is slow for a reason says so in its header (`// @slow: <reason>`), and the pool fails
+the step if that stops being true — which is safe to gate on because load can only inflate a duration.
 
-The `*.integration.spec.ts` suffix is orthogonal to the folders below, which group by area. It now
-records a cost rather than a mechanism, so renaming a spec is how it changes half.
+The `*.integration.spec.ts` suffix is orthogonal to the folders below, which group by area. It is a
+decision rather than a mechanism, so renaming a spec is how it changes half.
 
 The root `test:unit` runs the fast half last, being the slowest of the unit suites; CI and the pre-merge
 chain run both halves (`.github/workflows/ci.yml`), after `packages:build`. The `published-*` specs read what `packages:build` wrote, so the suite's `pretest` (`scripts/ensure-packages-built.ts`, the command over `@abuddy/host/build/packages-built`) runs that build itself when anything it read has changed, and skips it otherwise. Freshness is a success stamp, not a timestamp: each build unit records a content fingerprint of its inputs (its own sources, `@abuddy/host`, the bundler script, the manifests and tsconfigs) under `node_modules/.cache/abuddy-packages-build/`, written only when the build returns, so an interrupted or failed build reads as not built rather than as fresh. A run that bypasses `pretest` (`npx vitest` directly) still refuses to test stale output, naming the workspace and why.

@@ -14,7 +14,8 @@
  * does not know about: the pool steps declare `forceArgs` so the flag arrives.
  */
 import { execFileSync } from 'node:child_process';
-import { diffableStamp, firstChange, freshnessSweep, stampRecord } from '@abuddy/host/build/packages-built';
+import * as path from 'node:path';
+import { diffableStamp, firstChange, freshnessSweep, REPO_ROOT, stampRecord } from '@abuddy/host/build/packages-built';
 import type { UnitSuite } from './lib/unit-suites.ts';
 import { POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool } from './lib/unit-pool.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
@@ -22,6 +23,8 @@ import { POOL_SECONDS } from './lib/chain-steps.ts';
 import { MEASURED_ON } from './lib/core-budget.ts';
 import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
+import { asDuration, fileDurations, markedSpecs, placementOf, pruneDurationCache, slowestFiles, tailBar, writeDurations } from './lib/spec-durations.ts';
+import { HALVES } from './lib/spec-halves.ts';
 
 exitOnEpipe();
 
@@ -52,6 +55,60 @@ function decide(suites: readonly UnitSuite[], pool: Pool, all: boolean): Array<{
   });
 }
 
+/**
+ * What the run that just finished says about its own files: a ranking, and whether every `@slow:` marker
+ * in it is still true.
+ *
+ * Over the output the run already produced, so it adds a parse and no work. The ranking is what vitest
+ * does not give — it prints every file's time, in the order the files finished — and the gate is the one
+ * question a marker makes checkable.
+ *
+ * **It throws from inside the stamped thunk.** A gate that reported after the stamps were written would be
+ * green on the next run having never re-asked, which is the defect `DIAGNOSTIC_RUN_ENV` exists for.
+ */
+function reportDurations(kind: Pool, covered: readonly UnitSuite[], output: string): void {
+  const rows = fileDurations(output, covered, REPO_ROOT);
+  // A run whose projects were all cached reports no files, and a ranking of nothing is not a finding
+  if (rows.length === 0) return;
+  // Written whether or not this run may record a verdict. A duration is a measurement, true whoever asked
+  // for it — the same reason `recordRun` suppresses a stamp and `ensurePackagesBuilt` does not suppress a
+  // build. What reads it is `spec:dry`, which prices a plan and gates nothing.
+  writeDurations(REPO_ROOT, rows);
+
+  const marked = new Map(covered.map((suite) => [suite.dir, markedSpecs(path.join(REPO_ROOT, 'packages', suite.dir))]));
+  const placement = placementOf(rows, marked);
+  // Only the ones `placementOf` found in the tail, not every ranked file without a marker: a run of one
+  // small project has a slowest five like any other, and annotating those read as five findings about a
+  // suite whose slowest file takes 100ms
+  const missing = new Set(placement.unmarked.map((row) => `${row.dir}/${row.file}`));
+
+  for (const half of HALVES) {
+    const ranked = slowestFiles(rows, half);
+    if (ranked.length === 0) continue;
+    const bar = tailBar(rows, half)!;
+    console.log(`${kind} pool: the ${half} half's slowest files, of ${rows.filter((row) => row.half === half).length} measured (p90 ${asDuration(bar)})`);
+    const width = Math.max(...ranked.map((row) => `${row.dir}/${row.file}`.length));
+    for (const row of ranked) {
+      const named = `${row.dir}/${row.file}`;
+      const note = marked.get(row.dir)?.get(row.file) ?? (missing.has(named) ? 'no @slow: marker' : '');
+      console.log(`  ${asDuration(row.ms).padStart(7)}  ${note === '' ? named : `${named.padEnd(width)}  ${note}`}`);
+    }
+  }
+  for (const { half, files } of placement.unplaceable) {
+    console.log(`${kind} pool: no marker checked in the ${half} half — ${files} file(s) is too few for a tail, so its p90 is its slowest`);
+  }
+  if (placement.stale.length > 0) {
+    const lines = placement.stale.map(({ dir, file, ms, bar, reason }) =>
+      `  ${dir}/${file} ran in ${asDuration(ms)}, inside its half's ${asDuration(bar)} p90 — "${reason}"`);
+    throw new Error([
+      `${placement.stale.length} spec(s) carry a @slow: marker and are no longer in their half's slow tail:`,
+      ...lines,
+      'Drop the marker, or replace it with what makes the spec slow now. Load can only inflate a duration,',
+      'never shorten one, so a marked spec reading fast is a fact about the spec rather than about the machine.',
+    ].join('\n'));
+  }
+}
+
 async function main(): Promise<void> {
   // Refused rather than defaulted. With two pools a typo ran the host pool, which at least ran something;
   // with three it would report a pool green having run another one's projects, and the stamps would agree.
@@ -64,6 +121,7 @@ async function main(): Promise<void> {
   // quietly collects 162 fewer tests. It is a stat and a return when nothing is stale.
   execFileSync('npm', ['run', 'packages:ensure'], { stdio: 'inherit' });
   prunePoolStamps();
+  pruneDurationCache(REPO_ROOT);
   const { half, suites: suitesOf, run } = POOLS[kind];
   const suites = suitesOf();
   const all = process.argv.includes('--all');
@@ -128,6 +186,7 @@ async function main(): Promise<void> {
         if (absent.length > 0) {
           throw new Error(`${kind} pool asked vitest for ${covered.length} projects and ${absent.join(', ')} never reported — a --project filter matched nothing, so their names and vitest's project names have diverged`);
         }
+        reportDurations(kind, covered, output);
       },
     );
   }

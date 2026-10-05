@@ -51,8 +51,8 @@
 // coverage of a file a spec could cover (`Run.claimsCoverageOf`): a whole-suite run, a `-t` filter that matched
 // no case, and a `.md` target all report zero correctly.
 //
-// **Two flags of its own.** `npm run spec:dry` answers "what would this run, and what does the record say it
-// costs" without running any of it. It collects — ~1.6s whatever comes back — which the ordinary run never
+// **Two flags of its own.** `npm run spec:dry` answers "what would this run, and what did the last run on
+// this machine measure it at" without running any of it. It collects — ~1.6s whatever comes back — which the ordinary run never
 // does: the collector and the pricing load behind `await import`, and repo-checks asserts that from this
 // file's source. And `--no-bail` reports every failure in the plan rather than stopping at the first, for
 // when you want the whole picture in one run; bailing is the default because a 1s failure otherwise pays for
@@ -133,17 +133,22 @@ function counted(run: Run, index: number): { args: string[]; env: NodeJS.Process
 }
 
 /**
- * What the plan would run and what the record says it costs, collecting rather than running.
+ * What the plan would run, and what the last run on this machine measured it at, collecting rather than
+ * running.
  *
  * Collection is flat in the size of the answer — 1.6s for 0 specs and 1.6s for 150, measured, because it is
  * the eleven project configs being loaded rather than a graph being walked. Worth it against a 20s root run
  * and not against a 3s one, which is why it is its own command rather than something the ordinary run pays.
  */
 if (dry) {
-  const { collectFor, checkedSpecs, specsOfSuites, needsAppForRun } = await import('./lib/spec-dry.ts');
+  const { collectFor, checkedSpecs, specsOfSuites, needsAppForRun, pricedSpecs } = await import('./lib/spec-dry.ts');
+  const { asDuration } = await import('./lib/spec-durations.ts');
   // Each distinct note once, as the run itself says them: two targets in one package carry the same sentence
-  const predicted = new Set<string>();
+  const said = new Set<string>();
   let listed = 0;
+  let measured = 0;
+  let unpriced = 0;
+  let oldest: string | undefined;
 
   for (const run of runs) {
     console.log(`\n→ ${run.label}${needsAppForRun(run, ROOT) === true ? '  [needs the app]' : ''}`);
@@ -160,19 +165,28 @@ if (dry) {
     }
     listed += specs.length;
     for (const spec of specs) console.log(`   ${spec}`);
-    console.log(`   ${specs.length} spec${specs.length === 1 ? '' : 's'}`);
-    for (const note of run.notes ?? []) if (!predicted.has(note)) { console.log(`   ${note}`); predicted.add(note); }
+    const price = pricedSpecs(specs, ROOT);
+    measured += price.ms;
+    unpriced += price.unpriced.length;
+    if (price.measuredAt !== undefined && (oldest === undefined || price.measuredAt < oldest)) oldest = price.measuredAt;
+    console.log(`   ${specs.length} spec${specs.length === 1 ? '' : 's'}${price.priced === 0 ? '' : `, ${asDuration(price.ms)} of file time`}`);
+    // Named rather than counted free, which is the whole difference between a partial total and a wrong one
+    if (price.unpriced.length > 0) {
+      console.log(`   ${price.unpriced.length} not measured on this machine yet: ${price.unpriced.slice(0, 3).join(', ')}${price.unpriced.length > 3 ? `, and ${price.unpriced.length - 3} more` : ''}`);
+    }
+    for (const note of run.notes ?? []) if (!said.has(note)) { console.log(`   ${note}`); said.add(note); }
     if (run.beyond !== undefined) {
       console.log(`   not in this answer: ${run.beyond.covers} — ${run.beyond.how}`);
     }
   }
 
-  // **No time here, and that is an answer rather than a gap.** This printed a total summed from
-  // `spec-cost.json`, which is gone: the record held a millisecond per spec, and a spec reads 2.8s in the
-  // fast pool against 0.64s in the integration one, so there was never one number to store. What the command
-  // is for is which specs a change reaches, and that needs no sample. Vitest prints the real durations when
-  // the run happens.
-  console.log(`\n${listed} spec${listed === 1 ? '' : 's'} across ${runs.length} run${runs.length === 1 ? '' : 's'}.`);
+  // **File time summed across workers, never a wall estimate** — measured on one target three days apart,
+  // the ratio between the two was 1.55:1 and 2.18:1, so a wall figure here would be wrong by more than it
+  // is worth. And it is the last run on this machine rather than a record: nothing is committed, so there
+  // is no number to go stale and a clone that has run nothing says so instead of guessing.
+  const where = oldest === undefined ? 'nothing measured on this machine yet' : `${asDuration(measured)} of file time, measured here ${oldest.slice(0, 16).replace('T', ' ')}`;
+  console.log(`\n${listed} spec${listed === 1 ? '' : 's'} across ${runs.length} run${runs.length === 1 ? '' : 's'}; ${where}${unpriced === 0 ? '' : ` (${unpriced} unmeasured)`}.`);
+  if (oldest !== undefined) console.log('File time, not wall: a pool runs it across workers. Run the unit pools to refresh it.');
   process.exit(0);
 }
 

@@ -82,7 +82,12 @@ band, two idle floors and a machine identity, all to stabilise a number that tur
 number: a spec reads 2.8s in the fast pool and 0.64s in the integration pool, so each half's reading demanded
 a move the other took back. [`scripts/lib/spec-halves.ts`](../../scripts/lib/spec-halves.ts) is what
 survived, and it measures nothing. Slowness is visible instead of adjudicated: vitest prints any test over
-its 300ms threshold under its file, and the chain prints each step's five slowest.
+its 300ms threshold under its file, the chain prints each step's five slowest tests, and each unit pool
+ranks its five slowest *files* per half from the run that just measured them
+([`scripts/lib/spec-durations.ts`](../../scripts/lib/spec-durations.ts)). A spec whose header carries
+`// @slow: <reason>` is held to still being in its half's slow tail — the one direction load cannot
+fabricate, since it inflates a duration and never shortens one — and the same cache is what
+`npm run spec:dry` prices a plan from, per machine and uncommitted.
 
 ## Categories
 

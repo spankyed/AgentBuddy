@@ -192,9 +192,17 @@ quantity was never one number, and no amount of hysteresis fixes that.
 
 So the half is a decision now, declared by a filename, and nothing re-derives it
 (`scripts/lib/spec-halves.ts`). Slowness is reported where it happens rather than adjudicated against a
-record: vitest prints any test over its 300ms `slowTestThreshold` under its file, and the chain prints each
-step's five slowest (`slow-tests.ts`). **The lesson for a future sample: price the apparatus against the
-decision it informs.** 1,884 lines, twelve records, two idle floors and a machine identity decided which of
+record, in three places: vitest prints any test over its 300ms `slowTestThreshold` under its file, the
+chain prints each step's five slowest tests (`slow-tests.ts`), and each unit pool prints its five slowest
+*files* per half, ranked, which is the one thing vitest's output does not give
+(`scripts/lib/spec-durations.ts`). A spec may say in its header why it is slow — `// @slow: <reason>` — and
+the pool holds that marker to still being true: a marked spec that is no longer in its half's slow tail
+fails the step, quoting the reason, so the remedy is to drop the marker. **Only that direction is a gate.**
+Load inflates a duration — 1.27x median, 3.29x at worst — so it can hide a stale marker and cannot invent
+one; an *unmarked* spec that reads slow is therefore reported and never failed. The bar is the half's p90
+from the same run, so a slow run moves the file and the bar together, which is what a fixed millisecond
+could not do: measured, it left two of the five markers 13% clear of a 2,500ms edge and 5.2x clear of this
+one. **The lesson for a future sample: price the apparatus against the decision it informs.** 1,884 lines, twelve records, two idle floors and a machine identity decided which of
 two config files a spec was listed in, where nine of twelve packages had only one config to begin with.
 
 **The chain's `seconds` table is the sample-shaped thing that remains**, and it is a different case: its
@@ -288,7 +296,8 @@ Six rules that pay for themselves:
   files, nine of them a whole package, reported green having checked nothing); **a distinct exit code**, where
   "nothing covered this" and "everything covering it passed" are different answers a script has to tell apart
   (`npm run spec`'s 3); **a named bucket beside the total**, where some of the input was unpriceable and only
-  part of it is anyone's to fix (`priceSpecs`' `unpriced` and `outside`, `scripts/lib/spec-dry.ts`); and **a
+  part of it is anyone's to fix (`pricedSpecs`' `unpriced`, `scripts/lib/spec-dry.ts`, which names the specs
+  no run on this machine has measured rather than summing them as free); and **a
   clause on the success line**, where the work happened but one claim in the sentence did not hold
   (the chain's own `(N of M cached)`, and `spec-cost:check`'s *"placement unchecked for 1 of 12"* before it
   was deleted). A skipped test takes its reason in the name instead, so a run that covers less says why
@@ -444,15 +453,19 @@ npm run spec             # The specs your uncommitted changes affect, wherever t
                          # run that did nothing were the same answer until it existed. Only a route that
                          # promised coverage earns it — a whole-suite run, a `-t` matching no case and a
                          # doc target all report zero correctly and exit 0
-npm run spec:dry [...]   # What the plan would run and what the record says it costs, running nothing.
-                         # Takes every argument spec does; ~1.6s whatever comes back, since it is the
-                         # project configs loading rather than a graph being walked. It prints **file-time
-                         # summed across workers, never a wall estimate** — the ratio between the two was
-                         # 1.55:1 and 2.18:1 on one target three days apart. It prints the record's
-                         # `measuredAt` too: a cost is the median of a window of readings rather than the
-                         # last one taken, so the total is a band and not a figure, and a spec the record has
-                         # never seen is named rather than counted free. The ordinary `npm run spec` collects
-                         # nothing
+npm run spec:dry [...]   # What the plan would run, and what the last run on this machine measured it at,
+                         # running nothing. Takes every argument spec does; ~1.6s whatever comes back, since
+                         # it is the project configs loading rather than a graph being walked. It prints
+                         # **file time summed across workers, never a wall estimate** — the ratio between
+                         # the two was 1.55:1 and 2.18:1 on one target three days apart — and when that run
+                         # was, since that is how stale the answer is.
+                         # **There is no record behind this and nothing to re-record.** It reads a cache the
+                         # unit pools write (`node_modules/.cache/abuddy-spec-durations`, keyed by suite and
+                         # half), so nothing is committed, nothing can describe another machine, and a spec
+                         # no run here has measured is named rather than counted free. A fresh clone prices
+                         # nothing and says so. It replaced `spec-cost.json`, which held a millisecond per
+                         # spec in git and needed a window, a band and two idle floors to be comparable at
+                         # all. The ordinary `npm run spec` collects nothing
 npm run spec:full [...]  # The same, plus the two answers the module graph cannot give: the pack suites a
                          # rebuilt dist would reach, and the integration halves behind a second config.
                          # Costs a build when one is stale (14s), the pack suite (18s) and the pooled

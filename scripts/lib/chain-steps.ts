@@ -552,8 +552,10 @@ const BOUNDED_RUNNER = ['scripts/bounded.ts', 'scripts/lib/bounded-spawn.ts'];
  *
  * These decide what runs and how: the runner picks which projects a pool runs, `unit-suites.ts` says which
  * pool a suite is even in, `with-source.mjs` supplies the `@abuddy/source` condition the host suites
- * resolve under, and the bounded runner bounds the spawn. A pass recorded before one of them changed is not
- * evidence about the pass after it, so a project whose runner moved is stale.
+ * resolve under, the bounded runner bounds the spawn, and `spec-durations.ts` and `spec-halves.ts` decide
+ * what the run then *accepts* — a `@slow:` marker that is no longer true fails the step, so they are as
+ * much a part of the verdict as the runner is. A pass recorded before one of them changed is not evidence
+ * about the pass after it, so a project whose runner moved is stale.
  *
  * **They used to be declared on the pool step and on no project, which is the defect this fixes.** The step
  * went stale, ran, asked each project and found them all fresh, printed "all N project(s) up to date" and
@@ -563,7 +565,8 @@ const BOUNDED_RUNNER = ['scripts/bounded.ts', 'scripts/lib/bounded-spawn.ts'];
  * ran in neither.
  */
 const SUITE_RUNNER = ['scripts/test-unit-pool.ts', 'scripts/lib/unit-pool.ts', 'scripts/lib/unit-suites.ts',
-  'scripts/lib/exit-on-epipe.ts', 'scripts/with-source.mjs', ...BOUNDED_RUNNER];
+  'scripts/lib/exit-on-epipe.ts', 'scripts/with-source.mjs', 'scripts/lib/spec-durations.ts',
+  'scripts/lib/spec-halves.ts', ...BOUNDED_RUNNER];
 /**
  * What `compile` writes. `src/__generated__` is under the `src` it also reads, so it has to be declared:
  * `fingerprintUnit` excludes a unit's own output from its own fingerprint, and that is what stops the step
