@@ -96,6 +96,20 @@ describe('on the bound bus', () => {
     expect(printed).toHaveBeenCalledTimes(1);
   });
 
+  /**
+   * The case that used to throw from inside the logger.
+   *
+   * `JSON.stringify` refuses a BigInt and the meta pass had no branch for one, so logging a query row threw —
+   * on data this app's own database returns, which is the reason the socket has an encoder for them at all.
+   */
+  it('logs a BigInt as its digits rather than throwing', () => {
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    const { logs } = onBus(() => createLogger('memos').info('a row', { id: 'Note-1', count: 9007199254740993n }));
+
+    expect(logs[0].meta).toEqual({ id: 'Note-1', count: '9007199254740993' });
+  });
+
   it("gives an error entry without an error the stack where it was logged", () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const { logs } = onBus(() => createLogger('memos').error('no error given'));

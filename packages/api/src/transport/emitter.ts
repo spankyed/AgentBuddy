@@ -1,13 +1,28 @@
 import { EventEmitter } from 'events';
 import { appendCappedLine } from '@abuddy/host/logs';
+import { jsonSafeEncoder } from '@/transport/encoder';
 import type { Message } from '@abuddy/sdk/events';
 import type { LogEvent } from '@abuddy/sdk/logger';
 import type { RootEvents } from '@abuddy/sdk/runtime';
 
+/**
+ * Writes one log event to `app-events.log`, and cannot fail the call that logged it.
+ *
+ * That matters more than it looks: this runs before `emitLog`'s own `emit`, so a throw here costs three things
+ * at once — the line, the event reaching the console printer and the logs system, and the caller, which gets
+ * the throw. A BigInt was enough to do it, `reportError`'s step path handing this `redactSecrets` output, which
+ * passes one through untouched, and a bare `JSON.stringify` refusing it.
+ *
+ * Neither half needs a guard here, and a third one would only imply these two do not work: serialising is the
+ * socket's own encoder, which never throws, and writing is `appendCappedLine`, which swallows every write error
+ * on the same reasoning. Encoding through `jsonSafeEncoder` also means a log line describes a BigInt or a loop
+ * the way the wire does. It reports a cut through this same logger, which is one level of reentrancy and
+ * terminates: that report's meta is an id and a reason, which its fast path takes.
+ */
 function appendAppEventLog(event: LogEvent) {
   const logDir = process.env.AGENTBUDDY_LOG_DIR;
   if (!logDir) return;
-  appendCappedLine(logDir, 'app-events.log', JSON.stringify({
+  appendCappedLine(logDir, 'app-events.log', jsonSafeEncoder.encode({
     timestamp: new Date().toISOString(),
     startupId: process.env.AGENTBUDDY_STARTUP_ID,
     ...event,

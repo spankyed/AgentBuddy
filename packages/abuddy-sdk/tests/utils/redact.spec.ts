@@ -52,6 +52,20 @@ describe('redactSecrets', () => {
     });
   });
 
+  /**
+   * A BigInt is passed through as one, and that is the boundary rather than an oversight.
+   *
+   * This pass redacts; it is not the pass that makes a value JSON can hold. Whoever stringifies afterwards owns
+   * that, and each of them does: the logger's meta pass writes the digits, and the app's log appender and
+   * socket encode through `jsonSafeEncoder`. Pinned so that nobody reading a downstream `JSON.stringify`
+   * failure moves the fix in here, where it would silently change a number's type for every caller.
+   */
+  it('leaves a BigInt as a BigInt, redaction not being a JSON pass', () => {
+    const redacted = redactSecrets({ count: 9007199254740993n, apiKey: 'sk-abcdefghij1234567890' });
+    expect(redacted).toEqual({ count: 9007199254740993n, apiKey: REDACTED });
+    expect(typeof (redacted as { count: unknown }).count).toBe('bigint');
+  });
+
   it('replaces values nested past 50 levels with a marker instead of overflowing the stack', () => {
     const root: Record<string, unknown> = {};
     let node = root;
