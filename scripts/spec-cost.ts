@@ -40,11 +40,13 @@
  */
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { idleNow, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { isMeasuredMachine, machineText, thisMachine, type Machine } from './lib/core-budget.ts';
 import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
+import { POOLS, type Pool } from './lib/unit-pool.ts';
 import {
   CONTENTION_RATIO_MAX, COST_ACCURACY, FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, describeBudget,
   halfOfPath, hasSplit, ratiosFromMoves, underBound,
@@ -57,55 +59,118 @@ import {
   suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
 
-// eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
-const ANSI = /\u001B\[[0-9;]*m/g;
-/**
- * A file's own line in vitest's default reporter: the whole file's time, which is what a half is sized by.
- * The optional `|project|` is what a pooled run prefixes; a per-package run has none, and this reads both.
- */
-const FILE_LINE = /^\s*[✓×↓❯]\s+(?:\|[^|]*\|\s+)?(\S+\.(?:spec|test)\.ts)\s+\(([^)]*)\)(?:\s+([\d.]+)(ms|s)\b)?/;
-
 const packageDir = (suite: UnitSuite): string => path.join(REPO_ROOT, 'packages', suite.dir);
 
 interface Measured { costs: Record<string, number>; skipped: string[] }
 
-function measure(suite: UnitSuite, config: string): Measured {
-  const dir = packageDir(suite);
-  const result = spawnSync('npx', ['vitest', 'run', '--config', config], { cwd: dir, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
-  const out = `${result.stdout ?? ''}${result.stderr ?? ''}`.replace(ANSI, '');
+/** A file's entry in vitest's JSON reporter. `duration` is not a field — it is `endTime - startTime`. */
+interface ReportedFile {
+  readonly name: string;
+  readonly status: string;
+  readonly startTime: number;
+  readonly endTime: number;
+  readonly assertionResults?: readonly { readonly status: string }[];
+}
 
-  // A cost measured from a failing run is not a cost — with one exception, the guard that reads the record
-  // this command is replacing. While the record is stale it fails, and skipping it instead would leave it
-  // with no measured cost at all, so it runs, fails, and is measured like everything else.
-  if (result.status !== 0) {
-    const failed = [...out.matchAll(/^\s*FAIL\s+(?:\|[^|]*\|\s+)?(\S+\.(?:spec|test)\.ts)/gm)].map((m) => m[1]);
-    const others = failed.filter((file) => file !== PLACEMENT_GUARD);
-    if (others.length > 0 || failed.length === 0) {
-      throw new Error(`vitest failed for ${suite.workspace} ${config}; a cost measured from a failing run is not a cost.\n${out.slice(-4000)}`);
+/** The statuses a test carries when it ran. Anything else is a skip, a todo or pending. */
+const RAN = new Set(['passed', 'failed']);
+
+/**
+ * A spec's cost, measured by **the pool that actually runs it**.
+ *
+ * This used to run one `npx vitest` per package, which measured eleven of the twelve suites in an
+ * environment they never run in: the host suites share one pooled vitest across eleven projects and the
+ * integration halves share another, so a spec measured alone competes with nothing. Only the pack pool,
+ * which invokes `npm test -w` per suite, was measured where it runs.
+ *
+ * The cost of that was not theoretical. Measured 2026-10-05 over three runs,
+ * `abuddy-cli/tests/commands/run-install.spec.ts` was recorded at 1317ms and read 3106-3297ms pooled —
+ * over `INTEGRATION_ABOVE_MS`, in a package that has an integration half to move it to — and the audit
+ * passed on the recorded number. `chain-inputs` reading 1688ms beside its siblings and 963ms alone was
+ * already in this file's own comments as the reason a spec must be measured with its config; the pool is
+ * the same argument one level out.
+ *
+ * So the measurement goes through `POOLS` (`scripts/lib/unit-pool.ts`), which is where how-a-pool-runs is
+ * declared once and which `test-unit-pool.ts` uses to run them. There is no second description of a pool
+ * here to drift from that one: the command this spawns is the command the suite runs under.
+ *
+ * Attribution is by absolute path from the JSON reporter rather than by parsing the human one. The default
+ * reporter prefixes `|project|` in a pooled run and nothing in a per-package run, so reading it meant
+ * handling both and tracking npm's banner lines to know which suite a prefix-less line belonged to; a path
+ * says which package it is. The human reporter is still asked for, so what a developer sees is unchanged.
+ */
+function measurePools(plans: readonly SuitePlan[]): Map<string, Measured> {
+  const byDir = new Map<string, Measured>();
+  const entry = (dir: string): Measured => {
+    const found = byDir.get(dir) ?? { costs: {}, skipped: [] };
+    byDir.set(dir, found);
+    return found;
+  };
+
+  for (const kind of Object.keys(POOLS) as Pool[]) {
+    const pool = POOLS[kind];
+    const config = CONFIG_BY_HALF[pool.half];
+    const mine = new Set(pool.suites().map((suite) => suite.dir));
+    const wanted = plans.filter((plan) => mine.has(plan.suite.dir) && plan.configs.includes(config));
+    if (wanted.length === 0) continue;
+
+    // **The pool runs whole, even when one suite asked for it.** Handing it only the stale projects would
+    // measure them alone again, which is the defect this function exists to fix — a project competes with
+    // the ten beside it or the number is not the one the suite runs at. The readings for suites that asked
+    // for nothing are discarded by the caller, which settles only the plans it had work for.
+    //
+    // So a one-spec update costs a pool run (tens of seconds) where it used to cost a package run (a few).
+    // That is the price of a faithful number, and it is paid by a command that is run rarely and whose
+    // whole output is a measurement.
+    for (const { suites, command, args } of pool.run(pool.suites())) {
+      const out = path.join(os.tmpdir(), `abuddy-spec-cost-${process.pid}-${kind}-${suites[0]!.dir}.json`);
+      // Both reporters: the JSON is what this reads and the default is what the caller watches. `npm` needs
+      // `--` before flags meant for the script it runs; the other pools spawn vitest directly.
+      const extra = ['--reporter=default', '--reporter=json', `--outputFile=${out}`];
+      const result = spawnSync(command, command === 'npm' ? [...args, '--', ...extra] : [...args, ...extra],
+        { cwd: REPO_ROOT, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+      const shown = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+      const named = suites.map((suite) => suite.workspace).join(', ');
+      if (!fs.existsSync(out)) {
+        throw new Error(`the ${kind} pool wrote no report for ${named}; a cost cannot be read from it.\n${shown.slice(-4000)}`);
+      }
+      const reported = (JSON.parse(fs.readFileSync(out, 'utf-8')) as { testResults?: readonly ReportedFile[] }).testResults ?? [];
+      fs.rmSync(out, { force: true });
+
+      const partial: string[] = [];
+      const failed: string[] = [];
+      for (const file of reported) {
+        const within = /^packages[/\\]([^/\\]+)[/\\](.+)$/.exec(path.relative(REPO_ROOT, file.name));
+        if (within === null) continue;
+        const [, dir, spec] = within as unknown as [string, string, string];
+        const found = entry(dir);
+        const statuses = new Set((file.assertionResults ?? []).map((test) => test.status));
+        if (file.status === 'failed') failed.push(spec);
+        if (![...statuses].some((status) => RAN.has(status))) {
+          // No test in it ran, so vitest reports no useful time: the same case the default reporter showed
+          // by printing a file line with no duration at all
+          found.skipped.push(spec);
+          continue;
+        }
+        found.costs[spec] = Math.round(file.endTime - file.startTime);
+        // A file that ran some of its tests and skipped the rest has a cost that understates it, which is
+        // worse than having none — it would be placed on a number that is not what the file does.
+        if ([...statuses].some((status) => !RAN.has(status))) partial.push(`${dir}/${spec}`);
+      }
+
+      // A cost measured from a failing run is not a cost — with one exception, the guard that reads the
+      // record this command is replacing. While the record is stale it fails, and skipping it instead would
+      // leave it with no measured cost at all, so it runs, fails, and is measured like everything else.
+      if (result.status !== 0 && failed.filter((spec) => spec !== PLACEMENT_GUARD).length > 0) {
+        throw new Error(`the ${kind} pool failed for ${named}; a cost measured from a failing run is not a cost.\n${shown.slice(-4000)}`);
+      }
+      if (partial.length > 0) {
+        throw new Error(`the ${kind} pool skipped some tests in ${partial.join(', ')}; that file's cost understates `
+          + 'it. Fix the skip, then re-measure.');
+      }
     }
   }
-
-  const costs: Record<string, number> = {};
-  const skipped: string[] = [];
-  const partial: string[] = [];
-  for (const raw of out.split('\n')) {
-    const match = FILE_LINE.exec(raw);
-    if (!match) continue;
-    const [, file, counts, value, unit] = match;
-    if (value === undefined) {
-      // No duration at all: vitest prints none for a file where every test was skipped
-      skipped.push(file);
-      continue;
-    }
-    costs[file] = unit === 's' ? Math.round(Number(value) * 1000) : Number(value);
-    // A file that ran some of its tests and skipped the rest has a cost that understates it, which is worse
-    // than having none — it would be placed on a number that is not what the file does.
-    if (/skipped/.test(counts)) partial.push(file);
-  }
-  if (partial.length > 0) {
-    throw new Error(`${suite.workspace} ${config} skipped some tests in ${partial.join(', ')}; that file's cost understates it. Fix the skip, then re-measure.`);
-  }
-  return { costs, skipped };
+  return byDir;
 }
 
 /** A suite's plan, with the suite it is for. `planFor` decides the plan; this carries what prints it. */
@@ -211,6 +276,11 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     if (ensured.status !== 0) throw new Error(`packages:ensure failed:\n${ensured.stdout}${ensured.stderr}`);
   }
 
+  // Measured here rather than inside the loop below, because a pool runs its suites *together* and that is
+  // the whole point of `measurePools`: one run per pool, not one per suite. The loop then settles each
+  // suite from what its pool read.
+  const pooled = measuring.length > 0 && busy === undefined ? measurePools(measuring) : new Map<string, Measured>();
+
   for (const plan of work) {
     const { suite } = plan;
     const dir = packageDir(suite);
@@ -257,8 +327,8 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     // Only the specs the chosen configs actually run. Every guard below is scoped to these: over the whole
     // suite they would each fire on a file this run never claimed to measure.
     const measuredFiles = files.filter((file) => plan.configs.includes(CONFIG_BY_HALF[halfOfPath(file)]));
-    const runs = plan.configs.map((config) => measure(suite, config));
-    const costs = Object.assign({}, ...runs.map((run) => run.costs)) as Record<string, number>;
+    const read = pooled.get(suite.dir) ?? { costs: {}, skipped: [] };
+    const costs = read.costs;
 
     // **No body-drift report here, and that is a decision rather than an omission.** `bodyDrift` asks
     // whether a suite's total moved further than idle runs vary, on the premise that jitter cancels in a
@@ -272,7 +342,7 @@ function update(plans: readonly SuitePlan[], dry: boolean): void {
     // its threshold was measured on. Re-adding it here needs a detector that tells one spec from the body.
     const forgetWindows = forgetsWindows({ all, forget });
     const { record, added, moved, appended, dropped } = settle({
-      previous, costs, skipped: [...new Set(runs.flatMap((run) => run.skipped))], measuredFiles,
+      previous, costs, skipped: [...new Set(read.skipped)], measuredFiles,
       prune: plan.prune, forgetWindows, adopt,
     });
 
