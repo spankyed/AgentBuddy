@@ -194,35 +194,35 @@ describe('slash commands from the library commands folder', () => {
   })
 
   // A pack registers when it's installed or enabled, and unregisters when it's disabled or uninstalled; the
-  // host raises PACK_CHANGED once either is complete
+  // bus asks every system to publish once either is complete
   it("sends the chat a pack's declared commands when it registers, and drops them when it goes", async () => {
     const app = await seededApp()
 
     reregisterTeamNotes([{ name: 'team-standup', placeholder: 'Topic' }])
-    await app.send('threads', { type: 'PACK_CHANGED', packId: 'team-notes' })
+    await app.send('threads', { type: 'SEND_STATE' })
     expect(commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))).toContain('team-standup')
 
     reregisterTeamNotes()
-    await app.send('threads', { type: 'PACK_CHANGED', packId: 'team-notes' })
+    await app.send('threads', { type: 'SEND_STATE' })
     const afterUnregister = commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))
     expect(afterUnregister).not.toContain('team-standup')
     expect(afterUnregister).toContain('pr2md')
   })
 
-  // The bus raises PACK_CHANGED when a pack is installed, updated or rebuilt while the app runs
+  // The bus asks every system to publish when a pack is installed, updated or rebuilt while the app runs
   it('sends the chat the commands a pack seeded while the app runs brings', async () => {
     const app = await seededApp()
     importCompiledSeeds({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
 
-    await app.send('threads', { type: 'PACK_CHANGED', packId: 'team-notes' })
+    await app.send('threads', { type: 'SEND_STATE' })
 
     expect(commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))).toContain('team-standup')
   })
 
-  it("sends nothing when a pack changes without altering the commands", async () => {
+  it("sends nothing when asked to publish without the commands having altered", async () => {
     const app = await seededApp()
 
-    await app.send('threads', { type: 'PACK_CHANGED', packId: 'team-notes' })
+    await app.send('threads', { type: 'SEND_STATE' })
     await app.settle()
 
     expect(app.emitted('threads').filter((event) => event.type === 'COMMANDS_UPDATED')).toEqual([])

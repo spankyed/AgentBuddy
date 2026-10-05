@@ -52,7 +52,7 @@ const appliedPluginSettings = (): Record<string, unknown> => ({ ...services.sett
  * settings page for a read before it renders, so dropping either leaves the user waiting for good.
  */
 const whileBusy = (reason: string) => ({
-  CLIENT_CONNECTED: { actions: 'sendSettingsStartupData' as const },
+  SEND_STATE: { actions: 'sendSettingsStartupData' as const },
   GET_SETTINGS: { actions: 'getSettings' as const },
   UPDATE_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
   REPLACE_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
@@ -216,7 +216,7 @@ export const settingsSystem = setup({
   states: {
     idle: {
       on: {
-        CLIENT_CONNECTED: {
+        SEND_STATE: {
           actions: 'sendSettingsStartupData',
         },
         GET_SETTINGS: {
@@ -226,6 +226,10 @@ export const settingsSystem = setup({
         SETTINGS_WRITTEN: { actions: 'tellChangedFeatures' },
         // A pack registered or left: its defaults came or went
         PACK_SETTINGS_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
+        // Still a fact handler, and `sendSettingsUpdate` is why: this plugin takes `SETTINGS_LOADED` only
+        // while it is loading and `SETTINGS_UPDATED` once ready, so what publishing means here depends on
+        // the receiver's state. The ask covers the first; this covers the second, with the help entries a
+        // pack brought and the features whose defaults came or went
         PACK_CHANGED: { actions: ['sendSettingsUpdate', 'sendHelp', 'tellChangedFeatures'] },
         DATA_REPLACING: { target: 'replacingData' },
         UPDATE_SETTINGS: {

@@ -344,7 +344,7 @@ export const systemMachine = setup({
   states: {
     idle: {
       on: {
-        CLIENT_CONNECTED: {
+        SEND_STATE: {
           actions: 'broadcastConnected',
         },
         // Handle settings updates

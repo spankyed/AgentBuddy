@@ -425,8 +425,12 @@ export const brainSystem = setup({
       clientConnected: false,
     }),
     on: {
+      SEND_STATE: {
+        actions: 'sendPluginData',
+      },
+      // Kept as a fact: whether a client is attached is not something publishing can say
       CLIENT_CONNECTED: {
-        actions: ['setClientConnected', 'sendPluginData'],
+        actions: 'setClientConnected',
       },
       REQUEST_PLUGIN_DATA: {
         actions: 'sendPluginData',
@@ -438,8 +442,10 @@ export const brainSystem = setup({
     states: {
       stopped: {
         on: {
-          CLIENT_CONNECTED: {
-            actions: ['setClientConnected', 'refreshStartError', 'sendPluginData', 'reportStartError'],
+          // Stopped, describing itself means working out why it will not start and saying so once. The
+          // root's CLIENT_CONNECTED still runs: only the ask is shadowed here
+          SEND_STATE: {
+            actions: ['refreshStartError', 'sendPluginData', 'reportStartError'],
           },
           START_BRAIN: {
             target: 'running',

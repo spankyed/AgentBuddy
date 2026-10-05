@@ -54,6 +54,15 @@ it('tells an early system each client connection, as the bus tells the others', 
   expect(heard.filter(({ type }) => type === 'CLIENT_CONNECTED').map(({ system }) => system).sort()).toEqual(['journal', 'notes']);
 });
 
+// An early system never reaches the bus machine, so the pair the bus sends every other system — the fact, then
+// the ask — has to be sent to it here too. Without this, every early system silently stopped publishing.
+it('asks an early system to publish, in the same order the bus asks the others', () => {
+  testRootEvents.emitConnected();
+
+  expect(heard.filter(({ system }) => system === 'journal').map(({ type }) => type))
+    .toEqual(['CLIENT_CONNECTED', 'SEND_STATE']);
+});
+
 // The logs system answers each connection with its plugin's startup data. Told before the bus took the connection,
 // the answer reached a bus still dropping sends to plugins, and the first window showed no boot logs.
 it("delivers what an early system sends in answer to the first client connection", () => {

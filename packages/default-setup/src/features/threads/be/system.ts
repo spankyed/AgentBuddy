@@ -884,8 +884,13 @@ export const threadsSystem = setup({
     initial: 'idle',
     context: () => ({}),
     on: {
+      SEND_STATE: {
+        actions: ['sendThreadsConnectedData', 'sendChatConnectedData', 'sendCommands'],
+      },
+      // Kept as a fact: neither is describing what this system holds. `checkOnboarding` starts a flow, and
+      // it is a client arriving that should start it — not a pack changing or the data being replaced
       CLIENT_CONNECTED: {
-        actions: ['sendThreadsConnectedData', 'sendChatConnectedData', 'rememberSentCommands', 'checkOnboarding'],
+        actions: ['rememberSentCommands', 'checkOnboarding'],
       },
       FEATURE_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',
@@ -907,9 +912,6 @@ export const threadsSystem = setup({
         actions: 'startBirthFlowOnceKeyed',
       },
       COMMANDS_CHANGED: {
-        actions: 'sendCommands',
-      },
-      PACK_CHANGED: {
         actions: 'sendCommands',
       },
       THREAD_DELETED: {
