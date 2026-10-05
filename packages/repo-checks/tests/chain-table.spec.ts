@@ -708,11 +708,12 @@ describe("the chain documents the flags it takes", () => {
     expect(entry, 'the entry it is about').toContain('npm run chain ');
     expect(entry.length, 'and not the whole file').toBeLessThan(guide().length / 4);
 
-    // The collision itself, with a real example rather than a banned word: `--suite` is `spec-cost:update`'s
-    // and the chain has no such flag, so the guide holds it and this entry must not. Naming the other command
-    // in prose is fine and this used to forbid it, which tested the wrong thing
-    expect(guide(), "another command's flag, in the file").toContain('--suite <dir>');
+    // The collision itself, with a real example rather than a banned word: `--trials` is `measure`'s and the
+    // chain has no such flag, so the guide holds it and this entry must not. Naming the other command in
+    // prose is fine and this used to forbid it, which tested the wrong thing. It was `spec-cost:update`'s
+    // `--suite` until 2026-10-05, when that command was deleted and took the control with it
+    expect(guide(), "another command's flag, in the file").toContain('--trials N');
     expect(entry, 'and outside the chain\'s entry, so it could never vouch for a chain flag')
-      .not.toContain('--suite');
+      .not.toContain('--trials');
   });
 });

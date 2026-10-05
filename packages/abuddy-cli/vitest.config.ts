@@ -17,7 +17,7 @@ export default defineConfig({
     hookTimeout: 15_000,
     // The fast suite: every spec here runs in-process. The specs that run a real build, an install or
     // another process are `*.integration.spec.ts` and run from `vitest.integration.config.ts`.
-    // `CLAUDE.md` has the rule for choosing; `suite-split.spec.ts` fails a spec in the wrong half.
+    // `CLAUDE.md` has the rule for choosing, which is a judgement rather than a measured threshold.
     include: ['tests/**/*.spec.ts'],
     exclude: ['**/*.integration.spec.ts', '**/node_modules/**'],
   },

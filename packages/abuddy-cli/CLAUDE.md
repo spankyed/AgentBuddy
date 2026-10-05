@@ -110,22 +110,21 @@ moved to `@app/repo-checks`, which is where a spec that reads `scripts/` belongs
 can reach one from a change to what it checks. `repo-check-boundary.spec.ts` there keeps them from coming
 back.
 
-**The rule for choosing is the measured cost, recorded in `etc/spec-cost.json`.** A fast spec moves to the
-integration half above **2.5s**; an integration spec comes back below **1.5s**; anything between stays where
-it is. `npm run spec-cost:update` records what the check reports, and naming a spec
-(`npm run spec-cost:update -- packages/abuddy-cli/tests/<file>.spec.ts`) measures only the half that spec
-lives in — 15.0s of fast specs here, against 167.9s of integration ones. Run it with nothing else on the
-machine: a cost is a sample, and a contended run is refused rather than recorded. `repo-checks`'
-`suite-split.spec.ts` fails when a spec is in the wrong half, has no recorded cost, or is recorded and
-gone. The check reads the record and runs nothing, because re-measuring to decide placement would make
-the cheap half expensive.
+**Which half a spec is in is a decision, declared by its filename**, and nothing re-derives it. What the
+integration half buys is a 60s per-test budget instead of 15s, a worker pool capped at half the cores, and
+separation from the per-change loop — so what belongs there is a spec that needs one of those, which in this
+package means the ones that spawn compilers.
 
-Two things about that shape are deliberate. **The band, rather than one threshold**, because a file's time
-is its wall time under whatever else its half is running: `dependency-flow-helpers` reads 4.7s in the fast
-half and 2.4s in the integration half, so a single line between them sends a spec back and forth on every
-update. **Cost rather than spawning**, because spawning was only ever a proxy: `callCli` reaches esbuild,
-which spawns, while reading as clean; `facade-typing` is 30s with no spawn site; and a 20ms spec counted as
-spawning because the export it imports defaults to `spawnSync`. Mechanism said all three wrongly.
+It was decided by measured cost against fixed edges until 2026-10-05: a recorded millisecond per spec, a
+window of readings, a band of 2.5s up and 1.5s back, two idle floors and a machine identity, with
+`spec-cost:update` to maintain it. All of it is gone, and the reason is that the quantity was never one
+number — a spec in this package read 2.8s in the fast pool and 0.64s in the integration pool, 4.37x apart
+against a band of 2.5x, so each half's reading demanded a move the other took back. Root `CLAUDE.md`'s
+sample section has what the apparatus cost and what to read before adding another.
+
+Slowness is visible rather than adjudicated: vitest prints any test over its 300ms threshold under its
+file, and the chain prints each step's five slowest. If this package's fast half stops being worth running
+in a loop, that is what shows it.
 
 The `*.integration.spec.ts` suffix is orthogonal to the folders below, which group by area. It now
 records a cost rather than a mechanism, so renaming a spec is how it changes half.

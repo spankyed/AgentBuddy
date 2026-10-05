@@ -162,49 +162,46 @@ nobody listed, and its remedy *writes*. `api:stamp` was a proxy for `api:check` 
 55s; at 6.9s the derivation is the cheaper thing to keep. Before reaching for one, price the derivation
 again — the paragraph above has what this one cost.
 
-A **sample** records a measurement, which cannot re-derive, so neither check is available to it.
-`spec-cost.json` is the only one. Treated as a derivation it churned: measured 2026-09-28, **125 of 163
-entries changed between two runs on an idle machine** while the answer it supports — which half a spec runs
-in — changed zero times. So it needs hysteresis on the record, a band rather than equality for its check,
-and a refusal to record a run that moved too much to have been measuring the code. All three live in
-`scripts/lib/spec-cost.ts`, which documents them.
+A **sample** records a measurement, which cannot re-derive, so neither check is available to it. **There
+are none left, and the one there was is the most expensive lesson in this section.** `spec-cost.json`
+recorded what every spec cost in milliseconds, so that a gate could move a file between the fast and
+integration halves. It was deleted on 2026-10-05, and what it cost to keep is the thing to read before
+adding another sample:
 
-**Those three are not enough on their own, and what closed the gap was storing more than one reading.**
-Hysteresis protects the recorded answer from jitter and says nothing about *which* reading became the
-answer — so the first one in wins, and for a crossing it won outright: `moved` opened by recording any
-reading that would place a spec in a different half, exactly, on the reasoning that placement is a cost's
-only consumer. Measured 2026-10-03, a recording taken at 78% idle — which the floor of the day allowed —
-moved two specs across `INTEGRATION_ABOVE_MS` and a gate demanded two renames; two clean runs put both
-back. The same band then stopped the clean readings correcting it, since displacing a recorded value takes
-35% of it. (The floor for a *recording* is 80% now, measured against that episode's successor:
-`RECORD_IDLE_FLOOR`. It is the body it keeps honest, and a crossing is still the window's to absorb — no
-run above 36% idle moved a spec across an edge in the sweep that set it.)
-So `spec-cost.json` holds a **window** of up to `WINDOW` readings per spec and the cost is their median:
-one reading is kept but cannot become the answer, and two that agree can. That makes the half a
-*derivation* over a sample rather than a sample read directly, and it is the shape to copy if a second
-sample is ever added — a band alone leaves whichever reading landed first in charge.
+- Treated as a derivation it churned — measured 2026-09-28, **125 of 163 entries changed between two runs on
+  an idle machine** while the answer it supported changed zero times. So it needed hysteresis on the record,
+  a band rather than equality for its check, and a refusal to record a run that had moved too much to have
+  been measuring the code.
+- Those three were not enough, because hysteresis says nothing about *which* reading became the answer: the
+  first one in won, and for a crossing it won outright. Measured 2026-10-03, a recording at 78% idle moved
+  two specs across the upper edge and the gate demanded two renames nobody had earned; the same band then
+  stopped two clean runs correcting it, since displacing a value takes 35% of it. So it grew a **window** of
+  readings whose median was the answer — one reading kept but unable to decide, two that agree able to.
+- A millisecond is a fact about a machine, so it also needed a `machine` field, a path for a record measured
+  on another box, and an idle floor on recording.
+- And a sum of it needed a drift report, because a correlated slowdown sits under every per-spec tolerance.
+  That report fired on one file's noise in five of the twelve records, where a single spec was 64% or more of
+  the body (`@abuddy/ui` 93%, `main` 89%, `@abuddy/sdk` 86%) and the worst single spec moves 74% between two
+  quiet runs.
 
-**A sum of that record is a separate question, and the answer here is that nothing asks it any more.**
-Correlated drift is real — a dependency bump adding a fifth to every spec sits under every per-spec
-tolerance, so nothing re-records and the total quietly stops being true — and a body-drift report used to
-raise it on every `spec-cost:update`. **It was removed on 2026-10-05, because its premise does not hold for
-most of these records.** "Jitter cancels in a sum" needs no member to dominate, and the 0.4-9.9% that was
-measured for it is `@app/repo-checks`' fast half: 46 specs, the largest 12% of the body. Measured across all
-twelve, five have one spec at 64% or more — `@abuddy/ui` 93%, `main` 89%, `@abuddy/sdk` 86% — and the worst
-single spec moves 74% between two quiet runs, so on those the report fired on one file's noise. Watched the
-same day: +16% on one suite and -14% on another in a single run, opposite directions. It also printed
-`--all --forget` on every branch, which that flag's own doc calls the wrong move for a drift you cannot
-explain. What it guarded is `spec:dry`'s total, which `spec-dry.ts` says is "deliberately allowed to sit up
-to `DRIFT_SHARE` from the truth" and which prints its own `measuredAt`; nothing gated on it.
-`spec-cost.ts` records what a replacement would have to do first — tell one spec's movement from the body's.
-**The chain kept the question**, because its table is the subject `DRIFT_SHARE` was measured against and its
-report now answers that exact objection: `driftVerdict` recomputes the drift without the largest mover, so
-a movement one step carried is named as that step's with `--forget --step <name>` as the remedy, and only a
-movement that survives the exclusion is called the table's.
-`spec-cost:update --all --forget` still drops every window and starts again from that run (`--forget` takes
-any scope that measures, so one spec is `--forget <path>`) — the one thing a window cannot do for itself,
-since it is built to be slow to forget. It is now for a change you already know about rather than a drift
-something reported. `--all` without it re-measures everything and appends, which keeps the protection.
+**What finally settled it was not the cost of the apparatus but a contradiction.** Once each spec was
+measured in the pool that actually runs it, one read 2.8s in the fast half and 0.64s in the integration
+half — 4.37x apart, against a band of 2.5x. It was over the upper edge in one half and under the lower edge
+in the other, so a gate acting on either reading demanded a move the other reading demanded back. The
+quantity was never one number, and no amount of hysteresis fixes that.
+
+So the half is a decision now, declared by a filename, and nothing re-derives it
+(`scripts/lib/spec-halves.ts`). Slowness is reported where it happens rather than adjudicated against a
+record: vitest prints any test over its 300ms `slowTestThreshold` under its file, and the chain prints each
+step's five slowest (`slow-tests.ts`). **The lesson for a future sample: price the apparatus against the
+decision it informs.** 1,884 lines, twelve records, two idle floors and a machine identity decided which of
+two config files a spec was listed in, where nine of twelve packages had only one config to begin with.
+
+**The chain's `seconds` table is the sample-shaped thing that remains**, and it is a different case: its
+subject is one machine by declaration (`MEASURED_ON`), `--record` refuses any other, and its drift report
+answers the concentration objection outright — `driftVerdict` recomputes the movement without the largest
+mover, so a drift one step carried is named as that step's with `--forget --step <name>` as the remedy, and
+only a movement that survives the exclusion is called the table's.
 
 The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
@@ -293,20 +290,19 @@ Six rules that pay for themselves:
   (`npm run spec`'s 3); **a named bucket beside the total**, where some of the input was unpriceable and only
   part of it is anyone's to fix (`priceSpecs`' `unpriced` and `outside`, `scripts/lib/spec-dry.ts`); and **a
   clause on the success line**, where the work happened but one claim in the sentence did not hold
-  (`spec-cost:check`'s *"placement unchecked for 1 of 12"*, in the shape of the chain's own
-  `(N of M cached)`). A skipped test takes its reason in the name instead, which `suite-split`'s `OFF_BOX`
-  does, so a run on another machine says why rather than quietly reporting fewer cases. What none of them is:
-  silent.
+  (the chain's own `(N of M cached)`, and `spec-cost:check`'s *"placement unchecked for 1 of 12"* before it
+  was deleted). A skipped test takes its reason in the name instead, so a run that covers less says why
+  rather than quietly reporting fewer cases. What none of them is: silent.
 - **A check that cannot fail today is a gate or an assertion, and they want opposite things.** A gate's
   subject is input, which can be wrong, so it needs a firing case — the rule above. An assertion's subject is
   the program's own construction, and being unreachable is the point: no input reaches it, so no case can, and
   writing one means faking a state the program cannot be in. What it needs instead is a comment naming the
-  *edit* that would make it fire, because that edit is what you mutate to watch it. `spec-cost`'s
-  `plans.length === 0` is the worked example: `parseArgs` refuses the arguments that used to empty that list
-  and `suitesFor` carries the case, so it reads as dead code and was filed as a defect on exactly that
-  reasoning — but append `.filter(() => false)` to the chain that builds `plans` and all 71 specs still pass
-  while the command reports "every record is current" over no work at all. Judging one as the other costs a
-  round trip at best and deletes the only thing standing under a future edit at worst.
+  *edit* that would make it fire, because that edit is what you mutate to watch it. The worked example was
+  `spec-cost`'s `plans.length === 0`, deleted with that command: its argument parser refused the inputs that
+  could empty the list, so it read as dead code and was filed as a defect on exactly that reasoning — but
+  appending `.filter(() => false)` to the chain that built the list left every spec passing while the command
+  reported "every record is current" over no work at all. Judging one as the other costs a round trip at
+  best and deletes the only thing standing under a future edit at worst.
 - **A list and its type are one declaration.** Write the list and derive the type from it
   (`const XS = [...] as const; type X = (typeof XS)[number]`), or the other way round where the type is the
   definition — never both by hand. Four pairs in this repo were written twice, and each had a different failure:
@@ -390,7 +386,7 @@ cheaper chain measured — written when the declaration was a tier.
 
 **A figure earns its place by sizing a choice, and one a record owns is named rather than copied.** Two
 different failures: a figure that informs no decision is weight, and a copy of something `chain-steps.ts`
-or `spec-cost:check` already knows drifts with nothing to catch it. "One spec file is 1-3s against the 38.6s a
+already knows drifts with nothing to catch it. "One spec file is 1-3s against the 38.6s a
 one-package edit costs the chain" earns its place; a count the `--list` flag derives does not.
 **That example used to read "against the chain's 27s floor", and it is here as the warning as well as the
 rule**: the floor became 0.9s when the per-step caching landed, the sentence was copied to two other places,
@@ -544,8 +540,8 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             by any other means — `--force` overrides the refusals, not the band.
                          #             It writes only rows whose value actually differs, so a run that agrees
                          #             with the table leaves no edit and moves no mtime. The same word
-                         #             `spec-cost:update` takes, for the same operation: ignore what is
-                         #             recorded, keep what this run measured.
+                         #             the deleted `spec-cost:update` took, for the same operation: ignore
+                         #             what is recorded, keep what this run measured.
                          #             **For a change you know about — a bundler bump, a policy change — and
                          #             not to chase a drift you do not.** It replaces the whole table from one
                          #             run, so a run that measured the machine writes the machine into every
@@ -678,8 +674,8 @@ npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a nu
                          # which lags — measured, loadavg 3.20 on a box that was 78.7% idle. **Idle is
                          # sampled between runs, never during one**: a reading taken while the command runs
                          # measures the command, and a quiet box reads 0% while a suite uses it.
-                         # Prints, never records — a timings file would be a sample, and spec-cost.json is
-                         # what that costs (see "There is a third kind" above)
+                         # Prints, never records — a timings file would be a sample, and the deleted
+                         # spec-cost.json is what that costs (see the sample section above)
                          #
                          # **A null A/B is unfalsifiable until the independent variable is shown to have
                          # moved**, and the instrument cannot do that half for you: `measure` takes the
@@ -709,89 +705,15 @@ npm run measure:loop -- "<cmd>"  # Not how long a command took, but how long eac
                          # It answers what `[vitest-worker]: Timeout calling` does not, which is which side
                          # failed; see the test:integration entry above for the mechanism and the fix
 
-# Recorded spec costs (which half each spec runs in)
-npm run spec-cost:check  # Reads the records, runs nothing. `-- --list` prints what they hold and counts
-                         # the specs a re-measurement inside the record's own accuracy could carry over
-                         # the edge that would move them — a handful, so the rest are nowhere near a
-                         # decision. Which edge depends on the half: only the upper one moves a fast spec,
-                         # only the lower one brings an integration spec back, and counting band
-                         # membership instead named specs that could not move at all. Ask the command
-                         # rather than this page: it derives the count on every run, and a copy here is a
-                         # number nothing checks
-npm run spec-cost:update # The least that makes the records current, which is often nothing — 0.3s when
-                         # nothing is wrong, against minutes of file time to re-measure everything. It says which
-                         # case it took: a deleted spec needs no measurement to drop, a new one needs only
-                         # the half it lives in.
-                         # **It will not measure below RECORD_IDLE_FLOOR (80%)** — what you would record on
-                         # a busy box is the machine, and a cost was once recorded at a load of 71 and
-                         # reverted by hand. 85 rather than the 70 a printed timing needs, because measured
-                         # 2026-10-04 a run admitted at 70% drifts the body about as far as DRIFT_SHARE, the
-                         # threshold the drift report exists to raise — a floor that admits runs its own gate
-                         # would flag is not a floor. The table is on the constant. That is a separate gate
-                         # from the contention refusal below, which asks after measuring whether too much
-                         # *moved*.
-                         # **On a busy box it records membership and no cost — it neither waits nor
-                         # refuses.** Two earlier versions were worse in opposite directions. It threw, and
-                         # the throw blocked a landing: `suite-split` fails on a spec the record has never
-                         # seen, so a box that stayed busy left the gate red with the only advice being to
-                         # wait. Then it waited up to ten minutes and threw anyway, which removed a round
-                         # trip and left the block. Degrading makes both unnecessary, and leaves a wait
-                         # nothing to buy: the cost it would eventually take is the cost the next quiet run
-                         # takes. *Which specs exist* is a fact about the repo and *what one costs* is a fact
-                         # about a machine, so a busy box takes the path another machine does — the spec is
-                         # listed `unmeasured`, which `unrecorded` accepts. Nothing is lost: the refusal
-                         # existed to keep a busy box's numbers out of the record, and writing no cost does
-                         # that better than writing none *and* failing. Placement is unaffected either way,
-                         # since a spec runs in the half its filename says (`halfOfPath`) and the cost only
-                         # audits that. `--force` measures anyway. One predicate answers it
-                         # (`writesMembershipOnly`), so a busy box and a foreign record cannot drift apart.
-                         # **Off the record's own machine it writes membership and never a cost.** A record
-                         # holds two kinds of thing: which specs exist, a fact about the repo that anyone
-                         # can see, and what one costs, a fact about a machine. They were one map, so
-                         # adding a spec meant measuring it — and the only way a second developer could
-                         # satisfy the `unmeasured` finding was to write their own box's milliseconds into
-                         # a record measured on someone else's, with nothing in the file saying it then
-                         # held two machines' numbers. A new spec is listed in `unmeasured` instead, which
-                         # satisfies the finding and prices nothing; the measuring machine fills it in on
-                         # its next run. Which machine that is, is in the record (`machine`) rather than
-                         # read from `MEASURED_ON`, which describes the box the *chain's* seconds were
-                         # taken on — two records, two machines, and nothing made them the same box.
-                         # `--all --force` is how another machine takes a record over: every row
-                         # re-measured, past the refusal that exists to stop a partial one.
-                         #   <spec path>   that spec's half and nothing else. It runs the spec's *config*,
-                         #                 never the file alone: `chain-inputs` reads 1688ms beside its
-                         #                 siblings and 963ms on its own, against a band 1000ms wide, so a
-                         #                 solo number files it in the wrong half
-                         #   --suite <dir> one suite
-                         #   --all         re-measure every spec. Each reading still has to disagree with
-                         #                 its window's median to be kept, so a quiet --all writes nothing
-                         #   --forget      drop the recorded readings and start again from this run, for
-                         #                 whatever the run measures: `--all` (narrow it with `--suite`), or a
-                         #                 spec path. Still the only thing that clears a correlated drift,
-                         #                 since a fifth added to every spec sits under every per-spec
-                         #                 tolerance — but **nothing reports such a drift here any more**
-                         #                 (see "A sum of that record" above), so this is for a change you
-                         #                 already know about rather than one a report raised.
-                         #                 **Its own flag, not `--force`**: that one silences the idle and
-                         #                 contention refusals, and forgetting writes a cost from a single
-                         #                 reading — the state with no history to outvote a bad one — so it is
-                         #                 the write that most needs a quiet machine rather than the one that
-                         #                 should be able to skip the check. It refuses a scope that would
-                         #                 measure nothing, since forgetting needs a reading to replace with
-                         #   --dry         what it would run and write
-                         #   --force       override both refusals. Adopting a record measured on another
-                         #                 machine is still `--all --force`: whose machine it is and whether
-                         #                 its readings still describe the code are separate questions
-
 # Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)
 npm run check:idle       # Is this machine quiet enough to measure on, and for which kind of measurement —
                          # `89% idle — quiet enough to record on`, exit 1 below the recording floor.
                          # **Two floors, because what a command leaves behind decides how quiet it needs to
-                         # be**: recording needs 80% (`spec-cost:update`, `chain --record`), printing needs
+                         # be**: recording needs 80% (`chain --record`), printing needs
                          # 70% (`measure`, `measure:loop`). It reports both and exits on the stricter,
                          # being a pre-flight for --record; a reader who only wants to print is told so.
-                         # Three commands refuse when the box is busy and none could be asked in advance:
-                         # `spec-cost:update` and `measure` refuse before they run anything, and
+                         # Two commands refuse when the box is busy and neither could be asked in advance:
+                         # `measure` refuses before it runs anything, and
                          # `chain --record` refused *after* the run, which is where the answer arrives too
                          # late — twice on 2026-10-04 that spent 200s to be told the box was 69% idle. The
                          # chain asks first now as well, and this is the same reading as a command, so it

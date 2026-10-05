@@ -14,8 +14,7 @@ export default defineConfig({
     testTimeout: 15_000,
     hookTimeout: 15_000,
     // One half, because every spec here builds its own fixture in a temp directory and none reads the
-    // built packages. A spec that grows past the band in `etc/spec-cost.json` needs a second config first;
-    // `suite-split.spec.ts` says so by name rather than letting it sit in the wrong half.
+    // built packages. A spec that needs a 60s budget or a capped worker pool needs a second config first.
     include: ['tests/**/*.spec.ts'],
     exclude: ['**/node_modules/**'],
   },

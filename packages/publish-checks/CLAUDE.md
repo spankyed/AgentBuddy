@@ -47,7 +47,7 @@ is published; a consumer fixture reads the derived manifest, as a consumer does.
 
 ## Tests
 
-Two halves, split by measured cost like every other suite (`scripts/lib/spec-cost.ts`, `etc/spec-cost.json`):
+Two halves, as every suite with an expensive one has: the integration half gives a spec 60s per test and a worker pool capped at half the cores. Which half a spec is in is its filename, decided when it is written rather than re-derived from a measurement.
 
 - **`npm test -w @app/publish-checks`** — 4 specs: three read the built `dist` without packing anything, and
   `published-manifest-paths` packs five file lists with `--dry-run`, ~1.5s, which keeps it in this half.
