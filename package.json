@@ -37,6 +37,7 @@
     "package:all": "electron-builder --mac --win --linux",
     "test": "npm run packages:ensure && node scripts/with-source.mjs playwright test",
     "drive": "npm run packages:ensure && PLAYWRIGHT_VISIBLE=1 E2E_SCREENSHOT_DIR=drive/screenshots node scripts/with-source.mjs playwright test --config drive/playwright.config.ts",
+    "drive:serve": "npm run packages:ensure && PLAYWRIGHT_VISIBLE=1 E2E_SCREENSHOT_DIR=drive/screenshots node scripts/with-source.mjs playwright test --config drive/engine.config.mts",
     "test:smoke": "npm run packages:ensure && node scripts/with-source.mjs playwright test tests/e2e/smoke",
     "test:headed": "npm run packages:ensure && PLAYWRIGHT_VISIBLE=1 node scripts/with-source.mjs playwright test",
     "test:explorer": "npm run packages:ensure && node scripts/with-source.mjs playwright test --ui",

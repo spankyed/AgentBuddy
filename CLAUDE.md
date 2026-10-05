@@ -824,7 +824,10 @@ npm run check:repro      # **A diagnostic instrument, not a gate**, and nothing 
 **Driving the app now has its own place: `drive/`, run with `npm run drive` (a pack author gets
 `abuddy drive`).** That is where an agent debugs and develops against the app — open what you just built,
 click through it, read the state back, screenshot it. Scripts there import `drive` rather than `test`,
-nothing collects them, and nothing gates on them. `docs/public-facing/cli.md` has the reference.
+nothing collects them, and nothing gates on them. **`npm run drive:serve` holds one app open and answers
+HTTP instead**, which is what to reach for when a question needs several verbs: a script is a closed
+program, so each question costs an edit, a process start and an app launch, where a session answers many.
+`docs/public-facing/cli.md` has the verbs.
 
 **One directory here is a gate: `tests/e2e/smoke/`**, as its own chain step (`test:smoke`, 6s). Its four
 cases are the ones every other check silently assumes — the app launches without crashing, reaches `connected`, has

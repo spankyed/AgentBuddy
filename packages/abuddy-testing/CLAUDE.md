@@ -184,7 +184,7 @@ the SDK was not measured, and is probably well under that. Measure before moving
 
 ## A session something can talk to (`src/engine/`)
 
-`abuddy drive --serve` runs `runDriveEngine`, which holds the page the fixture opened and answers loopback
+`abuddy drive --serve` (and `npm run drive:serve`, this repo's own) runs `runDriveEngine`, which holds the page the fixture opened and answers loopback
 HTTP until something asks it to stop. It is for an agent: a driving script is a closed program, so every
 question costs an edit, a process start and an app launch, where a session answers many.
 

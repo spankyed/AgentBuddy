@@ -33,6 +33,7 @@ npm run drive -- drive/notes.ts  # just one
 A script here runs and ends. To ask many things of one warm app instead, serve it:
 
 ```bash
+npm run drive:serve                       # this repo
 abuddy drive --serve --instance probe     # from inside a pack
 ```
 
@@ -48,9 +49,9 @@ A write does **not** show up in the UI. A plugin holds what its system sent it, 
 round every system, so nothing tells the view. `/reload` is what makes every plugin ask again; navigating
 between plugins does not, because the plugin's actor survives.
 
-The repo's own `npm run drive` has no `--serve`: it runs Playwright directly against this directory
-rather than through the CLI, and the CLI wants a pack. Serve from `packages/default-setup` or a fixture
-pack under `tests/packs/`.
+`npm run drive:serve` is the same session under a config of its own (`engine.config.mts`), because the
+CLI's `--serve` wants a pack directory and this repo is not one. The session file is `.mts` so that a plain
+`npm run drive`, which collects `**/*.ts`, never picks it up and hangs on it.
 
 A pack author gets the same thing from `abuddy drive`, which also takes `--instance <name>` to keep the
 app's data between sessions. Everything here but this file and `playwright.config.ts` is gitignored.

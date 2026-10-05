@@ -480,9 +480,10 @@ const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
  */
 const EVERY_SOURCE = [...ROOT, ...Object.values(CONFIG_BY_HALF), ...EVERY_WORKSPACE, 'scripts', 'tests/e2e', 'tests/packs', 'tests/scripts',
   'tests/tsconfig.json', 'playwright.config.ts', 'types', 'electron-builder.mjs',
-  // The drive layer's config, and only it: the driving scripts beside it are gitignored and ad-hoc,
-  // so naming the directory would re-run a typecheck every time someone poked at the app
-  'drive/playwright.config.ts',
+  // The drive layer's tracked files, and only them: the two configs and the serving session. The driving
+  // scripts beside them are gitignored and ad-hoc, so naming the directory would re-run a typecheck every
+  // time someone poked at the app
+  'drive/playwright.config.ts', 'drive/engine.config.mts', 'drive/engine-session.mts',
   'build/prod/diagnostics.mjs', 'build/prod/verify-node-modules.mjs',
   'packages/abuddy-cli/bin/abuddy.mjs', 'packages/abuddy-cli/bin/source-hooks.mjs',
   'packages/abuddy-ears/bench/ears.bench.ts', 'packages/api/tsup.config.ts',
