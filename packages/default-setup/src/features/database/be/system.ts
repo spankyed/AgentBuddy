@@ -193,8 +193,8 @@ export const databaseSystem = setup({
       // tells the settings system a replacement is running, so nothing is told a change until it ends
       services.settings.whileReplacingData(() => services.appData.importBackup(path, { skipUnknownDatabases })).then(
         ({ missingDatabases, unknownEntityTypes }) => {
-          // Stop brain and notify success
-          sendToSystem('brain', { type: 'KILL_BRAIN' });
+          // The brain stops itself: replacing the data sends DATA_REPLACED, which it answers by killing a flow
+          // whose rows are gone. It is not restarted here, which is what the message below tells the user
           // A store the backup listed but didn't hold came back empty: said, not silently dropped
           const nothingToRestore = missingDatabases.length > 0
             ? ` The backup listed ${missingDatabases.join(', ')} but held nothing for it, so it is now empty.`

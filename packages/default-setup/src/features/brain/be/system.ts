@@ -471,6 +471,19 @@ export const brainSystem = setup({
             actions: 'killBrain',
             target: 'stopped',
           },
+          /**
+           * Every row was replaced under a running flow, so what it is part way through no longer exists.
+           *
+           * Stopping is the brain's own answer to that, rather than something each caller that replaces the
+           * data has to remember to send — which is what the database feature was doing, reaching across to
+           * kill a system it does not own. Stopping and not restarting, because whether there is a flow worth
+           * running afterwards is the caller's to know: a reset creates a root flow and asks for a restart, an
+           * imported backup may hold anything and tells the user to start it themselves.
+           */
+          DATA_REPLACED: {
+            actions: 'killBrain',
+            target: 'stopped',
+          },
           RESTART_BRAIN: {
             actions: 'restartBrain',
             target: '.active',

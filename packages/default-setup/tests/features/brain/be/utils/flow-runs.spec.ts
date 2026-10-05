@@ -138,6 +138,22 @@ describe('brain start', () => {
     expect((await app.runFlow('Root Flow')).steps.map((s) => s.status)).toEqual(['active'])
   })
 
+  /**
+   * A reset or a restored backup replaces every row, including the ones the running flow is part way through.
+   *
+   * The brain answers that itself. It used to be told, by the database feature reaching across to kill a
+   * system it does not own — which left the kill missing from every other way the data could be replaced.
+   */
+  it('stops when the rows its flow is running over are replaced', async () => {
+    importFlows({ 'Root Flow': { root: true, tracks: staysRunning } })
+    const app = await startBrain()
+    expect(brainState(app)).toEqual({ running: true, hasActor: true })
+
+    await app.send('brain', { type: 'DATA_REPLACED' })
+
+    expect(brainState(app), 'it stops, and does not restart itself').toEqual({ running: false, hasActor: false })
+  })
+
   it('stops with no flow to run, and starts from START_BRAIN once a root flow exists', async () => {
     const app = await startBrain()
     expect(brainState(app)).toEqual({ running: false, hasActor: false })
