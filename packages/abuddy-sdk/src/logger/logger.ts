@@ -39,6 +39,12 @@ export function isDebugEnabled(source: string): boolean {
  * A copy of `value` that JSON can hold: a BigInt becomes its digits, and a repeated object, a function and
  * `undefined` become markers.
  *
+ * `[Repeated]` covers an object that holds itself as well as one that merely appears twice, a seen-set having
+ * no path to tell them apart. **On the logger's own path that branch is unreachable**: `redactSecrets` runs
+ * first, cuts a loop as `[Circular Reference]` and copies a repeat into a fresh object, so nothing reaches here
+ * twice. It stays because this function's contract is standalone — call it on a raw value, which nothing does
+ * today, and it is the only thing between a loop and a throw.
+ *
  * The BigInt branch is what stops this throwing. `JSON.stringify` refuses one, and nothing caught that — so
  * `logger.info('a row', { count: 42n })` threw from inside the logger, on data this app's own database
  * returns.
@@ -48,7 +54,7 @@ function serializable(value: unknown): unknown {
   return JSON.parse(JSON.stringify(value, (_key, field: unknown) => {
     if (typeof field === 'bigint') return field.toString();
     if (typeof field === 'object' && field !== null) {
-      if (seen.has(field)) return '[Circular Reference]';
+      if (seen.has(field)) return '[Repeated]';
       seen.add(field);
     }
     if (typeof field === 'function') return '[Function]';

@@ -12,13 +12,13 @@ describe('json', () => {
     });
   });
 
-  it('writes an object that holds itself rather than throwing', () => {
+  it('writes an object already written once rather than throwing', () => {
     const row: Record<string, unknown> = { id: 'Note-1' };
     row.self = row;
-    expect(JSON.parse(toJSON(row))).toEqual({ id: 'Note-1', self: '[Circular]' });
-    // The same object twice isn't a cycle, but is reported once
+    expect(JSON.parse(toJSON(row))).toEqual({ id: 'Note-1', self: '[Repeated]' });
+    // The same marker for a plain repeat, which is what a seen-set can say: it has no path to tell the two apart
     const shared = { id: 'Note-2' };
-    expect(JSON.parse(toJSON([shared, shared]))).toEqual([{ id: 'Note-2' }, '[Circular]']);
+    expect(JSON.parse(toJSON([shared, shared]))).toEqual([{ id: 'Note-2' }, '[Repeated]']);
   });
 
   it('says undefined for a result that has no JSON at all', () => {
@@ -44,7 +44,7 @@ describe('csv', () => {
   it('keeps an object in a cell on one line, and copes with values JSON has no form for', () => {
     const row: Record<string, unknown> = { id: 'Note-1', count: 3n };
     row.self = row;
-    expect(toCSV([row])).toBe('id,count,self\nNote-1,3,"{""id"":""Note-1"",""count"":""3"",""self"":""[Circular]""}"\n');
+    expect(toCSV([row])).toBe('id,count,self\nNote-1,3,"{""id"":""Note-1"",""count"":""3"",""self"":""[Repeated]""}"\n');
   });
 
   it('writes a result that is not rows as cells', () => {
