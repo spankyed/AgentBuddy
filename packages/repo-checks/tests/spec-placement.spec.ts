@@ -5,7 +5,7 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { relativeSpecifiers } from '../../../scripts/lib/module-graph.ts';
 import { repoFiles } from './_support/repo-files.ts';
-import { INTEGRATION_SUFFIX, hasSplit } from '../../../scripts/lib/spec-cost.ts';
+import { INTEGRATION_SUFFIX, hasSplit } from '../../../scripts/lib/spec-halves.ts';
 
 /**
  * A spec lives with the thing it can break.

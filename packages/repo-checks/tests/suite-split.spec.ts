@@ -17,7 +17,7 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
   FAST_BELOW_MS, INTEGRATION_ABOVE_MS, SPEC_COST_FLAGS, absentIn, changesIn,
   absentNamed, CONTENTION_RATIO_MAX, COST_ACCURACY, describeBudget, EXPENSIVE_BY_NATURE, halfFor,
-  halfOfPath, hasSplit, disagrees, nearEdge, worthKeeping, ratiosFromMoves, towardEdge, underBound, type SpecCost,
+  disagrees, nearEdge, worthKeeping, ratiosFromMoves, towardEdge, underBound, type SpecCost,
   namedIn, overBudget, parseArgs,
   planFor, readSpecCost,
   pendingHere, recordedVerdict, recordMembership, refuseAbsent, forgetsWindows, settle, specCostFile, specFiles,
@@ -25,6 +25,7 @@ import {
   writesMembershipOnly,
   unrecorded, WINDOW, appendSample, costOf, provisional, withCosts,
 } from '../../../scripts/lib/spec-cost.ts';
+import { halfOfPath, hasSplit } from '../../../scripts/lib/spec-halves.ts';
 // The sample-recording primitives, shared with the chain's own cost table since 2026-10-02. The cases below
 // stay here rather than moving to `measure.spec.ts` with them, because what they check is these functions as
 // *this* record uses them — the body-drift case asserts `moved` says nothing about the same numbers, which is

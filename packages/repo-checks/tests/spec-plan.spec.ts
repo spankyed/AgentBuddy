@@ -11,7 +11,7 @@ import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 import { population } from '@abuddy/sdk/testing';
 import { asDuration, priceSpecs, priceSuites, needsAppForRun } from '../../../scripts/lib/spec-dry.ts';
-import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-cost.ts';
+import { CONFIG_BY_HALF, HALVES } from '../../../scripts/lib/spec-halves.ts';
 
 /**
  * What `npm run spec` decides to run, asserted without running any of it.

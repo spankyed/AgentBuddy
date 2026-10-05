@@ -5,7 +5,7 @@ import { PUBLISH_TREE } from '@abuddy/host/build/published-manifest';
 import { coresFor } from './core-budget.ts';
 import type { TimeoutClass } from './step-timeouts.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
-import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-cost.ts';
+import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-halves.ts';
 import { dependencySource, PACKAGE_DIRS, workspaceDeps } from './workspace-deps.ts';
 import { LEG_TIMEOUT, scopeOf, TYPECHECK_LEGS, type Leg } from './typecheck-legs.ts';
 import { API_CHECK_TIMEOUT } from './api-report-packages.ts';
@@ -925,6 +925,11 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'packages/abuddy-ears/dist', 'packages/abuddy-sdk/dist', 'packages/abuddy-ui/dist',
       'packages/abuddy-ears/package.json', 'packages/abuddy-sdk/package.json', 'packages/abuddy-ui/package.json',
       'scripts/api-check.ts', 'scripts/lib/api-report-packages.ts', 'scripts/lib/exit-on-epipe.ts',
+      // `bounded-spawn` is how this runs the three extractions, and it was declared nowhere until
+      // 2026-10-05. It had an excuse by accident: `chain-inputs.spec.ts` excuses everything reachable from
+      // this file, and this file reached it through the spec-cost module, which imported `measure.ts`, which
+      // imports it. Repointing that import to `spec-halves.ts` shrank the closure and the real gap showed.
+      'scripts/lib/bounded-spawn.ts',
       'scripts/api-reports.ts', 'scripts/component-contracts.ts', 'scripts/lib/api-entries.ts',
       'packages/abuddy-ears/etc', 'packages/abuddy-sdk/etc', 'packages/abuddy-ui/etc',
       'packages/abuddy-ears/tsconfig.api-extractor.json', 'packages/abuddy-sdk/tsconfig.api-extractor.json',

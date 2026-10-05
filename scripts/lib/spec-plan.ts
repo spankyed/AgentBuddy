@@ -20,7 +20,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { INTEGRATION_SUITES } from './chain-steps.ts';
-import { CONFIG_BY_HALF, HALVES, type Half, halfOfPath } from './spec-cost.ts';
+import { CONFIG_BY_HALF, HALVES, type Half, halfOfPath } from './spec-halves.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import { workspaceDeps } from './workspace-deps.ts';
 

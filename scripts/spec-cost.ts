@@ -49,15 +49,16 @@ import { UNIT_SUITES, type UnitSuite } from './lib/unit-suites.ts';
 import { POOLS, type Pool } from './lib/unit-pool.ts';
 import {
   CONTENTION_RATIO_MAX, COST_ACCURACY, FAST_BELOW_MS, INTEGRATION_ABOVE_MS, PLACEMENT_GUARD, describeBudget,
-  halfOfPath, hasSplit, ratiosFromMoves, underBound,
+  ratiosFromMoves, underBound,
   nearEdge, overBudget,
-  CONFIG_BY_HALF, absentNamed, forStorage, namedIn, parseArgs, planFor, readSpecCost, recordMembership,
+  absentNamed, forStorage, namedIn, parseArgs, planFor, readSpecCost, recordMembership,
   writesMembershipOnly,
   readingsText,
   type SpecCost, type StoredSpecCost,
   pendingHere, provisional, forgetsWindows, recordedVerdict, settle, specCostFile, specFiles, stale, suiteCounts,
   suitesFor, unrecorded, type SpecCostPlan,
 } from './lib/spec-cost.ts';
+import { CONFIG_BY_HALF, halfOfPath, hasSplit } from './lib/spec-halves.ts';
 
 const packageDir = (suite: UnitSuite): string => path.join(REPO_ROOT, 'packages', suite.dir);
 

@@ -13,7 +13,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { diffableStamp, REPO_ROOT, stampedRunAll, type BuildUnit, type StampedUnit } from '@abuddy/host/build/packages-built';
 import { INTEGRATION_SUITES, suiteInputs } from './chain-steps.ts';
-import { CONFIG_BY_HALF, type Half } from './spec-cost.ts';
+import { CONFIG_BY_HALF, type Half } from './spec-halves.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 
 /**

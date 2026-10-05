@@ -15,7 +15,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { INTEGRATION_SUITES } from './chain-steps.ts';
-import { CONFIG_BY_HALF, halfOfPath } from './spec-cost.ts';
+import { CONFIG_BY_HALF, halfOfPath } from './spec-halves.ts';
 import type { Size } from './unit-suites.ts';
 
 /** The vitest callables that take a trailing timeout */

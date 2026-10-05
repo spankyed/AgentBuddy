@@ -5,7 +5,7 @@ import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, INTEGRATION_SUITES, suiteInputs } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES, unitStepName, type UnitSuite } from '../../../scripts/lib/unit-suites.ts';
 import { reachableFrom } from '../../../scripts/lib/module-graph.ts';
-import type { Half } from '../../../scripts/lib/spec-cost.ts';
+import type { Half } from '../../../scripts/lib/spec-halves.ts';
 
 /** The halves a suite runs in: every suite has a fast one, and only a suite with a second config has the other */
 const halvesOf = (suite: UnitSuite): Half[] =>

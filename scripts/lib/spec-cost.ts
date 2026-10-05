@@ -15,6 +15,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { isMeasuredMachine, thisMachine, type Machine } from './core-budget.ts';
 import { movedBeyondBand } from './measure.ts';
+// The half a spec runs in, which was never a measured quantity and now lives on its own
+import { CONFIG_BY_HALF, configsFor, halfOfPath, hasSplit, INTEGRATION_SUFFIX, type Half } from './spec-halves.ts';
+
 
 /**
  * Where a suite's record lives, relative to the repo root. One per package rather than one for the repo:
@@ -311,8 +314,6 @@ export interface SpecCost {
   readonly measuredAt: string;
 }
 
-export const INTEGRATION_SUFFIX = '.integration.spec.ts';
-
 /**
  * The record as it is written: the same thing without the derived half.
  *
@@ -442,18 +443,6 @@ export function changesIn(
 
 /** The guard that reads this record. It is the one spec that skips itself while the record is rewritten. */
 export const PLACEMENT_GUARD = 'tests/suite-split.spec.ts';
-/**
- * The two halves, as one declaration: the list is the definition and the type is derived from it.
- *
- * Written twice, a consumer that iterates the halves and a consumer that switches on them disagree the day a
- * third is added — the failure the root `CLAUDE.md` records for `PackRuleKey`, `APP_ENVS` and `ALL_COLORS`.
- * `CONFIG_BY_HALF` below is keyed by the type, so a half with no config is a compile error rather than a
- * lookup that returns undefined.
- */
-export const HALVES = ['fast', 'integration'] as const;
-export type Half = (typeof HALVES)[number];
-export const halfOfPath = (file: string): Half => (file.endsWith(INTEGRATION_SUFFIX) ? 'integration' : 'fast');
-
 /** Where a spec belongs, given where it is now: it stays put inside the dead band */
 export function halfFor(file: string, ms: number): Half {
   const now = halfOfPath(file);
@@ -496,26 +485,6 @@ export function readSpecCost(repoRoot: string, dir: string): SpecCost | undefine
 }
 
 /**
- * The vitest configs a package runs its specs under. `@abuddy/cli` has two, a fast half and an integration
- * half; every other suite has one. A spec's cost is measured under the config that actually runs it, which
- * is why this is read from the package rather than assumed.
- */
-/**
- * Which config runs each half, as one declaration rather than two lists that can disagree.
- *
- * `configsFor` derives its order from this, and naming a spec derives its config from it the other way —
- * which is what lets `spec-cost:update <path>` run the half that spec lives in instead of the whole suite.
- */
-export const CONFIG_BY_HALF: Readonly<Record<Half, string>> = {
-  fast: 'vitest.config.ts',
-  integration: 'vitest.integration.config.ts',
-};
-
-export function configsFor(packageDir: string): string[] {
-  return Object.values(CONFIG_BY_HALF).filter((file) => fs.existsSync(path.join(packageDir, file)));
-}
-
-/**
  * The configs that must run to measure these specs: each one's half, and nothing else.
  *
  * A spec measured on its own is not comparable to one measured beside its siblings — `chain-inputs` reads
@@ -529,9 +498,6 @@ export function configsOf(packageDir: string, specs: readonly string[]): string[
   const known = all.filter((config) => wanted.has(config));
   return known.length === wanted.size ? known : all;
 }
-
-/** A package with one config has no second half to move a spec into — Decision 4 makes that a finding */
-export const hasSplit = (packageDir: string): boolean => configsFor(packageDir).length > 1;
 
 /**
  * Every spec a package owns, relative to the package.
