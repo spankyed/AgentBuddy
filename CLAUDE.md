@@ -272,6 +272,20 @@ Things that waste the most time, in order:
   `packagesBuiltOrRefuse()` refused, so every step reading the built packages failed at collection (five
   files, thirty-three tests skipped). It carries a `neverCachedBecause` now — 0.3s warm, against a second record of one
   fact that can disagree with the first. Two caches over one body of work is the bug, not the cost.
+  **The three pool steps keep two on purpose, and the reason is that theirs cannot disagree.** A pool step's
+  inputs are `inputsForSuites`, the union of the same `suiteInputs` each project inside it is keyed on, so a
+  cached step cannot hide a stale project — where `packages:ensure` guaranteed something its fingerprint
+  could not see. What the two layers buy is granularity: a one-package edit runs that package's project
+  rather than the pool. What they cost was measured 2026-10-06 — median of 3 on a box another process was
+  using, so each figure is an upper bound and the proportions are what the conclusion rests on — and a
+  fresh host pool step is 0.90s, of which
+  **0.38s is `tsx` starting, 0.30s is the nested `packages:ensure` spawn and ~0.22s is the prune and the
+  sweep over 2,372 files**. So the re-read of what the chain just hashed is the smallest of the three and
+  0.6-1% of a step doing real work. Collapsing to one layer was priced too: uncaching the pool steps puts
+  three ~0.9s steps on a 0.7s floor and fixes nothing, since the pool would still trust its own stamps.
+  What they *could* disagree about is who established the pass, and that is closed separately —
+  `CHAIN_RUN_ENV` in `scripts/lib/unit-pool.ts`, which keeps a pass under the chain apart from one
+  established alone.
 - **Running suites concurrently *before the packages are built*.** The hazard is the build itself, not
   the suites: `ensurePackagesBuilt()` returns before taking the lock when nothing is stale
   (`abuddy-host/src/build/packages-built.ts`), and only `stampedBuild` locks. So two suites that both

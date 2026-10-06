@@ -42,6 +42,16 @@ exitOnEpipe();
  * for as long as the suites take — `freshnessSweep`'s own rule is that a sweep may not outlive the one question
  * it was made for, and holding one across a test run is the worst way to break it.
  *
+ * **Yes, the chain has just hashed these same bytes for the step's own fingerprint, and that is priced
+ * rather than a thing to fix.** Measured 2026-10-06 — median of 3 on a box another process was using, so each figure is an upper bound and the proportions are what the conclusion rests on —
+ * a fresh host pool step is 0.90s, of which 0.38s is
+ * `tsx` starting, 0.30s is the nested `packages:ensure` spawn and ~0.22s is this sweep and the prune. So
+ * the duplicate read is the smallest of the three parts, and 0.6-1% of a step that runs any tests.
+ * Removing it means one cache layer rather than two, which costs the per-project granularity the layer
+ * exists for — a one-package edit running one project instead of eleven. Root `CLAUDE.md` carries why two
+ * layers are sound here where they were a defect for `packages:ensure`: these two cannot disagree about
+ * freshness, being derived from one input function.
+ *
  * The verdict goes through the same sweep as the explanation. That is not only the double read it saves: a
  * verdict and an explanation taken from two readings can describe two different trees, which is the shape the
  * chain's report had removed from it a week ago.
