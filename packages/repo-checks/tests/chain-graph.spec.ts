@@ -708,6 +708,58 @@ describe('every spawn an orchestrator makes is bounded', () => {
   });
 
   /**
+   * And where both records exist, they name the same rung.
+   *
+   * **Three steps declare their kill deadline twice**: `ChainStep.timeout` in the table, and a class on
+   * `scripts/bounded.ts`'s command line in the npm script the chain runs. Both apply — the chain bounds the
+   * step it spawns and `bounded.ts` bounds the work inside it — so a divergence does not lift the deadline,
+   * it makes the surviving one a surprise: the tighter wins, and if that is the inner class the chain's
+   * timeout message reasons from a rung that never fired.
+   *
+   * Nothing held them equal until 2026-10-06. They agreed, which is the state in which a second record is
+   * most comfortable and least checked.
+   *
+   * A script that is not a chain step is skipped rather than excused: `test:external-pack` bounds the two
+   * halves by hand and has no row to agree with, so there is no second record to keep honest.
+   */
+  /** The step a bounded script belongs to, or nothing where the script is not a chain step */
+  const rowFor = (name: string) => CHAIN_STEPS.find((candidate) => candidate.name === name);
+
+  /**
+   * The rule, over whatever pairs it is given — which is what lets the case below hand it one that breaks.
+   *
+   * Extracted rather than filtered inline for `uncollected`'s reason (`spec-placement.spec.ts`): a firing
+   * case that restates the comparison proves the fixture diverges and not that the rule reports it, so a
+   * change to the rule would leave the case passing over a question it no longer asks.
+   */
+  const divergent = (pairs: readonly { name: string; className: string }[]): string[] =>
+    pairs.flatMap(({ name, className }) => {
+      const step = rowFor(name);
+      return step === undefined || step.timeout === className
+        ? []
+        : [`${name} bounds at ${className} and the table declares ${step.timeout}`];
+    });
+
+  it('names the same rung in the step table and in the script that bounds it', () => {
+    const pairs = boundedIn((JSON.parse(read('package.json')) as Scripts).scripts);
+
+    expect(population('the steps whose rung is written twice',
+      pairs.filter(({ name }) => rowFor(name) !== undefined)).length).toBeGreaterThan(0);
+    expect(divergent(pairs),
+      'one of these two records is the deadline that fires and the other is the one a message reads from')
+      .toEqual([]);
+  });
+
+  /** Over data, since the manifest agrees today and an assertion over agreement cannot fail on its own */
+  it('would name a step whose two records disagree', () => {
+    const step = CHAIN_STEPS.find((candidate) => candidate.timeout === 'suite')!;
+    const diverged = boundedIn({ [step.name]: 'tsx scripts/bounded.ts scenario bash tests/scripts/x.sh' });
+
+    expect(diverged.map(({ className }) => className), 'the script half of the pair').toEqual(['scenario']);
+    expect(divergent(diverged)).toEqual([`${step.name} bounds at scenario and the table declares suite`]);
+  });
+
+  /**
    * No rung exists that nothing uses, which is the argument `SIZE_MS` makes against a third bucket — "two
    * buckets, because two is what has consumers". Three survive it only while three kinds are nameable, and
    * this is what says they still are.
