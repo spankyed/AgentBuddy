@@ -14,10 +14,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { diffableStamp, REPO_ROOT, stampedRunAll, type BuildUnit, type StampedUnit } from '@abuddy/host/build/packages-built';
 import { INTEGRATION_SUITES, suiteInputs } from './chain-steps.ts';
-import { CONFIG_BY_HALF, type Half } from './spec-halves.ts';
+import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-halves.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import type { ReportedRun } from './spec-durations-reporter.ts';
-import { asDuration, cachedDurations, costliestFiles, costOf, halfBound, halfTotal, markedSpecs, outlierIn, readDurationRuns, trendIn, type FileDuration } from './spec-durations.ts';
+import { asDuration, cachedDurations, costliestFiles, costOf, halfBound, halfTotal, markedSpecs, outlierIn, placementOf, readDurationRuns, trendIn, uncheckedNote, UNMARKED_NOTE, type FileDuration } from './spec-durations.ts';
 
 /**
  * Beside the package builds' and the chain's stamps, in the same cache directory and the same format, so one
@@ -279,6 +279,66 @@ const outlierLines = (rows: readonly FileDuration[], half: Half, width: number, 
 };
 
 /**
+ * What a run says about its own `@slow:` markers, for whoever reports on a run that passed.
+ *
+ * **The reported half of the gate was computed and never printed.** `placementOf`'s `unmarked` list is a
+ * report rather than a failure — load can push a file into a tail and never out of one — and the only
+ * thing that printed it was the pool's own stdout, which both callers buffer and show only when a step
+ * fails. So the direction deliberately left as a report was visible only when something else broke, which
+ * is the one shape a partial result must not take: silent.
+ *
+ * **The files are named rather than counted**, because the ranking below cannot stand in for them. That is
+ * ordered by cost and this list by test time (`slowestFiles`, the quantity the bar is taken over), so an
+ * unmarked file in the tail need not be among the five rows a reader can see.
+ *
+ * Gated on a whole half exactly as `outlierLines` is, and for the same reason — the bar is this run's own
+ * p90, so a partial run's is taken over whichever projects happened to be stale. Where it cannot speak it
+ * says why, rather than leaving the half with no line.
+ */
+const placementLines = (rows: readonly FileDuration[], marked: ReadonlyMap<string, Map<string, string>>,
+  half: Half, width: number, measured: number, all: number): string[] => {
+  const placement = placementOf(rows, marked, { whole: measured === all });
+  const unmarked = placement.unmarked.filter((row) => row.half === half);
+  const unchecked = placement.unplaceable.find((one) => one.half === half);
+  const lines: string[] = [];
+  if (unmarked.length > 0) {
+    const named = unmarked.map((row) => `${row.dir}/${row.file}`).join(', ');
+    lines.push(`${String(unmarked.length).padStart(width)}  in the slow tail and unmarked: ${named}`
+      + ` — ${UNMARKED_NOTE}`);
+  }
+  if (unchecked !== undefined) {
+    lines.push(`${'—'.padStart(width)}  no @slow: marker checked here — `
+      + uncheckedNote(unchecked.why, { files: unchecked.files, covered: measured, all }));
+  }
+  return lines;
+};
+
+/**
+ * How many of this pool's `@slow:` markers guard a spec that could not move anyway.
+ *
+ * The gate's whole subject is whether a spec belongs in the other half, and `hasSplit` already records
+ * what makes that available: *"a package with one config has nowhere to move a spec to."* Nothing counted
+ * the markers against it, and the count is the finding — measured 2026-10-06, **every marker in the repo
+ * is in such a package**, so the remedy the gate points at costs a new vitest config and a root project
+ * entry rather than a rename.
+ *
+ * That is what this line is for. The gate carries a deletion condition turning on a year passing with no
+ * spec having moved halves on its evidence, and while this number equals the marker count that year is
+ * guaranteed to pass whatever anyone does — so the condition would be met by arithmetic rather than by
+ * the gate having been found useless. A reader of a passing run should see which it was.
+ *
+ * Silent at zero, so the output stops mentioning it the moment a package gains a second half or a marker
+ * lands in one of the three that already have one.
+ */
+const markerReachLines = (marked: ReadonlyMap<string, Map<string, string>>, width: number, root: string): string[] => {
+  const dirs = [...marked].flatMap(([dir, files]) => [...files.keys()].map(() => dir));
+  const stuck = dirs.filter((dir) => !hasSplit(path.join(root, 'packages', dir)));
+  if (stuck.length === 0) return [];
+  return [`${String(stuck.length).padStart(width)}  of ${dirs.length} @slow: marker(s) sit in a package with`
+    + ' no second half, so no spec they guard can move without a new vitest config'];
+};
+
+/**
  * What a finished pool run measured, as lines for whoever reports on it.
  *
  * Here rather than in either caller because both need it and neither performed the run: `scripts/chain.ts`
@@ -330,6 +390,8 @@ export function poolDurationLines(pool: Pool, width: number, since: Date,
       : `${asDuration(bound.perCoreMs).padStart(width)}  work/cores against a ${asDuration(bound.floorMs)} floor`
         + ` — ${bound.binds}-bound`,
     ...outlierLines(rows, half, width, measured.size === covered.length),
+    ...placementLines(rows, marked, half, width, measured.size, covered.length),
+    ...markerReachLines(marked, width, root),
     // Costliest, not slowest: the two lines above judge a file by what it cost, and a ranking by test time
     // beside them could omit the very file the outlier line names
     ...costliestFiles(rows, half).map((row) => {

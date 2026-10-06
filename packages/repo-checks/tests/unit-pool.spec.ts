@@ -17,6 +17,7 @@ import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
 import { poolDurationLines } from '../../../scripts/lib/unit-pool.ts';
 import { writeDurations } from '../../../scripts/lib/spec-durations.ts';
+import { CONFIG_BY_HALF } from '../../../scripts/lib/spec-halves.ts';
 import { CHAIN_RUN_ENV, PROVENANCES, provenanceOf } from '../../../scripts/lib/unit-pool.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
@@ -598,8 +599,66 @@ describe('poolDurationLines', () => {
     const root = whole({ 'abuddy-sdk': [{ file: 'tests/setup-heavy.spec.ts', ms: 100, overheadMs: 30_000 },
       { file: 'tests/test-heavy.spec.ts', ms: 5000, overheadMs: 100 }] });
     const printed = lines(root);
-    expect(printed[3], 'the costliest file leads the ranking').toContain('tests/setup-heavy.spec.ts');
+    // Indexed from the end, because the ranking is the trailing block and the verdicts above it vary in
+    // number — the outlier, the unmarked tail and the marker reach each appear only when they apply. Five
+    // rows, `costliestFiles`' limit, this fixture's half having twelve files
+    const ranking = printed.slice(-5);
+    expect(ranking[0], 'the costliest file leads the ranking').toContain('tests/setup-heavy.spec.ts');
     expect(printed.join('\n')).toMatch(/setup-heavy\.spec\.ts[^\n]*out of line|out of line[^\n]*setup-heavy/);
+  });
+
+  /**
+   * The reported half of the gate, which was computed and printed where a passing run could not show it.
+   *
+   * `placementOf`'s `unmarked` list was only ever written by the pool's own stdout, which both callers
+   * buffer and print on failure alone — so the direction deliberately left as a report was visible only
+   * when something else broke. These two cases are what fails if that line goes again.
+   *
+   * Named rather than counted, because the ranking is ordered by cost and this list by test time, so an
+   * unmarked file in the tail need not be among the rows a reader can see.
+   */
+  it('names a file in the slow tail that carries no marker', () => {
+    const root = whole({ 'abuddy-sdk': [{ file: 'tests/loud.spec.ts', ms: 30_000, overheadMs: 100 }] });
+    const printed = lines(root).join('\n');
+    expect(printed).toMatch(/in the slow tail and unmarked:[^\n]*abuddy-sdk\/tests\/loud\.spec\.ts/);
+    expect(printed, 'with what makes it a report rather than a failure').toContain('reported, not failed');
+  });
+
+  /**
+   * And on a partial run it reports why it drew no verdict, rather than printing nothing.
+   *
+   * Twenty files in one suite of eleven: enough that the half has a tail, so this reaches `a partial run`
+   * rather than the `too few files` branch the two-file fixture above lands on.
+   */
+  it('checks no marker on a partial run, and says which run it was', () => {
+    const root = planted({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 30_000, overheadMs: 100 },
+      ...Array.from({ length: 19 }, (_, n) => ({ file: `tests/small${n}.spec.ts`, ms: 100, overheadMs: 10 }))] });
+    expect(lines(root).join('\n')).toMatch(/no @slow: marker checked here — this run covered 1 of \d+ project\(s\)/);
+  });
+
+  /**
+   * The count that makes the gate's deletion condition answerable.
+   *
+   * Measured 2026-10-06, every marker in the repo is in a package with one vitest config, so the move the
+   * gate's remedy names costs a new config rather than a rename — and a condition turning on a year
+   * passing with no spec moving halves cannot tell that apart from the gate having been found useless.
+   */
+  it('counts the markers whose package has nowhere to move a spec', () => {
+    const root = whole({});
+    fs.writeFileSync(path.join(root, 'packages', 'abuddy-sdk', 'tests', 'a.spec.ts'),
+      '// @slow: it builds a program per case\nimport x from \'y\';\n');
+    expect(lines(root).join('\n')).toMatch(/1\s+of 1 @slow: marker\(s\) sit in a package with no second half/);
+  });
+
+  it('says nothing of reach once the marked package has a half to move to', () => {
+    const root = whole({});
+    fs.writeFileSync(path.join(root, 'packages', 'abuddy-sdk', 'tests', 'a.spec.ts'),
+      '// @slow: it builds a program per case\nimport x from \'y\';\n');
+    // Both configs, which is what `hasSplit` reads — the line is about what the repo makes possible
+    for (const config of Object.values(CONFIG_BY_HALF)) {
+      fs.writeFileSync(path.join(root, 'packages', 'abuddy-sdk', config), '');
+    }
+    expect(lines(root).join('\n')).not.toMatch(/sit in a package with no second half/);
   });
 
   it('says nothing at all where no run has measured anything', () => {

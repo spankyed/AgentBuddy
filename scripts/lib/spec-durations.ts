@@ -18,24 +18,36 @@
  *
  * **The gate is the part of this with a condition on it**, and the outlier detector is now part of it —
  * `OUTLIER_GAP`, `OUTLIER_FLOOR_MS` and `outlierIn` inform the same decision and so carry the same
- * condition. With `SLOW_QUANTILE`, `tailBar`, `SLOW_MARKER`, `slowReason`, `markedSpecs` and
- * `placementOf` that is ~256 lines here and six of `spec-durations.spec.ts`' seventeen describes —
- * **about 505 of the 1,855** across this module, its reporter and their specs, re-counted 2026-10-06
- * after three commits of additions (it read "320 of 1,356" and a pricing rule with a stale denominator
- * prices nothing). Everything
+ * condition. With `SLOW_QUANTILE`, `tailBar`, `SLOW_MARKER`, `slowReason`, `markedSpecs`,
+ * `placementOf`, `UNCHECKED_NOTE` and `UNMARKED_NOTE` that is ~300 lines here and six of
+ * `spec-durations.spec.ts`' seventeen describes — **about 550 of the 1,901** across this module, its
+ * reporter and their specs, **and 115 more outside them**: `placementLines` and `markerReachLines` in
+ * `unit-pool.ts` (62) with their four cases in its spec (53), which is where the reported half is now
+ * printed. Re-counted 2026-10-06, twice in one day — it read "320 of 1,356", then "505 of 1,855", and a
+ * pricing rule with a stale denominator prices nothing. Everything
  * else is the parse, the ranking, the totals, the cache, the window and `spec:dry`'s pricing, which are
  * read whether or not a marker is ever checked. So deleting the gate leaves the instrument intact.
  *
- * **What it guards is five annotations, in one direction, and its failure mode is a stale comment.** What
- * it is *for* is the decision underneath: whether a spec should move between halves. **As of 2026-10-06
- * that decision has been made zero times** — `run-install.spec.ts` is the standing candidate, named in
- * `goal-placement-without-a-clock.md` and worth ~4.4s of the worst `npm run spec` loop (93 specs, 24.4s,
- * from an `@abuddy/sdk` entity-type change), and nothing has moved it.
+ * **What it guards is eleven annotations, in one direction, and its failure mode is a stale comment.**
+ * What it is *for* is the decision underneath: whether a spec should move between halves. **As of
+ * 2026-10-06 that decision has been made zero times** — `run-install.spec.ts` is the standing candidate,
+ * named in `goal-placement-without-a-clock.md` and worth ~4.4s of the worst `npm run spec` loop (93
+ * specs, 24.4s, from an `@abuddy/sdk` entity-type change), and nothing has moved it.
  *
- * So: **if a year of this repo's work passes without one spec having moved halves on this gate's
- * evidence, delete it** and keep the ranking. That is a judgement and not a thing a run can check, which
- * is why it is written here rather than asserted — the mechanical half, that the marker population has
- * not collapsed to nothing, is already a case in `markedSpecs`' describe.
+ * **A year's wait cannot answer that, which is the correction this condition needed.** All eleven markers
+ * are in packages with a single vitest config, so the move the remedy names costs a new config and a root
+ * project entry rather than a rename — `hasSplit` (`spec-halves.ts`) is where that fact lives. A year
+ * therefore passes with nothing having moved whatever anyone decides, and a condition met by arithmetic
+ * says nothing about whether the gate earned its place. The number to read instead is the one
+ * `markerReachLines` (`unit-pool.ts`) prints on a passing run: while it equals the marker count, the
+ * decision is *unavailable* rather than unmade.
+ *
+ * So: **delete the gate and keep the ranking once either holds** — a year of this repo's work with no
+ * spec having moved halves on this evidence *while a move was available to it*, or a settled judgement
+ * that the markers are not worth their weight. Both are judgements rather than things a run can check,
+ * which is why they are written here; the mechanical halves are cases — that the population has not
+ * collapsed to nothing, in `markedSpecs`' describe, and how much of it could move, in
+ * `poolDurationLines`'.
  *
  * And price any addition against that figure before making one. The subsystem this replaced grew to 1,884
  * lines by answering each objection with another mechanism, and the lesson recorded for it in the root
@@ -410,6 +422,40 @@ export function markedSpecs(packageDir: string): Map<string, string> {
 
 /** Why a half's markers went unchecked — two shapes, and the message each one needs is different */
 export type Unchecked = 'too few files' | 'a partial run';
+
+/**
+ * The message each `Unchecked` needs, beside the union that declares them.
+ *
+ * A `Record` keyed by the union rather than a ternary over it, so a third shape cannot be added without a
+ * message — a ternary would hand the new member the second one's wording and compile.
+ *
+ * It lives beside the union because **two callers report this**: the pool's own output, and the line
+ * `poolDurationLines` puts on a run that passed. Those two are the same sentence in different columns, and
+ * the half of it worth having once is the reasoning rather than the glue.
+ */
+const UNCHECKED_NOTE: Readonly<Record<Unchecked, (facts: UncheckedFacts) => string>> = {
+  'too few files': ({ files }) => `${files} file(s) is too few for a tail, so its p90 is its slowest`,
+  'a partial run': ({ covered, all }) => `this run covered ${covered} of ${all} project(s), and a bar from`
+    + ' part of a half cannot say a marked spec has left its tail',
+};
+
+/** What a reader needs to be told about an unchecked half; each shape reads one part of it */
+export interface UncheckedFacts {
+  readonly files: number;
+  readonly covered: number;
+  readonly all: number;
+}
+
+export const uncheckedNote = (why: Unchecked, facts: UncheckedFacts): string => UNCHECKED_NOTE[why](facts);
+
+/**
+ * What an unmarked file in a half's tail is worth, worded once.
+ *
+ * Said wherever the count is, because meeting the annotation without it leaves a reader no way to know it
+ * is not a result they are obliged to clear. It is the one of the two directions a loaded run can
+ * fabricate, which is the whole reason it is a report and the stale-marker list is a gate.
+ */
+export const UNMARKED_NOTE = 'reported, not failed, since load can push a file into a tail and never out of one';
 
 export interface Placement {
   /**

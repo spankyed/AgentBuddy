@@ -222,13 +222,31 @@ two config files a spec was listed in, where nine of twelve packages had only on
 
 **And the successor carries a deletion condition from the start, which is the part this lesson was missing.**
 `spec-cost.json` accumulated one only in hindsight. The `@slow:` marker gate — `SLOW_QUANTILE`, `tailBar`,
-`slowReason`, `markedSpecs`, `placementOf`, the outlier detector and their six describes, about 505 of the 1,855 lines across
-`spec-durations.ts`, its reporter and their specs — guards five annotations in one direction, and its failure
+`slowReason`, `markedSpecs`, `placementOf`, the outlier detector and their six describes, about 550 of the
+1,901 lines across `spec-durations.ts`, its reporter and their specs, plus 115 in `unit-pool.ts` and its
+spec where the report is printed — guards eleven annotations in one direction, and its failure
 mode is a stale comment. What it is *for* is whether a spec should move between halves, and as of 2026-10-06
-that decision has been made **zero times**. So: if a year passes with no spec having moved halves on its
-evidence, delete the gate and keep the ranking, which is the other 1,000 lines and is read either way. The
-condition is a judgement rather than something a run can check, which is why it is prose; the mechanical
-half — that the markers have not collapsed to none — is a case in `markedSpecs`' describe.
+that decision has been made **zero times**.
+
+**A year's wait cannot tell you why, which is the correction the condition needed.** All eleven markers sit
+in packages with a single vitest config, so the move the remedy names costs a new config and a root project
+entry rather than a rename — `hasSplit` is where that fact lives, and nothing counted the markers against it
+until a passing run started printing the count (`markerReachLines`). While that count equals the marker
+total the decision is *unavailable* rather than unmade, and a year would pass with nothing having moved
+whatever anyone decided. So: delete the gate and keep the ranking — the other 1,000 lines, read either
+way — once either a year passes with no spec having moved halves on this evidence **while a move was
+available to it**, or the markers are judged not worth their weight. Both are judgements rather than things
+a run can check, which is why they are prose; the mechanical halves are cases — that the markers have not
+collapsed to none, in `markedSpecs`' describe, and how many of them could move, in `poolDurationLines`'.
+
+**And the reported half was computed where no passing run could print it**, which is the defect that found
+all of the above. `placementOf`'s unmarked list was written only to the pool's own stdout, and both callers
+buffer a step's output and print it on failure alone — so the direction deliberately left as a report was
+visible only when something else broke, which is the one shape the four ways of saying a result is partial
+forbid. It is a line on the pass path now, naming the files rather than counting them, because the ranking
+beside it is ordered by cost and that list by test time, so an unmarked file in the tail need not be among
+the rows a reader can see. On the first run it printed, the integration half's two slowest files — 41.3s and
+31.5s — were both unmarked.
 
 **One window came back, and it is worth saying why it is not a sample in the fatal sense.** The duration
 cache (`scripts/lib/spec-durations.ts`) keeps ten readings per suite and half. It is uncommitted, it cannot

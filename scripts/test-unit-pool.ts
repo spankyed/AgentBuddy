@@ -26,7 +26,7 @@ import { POOL_SECONDS } from './lib/chain-steps.ts';
 import { MEASURED_ON } from './lib/core-budget.ts';
 import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
-import { asDuration, durationsOf, halfTotal, markedSpecs, trendOf, placementOf, pruneDurationCache, slowestFiles, tailBar, writeDurations } from './lib/spec-durations.ts';
+import { asDuration, durationsOf, halfTotal, markedSpecs, trendOf, placementOf, pruneDurationCache, slowestFiles, tailBar, uncheckedNote, UNMARKED_NOTE, writeDurations } from './lib/spec-durations.ts';
 import { readReportedRun, SPEC_DURATIONS_FILE } from './lib/spec-durations-reporter.ts';
 import { HALVES } from './lib/spec-halves.ts';
 
@@ -126,15 +126,13 @@ function reportDurations(kind: Pool, covered: readonly UnitSuite[], reported: Re
     // been slow for ten runs or is this run's load, so the prompt needs no figure of its own.
     const unmarked = placement.unmarked.filter((row) => row.half === half).length;
     if (unmarked > 0) {
-      console.log(`${kind} pool: ${unmarked} of those ${unmarked === 1 ? 'carries' : 'carry'} no @slow: `
-        + 'marker — reported, not failed, since load can push a file into a tail and never out of one');
+      console.log(`${kind} pool: ${unmarked} of those ${unmarked === 1 ? 'carries' : 'carry'} `
+        + `no @slow: marker — ${UNMARKED_NOTE}`);
     }
   }
   for (const { half, files, why } of placement.unplaceable) {
-    console.log(`${kind} pool: no marker checked in the ${half} half — ${why === 'too few files'
-      ? `${files} file(s) is too few for a tail, so its p90 is its slowest`
-      : `this run covered ${covered.length} of ${all.length} project(s), and a bar from part of a half cannot`
-        + ' say a marked spec has left its tail'}`);
+    console.log(`${kind} pool: no marker checked in the ${half} half — `
+      + uncheckedNote(why, { files, covered: covered.length, all: all.length }));
   }
   if (placement.stale.length > 0) {
     const lines = placement.stale.map(({ dir, file, ms, bar, reason }) =>
