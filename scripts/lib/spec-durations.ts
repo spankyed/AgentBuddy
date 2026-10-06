@@ -98,7 +98,10 @@ export interface FileDuration {
   /** The spec's path relative to its package, as the reporter prints it */
   readonly file: string;
   readonly half: Half;
+  /** Tests and hooks, which is what the console prints and what a marker is judged on */
   readonly ms: number;
+  /** Import, setup, environment and prepare — everything a file cost its worker beyond `ms` */
+  readonly overheadMs: number;
 }
 
 /**
@@ -127,7 +130,7 @@ export function durationsOf(run: ReportedRun, covered: readonly UnitSuite[]): Fi
     }
     // Posix separators, because every other consumer names a spec the way a config glob and a git path do
     const file = module.file.split(path.sep).join('/');
-    rows.push({ dir: suite.dir, file, half: halfOfPath(file), ms: module.ms });
+    rows.push({ dir: suite.dir, file, half: halfOfPath(file), ms: module.ms, overheadMs: module.overheadMs });
   }
   return rows;
 }
@@ -173,16 +176,120 @@ export const slowestFiles = (rows: readonly FileDuration[], half: Half, limit = 
  * two come apart exactly where it matters. Measured 2026-10-05, the top five hold 46% of `repo-checks`'
  * fast half and 97% of `abuddy-sdk`'s, so in one of those the ranking describes the suite and in the other
  * it describes one file. And the shape a ranking structurally cannot see is many specs each creeping a
- * little: 349 of 388 fast-half files are under 500ms and total 24.1s, so every one of them could double
- * without entering any top five.
+ * little: 349 of 388 fast-half files are under 500ms and total 24.1s.
  *
- * File time summed across workers, never a wall estimate — the same quantity `spec:dry` prints, and the
- * ratio between the two was measured at 1.55:1 and 2.18:1 on one target three days apart.
+ * `overheadMs` is beside `ms` rather than folded into it because they are different claims: `ms` is the
+ * figure the console prints and a `@slow:` marker is judged on, and the sum is what a run costs.
  */
-export const halfTotal = (rows: readonly FileDuration[], half: Half): { ms: number; files: number } => {
+export const halfTotal = (rows: readonly FileDuration[], half: Half): { ms: number; overheadMs: number; files: number } => {
   const held = rows.filter((row) => row.half === half);
-  return { ms: held.reduce((sum, row) => sum + row.ms, 0), files: held.length };
+  return {
+    ms: held.reduce((sum, row) => sum + row.ms, 0),
+    overheadMs: held.reduce((sum, row) => sum + row.overheadMs, 0),
+    files: held.length,
+  };
 };
+
+/**
+ * Which of the two things that can bound a half's run actually does: its slowest file, or its total work
+ * spread across the cores.
+ *
+ * `max(floor, work/cores)` — `measure-suites.ts`' header has called this "the target any change to
+ * scheduling is measured against" since 2026-09, and **until now it existed nowhere in code**. Computing
+ * it is the whole point of recording overhead, because the figure is worthless without it: measured
+ * 2026-10-06 the host pool is 141.4s of tests and 139.6s of overhead, so `work/cores` is 28.1s with it and
+ * 14.1s without, against a wall of 29.0s. With overhead the prediction lands within a second; without it,
+ * it is out by two.
+ *
+ * **That error cost a file split for nothing.** `generate-entries.spec.ts` was 18.3s, read as the binding
+ * floor against a `work/cores` of 8.7s computed from `ms` alone, and split into five on that basis — for
+ * no wall-clock gain, because the honest figure was 28.1s and the half was work-bound the whole time
+ * (`generate-entries/_support/pack.ts` records the null result). This line is what would have said so.
+ *
+ * `cores` is a parameter rather than read here, so the answer is a function of its inputs and a spec can
+ * ask it about a ten-core box from any box.
+ */
+export const halfBound = (rows: readonly FileDuration[], half: Half, cores: number): {
+  floorMs: number; perCoreMs: number; binds: 'floor' | 'work';
+} => {
+  const total = halfTotal(rows, half);
+  const floorMs = slowestFiles(rows, half, 1)[0]?.ms ?? 0;
+  const perCoreMs = cores > 0 ? (total.ms + total.overheadMs) / cores : 0;
+  return { floorMs, perCoreMs, binds: floorMs > perCoreMs ? 'floor' : 'work' };
+};
+
+/**
+ * How far out of line a half's slowest files may be before the run says so, and the size below which it
+ * does not care.
+ *
+ * **Dimensionless, which is what makes it survive load.** A file and the files it is compared against come
+ * out of the same run, so a run that was slow throughout moves all of them — the argument `SLOW_QUANTILE`
+ * makes, with a second and independent measurement behind it here: across the recorded window the
+ * integration half's slowest file swings 28.8-34.0s, an 18% spread, while its ratio to the next moves
+ * 1.37-1.41x, a 3% one. The absolute figure is six times noisier than the ratio of it.
+ *
+ * **Two, because a warning that fires on ordinary variance is one people learn to skip.** Measured over
+ * every recorded run: the host pool's fast half sits at 1.00-1.11x since its biggest file was split and
+ * sat at 3.39-4.09x before, the integration half at 1.20-1.62x, the pack pool at 1.06-1.90x. So 2x is
+ * above every quiet reading and below every firing one, and the midpoint of 1.90x and 3.74x in the ratio's
+ * own terms is 2.67x. If this ever fires on a half nobody should touch, widen it — the fix is not to start
+ * recording a millisecond, which is the subsystem this replaced.
+ *
+ * **The size floor is what lets the ratio be that tight.** Without it the pack pool reports its 4.2s
+ * slowest file at 1.90x, and splitting a 4.2s file is not work anyone should do. Ten seconds is where it
+ * becomes work worth doing, and it is also what keeps 2x from tripping at ~4s: a half's slowest file has
+ * to be both out of line *and* big enough to act on.
+ *
+ * **A report, never a gate.** The remedy is splitting a file, which is a judgement about what the cases
+ * cover and not a mechanical fix; and `generate-entries.spec.ts` is the standing proof that acting on this
+ * signal can buy nothing, since splitting it moved no wall clock. Failing a run for it would be failing on
+ * a measurement, which the root `CLAUDE.md` rules out twice over.
+ *
+ * It carries the same deletion condition as the `@slow:` gate above, and for the same reason: it informs
+ * the same decision, which has been made zero times.
+ */
+export const OUTLIER_GAP = 2;
+export const OUTLIER_FLOOR_MS = 10_000;
+
+/** A half's slowest files, where they stand apart from the rest of their half */
+export interface Outlier {
+  /** The files above the gap — one, or the two or three that are large together */
+  readonly above: readonly FileDuration[];
+  /** The fastest of them against the next file down, which is what the ratio is of */
+  readonly belowMs: number;
+  readonly ratio: number;
+}
+
+/**
+ * The widest step among a half's top three, where everything above it is big enough to be worth splitting.
+ *
+ * **Checked after the first, second and third file rather than only the first**, because a half whose two
+ * slowest files are both large has a ratio of about one between them and would otherwise report nothing.
+ * Synthetic: two 20s files over a 4s tail is silent on a floor-to-next test and 5.0x on this one. The cost
+ * of the generalisation is three comparisons; a ceiling on the half's *total* would have caught the same
+ * case and would have been a figure in seconds, tied to a machine and needing re-measurement.
+ *
+ * The guard is derived rather than declared: a half with nothing below the step has no ratio to take, the
+ * same way `placeable` refuses a half whose quantile is its own maximum rather than naming a population
+ * floor.
+ */
+export function outlierIn(
+  rows: readonly FileDuration[],
+  half: Half,
+  { gap = OUTLIER_GAP, floorMs = OUTLIER_FLOOR_MS } = {},
+): Outlier | undefined {
+  const held = rows.filter((row) => row.half === half).sort((a, b) => b.ms - a.ms);
+  let worst: Outlier | undefined;
+  for (let k = 1; k <= 3 && k < held.length; k += 1) {
+    const above = held.slice(0, k);
+    // Every file above the step has to be worth acting on, not just the first
+    if (above.some((row) => row.ms < floorMs)) continue;
+    const belowMs = held[k]!.ms;
+    const ratio = belowMs > 0 ? above[k - 1]!.ms / belowMs : Infinity;
+    if (ratio >= gap && (worst === undefined || ratio > worst.ratio)) worst = { above, belowMs, ratio };
+  }
+  return worst;
+}
 
 /**
  * What the last run measured for a set of suites, as rows rather than records.
@@ -201,7 +308,8 @@ export function cachedDurations(root: string, suites: readonly UnitSuite[], half
     // projects whose inputs moved, so a step that ran and found none of them stale measured nothing — and
     // without this the caller printed that step's *previous* numbers as though they were its own.
     if (since !== undefined && new Date(record.measuredAt) < since) return [];
-    return Object.entries(record.ms).map(([file, ms]) => ({ dir: suite.dir, file, half: halfOfPath(file), ms }));
+    return Object.entries(record.ms).map(([file, ms]) =>
+      ({ dir: suite.dir, file, half: halfOfPath(file), ms, overheadMs: record.overheadMs[file] ?? 0 }));
   });
 }
 
@@ -373,8 +481,17 @@ const recordFor = (root: string, dir: string, half: Half): string => path.join(d
 export interface DurationRecord {
   /** When the run that measured these finished, so a reader can say how old the answer is */
   readonly measuredAt: string;
-  /** Milliseconds per spec, by its path relative to the package */
+  /** Tests and hooks per spec, by its path relative to the package */
   readonly ms: Readonly<Record<string, number>>;
+  /**
+   * Overhead per spec, by the same key — import, setup, environment and prepare.
+   *
+   * A second map rather than a field on each entry, because `ms` was a flat `Record<string, number>` on
+   * disk before this and every record written then is still readable: `readDurationRuns` fills this with
+   * an empty object for one, so a reader sees overhead it has no figure for as zero rather than being
+   * refused a measurement it does have.
+   */
+  readonly overheadMs: Readonly<Record<string, number>>;
 }
 
 /**
@@ -413,21 +530,30 @@ export function readDurationRuns(root: string, dir: string, half: Half): readonl
   } catch {
     return undefined;
   }
-  const sound = (value: unknown): value is DurationRecord => {
-    if (typeof value !== 'object' || value === null) return false;
-    const { measuredAt, ms } = value as Partial<DurationRecord>;
-    return typeof measuredAt === 'string' && typeof ms === 'object' && ms !== null;
+  /**
+   * A record is sound on `measuredAt` and `ms` alone, and `overheadMs` is filled in where it is absent.
+   *
+   * That is the same compatibility the window itself has: a record from before this field was recorded
+   * holds real measurements, and refusing it would throw away evidence to insist on a field no reader
+   * needs in order to use `ms`. A consumer of overhead sees zero, which is what "no figure" means here.
+   */
+  const sound = (value: unknown): DurationRecord | undefined => {
+    if (typeof value !== 'object' || value === null) return undefined;
+    const { measuredAt, ms, overheadMs } = value as Partial<DurationRecord>;
+    if (typeof measuredAt !== 'string' || typeof ms !== 'object' || ms === null) return undefined;
+    return { measuredAt, ms, overheadMs: typeof overheadMs === 'object' && overheadMs !== null ? overheadMs : {} };
   };
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (typeof parsed !== 'object' || parsed === null) return undefined;
     const { runs } = parsed as Partial<DurationHistory>;
     if (Array.isArray(runs)) {
-      const kept = runs.filter(sound);
+      const kept = runs.map(sound).filter((run): run is DurationRecord => run !== undefined);
       return kept.length === 0 ? undefined : kept;
     }
     // The shape before the window; one reading is still a reading
-    return sound(parsed) ? [parsed] : undefined;
+    const one = sound(parsed);
+    return one === undefined ? undefined : [one];
   } catch {
     return undefined;
   }
@@ -461,8 +587,10 @@ export function writeDurations(root: string, rows: readonly FileDuration[], meas
     const [dir, half] = key.split('\u0000') as [string, Half];
     const file = recordFor(root, dir, half);
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    const ms = Object.fromEntries([...held].sort((a, b) => a.file.localeCompare(b.file)).map((row) => [row.file, row.ms]));
-    const runs = [{ measuredAt, ms }, ...readDurationRuns(root, dir, half) ?? []].slice(0, KEPT_RUNS);
+    const sorted = [...held].sort((a, b) => a.file.localeCompare(b.file));
+    const ms = Object.fromEntries(sorted.map((row) => [row.file, row.ms]));
+    const overheadMs = Object.fromEntries(sorted.map((row) => [row.file, row.overheadMs]));
+    const runs = [{ measuredAt, ms, overheadMs }, ...readDurationRuns(root, dir, half) ?? []].slice(0, KEPT_RUNS);
     fs.writeFileSync(file, `${JSON.stringify({ runs } satisfies DurationHistory, null, 2)}\n`);
   }
 }

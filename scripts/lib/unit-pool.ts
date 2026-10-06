@@ -10,13 +10,14 @@
  * caches holds to and what happened when it did not.
  */
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { diffableStamp, REPO_ROOT, stampedRunAll, type BuildUnit, type StampedUnit } from '@abuddy/host/build/packages-built';
 import { INTEGRATION_SUITES, suiteInputs } from './chain-steps.ts';
 import { CONFIG_BY_HALF, type Half } from './spec-halves.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import type { ReportedRun } from './spec-durations-reporter.ts';
-import { asDuration, cachedDurations, halfTotal, markedSpecs, readDurationRuns, slowestFiles, trendIn } from './spec-durations.ts';
+import { asDuration, cachedDurations, halfBound, halfTotal, markedSpecs, outlierIn, readDurationRuns, slowestFiles, trendIn, type FileDuration } from './spec-durations.ts';
 
 /**
  * Beside the package builds' and the chain's stamps, in the same cache directory and the same format, so one
@@ -256,6 +257,22 @@ export function projectsThatDidNotRun(asked: readonly string[], run: ReportedRun
 }
 
 /**
+ * The one line a half gets when its slowest files stand apart from the rest of it.
+ *
+ * After the weight and the bound, before the ranking: it is a verdict *about* the ranking, so it reads as
+ * one once the reader knows how heavy the half is. Silent where nothing stands out, which is every half in
+ * this repo today — `outlierIn` carries what the thresholds are and what they were measured against.
+ */
+const outlierLines = (rows: readonly FileDuration[], half: Half, width: number): string[] => {
+  const found = outlierIn(rows, half);
+  if (found === undefined) return [];
+  const named = found.above.map((row) => `${row.dir}/${row.file}`).join(', ');
+  const sizes = found.above.map((row) => asDuration(row.ms)).join(' + ');
+  return [`${`${found.ratio.toFixed(1)}x`.padStart(width)}  ${named} at ${sizes} against `
+    + `${asDuration(found.belowMs)} — out of line with its half, so a candidate for splitting`];
+};
+
+/**
  * What a finished pool run measured, as lines for whoever reports on it.
  *
  * Here rather than in either caller because both need it and neither performed the run: `scripts/chain.ts`
@@ -282,10 +299,17 @@ export function poolDurationLines(pool: Pool, width: number, since: Date): strin
   const rows = cachedDurations(REPO_ROOT, covered, half, since);
   if (rows.length === 0) return [];
   const total = halfTotal(rows, half);
+  const bound = halfBound(rows, half, os.availableParallelism());
   const marked = new Map(covered.map((suite) => [suite.dir, markedSpecs(path.join(REPO_ROOT, 'packages', suite.dir))]));
   const windows = new Map(covered.map((suite) => [suite.dir, readDurationRuns(REPO_ROOT, suite.dir, half)]));
   return [
-    `${asDuration(total.ms).padStart(width)}  ${half} half, ${total.files} file(s) this run measured`,
+    `${asDuration(total.ms).padStart(width)}  ${half} half, ${total.files} file(s) this run measured`
+      + `, ${asDuration(total.overheadMs)} of import and setup around them`,
+    // Which of the two can bound the run, because a floor under `work/cores` cannot — and reading it the
+    // other way is what split a 96-case file for no gain. `halfBound` carries that story.
+    `${asDuration(bound.perCoreMs).padStart(width)}  work/cores against a ${asDuration(bound.floorMs)} floor`
+      + ` — ${bound.binds}-bound`,
+    ...outlierLines(rows, half, width),
     ...slowestFiles(rows, half).map((row) => {
       const reason = marked.get(row.dir)?.get(row.file);
       // The window's oldest reading beside the newest, which is the only thing the history is printed for

@@ -720,11 +720,11 @@ describe('pricedSpecs', () => {
   // nine of these directories reached $TMPDIR before anything removed one
   afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
   writeDurations(root, [
-    { dir: 'abuddy-host', file: 'tests/a.spec.ts', half: 'fast', ms: 1200 },
-    { dir: 'abuddy-host', file: 'tests/b.spec.ts', half: 'fast', ms: 300 },
+    { dir: 'abuddy-host', file: 'tests/a.spec.ts', half: 'fast', ms: 1200, overheadMs: 0 },
+    { dir: 'abuddy-host', file: 'tests/b.spec.ts', half: 'fast', ms: 300, overheadMs: 0 },
   ], '2026-10-05T21:07:00.000Z');
   writeDurations(root, [
-    { dir: 'abuddy-cli', file: 'tests/c.integration.spec.ts', half: 'integration', ms: 40_000 },
+    { dir: 'abuddy-cli', file: 'tests/c.integration.spec.ts', half: 'integration', ms: 40_000, overheadMs: 0 },
   ], '2026-10-04T09:00:00.000Z');
 
   it('sums what this machine measured, and reports when it measured it', () => {
@@ -779,8 +779,8 @@ describe('pricedSpecs', () => {
   it('reports how a named spec has moved across the window', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-dry-trend-'));
     try {
-      writeDurations(root, [{ dir: 'abuddy-host', file: 'tests/a.spec.ts', half: 'fast', ms: 1200 }], '2026-10-01T00:00:00.000Z');
-      writeDurations(root, [{ dir: 'abuddy-host', file: 'tests/a.spec.ts', half: 'fast', ms: 2900 }], '2026-10-02T00:00:00.000Z');
+      writeDurations(root, [{ dir: 'abuddy-host', file: 'tests/a.spec.ts', half: 'fast', ms: 1200, overheadMs: 0 }], '2026-10-01T00:00:00.000Z');
+      writeDurations(root, [{ dir: 'abuddy-host', file: 'tests/a.spec.ts', half: 'fast', ms: 2900, overheadMs: 0 }], '2026-10-02T00:00:00.000Z');
       const priced = pricedSpecs(['packages/abuddy-host/tests/a.spec.ts'], root);
       expect(priced.ms, 'the price is still the newest reading').toBe(2900);
       expect(priced.trend.get('packages/abuddy-host/tests/a.spec.ts')).toEqual({ was: 1200, runs: 2 });

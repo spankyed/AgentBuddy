@@ -7,7 +7,12 @@
  * Alone and serially on purpose. Both numbers are about one suite's own shape, and a suite measured beside
  * another is measuring the machine — contention has produced a wrong answer here more than once. The floor
  * is what bounds a run however the work is scheduled, so `max(floor, work/cores)` is the target any change
- * to scheduling is measured against. **That is why this still exists beside the pools' duration cache**,
+ * to scheduling is measured against. **That figure is computed now** — `halfBound` in
+ * `lib/spec-durations.ts`, printed under every pool step — and the thing to know before reading either is
+ * what `work` has to include: tests and hooks are about half of it. Measured 2026-10-06, the host pool is
+ * 141.4s of tests against 139.6s of import and setup, and the pack pool 19.9s against 163.8s. A
+ * `work/cores` taken from test time alone put an 18.3s floor over an 8.7s work figure and a 96-case file
+ * was split on it for no wall-clock gain; the honest figure was 28.1s, against a measured 29.0s wall. **That is why this still exists beside the pools' duration cache**,
  * which holds only in-pool numbers: every figure in there was measured under contention by design.
  *
  * It reads the run's own reporter (`lib/spec-durations-reporter.ts`), as the pools do. It parsed the console

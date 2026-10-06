@@ -10,7 +10,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
   asDuration, asLocalTime, durationCacheDir, durationsOf, markedSpecs, placementOf, pruneDurationCache,
-  cachedDurations, halfTotal, KEPT_RUNS, quantileOf, readDurationRuns, readDurations, slowestFiles,
+  cachedDurations, halfBound, halfTotal, KEPT_RUNS, outlierIn, quantileOf, readDurationRuns, readDurations,
+  slowestFiles,
   slowReason, tailBar,
   trendOf, writeDurations, type FileDuration,
 } from '../../../scripts/lib/spec-durations.ts';
@@ -22,8 +23,9 @@ import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.t
 const HOST = UNIT_SUITES.filter((suite) => ['abuddy-host', 'abuddy-sdk'].includes(suite.dir));
 const ONE = UNIT_SUITES.filter((suite) => suite.dir === 'abuddy-host');
 
-const row = (dir: string, file: string, ms: number): FileDuration =>
-  ({ dir, file, ms, half: file.endsWith('.integration.spec.ts') ? 'integration' : 'fast' });
+/** A row as a run reports one. `collectMs` defaults to a figure no case asserts unless it says so. */
+const row = (dir: string, file: string, ms: number, overheadMs = 0): FileDuration =>
+  ({ dir, file, ms, overheadMs, half: file.endsWith('.integration.spec.ts') ? 'integration' : 'fast' });
 
 const temp: string[] = [];
 const tmpdir = (): string => {
@@ -36,7 +38,8 @@ afterEach(() => {
 });
 
 /** A module as the durations reporter records one */
-const mod = (project: string, file: string, ms: number, skipped = false) => ({ project, file, ms, skipped });
+const mod = (project: string, file: string, ms: number, skipped = false, overheadMs = 0) =>
+  ({ project, file, ms, overheadMs, skipped });
 const reported = (...modules: ReturnType<typeof mod>[]): ReportedRun =>
   ({ projects: [...new Set(modules.map((one) => one.project))], modules });
 
@@ -412,12 +415,140 @@ describe('halfTotal', () => {
   ];
 
   it('sums one half and counts its files, leaving the other half out', () => {
-    expect(halfTotal(rows, 'fast')).toEqual({ ms: 1500, files: 2 });
-    expect(halfTotal(rows, 'integration')).toEqual({ ms: 40_000, files: 1 });
+    expect(halfTotal(rows, 'fast')).toEqual({ ms: 1500, overheadMs: 0, files: 2 });
+    expect(halfTotal(rows, 'integration')).toEqual({ ms: 40_000, overheadMs: 0, files: 1 });
+  });
+
+  // Summed beside `ms` rather than into it: the pack pool is 19.9s of tests against 163.8s of import and
+  // setup, so a half's weight that left the second out would be off by eight
+  it('sums overhead beside tests, as a second quantity', () => {
+    const rows = [row('a', 'tests/one.spec.ts', 700, 1700), row('a', 'tests/two.spec.ts', 300, 1600)];
+    expect(halfTotal(rows, 'fast')).toEqual({ ms: 1000, overheadMs: 3300, files: 2 });
   });
 
   it('is zero over no files, which is a total and not an absence', () => {
-    expect(halfTotal([], 'fast')).toEqual({ ms: 0, files: 0 });
+    expect(halfTotal([], 'fast')).toEqual({ ms: 0, overheadMs: 0, files: 0 });
+  });
+});
+
+/**
+ * Whether a half's slowest files stand apart from the rest of it.
+ *
+ * **Nothing in this repo fires it today, so every case here is the firing case.** A detector whose
+ * reporting branch no case reaches is the "gate nothing has watched fail" the root guide names, and the
+ * output it feeds is unassertable — `poolDurationLines`' text is checked nowhere, because `scripts/chain.ts`
+ * runs the chain on import and cannot be imported. This pure function is the whole testable surface.
+ *
+ * The rows below are the recorded pre-split world: `generate-entries.spec.ts` at 18.3s over a 4.9s peer,
+ * which is what it read in five of the window's runs (3.39-4.09x) before it became five files.
+ */
+/**
+ * Which of the two things that can bound a half's run actually does.
+ *
+ * `max(floor, work/cores)` was prose in `measure-suites.ts`' header for a month and existed nowhere in
+ * code, and the gap is why `generate-entries.spec.ts` was split for nothing: an 18.3s floor read as
+ * binding against a `work/cores` of 8.7s taken from test time alone, where the honest figure including
+ * import and setup was 28.1s and the half was work-bound throughout.
+ */
+describe('halfBound', () => {
+  // The host pool's own figures, 2026-10-06: 141.4s of tests, 139.6s of overhead, a 10.0s floor, 10 cores
+  const host = [row('abuddy-sdk', 'tests/compiles.spec.ts', 10_000, 1000),
+    row('abuddy-sdk', 'tests/shapes.spec.ts', 9400, 1000),
+    // the rest of the half, spread as 280 files are rather than heaped into one that would be the floor
+    ...Array.from({ length: 280 }, (_, n) => row('a', `tests/rest-${n}.spec.ts`, 436, 491))];
+
+  it('calls a half work-bound when its work outweighs its slowest file', () => {
+    const bound = halfBound(host, 'fast', 10);
+    expect(bound.floorMs).toBe(10_000);
+    expect(bound.perCoreMs / 1000, 'tests and overhead, over the cores').toBeCloseTo(28.1, 0);
+    expect(bound.binds).toBe('work');
+  });
+
+  /**
+   * **And the pre-split half reads floor-bound without its overhead, which is the error reproduced.**
+   *
+   * The figures are the ones the mistake was made on: `generate-entries.spec.ts` at 18.3s in a fast half
+   * of 86.5s of test time. From test time alone that is `work/cores` of 8.7s against an 18.3s floor —
+   * floor-bound, and a file worth splitting. With the 139.6s of import and setup the same half also costs,
+   * it is 22.6s and work-bound, and splitting the floor could buy nothing. It bought nothing.
+   *
+   * Today's numbers cannot show this: post-split the half is work-bound either way, 14.1s against a 10.0s
+   * floor. So the case is built from the recorded pre-split figures rather than from the tree.
+   */
+  it('reads the pre-split half floor-bound without overhead and work-bound with it', () => {
+    const floor = row('abuddy-sdk', 'tests/generate-entries.spec.ts', 18_300, 1000);
+    const rest = Array.from({ length: 287 }, (_, n) => row('a', `tests/rest-${n}.spec.ts`, 238, 483));
+    expect(halfBound([floor, ...rest], 'fast', 10).binds, 'with overhead, as it really was').toBe('work');
+    const blind = [floor, ...rest].map((r) => row(r.dir, r.file, r.ms, 0));
+    const bound = halfBound(blind, 'fast', 10);
+    expect(bound.perCoreMs / 1000, 'tests alone, which is half the truth').toBeCloseTo(8.7, 0);
+    expect(bound.binds, 'and so the floor looked binding when it was not').toBe('floor');
+  });
+
+  it('calls a half floor-bound when one file really does exceed its work', () => {
+    const rows = [row('a', 'tests/one.spec.ts', 60_000, 0), row('a', 'tests/two.spec.ts', 1000, 0)];
+    expect(halfBound(rows, 'fast', 10).binds).toBe('floor');
+  });
+
+  it('answers for a half it has no rows for, rather than dividing by nothing', () => {
+    expect(halfBound([], 'fast', 10)).toEqual({ floorMs: 0, perCoreMs: 0, binds: 'work' });
+    expect(halfBound(host, 'fast', 0).perCoreMs, 'a box with no cores is not a division').toBe(0);
+  });
+});
+
+describe('outlierIn', () => {
+  const peers = [row('abuddy-host', 'tests/write-lock.spec.ts', 4900),
+    row('abuddy-cli', 'tests/run-install.spec.ts', 4000),
+    row('abuddy-host', 'tests/published-manifest.spec.ts', 3400),
+    row('abuddy-ears', 'tests/store.spec.ts', 3300)];
+
+  it('reports one file standing above its half, with the ratio the caller prints', () => {
+    const found = outlierIn([row('abuddy-sdk', 'tests/generate-entries.spec.ts', 18_300), ...peers], 'fast')!;
+    expect(found.above.map((r) => r.file)).toEqual(['tests/generate-entries.spec.ts']);
+    expect(found.belowMs).toBe(4900);
+    expect(found.ratio).toBeCloseTo(3.73, 1);
+  });
+
+  /**
+   * And two files that are large together, which a floor-to-next test cannot see.
+   *
+   * The ratio between them is ~1, so comparing only the first to the second reports nothing. Checking the
+   * step after the second finds it. This is the case that made the generalisation worth three comparisons.
+   */
+  it('reports the two slowest when they are large together', () => {
+    const rows = [row('a', 'tests/one.spec.ts', 20_000), row('a', 'tests/two.spec.ts', 20_000), ...peers];
+    const found = outlierIn(rows, 'fast')!;
+    expect(found.above.map((r) => r.file)).toEqual(['tests/one.spec.ts', 'tests/two.spec.ts']);
+    expect(found.ratio).toBeCloseTo(4.08, 1);
+  });
+
+  // The other direction, and the one that is true of this repo on every run
+  it('says nothing about a half whose slowest files are in line with it', () => {
+    const rows = [row('a', 'tests/one.spec.ts', 10_000), row('a', 'tests/two.spec.ts', 9400),
+      row('a', 'tests/three.spec.ts', 9000), ...peers];
+    expect(outlierIn(rows, 'fast')).toBeUndefined();
+  });
+
+  /**
+   * And nothing about a file that is out of line but too small to act on.
+   *
+   * The pack pool's own reading: its slowest file is 4.2s at 1.90x its next, which clears the ratio and is
+   * not work anyone should do. Without the size floor this would report on every run.
+   */
+  it('says nothing about a small file, however far out of line', () => {
+    const rows = [row('a', 'tests/one.spec.ts', 4200), row('a', 'tests/two.spec.ts', 2200),
+      row('a', 'tests/three.spec.ts', 900)];
+    expect(outlierIn(rows, 'fast'), 'a 4.2s file at 1.9x is not a splitting job').toBeUndefined();
+    // Drop the floor and it reports — at the *widest* qualifying step, which here is after the second
+    // file (2.2s over 0.9s) rather than after the first (4.2s over 2.2s). That is the k-scan choosing.
+    expect(outlierIn(rows, 'fast', { floorMs: 500 })!.ratio, 'and the floor is what muted it')
+      .toBeCloseTo(2.44, 1);
+  });
+
+  it('asks only about its own half, and needs something below the step', () => {
+    const mixed = [row('a', 'tests/one.integration.spec.ts', 40_000), ...peers];
+    expect(outlierIn(mixed, 'integration'), 'one file is a half with no peer to stand above').toBeUndefined();
+    expect(outlierIn([], 'fast')).toBeUndefined();
   });
 });
 
@@ -452,6 +583,38 @@ describe('the duration window', () => {
       JSON.stringify({ measuredAt: '2026-10-01T00:00:00.000Z', ms: { 'tests/a.spec.ts': 500 } }));
     expect(readDurationRuns(root, 'abuddy-host', 'fast')).toHaveLength(1);
     expect(readDurations(root, 'abuddy-host', 'fast')!.ms['tests/a.spec.ts']).toBe(500);
+  });
+
+  /**
+   * And a record from before `collectMs` keeps its `ms`, with no collection figures rather than none at all.
+   *
+   * The compatibility the window already had, extended to the second map: such a record holds real
+   * measurements, and refusing it to insist on a field no reader of `ms` needs would throw evidence away.
+   * A consumer of collection sees zero, which is what "no figure" means here — `cachedDurations` fills it
+   * the same way.
+   */
+  it('reads a record from before overhead was recorded, with ms intact', () => {
+    const root = tmpdir();
+    fs.mkdirSync(durationCacheDir(root), { recursive: true });
+    fs.writeFileSync(path.join(durationCacheDir(root), 'abuddy-host.fast.json'), JSON.stringify({
+      runs: [{ measuredAt: '2026-10-01T00:00:00.000Z', ms: { 'tests/a.spec.ts': 500 } }],
+    }));
+    const record = readDurations(root, 'abuddy-host', 'fast')!;
+    expect(record.ms['tests/a.spec.ts'], 'the measurement it does have').toBe(500);
+    expect(record.overheadMs, 'the one it does not, as an absence rather than a refusal').toEqual({});
+    expect(cachedDurations(root, UNIT_SUITES.filter((s) => s.dir === 'abuddy-host'), 'fast')[0]!.overheadMs)
+      .toBe(0);
+  });
+
+  // Both maps are keyed alike and written together, so a reader cannot get one spec's tests with another's
+  // collection
+  it('round-trips overhead beside tests, under the same keys', () => {
+    const root = tmpdir();
+    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', 1200, 900),
+      row('abuddy-host', 'tests/b.spec.ts', 300, 2400)], '2026-10-02T00:00:00.000Z');
+    const record = readDurations(root, 'abuddy-host', 'fast')!;
+    expect(record.ms).toEqual({ 'tests/a.spec.ts': 1200, 'tests/b.spec.ts': 300 });
+    expect(record.overheadMs).toEqual({ 'tests/a.spec.ts': 900, 'tests/b.spec.ts': 2400 });
   });
 
   it('has no window where no run has measured, and none for a half-written file', () => {

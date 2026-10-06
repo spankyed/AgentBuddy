@@ -64,6 +64,25 @@ export interface ReportedModule {
   /** `diagnostic().duration`: the accumulated time of the module's tests and hooks */
   readonly ms: number;
   /**
+   * Everything the module cost its worker beyond its tests and hooks: import, setup, environment, prepare.
+   *
+   * **Recorded because `ms` alone cannot answer what a run costs, and because `collect` alone cannot
+   * either.** `ms` is tests and hooks only. The first attempt at this field recorded
+   * `collectDuration` by itself, which is right for the host pool — 68-85s of collection against 71-92s of
+   * tests — and wrong for the pack pool, whose per-file cost is `setupDuration`: measured 2026-10-06,
+   * `harness-app-stop` is 3,984ms of tests against 1,716ms of setup and 21ms of collection, and
+   * `seed-parity` is 753ms of tests against 1,703ms of setup. For that file the tests are 30% of what it
+   * cost. So the quantity worth keeping is the sum, which is what `work/cores` needs.
+   *
+   * One figure rather than four, because no decision here wants the breakdown: a reader asking why a half
+   * is heavy reads the vitest summary, which prints all of them. If one ever does want it, the four are
+   * on the same `diagnostic()` call.
+   *
+   * The console prints no such figure, so unlike `ms` this one is not checkable against it — which is why
+   * the agreement case pins it only as present and positive.
+   */
+  readonly overheadMs: number;
+  /**
    * Whether the module ran at all.
    *
    * Recorded rather than filtered here, so the consumer decides. It matters because a skipped module
@@ -126,12 +145,17 @@ export default class SpecDurationsReporter implements Reporter {
   [ENDED](modules: Modules): void {
     const out = process.env[SPEC_DURATIONS_FILE];
     if (out === undefined) return;
-    const reported: ReportedModule[] = modules.map((module) => ({
+    const reported: ReportedModule[] = modules.map((module) => {
+      const diagnostic = module.diagnostic();
+      return ({
       project: projectName(module.project.name, module.project.config.root),
       file: path.relative(module.project.config.root, module.moduleId),
-      ms: module.diagnostic().duration,
+      ms: diagnostic.duration,
+      overheadMs: diagnostic.collectDuration + diagnostic.setupDuration
+        + diagnostic.environmentSetupDuration + diagnostic.prepareDuration,
       skipped: !RAN.has(module.state()),
-    }));
+      });
+    });
     // The union, not the started set alone: a run whose start hook never fired would otherwise report no
     // projects while reporting their files, and the consumer would read every one of them as absent
     const projects = new Set([...this.#started, ...reported.map(({ project }) => project)]);

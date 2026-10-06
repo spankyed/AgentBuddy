@@ -169,6 +169,31 @@ describe('the durations reporter agrees with the console it replaced', () => {
   });
 
   /**
+   * And it reports a file's overhead, which the console does not print — so this claim is narrower on purpose.
+   *
+   * `ms` is pinned to the console's own figure because both read `task.result.duration`. Nothing displays
+   * the four fields this sums, so there is no second account to agree with and the most that can be
+   * asserted is that it arrives and is a real measurement. Said plainly rather than left to look like the
+   * same kind of check as the one above.
+   *
+   * It is recorded at all because `ms` is tests and hooks only, and which part of the rest dominates
+   * depends on the pool: collection for the host pool (68-85s against 71-92s of tests), setup for the pack
+   * pool (`seed-parity` at 1,703ms of setup against 753ms of tests). A `work/cores` computed from `ms`
+   * alone understates by about two, which is how an 18.3s floor came to be read as binding against a
+   * `work/cores` of 8.7s.
+   */
+  it.each(Object.keys(SHAPES) as Shape[])('reports a file\'s overhead beside its tests in a %s run', async (shape) => {
+    const { reported } = await bothReporters(shape);
+    const ran = reported!.modules.filter((module) => !module.skipped);
+    expect(ran, 'no module ran, so there is nothing to have cost anything').not.toEqual([]);
+    const missing = ran.filter((module) => !(module.overheadMs > 0));
+    expect(missing.map((module) => module.file),
+      'a module that ran was imported and prepared, so its overhead cannot be zero — one of '
+      + 'collectDuration/setupDuration/environmentSetupDuration/prepareDuration has stopped answering')
+      .toEqual([]);
+  });
+
+  /**
    * And it names the project in both shapes, which vitest itself does in only one.
    *
    * `TestProject.name` is "the name of the project or **an empty string if not set**", and no config here
