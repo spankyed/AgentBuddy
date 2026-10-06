@@ -4,6 +4,25 @@
 
 ```ts
 
+// @internal
+export type _Asker =
+/** Over the backend bus, which is where a system is */
+    {
+    kind: 'bus';
+    ref: string;
+}
+/** Out over one connection, where a plugin in another window or a claimed participant is */
+| {
+    kind: 'connection';
+    ref: string;
+    client: string;
+}
+/** Inside this window, where a plugin beside the answerer is */
+| {
+    kind: 'window';
+    ref: string;
+};
+
 // @public
 export function createSends(input?: SendBinding): {
     broadcastToPlugin(name: string, event: {
@@ -28,9 +47,8 @@ export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(p
 
 // @internal
 export interface _Delivery {
-    client?: string;
+    asker?: _Asker;
     receiver: string;
-    replyTo?: string;
 }
 
 // @public
@@ -156,10 +174,12 @@ export type Qualified<PackId extends string, M> = {
 };
 
 // @public
-export type Reply = (event: {
+export type Reply<E extends {
+    type: string;
+} = {
     type: string;
     [key: string]: unknown;
-}) => void;
+}> = (event: E) => void;
 
 // @internal
 export function _replyTo(delivery: _Delivery | undefined): Reply | undefined;

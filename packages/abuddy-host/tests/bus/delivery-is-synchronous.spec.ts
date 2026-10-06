@@ -17,7 +17,7 @@ import { deliverAs } from '../../src/bus/delivery.ts';
 
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: createPackRegistry() });
 
-const ASKED = { receiver: 'pack/feature', replyTo: 'pack/asker', client: 'c-1' };
+const ASKED = { to: 'pack/feature', sender: 'pack/asker', client: 'c-1' };
 
 let sent: Array<string | undefined>;
 let stop: () => void;
@@ -79,7 +79,7 @@ describe('a send made while handling a message', () => {
   // Two deliveries nested or in sequence each restore what was being handled before them
   it('restores the message that was being handled around it', () => {
     deliverAs(ASKED, () => {
-      deliverAs({ receiver: 'pack/inner' }, () => { send(); });
+      deliverAs({ to: 'pack/inner', sender: 'pack/outer-asker' }, () => { send(); });
       send();
     });
 

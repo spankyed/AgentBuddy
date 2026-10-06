@@ -151,13 +151,13 @@ const handing = <F>(handler: F): F => {
  * `defineSystem` to come from — and they are handlers like any other. `defineSystem` is this plus the
  * contract's types, so there is one implementation rather than a second shape to keep in step.
  */
-export interface Handlers<TContext extends MachineContext, TEvent extends EventObject> {
+export interface Handlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends { type: string } = { type: string; [key: string]: unknown }> {
   /** See `SystemSpec.actions` — this is the same wrapper, over a machine's own context and events */
   actions<P extends ActionParams>(
-    defs: { [K in keyof P]: (args: Args<TContext, TEvent> & { reply?: Reply }, params: P[K]) => void },
+    defs: { [K in keyof P]: (args: Args<TContext, TEvent> & { reply?: Reply<TOut> }, params: P[K]) => void },
   ): { [K in keyof P]: (args: Args<TContext, TEvent>, params: P[K]) => void };
   /** See `SystemSpec.input` */
-  input<I>(build: (args: InputArgs<TContext, TEvent> & { reply?: Reply }) => I): Mapper<TContext, TEvent, I, TEvent>;
+  input<I>(build: (args: InputArgs<TContext, TEvent> & { reply?: Reply<TOut> }) => I): Mapper<TContext, TEvent, I, TEvent>;
 }
 
 /**
@@ -168,7 +168,11 @@ export interface Handlers<TContext extends MachineContext, TEvent extends EventO
  * export const commitSystem = setup({ types: { … }, actions: handlers.actions({ … }) }).createMachine(…);
  * ```
  */
-export function defineHandlers<TContext extends MachineContext, TEvent extends EventObject>(): Handlers<TContext, TEvent> {
+export function defineHandlers<
+  TContext extends MachineContext,
+  TEvent extends EventObject,
+  TOut extends { type: string } = { type: string; [key: string]: unknown },
+>(): Handlers<TContext, TEvent, TOut> {
   return {
     actions: (defs) => Object.fromEntries(
       Object.entries(defs).map(([name, handler]) => [name, handing(handler)]),
@@ -178,7 +182,7 @@ export function defineHandlers<TContext extends MachineContext, TEvent extends E
 }
 
 /** The definition object returned by `defineSystem()`. */
-export interface SystemSpec<C extends SystemContract> extends Handlers<ContractContext<C>, MachineEvents<C>> {
+export interface SystemSpec<C extends SystemContract> extends Handlers<ContractContext<C>, MachineEvents<C>, Extract<ContractOutgoing<C>, { type: string }>> {
   types: { context: ContractContext<C>; events: MachineEvents<C> };
   typeOf: ReturnType<typeof safeEvents<MachineEvents<C>>>;
   /**
@@ -196,7 +200,7 @@ export interface SystemSpec<C extends SystemContract> extends Handlers<ContractC
    * handler that comes to need an answer moves into the record and gains a name, which it wanted anyway.
    */
   actions<P extends ActionParams>(
-    defs: { [K in keyof P]: (args: SystemArgs<C> & { reply?: Reply }, params: P[K]) => void },
+    defs: { [K in keyof P]: (args: SystemArgs<C> & { reply?: Reply<Extract<ContractOutgoing<C>, { type: string }>> }, params: P[K]) => void },
   ): { [K in keyof P]: (args: SystemArgs<C>, params: P[K]) => void };
   /**
    * An `invoke.input`, handed the same answer, so an invoked actor receives one through its input.
@@ -204,7 +208,7 @@ export interface SystemSpec<C extends SystemContract> extends Handlers<ContractC
    * `input` is evaluated while the transition is being processed — inside the delivery — which is what makes
    * this work and what makes the answer it hands on bound rather than ambient.
    */
-  input<I>(build: (args: InputArgs<ContractContext<C>, MachineEvents<C>> & { reply?: Reply }) => I): Mapper<ContractContext<C>, MachineEvents<C>, I, MachineEvents<C>>;
+  input<I>(build: (args: InputArgs<ContractContext<C>, MachineEvents<C>> & { reply?: Reply<Extract<ContractOutgoing<C>, { type: string }>> }) => I): Mapper<ContractContext<C>, MachineEvents<C>, I, MachineEvents<C>>;
 }
 
 /**

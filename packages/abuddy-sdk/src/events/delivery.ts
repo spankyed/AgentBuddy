@@ -34,12 +34,62 @@
  * broadcast, or its own `PLUGIN_ACTIVATED`, sent on with no `sender` and could not be answered. A count a
  * reader has to keep is the failure; `sendToPluginActor` is the correction.
  *
- * **What does not work is reading this scope from a stored function.** An `await` is fine, and so is a timer the
- * handler itself schedules: both create their async resource inside the scope and inherit it. A bare callback
- * creates nothing, so it runs in whatever scope is current when it is called — from another delivery it reads
- * *that* sender, and from none it reads nothing. That is measured, and it is the gap a bound `reply` closes: an
- * answer handed to a handler keeps working wherever the handler stores it, because it never comes back here.
+ * **Three ways a send ends up outside any delivery**, all of which leave `Message.sender` absent, so the system
+ * it reaches cannot answer it. Worth knowing in this order, because only the first is widely known:
+ *
+ * 1. **After an `await`, or from a timer or callback the handler created.** This paragraph said the opposite
+ *    until 2026-10-06 — that an `await` was fine and so was a timer, because both inherit the scope. That was
+ *    true of the `AsyncLocalStorage` this replaced and is false of a plain variable, which is restored when the
+ *    delivering call returns. `@abuddy/host`'s `tests/bus/delivery-is-synchronous.spec.ts` pins the real
+ *    behaviour, and it is a decision rather than a limitation: see that file and `@abuddy/host/bus`'s
+ *    `delivery.ts` for what the store cost and what dropping it bought.
+ * 2. **A lifecycle or publish path, which opens no delivery at all** — no `await` need be involved. The bus
+ *    pushes `CLIENT_CONNECTED`, `SEND_STATE`, `PACK_CHANGED` and `DATA_REPLACED` with a bare `actor.send`
+ *    (`sendToRunning` and `askToPublish`, `@abuddy/host/bus`'s `machine.ts`), as the host does for an early
+ *    system's pair. That is right rather than missed: those are facts with nobody waiting on them, and
+ *    `SEND_STATE` wants a broadcast and not an answer. A handler of one is handed no `reply`, which is what
+ *    "nobody asked" is supposed to look like.
+ * 3. **An XState completion — an `invoke`'s `onDone`/`onError`, a `fromCallback`'s `sendBack`, a delayed
+ *    `raise`.** The brain turns every `TRIGGER_BRAIN_EVENT` into `raise(…, { delay: 0 })`, so every step
+ *    runtime and every action's code runs a tick after the delivery that triggered it, unconditionally.
+ *
+ * **What this costs today, measured 2026-10-06**: of 33 backend system-to-system send sites, 18 are inside a
+ * delivery and 25 are outside (one is either, depending on a branch). But only three are asking a question at
+ * all, and all three route their answer around the bus — so the loss is real and currently buys nothing back.
+ * A send that wants an answer and cannot be made inside a delivery needs the address threaded explicitly; the
+ * bound `reply` is the half of that which already works, since an answer handed to a handler keeps working
+ * wherever the handler stores it, because it never comes back here.
  */
+
+/**
+ * The way back to whoever asked.
+ *
+ * **Each variant names a channel, not a kind of participant**, because the channel is the only thing answering
+ * needs and the participant does not determine it. A **plugin** asker appears as `connection` when the answerer
+ * is on the backend and as `window` when the answerer is beside it in the same window — same participant, two
+ * ways back. A **system** asker is always `bus`. A participant that claimed a name on its connection (a drive
+ * session) is a `connection` like a plugin, which is what makes it answerable without being a plugin at all.
+ *
+ * **One value rather than two optional fields, because the third case had no spelling.** This was
+ * `replyTo?: string` beside `client?: string`, where a present `client` meant "answer out to that connection"
+ * and an absent one meant "answer in to a system". A window has no connection id of its own — the window *is*
+ * the client — so "a plugin in this window asked" could not be said, and a feature's system and plugin share
+ * one ref, so the ref cannot supply it either. A third boolean would have worked and would have been the third
+ * unchecked field; a variant is one the switch has to handle.
+ *
+ * Which channels exist depends on which side is answering, and `_replyTo` holds that table: the backend reaches
+ * `bus` and `connection`, a window reaches `bus` and `window`. The two remaining cells are impossible and throw
+ * — there is no window-to-window channel, and a window cannot address another window's connection.
+ *
+ * @internal Host and SDK only. Pack code never names it: a handler answers with `reply`, which takes no address.
+ */
+export type _Asker =
+  /** Over the backend bus, which is where a system is */
+  | { kind: 'bus'; ref: string }
+  /** Out over one connection, where a plugin in another window or a claimed participant is */
+  | { kind: 'connection'; ref: string; client: string }
+  /** Inside this window, where a plugin beside the answerer is */
+  | { kind: 'window'; ref: string };
 
 /**
  * The message being handled, as much of it as answering needs.
@@ -49,10 +99,8 @@
 export interface _Delivery {
   /** The ref of the participant being handled. A send made during the delivery stamps it as `Message.sender`. */
   receiver: string;
-  /** Where an answer goes: the ref that sent this message, when it said. Absent for a send that named no sender. */
-  replyTo?: string;
-  /** The connection to answer on, when the message came from one. Absent for a backend-to-backend send. */
-  client?: string;
+  /** Where an answer goes, when the message said. Absent for a send that named no sender. */
+  asker?: _Asker;
 }
 
 /** The holder, and the whole mechanism — in a window and on the backend alike */

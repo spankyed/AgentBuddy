@@ -1,6 +1,6 @@
 // The shell's plugins: their order, which show, spawning each one's actor, and moving between them.
 import type { AnyActorRef, AnyEventObject } from 'xstate';
-import { _runDelivery } from '@abuddy/sdk/events';
+import { _runDelivery, type _Asker } from '@abuddy/sdk/events';
 import type { Plugin } from '@abuddy/sdk/fe';
 import { HOST_PACK_ID, splitRef } from '@abuddy/sdk/ids';
 import type { ShellContext } from './types.ts';
@@ -68,6 +68,16 @@ export function historyAfter(
  * invariant broken and worth a crash, while a send arriving for a plugin whose pack has unloaded is neither. A
  * `?.` here would have levelled those two to the quieter one, which it briefly did.
  */
-export function sendToPluginActor(actor: AnyActorRef, ref: string, event: AnyEventObject): void {
-  _runDelivery({ receiver: ref }, () => actor.send(event));
+export function sendToPluginActor(actor: AnyActorRef, ref: string, event: AnyEventObject, asker: _Asker | undefined): void {
+  _runDelivery({ receiver: ref, asker }, () => actor.send(event));
 }
+
+/**
+ * What the shell's own sends pass for `asker`: a lifecycle event, a hotkey or a navigation has nobody waiting on
+ * an answer, so the plugin's handler is handed no `reply` — which is what "nobody asked" is meant to look like.
+ *
+ * A name rather than a bare `undefined` at seven call sites, and the parameter stays **required** so the compiler
+ * walks all of them. That is this function's whole history: the count was documented as four and was nine, and a
+ * default would have quietly restored exactly that.
+ */
+export const NOBODY_ASKED = undefined;

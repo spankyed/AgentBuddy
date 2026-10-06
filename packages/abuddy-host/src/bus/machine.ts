@@ -221,7 +221,7 @@ export function createBusMachine(options: BusOptions) {
         // Delivered inside a scope naming the message, so the system can answer its sender with `reply` and a
         // send it makes while handling carries its own ref. The event itself is untouched: a return address on it
         // would be a field of the event deciding where things go, which the envelope exists to prevent.
-        if (actor) deliverAs({ receiver: to, replyTo: sender, client }, () => actor.send(incoming));
+        if (actor) deliverAs({ to, sender, client }, () => actor.send(incoming));
         // An event every system accepts (a feature's settings changing) is the feature's system's if it runs one
         else if (!(SYSTEM_EVENT_TYPES as readonly string[]).includes(incoming.type)) {
           console.warn(`[bus] routeIncoming: system "${to}" not found (may be reloading), dropping event "${incoming.type}"`);

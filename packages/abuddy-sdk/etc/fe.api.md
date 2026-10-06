@@ -4,6 +4,7 @@
 
 ```ts
 
+import type { ActionArgs } from 'xstate';
 import type { AnyActorRef } from 'xstate';
 import type { AnyExtension } from '@tiptap/vue-3';
 import type { AnyStateMachine } from 'xstate';
@@ -16,8 +17,12 @@ import { DefineComponent } from 'vue';
 import { EARS as EARS_2 } from '@abuddy/ears';
 import type { Editor } from '@tiptap/vue-3';
 import type { EditorState } from '@tiptap/pm/state';
+import type { EventObject } from 'xstate';
 import { ExtractPropTypes } from 'vue';
 import type { InjectionKey } from 'vue';
+import type { MachineContext } from 'xstate';
+import type { Mapper } from 'xstate';
+import type { ParameterizedObject } from 'xstate';
 import { PublicProps } from 'vue';
 import { Ref } from 'vue';
 import { RendererElement } from 'vue';
@@ -143,6 +148,14 @@ export function createHotkeyProcessor<const TMap extends Record<string, string>,
 export function createNavHistory<T>(initial: T): NavHistory<T>;
 
 // @public
+export function defineHandlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends {
+    type: string;
+} = {
+    type: string;
+    [key: string]: unknown;
+}>(): Handlers<TContext, TEvent, TOut>;
+
+// @public
 export function definePlugin(definition: PluginDefinition): PluginDefinition;
 
 // @public (undocumented)
@@ -188,6 +201,25 @@ export function goForward<T>(history: NavHistory<T>): {
     entry: T;
 } | null;
 
+// @public
+export interface Handlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends {
+    type: string;
+} = {
+    type: string;
+    [key: string]: unknown;
+}> {
+    actions<P extends ActionParams>(defs: {
+        [K in keyof P]: (args: Args<TContext, TEvent> & {
+            reply?: Reply<TOut>;
+        }, params: P[K]) => void;
+    }): {
+        [K in keyof P]: (args: Args<TContext, TEvent>, params: P[K]) => void;
+    };
+    input<I>(build: (args: InputArgs<TContext, TEvent> & {
+        reply?: Reply<TOut>;
+    }) => I): Mapper<TContext, TEvent, I, TEvent>;
+}
+
 // @public (undocumented)
 export function hasDesignation(role: string): boolean;
 
@@ -221,6 +253,9 @@ export type HostShellEvent =
 * Hands a plugin's actor `events` without opening it. The same wait as `OPEN_PLUGIN` — a plugin whose pack's
 * frontend is still loading is waited for, and one no pack provides is reported once loading settles — but the
 * plugin the user has open doesn't change: a send is not a navigation.
+*
+* `sender` is the ref of the plugin making the send, which is what lets the receiving plugin's handler answer
+* it. `from`/`via` are labels a refusal names and deliberately not an address; this is the address.
 */
 | {
     type: 'SEND_TO_PLUGIN';
@@ -228,6 +263,7 @@ export type HostShellEvent =
     events: PluginEvent[];
     from?: string;
     via?: string;
+    sender?: string;
 } | {
     type: 'RESIZE_PANEL';
     panel: 'canvas' | 'inspection';

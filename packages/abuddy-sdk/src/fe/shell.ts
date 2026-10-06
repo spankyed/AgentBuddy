@@ -43,8 +43,11 @@ export type HostShellEvent =
    * Hands a plugin's actor `events` without opening it. The same wait as `OPEN_PLUGIN` — a plugin whose pack's
    * frontend is still loading is waited for, and one no pack provides is reported once loading settles — but the
    * plugin the user has open doesn't change: a send is not a navigation.
+   *
+   * `sender` is the ref of the plugin making the send, which is what lets the receiving plugin's handler answer
+   * it. `from`/`via` are labels a refusal names and deliberately not an address; this is the address.
    */
-  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string; via?: string }
+  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string; via?: string; sender?: string }
   | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
   | { type: 'RESTORE_CHAT' }
   | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }

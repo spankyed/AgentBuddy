@@ -21,11 +21,14 @@ type Contract = {
 
 const spec = defineSystem<Contract>();
 
+/** What this system's `reply` takes: its contract's outgoing events, which is the bound the compiler now holds it to */
+type Answer = Reply<Contract['outgoing']>;
+
 /** The arguments XState would hand an action, as far as these cases care */
 const args = () => ({ context: { count: 0 }, event: { type: 'ASK' } } as never);
 
 /** A message that named who sent it, and one that did not */
-const asked = { receiver: 'pack/feature', replyTo: 'pack/asker', client: 'c-1' };
+const asked = { receiver: 'pack/feature', asker: { kind: 'connection', ref: 'pack/asker', client: 'c-1' } } as const;
 const unasked = { receiver: 'pack/feature' };
 
 let sent: Array<{ to?: string; type: string; client?: string }>;
@@ -53,10 +56,10 @@ describe('an action built from the spec', () => {
 
   /**
    * The case the nullability is for. `answerSettings` used to ask this of a global —
-   * `_currentDelivery()?.replyTo === undefined` — and nothing made an author ask it at all.
+   * `_currentDelivery()?.asker === undefined` — and nothing made an author ask it at all.
    */
   it('is handed nothing when the message named no sender, so the fallback is the compiler\'s question', () => {
-    let had: Reply | undefined = (() => {}) as Reply;
+    let had: Answer | undefined = (() => {}) as Answer;
     const table = spec.actions({
       answer: ({ reply }) => { had = reply; },
     });
@@ -65,6 +68,28 @@ describe('an action built from the spec', () => {
 
     expect(had).toBeUndefined();
     expect(sent, 'and nothing was broadcast in its place — that is the handler\'s call, not ours').toEqual([]);
+  });
+
+  /**
+   * The answer is bound by the contract's `outgoing`, which is the one thing `reply` was not checked against
+   * until 2026-10-06 — every other send in the app is typed per receiver, and this one took any `{ type }` at
+   * all. The bound is right because an answer *is* one of the things the system says.
+   *
+   * `@ts-expect-error` is the assertion: it fails the typecheck if the line ever starts compiling, so deleting
+   * the `Reply<…>` parameter is caught here rather than by a dropped event at runtime.
+   */
+  it('refuses an answer the system never declared', () => {
+    const table = spec.actions({
+      answer: ({ reply }) => {
+        // @ts-expect-error 'NOT_DECLARED' is not one of this contract's outgoing events
+        reply?.({ type: 'NOT_DECLARED' });
+      },
+    });
+
+    _runDelivery(asked, () => table.answer(args(), undefined));
+
+    expect(sent, 'it still sends at runtime — the gate is the compiler, which is where a typo belongs')
+      .toEqual([{ to: 'pack/asker', type: 'NOT_DECLARED', client: 'c-1' }]);
   });
 
   it('keeps a second argument, so an action named with params still reads them', () => {

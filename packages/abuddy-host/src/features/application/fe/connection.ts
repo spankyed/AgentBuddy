@@ -5,7 +5,7 @@
 import { fromCallback } from 'xstate';
 import { senderSuffix } from '@abuddy/sdk/events';
 import type { ShellClient } from '../../../fe/client.ts';
-import { sendToPluginActor } from './plugins.ts';
+import { NOBODY_ASKED, sendToPluginActor } from './plugins.ts';
 import { HOST } from '../../../refs.ts';
 import type { ShellEvent } from './types.ts';
 
@@ -16,14 +16,16 @@ export function connectionListener(client: ShellClient) {
     onFailed: (error) => sendBack({ type: 'BACKEND_ERROR', error }),
     // The event arrives exactly as the system sent it
     onMessage: (message) => {
-      const { to, event } = message;
+      const { to, event, sender } = message;
       if (to === HOST.application) {
         // Every window hears it; the shell tells a backend's request to open a plugin from its own window's
         sendBack((event.type === 'OPEN_PLUGIN' ? { ...event, type: 'OPEN_PLUGIN_FROM_APP' } : event) as ShellEvent);
         return;
       }
       const plugin = system.get(to);
-      if (plugin) sendToPluginActor(plugin, to, event);
+      // The asking system's ref arrives on the wire, so the plugin's handler is handed a `reply` that goes back
+      // out over this connection — to that system alone, rather than to its own copy in every open window
+      if (plugin) sendToPluginActor(plugin, to, event, sender === undefined ? NOBODY_ASKED : { kind: 'bus', ref: sender });
       // The sender survives the subscription, which carries the message whole: name it when the send stamped one
       else {
         const suffix = senderSuffix(message);

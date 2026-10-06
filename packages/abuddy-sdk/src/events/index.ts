@@ -10,7 +10,7 @@ import { _currentDelivery, type _Delivery } from './delivery.ts';
 import type { ContractIncoming, ContractOutgoing, SystemEvents } from '../framework/define-system.ts';
 
 export { eventTypes, type TypeOfEvent } from './event-types.ts';
-export { _currentDelivery, _runDelivery, type _Delivery } from './delivery.ts';
+export { _currentDelivery, _runDelivery, type _Delivery, type _Asker } from './delivery.ts';
 
 /**
  * A message on the bus: the ref of the system or plugin it goes to, and the event exactly as the sender wrote it.
@@ -227,6 +227,32 @@ function sendIncoming(message: Message): void {
   else throw new Error('No host is bound to send events through: call bindHost(runtime) (backend) or bindFeHost(runtime) (frontend) from @abuddy/sdk/runtime first');
 }
 
+/**
+ * Delivers an event to a plugin in **this window**, through the shell. The window-local counterpart of
+ * `sendIncoming`: no bus, no other window, and the two are the only channels a window has.
+ *
+ * It takes the whole message rather than reading the sender from the delivery in scope, because `reply` is
+ * bound at entry and may be called long after its delivery has returned — the one caller that cannot rely on
+ * ambient scope is the one that most needs the address to arrive.
+ *
+ * Through the shell rather than at the actor, because "is that plugin here yet" is the shell's question and it
+ * already answers it for `OPEN_PLUGIN`: a plugin whose pack's frontend is still loading is waited for, and one
+ * no pack provides is reported to the user once loading settles.
+ */
+function deliverInWindow(message: Message): void {
+  const ref = message.to;
+  if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
+  const { from, via, sender } = message;
+  boundFeHost().application.send({
+    type: 'SEND_TO_PLUGIN',
+    plugin: ref,
+    events: [message.event],
+    ...(from ? { from } : {}),
+    ...(via ? { via } : {}),
+    ...(sender ? { sender } : {}),
+  });
+}
+
 /** What binds a set of sends: how a name becomes a ref, and the pack making them. */
 export interface SendBinding {
   /** A name the caller writes → the ref it stands for. The unbound sends take refs already, so a name is its own ref. */
@@ -275,9 +301,7 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
       if (!_isFeHostBound() && _isHostBound()) {
         throw new Error(`sendToPlugin("${name}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
       }
-      const ref = resolve(name);
-      if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
-      boundFeHost().application.send({ type: 'SEND_TO_PLUGIN', plugin: ref, events: [event], ...labels });
+      deliverInWindow({ to: resolve(name), event, ...labels, ...answerAddress() });
     },
 
     sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
@@ -325,7 +349,7 @@ export type SystemTarget = string | { role: string };
  * What a handler answers its asker with. Absent where the message named no sender, which is the whole point:
  * "is there anybody to answer?" is a question the type asks rather than one a global is probed for.
  */
-export type Reply = (event: { type: string; [key: string]: unknown }) => void;
+export type Reply<E extends { type: string } = { type: string; [key: string]: unknown }> = (event: E) => void;
 
 /**
  * The answer function for one delivery, or nothing when that message named no sender.
@@ -335,10 +359,19 @@ export type Reply = (event: { type: string; [key: string]: unknown }) => void;
  * instead is what makes a stored answer reach nobody: measured, a callback registered inside a delivery and
  * fired outside one saw no sender at all.
  *
- * It routes on whether the ask came from a connection. With one, the asker is a plugin or a claimed
- * participant and the answer goes **out** to that connection alone; without one the ask came from the backend
- * and the answer goes **in**, to the asking system — the ref cannot decide it, since a feature's system and
- * plugin share one.
+ * **The asker names the way back, and which ways exist depends on which side is answering.** Three channels
+ * against two sides is six cells, and two of them cannot happen:
+ *
+ * | the asker | answered on the backend | answered in a window |
+ * |---|---|---|
+ * | `bus` | in, onto the bus, to the asking system | out over this window's connection |
+ * | `connection` | out to that connection alone | **impossible** — a window reaches no other connection |
+ * | `window` | **impossible** — there is no window-local bus here | to the plugin beside the answerer |
+ *
+ * The two throw rather than falling back, because either would be a message delivered in the wrong process and
+ * a silent broadcast is how that used to show up. `bus` answered in a window goes *out*, which looks like an
+ * exception and is not: the window's one channel to the backend is its connection, and the API routes the
+ * message on from there.
  *
  * The host is resolved on each call rather than at binding, so building one costs nothing and needs no app.
  *
@@ -346,15 +379,19 @@ export type Reply = (event: { type: string; [key: string]: unknown }) => void;
  * one rather than making it, which is what replaced an exported `reply()` that read the scope itself.
  */
 export function _replyTo(delivery: _Delivery | undefined): Reply | undefined {
-  if (delivery?.replyTo === undefined) return undefined;
-  const { replyTo, receiver, client } = delivery;
+  if (delivery?.asker === undefined) return undefined;
+  const { asker, receiver } = delivery;
   return (event) => {
-    const { rootEvents } = boundHost().transport;
-    if (client !== undefined) {
-      rootEvents.emitPluginSend({ to: replyTo, event, sender: receiver, client });
-      return;
+    const message: Message = { to: asker.ref, event, sender: receiver };
+    if (_isFeHostBound()) {
+      if (asker.kind === 'window') { deliverInWindow(message); return; }
+      if (asker.kind === 'bus') { boundFeHost().client.send(message); return; }
+      throw new Error(`Can't answer "${asker.ref}" on connection "${asker.client}" from a window: a window reaches the backend and the plugins beside it, not another window's connection. A message naming a connection was delivered in the wrong process.`);
     }
-    rootEvents.emitIncoming({ to: replyTo, event, sender: receiver });
+    const { rootEvents } = boundHost().transport;
+    if (asker.kind === 'connection') { rootEvents.emitPluginSend({ ...message, client: asker.client }); return; }
+    if (asker.kind === 'bus') { rootEvents.emitIncoming(message); return; }
+    throw new Error(`Can't answer the "${asker.ref}" plugin in its own window from the backend: there is no window-local bus here. A backend send to a plugin either reaches every window (broadcastToPlugin) or one connection.`);
   };
 }
 
