@@ -1,6 +1,7 @@
 import type { OutgoingTerminalEvents } from '../contract.ts'
 import { services } from '#generated/services.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
+import { defineHandlers } from '@abuddy/sdk/framework';
 import { setup, assign, fromPromise } from 'xstate'
 
 import { terminalService } from '../services/terminal.ts'
@@ -32,6 +33,7 @@ export type Event =
   | { type: 'terminal.TERMINAL_INPUT'; terminalId: string; data: string }
   | { type: 'terminal.RESIZE_TERMINAL'; terminalId: string; cols: number; rows: number }
   | { type: 'terminal.RENAME_TERMINAL'; terminalId: string; customTitle: string }
+  | { type: 'terminal.OPENED'; data: TerminalInfo }
   | { type: 'terminal.REFRESH_LIST' }
   | { type: 'terminal.OPEN_TERMINAL_TAB'; terminalId: string }
   | { type: 'terminal.UPDATE_BASE_DIRECTORY'; path: string }
@@ -85,6 +87,9 @@ const setupTerminalHandlers = (terminalInfo: TerminalInfo) => {
   })
 }
 
+/** Hands each handler the answer for the message it is handling — see `defineHandlers` */
+const handlers = defineHandlers<Context, Event>();
+
 export const terminalSystem = setup({
   types: {
     context: {} as Context,
@@ -104,12 +109,12 @@ export const terminalSystem = setup({
       logger.info('Terminal restoration complete')
     })
   },
-  actions: {
+  actions: handlers.actions({
     sendConnectedData: () => {
       emitToFrontend({ type: 'terminal.TERMINALS_LISTED', data: terminalService.list() })
     },
 
-    createTerminal: ({ event, context }) => {
+    createTerminal: ({ event, context, reply }) => {
       const ev = event as { 
         type: 'terminal.CREATE_TERMINAL'; 
         title?: string;
@@ -130,9 +135,14 @@ export const terminalSystem = setup({
 
         setupTerminalHandlers(terminalInfo)
 
+        // The two halves of what used to be one event: every window's list grows, and only the window that
+        // asked opens it. A terminal's id is minted here, so nothing the asker sent could have identified it
         emitToFrontend({ type: 'terminal.CREATED', data: terminalInfo })
+        reply?.({ type: 'terminal.OPENED', data: terminalInfo })
       } catch (error: any) {
-        emitToFrontend({ type: 'terminal.ERROR', data: { message: error.message } })
+        // A failure to create is the asker's to see; with nobody to answer it is still worth reporting
+        const failed = { type: 'terminal.ERROR' as const, data: { message: error.message } }
+        if (reply) reply(failed); else emitToFrontend(failed)
       }
     },
 
@@ -275,7 +285,7 @@ export const terminalSystem = setup({
         return ev.path
       }
     })
-  }
+  })
 }).createMachine({
   id: 'terminal',
   initial: 'initializing',

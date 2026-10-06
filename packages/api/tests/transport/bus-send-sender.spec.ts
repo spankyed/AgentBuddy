@@ -112,6 +112,8 @@ describe('bus.send carries the sender across the boundary', () => {
   // The fields are named rather than the object made passthrough, so the boundary stays closed to the rest
   it('still drops a field nothing declares', async () => {
     received.length = 0;
+    // The cast is the case: `spoofed` is a field the schema does not name, so sending it is the whole point
+    // and the compiler refusing it would say the boundary works without the run proving it
     await caller.send({ to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, spoofed: 'x' } as never);
     expect(received[0]).not.toHaveProperty('spoofed');
   });
@@ -142,6 +144,8 @@ describe('the return address comes from the connection, not the sender', () => {
    */
   it('ignores a client id the sender supplied', async () => {
     received.length = 0;
+    // Likewise: `client` is deliberately omitted from the schema, so a sender claiming one must be
+    // expressible here for the case to send it
     await callerFor('c-two').send({ to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, client: 'c-someone-else' } as never);
     expect(received[0].client, 'the connection it arrived on, never the one it claimed').toBe('c-two');
   });

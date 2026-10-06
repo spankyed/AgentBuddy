@@ -3,6 +3,7 @@ import { services } from '#generated/services.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
 // Cross-plugin send: the flows plugin also receives action events
 import { setup } from 'xstate';
+import type { Reply } from '@abuddy/sdk/events';
 import { defineSystem } from '@abuddy/sdk/framework';
 
 import { EARS } from '#generated/ears.ts';
@@ -13,6 +14,16 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import { exportActions } from './repository/export-actions.ts';
 import { ref } from '#generated/ref.ts';
+
+/**
+ * Answers whoever asked for this, and tells every window when nobody did.
+ *
+ * An import's or an export's *outcome* belongs to the window that started it — another window showing a
+ * result for work it did not do, and flipping its own status to success, is what broadcasting it did. The
+ * data the import changed is separate news and stays a broadcast.
+ */
+const answer = (reply: Reply<OutgoingActionEvents> | undefined, event: OutgoingActionEvents): void =>
+  (reply ? reply(event) : broadcastToPlugin('actions', event));
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('actions');
@@ -33,7 +44,7 @@ const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
 
 export const actionsSystem = setup({
   types: actionsSpec.types,
-  actions: {
+  actions: actionsSpec.actions({
     sendActionsStartupData: () => {
       const connectedData = repository.actionQueries.connectedData();
       const actionsSettings = services.settings.forFeature<ActionsSettings>(ref('actions'));
@@ -124,14 +135,14 @@ export const actionsSystem = setup({
         actionId: ev.actionId as EARS.EntityId,
       });
     },
-    importActions: ({ system, event }) => {
+    importActions: ({ system, event, reply }) => {
       const { actions: importData } = actionsSpec.typeOf('IMPORT_ACTIONS', event);
       const pluginId = 'actions' as const;
 
       logger.info('Importing actions', { count: Array.isArray(importData) ? importData.length : 0 });
 
       if (!Array.isArray(importData)) {
-        broadcastToPlugin(pluginId, {
+        answer(reply, {
           type: 'ACTIONS_IMPORT_FAILED',
           errors: ['Invalid import data: expected an array of actions'],
         });
@@ -172,14 +183,14 @@ export const actionsSystem = setup({
       }
 
       if (count === 0 && errors.length > 0) {
-        broadcastToPlugin(pluginId, {
+        answer(reply, {
           type: 'ACTIONS_IMPORT_FAILED',
           errors,
         });
         return;
       }
 
-      broadcastToPlugin(pluginId, {
+      answer(reply, {
         type: 'ACTIONS_IMPORTED',
         count,
         ...(errors.length > 0 ? { errors } : {}),
@@ -199,16 +210,15 @@ export const actionsSystem = setup({
       logger.info('Actions import complete', { count, errors: errors.length });
     },
 
-    exportActionsToFile: ({ event }) => {
+    exportActionsToFile: ({ event, reply }) => {
       const { directory } = actionsSpec.typeOf('EXPORT_ACTIONS', event);
-      const pluginId = 'actions' as const;
 
       logger.info('Exporting actions', { directory });
 
       try {
         const { filePath, actionCount } = exportActions(directory);
 
-        broadcastToPlugin(pluginId, {
+        answer(reply, {
           type: 'ACTIONS_EXPORTED',
           filePath,
           actionCount,
@@ -219,7 +229,7 @@ export const actionsSystem = setup({
         const message = errorMessage(error);
         logger.error('Actions export failed', { error: message });
 
-        broadcastToPlugin(pluginId, {
+        answer(reply, {
           type: 'ACTIONS_EXPORT_FAILED',
           errors: [message],
         });
@@ -258,7 +268,7 @@ export const actionsSystem = setup({
         }
       }
     },
-  },
+  }),
 }).createMachine(
   {
     id: 'actions',

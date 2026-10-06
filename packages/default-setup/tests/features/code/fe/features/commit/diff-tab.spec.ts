@@ -39,9 +39,9 @@ beforeEach(() => {
 it('opens a diff in the tab for the file the diff is about', () => {
   const actor = createActor(commitState).start();
 
-  actor.send({ type: 'commit.SELECT_FILE', file: aFile('a.ts') } as never);
-  actor.send({ type: 'commit.VIEW_DIFF', path: 'a.ts', staged: false } as never);
-  actor.send({ type: 'commit.DIFF_RECEIVED', data: aDiff('a.ts') } as never);
+  actor.send({ type: 'commit.SELECT_FILE', file: aFile('a.ts') });
+  actor.send({ type: 'commit.VIEW_DIFF', path: 'a.ts', staged: false });
+  actor.send({ type: 'commit.DIFF_RECEIVED', data: aDiff('a.ts') });
 
   expect(openedTabs()).toEqual(['diff:a.ts:unstaged']);
   expect(lastTab().gitDiff.path, 'and the content is that file\'s').toBe('a.ts');
@@ -55,12 +55,12 @@ it('opens a diff in the tab for the file the diff is about', () => {
 it('does not open one file\'s diff in another file\'s tab', () => {
   const actor = createActor(commitState).start();
 
-  actor.send({ type: 'commit.SELECT_FILE', file: aFile('a.ts') } as never);
-  actor.send({ type: 'commit.VIEW_DIFF', path: 'a.ts', staged: false } as never);
+  actor.send({ type: 'commit.SELECT_FILE', file: aFile('a.ts') });
+  actor.send({ type: 'commit.VIEW_DIFF', path: 'a.ts', staged: false });
   // the user clicks b.ts before a.ts's diff comes back
-  actor.send({ type: 'commit.SELECT_FILE', file: aFile('b.ts') } as never);
+  actor.send({ type: 'commit.SELECT_FILE', file: aFile('b.ts') });
 
-  actor.send({ type: 'commit.DIFF_RECEIVED', data: aDiff('a.ts') } as never);
+  actor.send({ type: 'commit.DIFF_RECEIVED', data: aDiff('a.ts') });
 
   expect(openedTabs(), 'a.ts\'s diff belongs in a.ts\'s tab').toEqual(['diff:a.ts:unstaged']);
   expect(lastTab().gitDiff.path).toBe('a.ts');
@@ -69,9 +69,9 @@ it('does not open one file\'s diff in another file\'s tab', () => {
 it('keeps the staged and unstaged diffs of one file apart', () => {
   const actor = createActor(commitState).start();
 
-  actor.send({ type: 'commit.SELECT_FILE', file: aFile('a.ts', true) } as never);
-  actor.send({ type: 'commit.DIFF_RECEIVED', data: aDiff('a.ts', true) } as never);
-  actor.send({ type: 'commit.DIFF_RECEIVED', data: aDiff('a.ts', false) } as never);
+  actor.send({ type: 'commit.SELECT_FILE', file: aFile('a.ts', true) });
+  actor.send({ type: 'commit.DIFF_RECEIVED', data: aDiff('a.ts', true) });
+  actor.send({ type: 'commit.DIFF_RECEIVED', data: aDiff('a.ts', false) });
 
   expect(openedTabs()).toEqual(['diff:a.ts:staged', 'diff:a.ts:unstaged']);
 });
@@ -80,7 +80,7 @@ it('keeps the staged and unstaged diffs of one file apart', () => {
 it('opens a diff even when no file is selected', () => {
   const actor = createActor(commitState).start();
 
-  actor.send({ type: 'commit.DIFF_RECEIVED', data: aDiff('a.ts') } as never);
+  actor.send({ type: 'commit.DIFF_RECEIVED', data: aDiff('a.ts') });
 
   expect(openedTabs()).toEqual(['diff:a.ts:unstaged']);
 });

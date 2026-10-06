@@ -242,6 +242,15 @@ Six rules that pay for themselves:
   rejected by one command each, both having been argued for at length first.
 - **A mutation check is worth more than a re-run.** Breaking the thing on purpose and watching the right
   test fail proves more than running the whole suite again.
+- **But a mutation check does not redeem a test that mirrors the code.** A case asserting the
+  implementation's shape — send X, expect the single line X's handler contains — fails when that line is
+  edited, so the mutation fires and proves nothing: it fired because the test restates the line, not because
+  behaviour moved. Ask instead whether the code could be **correct but different**; a case that every
+  behaviour-preserving rewrite fails encodes the code, and its failure says no more than the diff.
+  **A pure re-route needs no new spec** — the typecheck holds the wiring — and *not* finding a behavioural
+  claim is the signal to stop rather than to manufacture one. Reaching for one anyway produces this and its
+  sibling, a `toContain` over source text, which is a lint rule in a spec's clothing: that belongs in
+  `check:specifiers`, this repo's home for call-site rules, or nowhere.
 - **A check that reports nothing may have looked at nothing**, and a green run cannot tell you which. Derive
   the subject from the declaration that defines it, and assert it is not empty — in that order, because the
   first is the half that keeps failing. Where the input is data, **mutate it in the test**: drop the thing

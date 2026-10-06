@@ -1,4 +1,6 @@
+import type { ActionArgs, EventObject, MachineContext, Mapper, ParameterizedObject } from 'xstate';
 import { safeEvents } from '../helpers/actor-helpers.ts';
+import { _clientOf, _currentDelivery, _replyTo, type Reply } from '../events/index.ts';
 import type { ArrayChanges } from '../utils/change-detection.ts';
 import { eventTypes } from '../events/event-types.ts';
 
@@ -89,10 +91,134 @@ export type ContractContext<C> = C extends { context: infer Context } ? Context 
  */
 type MachineEvents<C> = Extract<ContractIncoming<C> | ContractInternal<C> | SystemEvents, { type: string }>;
 
+/**
+ * The arguments XState hands a handler, for this system's context and events.
+ *
+ * It is the real thing rather than an approximation: `ActionArgs` is `UnifiedArg`, whose only type parameters
+ * are the context and the event union — `self` carries `Record<string, AnyActorRef | undefined>` for its
+ * children and `system` is `AnyActorSystem`, neither specialised per machine. So a spec that knows the
+ * contract can build exactly what XState would, and wrapping costs no fidelity.
+ */
+type SystemArgs<C extends SystemContract> = ActionArgs<ContractContext<C>, MachineEvents<C>, MachineEvents<C>>;
+
+/** The same, for a machine that declares its own context and events rather than deriving them from a contract */
+type Args<TContext extends MachineContext, TEvent extends EventObject> = ActionArgs<TContext, TEvent, TEvent>;
+
+/**
+ * What XState hands an `invoke.input`, which is **not** what it hands an action: a `Mapper` receives
+ * `{ context, event, self }` and no `system`. Typing `input` from `ActionArgs` compiles here and then fails at
+ * every call site, because a function demanding `system` cannot take a `Mapper`'s argument.
+ */
+type InputArgs<TContext extends MachineContext, TEvent extends EventObject> =
+  Parameters<Mapper<TContext, TEvent, unknown, TEvent>>[0];
+
+/**
+ * The params each action takes, keyed by name — what XState infers its own `TActions` from, and so what this
+ * wrapper has to be shaped around.
+ *
+ * The first attempt returned a mapped type whose values were a *conditional* over the handler given
+ * (`F extends (args, params: infer P) => void ? …`). TypeScript cannot invert a deferred conditional, so
+ * XState inferred nothing and every action name in the machine config became "not assignable to Actions<…>".
+ * Taking the params map as the type parameter instead is how XState itself does it, and it infers from the
+ * same place: each handler's second argument.
+ */
+type ActionParams = Record<string, ParameterizedObject['params'] | undefined>;
+
+/**
+ * Whether this is a handler to wrap or an action creator's result to leave alone.
+ *
+ * Every creator XState exposes — `assign`, `enqueueActions`, `spawnChild`, `raise`, `sendTo`, `sendParent`,
+ * `emit`, `log`, `cancel`, `stopChild` — returns a function carrying an own `resolve`, which is how XState
+ * resolves it later; a handler written by hand has no own properties at all. Wrapping one of those would
+ * hide the property XState resolves it through, so the test is what keeps them whole.
+ */
+const isCreatorResult = (value: unknown): boolean =>
+  typeof value === 'function' && Object.prototype.hasOwnProperty.call(value, 'resolve');
+
+/**
+ * Hands a handler what the delivery it is being run in lets it answer and address, both bound at entry.
+ *
+ * One read, two members: `reply` for the asker, `client` for the connection they asked from. Bound rather
+ * than read at use so a handler that awaits or stores either still has the right address.
+ */
+const handing = <F>(handler: F): F => {
+  if (typeof handler !== 'function' || isCreatorResult(handler)) return handler;
+  const run = handler as unknown as (args: object, params: unknown) => void;
+  return ((args: object, params: unknown) => {
+    const delivery = _currentDelivery();
+    return run({ ...args, reply: _replyTo(delivery), client: _clientOf(delivery) }, params);
+  }) as unknown as F;
+};
+
+/**
+ * What hands a machine's handlers their answers, for a machine that is not a feature's system.
+ *
+ * The seven machines under `code/be/features/` and the brain's flow and step systems are children a system
+ * spawns: they declare their own context and events rather than a feature contract, so they have no
+ * `defineSystem` to come from — and they are handlers like any other. `defineSystem` is this plus the
+ * contract's types, so there is one implementation rather than a second shape to keep in step.
+ */
+export interface Handlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends { type: string } = { type: string; [key: string]: unknown }> {
+  /** See `SystemSpec.actions` — this is the same wrapper, over a machine's own context and events */
+  actions<P extends ActionParams>(
+    defs: { [K in keyof P]: (args: Args<TContext, TEvent> & { reply?: Reply<TOut>; client?: string }, params: P[K]) => void },
+  ): { [K in keyof P]: (args: Args<TContext, TEvent>, params: P[K]) => void };
+  /** See `SystemSpec.input` */
+  input<I>(build: (args: InputArgs<TContext, TEvent> & { reply?: Reply<TOut>; client?: string }) => I): Mapper<TContext, TEvent, I, TEvent>;
+}
+
+/**
+ * Hands the handlers of a machine that is not a feature's system the answer for the message being handled.
+ *
+ * ```ts
+ * const handlers = defineHandlers<Context, Event>();
+ * export const commitSystem = setup({ types: { … }, actions: handlers.actions({ … }) }).createMachine(…);
+ * ```
+ */
+export function defineHandlers<
+  TContext extends MachineContext,
+  TEvent extends EventObject,
+  TOut extends { type: string } = { type: string; [key: string]: unknown },
+>(): Handlers<TContext, TEvent, TOut> {
+  return {
+    actions: (defs) => Object.fromEntries(
+      Object.entries(defs).map(([name, handler]) => [name, handing(handler)]),
+    ) as never,
+    input: (build) => (args) => {
+      const delivery = _currentDelivery();
+      return build({ ...args, reply: _replyTo(delivery), client: _clientOf(delivery) });
+    },
+  };
+}
+
 /** The definition object returned by `defineSystem()`. */
-export interface SystemSpec<C extends SystemContract> {
+export interface SystemSpec<C extends SystemContract> extends Handlers<ContractContext<C>, MachineEvents<C>, Extract<ContractOutgoing<C>, { type: string }>> {
   types: { context: ContractContext<C>; events: MachineEvents<C> };
   typeOf: ReturnType<typeof safeEvents<MachineEvents<C>>>;
+  /**
+   * The system's actions, each handed the answer for the message it is handling.
+   *
+   * `reply` is absent when that message named no sender, so a handler that answers has to say what it does
+   * when nobody asked — the question `_currentDelivery()?.replyTo === undefined` used to ask of a global.
+   *
+   * **It wraps the record, never `setup`.** What XState receives is exactly the type it expects, so its
+   * inference, `SetupReturn.extend`/`createAction` and the prebound creators are all untouched. An action
+   * creator's result passes through whole, which gives the rule: an action that answers is a plain function.
+   *
+   * **And it is in the record.** An action written inline in a `createMachine` config never passes through
+   * here, so it is handed nothing — five exist today and none answers, which is the arrangement to keep. A
+   * handler that comes to need an answer moves into the record and gains a name, which it wanted anyway.
+   */
+  actions<P extends ActionParams>(
+    defs: { [K in keyof P]: (args: SystemArgs<C> & { reply?: Reply<Extract<ContractOutgoing<C>, { type: string }>>; client?: string }, params: P[K]) => void },
+  ): { [K in keyof P]: (args: SystemArgs<C>, params: P[K]) => void };
+  /**
+   * An `invoke.input`, handed the same answer, so an invoked actor receives one through its input.
+   *
+   * `input` is evaluated while the transition is being processed — inside the delivery — which is what makes
+   * this work and what makes the answer it hands on bound rather than ambient.
+   */
+  input<I>(build: (args: InputArgs<ContractContext<C>, MachineEvents<C>> & { reply?: Reply<Extract<ContractOutgoing<C>, { type: string }>>; client?: string }) => I): Mapper<ContractContext<C>, MachineEvents<C>, I, MachineEvents<C>>;
 }
 
 /**
@@ -116,6 +242,7 @@ export function defineSystem<C extends SystemContract>(): SystemSpec<C> {
       events: {} as MachineEvents<C>,
     },
     typeOf: safeEvents<MachineEvents<C>>(),
+    ...defineHandlers<ContractContext<C>, MachineEvents<C>>(),
   };
 }
 

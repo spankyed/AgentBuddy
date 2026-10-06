@@ -118,7 +118,7 @@ export function createPacksSystem(registry: PackRegistry) {
   const _inFlightOps = new Set<string>();
   return setup({
     types: packsSpec.types,
-    actions: {
+    actions: packsSpec.actions({
     // Both answer the settings plugin, which is where the seed UI is drawn. The work is this system's; the
     // view is not, and a system sends whichever plugin's inbox declares the event.
     previewPackSeeds: ({ event }) => {
@@ -411,7 +411,7 @@ export function createPacksSystem(registry: PackRegistry) {
         });
         emitPacksList(registry, system);
       },
-    },
+    }),
   }).createMachine({
     id: HOST.packs,
     initial: 'idle',

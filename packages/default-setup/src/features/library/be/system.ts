@@ -18,6 +18,18 @@ import { exportLibrary } from './export-library.ts'
 import { importLibrary } from './import-library.ts'
 import type { CommandItem } from '#generated/types.ts';
 import { ref } from '#generated/ref.ts';
+
+/**
+ * Answers whoever asked for this, and tells every window when nobody did.
+ *
+ * An import's or an export's *outcome* belongs to the window that started it — another window showing a
+ * result for work it did not do, and flipping its own status to success, is what broadcasting it did. The
+ * data the import changed is separate news and stays a broadcast.
+ */
+const answer = (reply: Reply<OutgoingLibraryEvents> | undefined, event: OutgoingLibraryEvents): void =>
+  (reply ? reply(event) : broadcastToPlugin('library', event));
+import type { Reply } from '@abuddy/sdk/events';
+import type { OutgoingLibraryEvents } from './types.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export const librarySpec = defineSystem<Contract>();
@@ -41,7 +53,7 @@ function notifyIfCommandsChanged(before: CommandItem[]): void {
 
 export const librarySystem = setup({
   types: librarySpec.types,
-  actions: {
+  actions: librarySpec.actions({
     createDocument: async ({ event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: any[]; tags: string[]; collectionId?: string }
@@ -315,7 +327,7 @@ export const librarySystem = setup({
         })
     },
     // Import/Export actions
-    importLibraryItems: async ({ event }) => {
+    importLibraryItems: async ({ event, reply }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'IMPORT_LIBRARY'; directory: string }
 
@@ -323,14 +335,14 @@ export const librarySystem = setup({
         const result = importLibrary(ev.directory)
 
         if (result.created === 0 && result.errors.length > 0) {
-          broadcastToPlugin('library', {
+          answer(reply, {
               type: 'LIBRARY_IMPORT_FAILED' as const,
               errors: result.errors,
             })
           return
         }
 
-        broadcastToPlugin('library', {
+        answer(reply, {
             type: 'LIBRARY_IMPORTED' as const,
             count: result.created,
             ...(result.errors.length > 0 ? { errors: result.errors } : {}),
@@ -348,7 +360,7 @@ export const librarySystem = setup({
           })
       } catch (err) {
         const message = errorMessage(err)
-        broadcastToPlugin('library', {
+        answer(reply, {
             type: 'LIBRARY_IMPORT_FAILED' as const,
             errors: [message],
           })
@@ -356,20 +368,20 @@ export const librarySystem = setup({
       // An import can fail part way, after creating documents
       notifyIfCommandsChanged(commandsBefore)
     },
-    exportLibraryToFile: async ({ event }) => {
+    exportLibraryToFile: async ({ event, reply }) => {
       const ev = event as { type: 'EXPORT_LIBRARY'; directory: string; format: 'markdown' | 'json' }
 
       try {
         const { filePath, itemCount } = exportLibrary(ev.directory, ev.format)
 
-        broadcastToPlugin('library', {
+        answer(reply, {
             type: 'LIBRARY_EXPORTED' as const,
             filePath,
             itemCount,
           })
       } catch (err) {
         const message = errorMessage(err)
-        broadcastToPlugin('library', {
+        answer(reply, {
             type: 'LIBRARY_EXPORT_FAILED' as const,
             errors: [message],
           })
@@ -404,7 +416,7 @@ export const librarySystem = setup({
         }
       }
     },
-  },
+  }),
 }).createMachine({
   id: 'library',
   initial: 'idle',

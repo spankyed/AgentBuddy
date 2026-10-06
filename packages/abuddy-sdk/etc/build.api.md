@@ -321,16 +321,16 @@ export const FeatureEntrySchema: z.ZodObject<{
         }>>;
     }, "strict", z.ZodTypeAny, {
         entry: string;
+        contract?: string | undefined;
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
-        contract?: string | undefined;
     }, {
         entry: string;
+        contract?: string | undefined;
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
-        contract?: string | undefined;
     }>>;
     plugin: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
@@ -350,20 +350,20 @@ export const FeatureEntrySchema: z.ZodObject<{
     references: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
     id: string;
-    settings?: string | undefined;
-    plugin?: {
-        entry: string;
-        default?: boolean | undefined;
-        contract?: string | undefined;
-    } | undefined;
     designation?: string | undefined;
+    settings?: string | undefined;
     typesEntry?: string | undefined;
     earlySystem?: boolean | undefined;
     system?: {
         entry: string;
+        contract?: string | undefined;
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
+    } | undefined;
+    plugin?: {
+        entry: string;
+        default?: boolean | undefined;
         contract?: string | undefined;
     } | undefined;
     services?: Record<string, string> | undefined;
@@ -371,20 +371,20 @@ export const FeatureEntrySchema: z.ZodObject<{
     references?: string | undefined;
 }, {
     id: string;
-    settings?: string | undefined;
-    plugin?: {
-        entry: string;
-        default?: boolean | undefined;
-        contract?: string | undefined;
-    } | undefined;
     designation?: string | undefined;
+    settings?: string | undefined;
     typesEntry?: string | undefined;
     earlySystem?: boolean | undefined;
     system?: {
         entry: string;
+        contract?: string | undefined;
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
+    } | undefined;
+    plugin?: {
+        entry: string;
+        default?: boolean | undefined;
         contract?: string | undefined;
     } | undefined;
     services?: Record<string, string> | undefined;
@@ -487,16 +487,16 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             }>>;
         }, "strict", z.ZodTypeAny, {
             entry: string;
+            contract?: string | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
-            contract?: string | undefined;
         }, {
             entry: string;
+            contract?: string | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
-            contract?: string | undefined;
         }>>;
         plugin: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
@@ -516,20 +516,20 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
         id: string;
-        settings?: string | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-            contract?: string | undefined;
-        } | undefined;
         designation?: string | undefined;
+        settings?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
+            contract?: string | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+        } | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
             contract?: string | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
@@ -537,20 +537,20 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references?: string | undefined;
     }, {
         id: string;
-        settings?: string | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-            contract?: string | undefined;
-        } | undefined;
         designation?: string | undefined;
+        settings?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
+            contract?: string | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+        } | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
             contract?: string | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
@@ -638,31 +638,31 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 defaultLabel: z.ZodOptional<z.ZodString>;
                 custom: z.ZodOptional<z.ZodLiteral<true>>;
             }, "strict", z.ZodTypeAny, {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             }, {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             }>>;
         }, "strict", z.ZodTypeAny, {
             type: string;
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }, {
             type: string;
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }>, "many">;
     }, "strict", z.ZodTypeAny, {
@@ -672,9 +672,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -685,9 +685,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -760,7 +760,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }>>>;
         media: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
-        format?: "json" | "markdown-tree" | undefined;
+        format?: "markdown-tree" | "json" | undefined;
         compiler?: string | undefined;
         entity?: string | string[] | undefined;
         identity?: string[] | undefined;
@@ -776,7 +776,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         media?: string | undefined;
     }, {
-        format?: "json" | "markdown-tree" | undefined;
+        format?: "markdown-tree" | "json" | undefined;
         compiler?: string | undefined;
         entity?: string | string[] | undefined;
         identity?: string[] | undefined;
@@ -792,7 +792,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         media?: string | undefined;
     }>, {
-        format?: "json" | "markdown-tree" | undefined;
+        format?: "markdown-tree" | "json" | undefined;
         compiler?: string | undefined;
         entity?: string | string[] | undefined;
         identity?: string[] | undefined;
@@ -808,7 +808,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         media?: string | undefined;
     }, {
-        format?: "json" | "markdown-tree" | undefined;
+        format?: "markdown-tree" | "json" | undefined;
         compiler?: string | undefined;
         entity?: string | string[] | undefined;
         identity?: string[] | undefined;
@@ -826,10 +826,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }>>>;
     seedHooks: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, "strict", z.ZodTypeAny, {
-    id: string;
     name: string;
+    id: string;
     version: string;
-    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -840,6 +839,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
+    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -855,20 +855,20 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
-        settings?: string | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-            contract?: string | undefined;
-        } | undefined;
         designation?: string | undefined;
+        settings?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
+            contract?: string | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+        } | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
             contract?: string | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
@@ -901,9 +901,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -917,7 +917,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         bundleUi?: boolean | undefined;
     } | undefined;
     seedFormats?: Record<string, {
-        format?: "json" | "markdown-tree" | undefined;
+        format?: "markdown-tree" | "json" | undefined;
         compiler?: string | undefined;
         entity?: string | string[] | undefined;
         identity?: string[] | undefined;
@@ -935,10 +935,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }, {
-    id: string;
     name: string;
+    id: string;
     version: string;
-    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -949,6 +948,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
+    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -964,20 +964,20 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
-        settings?: string | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-            contract?: string | undefined;
-        } | undefined;
         designation?: string | undefined;
+        settings?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
+            contract?: string | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+        } | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
             contract?: string | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
@@ -1010,9 +1010,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -1026,7 +1026,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         bundleUi?: boolean | undefined;
     } | undefined;
     seedFormats?: Record<string, {
-        format?: "json" | "markdown-tree" | undefined;
+        format?: "markdown-tree" | "json" | undefined;
         compiler?: string | undefined;
         entity?: string | string[] | undefined;
         identity?: string[] | undefined;
@@ -1044,10 +1044,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }>, {
-    id: string;
     name: string;
+    id: string;
     version: string;
-    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1058,6 +1057,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
+    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -1073,20 +1073,20 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
-        settings?: string | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-            contract?: string | undefined;
-        } | undefined;
         designation?: string | undefined;
+        settings?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
+            contract?: string | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+        } | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
             contract?: string | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
@@ -1119,9 +1119,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -1135,7 +1135,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         bundleUi?: boolean | undefined;
     } | undefined;
     seedFormats?: Record<string, {
-        format?: "json" | "markdown-tree" | undefined;
+        format?: "markdown-tree" | "json" | undefined;
         compiler?: string | undefined;
         entity?: string | string[] | undefined;
         identity?: string[] | undefined;
@@ -1153,10 +1153,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }, {
-    id: string;
     name: string;
+    id: string;
     version: string;
-    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1167,6 +1166,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
+    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -1182,20 +1182,20 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
-        settings?: string | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-            contract?: string | undefined;
-        } | undefined;
         designation?: string | undefined;
+        settings?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
+            contract?: string | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+        } | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
             contract?: string | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
@@ -1228,9 +1228,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path: string;
             kind?: "step" | "trigger" | undefined;
             dsl?: {
-                custom?: true | undefined;
                 primaryField?: string | undefined;
                 defaultLabel?: string | undefined;
+                custom?: true | undefined;
             } | undefined;
         }[];
         build?: string | undefined;
@@ -1244,7 +1244,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         bundleUi?: boolean | undefined;
     } | undefined;
     seedFormats?: Record<string, {
-        format?: "json" | "markdown-tree" | undefined;
+        format?: "markdown-tree" | "json" | undefined;
         compiler?: string | undefined;
         entity?: string | string[] | undefined;
         identity?: string[] | undefined;
@@ -1593,7 +1593,7 @@ export const SeedFormatSchema: z.ZodEffects<z.ZodObject<{
     }>>>;
     media: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
-    format?: "json" | "markdown-tree" | undefined;
+    format?: "markdown-tree" | "json" | undefined;
     compiler?: string | undefined;
     entity?: string | string[] | undefined;
     identity?: string[] | undefined;
@@ -1609,7 +1609,7 @@ export const SeedFormatSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     media?: string | undefined;
 }, {
-    format?: "json" | "markdown-tree" | undefined;
+    format?: "markdown-tree" | "json" | undefined;
     compiler?: string | undefined;
     entity?: string | string[] | undefined;
     identity?: string[] | undefined;
@@ -1625,7 +1625,7 @@ export const SeedFormatSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     media?: string | undefined;
 }>, {
-    format?: "json" | "markdown-tree" | undefined;
+    format?: "markdown-tree" | "json" | undefined;
     compiler?: string | undefined;
     entity?: string | string[] | undefined;
     identity?: string[] | undefined;
@@ -1641,7 +1641,7 @@ export const SeedFormatSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     media?: string | undefined;
 }, {
-    format?: "json" | "markdown-tree" | undefined;
+    format?: "markdown-tree" | "json" | undefined;
     compiler?: string | undefined;
     entity?: string | string[] | undefined;
     identity?: string[] | undefined;
@@ -1743,13 +1743,13 @@ export const StepDSLMetaSchema: z.ZodObject<{
     defaultLabel: z.ZodOptional<z.ZodString>;
     custom: z.ZodOptional<z.ZodLiteral<true>>;
 }, "strict", z.ZodTypeAny, {
-    custom?: true | undefined;
     primaryField?: string | undefined;
     defaultLabel?: string | undefined;
+    custom?: true | undefined;
 }, {
-    custom?: true | undefined;
     primaryField?: string | undefined;
     defaultLabel?: string | undefined;
+    custom?: true | undefined;
 }>;
 
 // @public (undocumented)
@@ -1765,31 +1765,31 @@ export const StepEntrySchema: z.ZodObject<{
         defaultLabel: z.ZodOptional<z.ZodString>;
         custom: z.ZodOptional<z.ZodLiteral<true>>;
     }, "strict", z.ZodTypeAny, {
-        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
+        custom?: true | undefined;
     }, {
-        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
+        custom?: true | undefined;
     }>>;
 }, "strict", z.ZodTypeAny, {
     type: string;
     path: string;
     kind?: "step" | "trigger" | undefined;
     dsl?: {
-        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
+        custom?: true | undefined;
     } | undefined;
 }, {
     type: string;
     path: string;
     kind?: "step" | "trigger" | undefined;
     dsl?: {
-        custom?: true | undefined;
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
+        custom?: true | undefined;
     } | undefined;
 }>;
 

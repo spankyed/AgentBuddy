@@ -53,7 +53,7 @@ function stopWithoutRootFlow({ clientConnected }: BrainContext): Partial<BrainCo
 
 export const brainSystem = setup({
   types: brainSpec.types,
-  actions: {
+  actions: brainSpec.actions({
     logError: ({ event }) => {
       logger.error('Brain system error', { error: (event as any).error });
     },
@@ -413,7 +413,7 @@ export const brainSystem = setup({
       // Notify ad-hoc listeners (after normal flow routing)
       notifyAdHocListeners(eventType, payload, targetFlowId);
     },
-  },
+  }),
 }).createMachine(
   {
     id: 'brain',

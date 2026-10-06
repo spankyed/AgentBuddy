@@ -1,4 +1,5 @@
 import { broadcastToPlugin } from '#generated/events.ts';
+import { defineHandlers } from '@abuddy/sdk/framework';
 import { assign, setup } from 'xstate'
 
 import { FileSystemRepository } from '../services/filesystem.ts'
@@ -31,13 +32,16 @@ export type Event =
   | { type: 'search.CLEAR_SEARCH_CONTROLLER' }
   | { type: 'search.UPDATE_BASE_DIRECTORY'; path: string };
 
+/** Hands each handler the answer for the message it is handling — see `defineHandlers` */
+const handlers = defineHandlers<Context, Event>();
+
 export const searchSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
     input: {} as { baseDirectory: string | null },
   },
-  actions: {
+  actions: handlers.actions({
     searchFiles: async ({ event, context, self }) => {
       const ev = event as { 
         type: 'search.SEARCH_FILES'; 
@@ -146,7 +150,7 @@ export const searchSystem = setup({
         return new FileSystemRepository(ev.path)
       }
     }),
-  }
+  })
 }).createMachine({
   id: 'search',
   initial: 'idle',

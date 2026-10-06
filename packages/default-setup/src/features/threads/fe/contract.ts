@@ -72,8 +72,6 @@ export interface ThreadsContext {
 /** What the artifact viewers, the dashboard and the tiptap command items ask of the threads plugin */
 export type ThreadsInboxEvent =
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
-  | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: unknown[] }
-  | { type: 'REJECT_TODO_LIST'; artifactId: string }
   | { type: 'OPEN_THREAD_CHAT'; threadId: string }
   | { type: 'VIEW_THREAD'; threadId: string }
   | { type: 'SELECT_THREAD'; id: string }

@@ -8,14 +8,16 @@ export const __CAMEL__Spec = defineSystem<Contract>();
 
 export const __CAMEL__System = setup({
   types: __CAMEL__Spec.types,
-  actions: {
+  // Each handler is handed `reply` — the answer for the message it is handling, absent when that message
+  // named no sender. A handler that answers an ask uses it; one that publishes, like this, does not.
+  actions: __CAMEL__Spec.actions({
     sendConnectedData: () => {
       broadcastToPlugin('__NAME__', {
         type: '__CONNECTED_EVENT__',
         data: {},
       });
     },
-  },
+  }),
 }).createMachine({
   id: '__NAME__',
   initial: 'idle',

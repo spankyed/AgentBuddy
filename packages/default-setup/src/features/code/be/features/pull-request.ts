@@ -1,5 +1,6 @@
 import type { OutgoingPullRequestEvents } from '../contract.ts'
 import { broadcastToPlugin } from '#generated/events.ts';
+import { defineHandlers } from '@abuddy/sdk/framework';
 import { setup, assign, type AnyActorRef } from 'xstate'
 
 import { createLogger } from '@abuddy/sdk/logger'
@@ -49,13 +50,6 @@ export type Event =
   | { type: 'pr.GIT_STATUS_CHANGED' }
   | { type: 'pr.UPDATE_BASE_DIRECTORY'; path: string; gitRepository: GitRepository };
 
-// Monotonic id stamped onto every pr.PR_DETAILS_RECEIVED emit. FE drops events
-// whose id is older than the latest it accepted for that PR number, so that a
-// long-running fetchPRDetailsSettled retry can't overwrite fresher data from a
-// concurrent request (e.g. a manual refresh fired mid-retry). Module-scoped is
-// fine — ids only need to be monotonic within this process.
-let prDetailsRequestId = 0
-
 function humanizeBranchName(branch: string): string {
   const stripped = branch.replace(/^(feature|fix|bugfix|hotfix|chore|refactor|docs|test|ci|build|perf|style|revert|release|AS|as)[/_]/i, '')
   return stripped
@@ -83,13 +77,16 @@ function withRepo<T>(
   work(context.gitRepository).then(onSuccess).catch(onError)
 }
 
+/** Hands each handler the answer for the message it is handling — see `defineHandlers` */
+const handlers = defineHandlers<Context, Event>();
+
 export const pullRequestSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
     input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null; code?: AnyActorRef }
   },
-  actions: {
+  actions: handlers.actions({
     getBaseBranch: ({ context }) => {
       withRepo(context,
         repo => repo.getBaseBranch({ preferUpstream: false }),
@@ -184,7 +181,7 @@ export const pullRequestSystem = setup({
           return { pr, comments }
         },
         ({ pr, comments }) => {
-          emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { pr, comments, requestId: ++prDetailsRequestId } })
+          emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { pr, comments, fetchedAt: Date.now() } })
         }
       )
     },
@@ -218,7 +215,7 @@ export const pullRequestSystem = setup({
               const { comments = [], ...pr } = details
               pr.body = await ghCli.resolveGitHubAssetUrls(pr.body, cwd)
               for (const c of comments) c.body = await ghCli.resolveGitHubAssetUrls(c.body, cwd)
-              emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { pr, comments, requestId: ++prDetailsRequestId } })
+              emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { pr, comments, fetchedAt: Date.now() } })
             }
           } catch { /* swallow — we still want to surface the merge error below */ }
           emitError(err.message)
@@ -262,7 +259,7 @@ export const pullRequestSystem = setup({
         },
         result => {
           emitToFrontend({ type: 'pr.PR_DRAFT_TOGGLED', data: { number: ev.number, isDraft: !ev.isDraft } })
-          if (result) emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { ...result, requestId: ++prDetailsRequestId } })
+          if (result) emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { ...result, fetchedAt: Date.now() } })
         }
       )
     },
@@ -335,7 +332,7 @@ export const pullRequestSystem = setup({
         },
         result => {
           emitToFrontend({ type: 'pr.PR_UPDATED', data: { number: ev.number, title: ev.title, body: ev.body, base: ev.base } })
-          if (result) emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { ...result, requestId: ++prDetailsRequestId } })
+          if (result) emitToFrontend({ type: 'pr.PR_DETAILS_RECEIVED', data: { ...result, fetchedAt: Date.now() } })
         }
       )
     },
@@ -457,7 +454,7 @@ export const pullRequestSystem = setup({
       self.send({ type: 'pr.LIST_OPEN_PRS' })
       self.send({ type: 'pr.CHECK_BRANCH_PR' })
     }
-  }
+  })
 }).createMachine({
   id: 'pull-request',
   initial: 'idle',

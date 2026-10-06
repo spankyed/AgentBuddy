@@ -43,6 +43,7 @@ export type Event =
   | { type: 'terminal.OPEN_TABS'; terminalIds: string[] }
   | { type: 'terminal.TERMINALS_LISTED'; data: TerminalInfo[] }
   | { type: 'terminal.CREATED'; data: TerminalInfo }
+  | { type: 'terminal.OPENED'; data: TerminalInfo }
   | { type: 'terminal.CLOSED'; data: { terminalId: string } }
   | { type: 'terminal.RENAMED'; data: { terminalId: string; customTitle: string } }
   | { type: 'terminal.CWD_CHANGED'; data: { terminalId: string; cwd: string; title?: string } }
@@ -265,13 +266,20 @@ export const terminalState = setup({
       terminalEventBus.emit(ev.data.terminalId, ev.data.data)
     },
 
-    handleTerminalCreated: enqueueActions(({ enqueue, context, self, event }) => {
-      enqueue('assignTerminalCreated')
+    /**
+     * Opens the terminal *this* window asked for.
+     *
+     * Only the asker is sent `terminal.OPENED`, so `pendingTarget` and `pendingCommand` — which are this
+     * window's own intent and could never have been another's — are read by the window that set them. While
+     * this work hung off the broadcast `terminal.CREATED`, every open window routed a terminal it had not
+     * asked for into its own panel and ran a command it had not typed.
+     */
+    handleTerminalOpened: enqueueActions(({ enqueue, context, self, event }) => {
       const target = context.pendingTarget
       const command = context.pendingCommand
       enqueue(assign({ pendingTarget: null, pendingCommand: null }))
       enqueue(() => {
-        const ev = event as { type: 'terminal.CREATED'; data: TerminalInfo }
+        const ev = event as { type: 'terminal.OPENED'; data: TerminalInfo }
         const terminalInfo = ev.data
 
         if (target === 'tab') {
@@ -422,8 +430,13 @@ export const terminalState = setup({
     'terminal.TERMINALS_LISTED': {
       actions: ['clearTerminalError', 'assignTerminals']
     },
+    // The news, which every window takes: the list grows and nothing else happens
     'terminal.CREATED': {
-      actions: ['clearTerminalError', 'handleTerminalCreated']
+      actions: ['clearTerminalError', 'assignTerminalCreated']
+    },
+    // The answer, which only the window that asked is sent
+    'terminal.OPENED': {
+      actions: ['handleTerminalOpened']
     },
     'terminal.CLOSED': {
       actions: 'handleTerminalClosed'

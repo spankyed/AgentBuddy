@@ -121,11 +121,14 @@ export interface Context {
   _threadSnapshot: GhReviewThread[] | null
 
   /**
-   * Latest pr.PR_DETAILS_RECEIVED requestId accepted per PR number. Used to drop
-   * stale responses when two fetchPRDetailsSettled calls overlap for the same PR
-   * (e.g. a 6s base-change retry colliding with a manual refresh mid-flight).
+   * The newest `fetchedAt` accepted per PR number, so a slow fetch cannot overwrite fresher data when two
+   * overlap for the same PR (a 6s base-change retry colliding with a manual refresh mid-flight).
+   *
+   * It is compared against a clock rather than a sequence for a reason this side makes plain: this context
+   * outlives the backend, so anything reset by an API restart or a pack reload would read as older here
+   * forever after.
    */
-  latestPrDetailsRequestId: Record<number, number>
+  latestPrDetailsFetchedAt: Record<number, number>
 }
 
 export type Event =
@@ -145,7 +148,7 @@ export type Event =
   | { type: 'pr.GH_AUTH_CHECKED'; data: { available: boolean; prAccess: boolean; activeToken: ActiveTokenInfo | null } }
   | { type: 'pr.NAVIGATE_TO_HELP' }
   | { type: 'pr.OPEN_PRS_RECEIVED'; data: { prs: GhPullRequest[] } }
-  | { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; requestId: number } }
+  | { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; fetchedAt: number } }
   | { type: 'pr.PR_CREATED'; data: { pr: GhPullRequest } }
   | { type: 'pr.PR_MERGED'; data: { number: number } }
   | { type: 'pr.PR_CLOSED'; data: { number: number } }
@@ -357,21 +360,21 @@ export const pullRequestState = setup({
     //      arriving after a manual selection). Expected = the PR the user explicitly
     //      requested via the dropdown (pendingManualPRNumber), or the currently-
     //      selected PR when no manual selection is pending.
-    //   2. Older requestId than we've already accepted for this PR number — happens
+    //   2. Older than the newest fetch we've already accepted for this PR number — happens
     //      when a long-running fetchPRDetailsSettled retry's final emit arrives after
     //      a newer concurrent fetch (e.g. a manual refresh fired mid-retry).
     handlePRDetailsReceived: enqueueActions(({ enqueue, event, context }) => {
-      const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; requestId: number } }
+      const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; fetchedAt: number } }
       const prNumber = ev.data.pr.number
-      const lastAccepted = context.latestPrDetailsRequestId[prNumber] ?? 0
-      if (ev.data.requestId < lastAccepted) return
+      const lastAccepted = context.latestPrDetailsFetchedAt[prNumber] ?? 0
+      if (ev.data.fetchedAt < lastAccepted) return
       const expected = context.pendingManualPRNumber ?? context.selectedPR?.number
       if (expected !== undefined && expected !== prNumber) return
       enqueue.assign({
         selectedPR: ev.data.pr,
         prComments: ev.data.comments,
         isLoadingDetails: false,
-        latestPrDetailsRequestId: { ...context.latestPrDetailsRequestId, [prNumber]: ev.data.requestId },
+        latestPrDetailsFetchedAt: { ...context.latestPrDetailsFetchedAt, [prNumber]: ev.data.fetchedAt },
         // Manual selection landed — clear pending so a later background fetch for a
         // different PR number can't sneak past the guard.
         pendingManualPRNumber: context.pendingManualPRNumber === prNumber ? null : context.pendingManualPRNumber,
@@ -640,13 +643,13 @@ export const pullRequestState = setup({
 
     // Load diff for the PR whose details just arrived. Same stale-response guards as
     // handlePRDetailsReceived — skip background refreshes for a different PR (unless
-    // manually selected), and skip stale-by-requestId responses so we don't kick off
+    // manually selected), and skip responses older than the newest accepted so we don't kick off
     // a pointless diff fetch that the updated guard in handleBranchDiffReceived would
     // then drop anyway.
     loadDiffForSelectedPR: ({ event, context }) => {
-      const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; requestId: number } }
+      const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; fetchedAt: number } }
       const prNumber = ev.data.pr.number
-      if (ev.data.requestId < (context.latestPrDetailsRequestId[prNumber] ?? 0)) return
+      if (ev.data.fetchedAt < (context.latestPrDetailsFetchedAt[prNumber] ?? 0)) return
       const expected = context.pendingManualPRNumber ?? context.selectedPR?.number
       if (expected !== undefined && expected !== prNumber) return
       sendToSystem('code', {
@@ -865,7 +868,7 @@ export const pullRequestState = setup({
     _commentSnapshot: null,
     _threadSnapshot: null,
 
-    latestPrDetailsRequestId: {},
+    latestPrDetailsFetchedAt: {},
   },
   states: {
     idle: {
@@ -906,7 +909,7 @@ export const pullRequestState = setup({
               _threadSnapshot: null,
               // Different directory means potentially a different repo; PR numbers
               // from the old repo shouldn't gate responses for the new one.
-              latestPrDetailsRequestId: {},
+              latestPrDetailsFetchedAt: {},
               // A mutation in flight from the old directory shouldn't keep submit
               // buttons disabled here — if the old op never responds, the counter
               // would otherwise stay positive forever.

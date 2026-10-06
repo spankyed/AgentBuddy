@@ -68,7 +68,7 @@ describe('query step', () => {
   it("reports the provider's error when the model can't be called, as without an API key", async () => {
     mockService('inference', {
       generateText: async () => { throw new Error('No API key for anthropic: add one in Settings → Secrets'); },
-    } as never);
+    });
 
     expect(errorMessage(await run({}))).toMatch(/Query step "Find actions"[\s\S]*No API key for anthropic/);
   });

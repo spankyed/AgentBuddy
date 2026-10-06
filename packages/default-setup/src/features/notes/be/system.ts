@@ -3,6 +3,8 @@ import { services } from '#generated/services.ts';
 import { qx } from '#generated/ears.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
+import type { Reply } from '@abuddy/sdk/events';
+import type { OutgoingNotesEvents } from './types.ts';
 import { defineSystem } from '@abuddy/sdk/framework';
 
 import { EARS } from '#generated/ears.ts';
@@ -16,6 +18,17 @@ import { importNotes } from './import-notes.ts';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { NoteEntity } from '#features/notes/be/types.ts';
 import { ref } from '#generated/ref.ts';
+
+/**
+ * Answers whoever asked for this, and tells every window when nobody did.
+ *
+ * An import's or an export's *outcome* belongs to the window that started it — another window showing
+ * "imported 12" for work it did not do, and flipping its own status to success, is what broadcasting it
+ * did. The data the import changed is separate news and stays a broadcast. `answerSettings`
+ * (`@abuddy/host`) is the same shape for the same reason.
+ */
+const answer = (reply: Reply<OutgoingNotesEvents> | undefined, event: OutgoingNotesEvents): void =>
+  (reply ? reply(event) : broadcastToPlugin('notes', event));
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('notes');
@@ -33,7 +46,7 @@ export const notesSpec = defineSystem<Contract>();
 
 export const notesSystem = setup({
   types: notesSpec.types,
-  actions: {
+  actions: notesSpec.actions({
     sendNotesConnectedData: () => {
       const connectedData = repository.noteQueries.connectedData();
       const settings = services.settings.forFeature<NotesSettings>(ref('notes'));
@@ -358,20 +371,20 @@ export const notesSystem = setup({
       });
     },
 
-    importNotesItems: ({ event }) => {
+    importNotesItems: ({ event, reply }) => {
       const ev = event as { type: 'IMPORT_NOTES'; directory: string };
       try {
         const result = importNotes(ev.directory);
 
         if (result.created === 0 && result.errors.length > 0) {
-          broadcastToPlugin('notes', {
+          answer(reply, {
             type: 'NOTES_IMPORT_FAILED',
             errors: result.errors,
           });
           return;
         }
 
-        broadcastToPlugin('notes', {
+        answer(reply, {
           type: 'NOTES_IMPORTED',
           count: result.created,
           ...(result.errors.length > 0 ? { errors: result.errors } : {}),
@@ -386,26 +399,26 @@ export const notesSystem = setup({
         });
       } catch (err) {
         const message = errorMessage(err);
-        broadcastToPlugin('notes', {
+        answer(reply, {
           type: 'NOTES_IMPORT_FAILED',
           errors: [message],
         });
       }
     },
 
-    exportNotesToFile: ({ event }) => {
+    exportNotesToFile: ({ event, reply }) => {
       const ev = event as { type: 'EXPORT_NOTES'; directory: string; format: 'markdown' | 'json' };
       try {
         const { filePath, itemCount } = exportNotes(ev.directory, ev.format);
 
-        broadcastToPlugin('notes', {
+        answer(reply, {
           type: 'NOTES_EXPORTED',
           filePath,
           itemCount,
         });
       } catch (err) {
         const message = errorMessage(err);
-        broadcastToPlugin('notes', {
+        answer(reply, {
           type: 'NOTES_EXPORT_FAILED',
           errors: [message],
         });
@@ -559,7 +572,7 @@ export const notesSystem = setup({
         notes: trashed,
       });
     },
-  },
+  }),
 }).createMachine({
   id: 'notes',
   initial: 'idle',

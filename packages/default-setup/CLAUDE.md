@@ -76,12 +76,24 @@ Backend systems wired via `__generated__/pack-entry.ts`, each feature's with `pa
 
 Code names a system by feature id, and reaches another system with the typed `sendToSystem(name, event)` from `__generated__/events`, never its actor. Each system file defines its events with `defineSystem()`; its identity is its feature's, from `abuddy.json`. A feature's designation comes only from `abuddy.json` `features[].designation`. It is a role, not a name: it need not equal the feature id, and every one default-setup declares happens to.
 
-## What a system sends a plugin, and the three jobs one verb does
+## What a system sends a plugin: pick the channel, then the shape
 
-`broadcastToPlugin` is fire-and-forget to **every window**. There is no reply channel and no
-"send to whoever asked", so everything a system tells a plugin arrives the same way — and three
-different jobs are done through that one verb. Which job an event is doing decides its shape, and
-getting that wrong is where a class of bug comes from.
+**There are two channels, and choosing wrongly is where this class of bug comes from.**
+`broadcastToPlugin` is fire-and-forget to **every window**. `reply` — the one a handler is handed
+(`spec.actions`, `@abuddy/sdk/framework`) — answers the sender on the connection they asked from, and is
+absent when the message named none. Three jobs ride those two channels:
+
+| the job | the channel | correlation |
+|---|---|---|
+| a **notification** — a mutation happened | broadcast | none; guarding one is a category error |
+| a **view fetching data** | broadcast | a slot keyed by what was asked |
+| a **command's outcome** | **reply** | an id only where one window can have two in flight |
+
+**Ask which job it is, then pick the channel.** Everything below is the second question — what shape the
+payload wants — and it only arises once the first is answered. For a long time there was no reply channel
+and every job was a broadcast, which is why the bugs it caused all look alike: a terminal opened in every
+window, a flow navigated every window, and six features announced an import to windows that had not run
+one. None of those was a missing id.
 
 **A notification has no requester, so it is never correlated.** `NOTE_UPDATED`, `THREAD_UPDATED`,
 `commit.FILES_STAGED`, `ITEM_RENAMED` — a mutation happened and every view that cares folds it into its
@@ -110,8 +122,10 @@ drives navigation, a key fixes which data lands but not that the user is moved: 
 is correct as written, and the better move is to delete the request: let the plugin that owns the list hold
 it and have other views select it. `features/browser` has **no request/reply pairs at all**: one emit,
 `BROWSER_CONNECTED` on connect, and its `SYNC_TABS`/`SYNC_BOOKMARKS` handlers write and return nothing.
-The code panel reads the prompts plugin's list with `usePluginState` and sends no fetch of its own
-(`features/code/fe/features/prompts/PromptsPanel.vue:266`). The host does the same with
+The code panel reads the prompts plugin's list with `usePluginState` rather than fetching it, so what it
+does send is paging and edits — and it sends those **through its own child machine**, because a component
+is in no delivery and a send from one carries no `Message.sender` for the owning plugin to answer. The
+host does the same with
 `FEATURE_SETTINGS_UPDATED`: all eleven feature contracts carry a `settings` field and `GET_SETTINGS`
 appears nowhere under `features/`.
 
@@ -122,13 +136,39 @@ request's late answer carries the newest id and wins) and every reply echoes it.
 is the other shape of this — its id is minted *by the reply*, so nothing the requester knows can identify
 it.
 
-**The rule this leaves:** before adding a guard to a reply handler, decide which of the three the event is.
-A notification needs nothing, a fetch wants a keyed slot, and only a command wants an id. A guard is what
-you write when the shape is wrong, and six of them in this pack are exactly that: the two page guards in
-`features/{actions,prompts}` are a page number used as a key and are this idea in miniature, while
-`pendingActionId`, `pendingPromptId`, `answersSelectedNode` and `answersCurrentFlow` are hand-written
-correlation standing in for a slot. `answersCurrentFlow` stays whatever happens — `FLOW_EVENTS_RESULT`
-echoes no `offset`, so its paging needs the backend to say which page it answered.
+**The rule this leaves**, in order: *which job is this?* decides the channel, and only then does the shape
+follow. A notification broadcasts and needs nothing. A fetch broadcasts and wants a keyed slot. **A
+command's outcome is replied** — and once it is, it needs an id only where one window can have two of the
+same command in flight, which is rarer than it looks: the database's two query kinds do, a settings save
+does not.
+
+A guard is where a slot would have made the correlation structural, and six in this pack still are. None
+is wrong now; the two that were failed in opposite ways, which is what makes them worth knowing.
+
+**A guard needs an invariant every asker holds, and a slot does not.** `answersSelectedNode` admits a
+reply only for the node in `selectedStepNode`, so every asker must select before it asks — stated over two
+of its four askers and broken by the fourth, which asked for an erroring node's details and never selected
+it, so the panel that exists to show them was never given any.
+`tests/features/brain/fe/tnode-correlation.spec.ts` asks each asker rather than describing them, which is
+the thing to copy if a guard stays.
+
+**And a guard cannot correlate on what the answer does not carry.** `answersCurrentPage` matched a flow
+while `FLOW_EVENTS_RESULT` echoed no `offset`, so re-selecting a flow while a later page was in flight let
+that page replace the whole list. The answer carries its offset now; `loadMoreEvents` keeps one page in
+flight, which the correlation requires rather than prefers.
+
+The other four are correct, and the check that says so is the one to reuse: `pendingActionId` and
+`pendingPromptId` have exactly one setter each, so their invariant holds by construction, and the page
+guards in `features/{actions,prompts}` admit `page + 1` where `page` advances only on a reply — two clicks
+ask for the same page and the dedupe is the intent. Converting any of them to a slot would be churn with
+no failure behind it.
+
+And one that was worse than a guard: `code/be/features/pull-request.ts` stamped a module-scoped counter on
+every `pr.PR_DETAILS_RECEIVED`, justified as "monotonic within this process" — true, and beside the point,
+since what it is compared against lives in the renderer and outlives the backend. An API restart or a pack
+reload put it back to zero, every later answer then read as older than the viewer had accepted, and PR
+details silently stopped updating. The PR number was always the key; what the tie-break wanted was a clock,
+so it is `fetchedAt` now.
 
 ## Services
 
@@ -154,7 +194,7 @@ Import `EARS` from `#generated/ears` by default. The SDK's `EARS` (`@abuddy/sdk`
 
 Typed facades (no module augmentation):
 - `__generated__/ears.ts` — `PackShapes` (entity type → attribute interface), `EntityName`, and the typed `qx`/`tx`/`find*`/`createEntity`/`createEntityWithDefaults`/`updateEntity`/`getAttr` helpers built with `defineEars`. Feature code imports `tx` from here; migrations write with the unchecked `untypedTx` from `@abuddy/ears`, as does the Database console's transaction code (which exposes it to console code under the name `tx`), which runs through `@abuddy/sdk/database-console` (`features/database/be/execute/`)
-- `__generated__/events.ts` — `SendablePluginEvents` (receiving plugin ID → the events it gets: its own system's, plus the inbox that plugin's `Contract` declares — the flows plugin takes the three action events it handles, the logs plugin `LOG_ADDED` from any pack), `PackSystemEvents` (system → the events it receives), and typed `broadcastToPlugin`/`sendToPlugin`/`sendToSystem` built with `defineEvents`. Frontend state machines and systems send to systems with `sendToSystem` (to the brain's role with `{ role: 'brain' }`); backend code sends to plugins with `broadcastToPlugin`, which reaches every window, and frontend code with `sendToPlugin`, which reaches this window's actor. Don't import these from `@abuddy/sdk/events`; a plugin that takes events from anywhere but its own system declares them in its `Contract`'s `inbox` (`fe/contract.ts`). Subscriptions (`onConnected`, `onIncoming`) come from `@abuddy/sdk/events`, `onLog` from `@abuddy/sdk/logger`
+- `__generated__/events.ts` — `SendablePluginEvents` (receiving plugin ID → the events it gets: its own system's, plus the inbox that plugin's `Contract` declares — the flows plugin takes the three action events it handles, the logs plugin `LOG_ADDED` from any pack), `PackSystemEvents` (system → the events it receives), and typed `broadcastToPlugin`/`sendToPlugin`/`sendToSystem` built with `defineEvents`. Frontend state machines and systems send to systems with `sendToSystem` (to the brain's role with `{ role: 'brain' }`); backend code sends to plugins with `broadcastToPlugin`, which reaches every window, and frontend code with `sendToPlugin`, which reaches this window's actor. Don't import these from `@abuddy/sdk/events`; a plugin that takes events from anywhere but its own system declares them in its `Contract`'s `inbox` (`fe/contract.ts`). Subscriptions (`onConnected`, `onIncoming`) come from `@abuddy/sdk/events`, `onLog` from `@abuddy/sdk/logger`. A system answers whoever asked with the `reply` its handler is handed (`spec.actions({ … })`, built by `defineSystem`), which is absent when the message named no sender — there is no `reply` to import
 - `__generated__/services.ts` — the `services` proxy typed as `Services` (with `services.repository` typed as `Repositories`, and `services.emitter`'s sends typed with the pack's events; actions name systems `default-setup/<feature>`)
 - `__generated__/repository.ts` — `repository`, typed with every repository in `features[].repositories`
 

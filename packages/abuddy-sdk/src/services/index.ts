@@ -1,6 +1,6 @@
 import type { repository } from '@abuddy/ears';
 import { boundHost, type HostRuntimeServices } from '../runtime/host-runtime.ts';
-import { createSends, untypedBroadcastToPlugin, untypedSendToSystem } from '../events/index.ts';
+import { createSends, untypedBroadcastToPlugin, untypedSendToWindow, untypedSendToSystem } from '../events/index.ts';
 import { resolveRegistered } from '../ids/refs.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
@@ -48,6 +48,12 @@ export interface HostServices {
    */
   emitter: {
     broadcastToPlugin: typeof untypedBroadcastToPlugin;
+    /**
+     * To that plugin on one connection, which the caller supplies. A handler is handed the connection it
+     * is serving; an action is handed nothing, so it has one only if something passed it in a payload —
+     * nothing does today, which is why this has no caller yet rather than why it would fail.
+     */
+    sendToWindow: typeof untypedSendToWindow;
     sendToSystem: typeof untypedSendToSystem;
   };
   repository: typeof repository;
@@ -96,6 +102,7 @@ export function createActionEmitter(sender?: ActionSender): HostServices['emitte
   const sends = createSends(sender);
   return {
     broadcastToPlugin: (name, event) => sends.broadcastToPlugin(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
+    sendToWindow: (client, name, event) => sends.sendToWindow(client, actionRef('plugin', name, boundHost().packs.pluginIds()), event),
     sendToSystem: (to, event) => sends.sendToSystem(typeof to === 'string' ? actionRef('system', to, boundHost().packs.systemIds()) : to, event),
   };
 }

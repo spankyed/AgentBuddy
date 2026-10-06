@@ -99,7 +99,7 @@ export const settingsSystem = setup({
     // The host resets the whole app: stores, each pack's onInit and boot seed, migrations
     resetAppActor: fromPromise(() => services.appData.reset()),
   },
-  actions: {
+  actions: settingsSpec.actions({
     sendSettingsStartupData: () => {
       broadcastSettings('SETTINGS_LOADED');
       sendSecrets();
@@ -157,8 +157,8 @@ export const settingsSystem = setup({
     }),
 
     // A change the store can't take now (`whileBusy`), with the reason the state gives
-    refuseChange: (_: unknown, { reason }: { reason: string }) =>
-      answerSettings({ type: 'SETTINGS_REFUSED', problems: [reason] }),
+    refuseChange: ({ reply }, { reason }: { reason: string }) =>
+      answerSettings(reply, { type: 'SETTINGS_REFUSED', problems: [reason] }),
 
     getSettings: () => broadcastSettings('SETTINGS_LOADED'),
     
@@ -171,7 +171,7 @@ export const settingsSystem = setup({
      * which would answer again and throw out of the action. default-setup's database system says the same
      * thing where it does the same thing.
      */
-    updateSettings: ({ event }) => {
+    updateSettings: ({ event, reply }) => {
       const ev = settingsSpec.typeOf('UPDATE_SETTINGS', event);
       // A plugin's settings are keyed by its ref, which the frontend resolves before sending and the store checks
       const outcome = ((): SettingsAnswer => {
@@ -185,10 +185,10 @@ export const settingsSystem = setup({
         return { type: 'SETTINGS_SAVED', ...(ev.requestId === undefined ? {} : { requestId: ev.requestId }) };
       })();
 
-      answerSettings(outcome);
+      answerSettings(reply, outcome);
     },
 
-    replaceSettings: ({ event }) => {
+    replaceSettings: ({ event, reply }) => {
       const ev = settingsSpec.typeOf('REPLACE_SETTINGS', event);
       const outcome = ((): SettingsAnswer => {
         try {
@@ -200,12 +200,12 @@ export const settingsSystem = setup({
         return { type: 'SETTINGS_SAVED', ...(ev.requestId === undefined ? {} : { requestId: ev.requestId }) };
       })();
 
-      answerSettings(outcome);
+      answerSettings(reply, outcome);
     },
 
     // Answered like the other two writes: it was the one that said nothing at all on success, so a caller
     // could not tell a reset that worked from one that never arrived
-    resetSettings: ({ event }) => {
+    resetSettings: ({ event, reply }) => {
       const ev = settingsSpec.typeOf('RESET_SETTINGS', event);
       const outcome = ((): SettingsAnswer => {
         try {
@@ -217,7 +217,7 @@ export const settingsSystem = setup({
         return { type: 'SETTINGS_SAVED', ...(ev.requestId === undefined ? {} : { requestId: ev.requestId }) };
       })();
 
-      answerSettings(outcome);
+      answerSettings(reply, outcome);
     },
     
     // The stored keys changed: the view shows what there is now. What else acts on it hears the same event.
@@ -236,7 +236,7 @@ export const settingsSystem = setup({
       broadcastToPlugin('settings', { type: 'APP_RESET_FAILED', error: message });
     },
 
-  },
+  }),
 }).createMachine({
   id: 'settings',
   initial: 'idle',

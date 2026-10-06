@@ -4,6 +4,7 @@ import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
 import { REQUIRED_PROVIDERS } from '#app-settings/providers.ts';
 import { assign, setup } from 'xstate';
+import { answer } from './answer.ts';
 import { defineSystem } from '@abuddy/sdk/framework';
 
 import { tx, EARS } from '#generated/ears.ts';
@@ -17,6 +18,7 @@ import { runThreadTeardown } from './thread-teardown.ts';
 import { generateAsideText } from './services/chat.ts';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { ref } from '#generated/ref.ts';
+
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('threads');
@@ -53,7 +55,7 @@ function reportThreadOperationError(
 
 export const threadsSystem = setup({
   types: threadsSpec.types,
-  actions: {
+  actions: threadsSpec.actions({
     // ---- Thread management actions ----
     sendThreadsConnectedData: () => {
       const connectedData = repository.threadQueries.connectedData();
@@ -297,40 +299,40 @@ export const threadsSystem = setup({
       // Refresh recent threads since active thread may have been deleted
       services.chat.sendRecentThreadsRefresh();
     },
-    exportThreadsToFile: ({ event }) => {
+    exportThreadsToFile: ({ event, reply }) => {
       const ev = event as { type: 'EXPORT_THREADS'; directory: string };
 
       try {
         const { filePath, threadCount } = exportThreads(ev.directory);
 
-        broadcastToPlugin('threads', {
+        answer(reply, {
           type: 'THREADS_EXPORTED',
           filePath,
           threadCount,
         });
       } catch (err) {
         const message = errorMessage(err);
-        broadcastToPlugin('threads', {
+        answer(reply, {
           type: 'THREADS_EXPORT_FAILED',
           errors: [message],
         });
       }
     },
-    importThreadItems: ({ event }) => {
+    importThreadItems: ({ event, reply }) => {
       const ev = event as { type: 'IMPORT_THREADS'; directory: string };
 
       try {
         const result = importThreads(ev.directory);
 
         if (result.created === 0 && result.errors.length > 0) {
-          broadcastToPlugin('threads', {
+          answer(reply, {
             type: 'THREADS_IMPORT_FAILED',
             errors: result.errors,
           });
           return;
         }
 
-        broadcastToPlugin('threads', {
+        answer(reply, {
           type: 'THREADS_IMPORTED',
           count: result.created,
           ...(result.errors.length > 0 ? { errors: result.errors } : {}),
@@ -348,7 +350,7 @@ export const threadsSystem = setup({
         });
       } catch (err) {
         const message = errorMessage(err);
-        broadcastToPlugin('threads', {
+        answer(reply, {
           type: 'THREADS_IMPORT_FAILED',
           errors: [message],
         });
@@ -415,10 +417,10 @@ export const threadsSystem = setup({
       });
     },
     rememberSentCommands: assign({ sentCommands: () => JSON.stringify(services.library.commands()) }),
-    sendThreadChatData: ({ event }) => {
+    sendThreadChatData: ({ event, reply }) => {
       const { threadId, restore } = threadsSpec.typeOf('OPEN_THREAD_CHAT', event);
       try {
-        services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, restore);
+        services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, { restore, reply });
       } catch (err) {
         logger.warn('Thread not found for chat open, skipping', { threadId });
         broadcastToPlugin('threads', {
@@ -437,10 +439,10 @@ export const threadsSystem = setup({
         ...result,
       });
     },
-    sendThreadTabData: ({ event }) => {
+    sendThreadTabData: ({ event, reply }) => {
       const { threadId } = threadsSpec.typeOf('OPEN_THREAD_TAB', event);
       try {
-        services.chat.openThreadTabAndRefresh(threadId as EARS.EntityId);
+        services.chat.openThreadTabAndRefresh(threadId as EARS.EntityId, { reply });
       } catch (err) {
         logger.warn('Thread not found for tab open, skipping', { threadId });
         broadcastToPlugin('threads', {
@@ -649,7 +651,7 @@ export const threadsSystem = setup({
         logger.error('forwardUserCommand failed', { error: err });
       }
     },
-    forkThread: ({ event }) => {
+    forkThread: ({ event, reply }) => {
       const { messageId, threadId, threadTopic } = threadsSpec.typeOf('FORK_THREAD', event);
       if (!threadId) return;
 
@@ -691,7 +693,7 @@ export const threadsSystem = setup({
           repository.threadCommands.update(result.id, { context: forkContext });
         }
 
-        services.chat.openThreadChatAndRefreshRecent(result.id);
+        services.chat.openThreadChatAndRefreshRecent(result.id, { reply });
 
         sendToSystem('brain', {
           type: 'TRIGGER_BRAIN_EVENT',
@@ -714,7 +716,7 @@ export const threadsSystem = setup({
         }
       }
     },
-    revertThread: ({ event }) => {
+    revertThread: ({ event, reply }) => {
       try {
       const { messageId, threadId, restoreFiles, userCliUuid } = threadsSpec.typeOf('REVERT_THREAD', event);
       const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
@@ -745,7 +747,7 @@ export const threadsSystem = setup({
         ? deletedMessages.filter((m: any) => m.sender === 'user' && m.context?.agent === 'Codex').length
         : 0;
 
-      services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
+      services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, { reply });
 
       // Unified `thread.revert` brain event — the `kind` discriminator
       // tells the claude-code flow which variant to run.
@@ -767,7 +769,7 @@ export const threadsSystem = setup({
         logger.error('revertThread failed', { error: err });
       }
     },
-    summarizeThread: ({ event }) => {
+    summarizeThread: ({ event, reply }) => {
       try {
       const { messageId, threadId } = threadsSpec.typeOf('SUMMARIZE_THREAD', event);
       const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
@@ -798,7 +800,7 @@ export const threadsSystem = setup({
         ? deletedMessages.filter((m: any) => m.sender === 'user' && m.context?.agent === 'Codex').length
         : 0;
 
-      services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
+      services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, { reply });
 
       sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
@@ -877,7 +879,7 @@ export const threadsSystem = setup({
         });
       }
     },
-  },
+  }),
 }).createMachine(
   {
     id: 'threads',

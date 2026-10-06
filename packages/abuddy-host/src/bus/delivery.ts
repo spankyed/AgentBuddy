@@ -1,38 +1,53 @@
-// Makes the message being handled survive an `await`, which is all the backend adds to the SDK's delivery scope.
+// Names the message a system is handling, for the duration of the call that delivers it.
 //
-// The SDK's holder is a plain variable, because `@abuddy/sdk/events` is bundled into pack frontends and a browser
-// has no equivalent of this. That is exact for a handler that answers synchronously and wrong for one that awaits
-// first — which a backend system routinely does, since its work is I/O. `AsyncLocalStorage` is Node's answer:
-// the store is captured when an async resource is created, so a handler's own awaits and timers inherit it, and
-// two deliveries interleaving keep their own (measured: two overlapping handlers each answered their own sender).
+// **It is a plain variable, set and restored around the send, and that is the whole mechanism** — the same
+// one the renderer uses, so the two halves of the app behave identically and there is one thing to know.
 //
-// Installing the reader is a process-wide, one-way step, as binding the host is. Nothing uninstalls it: a process
-// that has a bus has it for the process's life, and a test that wants no scope simply does not deliver inside one.
+// It was an `AsyncLocalStorage` until this file said otherwise, because `reply()` read the scope *at the
+// moment it was called* and a backend handler routinely answers after an `await`. That requirement left when
+// `reply` became something a handler is *handed*: the wrapper reads the delivery synchronously as the handler
+// is entered (`_replyTo(_currentDelivery())`, `@abuddy/sdk/framework`), before any `await` can have happened,
+// and the handler closes over the result. Measured on removal — the whole host suite (3077) and the pack
+// suite (787) passed, `reply.spec.ts`'s two-overlapping-asks case included, which is the case its own header
+// named as the one thing a single variable could not do.
 //
-// **It happens on the first delivery rather than on import.** `bus/index.ts` re-exports `machine.ts`, which
-// imports this, so installing at module scope would make merely importing `@abuddy/host/bus` reconfigure the SDK
-// for the whole process — in the CLI, in the pack test harness, in the Playwright runner. Installing here keeps
-// the import inert and cannot be forgotten, since nothing reaches a delivery except through this function.
-import { AsyncLocalStorage } from 'node:async_hooks';
-import { _installAsyncDeliveryReader, _runDelivery, type _Delivery } from '@abuddy/sdk/events';
-
-const storage = new AsyncLocalStorage<_Delivery>();
-
-let installed = false;
+// **What is given up is a label on four sends.** Across both packages, four sends are made after an `await`
+// inside one action — `database`'s `resetDatabase`, which fires `RESTART_BRAIN` and three plugin
+// notifications. None of them is answered, so none needs a return address, and `Message.from` still names the
+// pack because that is stamped from the pack's identity rather than from here.
+//
+// **What is gained is more than one mechanism instead of two.** An async store is inherited by anything the
+// handler creates inside it, a timer included — so a send made minutes later, long after the asker stopped
+// waiting, carried that asker's address, and a `reply` made there would have answered a request nobody was
+// listening for. Binding at entry cannot do that: a handler either took an answer with it or it did not.
+import { _runDelivery, type _Asker, type Message } from '@abuddy/sdk/events';
 
 /**
- * Runs `body` as the handling of `delivery`: a send made inside it carries the handler's ref as `Message.sender`,
- * and `reply` answers the message's own sender on its own connection.
+ * The way back to whoever sent this message, read off the envelope.
  *
- * The async store is the mechanism — it is what survives an `await`. `_runDelivery` sets the SDK's synchronous
- * holder as well, which `_currentDelivery` falls back to when no async store is in scope; that is reachable
- * only by a reader in a process that never installed this one, so it costs a call and closes a gap nothing
- * currently opens.
+ * **One reader, because the two doors used to each build it and could disagree.** A `sender` with a `client` is
+ * a plugin or a claimed participant on that connection; a `sender` without one came from the backend, so it is
+ * a system reachable over the bus; no `sender` means nobody said where an answer would go, and there is then
+ * nothing for a handler to answer with.
+ *
+ * `client` is never read from the wire — the API mints it per connection and stamps it on the way in — so this
+ * is a return address a sender cannot forge into pointing at someone else's window.
  */
-export function deliverAs<T>(delivery: _Delivery, body: () => T): T {
-  if (!installed) {
-    _installAsyncDeliveryReader(() => storage.getStore());
-    installed = true;
-  }
-  return storage.run(delivery, () => _runDelivery(delivery, body));
+function askerOf({ sender, client }: Pick<Message, 'sender' | 'client'>): _Asker | undefined {
+  if (sender === undefined) return undefined;
+  return client === undefined ? { kind: 'bus', ref: sender } : { kind: 'connection', ref: sender, client };
+}
+
+/**
+ * Runs `body` as the handling of `message`: a send made inside it carries the handler's ref as
+ * `Message.sender`, and a handler entered inside it is handed the answer for this message.
+ *
+ * It takes the envelope rather than a prepared delivery so that reading a return address happens in one place
+ * (`askerOf`), which is what stops the bus's two doors from drifting apart.
+ *
+ * Synchronous by design — see the header. A send a handler makes after an `await` carries no sender, which
+ * `tests/bus/delivery-is-synchronous.spec.ts` pins, so the limit is a decision rather than a surprise.
+ */
+export function deliverAs<T>(message: Pick<Message, 'to' | 'sender' | 'client'>, body: () => T): T {
+  return _runDelivery({ receiver: message.to, asker: askerOf(message) }, body);
 }

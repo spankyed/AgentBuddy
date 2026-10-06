@@ -9,9 +9,10 @@
 // else here would also pass if the scope were a single module-level variable; only that one fails, because a
 // handler that awaits before answering is the ordinary shape of backend work and two of them overlap constantly.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createActor, fromPromise, setup, type AnyActorRef } from 'xstate';
+import { createActor, fromPromise, setup, type AnyActorRef, type AnyEventObject, type MachineContext } from 'xstate';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '@abuddy/sdk/testing';
-import { _runDelivery, reply, untypedBroadcastToPlugin, untypedSendToSystem, type Message } from '@abuddy/sdk/events';
+import { _currentDelivery, _replyTo, _runDelivery, untypedBroadcastToPlugin, untypedSendToSystem, type Message, type Reply } from '@abuddy/sdk/events';
+import { defineHandlers } from '@abuddy/sdk/framework';
 import { _whenSatisfied } from '@abuddy/sdk/testing/waiting';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
@@ -32,14 +33,19 @@ const after = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * A system that answers a PING with a MEMO_ADDED, waiting `wait` ms first so two asks can be put in flight
  * together. The handler names no address: that is the whole point of the file.
  */
-const answering = setup({}).createMachine({
-  on: {
-    PING: {
-      actions: async ({ event }) => {
-        await after((event as { wait?: number }).wait ?? 0);
-        reply({ type: 'MEMO_ADDED', tag: (event as { tag?: string }).tag });
-      },
+// These fixtures declare no context, so their handlers take XState's own open `MachineContext`
+const handlers = defineHandlers<MachineContext, AnyEventObject>();
+
+const answering = setup({
+  actions: handlers.actions({
+    answer: async ({ event, reply }) => {
+      await after((event as { wait?: number }).wait ?? 0);
+      reply?.({ type: 'MEMO_ADDED', tag: (event as { tag?: string }).tag });
     },
+  }),
+}).createMachine({
+  on: {
+    PING: { actions: 'answer' },
     // Names its target rather than answering, which is what every system did before `reply` existed. The
     // envelope should still say who sent it, and that stamp is `createSends`' rather than `reply`'s.
     ANNOUNCE: {
@@ -58,9 +64,11 @@ const answering = setup({}).createMachine({
  */
 const invoking = setup({
   actors: {
-    answerLater: fromPromise(async ({ input }: { input: { tag?: string } }) => {
+    // The answer arrives through the actor's input, bound when the input was built — which happens while the
+    // transition is being processed, inside the delivery
+    answerLater: fromPromise(async ({ input }: { input: { tag?: string; reply?: Reply } }) => {
       await after(5);
-      reply({ type: 'MEMO_ADDED', tag: input.tag });
+      input.reply?.({ type: 'MEMO_ADDED', tag: input.tag });
     }),
   },
 }).createMachine({
@@ -70,7 +78,7 @@ const invoking = setup({
     working: {
       invoke: {
         src: 'answerLater',
-        input: ({ event }) => ({ tag: (event as { tag?: string }).tag }),
+        input: handlers.input(({ event, reply }) => ({ tag: (event as { tag?: string }).tag, reply })),
         onDone: 'idle',
         onError: 'idle',
       },
@@ -236,20 +244,22 @@ describe('a send made while handling says where an answer would go', () => {
   });
 });
 
-describe('reply refuses rather than guessing', () => {
-  // A private answer broadcast to every window is worse than an error, and silent
-  it('throws when no message is being handled', () => {
-    expect(() => reply({ type: 'MEMO_ADDED' })).toThrow(/no message being handled/);
+/**
+ * There is nothing to answer with, rather than an error raised for trying.
+ *
+ * These were three cases about `reply()`'s throws: no message being handled, a message that named no sender,
+ * and an error naming the receiver so a stack with several systems in it said which one had nothing to answer.
+ * A handler is handed its answer now, so the first two are an absent argument — the condition is read before
+ * the handler runs rather than after it has decided to answer — and the third has no error left to name
+ * anything. That diagnostic is the price of the shape, and it buys the thing it was diagnosing: a handler can
+ * no longer be written as though an answer were always there.
+ */
+describe('there is nothing to answer with', () => {
+  it('hands nothing on when no message is being handled', () => {
+    expect(_replyTo(undefined)).toBeUndefined();
   });
 
-  it('throws when the message being handled named no sender', () => {
-    expect(() => _runDelivery({ receiver: 'memo-pack/memos' }, () => reply({ type: 'MEMO_ADDED' })))
-      .toThrow(/named no sender/);
-  });
-
-  // The error names the receiver, so a stack with several systems in it says which one had nothing to answer
-  it('names the receiver it could not answer for', () => {
-    expect(() => _runDelivery({ receiver: 'memo-pack/memos' }, () => reply({ type: 'MEMO_ADDED' })))
-      .toThrow(/memo-pack\/memos/);
+  it('hands nothing on when the message being handled named no sender', () => {
+    expect(_runDelivery({ receiver: 'memo-pack/memos' }, () => _replyTo(_currentDelivery()))).toBeUndefined();
   });
 });
