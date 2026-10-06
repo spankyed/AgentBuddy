@@ -103,7 +103,8 @@ Two suites, split by what a spec costs:
   about 13.5s of file time, a couple of seconds of wall. The per-change loop.
 - **`npm run test:integration -w @abuddy/cli`** — the expensive half (`tests/**/*.integration.spec.ts`,
   `vitest.integration.config.ts`, which caps worker threads because many of these specs spawn compilers of
-  their own): 15 specs, about 157s of file time.
+  their own): 16 specs, about 213s of file time measured 2026-10-06 running this half alone, which is the
+  only basis the figure has — every reading here is taken under the pool's own contention.
 
 **Specs about the repo's own tooling are not here.** Fifteen of them were, and none was about the CLI: they
 moved to `@app/repo-checks`, which is where a spec that reads `scripts/` belongs and where `npm run spec`
@@ -149,6 +150,7 @@ A spec's path under `tests/` mirrors the source it covers, as it does in every p
 pack's whole toolchain is driven from, and `repo-checks/tests/spec-placement.spec.ts` records both with
 that reason. `_support/` is the prefix that says a directory claims to mirror nothing.
 - The packing fixture moved to `@app/publish-checks` and is imported from here as that package: `facade-typing`, `fe-bundler-host-registry`, `types-bundler-determinism` and `package-freshness` use it to build a consumer, which is the fixture rather than the subject. `tests/_support/pack-builds.ts` stays.
+- `facade-typing` is **two specs over one suite**: `_support/facade-packs.ts` holds the packs, the consumer sources, the compiler helpers and the cases, and each spec calls `facadeSuite` for one dependency layout — workspace source, or the npm-packed packages. Split because it was the integration half's floor at 44.1s against a 60s birpc window, on the one axis that does not pay its fixture twice; that module's header has the before-and-after, including the pool wall that did **not** move.
 
 ### How a pack's own module paths are resolved
 

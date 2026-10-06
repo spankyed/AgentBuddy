@@ -96,6 +96,9 @@ const SPANS_PACKAGES: Record<string, string> = {
 const PACKS_AS_A_FIXTURE: Record<string, string> = {
   'packages/abuddy-cli/tests/build/facade-typing.integration.spec.ts':
     "the facade gate: it compiles a dependent pack against the packed packages, so a failure is abuddy build's",
+  'packages/abuddy-cli/tests/build/facade-typing-published.integration.spec.ts':
+    'the same gate asked of the layout a pack author has, which is the half of that suite the packed '
+    + 'consumer belongs to — it reaches the fixture through _support/facade-packs.ts, as its sibling does',
   'packages/abuddy-cli/tests/build/fe-bundler-host-registry.integration.spec.ts':
     "the FE bundler's host-registry proxying, with a packed consumer as the thing it bundles against",
   'packages/abuddy-cli/tests/build/types-bundler-determinism.integration.spec.ts':
@@ -107,9 +110,26 @@ describe('a spec about the published packages lives in @app/publish-checks', () 
   const FIXTURE = '@app/publish-checks';
   const HOME = 'packages/publish-checks/';
 
-  /** Importing the packing fixture is the signal: nothing else in the repo installs a published consumer. */
-  const packs = (spec: string): boolean =>
-    fs.readFileSync(path.join(REPO_ROOT, spec), 'utf-8').includes(`from '${FIXTURE}'`);
+  /**
+   * Importing the packing fixture is the signal: nothing else in the repo installs a published consumer.
+   *
+   * **Read through the spec's own `_support` as well as its text**, because a shared fixture is exactly
+   * where that import goes when two specs want it. Observed 2026-10-06: splitting `facade-typing` in two
+   * moved its `installPublishedPackages` into `_support/facade-packs.ts`, and since a support module is not
+   * a spec, both halves stopped tripping this rule — the entry in the table below went stale while the
+   * thing it excuses carried on happening. One level and only into `_support`, which is cheap over four
+   * hundred specs where a module-closure walk would not be, and is where the pattern actually is.
+   */
+  const packs = (spec: string): boolean => {
+    const read = (file: string): string => fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8');
+    const source = read(spec);
+    if (source.includes(`from '${FIXTURE}'`)) return true;
+    return [...source.matchAll(/from '(\.\.?\/[^']*_support\/[^']+)'/g)].some(([, specifier]) => {
+      const named = path.join(path.dirname(spec), specifier!);
+      const found = [`${named}.ts`, named].find((candidate) => fs.existsSync(path.join(REPO_ROOT, candidate)));
+      return found !== undefined && read(found).includes(`from '${FIXTURE}'`);
+    });
+  };
 
   const specs = (): string[] => tracked().filter((file) => IS_SPEC.test(file) && file.startsWith('packages/'));
 
