@@ -240,7 +240,6 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { openPlugin } from '#generated/fe.ts'
 import type { CodeState } from '#features/code/fe/state.ts'
 import { usePluginState } from '#generated/fe.ts'
-import { sendToPlugin } from '#generated/events.ts'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '#features/code/fe/features/CodePanelHeader.vue'
 import EmptyState from '#features/code/fe/features/EmptyState.vue'
@@ -282,7 +281,7 @@ const fuzzy = new uFuzzy({ intraMode: 1, interLft: 2, intraSub: 1, intraTrn: 1, 
 const handleSearchClick = () => {
   isSearchMode.value = true
   if (hasMore.value) {
-    sendToPlugin('prompts', { type: 'PROMPTS.LOAD_ALL' })
+    codePromptsActor.send({ type: 'codePrompts.LOAD_ALL' })
   }
   nextTick(() => searchInput.value?.focus())
 }
@@ -350,9 +349,8 @@ function confirmAddParameter(prompt: PromptEntity) {
       ...prompt.inputs,
       [paramKey]: { name: paramKey, type: 'any' as const, required: false }
     }
-    // Send through main prompts plugin state machine
-    sendToPlugin('prompts', {
-      type: 'PROMPT.UPDATE_INPUTS',
+    codePromptsActor.send({
+      type: 'codePrompts.UPDATE_INPUTS',
       promptId: prompt.id,
       inputs: updatedInputs
     })
@@ -397,9 +395,8 @@ function confirmEditParameter(prompt: PromptEntity) {
         name: newName
       }
       delete updatedInputs[oldKey]
-      // Send through main prompts plugin state machine
-      sendToPlugin('prompts', {
-        type: 'PROMPT.UPDATE_INPUTS',
+        codePromptsActor.send({
+        type: 'codePrompts.UPDATE_INPUTS',
         promptId: prompt.id,
         inputs: updatedInputs
       })
@@ -418,8 +415,8 @@ function removeParameter(prompt: PromptEntity, key: string) {
   if (prompt.inputs) {
     const updatedInputs = { ...prompt.inputs }
     delete updatedInputs[key]
-    sendToPlugin('prompts', {
-      type: 'PROMPT.UPDATE_INPUTS',
+    codePromptsActor.send({
+      type: 'codePrompts.UPDATE_INPUTS',
       promptId: prompt.id,
       inputs: updatedInputs
     })
@@ -440,8 +437,8 @@ function confirmEditName(prompt: PromptEntity) {
   if (editingNameForPrompt.value && editedName.value.trim()) {
     const newName = editedName.value.trim()
     if (newName !== prompt.label) {
-      sendToPlugin('prompts', {
-        type: 'PROMPT.UPDATE_LABEL',
+      codePromptsActor.send({
+        type: 'codePrompts.UPDATE_LABEL',
         promptId: prompt.id,
         label: newName
       })
@@ -457,8 +454,8 @@ function cancelEditName() {
 }
 
 function deletePrompt(prompt: PromptEntity) {
-  sendToPlugin('prompts', {
-    type: 'PROMPT.DELETE',
+  codePromptsActor.send({
+    type: 'codePrompts.DELETE',
     promptId: prompt.id
   })
 }
@@ -466,7 +463,7 @@ function deletePrompt(prompt: PromptEntity) {
 const { onScroll } = useInfiniteScroll({
   hasMore,
   loading: loadingMore,
-  onLoadMore: () => sendToPlugin('prompts', { type: 'PROMPTS.LOAD_MORE' }),
+  onLoadMore: () => codePromptsActor.send({ type: 'codePrompts.LOAD_MORE' }),
 })
 
 // Event handlers
@@ -481,8 +478,8 @@ const goToPrompt = (prompt: PromptEntity) => {
 const createPromptInline = () => {
   const defaultLabel = `Prompt ${prompts.value.length + 1}`
   pendingRename.value = true
-  sendToPlugin('prompts', {
-    type: 'PROMPT.CREATE_INLINE',
+  codePromptsActor.send({
+    type: 'codePrompts.CREATE_INLINE',
     label: defaultLabel,
     templateFn: '// Your template function body here\nreturn `Your prompt template`;',
     inputs: {},
