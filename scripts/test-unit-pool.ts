@@ -113,6 +113,19 @@ function reportDurations(kind: Pool, covered: readonly UnitSuite[], reported: Re
       const note = `${marked.get(row.dir)?.get(row.file) ?? (missing.has(named) ? 'no @slow: marker' : '')}${moved}`.trim();
       console.log(`  ${asDuration(row.ms).padStart(7)}  ${note === '' ? named : `${named.padEnd(width)}  ${note}`}`);
     }
+    // What `no @slow: marker` above is worth, said once. It is the one of the two directions a loaded run
+    // can fabricate, and so the one that is reported rather than failed — where the failure below carries
+    // that reasoning in full and this carried none, leaving a reader to meet an annotation with no way to
+    // know it is not a result they are obliged to clear.
+    //
+    // Per half rather than per row, for the reason `missing` is narrowed at all: a note on every row is
+    // where annotation stops being read. The trend beside each row is what says whether one of these has
+    // been slow for ten runs or is this run's load, so the prompt needs no figure of its own.
+    const unmarked = placement.unmarked.filter((row) => row.half === half).length;
+    if (unmarked > 0) {
+      console.log(`${kind} pool: ${unmarked} of those ${unmarked === 1 ? 'carries' : 'carry'} no @slow: `
+        + 'marker — reported, not failed, since load can push a file into a tail and never out of one');
+    }
   }
   for (const { half, files } of placement.unplaceable) {
     console.log(`${kind} pool: no marker checked in the ${half} half — ${files} file(s) is too few for a tail, so its p90 is its slowest`);
