@@ -2610,13 +2610,6 @@ type IncomingThreadsEvents = {
     type: 'PAUSE_TURN';
     threadId: string;
 } | {
-    type: 'APPROVE_TODO_LIST';
-    artifactId: string;
-    tasks: any[];
-} | {
-    type: 'REJECT_TODO_LIST';
-    artifactId: string;
-} | {
     type: 'INTERACTIVE_MSG_RESPONSE';
     messageId: string;
     threadId: string;
@@ -4166,11 +4159,6 @@ type OutgoingThreadsEvents = {
     threadId: string;
     message: MessageEntity;
 } | {
-    type: 'UPDATE_TODO_TASK';
-    artifactId: string;
-    taskId: string;
-    completed: boolean;
-} | {
     type: 'SET_MODE';
     mode: string;
 } | {
@@ -5349,13 +5337,6 @@ interface ThreadsContext$1 {
 /** What the artifact viewers, the dashboard and the tiptap command items ask of the threads plugin */
 type ThreadsInboxEvent = {
     type: 'SELECT_ARTIFACT';
-    artifactId: string;
-} | {
-    type: 'APPROVE_TODO_LIST';
-    artifactId: string;
-    tasks: unknown[];
-} | {
-    type: 'REJECT_TODO_LIST';
     artifactId: string;
 } | {
     type: 'OPEN_THREAD_CHAT';

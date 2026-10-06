@@ -189,9 +189,6 @@ type UIEvent =
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
   | { type: 'SET_MODE'; mode: string }
   | { type: 'SET_PHASE'; phase: string }
-  | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
-  | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
-  | { type: 'REJECT_TODO_LIST'; artifactId: string }
   | { type: 'RESPOND_TO_BLOCK_INTERACTION'; messageId: string; response: BlockResponse }
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp?: number; blockResponse?: BlockResponse; asideText?: string; context?: Record<string, unknown>; compacted?: boolean }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
@@ -1271,31 +1268,6 @@ const threadsState = setup({
       });
       return { tabs };
     }),
-    updateTodoTask: assign(({ context, event }) => {
-      const { artifactId, taskId, completed } = typeOf('UPDATE_TODO_TASK', event);
-      const tabs = context.tabs.map(tab => ({
-        ...tab,
-        artifacts: tab.artifacts.map(artifact => {
-          if (artifact.id === artifactId && artifact.type === 'todo') {
-            const content = artifact.content as { tasks: Array<{ id: string; completed?: boolean }> };
-            const tasks = content.tasks.map(task =>
-              task.id === taskId ? { ...task, completed } : task
-            );
-            return { ...artifact, content: { ...content, tasks } };
-          }
-          return artifact;
-        })
-      }));
-      return { tabs };
-    }),
-    approveTodoList: async ({ event }) => {
-      const { artifactId, tasks } = typeOf('APPROVE_TODO_LIST', event);
-      sendToSystem(id, { type: 'APPROVE_TODO_LIST', artifactId, tasks });
-    },
-    rejectTodoList: async ({ event }) => {
-      const { artifactId } = typeOf('REJECT_TODO_LIST', event);
-      sendToSystem(id, { type: 'REJECT_TODO_LIST', artifactId });
-    },
     handleHotkey: createHotkeyProcessor({
       quickPrompts: 'TOGGLE_QUICK_PROMPTS',
       closeTab: 'CLOSE_ACTIVE_TAB',
@@ -1757,9 +1729,6 @@ const threadsState = setup({
         commands: typeOf('COMMANDS_UPDATED', event).commands
       }))
     },
-    UPDATE_TODO_TASK: { actions: 'updateTodoTask' },
-    APPROVE_TODO_LIST: { actions: 'approveTodoList' },
-    REJECT_TODO_LIST: { actions: 'rejectTodoList' },
     RESPOND_TO_BLOCK_INTERACTION: {
       actions: [
         'respondToBlockInteraction',

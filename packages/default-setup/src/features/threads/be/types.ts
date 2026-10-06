@@ -504,8 +504,6 @@ export type IncomingThreadsEvents =
   | { type: 'OPEN_THREAD_CHAT'; threadId: string; restore?: boolean }
   | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string; pinned?: boolean }
   | { type: 'PAUSE_TURN'; threadId: string }
-  | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
-  | { type: 'REJECT_TODO_LIST'; artifactId: string }
   | { type: 'INTERACTIVE_MSG_RESPONSE'; messageId: string; threadId: string; response: any }
   | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string; restoreFiles?: boolean; userCliUuid?: string }
@@ -548,7 +546,6 @@ export type OutgoingThreadsEvents =
   | { type: 'AGENT_SETTINGS_UPDATED'; settings: AgentSettings }
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; text?: string; blocks?: BlockConfig[]; responseTimestamp?: number; blockResponse?: BlockResponse; forkable?: boolean; status?: 'queued' | 'cancelled' | null; context?: Record<string, unknown>; asideText?: string; asideContext?: string; compacted?: boolean }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
-  | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
   | { type: 'SET_MODE'; mode: string }
   | { type: 'SET_PHASE'; phase: string }
   | { type: 'SET_CHAT_STATE'; threadId: string; chatState: string }
