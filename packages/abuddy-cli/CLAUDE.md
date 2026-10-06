@@ -99,12 +99,17 @@ Because host code is inlined, `@abuddy/host` imports are fine in `src/`. The CLI
 
 Two suites, split by what a spec costs:
 
-- **`npm test -w @abuddy/cli`** — the fast half (`tests/**/*.spec.ts`, `vitest.config.ts`): 46 specs and
-  about 16s of file time, a couple of seconds of wall. The per-change loop.
+- **`npm test -w @abuddy/cli`** — the fast half (`tests/**/*.spec.ts`, `vitest.config.ts`). The
+  per-change loop.
 - **`npm run test:integration -w @abuddy/cli`** — the expensive half (`tests/**/*.integration.spec.ts`,
   `vitest.integration.config.ts`, which caps worker threads because many of these specs spawn compilers of
-  their own): 17 specs, about 251s of file time measured 2026-10-06 running this half alone, which is the
-  only basis the figure has — every reading here is taken under the pool's own contention.
+  their own).
+
+**How many specs each half holds and what they cost is a command, not a line here**:
+`npm run spec:dry -- packages/abuddy-cli/tests` answers both halves and prints the date it measured them.
+The counts used to be written out, and drifted — this file read "38 specs" when there were 47, and a
+re-count only makes the next drift smaller. That is what the root guide means by *"a count the `--list`
+flag derives does not"* earn its place.
 
 **A spec changed halves on 2026-10-06, the first in this repo to do so on the slow report's evidence.**
 `fe-bundler-proxy-exports` was the fast half's costliest at 3.07s and calls `vite.build` directly, which is

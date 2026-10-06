@@ -49,14 +49,19 @@ is published; a consumer fixture reads the derived manifest, as a consumer does.
 
 Two halves, as every suite with an expensive one has: the integration half gives a spec 60s per test and a worker pool capped at half the cores. Which half a spec is in is its filename, decided when it is written rather than re-derived from a measurement.
 
-- **`npm test -w @app/publish-checks`** — 3 specs, 0.8s: each reads the built `dist` and packs nothing.
-- **`npm run test:integration -w @app/publish-checks`** — 6 specs, about 33s. Each packs, and most compile,
-  so the config caps worker threads; the comment there has the reason.
+- **`npm test -w @app/publish-checks`** — each spec reads the built `dist` and packs nothing.
+- **`npm run test:integration -w @app/publish-checks`** — each packs, and most compile, so the config caps
+  worker threads; the comment there has the reason.
+
+How many specs each half holds and what they cost is `npm run spec:dry -- packages/publish-checks/tests`,
+dated. Written out here it drifted, and the paragraph below is what that cost.
 
 **Packing is the line between them**, and `published-manifest-paths` was on the wrong side of it until
 2026-10-06. It was kept in the fast half on the strength of its five `npm pack --dry-run` calls costing
-~1.5s; measured, it was **3.74s of that half's 4.5s** — 83% of it — so the half was one packing spec beside
-three near-instant ones, and the figure the decision rested on was 2.5x stale. The spec's own header
+~1.5s; measured 2026-10-06 it was **3.74s of that half's 4.5s** — 83% of it — so the half was one packing
+spec beside three near-instant ones, and the figure the decision rested on was 2.5x stale. The date is on
+it for that reason: a measurement a decision cites cannot be derived and cannot be dropped, so it carries
+its conditions instead. The spec's own header
 records the move. Nothing re-derives a half: the filename is the decision.
 
 Both halves have a `pretest` that builds the packages, because `npm run test:integration` fires no `pretest`

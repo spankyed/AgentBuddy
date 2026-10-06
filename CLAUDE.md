@@ -478,6 +478,23 @@ rule**: the floor became 0.9s when the per-step caching landed, the sentence was
 and all three went on arguing from a number thirty times too large — in the paragraph about copied figures
 drifting.
 
+**A third failure, which is neither of those: a measurement a decision cites.** `@app/publish-checks`' guide
+kept a spec in the fast half *"on the strength of its five `npm pack --dry-run` calls costing ~1.5s"*, and
+it measured 3.74s — 2.5x out, with a placement decision resting on it. Such a figure cannot be derived and
+cannot be dropped, so it takes the third option, which is already this repo's convention for a measurement:
+**it carries its date and its conditions.** `npm run measure`'s output is the format — *"a number without
+its conditions is an assertion; with them it is a citation"* — and a number quoted in prose is under the
+same rule as one printed by a command.
+
+**What holds any of this is a case, where the figure is derivable, and nothing otherwise.**
+`typecheck-legs.spec.ts` is the worked example: it holds this guide's leg count and the sum of the legs'
+declared `seconds`, and leaves the wall time beside them as a dated measurement — *"the derivable half is
+derived"*. There is no general check here and should not be: a scan cannot tell a derivable count from a
+measurement by looking at one, and holding a *measurement* against a record is the `spec-cost.json` disease
+the sample section above records. Three drifts were found by review on 2026-10-06 (a spec count 9 short, the
+~1.5s above, and a "closest left" that had been overtaken); review is what catches the third kind, because a
+causal claim is an argument and no check holds an argument.
+
 **Script names say whether they write.** Three shapes, and the second word tells them apart:
 
 - `<artifact>:check` / `<artifact>:update` — something recorded that can go stale, and the two halves
