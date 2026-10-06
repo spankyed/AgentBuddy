@@ -6,7 +6,8 @@
  */
 import { covers } from '@abuddy/host/build/packages-built';
 import { isMeasuredMachine, isMeasuredSchedule, machineText, thisMachine, type Machine } from './core-budget.ts';
-import { overBand } from './step-timing.ts';
+import { criticalPath, overBand } from './step-timing.ts';
+import type { SchedulableStep } from './chain-schedule.ts';
 
 /**
  * How wide a step's name column is, in every row that has one.
@@ -521,4 +522,32 @@ export function classifyLine(
   return retry.code === 0
     ? `\nre-ran it alone: passed in ${took} — contention or a flake, not the code. The chain still fails.`
     : `\nre-ran it alone: failed again (exit ${retry.code}) in ${took} — the failure is real.`;
+}
+
+/**
+ * The longest chain of steps a run has to wait through, as a line — and the answer to "what should I make
+ * faster".
+ *
+ * **It is printed for a plan as well as for a run, which is the point.** A step's own duration says
+ * nothing about whether shortening it shortens anything: the chain admits steps in parallel, so a step off
+ * this path runs inside the shadow of the ones on it and halving it buys zero. Established the hard way on
+ * 2026-10-06 — `test:unit:pack` is 89% setup overhead, which reads as the worst number in the suite and is
+ * off the path entirely, so two days of work on it would have bought no wall clock at all. The path over
+ * the declared table says so in one line, before anybody measures a ratio.
+ *
+ * `--dry` gives the planned run's path, and `--dry --all` the cold chain's, because `--all` plans every
+ * step. No new flag: the composition already means what it needs to mean.
+ *
+ * `source` separates the two numbers rather than letting one wear the other's authority. A run has
+ * measured each step; a plan has only the declared table, which is one machine's by declaration
+ * (`MEASURED_ON`) and is a model — it happens to agree, 157s declared against the 158.3s cold run the root
+ * guide records, and that agreement is a fact about today rather than a property.
+ *
+ * Empty for a path of one step, where there is no chain to report and the step's own line already said
+ * what it cost.
+ */
+export function criticalPathLine(steps: readonly SchedulableStep[], source: 'declared' | 'measured'): string {
+  const path = criticalPath(steps);
+  if (path.names.length < 2) return '';
+  return `critical path ${path.seconds}s${source === 'declared' ? ' declared' : ''} (${path.names.join(' -> ')})`;
 }

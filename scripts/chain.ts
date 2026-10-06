@@ -44,8 +44,8 @@ import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { asCount, driftVerdict, idleNow, movedBeyondBand, parseFlags, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { machineLine, recordMachine, recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { criticalPath, driftedSteps, measurementsFrom, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
-import { briefly, classifyLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { driftedSteps, measurementsFrom, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
+import { briefly, classifyLine, criticalPathLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { CHAIN_RUN_ENV, DIAGNOSTIC_RUN_ENV, POOLS, poolDurationLines, type Pool } from './lib/unit-pool.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
@@ -395,16 +395,29 @@ async function main(): Promise<void> {
     console.log(`\nadmitting on ${cores(budget)}, ${box()} cores on this machine:`);
     for (const step of wide) console.log(`${String(step.cores).padStart(7)} ${step.name}`);
     console.log(`${'1'.padStart(7)} each of the other ${steps.length - wide.length} steps\n`);
+    /**
+     * The steps this plan would actually run, which is what its critical path is over.
+     *
+     * Typed from `steps` rather than as `ChainStep`: `orderedSteps` is what resolves each step's edges, and
+     * `criticalPath` needs them — the raw table has no `dependsOn` field, only the function that derives one.
+     */
+    const planned: (typeof steps)[number][] = [];
     for (const step of steps) {
       // `--all` runs everything, so a dry run given `--all` must say so rather than reporting the cache it
       // would ignore. A plan that does not answer for the flags it was given is worse than no plan.
       const why = staleReason(step, sweep);
       const willRun = all || why !== null;
+      if (willRun) planned.push(step);
       // Naming what moved in place of the sentence, which was the same for every stale step and said less
       const moved = !all && why === INPUTS_CHANGED ? whatChanged(step) : '';
       const reason = all ? '--all' : (moved === '' ? (why ?? '') : moved);
       console.log(`${(willRun ? 'run' : 'cached').padStart(7)} ${marker(needsApp(step))} ${step.name.padEnd(STEP_NAME_WIDTH)} ${wrapAt(DRY_REASON_COLUMN, reason)}`.trimEnd());
     }
+    // What bounds the plan, over the declared table — the question "which step is worth making faster",
+    // answered before anyone measures one. A step that is not on this path runs inside the shadow of the
+    // ones that are, so its own duration is not a saving. `criticalPathLine` has what that cost to learn.
+    const plannedPath = criticalPathLine(planned, 'declared');
+    if (plannedPath !== '') console.log(`\n${plannedPath}`);
     return;
   }
 
@@ -548,8 +561,8 @@ async function main(): Promise<void> {
   const measuredMs = measurementsFrom(results);
   const ran = steps.filter((step) => measuredMs.has(step.name))
     .map((step) => ({ ...step, seconds: Math.round((measuredMs.get(step.name) ?? 0) / 1000) }));
-  const path = criticalPath(ran);
-  const floor = path.names.length > 1 ? `\ncritical path ${path.seconds}s (${path.names.join(' -> ')})` : '';
+  const measuredPath = criticalPathLine(ran, 'measured');
+  const floor = measuredPath === '' ? '' : `\n${measuredPath}`;
   // Named rather than folded in, so the verdict's number stays comparable between runs and the wall time still
   // adds up — a reader who times the command should not find seconds the chain does not account for.
   const reran = classifyMs > 0 ? ` (+${secs(classifyMs)} re-run)` : '';

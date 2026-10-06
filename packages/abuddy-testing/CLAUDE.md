@@ -207,6 +207,35 @@ than removing it, since the call is what uses those modules.
 [`goal-unit-suite-cost.md`](../../docs/archive/goals/goal-unit-suite-cost.md) closed on this measurement; the
 reason to care is `npm run spec` and a warm chain, never a cold one, whose critical path runs elsewhere.
 
+**Where that ~97% goes, and two ways of removing it that do not work.** Re-measured 2026-10-06 by timing
+each import in the setup file separately (one spec file, 1.56s of setup):
+
+| phase | per file |
+|---|---|
+| evaluating the `@abuddy/testing/harness` bundle | 755ms |
+| `pack-entry.ts` — the pack's whole `PackRegistration` | 461ms |
+| `seed-runtime.ts` | 297ms |
+| `setupPackTests()` running | 33ms |
+
+So it is about half the harness bundle and half the pack's own graph, and the two are separate levers. Ruled
+out, each by measurement rather than argument:
+
+- **`isolate: false`** is not available: the harness throws on a second `setupPackTests` in a process and the
+  message says why. It is a correctness boundary, not a performance knob.
+- **Letting Vite prebundle or externalise `@abuddy/testing`** (`server.deps.external`, and the
+  `deps.optimizer.ssr` variant) does not help. Whole-suite A/B: `setup` 115.5s against 121.5s, wall 17.4s
+  against 18.2s — slightly worse both ways, and the optimizer form fails to build at all on the optional
+  peers. The guess behind it was that a workspace symlink is re-evaluated per file where an external dep
+  would be cached per worker; whatever the mechanism, the number says no.
+- **The per-file checkout assertion is not the cost.** `assertCheckoutPackagesFresh` reads as a likely
+  culprit — it fingerprints the build units on every file — and `stalePackageUnits()` measures **20ms**,
+  about 2% of a file's setup. (Assumed ~300ms from `packages:ensure`'s warm figure, wrong by 15x.)
+
+**And the condition for caring is the critical path, not the ratio.** 89% overhead is the most alarming
+number in the repo and buys nothing: `npm run chain -- --dry --all` prints the path, `test:unit:pack` is not
+on it, and halving this saves zero chain wall and about a second of `npm run spec`. Revisit when the step
+appears on that path — not when the ratio worsens, which it will as default-setup grows.
+
 The one thing left to measure, if that loop ever matters more: this file imports `@abuddy/sdk/build`
 statically for seed compilation most spec files never reach (`compilePack`, `resolveSeeds`, `compileFlowDSL`,
 at the seed helpers), but `readDependencies` reaches the same module on *every* setup through

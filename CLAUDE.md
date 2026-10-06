@@ -290,6 +290,16 @@ Things that waste the most time, in order:
   *"prose costs nothing"* holds the claim this paragraph makes. The two exceptions are a spec that asserts the text and a code fence someone will
   copy: check that one command. This is first on the list because it is the one most often ignored, and a
   full `typecheck` is 11s against a doc edit's 0s.
+- **Optimising a step that is not on the critical path.** The chain admits steps in parallel, so the only
+  durations that add up are the ones along its longest chain of dependencies — `npm run chain -- --dry --all`
+  prints it, and as of 2026-10-06 it is **157s: `packages:ensure` -> `compile` -> `build:app` ->
+  `test:packaged-authoring`**, which matches the 158.3s cold run above. Nothing else is a saving.
+  `test:unit:pack` is the worked example and the warning: it is **89% setup overhead** — 115s of module
+  evaluation against 13s of tests, the most alarming ratio in the repo — and it is off the path, so halving
+  it buys zero chain wall and about a second of `npm run spec`. The diagnosis and the three dead ends are in
+  `packages/abuddy-testing/CLAUDE.md`; what makes it worth revisiting is appearing on that path, not the
+  ratio getting worse. **Read the path before measuring a ratio**, which is the mistake this bullet is made
+  of: two sessions went into that pool's overhead before anyone asked whether it was on the path.
 - **Running `npm run build` to test a change no build output depends on.** The renderer and API build
   from source; a CLI or SDK change does not need them rebuilt to be tested.
 - **Running an E2E suite to find a bug you have a stack trace for.** A minified frame with a line and
@@ -599,7 +609,13 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # slower box counts the slowdown twice — 17 of 29 steps on a 4x-slower runner,
                          # every one of them inside its rung by declaration. A drift row is true wherever it
                          # was taken and only its advice is gated; this number is the projection.
-                         #   --dry     the plan and why each step is or is not cached, running nothing
+                         #   --dry     the plan and why each step is or is not cached, running nothing —
+                         #             and **what bounds it**: the critical path over the declared table,
+                         #             which is the answer to "which step is worth making faster". A step
+                         #             off that path runs inside the shadow of the ones on it, so its own
+                         #             duration is not a saving. `--dry --all` gives the cold chain's path,
+                         #             since `--all` plans every step; no second flag, the composition
+                         #             already means it
                          #   --all     every step regardless of its stamp, forcing those that keep a cache
                          #             of their own; the run each step's `seconds` is checked on
                          #   --cores N how much of the machine to spend. **This machine's cores by default**,

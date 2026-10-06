@@ -4,9 +4,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { firstChange, REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, orderedSteps } from '../../../scripts/lib/chain-steps.ts';
 import { machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
-import { briefly, classifyLine, outgrownReport, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, classifyLine, criticalPathLine, outgrownReport, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   /**
@@ -596,5 +596,62 @@ describe('howLong, once the chain answers the question itself', () => {
     expect(howLong(slow, 61_000, 10, true)).not.toContain('--cores 1');
     // and still says what it cost, which is the half that does not become redundant
     expect(howLong(slow, 61_000, 10, true)).toContain('against 27s healthy on a 10-core budget');
+  });
+});
+
+/**
+ * The line that answers "which step is worth making faster".
+ *
+ * It exists because a step's own duration does not answer it: the chain admits steps in parallel, so one
+ * off the critical path runs inside the shadow of the ones on it and halving it saves nothing. Learned on
+ * 2026-10-06 against `test:unit:pack`, which is 89% setup overhead — the worst-looking number in the suite,
+ * and off the path, so the work would have bought no wall clock.
+ */
+describe('criticalPathLine', () => {
+  /** A → B → C at 10s each, with D hanging off A, so the path is unambiguous and D is not on it */
+  const chain = [
+    { name: 'a', seconds: 10, dependsOn: [] },
+    { name: 'b', seconds: 10, dependsOn: ['a'] },
+    { name: 'c', seconds: 10, dependsOn: ['b'] },
+    { name: 'd', seconds: 99, dependsOn: ['a'] },
+  ];
+
+  it('names the longest chain and what it declares, in order', () => {
+    expect(criticalPathLine(chain, 'declared'))
+      .toBe('critical path 109s declared (a -> d)');
+  });
+
+  // Measured wears no label, because the figure is the run's own rather than the table's
+  it('says declared only of the table', () => {
+    expect(criticalPathLine(chain, 'measured')).toBe('critical path 109s (a -> d)');
+  });
+
+  /**
+   * **A need outside the list contributes nothing**, which is what makes the plan's path meaningful.
+   *
+   * `--dry` passes only the steps that would run, so a cached dependency has to count as free — it costs
+   * this run nothing. Without that the plan would report a path through work it is going to skip.
+   */
+  it('counts only the steps it was given, so a cached dependency is free', () => {
+    const planned = chain.filter((step) => step.name === 'b' || step.name === 'c');
+    expect(criticalPathLine(planned, 'declared'), "a's 10s is not this run's")
+      .toBe('critical path 20s declared (b -> c)');
+  });
+
+  it('says nothing of a path of one, where the step is its own line already', () => {
+    expect(criticalPathLine([chain[0]!], 'declared')).toBe('');
+    expect(criticalPathLine([], 'declared')).toBe('');
+  });
+
+  /**
+   * And over the real table it names a path, so the line a dry run prints is not an artefact of a fixture.
+   *
+   * Asserted as a shape rather than a value: the names and the total are the declared table's and move with
+   * it, where what must hold is that the chain has a path at all and that it ends at a leaf nothing waits on.
+   */
+  it('finds a path through the chain this repo actually has', () => {
+    const ordered = orderedSteps(CHAIN_STEPS);
+    const line = criticalPathLine(ordered, 'declared');
+    expect(line, 'the chain is a graph, so it has a longest route through it').toMatch(/^critical path \d+s declared \(.+ -> .+\)$/);
   });
 });
