@@ -1,3 +1,8 @@
+// @slow: eleven cases, and the costly ones run the real CLI end to end — init, build, typecheck, pack
+// Measured 2026-10-06: 4.4s to add a feature and pack a verified archive, 3.4s to add a step and a service
+// that build, then 2.1s, 2.1s, 1.6s and 1.6s. What makes it slow is what it checks — that the generated
+// scaffold survives a real toolchain outside the monorepo — so the cost is the subject, and a faked CLI or
+// a skipped typecheck would check the fixture instead.
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -23,8 +28,7 @@ const CLI_COMMANDS: string[] = (() => {
  * The scaffold an outside author starts from must build, typecheck and pack as
  * generated. Runs the real CLI in a temp dir outside the monorepo; only the
  * toolchain's node_modules are borrowed from the repo (no Electron).
- */
-const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
+ */const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO_ROOT, 'packages', 'abuddy-cli', 'bin', 'abuddy.mjs');
 
 let tmp: string;

@@ -1,3 +1,10 @@
+// @slow: a matrix of TypeScript programs — two dependency shapes x two module resolutions, each compiled
+// Its subject is whether a generated facade *resolves and completes*, which only a compiler can answer, so
+// every cell builds a program and the completion cells query a language service over it: measured
+// 2026-10-06, the two typechecks are 2.4s and 2.0s and six completion queries 0.5-0.7s apiece. The two
+// resolutions are not duplication — `node16` and `bundler` disagree about a relative `.js` specifier, which
+// is the thing being checked — and the two dependency shapes are workspace source against a packed tarball,
+// which is the seam a pack author meets.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
