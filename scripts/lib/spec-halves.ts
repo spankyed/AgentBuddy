@@ -75,7 +75,9 @@ export const hasSplit = (packageDir: string): boolean => configsFor(packageDir).
  */
 // `templates` holds the CLI's scaffold: `templates/pack/tests/*.spec.ts` is a spec a pack author will run,
 // not one of this package's, and vitest's own `include` already leaves it out
-const IGNORED = new Set(['node_modules', 'dist', 'etc', 'coverage', 'templates']);
+// Exported so the cases over it iterate this set rather than a second copy of the names: a member added
+// here without a case would otherwise be a directory nothing has watched the walk skip
+export const IGNORED = new Set(['node_modules', 'dist', 'etc', 'coverage', 'templates']);
 export function specFiles(packageDir: string): string[] {
   const walk = (dir: string): string[] =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
