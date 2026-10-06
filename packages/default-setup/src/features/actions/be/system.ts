@@ -33,7 +33,7 @@ const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
 
 export const actionsSystem = setup({
   types: actionsSpec.types,
-  actions: {
+  actions: actionsSpec.actions({
     sendActionsStartupData: () => {
       const connectedData = repository.actionQueries.connectedData();
       const actionsSettings = services.settings.forFeature<ActionsSettings>(ref('actions'));
@@ -258,7 +258,7 @@ export const actionsSystem = setup({
         }
       }
     },
-  },
+  }),
 }).createMachine(
   {
     id: 'actions',

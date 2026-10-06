@@ -1,12 +1,18 @@
 // The host's `application` feature on the backend: the app shell's own state, which plugins' sidebar tabs show and
 // the plugin the user last had open. It lives in AppState because no pack owns the shell; the renderer's
 // application actor is its plugin.
+import { defineHandlers } from '@abuddy/sdk/framework';
+import type { MachineContext } from 'xstate';
 import { setup } from 'xstate';
 import { eventTypes } from '@abuddy/sdk/events';
 import { broadcastToPlugin } from '../../../events.ts';
 import { splitRef } from '@abuddy/sdk/ids';
 import { appState } from '../../../app-state/index.ts';
 import type { PackRegistry } from '../../../packs/registry.ts';
+
+/** Hands each handler the answer for the message it is handling — see `defineHandlers` */
+// No context is declared on this machine, so XState's own open `MachineContext` is what its handlers get
+const handlers = defineHandlers<MachineContext, ApplicationEvent>();
 
 /** Which plugins' tabs show, by ref: each feature's declared default, with the user's own choices over it */
 export function pluginVisibility(registry: Pick<PackRegistry, 'settingsDefaults'>): Record<string, boolean> {
@@ -31,11 +37,11 @@ export const APPLICATION_SYSTEM_EVENTS = eventTypes<ApplicationClientEvent>()('S
 export function createApplicationSystem(registry: Pick<PackRegistry, 'settingsDefaults'>) {
   return setup({
     types: { events: {} as ApplicationEvent },
-    actions: {
+    actions: handlers.actions({
       sendVisibility: () => {
         broadcastToPlugin('application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: pluginVisibility(registry) });
       },
-    },
+    }),
   }).createMachine({
     id: 'application',
     on: {

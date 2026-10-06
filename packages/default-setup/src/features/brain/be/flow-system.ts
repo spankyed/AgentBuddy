@@ -1,6 +1,7 @@
 import { sendToSystem } from '#generated/events.ts';
 import { untypedQx } from '@abuddy/ears';
 import { services as appServices } from '#generated/services.ts';
+import { defineHandlers } from '@abuddy/sdk/framework';
 import { setup, sendParent, enqueueActions, raise, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import type { NodeEntity } from '#generated/types.ts';
 import { repository } from '#generated/repository.ts';
@@ -16,6 +17,14 @@ import { isBrainPaused } from './utils/brain-pause.ts';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion.ts';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { dedupeTriggerNodes, type FlowTriggerNode, type TriggerDedupeWarning } from './trigger-dedupe.ts';
+
+/**
+ * Hands each handler the answer for the message it is handling — see `defineHandlers`.
+ *
+ * The event union is this machine's own and open-ended (a flow's children send it whatever their step
+ * declares), so it is named loosely here; what the wrapper needs is the context and an event shape.
+ */
+const handlers = defineHandlers<TNodeFlowMachineContext, { type: string; [key: string]: unknown }>();
 
 /**
  * Flow Actor Registry
@@ -283,7 +292,7 @@ export function createFlowNodeSystem(
           },
         input: {} as TNodeFlowMachineInput,
       },
-      actions: {
+      actions: handlers.actions({
         registerFlowActor: ({ self }) => {
           // Register this flow actor in the registry for event routing
           flowActorRegistry.set(flowTNodeId, self);
@@ -648,7 +657,7 @@ export function createFlowNodeSystem(
 
           enqueue.assign({ pendingNextSteps: [], pendingEvents: [] });
         }),
-      },
+      }),
       guards: {},
     }).createMachine({
       id: isRootFlow ? brainRuntime : `tnode-${flowTNodeId}`,

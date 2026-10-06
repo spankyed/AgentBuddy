@@ -1,6 +1,7 @@
 import type { OutgoingTerminalEvents } from '../contract.ts'
 import { services } from '#generated/services.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
+import { defineHandlers } from '@abuddy/sdk/framework';
 import { setup, assign, fromPromise } from 'xstate'
 
 import { terminalService } from '../services/terminal.ts'
@@ -85,6 +86,9 @@ const setupTerminalHandlers = (terminalInfo: TerminalInfo) => {
   })
 }
 
+/** Hands each handler the answer for the message it is handling — see `defineHandlers` */
+const handlers = defineHandlers<Context, Event>();
+
 export const terminalSystem = setup({
   types: {
     context: {} as Context,
@@ -104,7 +108,7 @@ export const terminalSystem = setup({
       logger.info('Terminal restoration complete')
     })
   },
-  actions: {
+  actions: handlers.actions({
     sendConnectedData: () => {
       emitToFrontend({ type: 'terminal.TERMINALS_LISTED', data: terminalService.list() })
     },
@@ -275,7 +279,7 @@ export const terminalSystem = setup({
         return ev.path
       }
     })
-  }
+  })
 }).createMachine({
   id: 'terminal',
   initial: 'initializing',

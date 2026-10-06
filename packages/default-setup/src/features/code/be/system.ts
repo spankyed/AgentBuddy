@@ -89,7 +89,7 @@ export const systemMachine = setup({
     actionsSystem,
     promptsSystem
   },
-  actions: {
+  actions: codeSpec.actions({
     spawnFeatureActors: enqueueActions(({ enqueue, context, self }) => {
       // The children are this system's own: nothing outside it looks them up, so none has a system id
       enqueue.spawnChild('explorerSystem', {
@@ -314,7 +314,7 @@ export const systemMachine = setup({
       // Start watching git changes
       await context.gitWatcher.startWatching()
     }
-  }
+  })
 }).createMachine({
   id: 'code',
   initial: 'idle',

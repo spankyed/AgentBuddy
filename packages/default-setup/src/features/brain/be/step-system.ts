@@ -1,3 +1,4 @@
+import { defineHandlers } from '@abuddy/sdk/framework';
 import { setup, assign, sendParent, enqueueActions, type AnyActorRef } from 'xstate';
 import { EARS } from '#generated/ears.ts';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
@@ -25,6 +26,9 @@ type StepMachineInput = {};
 /**
  * Create a step execution machine
  */
+
+/** Hands each handler the answer for the message it is handling — see `defineHandlers` */
+const handlers = defineHandlers<StepMachineContext, StepEvent>();
 export function createStepNodeSystem(
   brain: AnyActorRef,
   stepId: EARS.EntityId,
@@ -42,7 +46,7 @@ export function createStepNodeSystem(
         events: {} as StepEvent,
         input: {} as StepMachineInput,
       },
-      actions: {
+      actions: handlers.actions({
         executeStep: ({ context, self }) => {
           try {
             // brainLogger.debug(
@@ -116,7 +120,7 @@ export function createStepNodeSystem(
           eventTNodeId: context.eventTNodeId,
           isFlow: false,
         })),
-      },
+      }),
     }).createMachine({
       id: `step-machine`,
       initial: 'executing',

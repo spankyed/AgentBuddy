@@ -1,5 +1,6 @@
 import type { OutgoingPullRequestEvents } from '../contract.ts'
 import { broadcastToPlugin } from '#generated/events.ts';
+import { defineHandlers } from '@abuddy/sdk/framework';
 import { setup, assign, type AnyActorRef } from 'xstate'
 
 import { createLogger } from '@abuddy/sdk/logger'
@@ -83,13 +84,16 @@ function withRepo<T>(
   work(context.gitRepository).then(onSuccess).catch(onError)
 }
 
+/** Hands each handler the answer for the message it is handling — see `defineHandlers` */
+const handlers = defineHandlers<Context, Event>();
+
 export const pullRequestSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
     input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null; code?: AnyActorRef }
   },
-  actions: {
+  actions: handlers.actions({
     getBaseBranch: ({ context }) => {
       withRepo(context,
         repo => repo.getBaseBranch({ preferUpstream: false }),
@@ -457,7 +461,7 @@ export const pullRequestSystem = setup({
       self.send({ type: 'pr.LIST_OPEN_PRS' })
       self.send({ type: 'pr.CHECK_BRANCH_PR' })
     }
-  }
+  })
 }).createMachine({
   id: 'pull-request',
   initial: 'idle',

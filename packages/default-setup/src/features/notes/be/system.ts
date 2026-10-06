@@ -33,7 +33,7 @@ export const notesSpec = defineSystem<Contract>();
 
 export const notesSystem = setup({
   types: notesSpec.types,
-  actions: {
+  actions: notesSpec.actions({
     sendNotesConnectedData: () => {
       const connectedData = repository.noteQueries.connectedData();
       const settings = services.settings.forFeature<NotesSettings>(ref('notes'));
@@ -559,7 +559,7 @@ export const notesSystem = setup({
         notes: trashed,
       });
     },
-  },
+  }),
 }).createMachine({
   id: 'notes',
   initial: 'idle',

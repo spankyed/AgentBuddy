@@ -13,10 +13,11 @@ const SRC = path.resolve(import.meta.dirname, '../../src');
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), 'utf-8');
 
 describe('a contract is a type, not a value with phantoms', () => {
-  it('SystemSpec declares no `_`-prefixed member', () => {
+  // Both, because `SystemSpec extends Handlers`: a phantom could come back on either and reach the spec
+  it.each(['SystemSpec', 'Handlers'])('%s declares no `_`-prefixed member', (name) => {
     const source = read('framework/define-system.ts');
-    const body = /export interface SystemSpec<[^>]*> \{([\s\S]*?)\n\}/.exec(source);
-    expect(body, 'SystemSpec should still be an interface in define-system.ts').not.toBeNull();
+    const body = new RegExp(`export interface ${name}<[\\s\\S]*?\\{([\\s\\S]*?)\\n\\}`).exec(source);
+    expect(body, `${name} should still be an interface in define-system.ts`).not.toBeNull();
     expect([...body![1].matchAll(/^\s*(_\w+)\s*[?:]/gm)].map((m) => m[1])).toEqual([]);
   });
 

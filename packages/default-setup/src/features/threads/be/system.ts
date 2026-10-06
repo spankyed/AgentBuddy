@@ -53,7 +53,7 @@ function reportThreadOperationError(
 
 export const threadsSystem = setup({
   types: threadsSpec.types,
-  actions: {
+  actions: threadsSpec.actions({
     // ---- Thread management actions ----
     sendThreadsConnectedData: () => {
       const connectedData = repository.threadQueries.connectedData();
@@ -877,7 +877,7 @@ export const threadsSystem = setup({
         });
       }
     },
-  },
+  }),
 }).createMachine(
   {
     id: 'threads',

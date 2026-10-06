@@ -35,7 +35,7 @@ export const logsSystem = setup({
       return onLog(logHandler);
     }),
   },
-  actions: {
+  actions: logsSpec.actions({
     setupEventListeners: spawnChild('setupEventListeners'),
     clearLogs: assign({ logs: () => [] }),
     addLog: assign({
@@ -119,7 +119,7 @@ export const logsSystem = setup({
         return context.logs;
       }
     }),
-  },
+  }),
 }).createMachine({
   id: 'logs',
   initial: 'active',

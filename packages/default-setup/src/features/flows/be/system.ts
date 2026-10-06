@@ -76,7 +76,7 @@ function sendConnectedData(): void {
 export const flowsSystem = setup({
   types: flowsSpec.types,
   actors: {},
-  actions: {
+  actions: flowsSpec.actions({
     handleClientConnection: () => {
       logger.info('Sending flows connected data to client');
       sendConnectedData();
@@ -372,7 +372,7 @@ export const flowsSystem = setup({
         });
       }
     },
-  },
+  }),
   guards: {},
   delays: {}
 }).createMachine({

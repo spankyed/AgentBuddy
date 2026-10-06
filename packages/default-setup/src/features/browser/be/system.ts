@@ -12,7 +12,7 @@ export const browserSpec = defineSystem<Contract>();
 
 export const browserSystem = setup({
   types: browserSpec.types,
-  actions: {
+  actions: browserSpec.actions({
     sendBrowserConnected: () => {
       const savedTabs = repository.browserQueries.allTabs();
       const savedBookmarks = repository.browserQueries.allBookmarks();
@@ -34,7 +34,7 @@ export const browserSystem = setup({
       const ev = browserSpec.typeOf('SYNC_BOOKMARKS', event);
       repository.browserCommands.syncBookmarks(ev.bookmarks);
     },
-  },
+  }),
 }).createMachine({
   id: 'browser',
   initial: 'active',

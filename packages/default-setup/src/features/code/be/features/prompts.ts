@@ -1,4 +1,5 @@
 import { broadcastToPlugin } from '#generated/events.ts';
+import { defineHandlers } from '@abuddy/sdk/framework';
 import { setup } from 'xstate'
 
 import { repository } from '#generated/repository.ts';
@@ -19,12 +20,15 @@ export type Event =
   | { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
   | { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string };
 
+/** Hands each handler the answer for the message it is handling — see `defineHandlers` */
+const handlers = defineHandlers<Context, Event>();
+
 export const promptsSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
   },
-  actions: {
+  actions: handlers.actions({
     openPrompt: ({ event }) => {
       const ev = event as { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
       const prompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId)
@@ -68,7 +72,7 @@ export const promptsSystem = setup({
         })
       }
     }
-  }
+  })
 }).createMachine({
   id: 'codePrompts',
   initial: 'idle',

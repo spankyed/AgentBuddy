@@ -19,7 +19,7 @@ export const promptsSpec = defineSystem<Contract>();
 
 export const promptsSystem = setup({
   types: promptsSpec.types,
-  actions: {
+  actions: promptsSpec.actions({
     sendPromptsConnectedData: () => {
       const connectedData = repository.promptQueries.connectedData();
       const promptsSettings = services.settings.forFeature<PromptsSettings>(ref('prompts'));
@@ -246,7 +246,7 @@ export const promptsSystem = setup({
         }
       }
     },
-  },
+  }),
 }).createMachine(
   {
     id: 'prompts',

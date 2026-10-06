@@ -1,4 +1,5 @@
 import { broadcastToPlugin } from '#generated/events.ts';
+import { defineHandlers } from '@abuddy/sdk/framework';
 import { setup } from 'xstate'
 
 import { repository } from '#generated/repository.ts';
@@ -19,12 +20,15 @@ export type Event =
   | { type: 'codeActions.OPEN_ACTION'; actionId: string }
   | { type: 'codeActions.SAVE_ACTION'; actionId: string; actionFn: string };
 
+/** Hands each handler the answer for the message it is handling — see `defineHandlers` */
+const handlers = defineHandlers<Context, Event>();
+
 export const actionsSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
   },
-  actions: {
+  actions: handlers.actions({
     openAction: ({ event }) => {
       const ev = event as { type: 'codeActions.OPEN_ACTION'; actionId: string }
       const action = repository.actionQueries.byId(ev.actionId as EARS.EntityId)
@@ -68,7 +72,7 @@ export const actionsSystem = setup({
         })
       }
     }
-  }
+  })
 }).createMachine({
   id: 'codeActions',
   initial: 'idle',

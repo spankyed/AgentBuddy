@@ -1,4 +1,4 @@
-import type { ActionArgs, ParameterizedObject } from 'xstate';
+import type { ActionArgs, EventObject, MachineContext, ParameterizedObject } from 'xstate';
 import { safeEvents } from '../helpers/actor-helpers.ts';
 import { _currentDelivery, _replyTo, type Reply } from '../events/index.ts';
 import type { ArrayChanges } from '../utils/change-detection.ts';
@@ -101,6 +101,9 @@ type MachineEvents<C> = Extract<ContractIncoming<C> | ContractInternal<C> | Syst
  */
 type SystemArgs<C extends SystemContract> = ActionArgs<ContractContext<C>, MachineEvents<C>, MachineEvents<C>>;
 
+/** The same, for a machine that declares its own context and events rather than deriving them from a contract */
+type Args<TContext extends MachineContext, TEvent extends EventObject> = ActionArgs<TContext, TEvent, TEvent>;
+
 /**
  * The params each action takes, keyed by name — what XState infers its own `TActions` from, and so what this
  * wrapper has to be shaped around.
@@ -132,8 +135,42 @@ const handing = <F>(handler: F): F => {
     run({ ...args, reply: _replyTo(_currentDelivery()) }, params)) as unknown as F;
 };
 
+/**
+ * What hands a machine's handlers their answers, for a machine that is not a feature's system.
+ *
+ * The seven machines under `code/be/features/` and the brain's flow and step systems are children a system
+ * spawns: they declare their own context and events rather than a feature contract, so they have no
+ * `defineSystem` to come from — and they are handlers like any other. `defineSystem` is this plus the
+ * contract's types, so there is one implementation rather than a second shape to keep in step.
+ */
+export interface Handlers<TContext extends MachineContext, TEvent extends EventObject> {
+  /** See `SystemSpec.actions` — this is the same wrapper, over a machine's own context and events */
+  actions<P extends ActionParams>(
+    defs: { [K in keyof P]: (args: Args<TContext, TEvent> & { reply?: Reply }, params: P[K]) => void },
+  ): { [K in keyof P]: (args: Args<TContext, TEvent>, params: P[K]) => void };
+  /** See `SystemSpec.input` */
+  input<I>(build: (args: Args<TContext, TEvent> & { reply?: Reply }) => I): (args: Args<TContext, TEvent>) => I;
+}
+
+/**
+ * Hands the handlers of a machine that is not a feature's system the answer for the message being handled.
+ *
+ * ```ts
+ * const handlers = defineHandlers<Context, Event>();
+ * export const commitSystem = setup({ types: { … }, actions: handlers.actions({ … }) }).createMachine(…);
+ * ```
+ */
+export function defineHandlers<TContext extends MachineContext, TEvent extends EventObject>(): Handlers<TContext, TEvent> {
+  return {
+    actions: (defs) => Object.fromEntries(
+      Object.entries(defs).map(([name, handler]) => [name, handing(handler)]),
+    ) as never,
+    input: (build) => (args) => build({ ...args, reply: _replyTo(_currentDelivery()) }),
+  };
+}
+
 /** The definition object returned by `defineSystem()`. */
-export interface SystemSpec<C extends SystemContract> {
+export interface SystemSpec<C extends SystemContract> extends Handlers<ContractContext<C>, MachineEvents<C>> {
   types: { context: ContractContext<C>; events: MachineEvents<C> };
   typeOf: ReturnType<typeof safeEvents<MachineEvents<C>>>;
   /**
@@ -179,10 +216,7 @@ export function defineSystem<C extends SystemContract>(): SystemSpec<C> {
       events: {} as MachineEvents<C>,
     },
     typeOf: safeEvents<MachineEvents<C>>(),
-    actions: (defs) => Object.fromEntries(
-      Object.entries(defs).map(([name, handler]) => [name, handing(handler)]),
-    ) as never,
-    input: (build) => (args) => build({ ...args, reply: _replyTo(_currentDelivery()) }),
+    ...defineHandlers<ContractContext<C>, MachineEvents<C>>(),
   };
 }
 

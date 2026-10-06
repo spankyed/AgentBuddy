@@ -1,4 +1,5 @@
 import { broadcastToPlugin } from '#generated/events.ts';
+import { defineHandlers } from '@abuddy/sdk/framework';
 import { assign, setup } from 'xstate'
 
 import { FileSystemRepository } from '../services/filesystem.ts'
@@ -50,13 +51,16 @@ export type Event =
   | { type: 'explorer.QUICK_OPEN_SEARCH'; baseDirectory: string }
   | { type: 'CODE_CONNECTED' };
 
+/** Hands each handler the answer for the message it is handling — see `defineHandlers` */
+const handlers = defineHandlers<Context, Event>();
+
 export const explorerSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
     input: {} as { baseDirectory: string | null; gitWatcher?: GitWatcherService | null }
   },
-  actions: {
+  actions: handlers.actions({
     setupFileWatcher: ({ context, self }) => {
       // Set up the callback for file changes from git watcher
       if (context.gitWatcher) {
@@ -421,7 +425,7 @@ export const explorerSystem = setup({
         })
       }
     },
-  }
+  })
 }).createMachine({
   id: 'explorer',
   initial: 'idle',

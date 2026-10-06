@@ -41,7 +41,7 @@ function notifyIfCommandsChanged(before: CommandItem[]): void {
 
 export const librarySystem = setup({
   types: librarySpec.types,
-  actions: {
+  actions: librarySpec.actions({
     createDocument: async ({ event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: any[]; tags: string[]; collectionId?: string }
@@ -404,7 +404,7 @@ export const librarySystem = setup({
         }
       }
     },
-  },
+  }),
 }).createMachine({
   id: 'library',
   initial: 'idle',

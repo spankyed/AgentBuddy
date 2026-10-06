@@ -1,6 +1,7 @@
 import type { ThreadsSettings } from '#generated/types.ts';
 import { services } from '#generated/services.ts';
 import { broadcastToPlugin, sendToSystem } from '#generated/events.ts';
+import { defineHandlers } from '@abuddy/sdk/framework';
 import { assign, setup, type AnyActorRef } from 'xstate'
 
 import { GitRepository, StashConflictError } from '../services/git.ts'
@@ -56,13 +57,16 @@ export type Event =
   | { type: 'commit.GIT_STATUS_CHANGED' }
   | { type: 'CODE_CONNECTED' };
 
+/** Hands each handler the answer for the message it is handling — see `defineHandlers` */
+const handlers = defineHandlers<Context, Event>();
+
 export const commitSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
     input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null; gitWatcher?: GitWatcherService | null; code?: AnyActorRef }
   },
-  actions: {
+  actions: handlers.actions({
     handleGitStatusChanged: ({ context, self }) => {
       // Debounce: collapse rapid status-change notifications into one refresh.
       // This prevents double-refresh from write-action + watcher both triggering.
@@ -761,7 +765,7 @@ export const commitSystem = setup({
         })
       })
     }
-  }
+  })
 }).createMachine({
   id: 'commit',
   initial: 'idle',
