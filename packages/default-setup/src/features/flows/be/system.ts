@@ -97,7 +97,7 @@ export const flowsSystem = setup({
       });
     },
     
-    createFlow: () => {
+    createFlow: ({ reply }) => {
       const pluginId = 'flows' as const;
       
       logger.info('Creating new flow');
@@ -106,12 +106,9 @@ export const flowsSystem = setup({
       
       const data = repository.flowsQueries.extendedData(flow.id);
       
-      broadcastToPlugin(pluginId, {
-        type: 'FLOW_CREATED',
-        flow,
-        flowId: flow.id,
-        data,
-      });
+      // Every window's list grows; only the window that asked opens it
+      broadcastToPlugin(pluginId, { type: 'FLOW_CREATED', flow, flowId: flow.id, data });
+      reply?.({ type: 'FLOW_OPENED', flow, flowId: flow.id, data });
     },
     
     updateFlowLabel: ({ event }) => {

@@ -270,8 +270,20 @@ const flowsState = setup({
       };
     }),
 
-    addCreatedFlow: assign(({ context, event, self }) => {
+    /** The news: a flow exists, so every window's list grows. It selects nothing and navigates nowhere */
+    addCreatedFlow: assign(({ context, event }) => {
       const ev = typeOf('FLOW_CREATED', event);
+      return { flows: [...context.flows, ev.flow] };
+    }),
+
+    /**
+     * The answer: the flow *this* window asked to create, so this window opens it.
+     *
+     * Only the asker is sent `FLOW_OPENED`. While selecting and navigating hung off the broadcast above,
+     * every open window jumped to a flow someone else had created.
+     */
+    openCreatedFlow: assign(({ event, self }) => {
+      const ev = typeOf('FLOW_OPENED', event);
 
       // Trigger async layout calculation for new flow
       calculateLayoutAsync({
@@ -282,7 +294,6 @@ const flowsState = setup({
       })
 
       return {
-        flows: [...context.flows, ev.flow],
         selectedFlowId: ev.flowId,
         graph: {
           nodes: ev.data.nodes,
@@ -1159,8 +1170,13 @@ const flowsState = setup({
         }
       }),
     },
+    // The news, which every window takes
     FLOW_CREATED: {
       actions: 'addCreatedFlow',
+    },
+    // The answer, which only the window that asked is sent — so only it navigates
+    FLOW_OPENED: {
+      actions: 'openCreatedFlow',
       target: '.view'
     },
     FLOW_DELETED: [

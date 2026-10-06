@@ -74,7 +74,15 @@ export type IncomingFlowsEvents =
 export type OutgoingFlowsEvents =
   | { type: 'FLOWS_CONNECTED'; data: FlowsConnectedData }
   | { type: 'FLOW_SELECTED'; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
+  /** A flow exists — news for every window, so every list grows. It opens nothing: see `FLOW_OPENED` */
   | { type: 'FLOW_CREATED'; flow: FlowEntity; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
+  /**
+   * The flow *you* asked to create, answered to the window that asked, which then opens it.
+   *
+   * Its id is minted by the create, so nothing the asker sent could identify it. While the navigation hung
+   * off the broadcast above, every open window jumped to a flow it had not created.
+   */
+  | { type: 'FLOW_OPENED'; flow: FlowEntity; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
   | { type: 'FLOW_DELETED'; flowId: EARS.EntityId }
   | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
   | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }

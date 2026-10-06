@@ -183,7 +183,19 @@ export type IncomingTerminalEvents =
   | { type: 'terminal.OPEN_TERMINAL_TAB'; terminalId: string }
 
 export type OutgoingTerminalEvents =
+  /**
+   * A terminal exists — news for every window, so every list grows. It carries no instruction: a window that
+   * did not ask for it must not open it, which is what `terminal.OPENED` is for.
+   */
   | { type: 'terminal.CREATED'; data: TerminalInfo }
+  /**
+   * The terminal *you* asked for, answered to the window that asked.
+   *
+   * Its id does not exist until it is created, so nothing the asker sent could identify it — which is why
+   * this is addressed rather than keyed. Before it existed, `terminal.CREATED` carried both jobs and every
+   * window routed a new terminal into its own panel.
+   */
+  | { type: 'terminal.OPENED'; data: TerminalInfo }
   | { type: 'terminal.OUTPUT'; data: { terminalId: string; data: string } }
   | { type: 'terminal.INITIAL_OUTPUT'; data: { terminalId: string; data: string } }
   | { type: 'terminal.CLOSED'; data: { terminalId: string } }
