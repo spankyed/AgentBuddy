@@ -4,8 +4,13 @@
 
 ```ts
 
+import type { ActionArgs } from 'xstate';
 import type { BaseEntity } from '@abuddy/ears';
 import { EARS as EARS_2 } from '@abuddy/ears';
+import type { EventObject } from 'xstate';
+import type { MachineContext } from 'xstate';
+import type { Mapper } from 'xstate';
+import type { ParameterizedObject } from 'xstate';
 
 // @public (undocumented)
 export interface ActionEntity extends BaseEntity {
@@ -249,7 +254,17 @@ export type SystemEvents =
 };
 
 // @public
-export interface SystemSpec<C extends SystemContract> {
+export interface SystemSpec<C extends SystemContract> extends Handlers<ContractContext<C>, MachineEvents<C>> {
+    actions<P extends ActionParams>(defs: {
+        [K in keyof P]: (args: SystemArgs<C> & {
+            reply?: Reply;
+        }, params: P[K]) => void;
+    }): {
+        [K in keyof P]: (args: SystemArgs<C>, params: P[K]) => void;
+    };
+    input<I>(build: (args: InputArgs<ContractContext<C>, MachineEvents<C>> & {
+        reply?: Reply;
+    }) => I): Mapper<ContractContext<C>, MachineEvents<C>, I, MachineEvents<C>>;
     // (undocumented)
     typeOf: ReturnType<typeof safeEvents<MachineEvents<C>>>;
     // (undocumented)

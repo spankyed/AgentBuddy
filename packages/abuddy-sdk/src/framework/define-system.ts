@@ -1,4 +1,4 @@
-import type { ActionArgs, EventObject, MachineContext, ParameterizedObject } from 'xstate';
+import type { ActionArgs, EventObject, MachineContext, Mapper, ParameterizedObject } from 'xstate';
 import { safeEvents } from '../helpers/actor-helpers.ts';
 import { _currentDelivery, _replyTo, type Reply } from '../events/index.ts';
 import type { ArrayChanges } from '../utils/change-detection.ts';
@@ -105,6 +105,14 @@ type SystemArgs<C extends SystemContract> = ActionArgs<ContractContext<C>, Machi
 type Args<TContext extends MachineContext, TEvent extends EventObject> = ActionArgs<TContext, TEvent, TEvent>;
 
 /**
+ * What XState hands an `invoke.input`, which is **not** what it hands an action: a `Mapper` receives
+ * `{ context, event, self }` and no `system`. Typing `input` from `ActionArgs` compiles here and then fails at
+ * every call site, because a function demanding `system` cannot take a `Mapper`'s argument.
+ */
+type InputArgs<TContext extends MachineContext, TEvent extends EventObject> =
+  Parameters<Mapper<TContext, TEvent, unknown, TEvent>>[0];
+
+/**
  * The params each action takes, keyed by name — what XState infers its own `TActions` from, and so what this
  * wrapper has to be shaped around.
  *
@@ -149,7 +157,7 @@ export interface Handlers<TContext extends MachineContext, TEvent extends EventO
     defs: { [K in keyof P]: (args: Args<TContext, TEvent> & { reply?: Reply }, params: P[K]) => void },
   ): { [K in keyof P]: (args: Args<TContext, TEvent>, params: P[K]) => void };
   /** See `SystemSpec.input` */
-  input<I>(build: (args: Args<TContext, TEvent> & { reply?: Reply }) => I): (args: Args<TContext, TEvent>) => I;
+  input<I>(build: (args: InputArgs<TContext, TEvent> & { reply?: Reply }) => I): Mapper<TContext, TEvent, I, TEvent>;
 }
 
 /**
@@ -182,6 +190,10 @@ export interface SystemSpec<C extends SystemContract> extends Handlers<ContractC
    * **It wraps the record, never `setup`.** What XState receives is exactly the type it expects, so its
    * inference, `SetupReturn.extend`/`createAction` and the prebound creators are all untouched. An action
    * creator's result passes through whole, which gives the rule: an action that answers is a plain function.
+   *
+   * **And it is in the record.** An action written inline in a `createMachine` config never passes through
+   * here, so it is handed nothing — five exist today and none answers, which is the arrangement to keep. A
+   * handler that comes to need an answer moves into the record and gains a name, which it wanted anyway.
    */
   actions<P extends ActionParams>(
     defs: { [K in keyof P]: (args: SystemArgs<C> & { reply?: Reply }, params: P[K]) => void },
@@ -192,7 +204,7 @@ export interface SystemSpec<C extends SystemContract> extends Handlers<ContractC
    * `input` is evaluated while the transition is being processed — inside the delivery — which is what makes
    * this work and what makes the answer it hands on bound rather than ambient.
    */
-  input<I>(build: (args: SystemArgs<C> & { reply?: Reply }) => I): (args: SystemArgs<C>) => I;
+  input<I>(build: (args: InputArgs<ContractContext<C>, MachineEvents<C>> & { reply?: Reply }) => I): Mapper<ContractContext<C>, MachineEvents<C>, I, MachineEvents<C>>;
 }
 
 /**

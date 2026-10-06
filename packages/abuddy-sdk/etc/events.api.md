@@ -159,10 +159,13 @@ export type Qualified<PackId extends string, M> = {
 };
 
 // @public
-export function reply(event: {
+export type Reply = (event: {
     type: string;
     [key: string]: unknown;
-}): void;
+}) => void;
+
+// @internal
+export function _replyTo(delivery: _Delivery | undefined): Reply | undefined;
 
 // @internal
 export function _runDelivery<T>(delivery: _Delivery, body: () => T): T;

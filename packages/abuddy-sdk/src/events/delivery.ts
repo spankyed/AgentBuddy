@@ -1,11 +1,22 @@
 /**
  * Which message is being handled right now, so a handler can answer its sender without being told who that is.
  *
- * **Why this is not a field on the event.** An XState action is handed `{ context, event, self, system }`:
- * `context` is per-actor and `self` and `system` are fixed, so `event` is the only per-message thing in scope.
- * Putting a return address inside it is the only alternative, and the envelope's central rule forbids it —
- * `event` arrives exactly as the sender wrote it, which `outgoing-events.spec.ts` pins with a deliberate
- * `pluginId` collision. So the address is kept *beside* the handler instead, and this is where.
+ * **Why this is not a field on the event.** The envelope's central rule forbids it: `event` arrives exactly as
+ * the sender wrote it, which `outgoing-events.spec.ts` pins with a deliberate `pluginId` collision. So the
+ * address is kept *beside* the handler, and this is where.
+ *
+ * **This header used to argue there was nowhere else to put it** — that an XState action is handed
+ * `{ context, event, self, system }`, that `context` is per-actor and `self` and `system` fixed, and so the
+ * event was the only alternative. The premise was true and the conclusion was not: what a handler is handed is
+ * ours, not XState's. `defineHandlers` (`@abuddy/sdk/framework`) wraps a machine's action record and adds a
+ * fifth member, `reply`, bound to the delivery the handler was entered in. Pack code receives an answer now
+ * rather than reading one from here, which is why `reply()` is gone from this module: the two things it did
+ * badly were leaving "is there anybody to answer?" invisible in a signature, and losing the sender for any
+ * answer stored and called later.
+ *
+ * What is left here is the plumbing that still has to be ambient: the bus opens a scope per delivery, and
+ * `createSends` reads its `receiver` to stamp `Message.sender` on an ordinary send. That one cannot be a
+ * parameter, because every send in pack code would have to carry it.
  *
  * **Two readers, because one module serves two runtimes.** The default is a plain variable set and restored
  * around the delivery, which is exact for a handler that answers before it yields. One that `await`s first —
@@ -26,11 +37,11 @@
  * broadcast, or its own `PLUGIN_ACTIVATED`, sent on with no `sender` and could not be answered. A count a
  * reader has to keep is the failure; `sendToPluginActor` is the correction.
  *
- * **What does not work** is storing a function during one delivery for somebody else to call later. An `await`
- * is fine, and so is a timer the handler itself schedules: both create their async resource inside the scope and
- * inherit it. A bare callback creates nothing, so it runs in whatever scope is current when it is called — from
- * another delivery it reads *that* sender, and from none it reads nothing. `reply` throws on the second rather
- * than broadcasting, a private answer sent to every window being worse than an error.
+ * **What does not work is reading this scope from a stored function.** An `await` is fine, and so is a timer the
+ * handler itself schedules: both create their async resource inside the scope and inherit it. A bare callback
+ * creates nothing, so it runs in whatever scope is current when it is called — from another delivery it reads
+ * *that* sender, and from none it reads nothing. That is measured, and it is the gap a bound `reply` closes: an
+ * answer handed to a handler keeps working wherever the handler stores it, because it never comes back here.
  */
 
 /**

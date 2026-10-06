@@ -322,45 +322,6 @@ export function _sendToLocalPlugin(ref: string, event: { type: string; [key: str
 export type SystemTarget = string | { role: string };
 
 /**
- * Sends an event to a backend system, by ref or by the role it plays. Untyped: packs use the `sendToSystem` from
- * their `#generated/events`, which takes names and checks the event against what the system declares.
- */
-export function untypedSendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
-  unboundSends.sendToSystem(to, event);
-}
-
-/**
- * Answers whoever sent the message being handled, on the connection they sent it from. Backend only.
- *
- * This is the whole of a reply: no address is named, because the handler's own message already carries one. A
- * plugin that asked gets the answer in the window it asked from and in no other; a participant that claimed a
- * name (`host/drive`) gets it as itself; a system that asked gets it at its system. The same handler therefore
- * answers all three identically, which is the point — the alternative is every pair inventing a correlation id
- * and a guard to match it.
- *
- * **Which way the answer goes is decided by `client`, not by the ref**, and the ref could not decide it: a
- * feature's system and its plugin share one, so `default-setup/database` is at once the system that handles
- * `EXECUTE_QUERY` and the plugin that receives `QUERY_RESULT`. `client` is exact instead of incidental —
- * it is the connection a message came from, so its presence means the asker is on one (a plugin in a window,
- * or a claimed participant) and its absence means the ask originated in the backend, where the asker is a
- * system. An answer to a system is a message sent *in*, which is why this is not a second branch in the bus's
- * outgoing path: that would make something "sent out" reach a system.
- *
- * One difference the inward answer inherits: the incoming path runs no event-type check, so an answer a system
- * does not declare is a warning and a drop rather than the `diagnostic` system error the plugin path raises.
- * That is what an ordinary backend `sendToSystem` already does, so it is consistent rather than a new hole.
- *
- * Call it from the handler that was given the message, or from work that handler awaited. It reads the message
- * in scope rather than one it was passed, so a callback stored during one delivery and invoked from another
- * would answer *that* delivery's sender; keep a reply inside the handler that owns it.
- *
- * It throws rather than broadcasting when there is nothing to answer, a private answer delivered to every
- * window being worse than a failure. Two cases reach that: no message in scope at all — module scope, a timer,
- * a callback something else invoked — or a message that named no sender, which is what a send made from nothing
- * carries. Every send from a system or a plugin carries one, a component's included, since `usePlugin` runs it
- * in a delivery.
- */
-/**
  * What a handler answers its asker with. Absent where the message named no sender, which is the whole point:
  * "is there anybody to answer?" is a question the type asks rather than one a global is probed for.
  */
@@ -371,12 +332,18 @@ export type Reply = (event: { type: string; [key: string]: unknown }) => void;
  *
  * **Bound, not ambient.** It closes over the delivery it was built from, so a handler that stores it — in a
  * callback, a listener, an actor's input — still answers the right asker later. Reading the scope at use
- * instead is what makes a stored `reply` answer nobody: measured, a callback registered inside a delivery and
- * fired outside one sees no sender at all.
+ * instead is what makes a stored answer reach nobody: measured, a callback registered inside a delivery and
+ * fired outside one saw no sender at all.
+ *
+ * It routes on whether the ask came from a connection. With one, the asker is a plugin or a claimed
+ * participant and the answer goes **out** to that connection alone; without one the ask came from the backend
+ * and the answer goes **in**, to the asking system — the ref cannot decide it, since a feature's system and
+ * plugin share one.
  *
  * The host is resolved on each call rather than at binding, so building one costs nothing and needs no app.
  *
- * @internal The SDK builds these for handlers; pack code receives one rather than making it.
+ * @internal The SDK builds these for handlers (`defineHandlers`, `@abuddy/sdk/framework`); pack code receives
+ * one rather than making it, which is what replaced an exported `reply()` that read the scope itself.
  */
 export function _replyTo(delivery: _Delivery | undefined): Reply | undefined {
   if (delivery?.replyTo === undefined) return undefined;
@@ -391,26 +358,14 @@ export function _replyTo(delivery: _Delivery | undefined): Reply | undefined {
   };
 }
 
-export function reply(event: { type: string; [key: string]: unknown }): void {
-  const delivery = _currentDelivery();
-  if (!delivery) {
-    throw new Error('reply() was called with no message being handled: it belongs inside the handler that was given one, or in work that handler awaited.');
-  }
-  if (!delivery.replyTo) {
-    throw new Error(`reply() cannot answer the message that reached "${delivery.receiver}", which named no sender, so there is no address to answer at. Reach the target by name with broadcastToPlugin instead.`);
-  }
-  const { rootEvents } = boundHost().transport;
-  // Outward, to the one connection that asked: a plugin in its own window, or a claimed participant as itself
-  if (delivery.client !== undefined) {
-    rootEvents.emitPluginSend({
-      to: delivery.replyTo, event, sender: delivery.receiver, client: delivery.client,
-    });
-    return;
-  }
-  // No connection, so a system asked, and a system is reached by a message sent in. `emitIncoming` directly
-  // rather than `sendIncoming`, which prefers the frontend-bound branch and would put a reply on the wire
-  rootEvents.emitIncoming({ to: delivery.replyTo, event, sender: delivery.receiver });
+/**
+ * Sends an event to a backend system, by ref or by the role it plays. Untyped: packs use the `sendToSystem` from
+ * their `#generated/events`, which takes names and checks the event against what the system declares.
+ */
+export function untypedSendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
+  unboundSends.sendToSystem(to, event);
 }
+
 
 /** Calls `callback` each time a client connects; returns the unsubscribe (backend only) */
 export function onConnected(callback: () => void): () => void {

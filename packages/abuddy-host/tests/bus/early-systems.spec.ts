@@ -1,9 +1,10 @@
 // An early system (`system.early`, the built-in pack's logs) starts before hydration, outside the bus. The host
 // delivers it what the bus delivers every other system: the messages sent to its ref, and each client connection.
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createActor, setup, type AnyActorRef } from 'xstate';
+import { defineHandlers } from '@abuddy/sdk/framework';
+import { createActor, setup, type AnyActorRef, type AnyEventObject, type MachineContext } from 'xstate';
 import { startTestRuntime, testRootEvents } from '@abuddy/sdk/testing';
-import { reply, untypedBroadcastToPlugin, type Message } from '@abuddy/sdk/events';
+import { untypedBroadcastToPlugin, type Message } from '@abuddy/sdk/events';
 import { createAppBus, startEarlySystems } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/registry.ts';
@@ -91,8 +92,12 @@ it("delivers what an early system sends in answer to the first client connection
  * covers it — and a system that cannot answer is the kind of gap that shows up only when a handler tries.
  */
 it('lets an early system answer whoever asked, on the connection they asked from', () => {
-  const answering = setup({}).createMachine({
-    on: { CLEAR: { actions: () => { reply({ type: 'BOOT_LOGS' }); } } },
+  const answering = setup({
+    actions: defineHandlers<MachineContext, AnyEventObject>().actions({
+      answer: ({ reply }) => { reply?.({ type: 'BOOT_LOGS' }); },
+    }),
+  }).createMachine({
+    on: { CLEAR: { actions: 'answer' } },
   });
   bus.stop();
   early.stop();

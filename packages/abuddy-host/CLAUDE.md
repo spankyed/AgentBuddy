@@ -217,8 +217,9 @@ program composing the app needs: `createSettingsStore({ defaults })` and `create
   (`be/document.ts`'s `settingsProblems`) and throws `SettingsRefusedError` otherwise, then tells its listeners.
   The system turns that into one `FEATURE_SETTINGS_UPDATED` per feature whose settings changed, and answers the
   sender `SETTINGS_SAVED` or `SETTINGS_REFUSED` with the store's reasons — **reply or broadcast, never both**
-  (`be/answer.ts`): `reply` where the write named a sender, and a broadcast to the `settings` plugin where it
-  named none, since `reply` throws for a write from a seeder, a migration or a timer. This sentence was false
+  (`be/answer.ts`), which takes the answer as an argument: `reply` where the write named a sender, and a
+  broadcast to the `settings` plugin where it named none — a write from a seeder, a migration or a timer has
+  nobody to answer. This sentence was false
   until 2026-10-05: every answer was broadcast, so a sender that was not that plugin learned nothing, and a
   drive session's `/set-setting` reported success for every refused write. A refusal is the sender's to fix, so only
   an unexpected error is reported as a system error.
