@@ -1,5 +1,12 @@
 // openLmdbStore: the engine's writes reach LMDB through store.sink, and a store opened again on the same
 // paths hydrates them back
+//
+// @slow: 24 cases, each opening a real LMDB environment in a temp dir of its own, at ~150ms apiece
+// There is no outlier to extract — measured, the cases run 104-346ms and the median is the profile — so
+// what would shorten this is opening fewer environments, which is the subject. `beforeEach` mkdtemps a
+// directory per case because what is being checked is the state *on disk* across a close, a reopen and a
+// reset; several cases open the same paths twice to prove hydration, and sharing one environment between
+// them would delete the thing under test.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
