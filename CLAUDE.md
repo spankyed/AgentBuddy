@@ -359,8 +359,8 @@ npm run build            # Build all workspaces. The chain runs build:app instea
 npm run build-prod       # Full production build (build/build.sh)
 
 npm run typecheck        # Every check below, plus check:specifiers — its 17 legs run at once
-                         # (scripts/typecheck.ts, legs in scripts/lib/typecheck-legs.ts), which is 63.1s of
-                         # single-threaded compilers in 18.0s (measured 2026-10-05). The first two figures are
+                         # (scripts/typecheck.ts, legs in scripts/lib/typecheck-legs.ts), which is 65.1s of
+                         # single-threaded compilers in 18.0s (the wall measured 2026-10-05). The first two figures are
                          # the table's own — the leg count and the sum of what they declare — and
                          # typecheck-legs.spec.ts holds this line to them, so a leg added or re-costed fails
                          # here rather than leaving the sentence to drift. The wall time is a measurement and

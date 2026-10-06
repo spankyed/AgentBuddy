@@ -1037,7 +1037,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
       'packages/api/tsup.config.ts', ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
-  { name: 'test:external-pack:app', timeout: 'scenario', seconds: 24,
+  { name: 'test:external-pack:app', timeout: 'scenario', seconds: 33,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
     // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@abuddy/testing` resolves to its

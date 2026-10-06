@@ -104,7 +104,7 @@ export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: 'check:specifiers', command: 'npm run check:specifiers', scope: 'repo', seconds: 5 },
   { name: 'exports:check', command: 'npm run exports:check', seconds: 1 },
   { name: 'schema:check', command: 'npm run schema:check', seconds: 0.5 },
-  { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', seconds: 5 },
+  { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', seconds: 7 },
   { name: 'typecheck:cli', command: 'npm run typecheck:cli', seconds: 5 },
   { name: 'typecheck:pack', command: 'npm run typecheck:pack', seconds: 7 },
   // Both compile `../../types/**/*.d.ts` through their own tsconfig `include`
