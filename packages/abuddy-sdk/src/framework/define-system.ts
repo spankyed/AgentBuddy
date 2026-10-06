@@ -1,4 +1,6 @@
+import type { ActionArgs, ParameterizedObject } from 'xstate';
 import { safeEvents } from '../helpers/actor-helpers.ts';
+import { _currentDelivery, _replyTo, type Reply } from '../events/index.ts';
 import type { ArrayChanges } from '../utils/change-detection.ts';
 import { eventTypes } from '../events/event-types.ts';
 
@@ -89,10 +91,71 @@ export type ContractContext<C> = C extends { context: infer Context } ? Context 
  */
 type MachineEvents<C> = Extract<ContractIncoming<C> | ContractInternal<C> | SystemEvents, { type: string }>;
 
+/**
+ * The arguments XState hands a handler, for this system's context and events.
+ *
+ * It is the real thing rather than an approximation: `ActionArgs` is `UnifiedArg`, whose only type parameters
+ * are the context and the event union — `self` carries `Record<string, AnyActorRef | undefined>` for its
+ * children and `system` is `AnyActorSystem`, neither specialised per machine. So a spec that knows the
+ * contract can build exactly what XState would, and wrapping costs no fidelity.
+ */
+type SystemArgs<C extends SystemContract> = ActionArgs<ContractContext<C>, MachineEvents<C>, MachineEvents<C>>;
+
+/**
+ * The params each action takes, keyed by name — what XState infers its own `TActions` from, and so what this
+ * wrapper has to be shaped around.
+ *
+ * The first attempt returned a mapped type whose values were a *conditional* over the handler given
+ * (`F extends (args, params: infer P) => void ? …`). TypeScript cannot invert a deferred conditional, so
+ * XState inferred nothing and every action name in the machine config became "not assignable to Actions<…>".
+ * Taking the params map as the type parameter instead is how XState itself does it, and it infers from the
+ * same place: each handler's second argument.
+ */
+type ActionParams = Record<string, ParameterizedObject['params'] | undefined>;
+
+/**
+ * Whether this is a handler to wrap or an action creator's result to leave alone.
+ *
+ * Every creator XState exposes — `assign`, `enqueueActions`, `spawnChild`, `raise`, `sendTo`, `sendParent`,
+ * `emit`, `log`, `cancel`, `stopChild` — returns a function carrying an own `resolve`, which is how XState
+ * resolves it later; a handler written by hand has no own properties at all. Wrapping one of those would
+ * hide the property XState resolves it through, so the test is what keeps them whole.
+ */
+const isCreatorResult = (value: unknown): boolean =>
+  typeof value === 'function' && Object.prototype.hasOwnProperty.call(value, 'resolve');
+
+/** Hands a handler the answer for the delivery it is being run in, bound at entry */
+const handing = <F>(handler: F): F => {
+  if (typeof handler !== 'function' || isCreatorResult(handler)) return handler;
+  const run = handler as unknown as (args: object, params: unknown) => void;
+  return ((args: object, params: unknown) =>
+    run({ ...args, reply: _replyTo(_currentDelivery()) }, params)) as unknown as F;
+};
+
 /** The definition object returned by `defineSystem()`. */
 export interface SystemSpec<C extends SystemContract> {
   types: { context: ContractContext<C>; events: MachineEvents<C> };
   typeOf: ReturnType<typeof safeEvents<MachineEvents<C>>>;
+  /**
+   * The system's actions, each handed the answer for the message it is handling.
+   *
+   * `reply` is absent when that message named no sender, so a handler that answers has to say what it does
+   * when nobody asked — the question `_currentDelivery()?.replyTo === undefined` used to ask of a global.
+   *
+   * **It wraps the record, never `setup`.** What XState receives is exactly the type it expects, so its
+   * inference, `SetupReturn.extend`/`createAction` and the prebound creators are all untouched. An action
+   * creator's result passes through whole, which gives the rule: an action that answers is a plain function.
+   */
+  actions<P extends ActionParams>(
+    defs: { [K in keyof P]: (args: SystemArgs<C> & { reply?: Reply }, params: P[K]) => void },
+  ): { [K in keyof P]: (args: SystemArgs<C>, params: P[K]) => void };
+  /**
+   * An `invoke.input`, handed the same answer, so an invoked actor receives one through its input.
+   *
+   * `input` is evaluated while the transition is being processed — inside the delivery — which is what makes
+   * this work and what makes the answer it hands on bound rather than ambient.
+   */
+  input<I>(build: (args: SystemArgs<C> & { reply?: Reply }) => I): (args: SystemArgs<C>) => I;
 }
 
 /**
@@ -116,6 +179,10 @@ export function defineSystem<C extends SystemContract>(): SystemSpec<C> {
       events: {} as MachineEvents<C>,
     },
     typeOf: safeEvents<MachineEvents<C>>(),
+    actions: (defs) => Object.fromEntries(
+      Object.entries(defs).map(([name, handler]) => [name, handing(handler)]),
+    ) as never,
+    input: (build) => (args) => build({ ...args, reply: _replyTo(_currentDelivery()) }),
   };
 }
 

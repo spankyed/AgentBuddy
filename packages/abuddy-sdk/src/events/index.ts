@@ -6,7 +6,7 @@ import { getDesignated } from '../designations/index.ts';
 import { resolveName, splitRef, type FeatureRef } from '../ids/refs.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
 import { eventTypes } from './event-types.ts';
-import { _currentDelivery } from './delivery.ts';
+import { _currentDelivery, type _Delivery } from './delivery.ts';
 import type { ContractIncoming, ContractOutgoing, SystemEvents } from '../framework/define-system.ts';
 
 export { eventTypes, type TypeOfEvent } from './event-types.ts';
@@ -360,6 +360,37 @@ export function untypedSendToSystem(to: SystemTarget, event: { type: string; [ke
  * carries. Every send from a system or a plugin carries one, a component's included, since `usePlugin` runs it
  * in a delivery.
  */
+/**
+ * What a handler answers its asker with. Absent where the message named no sender, which is the whole point:
+ * "is there anybody to answer?" is a question the type asks rather than one a global is probed for.
+ */
+export type Reply = (event: { type: string; [key: string]: unknown }) => void;
+
+/**
+ * The answer function for one delivery, or nothing when that message named no sender.
+ *
+ * **Bound, not ambient.** It closes over the delivery it was built from, so a handler that stores it — in a
+ * callback, a listener, an actor's input — still answers the right asker later. Reading the scope at use
+ * instead is what makes a stored `reply` answer nobody: measured, a callback registered inside a delivery and
+ * fired outside one sees no sender at all.
+ *
+ * The host is resolved on each call rather than at binding, so building one costs nothing and needs no app.
+ *
+ * @internal The SDK builds these for handlers; pack code receives one rather than making it.
+ */
+export function _replyTo(delivery: _Delivery | undefined): Reply | undefined {
+  if (delivery?.replyTo === undefined) return undefined;
+  const { replyTo, receiver, client } = delivery;
+  return (event) => {
+    const { rootEvents } = boundHost().transport;
+    if (client !== undefined) {
+      rootEvents.emitPluginSend({ to: replyTo, event, sender: receiver, client });
+      return;
+    }
+    rootEvents.emitIncoming({ to: replyTo, event, sender: receiver });
+  };
+}
+
 export function reply(event: { type: string; [key: string]: unknown }): void {
   const delivery = _currentDelivery();
   if (!delivery) {
