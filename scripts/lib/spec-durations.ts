@@ -26,12 +26,38 @@ const ANSI = /\u001B\[[0-9;]*m/g;
  * A reporter line for a whole file: the mark, an optional project label, the path, the test count and the
  * time. The count is what distinguishes a file's line from a test's, which carries neither it nor a path.
  *
+ * **The unit arm is tolerance, not a branch any input reaches.** vitest 3.2.4 writes a file's duration
+ * with `getDurationPrefix`, which rounds to milliseconds unconditionally — `4851ms`, never `4.85s`; only
+ * the run's own summary uses seconds. So the `s` arm cannot fire today, nothing asserts that it does, and
+ * the edit that would give it a case is vitest formatting a file's duration the way it formats the
+ * summary's. It is kept because the cost is four characters and the failure it absorbs is silent.
+ *
  * The label is optional because vitest prints one only when a run covers more than one project, and both
  * of its spellings reduce to one token here — `|name|` when colour is off, and ` name ` in a background
  * colour when it is on, which the strip above leaves as bare text. Matching the path by its extension
  * rather than by position is what lets one pattern read both.
  */
 const FILE = /^\s*[✓×↓❯]\s+(?:(\S+)\s+)?(\S+\.(?:spec|test)\.ts)\s+\([^)]*\)\s+([\d.]+)(ms|s)\b/;
+
+/**
+ * The same line without its duration, which is the only thing that says the run reported files at all.
+ *
+ * It is what makes an empty parse tell its two causes apart. A reporter that changes how it writes a
+ * duration leaves these lines matching and `FILE` matching nothing, which must fail — a gate reading no
+ * files would otherwise pass having checked no marker, which is the "a check that reports nothing may
+ * have looked at nothing" failure the root `CLAUDE.md` names and this repo has already shipped once, in
+ * `projectsThatRan`. A run with no such line at all ran nothing, which is not a finding.
+ *
+ * **`↓` is excluded on purpose, and it is the reason this is a second pattern rather than a count.** A
+ * skipped file is printed with no duration at all, so a suite whose every spec is behind a `skipIf` —
+ * `default-setup`'s `claude-code-permission-flow.spec.ts` is one today — reports lines and no times
+ * honestly. Counting those as evidence that the format moved would fail a run that was simply skipped.
+ */
+// `m`, because this one is tested against the whole output rather than line by line, and `^` without it
+// anchors to the start of the string — which matched only when a file line happened to be the first line
+// of the run. The case that was meant to cover this passed for exactly that reason until a mutation of
+// `FILE` ran the real pool and the refusal did not fire.
+const FILE_REPORTED = /^\s*[✓×❯]\s+(?:\S+\s+)?\S+\.(?:spec|test)\.ts\s+\(/m;
 
 /**
  * Which quantile of a half counts as its slow tail.
@@ -130,6 +156,11 @@ export function fileDurations(output: string, covered: readonly UnitSuite[], roo
       throw new Error(`the run reported ${file}${label === undefined ? '' : ` under ${label}`} and it belongs to none of the ${covered.length} suite(s) this run covered — a project label or a spec's location has moved, and reading past it would drop the file from the ranking, the gate and the cache at once`);
     }
     rows.push({ dir: suite.dir, file, half: halfOfPath(file), ms: unit === 's' ? Number(amount) * 1000 : Number(amount) });
+  }
+  // Derived from the output rather than assumed: a run that reported files and no durations is a reporter
+  // whose format has moved, and reading past it is a gate that checks nothing and says nothing
+  if (rows.length === 0 && FILE_REPORTED.test(output.replace(ANSI, ''))) {
+    throw new Error('the run reported test files and not one duration among them — vitest\'s per-file line has changed shape, and reading past it would leave every @slow: marker unchecked while the step passed');
   }
   return rows;
 }

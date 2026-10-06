@@ -73,9 +73,56 @@ describe('fileDurations', () => {
     ]);
   });
 
-  it('reads a time in seconds, which is how vitest prints anything over a second', () => {
+  /**
+   * Tolerates a duration in seconds, which **no vitest 3.2.4 file line uses**.
+   *
+   * Said plainly because the title used to claim the opposite — "which is how vitest prints anything over
+   * a second" — and that is exactly the invented line this file's header promises it does not pin against.
+   * `getDurationPrefix` rounds a module's duration to milliseconds unconditionally (`4851ms`, never
+   * `4.85s`); only the run's own summary uses seconds. So this is the unit arm's tolerance being exercised
+   * rather than a format anyone has observed, and the edit that would make it real is vitest formatting a
+   * file's duration the way it formats the summary's.
+   */
+  it('tolerates a duration in seconds, which no file line vitest prints today uses', () => {
     const output = ' ✓ tests/database/write-lock.spec.ts (4 tests) 4.89s';
     expect(fileDurations(output, ONE, REPO_ROOT)[0]!.ms).toBe(4890);
+  });
+
+  /**
+   * And refuses an output that reported files with no duration among them.
+   *
+   * The two causes of an empty parse are not alike: a reporter whose per-file format moved leaves these
+   * lines matching and the duration pattern matching nothing, and passing over that is a step that checks
+   * no marker and says so to nobody — the failure `projectsThatRan` already shipped once here, reading
+   * only vitest's uncoloured label. A run that reported no files at all simply ran nothing.
+   */
+  it('refuses an output that reported files and not one duration', () => {
+    const output = [' ✓ tests/database/write-lock.spec.ts (4 tests)', ' ✓ tests/packs/undo-log.spec.ts (3 tests)'].join('\n');
+    expect(() => fileDurations(output, ONE, REPO_ROOT)).toThrow(/not one duration among them/);
+  });
+
+  /**
+   * And refuses it wherever in the run those lines sit, which is the half this case was blind to.
+   *
+   * A real run opens with npm's banner and vitest's own header, so a file line is never the first line.
+   * The pattern was `^`-anchored without `m`, which anchors to the start of the *string*, and the case
+   * above passed only because its fixture began with one. Mutating `FILE` and running the real pack pool
+   * is what found it: 100 files reported, no duration parsed, and the step passed and stamped itself.
+   */
+  it('refuses it when the file lines are not the first thing the run printed', () => {
+    const output = ['', '> @app/default-setup@0.0.0 test', '> vitest run', '', ' RUN  v3.2.4', '',
+      ' ✓ tests/database/write-lock.spec.ts (4 tests)', ''].join('\n');
+    expect(() => fileDurations(output, ONE, REPO_ROOT)).toThrow(/not one duration among them/);
+  });
+
+  // The skipped mark is why that refusal reads a second pattern rather than counting lines: a skipped file
+  // carries no duration honestly, so a suite behind a `skipIf` must report nothing rather than fail
+  it('says nothing about a run whose every file was skipped, which carries no durations', () => {
+    expect(fileDurations(' ↓ tests/database/write-lock.spec.ts (4 tests)', ONE, REPO_ROOT)).toEqual([]);
+  });
+
+  it('says nothing about an output that reported no files at all', () => {
+    expect(fileDurations('some output with no file lines\n\n Test Files  no tests\n', ONE, REPO_ROOT)).toEqual([]);
   });
 
   it('takes a half from the filename, as every other consumer of a spec path does', () => {

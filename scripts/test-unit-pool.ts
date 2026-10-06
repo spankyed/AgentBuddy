@@ -68,7 +68,9 @@ function decide(suites: readonly UnitSuite[], pool: Pool, all: boolean): Array<{
  */
 function reportDurations(kind: Pool, covered: readonly UnitSuite[], output: string): void {
   const rows = fileDurations(output, covered, REPO_ROOT);
-  // A run whose projects were all cached reports no files, and a ranking of nothing is not a finding
+  // A run whose every file was skipped reports no durations, and a ranking of nothing is not a finding.
+  // **Not "all cached"**, which this cannot be reached for — `main` returns before building `runs` when
+  // nothing is stale. The other way to get here, a reporter whose format moved, `fileDurations` refuses.
   if (rows.length === 0) return;
   // Written whether or not this run may record a verdict. A duration is a measurement, true whoever asked
   // for it — the same reason `recordRun` suppresses a stamp and `ensurePackagesBuilt` does not suppress a

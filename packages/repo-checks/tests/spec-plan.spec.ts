@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
   affectedIntegrationSuites, affectedPackSuites, ENSURE_LABEL, exitCodeFor, packBuildEdge, packageOf, planChanged, planTargets, type Run,
@@ -716,6 +716,9 @@ describe('a pack file whose specs sit behind a build', () => {
  */
 describe('pricedSpecs', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-dry-'));
+  // Made at collection, so it is made even by a filtered run that executes none of these — which is how
+  // nine of these directories reached $TMPDIR before anything removed one
+  afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
   writeDurations(root, [
     { dir: 'abuddy-host', file: 'tests/a.spec.ts', half: 'fast', ms: 1200 },
     { dir: 'abuddy-host', file: 'tests/b.spec.ts', half: 'fast', ms: 300 },
