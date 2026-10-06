@@ -20,36 +20,36 @@ function startThreads() {
 
 it('drops the new-thread timer once it clears the flag', () => {
   const actor = startThreads()
-  actor.send({ type: 'THREAD_CREATED', id: 't1', shortCode: 'T1', entityType: 'Thread', timestamp: 0 } as never)
-  expect(children(actor)).toContain('clear-new-thread-flag-t1')
+  actor.send({ type: 'THREAD_CREATED', id: 'Thread-t1', shortCode: 'T1', entityType: 'Thread', timestamp: 0 })
+  expect(children(actor)).toContain('clear-new-thread-flag-Thread-t1')
 
   vi.advanceTimersByTime(1000)
 
-  expect(children(actor)).not.toContain('clear-new-thread-flag-t1')
-  expect(actor.getSnapshot().context.threadMap['t1']?.isNew).toBe(false)
+  expect(children(actor)).not.toContain('clear-new-thread-flag-Thread-t1')
+  expect(actor.getSnapshot().context.threadMap['Thread-t1']?.isNew).toBe(false)
 })
 
 it('drops the chat state timer once the override expires', () => {
   const actor = startThreads()
-  actor.send({ type: 'FLASH_CHAT_STATE', threadId: 't1', stateId: 'saved', durationMs: 500 })
-  expect(children(actor)).toContain('clear-expired-override-t1')
+  actor.send({ type: 'FLASH_CHAT_STATE', threadId: 'Thread-t1', stateId: 'saved', durationMs: 500 })
+  expect(children(actor)).toContain('clear-expired-override-Thread-t1')
 
   vi.advanceTimersByTime(500)
 
-  expect(children(actor)).not.toContain('clear-expired-override-t1')
-  expect(actor.getSnapshot().context.chatStateOverrides['t1']).toBeUndefined()
+  expect(children(actor)).not.toContain('clear-expired-override-Thread-t1')
+  expect(actor.getSnapshot().context.chatStateOverrides['Thread-t1']).toBeUndefined()
 })
 
 it("keeps a thread's later chat state override until its own timer, not the earlier one's", () => {
   const actor = startThreads()
-  actor.send({ type: 'FLASH_CHAT_STATE', threadId: 't1', stateId: 'first', durationMs: 500 })
+  actor.send({ type: 'FLASH_CHAT_STATE', threadId: 'Thread-t1', stateId: 'first', durationMs: 500 })
   vi.advanceTimersByTime(300)
-  actor.send({ type: 'FLASH_CHAT_STATE', threadId: 't1', stateId: 'second', durationMs: 500 })
+  actor.send({ type: 'FLASH_CHAT_STATE', threadId: 'Thread-t1', stateId: 'second', durationMs: 500 })
 
   vi.advanceTimersByTime(300)
-  expect(actor.getSnapshot().context.chatStateOverrides['t1']?.id).toBe('second')
+  expect(actor.getSnapshot().context.chatStateOverrides['Thread-t1']?.id).toBe('second')
 
   vi.advanceTimersByTime(200)
-  expect(actor.getSnapshot().context.chatStateOverrides['t1']).toBeUndefined()
-  expect(children(actor)).not.toContain('clear-expired-override-t1')
+  expect(actor.getSnapshot().context.chatStateOverrides['Thread-t1']).toBeUndefined()
+  expect(children(actor)).not.toContain('clear-expired-override-Thread-t1')
 })

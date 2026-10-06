@@ -25,7 +25,7 @@ beforeEach(() => {
 afterEach(() => app.stop());
 
 const systemError = (severity: 'diagnostic' | 'error' | 'fatal') =>
-  app.send({ type: 'SYSTEM_ERROR', message: `a ${severity}`, severity } as never);
+  app.send({ type: 'SYSTEM_ERROR', message: `a ${severity}`, severity });
 
 describe('SYSTEM_ERROR', () => {
   it('raises a toast for an ordinary error', () => {
@@ -35,7 +35,7 @@ describe('SYSTEM_ERROR', () => {
   });
 
   it('replaces the window for a fatal one, its message and stack apart', () => {
-    app.send({ type: 'SYSTEM_ERROR', message: 'a fatal', stack: 'Error: a fatal\n    at boot', severity: 'fatal' } as never);
+    app.send({ type: 'SYSTEM_ERROR', message: 'a fatal', stack: 'Error: a fatal\n    at boot', severity: 'fatal' });
     expect(showErrorPage).toHaveBeenCalledWith('Something went wrong', { message: 'a fatal', stack: 'Error: a fatal\n    at boot' });
     expect(toast.error).not.toHaveBeenCalled();
   });

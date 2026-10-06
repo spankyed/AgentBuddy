@@ -16,13 +16,20 @@
 // it; that is a line, and saying so is better than leaving the list looking derived.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
+import type { StepRuntimeError, TNodeEntity } from '@abuddy/sdk/steps';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
 vi.mock('#generated/events.ts', () => ({ sendToSystem }));
 
 const { default: brainState } = await import('#features/brain/fe/state.ts');
 
-const details = (id: string) => ({ id, label: id }) as never;
+/**
+ * A node's details as the panel reads them, which is deliberately not a whole `TNodeEntity`.
+ *
+ * **The cast stops at the fixture.** The events the cases send are checked, so a misspelled event type is
+ * a compile error rather than a send the machine ignores while the case goes on asserting.
+ */
+const details = (id: string) => ({ id, label: id }) as unknown as TNodeEntity;
 
 /**
  * A started plugin in `ready`, which is where node clicks are handled.
@@ -34,8 +41,10 @@ function ready() {
   const actor = createActor(brainState).start();
   actor.send({
     type: 'RECEIVE_PLUGIN_DATA',
-    data: { flowTNodeId: 'f1', possibleEvents: [], flowHierarchy: [] },
-  } as never);
+    // The fields the machine reads to reach `ready`; the rest of that payload is not this file's subject,
+    // and the cast sits on it rather than on the event so the type above stays checked
+    data: { flowTNodeId: 'f1', possibleEvents: [], flowHierarchy: [] } as never,
+  });
   return actor;
 }
 
@@ -46,22 +55,22 @@ beforeEach(() => {
 it('shows the node last clicked, not the answer that arrived last', () => {
   const actor = ready();
 
-  actor.send({ type: 'NODE.CLICK', nodeId: 'n1' } as never);
-  actor.send({ type: 'NODE.CLICK', nodeId: 'n2' } as never);
+  actor.send({ type: 'NODE.CLICK', nodeId: 'n1' });
+  actor.send({ type: 'NODE.CLICK', nodeId: 'n2' });
   expect(actor.getSnapshot().context.selectedStepNode?.id, 'the click sets it at once').toBe('n2');
 
   // n2 answers, then n1's older answer turns up
-  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n2', details: details('n2') } as never);
-  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n1', details: details('n1') } as never);
+  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n2', details: details('n2') });
+  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n1', details: details('n1') });
 
   expect(actor.getSnapshot().context.selectedStepNode?.id).toBe('n2');
 });
 
 it('takes the details for the node it is waiting on', () => {
   const actor = ready();
-  actor.send({ type: 'NODE.CLICK', nodeId: 'n1' } as never);
+  actor.send({ type: 'NODE.CLICK', nodeId: 'n1' });
 
-  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n1', details: details('n1') } as never);
+  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n1', details: details('n1') });
   expect(actor.getSnapshot().context.selectedStepNode).toMatchObject({ id: 'n1', label: 'n1' });
 });
 
@@ -71,8 +80,10 @@ const askedAbout = () => sendToSystem.mock.calls
   .filter((event) => event.type === 'GET_TNODE_DETAILS')
   .map((event) => event.tNodeId);
 
-const runtimeError = (tNodeId?: string) =>
-  ({ type: 'BRAIN_RUNTIME_ERROR', error: { errorId: 'e1', message: 'it broke', source: 'step', phase: 'run', ...(tNodeId && { tNodeId }) } }) as never;
+const runtimeError = (tNodeId?: string) => ({
+  type: 'BRAIN_RUNTIME_ERROR' as const,
+  error: { errorId: 'e1', message: 'it broke', source: 'step', phase: 'run', ...(tNodeId && { tNodeId }) } as StepRuntimeError,
+});
 
 /**
  * A step's error opens the failing node, which is the case the invariant was being broken for.
@@ -86,7 +97,7 @@ it("opens the failing node's details when a step errors", () => {
   actor.send(runtimeError('n-broke'));
   expect(askedAbout(), 'it asks about the node that failed').toEqual(['n-broke']);
 
-  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n-broke', details: details('n-broke') } as never);
+  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n-broke', details: details('n-broke') });
 
   expect(actor.getSnapshot().context.selectedStepNode).toMatchObject({ id: 'n-broke', label: 'n-broke' });
 });
@@ -94,8 +105,8 @@ it("opens the failing node's details when a step errors", () => {
 // An error with no node to blame asks nothing, and leaves whatever the user was looking at alone
 it('leaves the selection alone for an error that names no node', () => {
   const actor = ready();
-  actor.send({ type: 'NODE.CLICK', nodeId: 'n1' } as never);
-  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n1', details: details('n1') } as never);
+  actor.send({ type: 'NODE.CLICK', nodeId: 'n1' });
+  actor.send({ type: 'TNODE_DETAILS', tNodeId: 'n1', details: details('n1') });
 
   actor.send(runtimeError());
 
@@ -115,12 +126,12 @@ it('leaves the selection alone for an error that names no node', () => {
  * row costs one line; what it cannot do is notice an asker nobody listed.
  */
 it.each([
-  ['a node click', { type: 'NODE.CLICK', nodeId: 'n-clicked' }],
+  ['a node click', { type: 'NODE.CLICK' as const, nodeId: 'n-clicked' }],
   ['a step error', runtimeError('n-failed')],
 ])('selects the node it asks about: %s', (_what, event) => {
   const actor = ready();
 
-  actor.send(event as never);
+  actor.send(event);
 
   const asked = askedAbout();
   expect(asked, 'it asked about exactly one node').toHaveLength(1);

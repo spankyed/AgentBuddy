@@ -40,7 +40,7 @@ beforeEach(() => {
 /** A window that has asked for a terminal, so its `pendingTarget`/`pendingCommand` are set */
 function asked() {
   const actor = createActor(terminalState).start();
-  actor.send({ type: 'terminal.CREATE', command: 'echo hi' } as never);
+  actor.send({ type: 'terminal.CREATE', command: 'echo hi' });
   return actor;
 }
 
@@ -48,7 +48,7 @@ it('grows every window\'s list on the news, and opens nothing', () => {
   // This window never asked — it is any other window, which the broadcast also reaches
   const other = createActor(terminalState).start();
 
-  other.send({ type: 'terminal.CREATED', data: aTerminal('t-1') } as never);
+  other.send({ type: 'terminal.CREATED', data: aTerminal('t-1') });
 
   expect(terminals(other), 'the list is what every window takes from it').toEqual(['t-1']);
   expect(parent.updateParentState, 'and nothing is routed into a panel nobody asked about').not.toHaveBeenCalled();
@@ -58,7 +58,7 @@ it('grows every window\'s list on the news, and opens nothing', () => {
 it('opens the terminal for the window that asked', () => {
   const actor = asked();
 
-  actor.send({ type: 'terminal.OPENED', data: aTerminal('t-1') } as never);
+  actor.send({ type: 'terminal.OPENED', data: aTerminal('t-1') });
 
   expect(parent.updateParentState).toHaveBeenCalledWith(expect.anything(), { panelTerminalId: 't-1' });
   // The command this window typed is run in the terminal this window asked for, and nowhere else
@@ -67,9 +67,9 @@ it('opens the terminal for the window that asked', () => {
 
 it('opens it as a tab when that is what was asked for', () => {
   const actor = createActor(terminalState).start();
-  actor.send({ type: 'terminal.CREATE', target: 'tab' } as never);
+  actor.send({ type: 'terminal.CREATE', target: 'tab' });
 
-  actor.send({ type: 'terminal.OPENED', data: aTerminal('t-2') } as never);
+  actor.send({ type: 'terminal.OPENED', data: aTerminal('t-2') });
 
   expect(parent.addTabToParent).toHaveBeenCalled();
   expect(parent.updateParentState, 'a tab, so not also the panel').not.toHaveBeenCalled();
@@ -84,8 +84,8 @@ it('opens it as a tab when that is what was asked for', () => {
 it('leaves the asker with one entry and one open', () => {
   const actor = asked();
 
-  actor.send({ type: 'terminal.CREATED', data: aTerminal('t-3') } as never);
-  actor.send({ type: 'terminal.OPENED', data: aTerminal('t-3') } as never);
+  actor.send({ type: 'terminal.CREATED', data: aTerminal('t-3') });
+  actor.send({ type: 'terminal.OPENED', data: aTerminal('t-3') });
 
   expect(terminals(actor)).toEqual(['t-3']);
   expect(parent.updateParentState).toHaveBeenCalledTimes(1);
