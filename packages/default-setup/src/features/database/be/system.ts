@@ -2,7 +2,6 @@ import type { ThreadsSettings } from '#generated/types.ts';
 import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
 // Untyped for now: a typed `reply` needs an `answers` field on the contract and a codegen reader, which
 // stays deferred. `onConnected`/`onIncoming` come from here for the same reason.
-import { reply } from '@abuddy/sdk/events';
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
 import { defineSystem } from '@abuddy/sdk/framework';
@@ -54,7 +53,7 @@ export const databaseSpec = defineSystem<Contract>();
 
 export const databaseSystem = setup({
   types: databaseSpec.types,
-  actions: {
+  actions: databaseSpec.actions({
     sendDatabaseRefresh: () => {
       const schema = generateSchemaInfo();
       broadcastToPlugin('database', { 
@@ -63,22 +62,24 @@ export const databaseSystem = setup({
       });
     },
     /**
-     * The id is read once, here, and closed over.
+     * The id is read once, here, and closed over — as `reply` itself now is.
      *
      * Not stashed in context: this action is `async` on a state with no guard against re-entry, so a
      * second `EXECUTE_QUERY` is accepted while this one is awaiting, and a single context field would be
      * the newer request's by the time this reply is built. The closure is what makes each reply name its
-     * own request even when two are in flight.
+     * own request even when two are in flight. `reply` is bound to this delivery for the same reason, so
+     * the pair travels together whether the answer is built in one turn or ten.
      */
-    executeQuery: async ({ event }) => {
+    executeQuery: async ({ event, reply }) => {
       const { code, requestId } = databaseSpec.typeOf('EXECUTE_QUERY', event);
-      reply(await queryAnswer(code, requestId));
+      // Nobody asked: a result with no asker has nowhere to go, and the console that ran it is the asker
+      reply?.(await queryAnswer(code, requestId));
     },
     /** The id is closed over, for `executeQuery`'s reason above */
-    executeTransaction: async ({ event }) => {
+    executeTransaction: async ({ event, reply }) => {
       const { code, requestId } = databaseSpec.typeOf('EXECUTE_TRANSACTION', event);
       const answer = await transactionAnswer(code, requestId);
-      reply(answer);
+      reply?.(answer);
 
       // Still a broadcast, and deliberately: a changed schema is news for every window's schema view, not an
       // answer to the window that ran the transaction. Converting this one would narrow it to the asker.
@@ -272,7 +273,7 @@ export const databaseSystem = setup({
         });
       }
     },
-  },
+  }),
 }).createMachine({
   id: 'database',
   initial: 'idle',
