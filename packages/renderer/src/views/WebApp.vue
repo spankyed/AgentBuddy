@@ -98,7 +98,7 @@ import ChatArea from '@/views/layout/ChatArea.vue'
 import InspectionPanel from '@/views/layout/InspectionPanel.vue'
 import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import { applicationState } from '@/main'
-import { HOST, visiblePluginsOf } from '@abuddy/host/fe'
+import { HOST, NOBODY_ASKED, sendToPluginActor, visiblePluginsOf } from '@abuddy/host/fe'
 import { untypedOpenPlugin, PluginScope } from '@abuddy/sdk/fe'
 import Router from '@/views/layout/PluginRouter.vue'
 import type { ContextMenuItem } from '@abuddy/sdk/fe'
@@ -214,7 +214,9 @@ const handleMenuAction = (event: ContextMenuItem['event']) => {
   }
 
   const pluginId = toggles.value.canvas ? defaultPlugin.value.id : activePlugin.value.id
-  applicationState.system.get(pluginId).send(event)
+  // Through the funnel, so the plugin is named while it handles this and a send it makes can be answered.
+  // A menu click is nobody's question, so it carries no asker.
+  sendToPluginActor(applicationState.system.get(pluginId), pluginId, event, NOBODY_ASKED)
 }
 
 const MIN_CHAT_HEIGHT = 180 // px — enough for chat input to remain visible

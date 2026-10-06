@@ -184,7 +184,6 @@ type UIEvent =
   | { type: 'SET_CHAT_STATE'; threadId: string; chatState: string }
   | { type: 'CLEAR_CHAT_STATE_OVERRIDE'; threadId: string }
   | { type: 'SELECT_TAB'; tabId: string }
-  | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string; pinned?: boolean }
   | { type: 'CLOSE_TAB'; tabId: string }
   | { type: 'CLOSE_ACTIVE_TAB' }
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
@@ -1038,31 +1037,6 @@ const threadsState = setup({
     selectTab: assign(({ event }) => ({
       activeTabId: typeOf('SELECT_TAB', event).tabId
     })),
-    openThreadTab: assign(({ context, event }) => {
-      const { threadId, label, pinned } = typeOf('OPEN_THREAD_TAB', event) as { threadId: string; label: string; pinned?: boolean };
-      const existingTab = context.tabs.find(t => t.id === threadId);
-
-      if (existingTab) {
-        if (pinned !== undefined && existingTab.pinned !== pinned) {
-          return {
-            tabs: context.tabs.map(t => t.id === threadId ? { ...t, pinned } : t),
-            activeTabId: threadId
-          };
-        }
-        return { activeTabId: threadId };
-      }
-
-      return {
-        tabs: [...context.tabs, {
-          id: threadId,
-          label,
-          artifacts: [],
-          selectedArtifactId: undefined,
-          ...(pinned && { pinned }),
-        }],
-        activeTabId: threadId
-      };
-    }),
     closeTab: enqueueActions(({ enqueue, context, event, self }) => {
       const tabId = typeOf('CLOSE_TAB', event).tabId;
       const tab = context.tabs.find(t => t.id === tabId);
@@ -1843,7 +1817,6 @@ const threadsState = setup({
       actions: 'finishStream',
     },
     SELECT_TAB: { actions: ['selectTab', 'persistTabs'] },
-    OPEN_THREAD_TAB: { actions: ['openThreadTab', 'persistTabs'] },
     CLOSE_TAB: { actions: ['closeTab', 'cleanupEmptyGroups', 'persistTabs', 'persistTabGroups'] },
     CLOSE_ACTIVE_TAB: { actions: ['closeActiveTab', 'cleanupEmptyGroups', 'persistTabs', 'persistTabGroups'] },
     // Tab reorder & group events

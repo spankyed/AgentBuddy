@@ -5,7 +5,7 @@
 import { fromCallback } from 'xstate';
 import { senderSuffix } from '@abuddy/sdk/events';
 import type { ShellClient } from '../../../fe/client.ts';
-import { NOBODY_ASKED, sendToPluginActor } from './plugins.ts';
+import { NOBODY_ASKED, sendToPluginActor } from '../../../fe/plugin-delivery.ts';
 import { HOST } from '../../../refs.ts';
 import type { ShellEvent } from './types.ts';
 

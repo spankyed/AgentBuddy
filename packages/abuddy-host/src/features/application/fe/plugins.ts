@@ -1,6 +1,4 @@
 // The shell's plugins: their order, which show, spawning each one's actor, and moving between them.
-import type { AnyActorRef, AnyEventObject } from 'xstate';
-import { _runDelivery, type _Asker } from '@abuddy/sdk/events';
 import type { Plugin } from '@abuddy/sdk/fe';
 import { HOST_PACK_ID, splitRef } from '@abuddy/sdk/ids';
 import type { ShellContext } from './types.ts';
@@ -49,35 +47,3 @@ export function historyAfter(
   if (history[history.length - 1] === plugin) return { pluginHistory: context.pluginHistory, historyIndex: context.historyIndex };
   return { pluginHistory: [...history, plugin], historyIndex: history.length };
 }
-
-/**
- * Hands a plugin's actor an event, naming that plugin for as long as it is handled.
- *
- * **Every send to a plugin's actor in this window goes through here**, which is the point: a send a handler then
- * makes carries the plugin's ref as `Message.sender`, so the system it asks can answer *this* plugin in the
- * window it was asked from. Reaching an actor directly skips that, and the handler's own `sendToSystem` then
- * stamps nothing — a failure with no symptom until a system tries to `reply`.
- *
- * One function rather than a wrapper at each call site, because the list of call sites was the bug: it was
- * documented as four places and was nine, and the eight that reach a plugin from the shell are not something a
- * reader can enumerate. `usePlugin` is the one other scope-setter in a window, and it wraps the actor it hands
- * out rather than a send it makes.
- *
- * **It takes an actor, not a lookup that may miss.** Whether a missing plugin is a bug or an ordinary race
- * differs by call site — the shell's own lifecycle sends address a plugin it just spawned, where absence is an
- * invariant broken and worth a crash, while a send arriving for a plugin whose pack has unloaded is neither. A
- * `?.` here would have levelled those two to the quieter one, which it briefly did.
- */
-export function sendToPluginActor(actor: AnyActorRef, ref: string, event: AnyEventObject, asker: _Asker | undefined): void {
-  _runDelivery({ receiver: ref, asker }, () => actor.send(event));
-}
-
-/**
- * What the shell's own sends pass for `asker`: a lifecycle event, a hotkey or a navigation has nobody waiting on
- * an answer, so the plugin's handler is handed no `reply` — which is what "nobody asked" is meant to look like.
- *
- * A name rather than a bare `undefined` at seven call sites, and the parameter stays **required** so the compiler
- * walks all of them. That is this function's whole history: the count was documented as four and was nine, and a
- * default would have quietly restored exactly that.
- */
-export const NOBODY_ASKED = undefined;

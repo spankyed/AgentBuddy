@@ -14,7 +14,8 @@ import {
   chatMaximized, chatRestored, initialPanelSizes, inspectionToggled, resized,
 } from './layout.ts';
 import { announcePackClientReady, PACK_FRONTEND_LOADER_ID, packFrontendLoader } from './pack-frontends.ts';
-import { historyAfter, neighbourOf, NOBODY_ASKED, sendToPluginActor, spawnPluginActor, withHostLast } from './plugins.ts';
+import { historyAfter, neighbourOf, spawnPluginActor, withHostLast } from './plugins.ts';
+import { NOBODY_ASKED, sendToPluginActor } from '../../../fe/plugin-delivery.ts';
 import { computeCrumbs, pluginTrailer } from './trail.ts';
 import type { PluginRequest, ShellContext, ShellEvent, ShellOptions, ShellParams } from './types.ts';
 
