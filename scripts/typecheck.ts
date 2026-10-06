@@ -16,14 +16,20 @@
  * grounds that "every step already uses all the cores". The largest app-free step did not, and the chain
  * admits on what each step takes now rather than counting them.
  *
- * WHAT THIS OWES THE CHECKS THAT READ IT
+ * WHY EACH LEG'S COMMAND IS SPELLED OUT
  *
- * **Each leg's command is spelled out as a command**, not assembled from its name. Two checks read this file's
- * text rather than running it, both through `reachableText` (`lib/npm-scripts.ts`), which matches
- * `npm run <name>`: `check:tiers` scans a step for the ways this repo launches the app, and
- * `chain-inputs.spec.ts` asks whether anything in the chain runs a given `<artifact>:check` — `schema:check`
- * and `exports:check` are reachable *only* through this file. A name in a template literal would be invisible
- * to both, and the second would report them as never run.
+ * For whoever reads the table, and nothing more — **which is a correction.** This paragraph used to say two
+ * checks read the commands from here through `reachableText` (`lib/npm-scripts.ts`), and that
+ * `schema:check` and `exports:check` were reachable *only* this way, so a template literal would hide them.
+ * Measured 2026-10-06, all three parts are false: `reachableText('typecheck')` follows one file, this one,
+ * whose own text makes no `npm run` call, so its `invoked` set is `{ typecheck }` and the legs are invisible
+ * to the scan however they are written; and both of those checks are chain steps in their own right, found
+ * without going through here at all.
+ *
+ * **Where a template literal does bite is the root manifest, not this table.** `namedByScript`
+ * (`lib/typecheck-legs.ts`) derives a leg's cache scope by reading the *root* `package.json` script text
+ * for `-w`, `--workspace` and `tsc -p packages/x` — and it throws rather than defaulting when it cannot
+ * resolve what it found, which is what keeps that one honest.
  */
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 import { schedule } from './lib/chain-schedule.ts';

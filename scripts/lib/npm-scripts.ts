@@ -48,8 +48,23 @@ export const workspaceScripts = (name: string): Record<string, string> | undefin
   return undefined;
 };
 
-/** `npm run <script> -w <ws>`, `npm test --workspace <ws>`: the script named is the workspace's, not the root's */
-const WORKSPACE_CALL = /npm\s+(?:run\s+)?([\w:-]+)[^\n]*?(?:--workspace[= ]|-w\s+)(\S+)/g;
+/**
+ * An `npm run <script>` call and the tail that may carry workspace flags, **bounded at a command
+ * separator**.
+ *
+ * The tail stops at `&`, `|` or `;` because a shell line holds several commands, and a pattern that ran to
+ * the newline attributed one command's workspace to another's script name. `compile` is the worked case:
+ * `npm run packages:ensure && npm run build -w @app/default-setup && …` reported
+ * `@app/default-setup:packages:ensure` — a script that exists nowhere — while missing
+ * `@app/default-setup:build`, the expensive thing it actually runs, and never walking root
+ * `packages:ensure` at all. Both halves reach a cache key (`commandText` reads `invoked`), so the key named
+ * work the step does not do and omitted work it does.
+ *
+ * Every flag in the tail is read, not the first: `typecheck:cli` names two workspaces and only
+ * `@abuddy/cli` was seen.
+ */
+const NPM_CALL = /npm\s+(?:run\s+)?([\w:-]+)([^\n&|;]*)/g;
+const WORKSPACE_FLAG = /(?:--workspace[= ]|-w\s+)(\S+)/g;
 
 export interface Reached {
   /** Every script's text and every followed file's, concatenated — what a marker is searched for in */
@@ -100,21 +115,24 @@ export function reachableText(script: string, all: Record<string, string>, { ski
     seen.add(name);
     invoked.add(name);
     let text = all[name] ?? '';
-    // Where a call names a workspace, the script is that workspace's and the root's copy of the name is a
-    // different script — which the loop below expands correctly and this one must therefore not. Matched by
-    // position rather than by a lookahead, because the flag can sit any distance after the name.
-    const scoped = [...text.matchAll(WORKSPACE_CALL)]
-      .map((hit) => [hit.index, hit.index + hit[0].length] as const);
-    for (const called of text.matchAll(/npm run ([\w:-]+)/g)) {
-      if (scoped.some(([from, to]) => called.index >= from && called.index < to)) continue;
-      text += `\n${walk(called[1]!)}`;
-    }
-    for (const [, called, workspace] of text.matchAll(WORKSPACE_CALL)) {
-      const key = `${workspace}:${called}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      invoked.add(key);
-      text += `\n${workspaceScripts(workspace)?.[called!] ?? ''}`;
+    // One pass over the calls this script makes, since each one's own tail says whether it names a
+    // workspace: where it does the script is that workspace's, and where it does not it is the root's.
+    // Two passes with a position check is what let one command's flag be read as another's.
+    // Safe to append to `text` while iterating: `matchAll` binds the string value at the call, so the
+    // iterator is over the body as it was and what the walk appends is scanned by that walk's own pass
+    for (const [, called, tail] of text.matchAll(NPM_CALL)) {
+      const workspaces = [...(tail ?? '').matchAll(WORKSPACE_FLAG)].map(([, workspace]) => workspace!);
+      if (workspaces.length === 0) {
+        text += `\n${walk(called!)}`;
+        continue;
+      }
+      for (const workspace of workspaces) {
+        const key = `${workspace}:${called!}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        invoked.add(key);
+        text += `\n${workspaceScripts(workspace)?.[called!] ?? ''}`;
+      }
     }
     for (const file of text.matchAll(/(?:bash |sh |tsx |node )?((?:tests|scripts)\/[\w./-]+\.(?:sh|ts|mjs))/g)) {
       const named = file[1]!;
