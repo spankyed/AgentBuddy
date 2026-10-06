@@ -70,7 +70,7 @@ parts — so each figure carries its conditions and the table can be re-derived 
 | nothing tracked | nothing | **0.9s** |
 | a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/`, and a fingerprint skips every `CLAUDE.md` | **0.9s** |
 | one package's source (the renderer) | nine of twenty-eight steps: `test:unit:host` (only the renderer's project), `test:integration`, the typecheck legs whose scope reaches it, `lint:check`, `check:specifiers`, `check:tiers` and `build:app` | **38.6s** |
-| nothing is cached (a cold tree) | all 28 steps, on a ten-core budget (re-measured 2026-10-04, `--all`) | **158.3s** |
+| nothing is cached (a cold tree) | all 30 steps, on a ten-core budget (`--all`, 2026-10-06) | **182.4s** |
 
 **The one-package row is the one worth reading twice, and what it says changed.** It used to be 115.1s, on the
 reasoning that `build:app` rewrites `packages/*/dist` and so moves what every app-dependent step reads —
@@ -213,7 +213,9 @@ Things that waste the most time, in order:
 - **Optimising a step that is not on the critical path.** The chain admits steps in parallel, so only the
   durations along its longest dependency chain add up — `npm run chain -- --dry --all` prints it. Nothing
   else is a saving. `test:unit:pack` is the worked warning: **89% setup overhead**, the most alarming ratio
-  in the repo, off the path, so halving it buys zero chain wall. **Read the path before measuring a ratio.**
+  in the repo, off the path, so halving it buys zero chain wall. **Read the path before measuring a ratio** —
+  and in the other direction, moving a step off the path need not shorten the run, because a cold chain is
+  core-bound. What it shortens is whatever was waiting behind it.
 - **Running `npm run build` to test a change no build output depends on.** The renderer and API build from
   source; a CLI or SDK change does not need them rebuilt to be tested.
 - **Running an E2E suite to find a bug you have a stack trace for.** Build once with `sourcemap: true`,
@@ -296,8 +298,13 @@ with its consumers: `docs/archive/plans/tier-split.md` has the evidence, and the
 `test:external-pack` is split at that boundary: `:contract` validates, builds and typechecks each fixture
 pack and runs its harness specs with no app, before `build:app`, and `:app` runs its Playwright suite after
 it. Two scripts rather than one with a flag, because the scan reads a step's scripts as text and a branch it
-never takes still reads as a reach. `test:packaged-authoring` needs the app whole: its nine steps build on
-each other, so it takes a mode rather than a split.
+never takes still reads as a reach.
+
+`test:packaged-authoring` is split the same way: `:author` authors, builds, tests and releases a pack with
+no app, `:app` runs that archive against one. They hand over a work dir through `tests/authoring-handoff`,
+the author half's declared output and the app half's input, so the edge derives like any other — and that
+dir stays **outside** the checkout, or a pack built inside it resolves `@abuddy/*` by walking up to the
+workspace `node_modules`, which is the thing the check exists to disprove.
 [`goal-test-tiers.md`](docs/archive/goals/goal-test-tiers.md) has the rest, and what each of the four attempts at a
 cheaper chain measured — written when the declaration was a tier.
 
@@ -494,7 +501,10 @@ npm run bench -w @abuddy/ears    # EARS engine benchmark (baseline and tolerance
 npm run test:external-pack       # Both halves of the fixture-pack check, for running it by hand
 npm run test:external-pack:contract  # validate, build, typecheck, harness specs — no app needed
 npm run test:external-pack:app   # each pack's Playwright suite against this checkout (needs npm run build)
-npm run test:packaged-authoring  # Author, build, test and install a pack outside the monorepo from the packed @abuddy/* tarballs (needs npm run build)
+npm run test:packaged-authoring  # Both halves, for running it by hand: author, build, test and install a pack
+                                 # outside the monorepo from the packed @abuddy/* tarballs (needs npm run build)
+npm run test:packaged-authoring:author  # The half that needs no app — eight of its nine phases
+npm run test:packaged-authoring:app     # The ninth, against the built app, from the author half's archive
 npm run compile          # Build packages/default-setup (abuddy build: compiled seeds, snapshot, types; DSL defs; dist/runtime/index.cjs)
 
 npm run db:query -- "<code>"   # abuddy db query on the dev app's data (also db:exec, db:repl, db:inspect,

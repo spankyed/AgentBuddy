@@ -397,6 +397,9 @@ describe('every spawn an orchestrator makes is bounded', () => {
       'test:external-pack:app': 'drives the built app once per fixture pack, where `test:smoke` also launches '
         + 'an app and is a suite — no fact in the table separates them, so this is a judgement rather than a '
         + 'rule to widen',
+      'test:packaged-authoring:app': 'launches the app through `abuddy test`, and the install that would '
+        + 'derive its rung is in the author half — so the facts read it as a bare check where it is one '
+        + 'Electron launch. A suite, as `test:smoke` is for launching one',
     };
 
     const all = rootScripts();
@@ -423,7 +426,11 @@ describe('every spawn an orchestrator makes is bounded', () => {
 
     it('asks it of every step, so the rule passes over nothing', () => {
       const asked = CHAIN_STEPS.filter((step) => DECLARED_AGAINST_THE_FACTS[step.name] === undefined);
-      expect(asked.length, 'the exception table swallowed the table').toBe(CHAIN_STEPS.length - 1);
+      // Derived from the table rather than a literal, so adding an exception does not quietly re-baseline
+      // this case: it read `- 1` while the table held one entry, and a second would have passed over it
+      expect(asked.length, 'the exception table swallowed the table')
+        .toBe(CHAIN_STEPS.length - Object.keys(DECLARED_AGAINST_THE_FACTS).length);
+      expect(asked.length, 'and most of the table is still asked').toBeGreaterThan(CHAIN_STEPS.length / 2);
     });
 
     it('lists no exception that has stopped applying', () => {
@@ -454,10 +461,10 @@ describe('every spawn an orchestrator makes is bounded', () => {
     });
 
     it('names an installing step that is not a scenario', () => {
-      const authoring = CHAIN_STEPS.find((step) => step.name === 'test:packaged-authoring')!;
+      const authoring = CHAIN_STEPS.find((step) => step.name === 'test:packaged-authoring:author')!;
       expect(factsFor(authoring).installs, 'it stopped installing, so this case is about nothing').toBe(true);
       expect(misdeclared([{ ...authoring, timeout: 'suite' }]))
-        .toEqual(['test:packaged-authoring declares suite and its work is scenario']);
+        .toEqual(['test:packaged-authoring:author declares suite and its work is scenario']);
     });
   });
 

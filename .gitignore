@@ -18,3 +18,7 @@ tests/results/
 # Build artifacts
 native/speech/macos/SpeechHelper
 build/prod/logs/
+
+# The packaged-authoring check hands its work dir from the author half to the app half through here
+tests/authoring-handoff/
+

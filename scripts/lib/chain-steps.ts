@@ -1068,7 +1068,22 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // the step is never cached, so it buys the ordering and costs no precision
     inputs: [...ROOT, 'tests/e2e', 'playwright.config.ts', 'scripts/with-source.mjs', ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },
-  { name: 'test:packaged-authoring', timeout: 'scenario', seconds: 91,
-    inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring.sh', 'tests/scripts/lib',
-      ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },
+  /**
+   * Two steps, split at the app boundary: only the last of the check's nine phases launches one.
+   *
+   * The author half hands over through `tests/authoring-handoff`, its output and the app half's input, so
+   * the edge derives like any other. The work dir that names is **outside** the checkout deliberately — a
+   * pack built inside it would resolve `@abuddy/*` by walking up to the workspace `node_modules`, which is
+   * what the check exists to disprove — so the handoff carries a path and the archive's digest instead.
+   *
+   * Neither half deletes that dir: it is the author half's declared output, and a step whose output is gone
+   * reads as never-built. The author half clears the previous run's at its start.
+   */
+  { name: 'test:packaged-authoring:author', timeout: 'scenario', seconds: 95,
+    outputs: ['tests/authoring-handoff'],
+    inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring-author.sh',
+      'tests/scripts/lib', ...PACKAGE_BUILD_READS] },
+  { name: 'test:packaged-authoring:app', timeout: 'suite', seconds: 9,
+    inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/scripts/test-packaged-authoring-app.sh',
+      'tests/scripts/lib', 'tests/authoring-handoff', ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },
 ];

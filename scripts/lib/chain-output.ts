@@ -18,7 +18,7 @@ import type { SchedulableStep } from './chain-schedule.ts';
  * the reason above them — including the report this number was introduced to line up. A case holds it to the
  * longest name in the table, because the table is where new step names arrive.
  */
-export const STEP_NAME_WIDTH = 27;
+export const STEP_NAME_WIDTH = 30;
 
 /**
  * Where each row's reason starts, composed from the one width rather than restated.
@@ -525,26 +525,18 @@ export function classifyLine(
 }
 
 /**
- * The longest chain of steps a run has to wait through, as a line — and the answer to "what should I make
- * faster".
+ * The longest chain of steps a run has to wait through, as a line — and the answer to "which step is
+ * worth making faster".
  *
- * **It is printed for a plan as well as for a run, which is the point.** A step's own duration says
- * nothing about whether shortening it shortens anything: the chain admits steps in parallel, so a step off
- * this path runs inside the shadow of the ones on it and halving it buys zero. Established the hard way on
- * 2026-10-06 — `test:unit:pack` is 89% setup overhead, which reads as the worst number in the suite and is
- * off the path entirely, so two days of work on it would have bought no wall clock at all. The path over
- * the declared table says so in one line, before anybody measures a ratio.
+ * **Printed for a plan as well as for a run, which is the point.** A step off this path runs inside the
+ * shadow of the ones on it, so its own duration is not a saving, and a step's duration alone cannot say
+ * which it is. `--dry` gives the planned run's path and `--dry --all` the cold chain's, since `--all` plans
+ * every step.
  *
- * `--dry` gives the planned run's path, and `--dry --all` the cold chain's, because `--all` plans every
- * step. No new flag: the composition already means what it needs to mean.
+ * `source` separates the two numbers rather than letting one wear the other's authority: a run has measured
+ * each step, a plan has only the declared table, which is one machine's by declaration (`MEASURED_ON`).
  *
- * `source` separates the two numbers rather than letting one wear the other's authority. A run has
- * measured each step; a plan has only the declared table, which is one machine's by declaration
- * (`MEASURED_ON`) and is a model — it happens to agree, 157s declared against the 158.3s cold run the root
- * guide records, and that agreement is a fact about today rather than a property.
- *
- * Empty for a path of one step, where there is no chain to report and the step's own line already said
- * what it cost.
+ * Empty for a path of one step, where the step's own line already said what it cost.
  */
 export function criticalPathLine(steps: readonly SchedulableStep[], source: 'declared' | 'measured'): string {
   const path = criticalPath(steps);

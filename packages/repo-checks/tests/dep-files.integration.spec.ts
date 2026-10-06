@@ -572,11 +572,12 @@ describe('what has looked at a step at all', () => {
    * **Two kinds of entry sit in this list, and the difference is the whole of what to do about them.**
    * Measured 2026-10-02, because the distinction keeps being re-derived.
    *
-   * *No tool can report on it.* `test:packaged-authoring` is five `npm pack`s and two `npm install`s into a
-   * temp tree outside the monorepo — a package manager writes no dep file, and resolving from the published
-   * tarballs is the thing the step exists to prove. There is nothing to build here, and what protects it
-   * instead is that its inputs are **derived** (`PACKAGE_BUILD_OUTPUTS`, `APP_OUTPUTS`) rather than
-   * hand-listed, which is the only protection available to a step nothing can observe. `test:smoke` and
+   * *No tool can report on it.* The two packaged-authoring halves are five `npm pack`s and two
+   * `npm install`s into a temp tree outside the monorepo — a package manager writes no dep file, and
+   * resolving from the published tarballs is the thing they exist to prove. There is nothing to build here,
+   * and what protects them instead is that their inputs are **derived** (`PACKAGE_BUILD_OUTPUTS`,
+   * `APP_OUTPUTS`) rather than hand-listed, which is the only protection available to a step nothing can
+   * observe. Two entries because the check is two steps, split at the app boundary. `test:smoke` and
    * `test` are the same shape: Playwright driving a real Electron process.
    *
    * *A tool could report, and two now are asked.* `compile` and `test:external-pack:contract` both run
@@ -611,7 +612,8 @@ describe('what has looked at a step at all', () => {
       'test',
       'test:external-pack:app',
       'test:external-pack:contract',
-      'test:packaged-authoring',
+      'test:packaged-authoring:app',
+      'test:packaged-authoring:author',
       'test:smoke',
       'typecheck:fe',
     ]);
