@@ -1,4 +1,4 @@
-// Reading a vitest run's own output to find out what it actually covered.
+// Reading a run's own reporter to find out what it actually covered.
 //
 // The pool asks for N projects with `--project` and then stamps all N. That is only sound if the filter
 // selected them: measured, `--project @abuddy/ears --project @abuddy/no-such-project` runs ears, drops the
@@ -11,69 +11,156 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
 import { declaredPaths, diffableStamp } from '@abuddy/host/build/packages-built';
-import { DIAGNOSTIC_RUN_ENV, POOLS, livePoolStamps, poolStampFor, poolUnitFor, projectsThatRan, projectsThatDidNotRun, recordRun, recordsVerdict, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
+import { DIAGNOSTIC_RUN_ENV, POOLS, livePoolStamps, poolStampFor, poolUnitFor, projectsThatDidNotRun, recordRun, recordsVerdict, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
+import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { POOL_SECONDS } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
-// vitest's `formatProjectName`: `|name|` only when colour is unsupported, otherwise the name padded with a
-// space on each side, black on one of four background colours. Both of these are that function's output, the
-// coloured one copied byte for byte from a real run — which is the thing this file previously guessed at, and
-// the guess is why the pool failed every run with colour on while reporting that no project had run
-const line = (project: string, file: string) => ` ✓ |${project}| ${file} (3 tests) 12ms`;
-const colouredLine = (project: string, file: string) =>
-  ` \u001B[32m✓\u001B[39m \u001B[30m\u001B[46m ${project} \u001B[49m\u001B[39m ${file} \u001B[2m(\u001B[22m\u001B[2m4 tests\u001B[22m\u001B[2m)\u001B[22m\u001B[32m 2\u001B[2mms\u001B[22m\u001B[39m`;
+/** A run as its reporter recorded it, which is the only account the pool reads now */
+/**
+ * Every way this repo runs a unit suite carries the durations reporter.
+ *
+ * **This is the check the defect it covers went without.** `scripts/test-unit.ts` ran the suites through
+ * its own copy of what a pool is and spawned vitest directly, so `npm run test:unit` — the command a person
+ * runs by hand — carried no reporter, checked no `@slow:` marker and wrote no duration. Nothing failed,
+ * because nothing asked. The durations are now a thing a run has to opt into, which makes "did every
+ * launcher opt in" the question worth gating, and both halves of it are derived rather than listed.
+ */
+describe('a unit suite is never run without the durations reporter', () => {
+  const REPORTER = 'spec-durations-reporter.ts';
 
-describe('projectsThatRan', () => {
-  it('reads the project label vitest puts on every file of a multi-project run', () => {
-    const output = [line('@abuddy/ears', 'tests/a.spec.ts'), line('@app/main', 'tests/b.spec.ts'), line('@abuddy/ears', 'tests/c.spec.ts')].join('\n');
-    expect([...projectsThatRan(output)].sort()).toEqual(['@abuddy/ears', '@app/main']);
+  it('is passed by every pool, for every run it builds', () => {
+    const pools = Object.keys(POOLS) as Pool[];
+    expect(pools.length, 'no pools derived, so this passes over nothing').toBeGreaterThan(2);
+    for (const pool of pools) {
+      const runs = POOLS[pool].run(POOLS[pool].suites());
+      expect(runs.length, `${pool} builds no run`).toBeGreaterThan(0);
+      for (const { args } of runs) {
+        expect(args.some((arg) => arg.includes(REPORTER)), `${pool}: ${args.join(' ')}`).toBe(true);
+        // Naming any reporter replaces the human output, so the default has to be asked for back
+        expect(args, `${pool} would lose vitest's own output`).toContain('--reporter=default');
+      }
+    }
   });
 
-  it('reads the coloured label, which is the only one a terminal or a FORCE_COLOR pipe ever prints', () => {
-    const output = [colouredLine('@abuddy/ears', 'tests/a.spec.ts'), colouredLine('@app/main', 'tests/b.spec.ts')].join('\n');
-    expect([...projectsThatRan(output)].sort()).toEqual(['@abuddy/ears', '@app/main']);
+  /**
+   * And no other script launches one, which is the half that would have caught the defect.
+   *
+   * A pool's own args are easy to keep right; what went wrong was a *second launcher*. So this asks the
+   * tree instead: any script naming `vitest` as the thing it runs has to be one of the pools or carry a
+   * reason. The reasons are specific — `spec-plan.ts` builds the `npm run spec` runs, which are a
+   * different question (which specs cover a change) and carry their own counting reporter.
+   */
+  const LAUNCHES_VITEST_BY_DESIGN: Record<string, string> = {
+    'lib/spec-plan.ts': 'the runs `npm run spec` builds — a different question from a pool, and they carry '
+      + "spec-count-reporter.ts, whose count is what tells a covered run from one that did nothing",
+    'lib/unit-pool.ts': 'the pools themselves, whose args the case above checks',
+  };
+
+  const launchers = (): string[] => {
+    const root = path.join(REPO_ROOT, 'scripts');
+    const walk = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) return walk(full);
+      return entry.name.endsWith('.ts') ? [full] : [];
+    });
+    // `'vitest'` as an argument, which is how a spawn names the binary — not the word in a comment or a
+    // path like `vitest.config.ts`, which every chain step declares
+    return walk(root)
+      .filter((file) => /['"`]vitest['"`]\s*,/.test(fs.readFileSync(file, 'utf-8')))
+      .map((file) => path.relative(root, file))
+      .sort();
+  };
+
+  it('finds the launchers, so this is not vacuous', () => {
+    expect(launchers().length, 'no script names vitest as a spawn, so the rule below sees nothing')
+      .toBeGreaterThan(0);
   });
 
-  it('sees through the colours around a piped label, which a partly-coloured run still has', () => {
-    expect([...projectsThatRan(' \u001B[32m✓\u001B[39m |@abuddy/sdk| tests/a.spec.ts (1 test) 2ms')]).toEqual(['@abuddy/sdk']);
+  it('leaves no script launching one outside the pools', () => {
+    const stray = launchers().filter((file) => !(file in LAUNCHES_VITEST_BY_DESIGN));
+    expect(stray, 'run the suites through scripts/test-unit-pool.ts, or add a reason here: a launcher of '
+      + 'its own gets no durations reporter, so it checks no @slow: marker and records nothing').toEqual([]);
   });
 
-  it('counts a failed or skipped file, which still proves the project ran', () => {
-    expect([...projectsThatRan([' × |@app/api| tests/a.spec.ts', ' ↓ |@app/api| tests/b.spec.ts'].join('\n'))]).toEqual(['@app/api']);
-  });
-
-  it('finds nothing in a run that printed no labels', () => {
-    expect([...projectsThatRan(' ✓ tests/a.spec.ts (3 tests) 12ms\n Test Files  1 passed (1)')]).toEqual([]);
+  // A list of exceptions is honest only while each entry is still one
+  it('lists no exception that has stopped launching one', () => {
+    const live = new Set(launchers());
+    expect(Object.keys(LAUNCHES_VITEST_BY_DESIGN).filter((file) => !live.has(file)),
+      'drop these from LAUNCHES_VITEST_BY_DESIGN').toEqual([]);
   });
 });
 
+/**
+ * Each pool's chain step, which is two declarations held to each other rather than one generator.
+ *
+ * `poolStepName` cannot *be* the table's name: `declaredAt` finds a generated step by matching the
+ * template literal it came from, so a call there left all three pool steps unlocatable and a run unable to
+ * point at their reasoning. So the table writes the names and this checks the reverse lookup lands on a
+ * real step — which is the firing case for a rename of either one alone.
+ */
+describe('poolStepName', () => {
+  it('names a step the table really has, for every pool', () => {
+    const names = new Set(CHAIN_STEPS.map((step) => step.name));
+    for (const pool of Object.keys(POOLS) as Pool[]) {
+      expect(names, `${pool} pool's step`).toContain(poolStepName(pool));
+    }
+  });
+
+  it('gives each pool its own step, so no two report from one', () => {
+    const named = (Object.keys(POOLS) as Pool[]).map(poolStepName);
+    expect(new Set(named).size, named.join(', ')).toBe(named.length);
+  });
+});
+
+const ran = (...projects: string[]): ReportedRun => ({ projects, modules: [] });
+
+/**
+ * What a run covered, and what it did not.
+ *
+ * **This used to read vitest's console labels, and the cases that went with it are worth knowing about.**
+ * `formatProjectName` writes `|name|` when colour is unsupported and a space-padded coloured name when it
+ * is, so there were two spellings to handle, one of them copied byte for byte from a real run after a
+ * version that guessed at it failed every coloured run while reporting that no project had run. Two cases
+ * also encoded limits that were the *parse's* and not the question's: a single-project run prints no label
+ * at all, so absence proved nothing there, and a project that ran zero files appeared in no output.
+ *
+ * The reporter names every project the run started, so none of that survives: there is no spelling, no
+ * minimum project count, and no case this cannot answer.
+ */
 describe('projectsThatDidNotRun', () => {
   const asked = ['@abuddy/ears', '@app/main'];
 
   it('names a project that was asked for and never reported', () => {
-    expect(projectsThatDidNotRun(asked, line('@abuddy/ears', 'tests/a.spec.ts'))).toEqual(['@app/main']);
+    expect(projectsThatDidNotRun(asked, ran('@abuddy/ears'))).toEqual(['@app/main']);
   });
 
   it('says nothing when every project reported', () => {
-    expect(projectsThatDidNotRun(asked, [line('@abuddy/ears', 'a'), line('@app/main', 'b')].join('\n'))).toEqual([]);
-  });
-
-  // A single-project run prints no labels at all, so absence proves nothing there — the process exiting 0
-  // is the evidence, and the pack pool runs exactly one project per invocation
-  it('says nothing about a single-project run, which prints no labels', () => {
-    expect(projectsThatDidNotRun(['@app/default-setup'], ' ✓ tests/a.spec.ts (3 tests) 12ms')).toEqual([]);
+    expect(projectsThatDidNotRun(asked, ran('@abuddy/ears', '@app/main'))).toEqual([]);
   });
 
   it('names them all when the filter matched none of several', () => {
-    expect(projectsThatDidNotRun(asked, ' Test Files  0 passed (0)')).toEqual(asked);
+    expect(projectsThatDidNotRun(asked, ran())).toEqual(asked);
   });
 
-  // The failure this guard had: eleven projects ran, every one of them printed a coloured label, and the pool
-  // refused the run. Colour is the normal case, not the exotic one
-  it('says nothing when every project reported under colour', () => {
-    const output = [colouredLine('@abuddy/ears', 'tests/a.spec.ts'), colouredLine('@app/main', 'tests/b.spec.ts')].join('\n');
-    expect(projectsThatDidNotRun(asked, output)).toEqual([]);
+  /**
+   * And it answers for a single-project run, which the parse could not.
+   *
+   * The pack pool runs exactly one project per invocation, so this was the common case and the one with
+   * no coverage: vitest prints no label for it, and the old check returned `[]` for any run of fewer than
+   * two projects. A pack suite whose workspace name had drifted would have been stamped on a run it was
+   * excluded from, and nothing could have said so.
+   */
+  it('answers for a one-project run, where a label was never printed', () => {
+    expect(projectsThatDidNotRun(['@app/default-setup'], ran())).toEqual(['@app/default-setup']);
+    expect(projectsThatDidNotRun(['@app/default-setup'], ran('@app/default-setup'))).toEqual([]);
+  });
+
+  // A project the run started and found no file for is still a project that ran, and it is nameable from
+  // nowhere else: it appears in no reporter's output, only in the specifications the run began with
+  it('counts a project that reported no files, which no output could have shown', () => {
+    expect(projectsThatDidNotRun(['@abuddy/ui'], { projects: ['@abuddy/ui'], modules: [] })).toEqual([]);
   });
 });
 

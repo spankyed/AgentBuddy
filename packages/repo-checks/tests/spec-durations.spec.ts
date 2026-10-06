@@ -1,6 +1,6 @@
-// Reading a pool run's own output back, which is the same bet `slow-tests.ts` makes and carries the same
-// risk: it is a parser over someone else's format, so every shape it must handle is pinned here rather
-// than taken from one invented line. The gate over it is pinned in both directions, because the two are
+// What a pool run's own reporter recorded, which is no longer a parse: the shapes a console line could
+// take are vitest's business and this reads a typed object instead. The gate over it is pinned in both
+// directions, because the two are
 // not symmetrical — a marked spec that reads fast fails the step, and an unmarked one that reads slow is
 // only ever reported, since load can inflate a duration and cannot shorten one.
 import * as fs from 'node:fs';
@@ -9,11 +9,14 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
-  asDuration, asLocalTime, durationCacheDir, fileDurations, markedSpecs, placementOf, pruneDurationCache,
-  quantileOf, readDurations, slowestFiles, slowReason, tailBar, writeDurations, type FileDuration,
+  asDuration, asLocalTime, durationCacheDir, durationsOf, markedSpecs, placementOf, pruneDurationCache,
+  cachedDurations, halfTotal, KEPT_RUNS, quantileOf, readDurationRuns, readDurations, slowestFiles,
+  slowReason, tailBar,
+  trendOf, writeDurations, type FileDuration,
 } from '../../../scripts/lib/spec-durations.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 import { CONFIG_BY_HALF, type Half } from '../../../scripts/lib/spec-halves.ts';
+import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.ts';
 
 /** Two suites that really exist and really hold these files, since attribution is by path on disk */
 const HOST = UNIT_SUITES.filter((suite) => ['abuddy-host', 'abuddy-sdk'].includes(suite.dir));
@@ -32,117 +35,88 @@ afterEach(() => {
   for (const dir of temp.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-describe('fileDurations', () => {
-  it('reads the bare file lines a single-project run prints, attributing them by path', () => {
-    const output = [
-      ' ✓ tests/database/write-lock.spec.ts (4 tests) 4890ms',
-      '   ✓ a nested case 300ms',
-      ' ✓ tests/build/published-manifest.spec.ts (7 tests) 2838ms',
-    ].join('\n');
-    expect(fileDurations(output, ONE, REPO_ROOT)).toEqual([
+/** A module as the durations reporter records one */
+const mod = (project: string, file: string, ms: number, skipped = false) => ({ project, file, ms, skipped });
+const reported = (...modules: ReturnType<typeof mod>[]): ReportedRun =>
+  ({ projects: [...new Set(modules.map((one) => one.project))], modules });
+
+/**
+ * Every file the run reported, attributed to the suite that holds it.
+ *
+ * **This replaced a parse of vitest's console output, and most of the cases went with it.** There were
+ * five that existed only because of what a console line is: a bare line and a piped `|name|` label and a
+ * coloured one (three spellings of the same fact), a path-vs-label preference for the one relative path
+ * two suites share, a `(ms|s)` unit arm no vitest 3.2.4 line can produce, and a pair holding the refusal
+ * that told "the format moved" apart from "nothing ran". The reporter states the project and the
+ * duration, so none of those is a question any more — and the refusal is now the caller's, over a file
+ * that never arrived, which is a stronger thing to check than a format that looks wrong.
+ */
+describe('durationsOf', () => {
+  it('attributes a module to the suite whose project reported it', () => {
+    const run = reported(
+      mod('@abuddy/host', 'tests/database/write-lock.spec.ts', 4890),
+      mod('@abuddy/sdk', 'tests/build/generate-entries.spec.ts', 17745),
+    );
+    expect(durationsOf(run, HOST)).toEqual([
       row('abuddy-host', 'tests/database/write-lock.spec.ts', 4890),
-      row('abuddy-host', 'tests/build/published-manifest.spec.ts', 2838),
-    ]);
-  });
-
-  it('reads the piped project label a multi-project run prints without colour', () => {
-    const output = ' ✓ |@abuddy/sdk| tests/build/generate-entries.spec.ts (94 tests) 17745ms';
-    expect(fileDurations(output, HOST, REPO_ROOT)).toEqual([
       row('abuddy-sdk', 'tests/build/generate-entries.spec.ts', 17745),
     ]);
   });
 
-  // The label is the one thing that differs between a coloured run and a piped one, and reading only the
-  // piped spelling is what once had `projectsThatRan` report all eleven host projects absent from a run
-  // every one of them had passed in
-  it('reads the coloured project label, which strips to bare text rather than to pipes', () => {
-    const output = ' \u001B[32m✓\u001B[39m \u001B[42m @abuddy/sdk \u001B[49m tests/build/generate-entries.spec.ts (94 tests) 17745ms';
-    expect(fileDurations(output, HOST, REPO_ROOT)).toEqual([
-      row('abuddy-sdk', 'tests/build/generate-entries.spec.ts', 17745),
-    ]);
-  });
-
-  // The label and the path cover each other exactly: a label is printed only on a run of two or more
-  // projects, and `tests/source-layout.spec.ts` — the one path two suites share — can only be ambiguous
-  // on such a run, where the label resolves it
-  it('prefers the label where a path alone would be ambiguous', () => {
+  /**
+   * The path that two suites share, which a parse could only resolve from a label.
+   *
+   * `tests/source-layout.spec.ts` is in both `api` and `renderer`, and the old reading fell back to
+   * looking for the file on disk whenever vitest had printed no label — which it does for any
+   * single-project run. The project is stated now, so the collision cannot arise.
+   */
+  it('keeps two suites\' identically-named specs apart', () => {
     const covered = UNIT_SUITES.filter((suite) => ['api', 'renderer'].includes(suite.dir));
-    const output = ' ✓ |@app/renderer| tests/source-layout.spec.ts (3 tests) 55ms';
-    expect(fileDurations(output, covered, REPO_ROOT)).toEqual([
+    const run = reported(
+      mod('@app/renderer', 'tests/source-layout.spec.ts', 55),
+      mod('@app/api', 'tests/source-layout.spec.ts', 31),
+    );
+    expect(durationsOf(run, covered)).toEqual([
       row('renderer', 'tests/source-layout.spec.ts', 55),
+      row('api', 'tests/source-layout.spec.ts', 31),
     ]);
   });
 
   /**
-   * Tolerates a duration in seconds, which **no vitest 3.2.4 file line uses**.
+   * A skipped module is dropped, and that is a correctness fix rather than a port.
    *
-   * Said plainly because the title used to claim the opposite — "which is how vitest prints anything over
-   * a second" — and that is exactly the invented line this file's header promises it does not pin against.
-   * `getDurationPrefix` rounds a module's duration to milliseconds unconditionally (`4851ms`, never
-   * `4.85s`); only the run's own summary uses seconds. So this is the unit arm's tolerance being exercised
-   * rather than a format anyone has observed, and the edit that would make it real is vitest formatting a
-   * file's duration the way it formats the summary's.
+   * The console prints a skipped file with no duration at all, so the parse excluded it by accident — the
+   * pattern required a time. A reporter gives it `0`, and counting a file that never executed as a 0ms
+   * reading would pull its half's quantile bar down. `default-setup`'s `claude-code-permission-flow`
+   * sits behind a `describe.skipIf` today, so this has a live subject.
    */
-  it('tolerates a duration in seconds, which no file line vitest prints today uses', () => {
-    const output = ' ✓ tests/database/write-lock.spec.ts (4 tests) 4.89s';
-    expect(fileDurations(output, ONE, REPO_ROOT)[0]!.ms).toBe(4890);
-  });
-
-  /**
-   * And refuses an output that reported files with no duration among them.
-   *
-   * The two causes of an empty parse are not alike: a reporter whose per-file format moved leaves these
-   * lines matching and the duration pattern matching nothing, and passing over that is a step that checks
-   * no marker and says so to nobody — the failure `projectsThatRan` already shipped once here, reading
-   * only vitest's uncoloured label. A run that reported no files at all simply ran nothing.
-   */
-  it('refuses an output that reported files and not one duration', () => {
-    const output = [' ✓ tests/database/write-lock.spec.ts (4 tests)', ' ✓ tests/packs/undo-log.spec.ts (3 tests)'].join('\n');
-    expect(() => fileDurations(output, ONE, REPO_ROOT)).toThrow(/not one duration among them/);
-  });
-
-  /**
-   * And refuses it wherever in the run those lines sit, which is the half this case was blind to.
-   *
-   * A real run opens with npm's banner and vitest's own header, so a file line is never the first line.
-   * The pattern was `^`-anchored without `m`, which anchors to the start of the *string*, and the case
-   * above passed only because its fixture began with one. Mutating `FILE` and running the real pack pool
-   * is what found it: 100 files reported, no duration parsed, and the step passed and stamped itself.
-   */
-  it('refuses it when the file lines are not the first thing the run printed', () => {
-    const output = ['', '> @app/default-setup@0.0.0 test', '> vitest run', '', ' RUN  v3.2.4', '',
-      ' ✓ tests/database/write-lock.spec.ts (4 tests)', ''].join('\n');
-    expect(() => fileDurations(output, ONE, REPO_ROOT)).toThrow(/not one duration among them/);
-  });
-
-  // The skipped mark is why that refusal reads a second pattern rather than counting lines: a skipped file
-  // carries no duration honestly, so a suite behind a `skipIf` must report nothing rather than fail
-  it('says nothing about a run whose every file was skipped, which carries no durations', () => {
-    expect(fileDurations(' ↓ tests/database/write-lock.spec.ts (4 tests)', ONE, REPO_ROOT)).toEqual([]);
-  });
-
-  it('says nothing about an output that reported no files at all', () => {
-    expect(fileDurations('some output with no file lines\n\n Test Files  no tests\n', ONE, REPO_ROOT)).toEqual([]);
+  it('drops a module that did not run, which reports 0 rather than nothing', () => {
+    const run = reported(
+      mod('@abuddy/host', 'tests/database/write-lock.spec.ts', 4890),
+      mod('@abuddy/host', 'tests/skipped-entirely.spec.ts', 0, true),
+    );
+    expect(durationsOf(run, ONE)).toEqual([row('abuddy-host', 'tests/database/write-lock.spec.ts', 4890)]);
   });
 
   it('takes a half from the filename, as every other consumer of a spec path does', () => {
-    const output = [
-      ' ✓ |@abuddy/cli| tests/build/facade-typing.integration.spec.ts (2 tests) 39800ms',
-      ' ✓ |@abuddy/cli| tests/commands/run-install.spec.ts (9 tests) 3234ms',
-    ].join('\n');
     const covered = UNIT_SUITES.filter((suite) => suite.dir === 'abuddy-cli');
-    expect(fileDurations(output, covered, REPO_ROOT).map((found) => found.half)).toEqual(['integration', 'fast']);
+    const run = reported(
+      mod('@abuddy/cli', 'tests/build/facade-typing.integration.spec.ts', 39800),
+      mod('@abuddy/cli', 'tests/commands/run-install.spec.ts', 3234),
+    );
+    expect(durationsOf(run, covered).map((found) => found.half)).toEqual(['integration', 'fast']);
   });
 
-  it('leaves a per-test line alone, which carries no test count and no path', () => {
-    expect(fileDurations('   ✓ a suite > a slow case 830ms', ONE, REPO_ROOT)).toEqual([]);
+  it('says nothing about a run that reported no modules', () => {
+    expect(durationsOf({ projects: ['@abuddy/host'], modules: [] }, ONE)).toEqual([]);
   });
 
-  // Named rather than dropped: the one way it happens is vitest changing how it labels a project, and a
-  // silent drop takes the file out of the ranking, the gate and the cache at once
-  it('refuses a file it cannot attribute to any covered suite', () => {
-    expect(() => fileDurations(' ✓ tests/nowhere/invented.spec.ts (1 test) 10ms', ONE, REPO_ROOT))
-      .toThrow(/belongs to none of the 1 suite/);
+  // Named rather than dropped: a silent drop takes the file out of the ranking, the gate and the cache at
+  // once. The cause is narrower than it was — a workspace name and its vitest project name having
+  // diverged — and it is the same divergence `projectsThatDidNotRun` refuses on
+  it('refuses a module whose project is none of the covered suites', () => {
+    const run = reported(mod('@abuddy/no-such-project', 'tests/a.spec.ts', 10));
+    expect(() => durationsOf(run, ONE)).toThrow(/is none of the 1 suite/);
   });
 });
 
@@ -347,6 +321,139 @@ describe('the duration cache', () => {
     const root = tmpdir();
     writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', 10)], '2026-10-05T12:00:00.000Z');
     expect(readDurations(root, 'abuddy-host', 'fast')?.measuredAt).toBe('2026-10-05T12:00:00.000Z');
+  });
+});
+
+/**
+ * The window each record keeps, and the one thing it must not become.
+ *
+ * It holds `KEPT_RUNS` readings so a creep is visible on a line already being printed. What it is *not* is
+ * the window this branch deleted: that one chose which half a spec belonged in, and because the choice was
+ * impossible the readings needed hysteresis, a band, a tie rule, a machine field and two idle floors.
+ * Nothing compares these against an edge, which is why there is no threshold here to get wrong.
+ */
+/**
+ * A half's whole weight, which is the number a ranking cannot give.
+ *
+ * The two come apart exactly where it matters: measured 2026-10-05, the five slowest files hold 46% of
+ * `repo-checks`' fast half and 97% of `abuddy-sdk`'s. And the shape no top-five can show at all is many
+ * files each creeping a little — 349 of 388 fast-half files are under 500ms and total 24.1s between them,
+ * so every one of them could double without entering any ranking.
+ */
+/**
+ * What a run measured, as against what the machine happens to hold.
+ *
+ * A pool runs only the projects whose inputs moved, so a step can run, find none of them stale and measure
+ * nothing at all. Observed before this filter existed: a chain step returned in 0.8s and printed 17.3s of
+ * file time over 100 files, which a direct run minutes earlier had measured. True of the machine, false of
+ * that step. `since` is what makes the report a claim about one run.
+ */
+describe('cachedDurations', () => {
+  const ONE_SUITE = UNIT_SUITES.filter((suite) => suite.dir === 'abuddy-host');
+  const withRun = (measuredAt: string): string => {
+    const root = tmpdir();
+    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', 1200)], measuredAt);
+    return root;
+  };
+
+  it('reads what the cache holds when no run is named', () => {
+    expect(cachedDurations(withRun('2026-10-01T00:00:00.000Z'), ONE_SUITE, 'fast')).toHaveLength(1);
+  });
+
+  it('keeps a record the named run wrote', () => {
+    const root = withRun('2026-10-02T00:00:00.000Z');
+    expect(cachedDurations(root, ONE_SUITE, 'fast', new Date('2026-10-01T00:00:00.000Z'))).toHaveLength(1);
+  });
+
+  // The firing case: the step ran, measured nothing, and the records predate it
+  it('leaves out a record older than the run being reported on', () => {
+    const root = withRun('2026-10-01T00:00:00.000Z');
+    expect(cachedDurations(root, ONE_SUITE, 'fast', new Date('2026-10-02T00:00:00.000Z'))).toEqual([]);
+  });
+});
+
+describe('halfTotal', () => {
+  const rows = [
+    row('abuddy-host', 'tests/a.spec.ts', 1200),
+    row('abuddy-host', 'tests/b.spec.ts', 300),
+    row('abuddy-cli', 'tests/c.integration.spec.ts', 40_000),
+  ];
+
+  it('sums one half and counts its files, leaving the other half out', () => {
+    expect(halfTotal(rows, 'fast')).toEqual({ ms: 1500, files: 2 });
+    expect(halfTotal(rows, 'integration')).toEqual({ ms: 40_000, files: 1 });
+  });
+
+  it('is zero over no files, which is a total and not an absence', () => {
+    expect(halfTotal([], 'fast')).toEqual({ ms: 0, files: 0 });
+  });
+});
+
+describe('the duration window', () => {
+  it('keeps the newest run first and the older ones behind it', () => {
+    const root = tmpdir();
+    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', 1200)], '2026-10-01T00:00:00.000Z');
+    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', 2900)], '2026-10-02T00:00:00.000Z');
+    const runs = readDurationRuns(root, 'abuddy-host', 'fast')!;
+    expect(runs.map((run) => run.measuredAt)).toEqual(['2026-10-02T00:00:00.000Z', '2026-10-01T00:00:00.000Z']);
+    expect(readDurations(root, 'abuddy-host', 'fast')!.ms['tests/a.spec.ts'], 'the newest is what prices a plan').toBe(2900);
+  });
+
+  // Bounded is the whole claim: the file count never moves, so `pruneDurationCache` still answers for
+  // every name in the directory, and what a record holds cannot grow without limit either
+  it(`keeps at most ${KEPT_RUNS} runs`, () => {
+    const root = tmpdir();
+    for (let n = 0; n < KEPT_RUNS + 4; n += 1) {
+      writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', n)], `2026-10-01T00:00:${String(n).padStart(2, '0')}.000Z`);
+    }
+    const runs = readDurationRuns(root, 'abuddy-host', 'fast')!;
+    expect(runs).toHaveLength(KEPT_RUNS);
+    expect(runs[0]!.ms['tests/a.spec.ts'], 'the newest survives').toBe(KEPT_RUNS + 3);
+  });
+
+  // The uncommitted cache is rebuilt by any run, so refusing a record written before the window existed
+  // would lose a measurement for nothing
+  it('reads a record from before the window as a window of one', () => {
+    const root = tmpdir();
+    fs.mkdirSync(durationCacheDir(root), { recursive: true });
+    fs.writeFileSync(path.join(durationCacheDir(root), 'abuddy-host.fast.json'),
+      JSON.stringify({ measuredAt: '2026-10-01T00:00:00.000Z', ms: { 'tests/a.spec.ts': 500 } }));
+    expect(readDurationRuns(root, 'abuddy-host', 'fast')).toHaveLength(1);
+    expect(readDurations(root, 'abuddy-host', 'fast')!.ms['tests/a.spec.ts']).toBe(500);
+  });
+
+  it('has no window where no run has measured, and none for a half-written file', () => {
+    const root = tmpdir();
+    expect(readDurationRuns(root, 'abuddy-host', 'fast')).toBeUndefined();
+    fs.mkdirSync(durationCacheDir(root), { recursive: true });
+    fs.writeFileSync(path.join(durationCacheDir(root), 'abuddy-host.fast.json'), '{"runs": [{"measu');
+    expect(readDurationRuns(root, 'abuddy-host', 'fast')).toBeUndefined();
+  });
+});
+
+describe('trendOf', () => {
+  const twoRuns = (first: number, second: number): string => {
+    const root = tmpdir();
+    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', first)], '2026-10-01T00:00:00.000Z');
+    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', second)], '2026-10-02T00:00:00.000Z');
+    return root;
+  };
+
+  it('reports the oldest reading the window holds, and how many it rests on', () => {
+    expect(trendOf(twoRuns(1200, 2900), 'abuddy-host', 'fast', 'tests/a.spec.ts')).toEqual({ was: 1200, runs: 2 });
+  });
+
+  // No verdict and no threshold: a drop is reported exactly as a rise is, because nothing acts on either
+  it('reports a spec that got faster the same way', () => {
+    expect(trendOf(twoRuns(2900, 1200), 'abuddy-host', 'fast', 'tests/a.spec.ts')).toEqual({ was: 2900, runs: 2 });
+  });
+
+  it('has nothing to say about a window of one, or a spec the window has not seen twice', () => {
+    const root = tmpdir();
+    writeDurations(root, [row('abuddy-host', 'tests/a.spec.ts', 1200)], '2026-10-01T00:00:00.000Z');
+    expect(trendOf(root, 'abuddy-host', 'fast', 'tests/a.spec.ts'), 'one reading is not a trend').toBeUndefined();
+    writeDurations(root, [row('abuddy-host', 'tests/b.spec.ts', 90)], '2026-10-02T00:00:00.000Z');
+    expect(trendOf(root, 'abuddy-host', 'fast', 'tests/b.spec.ts'), 'seen in one run of two').toBeUndefined();
   });
 });
 

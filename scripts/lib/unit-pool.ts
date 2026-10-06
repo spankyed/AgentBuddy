@@ -15,6 +15,8 @@ import { diffableStamp, REPO_ROOT, stampedRunAll, type BuildUnit, type StampedUn
 import { INTEGRATION_SUITES, suiteInputs } from './chain-steps.ts';
 import { CONFIG_BY_HALF, type Half } from './spec-halves.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
+import type { ReportedRun } from './spec-durations-reporter.ts';
+import { asDuration, cachedDurations, halfTotal, markedSpecs, slowestFiles, trendOf } from './spec-durations.ts';
 
 /**
  * Beside the package builds' and the chain's stamps, in the same cache directory and the same format, so one
@@ -94,6 +96,18 @@ const projectArgs = (suites: readonly UnitSuite[]): string[] =>
   suites.flatMap((suite) => ['--project', suite.workspace]);
 
 /**
+ * The durations reporter, on every pool's invocation.
+ *
+ * `--reporter=default` goes with it because naming any reporter *replaces* the human output — the same
+ * rule `scripts/spec.ts` handles for the count reporter. The pool names the destination in the
+ * environment, so this path is stable and belongs in the fingerprint: a change to what the reporter
+ * records is a change to what a run proves, which is exactly the kind of thing `poolUnitFor`'s command
+ * text exists to notice.
+ */
+const REPORTER = path.join(REPO_ROOT, 'scripts', 'lib', 'spec-durations-reporter.ts');
+const reporterArgs = (): string[] => ['--reporter=default', `--reporter=${REPORTER}`];
+
+/**
  * The three pools: which half each one runs, which suites belong to it, and how it runs them.
  *
  * A pool is a resolution and a half, not a kind of test. `host` and `pack` split on resolution — Node
@@ -114,19 +128,20 @@ export const POOLS = {
     half: 'fast' as Half,
     suites: () => UNIT_SUITES.filter((suite) => suite.kind === 'host'),
     // with-source supplies the @abuddy/source condition the host suites resolve under
-    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'node', args: ['scripts/with-source.mjs', 'npx', 'vitest', 'run', ...projectArgs(stale)] }],
+    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'node', args: ['scripts/with-source.mjs', 'npx', 'vitest', 'run', ...projectArgs(stale), ...reporterArgs()] }],
   },
   pack: {
     half: 'fast' as Half,
     suites: () => UNIT_SUITES.filter((suite) => suite.kind === 'pack'),
-    run: (stale: readonly UnitSuite[]) => stale.map((suite) => ({ suites: [suite], command: 'npm', args: ['test', '-w', suite.workspace] })),
+    // `--` so npm forwards the reporter flags to vitest rather than reading them itself
+    run: (stale: readonly UnitSuite[]) => stale.map((suite) => ({ suites: [suite], command: 'npm', args: ['test', '-w', suite.workspace, '--', ...reporterArgs()] })),
   },
   integration: {
     half: 'integration' as Half,
     suites: () => INTEGRATION_SUITES,
     // The root integration config declares the condition itself, and carries the worker cap that makes this
     // pool faster at half the cores than at all of them
-    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'npx', args: ['vitest', 'run', '--config', CONFIG_BY_HALF.integration, ...projectArgs(stale)] }],
+    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'npx', args: ['vitest', 'run', '--config', CONFIG_BY_HALF.integration, ...projectArgs(stale), ...reporterArgs()] }],
   },
 } as const;
 
@@ -175,37 +190,6 @@ export const poolUnitFor = (suite: UnitSuite, pool: Pool): BuildUnit => ({
   command: POOLS[pool].run([suite]).map(({ command, args }) => [command, ...args].join(' ')).join(' && '),
 });
 
-// eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
-const ANSI = /\u001B\[[0-9;]*m/g;
-
-/**
- * **A project label has two forms, and which one you get is not this repo's choice.** vitest's
- * `formatProjectName` writes `|name|` only when colour is unsupported, and otherwise the name padded with a
- * space on each side, black on a background colour — so a TTY gets the second, and so does a pipe whose
- * environment sets `FORCE_COLOR`, which is how an agent's shell runs commands.
- *
- * Reading only the piped form is therefore a check that passes when colour is off and fails every
- * multi-project run when it is on: all eleven host projects reported absent, and the pool refused a run in
- * which every one of them had just passed. The piped form was the only one ever looked at, because the
- * fixture it was written against was invented rather than taken from a run.
- */
-// eslint-disable-next-line no-control-regex -- the colour is what identifies the label, so it is the anchor
-const COLOURED_LABEL = /^(?:\s|\u001B\[[0-9;]*m)*[✓×↓](?:\s|\u001B\[[0-9;]*m)*\u001B\[(?:4[0-7]|10[0-7])m ([^\u001B]+) \u001B\[49m/gm;
-const PIPED_LABEL = /^\s*[✓×↓]\s*\|([^|]+)\|/gm;
-
-/**
- * The projects a vitest run reported, from its own output.
- *
- * vitest labels every file with its project when a run covers more than one — `✓ |@abuddy/ears| tests/x.spec.ts`
- * — which is the only thing that says what a `--project` filter actually selected. Both label forms count;
- * the colours are stripped for the piped one and are the anchor for the other.
- */
-export function projectsThatRan(output: string): Set<string> {
-  const coloured = [...output.matchAll(COLOURED_LABEL)];
-  const piped = [...output.replace(ANSI, '').matchAll(PIPED_LABEL)];
-  return new Set([...coloured, ...piped].map(([, name]) => name));
-}
-
 /**
  * The projects a run was asked for and did not report.
  *
@@ -213,19 +197,62 @@ export function projectsThatRan(output: string): Set<string> {
  * measured, `--project @abuddy/ears --project @abuddy/no-such-project` runs ears, ignores the second and
  * exits 0 with no warning. Only a filter matching *nothing at all* is an error. So a suite whose workspace
  * stopped matching its vitest project name would be stamped as having passed a run it was excluded from,
- * and would then stay cached — the same "recorded fresh having never run" this pool was already fixed for
- * once, through a different door.
+ * and would then stay cached — "recorded fresh having never run", through a different door.
  *
  * Checked rather than adapted to. Stamping only what reported would make the run "correct" while quietly
  * testing less, which is the failure being prevented, just smaller.
  *
- * Only meaningful when a run covers more than one project: with a single project vitest prints no labels,
- * and the process exiting 0 is itself the evidence.
+ * **It reads the reporter's account, which closed two holes the console output could not.** Scraping the
+ * labels meant handling both of vitest's spellings — `|name|` without colour, a space-padded coloured name
+ * with it — and this repo had already shipped a version reading only the first, which reported all eleven
+ * host projects absent from a run every one of them had passed. It also meant the answer was only
+ * available for a multi-project run, because vitest prints no label otherwise, and a project that ran
+ * *zero files* appeared in no output at all. The reporter names every project the run started
+ * (`onTestRunStart`), so both of those are gone and there is no longer a case this cannot answer.
  */
-export function projectsThatDidNotRun(asked: readonly string[], output: string): string[] {
-  if (asked.length < 2) return [];
-  const ran = projectsThatRan(output);
-  return asked.filter((project) => !ran.has(project));
+export function projectsThatDidNotRun(asked: readonly string[], run: ReportedRun): string[] {
+  const reported = new Set(run.projects);
+  return asked.filter((project) => !reported.has(project));
+}
+
+/**
+ * What a finished pool run measured, as lines for whoever reports on it.
+ *
+ * Here rather than in either caller because both need it and neither performed the run: `scripts/chain.ts`
+ * and `scripts/test-unit.ts` each spawn a pool and buffer its output, printing it only on failure — so
+ * until this existed the ranking the pool printed reached nobody running `npm run chain` or
+ * `npm run test:unit`, which are the two commands anyone runs. It reads what the run *wrote* rather than
+ * parsing what it printed, so there is nothing to keep in step with vitest.
+ *
+ * The half's total comes first because it is the number a ranking cannot give: measured 2026-10-05, the
+ * five slowest files hold 46% of `repo-checks`' fast half and 97% of `abuddy-sdk`'s, and the shape no
+ * top-five can show at all is many files each creeping a little — 349 of 388 fast-half files are under
+ * 500ms and total 24.1s between them.
+ *
+ * **Only what the run being reported on actually measured**, which `since` is for. A pool runs the projects
+ * whose inputs moved, so a step can run, find none of them stale and measure nothing — and a chain step in
+ * exactly that state was observed returning in 0.8s and printing 17.3s of file time over 100 files that a
+ * direct run minutes earlier had measured. True of the machine, and not of that step. A record older than
+ * `since` is left out, so a partial run reports its own subset and a run that measured nothing reports
+ * nothing.
+ */
+export function poolDurationLines(pool: Pool, width: number, since: Date): string[] {
+  const { half, suites } = POOLS[pool];
+  const covered = suites();
+  const rows = cachedDurations(REPO_ROOT, covered, half, since);
+  if (rows.length === 0) return [];
+  const total = halfTotal(rows, half);
+  const marked = new Map(covered.map((suite) => [suite.dir, markedSpecs(path.join(REPO_ROOT, 'packages', suite.dir))]));
+  return [
+    `${asDuration(total.ms).padStart(width)}  ${half} half, ${total.files} file(s) this run measured`,
+    ...slowestFiles(rows, half).map((row) => {
+      const reason = marked.get(row.dir)?.get(row.file);
+      // The window's oldest reading beside the newest, which is the only thing the history is printed for
+      const trend = trendOf(REPO_ROOT, row.dir, half, row.file);
+      const moved = trend === undefined ? '' : `  (was ${asDuration(trend.was)} over ${trend.runs} runs)`;
+      return `${asDuration(row.ms).padStart(width)}  ${row.dir}/${row.file}${moved}${reason === undefined ? '' : `  @slow: ${reason}`}`;
+    }),
+  ];
 }
 
 /**

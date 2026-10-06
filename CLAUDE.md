@@ -195,7 +195,11 @@ So the half is a decision now, declared by a filename, and nothing re-derives it
 record, in three places: vitest prints any test over its 300ms `slowTestThreshold` under its file, the
 chain prints each step's five slowest tests (`slow-tests.ts`), and each unit pool prints its five slowest
 *files* per half, ranked, which is the one thing vitest's output does not give
-(`scripts/lib/spec-durations.ts`). A spec may say in its header why it is slow — `// @slow: <reason>` — and
+(`scripts/lib/spec-durations.ts`), **with each half's total beside it**, since a ranking says what is worst
+and never whether a half is getting heavy — measured, the five slowest hold 46% of one suite's fast half and
+97% of another's. Both reach `npm run chain` and `npm run test:unit`, which buffer a step's output and print
+it only on failure: until that was wired the pools printed a ranking nobody running either command saw.
+A spec may say in its header why it is slow — `// @slow: <reason>` — and
 the pool holds that marker to still being true: a marked spec that is no longer in its half's slow tail
 fails the step, quoting the reason, so the remedy is to drop the marker. **Only that direction is a gate.**
 Load inflates a duration — 1.27x median, 3.29x at worst — so it can hide a stale marker and cannot invent
@@ -204,6 +208,15 @@ from the same run, so a slow run moves the file and the bar together, which is w
 could not do: measured, it left two of the five markers 13% clear of a 2,500ms edge and 5.2x clear of this
 one. **The lesson for a future sample: price the apparatus against the decision it informs.** 1,884 lines, twelve records, two idle floors and a machine identity decided which of
 two config files a spec was listed in, where nine of twelve packages had only one config to begin with.
+
+**One window came back, and it is worth saying why it is not a sample in the fatal sense.** The duration
+cache (`scripts/lib/spec-durations.ts`) keeps ten readings per suite and half. It is uncommitted, it cannot
+leave the machine that wrote it, and **nothing compares it against an edge** — its whole output is one
+`(was Xs over N runs)` column on the five slowest files a pool already prints. That is the distinction to
+carry: what made `spec-cost.json` cost 1,884 lines was not keeping readings, it was *deciding* with them.
+A record that informs a column needs no hysteresis, no band, no tie rule, no machine field and no idle
+floor, because there is no threshold for a reading to be wrong about. The file count does not grow either,
+so the prune still answers for every name in the directory.
 
 **The chain's `seconds` table is the sample-shaped thing that remains**, and it is a different case: its
 subject is one machine by declaration (`MEASURED_ON`), `--record` refuses any other, and its drift report
@@ -465,7 +478,15 @@ npm run spec:dry [...]   # What the plan would run, and what the last run on thi
                          # no run here has measured is named rather than counted free. A fresh clone prices
                          # nothing and says so. It replaced `spec-cost.json`, which held a millisecond per
                          # spec in git and needed a window, a band and two idle floors to be comparable at
-                         # all. The ordinary `npm run spec` collects nothing
+                         # all. The ordinary `npm run spec` collects nothing.
+                         # **That cache keeps a window too, and the difference from the deleted one is what
+                         # it is for**: ten runs per suite and half (`KEPT_RUNS`), uncommitted, feeding one
+                         # `(was Xs over N runs)` column on five lines the pools already print. The old
+                         # window *decided* a spec's half, and because that decision was impossible it
+                         # needed hysteresis, a band, a tie rule, a machine field and two idle floors to be
+                         # comparable. Nothing compares this one against an edge, so there is no threshold
+                         # to get wrong — which is also why the output is bounded to a list that was already
+                         # bounded rather than to whatever crossed a line
 npm run spec:full [...]  # The same, plus the two answers the module graph cannot give: the pack suites a
                          # rebuilt dist would reach, and the integration halves behind a second config.
                          # Costs a build when one is stale (14s), the pack suite (18s) and the pooled

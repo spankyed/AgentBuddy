@@ -16,44 +16,45 @@
  * condition, a `default-setup` spec resolves `@abuddy/sdk` to `src` where it resolves `dist` today. One
  * pool would not have failed; it would have quietly tested something else.
  *
- * `packages:ensure` runs once up front because npm `pretest` hooks do not fire under a root run.
+ * `packages:ensure` is not run here: each pool run does it, for the reason npm `pretest` hooks do not fire
+ * under a root run. Doing it in the driver as well invoked it three times for one command.
  */
-import { execFileSync } from 'node:child_process';
 import * as os from 'node:os';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 import { POOL_SECONDS } from './lib/chain-steps.ts';
 import { MEASURED_ON } from './lib/core-budget.ts';
 import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
 import { UNIT_SUITES } from './lib/unit-suites.ts';
+import { poolDurationLines, type Pool as PoolKind } from './lib/unit-pool.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
 
-const hostSuites = UNIT_SUITES.filter((suite) => suite.kind === 'host');
-const packSuites = UNIT_SUITES.filter((suite) => suite.kind === 'pack');
-
 /**
- * `seconds` is what the whole pool costs healthy, and only the host pool has one: the pack entries below are
- * a run per workspace, where `POOL_SECONDS.pack` describes all of them together and so describes none of
- * them. A run with no recorded cost gets the arm of the timeout message that says so rather than a rope
- * computed from the wrong number.
+ * The two pools this command runs, each through `scripts/test-unit-pool.ts`.
+ *
+ * **It used to spawn vitest itself, with its own copy of what a pool is**, and the copy is what made that
+ * wrong rather than merely duplicated: `scripts/lib/unit-pool.ts` is where a pool's half, suites and
+ * invocation are declared, and everything the pool runner has gained since — the durations reporter, the
+ * `@slow:` marker gate, the per-file ranking, the duration cache — lived on the other side of a seam this
+ * command never crossed. So `npm run test:unit`, the command a person runs by hand, was the one that
+ * checked the markers least.
+ *
+ * `--all` because this command means *all the unit tests*. The pool runner's per-project staleness is for
+ * the chain, which asks what changed; asked by hand, the answer should not depend on what a previous run
+ * happened to cover.
+ *
+ * `integration` is not here: it is `npm run test:integration`, its own pool and its own chain step.
  */
-interface Pool { label: string; command: string; args: string[]; seconds?: number }
+interface Pool { label: string; kind: PoolKind; seconds: number }
 
-/**
- * The host pool is the root `vitest.config.ts`, whose `projects` are these same suites; the pack pool is
- * each pack suite's own run. Both are derived from `UNIT_SUITES`, so nothing here lists a package twice.
- */
-const POOLS: Pool[] = [
-  {
-    label: `host pool (${hostSuites.length} suites)`,
-    // with-source supplies the @abuddy/source condition the host suites resolve under
-    command: 'node',
-    args: ['scripts/with-source.mjs', 'npx', 'vitest', 'run'],
-    seconds: POOL_SECONDS.host,
-  },
-  ...packSuites.map((suite) => ({ label: suite.workspace, command: 'npm', args: ['test', '-w', suite.workspace] })),
-];
+const POOLS: Pool[] = (['host', 'pack'] as const).map((kind) => ({
+  // Named rather than counted where there is one, since `pack pool (1 suite)` says less than the suite does
+  label: ((held: readonly { workspace: string }[]) =>
+    `${kind} pool (${held.length === 1 ? held[0]!.workspace : `${held.length} suites`})`)(UNIT_SUITES.filter((suite) => suite.kind === kind)),
+  kind,
+  seconds: POOL_SECONDS[kind],
+}));
 
 const cpus = os.availableParallelism?.() ?? os.cpus().length;
 
@@ -73,7 +74,8 @@ interface Result { pool: string; code: number; ms: number; output: string; why?:
 async function run(pool: Pool): Promise<Result> {
   // `suite` is five minutes, and the slowest pool is ~22s alone — so this says wedged rather than slow.
   // It was `budgetFor(75)`, which reached the same number through a measurement nobody took.
-  const { code, output, ms, timedOut } = await boundedSpawn(pool.command, pool.args, TIMEOUT_MS.suite.ms);
+  const { code, output, ms, timedOut } = await boundedSpawn('npx',
+    ['tsx', 'scripts/test-unit-pool.ts', pool.kind, '--all'], TIMEOUT_MS.suite.ms);
   // A kill used to be the word `TIMEOUT` in the status column and nothing else — no class, no cost, no rope —
   // on the one rung whose stretch factor is the measured one
   const why = timedOut
@@ -81,7 +83,7 @@ async function run(pool: Pool): Promise<Result> {
       what: pool.label,
       timeout: 'suite',
       measuredOn: MEASURED_ON,
-      ...pool.seconds === undefined ? {} : { seconds: pool.seconds },
+      seconds: pool.seconds,
     })
     : undefined;
   return { pool: pool.label, code, ms, output, ...(why === undefined ? {} : { why }) };
@@ -89,7 +91,6 @@ async function run(pool: Pool): Promise<Result> {
 
 async function main(): Promise<void> {
   console.log(`${POOLS.length} pools over ${UNIT_SUITES.length} suites, one at a time (${cpus} cpus)`);
-  execFileSync('npm', ['run', 'packages:ensure'], { stdio: 'inherit' });
 
   const started = Date.now();
   const results: Result[] = [];
@@ -97,6 +98,8 @@ async function main(): Promise<void> {
     const result = await run(pool);
     results.push(result);
     console.log(`  ${(result.code === 0 ? 'ok' : result.why ? 'TIMEOUT' : 'FAIL').padEnd(7)} ${result.pool.padEnd(22)} ${(result.ms / 1000).toFixed(1)}s`);
+    // What that pool measured, since its own output is buffered and printed only on failure
+    if (result.code === 0) for (const line of poolDurationLines(pool.kind, 8, new Date(Date.now() - result.ms))) console.log(`  ${line}`);
   }
 
   const failed = results.filter((result) => result.code !== 0);

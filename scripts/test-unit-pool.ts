@@ -14,16 +14,20 @@
  * does not know about: the pool steps declare `forceArgs` so the flag arrives.
  */
 import { execFileSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { diffableStamp, firstChange, freshnessSweep, REPO_ROOT, stampRecord } from '@abuddy/host/build/packages-built';
 import type { UnitSuite } from './lib/unit-suites.ts';
 import { POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool } from './lib/unit-pool.ts';
+import type { ReportedRun } from './lib/spec-durations-reporter.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 import { POOL_SECONDS } from './lib/chain-steps.ts';
 import { MEASURED_ON } from './lib/core-budget.ts';
 import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
-import { asDuration, fileDurations, markedSpecs, placementOf, pruneDurationCache, slowestFiles, tailBar, writeDurations } from './lib/spec-durations.ts';
+import { asDuration, durationsOf, halfTotal, markedSpecs, trendOf, placementOf, pruneDurationCache, slowestFiles, tailBar, writeDurations } from './lib/spec-durations.ts';
+import { readReportedRun, SPEC_DURATIONS_FILE } from './lib/spec-durations-reporter.ts';
 import { HALVES } from './lib/spec-halves.ts';
 
 exitOnEpipe();
@@ -66,11 +70,12 @@ function decide(suites: readonly UnitSuite[], pool: Pool, all: boolean): Array<{
  * **It throws from inside the stamped thunk.** A gate that reported after the stamps were written would be
  * green on the next run having never re-asked, which is the defect `DIAGNOSTIC_RUN_ENV` exists for.
  */
-function reportDurations(kind: Pool, covered: readonly UnitSuite[], output: string): void {
-  const rows = fileDurations(output, covered, REPO_ROOT);
+function reportDurations(kind: Pool, covered: readonly UnitSuite[], reported: ReportedRun): void {
+  const rows = durationsOf(reported, covered);
   // A run whose every file was skipped reports no durations, and a ranking of nothing is not a finding.
   // **Not "all cached"**, which this cannot be reached for — `main` returns before building `runs` when
-  // nothing is stale. The other way to get here, a reporter whose format moved, `fileDurations` refuses.
+  // nothing is stale. And no longer "the reporter's format moved" either: a reporter that did not run
+  // writes no file, which `readReportedRun` answers `undefined` for and the caller refuses on.
   if (rows.length === 0) return;
   // Written whether or not this run may record a verdict. A duration is a measurement, true whoever asked
   // for it — the same reason `recordRun` suppresses a stamp and `ensurePackagesBuilt` does not suppress a
@@ -88,11 +93,14 @@ function reportDurations(kind: Pool, covered: readonly UnitSuite[], output: stri
     const ranked = slowestFiles(rows, half);
     if (ranked.length === 0) continue;
     const bar = tailBar(rows, half)!;
-    console.log(`${kind} pool: the ${half} half's slowest files, of ${rows.filter((row) => row.half === half).length} measured (p90 ${asDuration(bar)})`);
+    const total = halfTotal(rows, half);
+    console.log(`${kind} pool: the ${half} half is ${asDuration(total.ms)} of file time over ${total.files} file(s); its slowest (p90 ${asDuration(bar)})`);
     const width = Math.max(...ranked.map((row) => `${row.dir}/${row.file}`.length));
     for (const row of ranked) {
       const named = `${row.dir}/${row.file}`;
-      const note = marked.get(row.dir)?.get(row.file) ?? (missing.has(named) ? 'no @slow: marker' : '');
+      const trend = trendOf(REPO_ROOT, row.dir, half, row.file);
+      const moved = trend === undefined ? '' : ` (was ${asDuration(trend.was)} over ${trend.runs} runs)`;
+      const note = `${marked.get(row.dir)?.get(row.file) ?? (missing.has(named) ? 'no @slow: marker' : '')}${moved}`.trim();
       console.log(`  ${asDuration(row.ms).padStart(7)}  ${note === '' ? named : `${named.padEnd(width)}  ${note}`}`);
     }
   }
@@ -110,6 +118,9 @@ function reportDurations(kind: Pool, covered: readonly UnitSuite[], output: stri
     ].join('\n'));
   }
 }
+
+/** Where each run's reporter writes, one file per run, removed with the process */
+const reports = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-durations-'));
 
 async function main(): Promise<void> {
   // Refused rather than defaulted. With two pools a typo ran the host pool, which at least ran something;
@@ -167,7 +178,9 @@ async function main(): Promise<void> {
         // it is the rung that stretches most on a smaller box. The *deadline* is never `POOL_SECONDS`, which
         // is this machine's measurement and so would be this machine's deadline (`step-timeouts.ts`); the
         // message below reads that cost, which is a different use of it and the one it is for.
-        const { code, output, timedOut } = await boundedSpawn(command, [...args], TIMEOUT_MS.suite.ms);
+        const reportFile = path.join(reports, `${covered.map((suite) => suite.dir).join('+')}.json`);
+        const { code, output, timedOut } = await boundedSpawn(command, [...args], TIMEOUT_MS.suite.ms,
+          { env: { ...process.env, [SPEC_DURATIONS_FILE]: reportFile } });
         process.stdout.write(output);
         if (code !== 0) {
           // `POOL_SECONDS` only where this run is the whole pool, which is the one thing that cost describes
@@ -184,11 +197,19 @@ async function main(): Promise<void> {
         }
         // Only what the run reported may be stamped: a `--project` filter matching nothing is dropped
         // silently while the others run, so exiting 0 is not evidence that every project was covered.
-        const absent = projectsThatDidNotRun(covered.map((suite) => suite.workspace), output);
+        // The reporter's own account of the run, which is what every verdict below reads. A missing file
+        // is refused rather than read as an empty run: a reporter that stopped being called would
+        // otherwise leave the project check with nothing to find absent and the marker gate with nothing
+        // to check, both reporting success.
+        const reported = readReportedRun(reportFile);
+        if (reported === undefined) {
+          throw new Error(`${kind} pool ran and its durations reporter wrote nothing to ${reportFile} — the reporter did not run, so nothing in this run was measured, no @slow: marker was checked and no project was confirmed to have reported. scripts/lib/spec-durations-reporter.ts pins its hooks against vitest's own interface, so a typecheck will name the cause`);
+        }
+        const absent = projectsThatDidNotRun(covered.map((suite) => suite.workspace), reported);
         if (absent.length > 0) {
           throw new Error(`${kind} pool asked vitest for ${covered.length} projects and ${absent.join(', ')} never reported — a --project filter matched nothing, so their names and vitest's project names have diverged`);
         }
-        reportDurations(kind, covered, output);
+        reportDurations(kind, covered, reported);
       },
     );
   }

@@ -164,9 +164,34 @@ Both phases answered from the three runs the prior goal captured, so no fresh me
 
 ### Open items
 
-- **The recommendation**: move `measure()`'s numbers to the pooled run via vitest's JSON reporter. The prior spike established the mechanism works (absolute paths, alongside the human reporter, verified on a multi-project run); this one supplies the reason, with a named victim.
+- ~~**The recommendation**: move `measure()`'s numbers to the pooled run via vitest's JSON reporter.~~ **Done 2026-10-06, and the reporter is not the `json` one.** Verified against vitest 3.2.4: `json` carries **no per-file duration** — only a span between a module's first and last *test*, which excludes file-level hooks and collection, measured 0.5–42ms low per file and ~30% low on a small one — and **no project name anywhere**. `junit` carries the exact duration but still no project name. A custom `onTestRunEnd` reporter carries all three, and `diagnostic().duration` is the identical field the console prints: verified equal for 12 of 12 files in one run. `scripts/lib/spec-durations-reporter.ts` is it, on the pattern `spec-count-reporter.ts` already established (hooks pinned with `satisfies keyof Reporter`, so a vitest upgrade is a compile error; destination from the environment; prints nothing). It also closed a hole no output-based answer could: a project that ran *zero files* appears in no reporter's output, so `projectsThatDidNotRun` could only ever answer for a multi-project run — it names every project the run started now.
 - `run-install.spec.ts` may genuinely belong in `@abuddy/cli`'s integration half. Worth confirming once the measurement context is fixed, since that is what would decide it.
 - A per-spec reference, rather than a per-run one, is the only version of Phase 1 that could collapse the "in both runs" count. Unmeasured, and a larger design than this goal asked about.
+
+## What was given up, and what turned out not to be a loss (2026-10-06)
+
+A review of the deletion named four losses. One was real and is closed; one dissolves on reading the repo's
+own rules; two stand.
+
+- **A spec no config collects** was the real one, and it was reachable: every config's include is `tests/**`,
+  so a spec in `src/` is matched by nothing — planted one and vitest collected 0 files. The deleted
+  `suite-split.spec.ts` caught it as a side effect of recording every spec's cost ("records every spec, so a
+  new one cannot be placed by accident"). `spec-placement.spec.ts` now asks it directly, with the included
+  and excluded roots read off the configs rather than restating the `tests/` convention.
+- **"CI has no baseline" is not a loss.** The committed records could have been compared against by a
+  runner, but a runner must never compare against them: *"CI may fail a check, never a clock. A runner is
+  smaller and noisier than any developer's box, so anything gating on wall-clock there manufactures flakes
+  that read as code failures."* The door being shut is the policy, so there is nothing to recover.
+- **No per-spec cost history across machines or clones**, and that stands. What replaced it is a ten-run
+  window inside the uncommitted cache, which answers "has this crept" on one box and informs one column.
+  The measured size of what nothing watches: 349 of 388 fast-half files are under 500ms and total 24.1s, so
+  each could double without entering any top five — but correlated creep across many specs is what the
+  chain's step-level `seconds` drift already reports, and a single spec that grows enters the ranking by
+  definition. The gap is ~15 mid-size specs, worth a second or two on a 109s half.
+- **Placement is reported rather than enforced**, and that stands too, deliberately: the enforcement given
+  up was demanding moves the other pool's reading demanded back. What is new is that the report now says
+  whether a half is getting heavy rather than only which file is worst, and that it reaches the two commands
+  anyone runs.
 
 ## Constraints
 

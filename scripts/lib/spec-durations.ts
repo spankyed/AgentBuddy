@@ -1,5 +1,5 @@
 /**
- * What each spec file took in the run that just happened, read back from that run's own output.
+ * What each spec file took in the run that just happened, as that run's own reporter recorded it.
  *
  * Three consumers: the pool prints its slowest files, a `@slow:` marker on a spec that is no longer slow
  * fails the step, and `spec:dry` prices a plan from the last run on this machine. All three are answered
@@ -17,47 +17,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { CONFIG_BY_HALF, HALVES, halfOfPath, specFiles, type Half } from './spec-halves.ts';
+import type { ReportedRun } from './spec-durations-reporter.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
-
-// eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
-const ANSI = /\u001B\[[0-9;]*m/g;
-
-/**
- * A reporter line for a whole file: the mark, an optional project label, the path, the test count and the
- * time. The count is what distinguishes a file's line from a test's, which carries neither it nor a path.
- *
- * **The unit arm is tolerance, not a branch any input reaches.** vitest 3.2.4 writes a file's duration
- * with `getDurationPrefix`, which rounds to milliseconds unconditionally — `4851ms`, never `4.85s`; only
- * the run's own summary uses seconds. So the `s` arm cannot fire today, nothing asserts that it does, and
- * the edit that would give it a case is vitest formatting a file's duration the way it formats the
- * summary's. It is kept because the cost is four characters and the failure it absorbs is silent.
- *
- * The label is optional because vitest prints one only when a run covers more than one project, and both
- * of its spellings reduce to one token here — `|name|` when colour is off, and ` name ` in a background
- * colour when it is on, which the strip above leaves as bare text. Matching the path by its extension
- * rather than by position is what lets one pattern read both.
- */
-const FILE = /^\s*[✓×↓❯]\s+(?:(\S+)\s+)?(\S+\.(?:spec|test)\.ts)\s+\([^)]*\)\s+([\d.]+)(ms|s)\b/;
-
-/**
- * The same line without its duration, which is the only thing that says the run reported files at all.
- *
- * It is what makes an empty parse tell its two causes apart. A reporter that changes how it writes a
- * duration leaves these lines matching and `FILE` matching nothing, which must fail — a gate reading no
- * files would otherwise pass having checked no marker, which is the "a check that reports nothing may
- * have looked at nothing" failure the root `CLAUDE.md` names and this repo has already shipped once, in
- * `projectsThatRan`. A run with no such line at all ran nothing, which is not a finding.
- *
- * **`↓` is excluded on purpose, and it is the reason this is a second pattern rather than a count.** A
- * skipped file is printed with no duration at all, so a suite whose every spec is behind a `skipIf` —
- * `default-setup`'s `claude-code-permission-flow.spec.ts` is one today — reports lines and no times
- * honestly. Counting those as evidence that the format moved would fail a run that was simply skipped.
- */
-// `m`, because this one is tested against the whole output rather than line by line, and `^` without it
-// anchors to the start of the string — which matched only when a file line happened to be the first line
-// of the run. The case that was meant to cover this passed for exactly that reason until a mutation of
-// `FILE` ran the real pool and the refusal did not fire.
-const FILE_REPORTED = /^\s*[✓×❯]\s+(?:\S+\s+)?\S+\.(?:spec|test)\.ts\s+\(/m;
 
 /**
  * Which quantile of a half counts as its slow tail.
@@ -118,49 +79,32 @@ export interface FileDuration {
 }
 
 /**
- * Which suite a reported file belongs to, from the label where there is one and from the path where there
- * is not.
- *
- * The two cover each other exactly, which is why both are here: a label is printed only when a run covers
- * two or more projects, and a path is ambiguous only when two covered suites hold the same relative path.
- * One pair does — `tests/source-layout.spec.ts` is in both `api` and `renderer` — and a run covering both
- * is a two-project run, so it has labels. A run with no label covers one suite, where the path cannot be
- * ambiguous at all.
- */
-function suiteOf(label: string | undefined, file: string, covered: readonly UnitSuite[], root: string): UnitSuite | undefined {
-  if (label !== undefined) {
-    const named = label.replace(/\|/g, '');
-    const found = covered.find((suite) => suite.workspace === named);
-    if (found !== undefined) return found;
-  }
-  const holding = covered.filter((suite) => fs.existsSync(path.join(root, 'packages', suite.dir, file)));
-  return holding.length === 1 ? holding[0] : undefined;
-}
-
-/**
  * Every file the run reported, attributed to the suite that holds it.
  *
- * Refuses a line it cannot attribute rather than dropping it. A silent drop here is a file missing from the
- * ranking, from the gate's population and from the cache at once, with nothing saying so — and the one way
- * it can happen is vitest changing how it labels a project, which this repo has already been bitten by
- * once (`projectsThatRan` read only the uncoloured spelling and reported all eleven projects absent).
+ * The reporter states the project, so attribution is a lookup rather than a recovery. It used to be
+ * both: a label when vitest printed one and the path when it did not, because a label appears only in a
+ * multi-project run — and the path is ambiguous for the one pair that collides, `tests/source-layout.spec.ts`
+ * in both `api` and `renderer`. The two covered each other exactly and neither is needed now.
+ *
+ * Skipped modules are dropped here rather than in the reporter. A skipped file reports a duration of 0
+ * rather than no duration, and counting those as readings would pull a half's quantile bar down with
+ * files that never executed — `default-setup`'s `claude-code-permission-flow` is one today.
+ *
+ * Refuses a module it cannot attribute rather than dropping it: a silent drop is a file missing from the
+ * ranking, from the gate's population and from the cache at once, with nothing saying so.
  */
-export function fileDurations(output: string, covered: readonly UnitSuite[], root: string): FileDuration[] {
+export function durationsOf(run: ReportedRun, covered: readonly UnitSuite[]): FileDuration[] {
+  const byWorkspace = new Map(covered.map((suite) => [suite.workspace, suite]));
   const rows: FileDuration[] = [];
-  for (const raw of output.replace(ANSI, '').split('\n')) {
-    const match = FILE.exec(raw);
-    if (match === null) continue;
-    const [, label, file, amount, unit] = match as unknown as [string, string | undefined, string, string, string];
-    const suite = suiteOf(label, file, covered, root);
+  for (const module of run.modules) {
+    if (module.skipped) continue;
+    const suite = byWorkspace.get(module.project);
     if (suite === undefined) {
-      throw new Error(`the run reported ${file}${label === undefined ? '' : ` under ${label}`} and it belongs to none of the ${covered.length} suite(s) this run covered — a project label or a spec's location has moved, and reading past it would drop the file from the ranking, the gate and the cache at once`);
+      throw new Error(`the run reported ${module.file} under the project '${module.project}', which is none of the ${covered.length} suite(s) this run covered (${covered.map((one) => one.workspace).join(', ')}) — a workspace name and its vitest project name have diverged, and reading past it would drop the file from the ranking, the gate and the cache at once`);
     }
-    rows.push({ dir: suite.dir, file, half: halfOfPath(file), ms: unit === 's' ? Number(amount) * 1000 : Number(amount) });
-  }
-  // Derived from the output rather than assumed: a run that reported files and no durations is a reporter
-  // whose format has moved, and reading past it is a gate that checks nothing and says nothing
-  if (rows.length === 0 && FILE_REPORTED.test(output.replace(ANSI, ''))) {
-    throw new Error('the run reported test files and not one duration among them — vitest\'s per-file line has changed shape, and reading past it would leave every @slow: marker unchecked while the step passed');
+    // Posix separators, because every other consumer names a spec the way a config glob and a git path do
+    const file = module.file.split(path.sep).join('/');
+    rows.push({ dir: suite.dir, file, half: halfOfPath(file), ms: module.ms });
   }
   return rows;
 }
@@ -198,6 +142,45 @@ export const tailBar = (rows: readonly FileDuration[], half: Half, q = SLOW_QUAN
  */
 export const slowestFiles = (rows: readonly FileDuration[], half: Half, limit = 5): FileDuration[] =>
   rows.filter((row) => row.half === half).sort((a, b) => b.ms - a.ms).slice(0, limit);
+
+/**
+ * A half's whole weight, which is the number the ranking cannot give.
+ *
+ * The five slowest files answer "what is worst"; they never answer "is this half getting heavy", and the
+ * two come apart exactly where it matters. Measured 2026-10-05, the top five hold 46% of `repo-checks`'
+ * fast half and 97% of `abuddy-sdk`'s, so in one of those the ranking describes the suite and in the other
+ * it describes one file. And the shape a ranking structurally cannot see is many specs each creeping a
+ * little: 349 of 388 fast-half files are under 500ms and total 24.1s, so every one of them could double
+ * without entering any top five.
+ *
+ * File time summed across workers, never a wall estimate — the same quantity `spec:dry` prints, and the
+ * ratio between the two was measured at 1.55:1 and 2.18:1 on one target three days apart.
+ */
+export const halfTotal = (rows: readonly FileDuration[], half: Half): { ms: number; files: number } => {
+  const held = rows.filter((row) => row.half === half);
+  return { ms: held.reduce((sum, row) => sum + row.ms, 0), files: held.length };
+};
+
+/**
+ * What the last run measured for a set of suites, as rows rather than records.
+ *
+ * This is how a caller that did not perform the run reads it — the chain, which spawns a pool step and
+ * sees only its buffered output. Rather than parse that output back (the thing this module stopped
+ * doing), it reads what the run wrote: after a pool step that *ran*, the cache on disk is that run's.
+ * A step the chain skipped must not be reported on, because then these records are older than the step,
+ * and that is the caller's to know.
+ */
+export function cachedDurations(root: string, suites: readonly UnitSuite[], half: Half, since?: Date): FileDuration[] {
+  return suites.flatMap((suite) => {
+    const record = readDurations(root, suite.dir, half);
+    if (record === undefined) return [];
+    // A record older than the run being reported on describes a different run. The pool runs only the
+    // projects whose inputs moved, so a step that ran and found none of them stale measured nothing — and
+    // without this the caller printed that step's *previous* numbers as though they were its own.
+    if (since !== undefined && new Date(record.measuredAt) < since) return [];
+    return Object.entries(record.ms).map(([file, ms]) => ({ dir: suite.dir, file, half: halfOfPath(file), ms }));
+  });
+}
 
 /**
  * The reason a spec says it is slow, from its header.
@@ -345,19 +328,59 @@ export interface DurationRecord {
   readonly ms: Readonly<Record<string, number>>;
 }
 
-/** What the run measured, one record per suite and half it covered */
-export function writeDurations(root: string, rows: readonly FileDuration[], measuredAt = new Date().toISOString()): void {
-  const byRecord = new Map<string, FileDuration[]>();
-  for (const row of rows) {
-    const key = `${row.dir}\u0000${row.half}`;
-    byRecord.set(key, [...byRecord.get(key) ?? [], row]);
+/**
+ * How many of a suite's runs one record keeps.
+ *
+ * **The window is what makes a creep visible, and it is not the window this branch deleted.** That one
+ * existed to *decide* — a median of readings chose which half a spec belonged in, and because the decision
+ * was impossible the readings needed hysteresis, a band, a tie rule, a machine field and two idle floors to
+ * be comparable at all. This one informs a column on five lines that are already printed. Nothing compares
+ * it against an edge, so there is nothing for a threshold to be wrong about.
+ *
+ * Ten because the output is a trend and not a statistic: enough runs that a slow creep is visible, few
+ * enough that the oldest reading still describes code someone would recognise. The cost is bounded — a
+ * suite's 100 specs are ~2.5KB a run — and bounded is the point: the *file count* does not move, so
+ * `pruneDurationCache` still answers for every name in the directory and a record for a suite long gone
+ * is still a thing that gets removed rather than a thing that accumulates.
+ */
+export const KEPT_RUNS = 10;
+
+/** The window as it sits on disk: newest first, at most `KEPT_RUNS` long */
+interface DurationHistory {
+  readonly runs: readonly DurationRecord[];
+}
+
+/**
+ * The window, oldest entries dropped, or `undefined` where no run here has measured this suite.
+ *
+ * A file in the single-record shape this replaced is read as a window of one rather than refused: the
+ * cache is uncommitted and rebuilt by any run, so refusing would turn a format change into a lost
+ * measurement for no gain.
+ */
+export function readDurationRuns(root: string, dir: string, half: Half): readonly DurationRecord[] | undefined {
+  let raw: string;
+  try {
+    raw = fs.readFileSync(recordFor(root, dir, half), 'utf8');
+  } catch {
+    return undefined;
   }
-  for (const [key, held] of byRecord) {
-    const [dir, half] = key.split('\u0000') as [string, Half];
-    const file = recordFor(root, dir, half);
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    const ms = Object.fromEntries([...held].sort((a, b) => a.file.localeCompare(b.file)).map((row) => [row.file, row.ms]));
-    fs.writeFileSync(file, `${JSON.stringify({ measuredAt, ms } satisfies DurationRecord, null, 2)}\n`);
+  const sound = (value: unknown): value is DurationRecord => {
+    if (typeof value !== 'object' || value === null) return false;
+    const { measuredAt, ms } = value as Partial<DurationRecord>;
+    return typeof measuredAt === 'string' && typeof ms === 'object' && ms !== null;
+  };
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed !== 'object' || parsed === null) return undefined;
+    const { runs } = parsed as Partial<DurationHistory>;
+    if (Array.isArray(runs)) {
+      const kept = runs.filter(sound);
+      return kept.length === 0 ? undefined : kept;
+    }
+    // The shape before the window; one reading is still a reading
+    return sound(parsed) ? [parsed] : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -369,21 +392,48 @@ export function writeDurations(root: string, rows: readonly FileDuration[], meas
  * over — the answer `spec:dry` gives without it is the listing, which is the answer it gives at all.
  */
 export function readDurations(root: string, dir: string, half: Half): DurationRecord | undefined {
-  let raw: string;
-  try {
-    raw = fs.readFileSync(recordFor(root, dir, half), 'utf8');
-  } catch {
-    return undefined;
+  return readDurationRuns(root, dir, half)?.[0];
+}
+
+/**
+ * What the run measured, prepended to each covered suite and half's window.
+ *
+ * A read-merge rather than an overwrite, which is the one thing to be careful about: two pools never share
+ * a (suite, half) key — that is what the key's half is for — so there is no run whose merge can lose
+ * another's, and a corrupt or absent file starts a window of one rather than refusing.
+ */
+export function writeDurations(root: string, rows: readonly FileDuration[], measuredAt = new Date().toISOString()): void {
+  const byRecord = new Map<string, FileDuration[]>();
+  for (const row of rows) {
+    const key = `${row.dir}\u0000${row.half}`;
+    byRecord.set(key, [...byRecord.get(key) ?? [], row]);
   }
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (typeof parsed !== 'object' || parsed === null) return undefined;
-    const { measuredAt, ms } = parsed as Partial<DurationRecord>;
-    if (typeof measuredAt !== 'string' || typeof ms !== 'object' || ms === null) return undefined;
-    return { measuredAt, ms };
-  } catch {
-    return undefined;
+  for (const [key, held] of byRecord) {
+    const [dir, half] = key.split('\u0000') as [string, Half];
+    const file = recordFor(root, dir, half);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const ms = Object.fromEntries([...held].sort((a, b) => a.file.localeCompare(b.file)).map((row) => [row.file, row.ms]));
+    const runs = [{ measuredAt, ms }, ...readDurationRuns(root, dir, half) ?? []].slice(0, KEPT_RUNS);
+    fs.writeFileSync(file, `${JSON.stringify({ runs } satisfies DurationHistory, null, 2)}\n`);
   }
+}
+
+/**
+ * How a spec's cost has moved across the window, for the five lines already being printed.
+ *
+ * The oldest reading the window holds against the newest, and **only** that: no threshold, no verdict, no
+ * band. A threshold here would have to clear single-spec variance measured at up to 74% between two quiet
+ * runs, and any number picked for that is the hysteresis this branch deleted 4,284 lines of. Bounding the
+ * output to a list that is already bounded is what makes the question answerable without one.
+ *
+ * `undefined` for a window of one, where there is no trend to report yet.
+ */
+export function trendOf(root: string, dir: string, half: Half, file: string): { was: number; runs: number } | undefined {
+  const runs = readDurationRuns(root, dir, half);
+  if (runs === undefined || runs.length < 2) return undefined;
+  const seen = runs.filter((run) => typeof run.ms[file] === 'number');
+  if (seen.length < 2) return undefined;
+  return { was: seen[seen.length - 1]!.ms[file]!, runs: seen.length };
 }
 
 /**

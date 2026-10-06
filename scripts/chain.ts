@@ -35,7 +35,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, poolStepName, STEP_TABLES } from './lib/chain-steps.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredMachine, machineText, MEASURED_ON, scheduleMismatch, thisMachine } from './lib/core-budget.ts';
@@ -46,7 +46,7 @@ import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, measurementsFrom, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
-import { DIAGNOSTIC_RUN_ENV } from './lib/unit-pool.ts';
+import { DIAGNOSTIC_RUN_ENV, POOLS, poolDurationLines, type Pool } from './lib/unit-pool.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
@@ -70,6 +70,17 @@ import { boundedSpawn } from './lib/bounded-spawn.ts';
  * changed the output changes the dependents' fingerprints — and a rebuild that produced identical bytes
  * leaves them fresh, which is the right answer and one a "needed step ran" rule would get wrong.
  */
+/**
+ * A pool step's own ranking, in the step's time column beside its slow tests.
+ *
+ * Empty for every other step, and for a pool step this run skipped — `poolDurationLines` has why.
+ */
+const poolLines = (name: string, ms: number): string[] => {
+  const pool = (Object.keys(POOLS) as Pool[]).find((kind) => poolStepName(kind) === name);
+  // When the step started, so records a previous run wrote are left out rather than printed as this one's
+  return pool === undefined ? [] : poolDurationLines(pool, 6, new Date(Date.now() - ms));
+};
+
 const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-chain');
 
 /**
@@ -443,6 +454,13 @@ async function main(): Promise<void> {
       // In the step's own time column, so every time on the screen lines up and these read as its contents
       for (const slow of slowestTests(result.output)) {
         console.log(dim(`${' '.repeat(TIME_COLUMN)}${secs(slow.ms).padStart(6)}  ${oneLine(REASON_COLUMN, slow.name)}`));
+      }
+      // And the same for whole files, which is the unit a half is decided in. It reads what the run wrote
+      // rather than its output: a step's output is buffered and printed only on failure, so until this
+      // existed the pool's own ranking reached nobody running `npm run chain` or `npm run test:unit`.
+      // Only for a step that *ran* — a cached step's records are older than the step.
+      for (const line of poolLines(step.name, result.ms)) {
+        console.log(dim(`${' '.repeat(TIME_COLUMN)}${line}`));
       }
       return result.code === 0;
     },
