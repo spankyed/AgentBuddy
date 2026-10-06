@@ -2,6 +2,8 @@ import type { FlowsSettings } from '#generated/types.ts';
 import { services } from '#generated/services.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
+import type { Reply } from '@abuddy/sdk/events';
+import type { OutgoingFlowsEvents } from './types.ts';
 import { defineSystem } from '@abuddy/sdk/framework';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '#generated/ears.ts';
@@ -12,6 +14,16 @@ import { createLogger } from '@abuddy/sdk/logger';
 import type { ActionEntity, PromptEntity } from '@abuddy/sdk';
 import { compileFlowDSL, validateFlowDSL, exportFlowsToDSL, type FlowDSL, type ValidationError } from '@abuddy/sdk/build';
 import { ref } from '#generated/ref.ts';
+
+/**
+ * Answers whoever asked for this, and tells every window when nobody did.
+ *
+ * An import's or an export's *outcome* belongs to the window that started it — another window showing a
+ * result for work it did not do, and flipping its own status to success, is what broadcasting it did. The
+ * data the import changed is separate news and stays a broadcast.
+ */
+const answer = (reply: Reply | undefined, event: OutgoingFlowsEvents): void =>
+  (reply ? reply(event) : broadcastToPlugin('flows', event));
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('flows');
@@ -281,9 +293,8 @@ export const flowsSystem = setup({
       sendConnectedData();
     },
 
-    importDSL: ({ event }) => {
+    importDSL: ({ event, reply }) => {
       const { dsl } = flowsSpec.typeOf('IMPORT_DSL', event);
-      const pluginId = 'flows' as const;
 
       logger.info('Importing DSL flows', { flowCount: Object.keys(dsl || {}).length });
 
@@ -304,7 +315,7 @@ export const flowsSystem = setup({
         });
         logger.warn('DSL validation failed', { errors });
 
-        broadcastToPlugin(pluginId, {
+        answer(reply, {
           type: 'DSL_IMPORT_FAILED',
           errors,
         });
@@ -324,7 +335,7 @@ export const flowsSystem = setup({
       // Import into EARS
       const { flowIds } = repository.flowsCommands.importFromDSL(compiled);
 
-      broadcastToPlugin(pluginId, {
+      answer(reply, {
         type: 'DSL_IMPORTED',
         flowIds,
       });
@@ -339,9 +350,8 @@ export const flowsSystem = setup({
       repository.flowsCommands.reindexHandles(nodeId as EARS.EntityId, prefix, index, direction);
     },
 
-    exportDSL: ({ event }) => {
+    exportDSL: ({ event, reply }) => {
       const { directory, flowId } = flowsSpec.typeOf('EXPORT_DSL', event);
-      const pluginId = 'flows' as const;
 
       logger.info('Exporting flows to DSL', { directory, flowId });
 
@@ -351,7 +361,7 @@ export const flowsSystem = setup({
           flowIds: flowId ? [flowId] : undefined,
         });
 
-        broadcastToPlugin(pluginId, {
+        answer(reply, {
           type: 'DSL_EXPORTED',
           filePath,
           flowCount,
@@ -363,7 +373,7 @@ export const flowsSystem = setup({
         const message = errorMessage(error);
         logger.error('DSL export failed', { error: message });
 
-        broadcastToPlugin(pluginId, {
+        answer(reply, {
           type: 'DSL_EXPORT_FAILED',
           errors: [message],
         });

@@ -4,6 +4,8 @@ import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
 import { REQUIRED_PROVIDERS } from '#app-settings/providers.ts';
 import { assign, setup } from 'xstate';
+import type { Reply } from '@abuddy/sdk/events';
+import type { OutgoingThreadsEvents } from './types.ts';
 import { defineSystem } from '@abuddy/sdk/framework';
 
 import { tx, EARS } from '#generated/ears.ts';
@@ -17,6 +19,16 @@ import { runThreadTeardown } from './thread-teardown.ts';
 import { generateAsideText } from './services/chat.ts';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { ref } from '#generated/ref.ts';
+
+/**
+ * Answers whoever asked for this, and tells every window when nobody did.
+ *
+ * An import's or an export's *outcome* belongs to the window that started it — another window showing a
+ * result for work it did not do, and flipping its own status to success, is what broadcasting it did. The
+ * data the import changed is separate news and stays a broadcast.
+ */
+const answer = (reply: Reply | undefined, event: OutgoingThreadsEvents): void =>
+  (reply ? reply(event) : broadcastToPlugin('threads', event));
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('threads');
@@ -297,40 +309,40 @@ export const threadsSystem = setup({
       // Refresh recent threads since active thread may have been deleted
       services.chat.sendRecentThreadsRefresh();
     },
-    exportThreadsToFile: ({ event }) => {
+    exportThreadsToFile: ({ event, reply }) => {
       const ev = event as { type: 'EXPORT_THREADS'; directory: string };
 
       try {
         const { filePath, threadCount } = exportThreads(ev.directory);
 
-        broadcastToPlugin('threads', {
+        answer(reply, {
           type: 'THREADS_EXPORTED',
           filePath,
           threadCount,
         });
       } catch (err) {
         const message = errorMessage(err);
-        broadcastToPlugin('threads', {
+        answer(reply, {
           type: 'THREADS_EXPORT_FAILED',
           errors: [message],
         });
       }
     },
-    importThreadItems: ({ event }) => {
+    importThreadItems: ({ event, reply }) => {
       const ev = event as { type: 'IMPORT_THREADS'; directory: string };
 
       try {
         const result = importThreads(ev.directory);
 
         if (result.created === 0 && result.errors.length > 0) {
-          broadcastToPlugin('threads', {
+          answer(reply, {
             type: 'THREADS_IMPORT_FAILED',
             errors: result.errors,
           });
           return;
         }
 
-        broadcastToPlugin('threads', {
+        answer(reply, {
           type: 'THREADS_IMPORTED',
           count: result.created,
           ...(result.errors.length > 0 ? { errors: result.errors } : {}),
@@ -348,7 +360,7 @@ export const threadsSystem = setup({
         });
       } catch (err) {
         const message = errorMessage(err);
-        broadcastToPlugin('threads', {
+        answer(reply, {
           type: 'THREADS_IMPORT_FAILED',
           errors: [message],
         });

@@ -2,6 +2,8 @@ import type { PromptsSettings } from '#generated/types.ts';
 import { services } from '#generated/services.ts';
 import { broadcastToPlugin } from '#generated/events.ts';
 import { setup } from 'xstate';
+import type { Reply } from '@abuddy/sdk/events';
+import type { OutgoingPromptEvents } from './types.ts';
 import { defineSystem } from '@abuddy/sdk/framework';
 
 import { EARS } from '#generated/ears.ts';
@@ -11,6 +13,16 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import { exportPrompts } from './repository/export-prompts.ts';
 import { ref } from '#generated/ref.ts';
+
+/**
+ * Answers whoever asked for this, and tells every window when nobody did.
+ *
+ * An import's or an export's *outcome* belongs to the window that started it — another window showing a
+ * result for work it did not do, and flipping its own status to success, is what broadcasting it did. The
+ * data the import changed is separate news and stays a broadcast.
+ */
+const answer = (reply: Reply | undefined, event: OutgoingPromptEvents): void =>
+  (reply ? reply(event) : broadcastToPlugin('prompts', event));
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('prompts');
@@ -112,14 +124,14 @@ export const promptsSystem = setup({
         data: { prompts: allPrompts }
       });
     },
-    importPrompts: ({ event }) => {
+    importPrompts: ({ event, reply }) => {
       const { prompts: importData } = promptsSpec.typeOf('IMPORT_PROMPTS', event);
       const pluginId = 'prompts' as const;
 
       logger.info('Importing prompts', { count: Array.isArray(importData) ? importData.length : 0 });
 
       if (!Array.isArray(importData)) {
-        broadcastToPlugin(pluginId, {
+        answer(reply, {
           type: 'PROMPTS_IMPORT_FAILED',
           errors: ['Invalid import data: expected an array of prompts'],
         });
@@ -160,14 +172,14 @@ export const promptsSystem = setup({
       }
 
       if (count === 0 && errors.length > 0) {
-        broadcastToPlugin(pluginId, {
+        answer(reply, {
           type: 'PROMPTS_IMPORT_FAILED',
           errors,
         });
         return;
       }
 
-      broadcastToPlugin(pluginId, {
+      answer(reply, {
         type: 'PROMPTS_IMPORTED',
         count,
         ...(errors.length > 0 ? { errors } : {}),
@@ -187,16 +199,15 @@ export const promptsSystem = setup({
       logger.info('Prompts import complete', { count, errors: errors.length });
     },
 
-    exportPromptsToFile: ({ event }) => {
+    exportPromptsToFile: ({ event, reply }) => {
       const { directory } = promptsSpec.typeOf('EXPORT_PROMPTS', event);
-      const pluginId = 'prompts' as const;
 
       logger.info('Exporting prompts', { directory });
 
       try {
         const { filePath, promptCount } = exportPrompts(directory);
 
-        broadcastToPlugin(pluginId, {
+        answer(reply, {
           type: 'PROMPTS_EXPORTED',
           filePath,
           promptCount,
@@ -207,7 +218,7 @@ export const promptsSystem = setup({
         const message = errorMessage(error);
         logger.error('Prompts export failed', { error: message });
 
-        broadcastToPlugin(pluginId, {
+        answer(reply, {
           type: 'PROMPTS_EXPORT_FAILED',
           errors: [message],
         });

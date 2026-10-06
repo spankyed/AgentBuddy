@@ -3539,8 +3539,25 @@ type OutgoingFlowsEvents = {
         nodes: any[];
         edges: any[];
     };
-} | {
+}
+/** A flow exists — news for every window, so every list grows. It opens nothing: see `FLOW_OPENED` */
+ | {
     type: 'FLOW_CREATED';
+    flow: FlowEntity;
+    flowId: EARS.EntityId;
+    data: {
+        nodes: any[];
+        edges: any[];
+    };
+}
+/**
+ * The flow *you* asked to create, answered to the window that asked, which then opens it.
+ *
+ * Its id is minted by the create, so nothing the asker sent could identify it. While the navigation hung
+ * off the broadcast above, every open window jumped to a flow it had not created.
+ */
+ | {
+    type: 'FLOW_OPENED';
     flow: FlowEntity;
     flowId: EARS.EntityId;
     data: {
@@ -4001,8 +4018,24 @@ type OutgoingSearchEvents = {
     };
 };
 
-type OutgoingTerminalEvents = {
+type OutgoingTerminalEvents = 
+/**
+ * A terminal exists — news for every window, so every list grows. It carries no instruction: a window that
+ * did not ask for it must not open it, which is what `terminal.OPENED` is for.
+ */
+{
     type: 'terminal.CREATED';
+    data: TerminalInfo;
+}
+/**
+ * The terminal *you* asked for, answered to the window that asked.
+ *
+ * Its id does not exist until it is created, so nothing the asker sent could identify it — which is why
+ * this is addressed rather than keyed. Before it existed, `terminal.CREATED` carried both jobs and every
+ * window routed a new terminal into its own panel.
+ */
+ | {
+    type: 'terminal.OPENED';
     data: TerminalInfo;
 } | {
     type: 'terminal.OUTPUT';
