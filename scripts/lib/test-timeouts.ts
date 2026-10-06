@@ -15,7 +15,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { INTEGRATION_SUITES } from './chain-steps.ts';
-import { CONFIG_BY_HALF, halfOfPath } from './spec-cost.ts';
+import { CONFIG_BY_HALF, halfOfPath } from './spec-halves.ts';
 import type { Size } from './unit-suites.ts';
 
 /** The vitest callables that take a trailing timeout */
@@ -187,11 +187,11 @@ export function bareWaits(absFile: string, repoRoot: string): BareWait[] {
  * already derived.
  *
  * **Not `halfOfPath`, which answers a different question.** That one says which half a spec is *in*, by
- * suffix alone, and `spec-cost` renames files to move them between halves — so the suffix is its subject
- * rather than a hint. The two disagree on exactly one input: a `.integration.spec.ts` in a package with
- * no integration config, which `halfOfPath` calls integration and this calls small. No such file exists,
- * and one would be caught anyway — it would run in neither half, and `spec-cost:check` reports a spec it
- * never measured.
+ * suffix alone — the suffix is a decision a spec's author makes, so it is that question's subject rather
+ * than a hint. The two disagree on exactly one input: a `.integration.spec.ts` in a package with no
+ * integration config, which `halfOfPath` calls integration and this calls small. No such file exists, and
+ * one would be caught anyway: `spec-placement.spec.ts` fails a suffix naming a half its package does not
+ * have, which is the file that would run in neither.
  */
 export function sizeOf(file: string): Size {
   // The E2E suite is its own target and belongs to no package

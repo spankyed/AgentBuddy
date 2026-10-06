@@ -35,18 +35,19 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, STEP_TABLES } from './lib/chain-steps.ts';
+import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, poolStepName, STEP_TABLES } from './lib/chain-steps.ts';
+import { stampFor, STAMP_DIR } from './lib/chain-stamps.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredMachine, machineText, MEASURED_ON, scheduleMismatch, thisMachine } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
-import { asCount, bodyDrift, drifted, idleNow, movedBeyondBand, parseFlags, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
+import { asCount, driftVerdict, idleNow, movedBeyondBand, parseFlags, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { machineLine, recordMachine, recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, measurementsFrom, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
-import { DIAGNOSTIC_RUN_ENV } from './lib/unit-pool.ts';
+import { CHAIN_RUN_ENV, DIAGNOSTIC_RUN_ENV, POOLS, poolDurationLines, type Pool } from './lib/unit-pool.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
@@ -70,7 +71,25 @@ import { boundedSpawn } from './lib/bounded-spawn.ts';
  * changed the output changes the dependents' fingerprints — and a rebuild that produced identical bytes
  * leaves them fresh, which is the right answer and one a "needed step ran" rule would get wrong.
  */
-const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-chain');
+/**
+ * A pool step's own ranking, in the step's time column beside its slow tests.
+ *
+ * Empty for every other step, and for a pool step this run skipped — `poolDurationLines` has why.
+ */
+const poolLines = (name: string, ms: number): string[] => {
+  const pool = (Object.keys(POOLS) as Pool[]).find((kind) => poolStepName(kind) === name);
+  if (pool === undefined) return [];
+  // When the step started, so records a previous run wrote are left out rather than printed as this one's
+  const measured = poolDurationLines(pool, 6, new Date(Date.now() - ms));
+  if (measured.length > 0) return measured;
+  // **A pool step that ran and measured nothing is the one line that otherwise reads as a mystery**: `ok`
+  // in 0.7s with no ranking under it, for a step whose reason says its inputs changed. The step did its
+  // job — it asked the pool, and the pool found every project already current against its own records — but
+  // nothing on screen said which of those two things happened. The pool says it in output the chain buffers
+  // and prints only on failure, so this is where it has to be said.
+  return [`${''.padStart(6)}  nothing measured — every project was already fresh`];
+};
+
 
 /**
  * Where a run points when it says a step is never cached: the sentence is there, the argument above it.
@@ -87,7 +106,6 @@ const declaredIn = (name: string): string | undefined => {
   }
   return undefined;
 };
-const stampFor = (step: string): string => path.join(STAMP_DIR, `${step.replace(/[:/]/g, '-')}.json`);
 
 /**
  * Drop stamps for steps that no longer exist, and for steps that are not cached.
@@ -214,8 +232,17 @@ const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
  *
  * `packages:ensure` is excluded because it is that writer: with the flag it would refuse the one job it has.
  */
-const envFor = (step: ChainStep): NodeJS.ProcessEnv =>
-  step.name === 'packages:ensure' ? process.env : { ...process.env, [PACKAGES_PREBUILT_ENV]: '1' };
+/**
+ * What a step is spawned with. `CHAIN_RUN_ENV` on every one of them, because a step that caches inside
+ * itself has to know whose run this is: a pool's per-project stamps record a pass under the chain's
+ * concurrency separately from one established alone, and the chain is the only thing that can say which
+ * this is. The classification re-run gets it too and records nothing anyway, through `DIAGNOSTIC_RUN_ENV`.
+ */
+const envFor = (step: ChainStep): NodeJS.ProcessEnv => ({
+  ...process.env,
+  [CHAIN_RUN_ENV]: '1',
+  ...(step.name === 'packages:ensure' ? {} : { [PACKAGES_PREBUILT_ENV]: '1' }),
+});
 
 
 /** Thrown to leave `stampedRun` without a stamp: a failed step must read as never run */
@@ -395,8 +422,8 @@ async function main(): Promise<void> {
 
   // **Refused before the run, not after it.** `recordTheCosts` asks this at the end, which is where the answer
   // arrives too late: twice on 2026-10-04 a `--all --record` spent 200 seconds and was then told the machine
-  // was 69% idle. `spec-cost:update` has always asked first — "it refuses to measure below IDLE_FLOOR, before
-  // running anything" — and this is the same gate in the same order.
+  // was 69% idle. The deleted `spec-cost:update` asked first — "it refuses to measure below IDLE_FLOOR,
+  // before running anything" — and this is the same gate in the same order, now the only one left.
   //
   // The late one stays, and both are needed: a box quiet now can be loaded by the end, and the chain is its own
   // load. This one saves the run when the answer is already no; that one catches a run disturbed while it ran.
@@ -443,6 +470,13 @@ async function main(): Promise<void> {
       // In the step's own time column, so every time on the screen lines up and these read as its contents
       for (const slow of slowestTests(result.output)) {
         console.log(dim(`${' '.repeat(TIME_COLUMN)}${secs(slow.ms).padStart(6)}  ${oneLine(REASON_COLUMN, slow.name)}`));
+      }
+      // And the same for whole files, which is the unit a half is decided in. It reads what the run wrote
+      // rather than its output: a step's output is buffered and printed only on failure, so until this
+      // existed the pool's own ranking reached nobody running `npm run chain` or `npm run test:unit`.
+      // Only for a step that *ran* — a cached step's records are older than the step.
+      for (const line of poolLines(step.name, result.ms)) {
+        console.log(dim(`${' '.repeat(TIME_COLUMN)}${line}`));
       }
       return result.code === 0;
     },
@@ -703,8 +737,9 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   // re-record, the run reports success, and the table goes on describing the schedule before it. Changing
   // the chain's admission policy is exactly that shape, and `criticalPath` sums these numbers, so the error
   // compounds where it is least visible.
+  // The body itself is read where it is reported, below, so that the verdict and its remedy are decided in
+  // one place rather than a number travelling the length of the function to be interpreted at the end.
   const comparable = [...measured.keys()].filter((name) => declared.has(name));
-  const body = bodyDrift(declared, measured);
   if (refusesAsContended({
     hasPrevious: comparable.length > 0,
     force,
@@ -765,10 +800,23 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   }
   // Reported after the edits rather than refused, because the rows that cross the band are recorded either
   // way and the body is the thing no row can report. A run that clears a drift is not the run that finds it.
-  if (drifted(body)) {
-    console.log(`\nthe table moved ${(body * 100).toFixed(0)}% as a body, which is more than idle runs vary.`);
+  //
+  // Two findings and not one: a movement one step carries is that step's, and `--forget` over the whole
+  // table would write this run's machine into twenty-nine rows to fix one. `driftVerdict` asks the question
+  // twice; each branch names the operation that fits its answer.
+  const verdict = driftVerdict(declared, measured);
+  if (verdict.kind === 'body') {
+    console.log(`\nthe table moved ${(verdict.share * 100).toFixed(0)}% as a body, which is more than idle runs vary.`);
+    console.log('  It survives leaving out the largest mover, so this is the table and not one step.');
     console.log('  A drift that size sits under every per-step band, so no single measurement re-records it.');
     console.log('  Re-run `npm run chain -- --all --record` on an idle machine until it settles.');
+  } else if (verdict.kind === 'member') {
+    const rest = verdict.without === undefined
+      ? 'no other step has a cost to move from'
+      : `the rest moved ${(verdict.without * 100).toFixed(0)}%`;
+    console.log(`\nthe table moved ${(verdict.share * 100).toFixed(0)}% as a body, and ${verdict.name} is why: without it ${rest}.`);
+    console.log(`  So this is one step's cost, not the table's. Record that row alone:`);
+    console.log(`    npm run chain -- --all --record --forget --step ${verdict.name}`);
   }
 }
 

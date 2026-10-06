@@ -1,4 +1,8 @@
 // The lock a tool holds while it changes a data dir's database, which an app checks before it opens the same one
+//
+// @slow: it holds the repo's slowest single test at 4.1s, and that is elapsed time rather than work
+// It spawns real processes and waits on real lock timeouts, so no amount of cores shortens it — shortening
+// the waits would remove what it checks.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';

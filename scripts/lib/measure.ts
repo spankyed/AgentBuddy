@@ -129,16 +129,31 @@ export const IDLE_FLOOR = 0.7;
  * | 3 burners | 67% | 3.3 | +16% | 250% |
  * | 5 burners | 36% | 6.4 | +43% | 250% |
  *
- * The line that sets it: **at `IDLE_FLOOR` a permitted run drifts the body about as far as `DRIFT_SHARE`,
- * the threshold the drift report exists to raise.** A floor that admits runs its own drift gate would flag
- * is not a floor. The crossover is near 77%; at 81% the drift is +4%, inside the -7% that two quiet runs
- * differ by on their own. So this is the lowest round figure whose expected drift sits inside quiet-run
- * variance, with margin for a box noisier than the one measured.
+ * The line that sets it: **a floor that admits runs its own drift gate would flag is not a floor.** The
+ * crossover is near 77% and 76% gave +15%, which is `DRIFT_SHARE` exactly; at 81% the drift is +4%, inside
+ * the -7% that two quiet runs differ by on their own. So the floor has to sit above 77%, and 80% is the
+ * lowest round figure that does — a run admitted here is expected to drift about 5% against a gate that
+ * fires at 15%, so the property holds.
+ *
+ * **It was 85% until 2026-10-05, and the margin was the thing that moved.** 85 was this same table read as
+ * "the lowest round figure whose expected drift sits inside quiet-run variance, *with margin for a box
+ * noisier than the one measured*". The margin cost more than it bought: on the box the table was measured
+ * on, readings sat at 82-85% for about fifteen minutes with nothing else obviously running, which refused a
+ * legitimate 415-row re-record that had a defect waiting on it. A floor nobody can reach is a floor that
+ * gets `--force`d, which is worse than one set where the data says it belongs. The margin is gone; the
+ * measured basis is not.
+ *
+ * **What still catches a run this admits**, which is why dropping the margin is not the only protection:
+ * `refusesAsContended` asks *after* measuring whether too much of the body moved to have been measuring the
+ * code, and it is on for both callers. `chain --record` additionally reports body drift (`driftVerdict`).
+ * `spec-cost:update` no longer does — that report was removed on 2026-10-05 for a reason of its own — so
+ * for spec costs the post-hoc contention check is the whole of it. If that check is ever weakened, this
+ * number is the one to put back.
  *
  * **Not 90%**, for `IDLE_FLOOR`'s reason: readings of 86-95% came easily on that box and 78% came up
  * repeatedly, so 90% is the value that gets `--force`d. And not a per-spec bound, because there is no such
  * thing to have — one quiet run moves a single spec 74% against another, which is why the record keeps a
- * window and the report watches the body.
+ * window.
  *
  * **This floor guards the body, and nothing else asks it to guard a half.** A reading that would place a
  * spec in the other half cannot become the answer on its own — `spec-cost.ts`'s `WINDOW` keeps more than
@@ -150,13 +165,14 @@ export const IDLE_FLOOR = 0.7;
  * rate turned out to be. Deleted rather than re-measured for that second reason.
  *
  * **The relationship to `DRIFT_SHARE` is empirical and no case asserts it**, which is deliberate: the two
- * are different quantities. `1 - 0.85` happens to equal `DRIFT_SHARE` exactly, and an assertion was written
- * on that before it was checked — but the busy share of a box is not body drift, and the measured ratio
- * between them is about 0.6 to 1 (24% busy gave +15%). A spec cannot re-take the measurement, so what
- * `measure.spec.ts` holds is the ordering: a recording floor stricter than the printing one. Re-measure the
- * box and both numbers may move; that ordering may not.
+ * are different quantities. `1 - 0.85` used to equal `DRIFT_SHARE` exactly and an assertion was written on
+ * that before it was checked — the busy share of a box is not body drift, and the measured ratio between
+ * them is about 0.6 to 1 (24% busy gave +15%). That coincidence is gone now, which is the clearest argument
+ * it was one. A spec cannot re-take the measurement, so what `measure.spec.ts` holds is the ordering: a
+ * recording floor stricter than the printing one. Re-measure the box and both numbers may move; that
+ * ordering may not.
  */
-export const RECORD_IDLE_FLOOR = 0.85;
+export const RECORD_IDLE_FLOOR = 0.80;
 
 /**
  * How far a re-measurement has to move before a record follows it, as a share of what is recorded.
@@ -195,12 +211,75 @@ export function bodyDrift(recorded: ReadonlyMap<string, number>, measured: Reado
   return shared.reduce((sum, name) => sum + measured.get(name)!, 0) / before - 1;
 }
 
-/** Above the drift a run of unchanged work shows: measured at 0.4%, 6.5% and 9.9% on an idle machine */
+/**
+ * Above the drift a run of unchanged work shows: measured at 0.4%, 6.5% and 9.9% on an idle machine.
+ *
+ * **Inherited, and the subject it was measured on is no longer a consumer.** Those three figures are
+ * `@app/repo-checks`' fast half — 46 specs, the largest 12% of the body — and the spec-cost records stopped
+ * asking this question on 2026-10-05, because for most of them the premise behind it is false: five of the
+ * twelve had one spec at 64% or more of their body, so there was nothing for that file's jitter to cancel
+ * against. That record and the command over it went with the question.
+ *
+ * What is left is the chain's table, which is less concentrated and not immune: ten steps declare a cost,
+ * the largest is 34% of the total and the top three are 62%. That is why this is tolerable rather than
+ * re-measured — `driftVerdict` asks the question twice, so the concentration the chain *does* have is
+ * answered by dropping the largest mover rather than by the size of this number. What the threshold still
+ * decides is when a **correlated** movement is reported, and a correlated movement is by construction not
+ * one member's, which is the case these three figures do describe.
+ *
+ * Re-measure it against the chain if `driftVerdict`'s second reading is ever removed, or if the table gains
+ * a step past about half the body, since the discrimination thins as one member approaches the whole.
+ * Attempted 2026-10-05: two `npm run chain -- --all` runs came in at 151.7s and 151.2s, but the box read
+ * 58-66% idle against `RECORD_IDLE_FLOOR`'s 85%, so they say the run is repeatable and nothing about drift.
+ */
 export const DRIFT_SHARE = 0.15;
 
 /** Whether a run's body moved further than idle runs vary, in either direction */
 export const drifted = (move: number | undefined): move is number =>
   move !== undefined && Math.abs(move) > DRIFT_SHARE;
+
+/**
+ * Which of two things a body movement is, because they want opposite remedies.
+ *
+ * `bodyDrift`'s premise is that jitter cancels in a sum, which holds while no member dominates. Where one
+ * does, the sum is that member's reading and the report fires on its noise — measured 2026-10-05, five of
+ * the twelve spec-cost records had a single spec at 64% or more of their body, which is why the spec half
+ * of that report is gone. The chain's own table is less concentrated and not immune: ten steps declare a
+ * cost, the largest (`test:packaged-authoring`) is 34% of the total and the top three are 62%.
+ *
+ * So the question is asked twice. A movement that survives leaving out the single largest mover is the
+ * body's; one that does not is that member's, and naming it is both the finding and the remedy — a record
+ * keyed by member can re-record one row without touching the rest.
+ *
+ * No new threshold: the second reading is `DRIFT_SHARE` applied to the same data `bodyDrift` already holds.
+ */
+export type DriftVerdict =
+  /** Inside the band as a body — nothing to report */
+  | { readonly kind: 'steady'; readonly share: number | undefined }
+  /** The movement survives dropping the largest mover, so it is the body that moved */
+  | { readonly kind: 'body'; readonly share: number }
+  /** One member carries it: without that member the body is inside the band */
+  | { readonly kind: 'member'; readonly share: number; readonly name: string; readonly without: number | undefined };
+
+export function driftVerdict(
+  recorded: ReadonlyMap<string, number>, measured: ReadonlyMap<string, number>,
+): DriftVerdict {
+  const share = bodyDrift(recorded, measured);
+  if (!drifted(share)) return { kind: 'steady', share };
+
+  const shared = [...measured.keys()].filter((name) => recorded.get(name) !== undefined);
+  // The largest mover by absolute seconds, which is what moves a sum — not by its own share, which would
+  // pick a tiny step that doubled over the one that actually carried the total
+  const name = shared.reduce((worst, next) =>
+    Math.abs(measured.get(next)! - recorded.get(next)!) > Math.abs(measured.get(worst)! - recorded.get(worst)!)
+      ? next : worst);
+  const without = bodyDrift(
+    new Map([...recorded].filter(([key]) => key !== name)),
+    new Map([...measured].filter(([key]) => key !== name)),
+  );
+  // `undefined` means that member was the only thing with a value to move from, so it is the whole movement
+  return drifted(without) ? { kind: 'body', share } : { kind: 'member', share, name, without };
+}
 
 /**
  * The share of a record's entries that may move before the run is read as measuring the machine.

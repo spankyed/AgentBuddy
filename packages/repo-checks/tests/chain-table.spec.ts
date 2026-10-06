@@ -125,7 +125,9 @@ describe('a pool step and its projects cache on the same inputs', () => {
   });
 
   it.each(['host', 'pack'] as const)('%s declares nothing its projects cannot see', (kind) => {
-    const fingerprinted = new Set(projects(kind).flatMap((suite) => poolUnitFor(suite, kind).inputs.map(repoRelative)));
+    // Either provenance: it changes the preimage's command and never the declared inputs, which is what
+    // keeps this question — does the step declare anything its projects cannot see — about the inputs alone
+    const fingerprinted = new Set(projects(kind).flatMap((suite) => poolUnitFor(suite, kind, 'chain').inputs.map(repoRelative)));
     const unseen = poolStep(kind).inputs.filter((input) => !fingerprinted.has(input));
     expect(unseen, 'the step would go stale for these and every project would still read fresh, so it would run '
       + 'and test nothing: put them in suiteInputs, where both cache layers read them').toEqual([]);
@@ -431,14 +433,11 @@ describe('a recorded artifact has both halves', () => {
 describe("the chain runs every artifact's check", () => {
   /** A `:check` script the chain does not run, and why. An entry that stops applying is reported. */
   const NOT_RUN_BY_THE_CHAIN: Record<string, string> = {
-    // These two are commands over a rule a spec already asserts, so the artifact is checked and the script is
-    // a way to ask by hand. Both say so themselves: `spec-cost.ts` records that `scripts/lib/spec-cost.ts`
-    // holds what it and `suite-split.spec.ts` share, "so a spec and this command cannot disagree".
+    // These are commands over a rule a spec already asserts, so the artifact is checked and the script is
+    // a way to ask by hand.
     'seed-parity:check': 'a wrapper for `npm test -- tests/seeds`; those specs run in test:unit:pack',
     'sdk-modules:check': 'a wrapper for `sdk-bridge-drift.spec.ts`, which compares the generated file against a fresh render; it runs in test:unit:host',
     'flow-export:check': 'a wrapper for `npm test -- tests/extensions/steps/export-example.spec.ts`; that spec runs in test:unit:pack, where it compares the flow DSL example rather than recording it',
-    'spec-cost:check': 'reads the records and runs nothing; suite-split.spec.ts asserts the same rule from '
-      + 'scripts/lib/spec-cost.ts, and it runs in test:unit:host',
   };
 
   /** Every `<artifact>:check` in the repo, as the label of the manifest declaring it and the script's name */
@@ -711,11 +710,12 @@ describe("the chain documents the flags it takes", () => {
     expect(entry, 'the entry it is about').toContain('npm run chain ');
     expect(entry.length, 'and not the whole file').toBeLessThan(guide().length / 4);
 
-    // The collision itself, with a real example rather than a banned word: `--suite` is `spec-cost:update`'s
-    // and the chain has no such flag, so the guide holds it and this entry must not. Naming the other command
-    // in prose is fine and this used to forbid it, which tested the wrong thing
-    expect(guide(), "another command's flag, in the file").toContain('--suite <dir>');
+    // The collision itself, with a real example rather than a banned word: `--trials` is `measure`'s and the
+    // chain has no such flag, so the guide holds it and this entry must not. Naming the other command in
+    // prose is fine and this used to forbid it, which tested the wrong thing. It was `spec-cost:update`'s
+    // `--suite` until 2026-10-05, when that command was deleted and took the control with it
+    expect(guide(), "another command's flag, in the file").toContain('--trials N');
     expect(entry, 'and outside the chain\'s entry, so it could never vouch for a chain flag')
-      .not.toContain('--suite');
+      .not.toContain('--trials');
   });
 });

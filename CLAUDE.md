@@ -162,36 +162,106 @@ nobody listed, and its remedy *writes*. `api:stamp` was a proxy for `api:check` 
 55s; at 6.9s the derivation is the cheaper thing to keep. Before reaching for one, price the derivation
 again — the paragraph above has what this one cost.
 
-A **sample** records a measurement, which cannot re-derive, so neither check is available to it.
-`spec-cost.json` is the only one. Treated as a derivation it churned: measured 2026-09-28, **125 of 163
-entries changed between two runs on an idle machine** while the answer it supports — which half a spec runs
-in — changed zero times. So it needs hysteresis on the record, a band rather than equality for its check,
-and a refusal to record a run that moved too much to have been measuring the code. All three live in
-`scripts/lib/spec-cost.ts`, which documents them.
+A **sample** records a measurement, which cannot re-derive, so neither check is available to it. **There
+are none left, and the one there was is the most expensive lesson in this section.** `spec-cost.json`
+recorded what every spec cost in milliseconds, so that a gate could move a file between the fast and
+integration halves. It was deleted on 2026-10-05, and what it cost to keep is the thing to read before
+adding another sample:
 
-**Those three are not enough on their own, and what closed the gap was storing more than one reading.**
-Hysteresis protects the recorded answer from jitter and says nothing about *which* reading became the
-answer — so the first one in wins, and for a crossing it won outright: `moved` opened by recording any
-reading that would place a spec in a different half, exactly, on the reasoning that placement is a cost's
-only consumer. Measured 2026-10-03, a recording taken at 78% idle — which the floor of the day allowed —
-moved two specs across `INTEGRATION_ABOVE_MS` and a gate demanded two renames; two clean runs put both
-back. The same band then stopped the clean readings correcting it, since displacing a recorded value takes
-35% of it. (The floor for a *recording* is 85% now, measured against that episode's successor:
-`RECORD_IDLE_FLOOR`. It is the body it keeps honest, and a crossing is still the window's to absorb — no
-run above 36% idle moved a spec across an edge in the sweep that set it.)
-So `spec-cost.json` holds a **window** of up to `WINDOW` readings per spec and the cost is their median:
-one reading is kept but cannot become the answer, and two that agree can. That makes the half a
-*derivation* over a sample rather than a sample read directly, and it is the shape to copy if a second
-sample is ever added — a band alone leaves whichever reading landed first in charge.
+- Treated as a derivation it churned — measured 2026-09-28, **125 of 163 entries changed between two runs on
+  an idle machine** while the answer it supported changed zero times. So it needed hysteresis on the record,
+  a band rather than equality for its check, and a refusal to record a run that had moved too much to have
+  been measuring the code.
+- Those three were not enough, because hysteresis says nothing about *which* reading became the answer: the
+  first one in won, and for a crossing it won outright. Measured 2026-10-03, a recording at 78% idle moved
+  two specs across the upper edge and the gate demanded two renames nobody had earned; the same band then
+  stopped two clean runs correcting it, since displacing a value takes 35% of it. So it grew a **window** of
+  readings whose median was the answer — one reading kept but unable to decide, two that agree able to.
+- A millisecond is a fact about a machine, so it also needed a `machine` field, a path for a record measured
+  on another box, and an idle floor on recording.
+- And a sum of it needed a drift report, because a correlated slowdown sits under every per-spec tolerance.
+  That report fired on one file's noise in five of the twelve records, where a single spec was 64% or more of
+  the body (`@abuddy/ui` 93%, `main` 89%, `@abuddy/sdk` 86%) and the worst single spec moves 74% between two
+  quiet runs.
 
-**A sum of that record is a separate question.** Jitter cancels, so a suite's total is stable (0.4-9.9%
-between idle runs while its members moved 10-18%). Correlated drift does not: a dependency bump adding a
-fifth to every spec sits under every per-spec tolerance, so nothing re-records and the total quietly stops
-being true. `drift` reports the body's movement on every run, and `spec-cost:update --all --forget` clears
-it by dropping every window and starting again from that run (`--forget` takes any scope that measures, so one
-spec is `--forget <path>`) — the one thing a window cannot do for itself,
-since it is built to be slow to forget and a correlated drift is exactly the case where the old readings
-describe code that is gone. `--all` without it re-measures everything and appends, which keeps the protection.
+**What finally settled it was not the cost of the apparatus but a contradiction.** Once each spec was
+measured in the pool that actually runs it, one read 2.8s in the fast half and 0.64s in the integration
+half — 4.37x apart, against a band of 2.5x. It was over the upper edge in one half and under the lower edge
+in the other, so a gate acting on either reading demanded a move the other reading demanded back. The
+quantity was never one number, and no amount of hysteresis fixes that.
+
+So the half is a decision now, declared by a filename, and nothing re-derives it
+(`scripts/lib/spec-halves.ts`). Slowness is reported where it happens rather than adjudicated against a
+record, in three places: vitest prints any test over its 300ms `slowTestThreshold` under its file, the
+chain prints each step's five slowest tests (`slow-tests.ts`), and each unit pool prints its five slowest
+*files* per half, ranked, which is the one thing vitest's output does not give
+(`scripts/lib/spec-durations.ts`), **with each half's total beside it**, since a ranking says what is worst
+and never whether a half is getting heavy — measured, the five slowest hold 46% of one suite's fast half and
+97% of another's. Both reach `npm run chain` and `npm run test:unit`, which buffer a step's output and print
+it only on failure: until that was wired the pools printed a ranking nobody running either command saw.
+A spec may say in its header why it is slow — `// @slow: <reason>` — and
+the pool holds that marker to still being true: a marked spec that is no longer in its half's slow tail
+fails the step, quoting the reason, so the remedy is to drop the marker. **Only that direction is a gate.**
+Load inflates a duration — 1.27x median, 3.29x at worst — so it can hide a stale marker and cannot invent
+one; an *unmarked* spec that reads slow is therefore reported and never failed. The bar is the half's p90
+from the same run, so a slow run moves the file and the bar together, which is what a fixed millisecond
+could not do: measured, it left two of the five markers 13% clear of a 2,500ms edge and 5.2x clear of this
+one.
+
+**"Load cannot invent one" is true of the file's time and was never true of the bar**, which is that same
+p90 — so what the gate also needs is a population the marked file belongs to. A pool runs the projects whose
+inputs moved, so most runs are partial, and a marked spec at a constant duration is above or below a partial
+run's bar depending on which projects ran beside it: measured 2026-10-06 by holding one at 2,900ms and
+changing only its neighbours, it was stale against a bar of 7,000ms in an 11-file run and 5,600ms in a
+31-file run, having not moved. So `placementOf` takes `whole` and checks no marker without it, reporting the
+half as unchecked the way it already did for one too small to have a tail. It was unreachable when found —
+only four files are slower than the slowest marked one and each sits in a project of 61 to 100 files, so two
+slow files can never be a tenth of a run — and that is arithmetic about this suite rather than anything the
+code held, which is the kind of safety worth replacing rather than recording. **The lesson for a future sample: price the apparatus against the decision it informs.** 1,884 lines, twelve records, two idle floors and a machine identity decided which of
+two config files a spec was listed in, where nine of twelve packages had only one config to begin with.
+
+**And the successor carries a deletion condition from the start, which is the part this lesson was missing.**
+`spec-cost.json` accumulated one only in hindsight. The `@slow:` marker gate — `SLOW_QUANTILE`, `tailBar`,
+`slowReason`, `markedSpecs`, `placementOf`, the outlier detector and their six describes, about 550 of the
+1,901 lines across `spec-durations.ts`, its reporter and their specs, plus 115 in `unit-pool.ts` and its
+spec where the report is printed — guards eleven annotations in one direction, and its failure
+mode is a stale comment. What it is *for* is whether a spec should move between halves, and as of 2026-10-06
+that decision has been made **zero times**.
+
+**A year's wait cannot tell you why, which is the correction the condition needed.** All eleven markers sit
+in packages with a single vitest config, so the move the remedy names costs a new config and a root project
+entry rather than a rename — `hasSplit` is where that fact lives, and nothing counted the markers against it
+until a passing run started printing the count (`markerReachLines`). While that count equals the marker
+total the decision is *unavailable* rather than unmade, and a year would pass with nothing having moved
+whatever anyone decided. So: delete the gate and keep the ranking — the other 1,000 lines, read either
+way — once either a year passes with no spec having moved halves on this evidence **while a move was
+available to it**, or the markers are judged not worth their weight. Both are judgements rather than things
+a run can check, which is why they are prose; the mechanical halves are cases — that the markers have not
+collapsed to none, in `markedSpecs`' describe, and how many of them could move, in `poolDurationLines`'.
+
+**And the reported half was computed where no passing run could print it**, which is the defect that found
+all of the above. `placementOf`'s unmarked list was written only to the pool's own stdout, and both callers
+buffer a step's output and print it on failure alone — so the direction deliberately left as a report was
+visible only when something else broke, which is the one shape the four ways of saying a result is partial
+forbid. It is a line on the pass path now, naming the files rather than counting them, because the ranking
+beside it is ordered by cost and that list by test time, so an unmarked file in the tail need not be among
+the rows a reader can see. On the first run it printed, the integration half's two slowest files — 41.3s and
+31.5s — were both unmarked.
+
+**One window came back, and it is worth saying why it is not a sample in the fatal sense.** The duration
+cache (`scripts/lib/spec-durations.ts`) keeps ten readings per suite and half. It is uncommitted, it cannot
+leave the machine that wrote it, and **nothing compares it against an edge** — its whole output is one
+`(was Xs over N runs)` column on the five slowest files a pool already prints. That is the distinction to
+carry: what made `spec-cost.json` cost 1,884 lines was not keeping readings, it was *deciding* with them.
+A record that informs a column needs no hysteresis, no band, no tie rule, no machine field and no idle
+floor, because there is no threshold for a reading to be wrong about. The file count does not grow either,
+so the prune still answers for every name in the directory.
+
+**The chain's `seconds` table is the sample-shaped thing that remains**, and it is a different case: its
+subject is one machine by declaration (`MEASURED_ON`), `--record` refuses any other, and its drift report
+answers the concentration objection outright — `driftVerdict` recomputes the movement without the largest
+mover, so a drift one step carried is named as that step's with `--forget --step <name>` as the remedy, and
+only a movement that survives the exclusion is called the table's.
 
 The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
@@ -241,6 +311,20 @@ Things that waste the most time, in order:
   `packagesBuiltOrRefuse()` refused, so every step reading the built packages failed at collection (five
   files, thirty-three tests skipped). It carries a `neverCachedBecause` now — 0.3s warm, against a second record of one
   fact that can disagree with the first. Two caches over one body of work is the bug, not the cost.
+  **The three pool steps keep two on purpose, and the reason is that theirs cannot disagree.** A pool step's
+  inputs are `inputsForSuites`, the union of the same `suiteInputs` each project inside it is keyed on, so a
+  cached step cannot hide a stale project — where `packages:ensure` guaranteed something its fingerprint
+  could not see. What the two layers buy is granularity: a one-package edit runs that package's project
+  rather than the pool. What they cost was measured 2026-10-06 — median of 3 on a box another process was
+  using, so each figure is an upper bound and the proportions are what the conclusion rests on — and a
+  fresh host pool step is 0.90s, of which
+  **0.38s is `tsx` starting, 0.30s is the nested `packages:ensure` spawn and ~0.22s is the prune and the
+  sweep over 2,372 files**. So the re-read of what the chain just hashed is the smallest of the three and
+  0.6-1% of a step doing real work. Collapsing to one layer was priced too: uncaching the pool steps puts
+  three ~0.9s steps on a 0.7s floor and fixes nothing, since the pool would still trust its own stamps.
+  What they *could* disagree about is who established the pass, and that is closed separately —
+  `CHAIN_RUN_ENV` in `scripts/lib/unit-pool.ts`, which keeps a pass under the chain apart from one
+  established alone.
 - **Running suites concurrently *before the packages are built*.** The hazard is the build itself, not
   the suites: `ensurePackagesBuilt()` returns before taking the lock when nothing is stale
   (`abuddy-host/src/build/packages-built.ts`), and only `stampedBuild` locks. So two suites that both
@@ -278,22 +362,22 @@ Six rules that pay for themselves:
   files, nine of them a whole package, reported green having checked nothing); **a distinct exit code**, where
   "nothing covered this" and "everything covering it passed" are different answers a script has to tell apart
   (`npm run spec`'s 3); **a named bucket beside the total**, where some of the input was unpriceable and only
-  part of it is anyone's to fix (`priceSpecs`' `unpriced` and `outside`, `scripts/lib/spec-dry.ts`); and **a
+  part of it is anyone's to fix (`pricedSpecs`' `unpriced`, `scripts/lib/spec-dry.ts`, which names the specs
+  no run on this machine has measured rather than summing them as free); and **a
   clause on the success line**, where the work happened but one claim in the sentence did not hold
-  (`spec-cost:check`'s *"placement unchecked for 1 of 12"*, in the shape of the chain's own
-  `(N of M cached)`). A skipped test takes its reason in the name instead, which `suite-split`'s `OFF_BOX`
-  does, so a run on another machine says why rather than quietly reporting fewer cases. What none of them is:
-  silent.
+  (the chain's own `(N of M cached)`, and `spec-cost:check`'s *"placement unchecked for 1 of 12"* before it
+  was deleted). A skipped test takes its reason in the name instead, so a run that covers less says why
+  rather than quietly reporting fewer cases. What none of them is: silent.
 - **A check that cannot fail today is a gate or an assertion, and they want opposite things.** A gate's
   subject is input, which can be wrong, so it needs a firing case — the rule above. An assertion's subject is
   the program's own construction, and being unreachable is the point: no input reaches it, so no case can, and
   writing one means faking a state the program cannot be in. What it needs instead is a comment naming the
-  *edit* that would make it fire, because that edit is what you mutate to watch it. `spec-cost`'s
-  `plans.length === 0` is the worked example: `parseArgs` refuses the arguments that used to empty that list
-  and `suitesFor` carries the case, so it reads as dead code and was filed as a defect on exactly that
-  reasoning — but append `.filter(() => false)` to the chain that builds `plans` and all 71 specs still pass
-  while the command reports "every record is current" over no work at all. Judging one as the other costs a
-  round trip at best and deletes the only thing standing under a future edit at worst.
+  *edit* that would make it fire, because that edit is what you mutate to watch it. The worked example was
+  `spec-cost`'s `plans.length === 0`, deleted with that command: its argument parser refused the inputs that
+  could empty the list, so it read as dead code and was filed as a defect on exactly that reasoning — but
+  appending `.filter(() => false)` to the chain that built the list left every spec passing while the command
+  reported "every record is current" over no work at all. Judging one as the other costs a round trip at
+  best and deletes the only thing standing under a future edit at worst.
 - **A list and its type are one declaration.** Write the list and derive the type from it
   (`const XS = [...] as const; type X = (typeof XS)[number]`), or the other way round where the type is the
   definition — never both by hand. Four pairs in this repo were written twice, and each had a different failure:
@@ -377,7 +461,7 @@ cheaper chain measured — written when the declaration was a tier.
 
 **A figure earns its place by sizing a choice, and one a record owns is named rather than copied.** Two
 different failures: a figure that informs no decision is weight, and a copy of something `chain-steps.ts`
-or `spec-cost:check` already knows drifts with nothing to catch it. "One spec file is 1-3s against the 38.6s a
+already knows drifts with nothing to catch it. "One spec file is 1-3s against the 38.6s a
 one-package edit costs the chain" earns its place; a count the `--list` flag derives does not.
 **That example used to read "against the chain's 27s floor", and it is here as the warning as well as the
 rule**: the floor became 0.9s when the per-step caching landed, the sentence was copied to two other places,
@@ -435,15 +519,27 @@ npm run spec             # The specs your uncommitted changes affect, wherever t
                          # run that did nothing were the same answer until it existed. Only a route that
                          # promised coverage earns it — a whole-suite run, a `-t` matching no case and a
                          # doc target all report zero correctly and exit 0
-npm run spec:dry [...]   # What the plan would run and what the record says it costs, running nothing.
-                         # Takes every argument spec does; ~1.6s whatever comes back, since it is the
-                         # project configs loading rather than a graph being walked. It prints **file-time
-                         # summed across workers, never a wall estimate** — the ratio between the two was
-                         # 1.55:1 and 2.18:1 on one target three days apart. It prints the record's
-                         # `measuredAt` too: a cost is the median of a window of readings rather than the
-                         # last one taken, so the total is a band and not a figure, and a spec the record has
-                         # never seen is named rather than counted free. The ordinary `npm run spec` collects
-                         # nothing
+npm run spec:dry [...]   # What the plan would run, and what the last run on this machine measured it at,
+                         # running nothing. Takes every argument spec does; ~1.6s whatever comes back, since
+                         # it is the project configs loading rather than a graph being walked. It prints
+                         # **file time summed across workers, never a wall estimate** — the ratio between
+                         # the two was 1.55:1 and 2.18:1 on one target three days apart — and when that run
+                         # was, since that is how stale the answer is.
+                         # **There is no record behind this and nothing to re-record.** It reads a cache the
+                         # unit pools write (`node_modules/.cache/abuddy-spec-durations`, keyed by suite and
+                         # half), so nothing is committed, nothing can describe another machine, and a spec
+                         # no run here has measured is named rather than counted free. A fresh clone prices
+                         # nothing and says so. It replaced `spec-cost.json`, which held a millisecond per
+                         # spec in git and needed a window, a band and two idle floors to be comparable at
+                         # all. The ordinary `npm run spec` collects nothing.
+                         # **That cache keeps a window too, and the difference from the deleted one is what
+                         # it is for**: ten runs per suite and half (`KEPT_RUNS`), uncommitted, feeding one
+                         # `(was Xs over N runs)` column on five lines the pools already print. The old
+                         # window *decided* a spec's half, and because that decision was impossible it
+                         # needed hysteresis, a band, a tie rule, a machine field and two idle floors to be
+                         # comparable. Nothing compares this one against an edge, so there is no threshold
+                         # to get wrong — which is also why the output is bounded to a list that was already
+                         # bounded rather than to whatever crossed a line
 npm run spec:full [...]  # The same, plus the two answers the module graph cannot give: the pack suites a
                          # rebuilt dist would reach, and the integration halves behind a second config.
                          # Costs a build when one is stale (14s), the pack suite (18s) and the pooled
@@ -531,23 +627,27 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             by any other means — `--force` overrides the refusals, not the band.
                          #             It writes only rows whose value actually differs, so a run that agrees
                          #             with the table leaves no edit and moves no mtime. The same word
-                         #             `spec-cost:update` takes, for the same operation: ignore what is
-                         #             recorded, keep what this run measured.
+                         #             the deleted `spec-cost:update` took, for the same operation: ignore
+                         #             what is recorded, keep what this run measured.
                          #             **For a change you know about — a bundler bump, a policy change — and
                          #             not to chase a drift you do not.** It replaces the whole table from one
                          #             run, so a run that measured the machine writes the machine into every
                          #             row: watched 2026-10-04 putting `build:app` at 78s against the ~39s six
-                         #             other runs agreed on, which then failed `declaredShare`. When the drift
-                         #             report says the body moved, its own advice is the answer — re-run on an
-                         #             idle machine until it settles. `scripts/chain.ts` records the three
-                         #             cheaper guards that were tried and do not separate the two cases
+                         #             other runs agreed on, which then failed `declaredShare`.
+                         #             **The drift report now says which of the two you have**, so you need not
+                         #             guess: `driftVerdict` recomputes the movement without the largest mover,
+                         #             and a movement that does not survive that is one step's — reported with
+                         #             `--forget --step <name>` as the remedy. Only a movement that does
+                         #             survive is the table's, where the answer is to re-run on an idle machine
+                         #             until it settles. `scripts/chain.ts` records the three cheaper guards
+                         #             that were tried and do not separate the two cases
                          #   --step <name>  with --forget: write that one step and no other. **The usual
-                         #             form**, because none of those three guards works and this is what is
-                         #             left — a wrong number confined to the row you named cannot reach the
-                         #             other twenty-eight, and `declaredShare` catches the one. Bare --forget
-                         #             stays for a correlated drift, which is all-rows by nature. Refused
-                         #             where it names no step in the run, which would record nothing and
-                         #             report a quiet table
+                         #             form**, and now the one the report names for you — a wrong number
+                         #             confined to the row you named cannot reach the other twenty-eight, and
+                         #             `declaredShare` catches the one. Bare --forget stays for a correlated
+                         #             drift, which is all-rows by nature and is the other branch the report
+                         #             distinguishes. Refused where it names no step in the run, which would
+                         #             record nothing and report a quiet table
                          #   --adopt   record on another machine, writing `MEASURED_ON` with the costs.
                          #             The table and the box it was measured on are one fact, so one
                          #             operation writes both — without this the costs moved and the
@@ -657,12 +757,12 @@ npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a nu
                          #   --idle PERCENT    lower the floor    --force  measure anyway
                          # It refuses below IDLE_FLOOR (70%) — the floor for a command that *prints*, where
                          # the output carries its own conditions; a command that records asks
-                         # RECORD_IDLE_FLOOR (85%) instead. Read from os.cpus() rather than load average,
+                         # RECORD_IDLE_FLOOR (80%) instead. Read from os.cpus() rather than load average,
                          # which lags — measured, loadavg 3.20 on a box that was 78.7% idle. **Idle is
                          # sampled between runs, never during one**: a reading taken while the command runs
                          # measures the command, and a quiet box reads 0% while a suite uses it.
-                         # Prints, never records — a timings file would be a sample, and spec-cost.json is
-                         # what that costs (see "There is a third kind" above)
+                         # Prints, never records — a timings file would be a sample, and the deleted
+                         # spec-cost.json is what that costs (see the sample section above)
                          #
                          # **A null A/B is unfalsifiable until the independent variable is shown to have
                          # moved**, and the instrument cannot do that half for you: `measure` takes the
@@ -692,86 +792,15 @@ npm run measure:loop -- "<cmd>"  # Not how long a command took, but how long eac
                          # It answers what `[vitest-worker]: Timeout calling` does not, which is which side
                          # failed; see the test:integration entry above for the mechanism and the fix
 
-# Recorded spec costs (which half each spec runs in)
-npm run spec-cost:check  # Reads the records, runs nothing. `-- --list` prints what they hold and counts
-                         # the specs a re-measurement inside the record's own accuracy could carry over
-                         # the edge that would move them — a handful, so the rest are nowhere near a
-                         # decision. Which edge depends on the half: only the upper one moves a fast spec,
-                         # only the lower one brings an integration spec back, and counting band
-                         # membership instead named specs that could not move at all. Ask the command
-                         # rather than this page: it derives the count on every run, and a copy here is a
-                         # number nothing checks
-npm run spec-cost:update # The least that makes the records current, which is often nothing — 0.3s when
-                         # nothing is wrong, against minutes of file time to re-measure everything. It says which
-                         # case it took: a deleted spec needs no measurement to drop, a new one needs only
-                         # the half it lives in.
-                         # **It will not measure below RECORD_IDLE_FLOOR (85%)** — what you would record on
-                         # a busy box is the machine, and a cost was once recorded at a load of 71 and
-                         # reverted by hand. 85 rather than the 70 a printed timing needs, because measured
-                         # 2026-10-04 a run admitted at 70% drifts the body about as far as DRIFT_SHARE, the
-                         # threshold the drift report exists to raise — a floor that admits runs its own gate
-                         # would flag is not a floor. The table is on the constant. That is a separate gate
-                         # from the contention refusal below, which asks after measuring whether too much
-                         # *moved*.
-                         # **On a busy box it records membership and no cost — it neither waits nor
-                         # refuses.** Two earlier versions were worse in opposite directions. It threw, and
-                         # the throw blocked a landing: `suite-split` fails on a spec the record has never
-                         # seen, so a box that stayed busy left the gate red with the only advice being to
-                         # wait. Then it waited up to ten minutes and threw anyway, which removed a round
-                         # trip and left the block. Degrading makes both unnecessary, and leaves a wait
-                         # nothing to buy: the cost it would eventually take is the cost the next quiet run
-                         # takes. *Which specs exist* is a fact about the repo and *what one costs* is a fact
-                         # about a machine, so a busy box takes the path another machine does — the spec is
-                         # listed `unmeasured`, which `unrecorded` accepts. Nothing is lost: the refusal
-                         # existed to keep a busy box's numbers out of the record, and writing no cost does
-                         # that better than writing none *and* failing. Placement is unaffected either way,
-                         # since a spec runs in the half its filename says (`halfOfPath`) and the cost only
-                         # audits that. `--force` measures anyway. One predicate answers it
-                         # (`writesMembershipOnly`), so a busy box and a foreign record cannot drift apart.
-                         # **Off the record's own machine it writes membership and never a cost.** A record
-                         # holds two kinds of thing: which specs exist, a fact about the repo that anyone
-                         # can see, and what one costs, a fact about a machine. They were one map, so
-                         # adding a spec meant measuring it — and the only way a second developer could
-                         # satisfy the `unmeasured` finding was to write their own box's milliseconds into
-                         # a record measured on someone else's, with nothing in the file saying it then
-                         # held two machines' numbers. A new spec is listed in `unmeasured` instead, which
-                         # satisfies the finding and prices nothing; the measuring machine fills it in on
-                         # its next run. Which machine that is, is in the record (`machine`) rather than
-                         # read from `MEASURED_ON`, which describes the box the *chain's* seconds were
-                         # taken on — two records, two machines, and nothing made them the same box.
-                         # `--all --force` is how another machine takes a record over: every row
-                         # re-measured, past the refusal that exists to stop a partial one.
-                         #   <spec path>   that spec's half and nothing else. It runs the spec's *config*,
-                         #                 never the file alone: `chain-inputs` reads 1688ms beside its
-                         #                 siblings and 963ms on its own, against a band 1000ms wide, so a
-                         #                 solo number files it in the wrong half
-                         #   --suite <dir> one suite
-                         #   --all         re-measure every spec. Each reading still has to disagree with
-                         #                 its window's median to be kept, so a quiet --all writes nothing
-                         #   --forget      drop the recorded readings and start again from this run, for
-                         #                 whatever the run measures: `--all` (narrow it with `--suite`), or a
-                         #                 spec path. The only thing that clears a correlated drift, since a
-                         #                 fifth added to every spec sits under every per-spec tolerance.
-                         #                 **Its own flag, not `--force`**: that one silences the idle and
-                         #                 contention refusals, and forgetting writes a cost from a single
-                         #                 reading — the state with no history to outvote a bad one — so it is
-                         #                 the write that most needs a quiet machine rather than the one that
-                         #                 should be able to skip the check. It refuses a scope that would
-                         #                 measure nothing, since forgetting needs a reading to replace with
-                         #   --dry         what it would run and write
-                         #   --force       override both refusals. Adopting a record measured on another
-                         #                 machine is still `--all --force`: whose machine it is and whether
-                         #                 its readings still describe the code are separate questions
-
 # Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)
 npm run check:idle       # Is this machine quiet enough to measure on, and for which kind of measurement —
                          # `89% idle — quiet enough to record on`, exit 1 below the recording floor.
                          # **Two floors, because what a command leaves behind decides how quiet it needs to
-                         # be**: recording needs 85% (`spec-cost:update`, `chain --record`), printing needs
+                         # be**: recording needs 80% (`chain --record`), printing needs
                          # 70% (`measure`, `measure:loop`). It reports both and exits on the stricter,
                          # being a pre-flight for --record; a reader who only wants to print is told so.
-                         # Three commands refuse when the box is busy and none could be asked in advance:
-                         # `spec-cost:update` and `measure` refuse before they run anything, and
+                         # Two commands refuse when the box is busy and neither could be asked in advance:
+                         # `measure` refuses before it runs anything, and
                          # `chain --record` refused *after* the run, which is where the answer arrives too
                          # late — twice on 2026-10-04 that spent 200s to be told the box was 69% idle. The
                          # chain asks first now as well, and this is the same reading as a command, so it

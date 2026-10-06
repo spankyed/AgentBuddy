@@ -1,3 +1,8 @@
+> **Superseded in part** by its own Phase 1 spike (branch `AS/spec-placement-without-milliseconds`): the
+> spike refuted Decision 1's premise, so Decisions 1-3 were not implemented and Phases 2-3 were replaced
+> by the alternative the goal had skipped. Decisions 4-8 landed as written. The text below is the plan as
+> written; the Outcome records what was built instead and why.
+>
 > **Written in session** `f122fdc5-84c9-467f-9c61-66330eab32d0` (Claude Code, 2026-10-05). Resume it with `claude -r f122fdc5-84c9-467f-9c61-66330eab32d0`.
 
 ```
@@ -100,6 +105,59 @@ That was measured on `@app/repo-checks`' fast half. Measured 2026-10-05 across a
 
 **Removing the spec-cost caller orphans the threshold.** After this goal `bodyDrift` has one caller, `scripts/chain.ts:768`. Measured 2026-10-05, ten chain steps declare a `seconds` cost, totalling 266 s, with `test:packaged-authoring` at 91 s — **34% of the body, and the top three 62%**. That is the same concentration regime the premise fails in, the subject the threshold was calibrated on is the one this goal deletes, and nobody has measured the chain's own quiet-run body variance.
 
+## Spike results (2026-10-05)
+
+Machine: Apple M1 Pro, 10 cores. Quiet runs at 88-94% idle, loaded runs at 20% idle (eight `node` CPU burners, started and stopped by captured PID). Spike code is a throwaway Python probe under the session scratchpad; **do not reuse it** — it duplicates `FILE_LINE` by hand, and Phase 3 should use the JSON reporter instead (Q2).
+
+Commands: `npm run packages:ensure`; `npx tsx scripts/test-unit-pool.ts {host,pack,integration} --all` (the `--all` is required — the pools otherwise run only stale projects and a cached run prints nothing); `node scripts/with-source.mjs npx vitest run --reporter=default --reporter=json --outputFile=<path>`.
+
+### Q1 — Does every spec appear with a duration in a real pool run? **Yes.**
+
+415 file lines parsed across the three pools, 415 distinct specs, against 414 recorded across twelve suites. **No recorded spec is missing from a pool run.** One spec is seen with no duration: `default-setup/tests/features/code/be/claude-code-permission-flow.spec.ts`, which is fully skipped, so vitest prints no time for it — the case `scripts/spec-cost.ts:93` already handles, and it is in the record's `skipped` list rather than `samples`.
+
+The three pools print three different line shapes, all of which `FILE_LINE` already reads: the host and integration pools prefix `|@project|`, while the pack pool invokes `npm test -w <workspace>` per suite and prints no prefix, so suite identity there comes from the invocation and not the line. Phase 3 has to carry that distinction.
+
+### Q2 — Is a JSON reporter available and better? **Yes to both, and it should be used.**
+
+`--reporter=default --reporter=json --outputFile=<path>` runs both: the human output is unchanged and the JSON is written beside it. Verified on a pooled multi-project run (`@app/renderer` + `@app/main`, 11 of 11 files present) and on a single project, where the two agree to rounding (131/132 ms, 2/2, 11/11).
+
+`testResults[]` carries `name` as an **absolute path** plus `startTime`/`endTime`; the duration is their difference, and there is no `duration` field. It is better than the regex on three counts: the path is unambiguous so neither the `|project|` prefix nor the npm-banner tracking is needed, there is no ANSI to strip, and it does not depend on reporter formatting.
+
+### Q3 — What streak length is needed? **No consecutive-count N works. This refutes Decision 1's premise.**
+
+288 specs measured in all three runs (one quiet, two loaded). Nine specs' verdicts moved under load, and **three moved in both loaded runs**:
+
+| spec | quiet | busy 1 | busy 2 |
+|---|---|---|---|
+| `publish-checks/.../published-manifest-paths.spec.ts` | 2443 ms (fast) | 3532 ms (integration) | 3326 ms (integration) |
+| `repo-checks/tests/spec-waits.spec.ts` | 1658 ms (fast) | 2509 ms (integration) | 2920 ms (integration) |
+| `repo-checks/tests/suite-reads.spec.ts` | 1537 ms (fast) | 2530 ms (integration) | 2614 ms (integration) |
+
+Busy/quiet ratio over the 103 specs above 50 ms: **median 1.27x, p90 2.03x, max 3.29x.**
+
+A streak counts *consecutive* runs, and load persists — for hours on a working machine. Three specs flipped twice running, so N=2 files three wrong renames; nothing about N=3 or N=4 is different, because a box loaded for three runs flips three times. **The premise that a boolean verdict is machine-independent is false**: the edge is an absolute wall-clock threshold, and load moves durations across it by 2-3x, so the verdict is exactly as machine-dependent as the millisecond was.
+
+What the data does support is a **margin against the edge rather than repetition**. Load explains up to 3.29x here, so a spec over its edge by more than that is over it for reasons load cannot account for — `abuddy-sdk/tests/build/generate-entries.spec.ts` at 17 745 ms against a 2 500 ms edge is 7.1x and believable from one reading, where `spec-waits` at 2 509 ms is 1.004x and is noise. A ratio is machine-independent in the way a wall-clock threshold is not.
+
+**`CONTENTION_RATIO_MAX = 2.5` is not that ratio, despite the name.** Its doc records it as an upper bound on how much more a spec reads *in the fast half than in the integration half*, measured on an idle box with each spec moved alone — a placement conversion, not a load factor. The 3.29x above neither confirms nor contradicts it; they are different quantities, and conflating them would size the band on the wrong measurement.
+
+### Q4 — How far is any spec from its edge? **31 of 415, and the audit has two kinds, not one.**
+
+31 specs sit within a 2.5x swing of their edge; the other 384 cannot be moved by any plausible noise. Eight specs' *pooled* durations already disagree with their filenames while `spec-cost:check` passes — and the reason is a distinction Decision 1 does not model. `overBudget` (`spec-cost.ts:634`) dispatches on `hasSplit` (`:534`):
+
+- a package with two vitest configs gets **`misplaced`** — the spec is in the wrong half and a rename is the remedy;
+- a package with one config gets **`outgrown`** — the spec costs more than a fast half allows and there is nowhere to move it, so the entry records *what makes it expensive* instead. Explicitly "not a queue of packages to split".
+
+Only three packages have a split (`@abuddy/cli`, `@app/repo-checks`, `@app/publish-checks`), so nine of twelve suites can only ever produce `outgrown`. `generate-entries.spec.ts` at 17.7 s passes because it is `outgrown` with a recorded reason, not a misplacement.
+
+A second effect Q4 exposes: the recorded costs were measured by `measure()` running one `npx vitest` **per package**, while specs actually run pooled across eleven projects. `generate-entries` is recorded at 11 308 ms and reads 17 745 ms pooled. Decision 2 already says a spec should be timed in the pool it runs in; the gap is larger than the doc assumed.
+
+### What the spike did not cover
+
+- Whether a margin-against-the-edge rule is stable across machines, which is the question Decision 1's replacement turns on. One box only.
+- The pack pool's per-invocation suite identity under the JSON reporter (Q2 was verified on pooled and single-project runs, not on `npm test -w`).
+- `spec:dry`'s basis (Open decision 1), untouched.
+
 ## Decisions
 
 Final, except Open decision 1.
@@ -180,6 +238,68 @@ Deliberately last: the point is to re-derive the threshold for its actual sole c
 - Decision 5: the top-mover exclusion and the three-branch remedy in `scripts/chain.ts`'s drift report.
 
 **Done when:** `bodyDrift` has one caller; `npm run spec -- measure` and `npm run spec -- chain` pass; `npm run chain` is green. Mutation: feed the report a map where one step carries the whole movement and assert it names that step rather than the body, and a map where every step moved alike and assert it names the body — both as pure-function cases over two maps, which is the data-input shape root `CLAUDE.md` prescribes.
+
+## Outcome (2026-10-05)
+
+Landed on `AS/spec-placement-without-milliseconds`, cut from `master` at `bab40b892`. **The spike in Phase 1 refuted the premise behind Decisions 1-3 before any code moved, so the goal's central change was not built.** What landed instead is the alternative this goal had explicitly skipped — removing the spec-cost body-drift report — plus Decisions 4-8 as written. The spike cost about an hour of machine time and saved a redesign of ~1,800 lines that would have been strictly worse than what is there.
+
+### Per phase
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — Spike | **done** | `4c0001457`. Four answers in Spike results above, with commands and machine |
+| 2 — The record holds a streak | **not done, refuted** | Q3: three specs' verdicts flipped in both loaded runs, so no consecutive-count N works |
+| 3 — The suite run is the measurement | **not done, falls with it** | Measuring on every run, loaded or not, is worse than measuring deliberately on a quiet box — see Corrections |
+| 2' — No body-drift report for spec costs | **done** (replaces 2) | `2510f5400`. `drifted()` has one caller; `spec-cost:check` ✅ 415 specs; repo-checks 948/948 |
+| 5 — The chain's drift report | **done** | `d1ecc6eef`. `driftVerdict` + 6 cases, both named mutations fire only on their cases |
+| 4 — Docs | **done** | `d15f0c898`. Three passages in root `CLAUDE.md`; `doc-links` 6/6 |
+
+### Corrections to the Decisions
+
+**Decision 1 is wrong, and the spike's Q3 is the evidence.** The premise was that a boolean verdict is machine-independent "because the question is *did it exceed 2,500 ms*, not *by how much*". It is not: the edge is an absolute wall-clock threshold, and under sustained load three specs' verdicts flipped in **both** loaded runs. A streak counts consecutive runs and load persists for hours, so N=2 files three wrong renames and N=3 is no better. Both obvious repairs are ruled out by the same data — a margin against the edge needs 3.3x and so only catches egregious cases, and a per-run scale correction fails because load is not a uniform multiplier (after dividing by the median 1.18x, 20 of 83 specs are still off by more than 1.5x, and larger specs are *less* affected than smaller).
+
+**Decisions 2 and 3 fall with it.** Both existed to make the record machine-independent. Once the verdict is known to be machine-dependent, measuring during every real run — including loaded ones — is *worse* than measuring deliberately on a quiet box, and `RECORD_IDLE_FLOOR` is correct rather than incidental. The deeper conclusion is that the millisecond, the window, the band and the idle floor are the shape of the problem: auditing a wall-clock budget is machine-dependent, and no unit change makes it otherwise.
+
+**What replaced them is the option this goal skipped.** The session that wrote this doc considered deleting the spec-cost body-drift report ("B") and rejected it as something the redesign would subsume. The redesign is gone and the deletion is the whole remaining fix. It was already in this goal's own "Finished when" — *"`bodyDrift`/`drifted`/`DRIFT_SHARE` have exactly one caller, `scripts/chain.ts`"* — so Decision 4 had required it all along.
+
+**Decision 4 took its second option.** `DRIFT_SHARE` is recorded as inherited rather than re-measured, with the reason on the constant: the figures behind it are a spec suite's, that suite stopped consuming it, and the concentration the chain does have is answered by Decision 5's second reading rather than by the threshold's size. An attempt to re-measure produced two repeatable runs (151.7s, 151.2s) on a box reading 58-66% idle against a floor of 85%, so they say the chain is repeatable and nothing about drift. Recorded as an attempt rather than a measurement.
+
+**Decision 6 held, in the direction that mattered.** The lessons were not carried into a new module, because there is no new module — the window, band and median stay where they are. What the commit does record, where the report used to be, is why there is no report and what a replacement would have to do first.
+
+### Conventional choices
+
+- `bodyDrift` and `drifted` are now called only from `driftVerdict` inside `measure.ts`, and `driftVerdict` has the chain as its one caller. That is tighter than the "exactly one caller, `scripts/chain.ts`" the Finished-when asked for, and satisfies its intent.
+- The largest mover is picked by absolute seconds rather than by its own share, so a tiny step that doubled is not named over the one that moved the sum. A case covers it.
+- `--forget` was kept on `spec-cost:update` (Decision 3 would have deleted it). With the report gone it is for a change you already know about, which the flag's doc now says.
+
+### Open items
+
+- **Three spike findings worth their own work**, none of them blocking: the parse should move to vitest's JSON reporter (Q2 — absolute paths, no ANSI, no `|project|` prefix handling, verified working alongside the human reporter); the recorded costs are measured by one vitest **per package** while specs run pooled across eleven projects, an 11,308 ms vs 17,745 ms gap on `generate-entries.spec.ts`; and `overBudget` has two kinds (`misplaced` for the three split packages, `outgrown` for the other nine) that no plan here modelled.
+- `CONTENTION_RATIO_MAX` is named as if it were a load factor but is measured as a fast-vs-integration placement ratio on an idle box. The name invites exactly the conflation this spike nearly made.
+- The three specs added by the preceding branch carry membership without a cost on some runs; the machine sat at 80-88% against the 85% recording floor for most of this session.
+
+### Final verification
+
+| Check | Result |
+|---|---|
+| `npm run typecheck` | ✅ all legs |
+| `npm test -w @app/repo-checks` | 948/948 |
+| `npm run spec -- measure.spec.ts` | 49/49, both mutations fire only on their cases |
+| `npm run spec-cost:check` | ✅ 415 specs across 12 suites |
+| `npm run spec-cost:update -- --dry` | every record current |
+| `npm run lint:check` | 0 warnings, 0 errors |
+| `npm run chain` | ✅ 24.1s (21 of 28 cached), then ✅ **162.1s with `--all`** on a 90%-idle box |
+
+Two notes from those chain runs, neither of them this goal's:
+
+- The 24.1s run reported three steps past twice their declared cost (`check:specifiers` 5s->11s,
+  `typecheck:scripts` 5s->12s, `lint:check` 3s->7s). None reappeared in the `--all` run on an idle box, so
+  that was contention — the machine sat at 58-88% for much of this session with another process in the tree.
+  A 150-line change cannot double a repo-wide scan.
+- The `--all` run reported `test:smoke  seconds: 9 -> 20`. It appears only under full-chain concurrency —
+  the same suite read 10.6s in an ordinary run — and nothing in this goal touches the app, the renderer or
+  the E2E fixture. Left unrecorded on purpose: one reading, not this branch's, and recording a step cost is
+  a deliberate act (`chain -- --all --record`) rather than something to fold into an unrelated change.
 
 ## Deferred
 

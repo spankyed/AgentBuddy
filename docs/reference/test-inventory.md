@@ -8,16 +8,15 @@ What tests this repo has, where they live, and how to tell where a test *belongs
 > half and are what the CLAUDE.md files cite; the figures are a snapshot of 2026-09-25, surveyed through
 > `goal-test-placement.md` Phase 2.
 >
-> **The numbers are owned elsewhere, so ask for them rather than reading them here:**
-> `npm run spec-cost:check -- --list` derives the per-suite spec counts from each package's
-> `etc/spec-cost.json` on every run. A copy on this page is a second record of one fact, which is the thing
-> that rotted. Test counts are absent on purpose — they move on every commit, and nothing decides anything
-> from them.
+> **The numbers are not owned here, so count them rather than reading them off this page.** They were
+> derived by `spec-cost:check -- --list` from a per-package record until 2026-10-05; both are gone, and a
+> suite's spec files are now what a run of it prints. A copy on this page is a second record of one fact,
+> which is the thing that rotted. Test counts are absent on purpose — they move on every commit, and
+> nothing decides anything from them.
 
 ## Scale
 
-**A snapshot of 2026-09-25, known stale** — `npm run spec-cost:check -- --list` is the live answer. What the
-shape is for: twelve package suites, a handful of fixture-pack specs, the E2E suite, and the root's own
+**A snapshot of 2026-09-25, known stale** — a run of a suite is the live answer. What the shape is for: twelve package suites, a handful of fixture-pack specs, the E2E suite, and the root's own
 `tests/scripts` shell checks. As surveyed, 369 spec files, 339 of them in the package suites.
 
 | Suite | Specs | Fast half | Expensive half | Total |
@@ -43,7 +42,7 @@ measured ones.
 `@abuddy/cli` is still 63% of the file time, and now legitimately: the eight specs whose subject was the
 published packages are `@app/publish-checks`, so its record can be read as a CLI number. It has moved
 190.8s → 200.8s → 170.8s across recordings that removed twelve specs; the middle figure was a contended
-measurement, which is why the band in `spec-cost.ts` exists.
+measurement, which is the kind of noise the deleted cost record needed a band to absorb.
 
 `packages/preload` has source but neither specs nor a `test` script; `@app/electron-versions` and
 `@app/typescript-floor` hold no source. Every other package has a suite —
@@ -68,16 +67,27 @@ Three consequences worth stating, because each was once decided the other way:
 
 No package colocates. `@app/default-setup` had six specs under `src/` with an include whose comment read
 *"without this they are silently never run"*; they moved and the include went with them.
-`scripts/lib/spec-cost.ts` still walks `src/` on purpose — nothing includes it now, so a colocated spec
-would never run, and the walk is what makes it show up as unrecorded instead of vanishing twice over.
+`scripts/lib/spec-halves.ts`' `specFiles` still walks `src/` on purpose — nothing includes it now, so a
+colocated spec would never run, and the walk is what makes it show up in `spec:dry`'s listing rather than
+vanishing twice over.
 
-Two suites have an expensive half, selected by measured cost rather than by what a spec does:
-`@abuddy/cli` and `@app/repo-checks`, each with a `vitest.integration.config.ts` over
-`tests/**/*.integration.spec.ts`. The rule is in [`scripts/lib/spec-cost.ts`](../../scripts/lib/spec-cost.ts):
-a fast spec moves above 2.5s, an integration spec returns below 1.5s, and anything between stays — a dead
-band, because a file's cost is its wall time under whatever else its half is running.
-`repo-checks/tests/suite-split.spec.ts` fails a spec in the wrong half, has no recorded cost, or is
-recorded and gone.
+Three suites have an expensive half: `@abuddy/cli`, `@app/repo-checks` and `@app/publish-checks`, each with
+a `vitest.integration.config.ts` over `tests/**/*.integration.spec.ts`. What a spec gets there is a 60s
+per-test budget instead of 15s, a worker pool capped at half the cores, and separation from the per-change
+loop.
+
+**Which half a spec is in is a decision, declared by its filename**, and nothing re-derives it. It was
+decided by measured cost against fixed edges until 2026-10-05 — a record per spec, a window of readings, a
+band, two idle floors and a machine identity, all to stabilise a number that turned out not to be one
+number: a spec reads 2.8s in the fast pool and 0.64s in the integration pool, so each half's reading demanded
+a move the other took back. [`scripts/lib/spec-halves.ts`](../../scripts/lib/spec-halves.ts) is what
+survived, and it measures nothing. Slowness is visible instead of adjudicated: vitest prints any test over
+its 300ms threshold under its file, the chain prints each step's five slowest tests, and each unit pool
+ranks its five slowest *files* per half from the run that just measured them
+([`scripts/lib/spec-durations.ts`](../../scripts/lib/spec-durations.ts)). A spec whose header carries
+`// @slow: <reason>` is held to still being in its half's slow tail — the one direction load cannot
+fabricate, since it inflates a duration and never shortens one — and the same cache is what
+`npm run spec:dry` prices a plan from, per machine and uncommitted.
 
 ## Categories
 

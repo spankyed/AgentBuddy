@@ -51,8 +51,8 @@
 // coverage of a file a spec could cover (`Run.claimsCoverageOf`): a whole-suite run, a `-t` filter that matched
 // no case, and a `.md` target all report zero correctly.
 //
-// **Two flags of its own.** `npm run spec:dry` answers "what would this run, and what does the record say it
-// costs" without running any of it. It collects — ~1.6s whatever comes back — which the ordinary run never
+// **Two flags of its own.** `npm run spec:dry` answers "what would this run, and what did the last run on
+// this machine measure it at" without running any of it. It collects — ~1.6s whatever comes back — which the ordinary run never
 // does: the collector and the pricing load behind `await import`, and repo-checks asserts that from this
 // file's source. And `--no-bail` reports every failure in the plan rather than stopping at the first, for
 // when you want the whole picture in one run; bailing is the default because a 1s failure otherwise pays for
@@ -133,62 +133,66 @@ function counted(run: Run, index: number): { args: string[]; env: NodeJS.Process
 }
 
 /**
- * What the plan would run and what the record says it costs, collecting rather than running.
+ * What the plan would run, and what the last run on this machine measured it at, collecting rather than
+ * running.
  *
  * Collection is flat in the size of the answer — 1.6s for 0 specs and 1.6s for 150, measured, because it is
  * the eleven project configs being loaded rather than a graph being walked. Worth it against a 20s root run
  * and not against a 3s one, which is why it is its own command rather than something the ordinary run pays.
  */
 if (dry) {
-  const { collectFor, priceSpecs, priceSuites, needsAppForRun, asDuration } = await import('./lib/spec-dry.ts');
-  let total = 0;
+  const { collectFor, checkedSpecs, specsOfSuites, needsAppForRun, pricedSpecs } = await import('./lib/spec-dry.ts');
+  const { asDuration, asLocalTime } = await import('./lib/spec-durations.ts');
   // Each distinct note once, as the run itself says them: two targets in one package carry the same sentence
-  const predicted = new Set<string>();
-  const unpriced: string[] = [];
-  const outside: string[] = [];
-  const dates: string[] = [];
+  const said = new Set<string>();
+  let listed = 0;
+  let measured = 0;
+  let unpriced = 0;
+  let oldest: string | undefined;
 
   for (const run of runs) {
     console.log(`\n→ ${run.label}${needsAppForRun(run, ROOT) === true ? '  [needs the app]' : ''}`);
-    // Three ways a run's file list is known, and a run that is none of them says so: collected from the
-    // graph, named by the target, or a suite's whole record. Without the last two a plan's most expensive
-    // runs — a named spec, `--full`'s pack suite — would contribute nothing and read as free
-    let priced;
+    let specs: readonly string[];
     if (run.collects !== undefined) {
-      priced = priceSpecs(await collectFor(run, ROOT), ROOT);
+      specs = checkedSpecs(await collectFor(run, ROOT));
     } else if (run.specs !== undefined) {
-      priced = priceSpecs([...run.specs].sort(), ROOT);
+      specs = checkedSpecs([...run.specs].sort());
     } else if (run.covers !== undefined) {
-      priced = priceSuites(run.covers, ROOT);
+      specs = specsOfSuites(run.covers, ROOT);
     } else {
       console.log('   no specs of its own: it builds, or makes the packages current');
       continue;
     }
-    const specs = priced.specs;
-    total += priced.fileTimeMs;
-    unpriced.push(...priced.unpriced);
-    outside.push(...priced.outside);
-    if (priced.measuredAt !== undefined) dates.push(priced.measuredAt);
-    for (const spec of specs) console.log(`   ${spec}`);
-    console.log(`   ${specs.length} spec${specs.length === 1 ? '' : 's'}, ${asDuration(priced.fileTimeMs)} of recorded file-time`);
-    // The same sentences the run itself prints, for the same reason: a prediction that stops at what it
-    // collected is the answer being refuted — a walk finding nothing over a build edge is not "nothing
-    // covers this", and a total that omits a seam reads as the whole cost of knowing
-    for (const note of run.notes ?? []) if (!predicted.has(note)) { console.log(`   ${note}`); predicted.add(note); }
+    listed += specs.length;
+    const price = pricedSpecs(specs, ROOT);
+    // What each one cost, and what it cost at the far end of the window where there is one. The pools show
+    // a trend for the five slowest of a half; here the caller named the spec, so every one of them can have
+    // it without a threshold deciding which are worth mentioning.
+    for (const spec of specs) {
+      const moved = price.trend.get(spec);
+      console.log(`   ${spec}${moved === undefined ? '' : `  (was ${asDuration(moved.was)} over ${moved.runs} runs)`}`);
+    }
+    measured += price.ms;
+    unpriced += price.unpriced.length;
+    if (price.measuredAt !== undefined && (oldest === undefined || price.measuredAt < oldest)) oldest = price.measuredAt;
+    console.log(`   ${specs.length} spec${specs.length === 1 ? '' : 's'}${price.priced === 0 ? '' : `, ${asDuration(price.ms)} of file time`}`);
+    // Named rather than counted free, which is the whole difference between a partial total and a wrong one
+    if (price.unpriced.length > 0) {
+      console.log(`   ${price.unpriced.length} not measured on this machine yet: ${price.unpriced.slice(0, 3).join(', ')}${price.unpriced.length > 3 ? `, and ${price.unpriced.length - 3} more` : ''}`);
+    }
+    for (const note of run.notes ?? []) if (!said.has(note)) { console.log(`   ${note}`); said.add(note); }
     if (run.beyond !== undefined) {
       console.log(`   not in this answer: ${run.beyond.covers} — ${run.beyond.how}`);
     }
   }
 
-  // File-time, and said to be: it is summed across workers, and the ratio to wall was 1.55:1 and 2.18:1 on
-  // one target three days apart, so any wall number derived from it would be wrong by a third within a week
-  console.log(`\n${asDuration(total)} of recorded file-time, summed across workers — not time to wait.`);
-  // The record is a sample kept with hysteresis, so this is a band and its age is the record's own field
-  if (dates.length > 0) console.log(`Read from records last measured ${dates.sort()[0]!.slice(0, 10)}; a row may sit up to 15% from the truth by design.`);
-  for (const spec of unpriced) console.error(`  no recorded cost: ${spec}`);
-  if (unpriced.length > 0) console.error(`  ${unpriced.length} unpriced, so the total is short — npm run spec-cost:update`);
-  // Said, and said differently: no record covers these, and no `spec-cost:update` ever will
-  for (const spec of outside) console.log(`  no cost recorded for ${spec} — it is in no unit suite`);
+  // **File time summed across workers, never a wall estimate** — measured on one target three days apart,
+  // the ratio between the two was 1.55:1 and 2.18:1, so a wall figure here would be wrong by more than it
+  // is worth. And it is the last run on this machine rather than a record: nothing is committed, so there
+  // is no number to go stale and a clone that has run nothing says so instead of guessing.
+  const where = oldest === undefined ? 'nothing measured on this machine yet' : `${asDuration(measured)} of file time, measured here ${asLocalTime(oldest)}`;
+  console.log(`\n${listed} spec${listed === 1 ? '' : 's'} across ${runs.length} run${runs.length === 1 ? '' : 's'}; ${where}${unpriced === 0 ? '' : ` (${unpriced} unmeasured)`}.`);
+  if (oldest !== undefined) console.log('File time, not wall: a pool runs it across workers. Run the unit pools to refresh it.');
   process.exit(0);
 }
 

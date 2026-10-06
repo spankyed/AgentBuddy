@@ -14,7 +14,7 @@ import { declaredAt } from '../../../scripts/lib/chain-output.ts';
 import { reachableText, rootScripts, withoutComments } from '../../../scripts/lib/npm-scripts.ts';
 import { population } from '@abuddy/sdk/testing';
 import { machineText, POOL_WIDTH, thisMachine } from '../../../scripts/lib/core-budget.ts';
-import { ASSUMED_RUNGS, declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS } from '../../../scripts/lib/step-timeouts.ts';
+import { ASSUMED_RUNGS, declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS, type TimeoutClass } from '../../../scripts/lib/step-timeouts.ts';
 
 describe('the chain graph', () => {
   it('orders every step after the steps it depends on', () => {
@@ -233,6 +233,17 @@ describe('every spawn an orchestrator makes is bounded', () => {
   const boundedIn = (scripts: Record<string, string>): { name: string; className: string }[] =>
     Object.entries(scripts).flatMap(([name, command]) =>
       [...command.matchAll(/scripts\/bounded\.ts\s+(\S+)/g)].map((hit) => ({ name, className: hit[1]! })));
+
+  /**
+   * The rungs whose stretch factor is a borrow, asserted non-empty where a case indexes it.
+   *
+   * `population` rather than a length check of its own, which is how `chain-table.spec.ts` reads the same
+   * list: the claim is that the cases below are not asking about an empty set, and it belongs at the point
+   * of use rather than in the provenance case, whose subject is the pairing of `measured` and `until`. Held
+   * there it read as a third job that case does not have, and promised to survive an edit that empties the
+   * list. An all-measured ladder is that edit, and it retires this and `rungTerms`' assumed branch together.
+   */
+  const assumedRungs = (): readonly TimeoutClass[] => population('the assumed rungs', ASSUMED_RUNGS);
 
   // An unbounded run cannot fail — it waits until a person notices and kills it by pid, which is how this
   // repo collected an orphaned build at 99% CPU for a day. `boundedSpawn` bounds the wall clock and kills
@@ -499,9 +510,8 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * global `SLOWER_MACHINE` stood for three rungs and nothing at any call site said which of the three it had
    * been measured for.
    *
-   * It asserts that *some* rung is assumed rather than naming which. Two are today, and the day one is
-   * measured this case should keep passing without an edit — what it is here to catch is a row with neither
-   * answer or both.
+   * What it catches is a row with neither answer or both. It does not assert that any rung is still a
+   * borrow — that claim belongs to the cases that index the population, and `assumedRungs` makes it there.
    */
   it('says of every rung whether its stretch factor was measured, and what would settle it if not', () => {
     for (const className of population('the ladder', TIMEOUT_CLASSES)) {
@@ -509,9 +519,6 @@ describe('every spawn an orchestrator makes is bounded', () => {
       expect([measured, until].filter((what) => what !== undefined), `${className} must record either what `
         + 'measured its stretch factor or what would, and never both').toHaveLength(1);
     }
-    expect(ASSUMED_RUNGS.length, 'a ladder with nothing assumed needs no ASSUMED_RUNGS, and this case and '
-      + "the message's off-machine arm are then both describing a state that cannot happen")
-      .toBeGreaterThan(0);
   });
 
   /**
@@ -548,7 +555,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
      * message has to name the rung's factor rather than draw the conclusion that forecloses it.
      */
     it('names the rung and its factor on any other machine, and calls the rope the finding', () => {
-      const assumed = ASSUMED_RUNGS[0]!;
+      const assumed = assumedRungs()[0]!;
       const why = timedOutBecause({
         what: 'typecheck:fe', timeout: assumed, seconds: 10, measuredOn: HERE, machine: SMALLER,
       });
@@ -622,7 +629,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
      */
     it('quotes no stretch factor and asks for no edit where nothing records a cost', () => {
       const why = timedOutBecause({
-        what: 'bash tests/scripts/x.sh', timeout: ASSUMED_RUNGS[0]!, measuredOn: HERE, machine: SMALLER,
+        what: 'bash tests/scripts/x.sh', timeout: assumedRungs()[0]!, measuredOn: HERE, machine: SMALLER,
       });
       expect(why, 'no figure at all, since the only one available is the assumption being asked about')
         .not.toMatch(/\d+(?:\.\d+)?x/);
@@ -641,7 +648,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
      * means.
      */
     it('tells an assumed rung\'s reader to record this run, and names the edit that does', () => {
-      const assumed = ASSUMED_RUNGS[0]!;
+      const assumed = assumedRungs()[0]!;
       const why = timedOutBecause({
         what: 'typecheck:fe', timeout: assumed, seconds: 10, measuredOn: HERE, machine: SMALLER,
       });

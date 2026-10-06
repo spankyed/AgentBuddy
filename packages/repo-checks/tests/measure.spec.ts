@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  asNumber, citation, conditions, coresBusy, cpuTimes, driftedDuring, groupBySignature, idleFrom, IDLE_FLOOR,
+  asNumber, citation, conditions, coresBusy, cpuTimes, driftedDuring, driftVerdict, groupBySignature, idleFrom, IDLE_FLOOR,
   pairedDelta, parseFlags, rateOf, RECORD_IDLE_FLOOR, refusesAsBusy, runOrder, signatureOf, summarise,
   upperBound,
 } from '../../../scripts/lib/measure.ts';
@@ -344,5 +344,74 @@ describe('the arguments both measure commands take', () => {
     expect(() => asNumber('abc', 'runs')).toThrow(/`--runs` takes a number, not "abc"/);
     expect(asNumber(undefined, 'runs'), 'absent is not an error; the caller has a default').toBeUndefined();
     expect(asNumber('0', 'runs'), 'zero is a number, and the range is the caller\'s').toBe(0);
+  });
+});
+
+/**
+ * Telling a body that moved from one member that carried it.
+ *
+ * The two want opposite remedies — re-measure the whole table, or re-record one row — and before this the
+ * report named the whole-table one whatever had happened. The subject is a pure function of two maps, so
+ * each case is a map and its verdict, which is the shape root `CLAUDE.md` asks for where the input is data.
+ */
+describe('whether the body moved or one member did', () => {
+  const steady = new Map([['a', 10], ['b', 10], ['c', 10], ['d', 10]]);
+
+  it('reports nothing while the body is inside the band', () => {
+    const measured = new Map([['a', 10.5], ['b', 9.6], ['c', 10.2], ['d', 9.8]]);
+
+    expect(driftVerdict(steady, measured).kind).toBe('steady');
+  });
+
+  /**
+   * Mutation: drop the `without` recomputation from `driftVerdict` and this case reports `member`, because
+   * every movement then looks like one step's.
+   */
+  it('names the body when every member moved alike', () => {
+    // a fifth on each: the correlated drift the report exists to catch, and no single member explains it
+    const measured = new Map([['a', 12], ['b', 12], ['c', 12], ['d', 12]]);
+    const verdict = driftVerdict(steady, measured);
+
+    expect(verdict.kind).toBe('body');
+    expect(verdict.share).toBeCloseTo(0.2, 5);
+  });
+
+  /**
+   * Mutation: make `driftVerdict` return `body` whenever it drifts at all and this case stops naming the
+   * step, which is the half that decides which remedy is printed.
+   */
+  it('names the member when one carries the whole movement', () => {
+    // `a` doubles and nothing else moves: 10 of 40 becomes 20 of 50, a 25% body on one row
+    const measured = new Map([['a', 20], ['b', 10], ['c', 10], ['d', 10]]);
+    const verdict = driftVerdict(steady, measured);
+
+    expect(verdict.kind).toBe('member');
+    if (verdict.kind !== 'member') return;
+    expect(verdict.name).toBe('a');
+    expect(verdict.without, 'the rest of the table did not move at all').toBeCloseTo(0, 5);
+  });
+
+  it('picks the member that moved the most seconds, not the most of itself', () => {
+    // `d` trebles and `a` adds nine: a share-based pick would name `d`, but `a` is what moved the sum
+    const measured = new Map([['a', 19], ['b', 10], ['c', 10], ['d', 13]]);
+    const verdict = driftVerdict(steady, measured);
+
+    expect(verdict.kind).toBe('member');
+    if (verdict.kind !== 'member') return;
+    expect(verdict.name).toBe('a');
+  });
+
+  it('calls one lone member the whole movement, since there is no rest to compare it with', () => {
+    const verdict = driftVerdict(new Map([['a', 10]]), new Map([['a', 20]]));
+
+    expect(verdict.kind).toBe('member');
+    if (verdict.kind !== 'member') return;
+    expect(verdict.without, 'nothing else had a value to move from').toBeUndefined();
+  });
+
+  it('ignores a member the record has never seen, as bodyDrift does', () => {
+    const measured = new Map([['a', 10], ['b', 10], ['c', 10], ['d', 10], ['new', 9999]]);
+
+    expect(driftVerdict(steady, measured).kind).toBe('steady');
   });
 });

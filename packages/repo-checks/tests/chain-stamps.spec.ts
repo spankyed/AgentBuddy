@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
+import { stampFor } from '../../../scripts/lib/chain-stamps.ts';
 import { population } from '@abuddy/sdk/testing';
 
 /**
@@ -30,6 +31,37 @@ const stamps = (): string[] => (fs.existsSync(STAMP_DIR)
   : []);
 
 describe('the chain stamps exactly the steps it caches', () => {
+  /**
+   * No two steps share a record, which the name alone does not promise.
+   *
+   * `stampFor` flattens `:` and `/` to `-` so the name is a legal filename everywhere, and **27 of the 29
+   * step names are rewritten by it**. That transformation is not injective: `a:b`, `a/b` and `a-b` all come
+   * out as `a-b`. Two steps landing on one file is not litter — a stamp is what the chain skips on, so the
+   * two would mark each other fresh and the chain would report green for a step that never ran.
+   *
+   * The same invariant the pools hold ("give no two of their projects the same stamp") and the same defect
+   * two halves of a suite had when they shared a key. This store was the only one of the three without it.
+   */
+  it('give no two steps the same stamp, which the flattening does not promise', () => {
+    expect(CHAIN_STEPS.length, 'the table emptied, so this passes over nothing').toBeGreaterThan(25);
+    const names = CHAIN_STEPS.map((step) => path.basename(stampFor(step.name)));
+    const duplicated = names.filter((name, index) => names.indexOf(name) !== index);
+    expect([...new Set(duplicated)], 'two steps would write one stamp, so running either would mark the '
+      + 'other fresh — rename one so their names differ by more than a separator').toEqual([]);
+  });
+
+  /**
+   * And the collision is reachable, so the case above is a gate rather than an assertion.
+   *
+   * Over names rather than the table, because the table is green: these are the three spellings the
+   * flattening cannot tell apart, and any two of them as step names would be the defect.
+   */
+  it('maps names differing only by a separator onto one file', () => {
+    const collapsed = new Set(['a:b', 'a/b', 'a-b'].map((name) => path.basename(stampFor(name))));
+    expect(collapsed.size, 'the flattening has become injective, so the case above now guards nothing '
+      + 'reachable — say so there rather than leaving it reading as a gate').toBe(1);
+  });
+
   it('finds a stamp store, or says there is no evidence rather than passing over none', () => {
     const found = stamps();
     if (found.length === 0) {

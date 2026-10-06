@@ -14,7 +14,7 @@ export default defineConfig({
     testTimeout: 15_000,
     hookTimeout: 15_000,
     // The fast half. The specs that spawn a compiler are `*.integration.spec.ts` and run from
-    // `vitest.integration.config.ts`; `suite-split.spec.ts` fails a spec in the wrong half.
+    // `vitest.integration.config.ts`, which gives them 60s and half the cores.
     include: ['tests/**/*.spec.ts'],
     exclude: ['**/*.integration.spec.ts', '**/node_modules/**'],
   },

@@ -15,8 +15,11 @@ export default defineConfig({
     hookTimeout: 60_000,
     include: ['tests/**/*.integration.spec.ts'],
     exclude: ['**/node_modules/**'],
-    // No worker cap here, unlike @abuddy/cli's integration half. That cap exists because a worker per core
-    // spawning its own compiler oversubscribes the box; this half is two files, so the pool is two workers
-    // on any machine. Add one here when it stops being two.
+    // No worker cap here, and none in any other package either: the repo's only cap is the root
+    // `vitest.integration.config.ts`'s 50%, which is what applies when this half runs in that pool. The
+    // reason a cap exists at all is that a worker per core each spawning its own compiler oversubscribes the
+    // box; this half is two files, so the pool is two workers on any machine. Add one when it stops being
+    // two. (It read "unlike @abuddy/cli's integration half" until 2026-10-05, which had not been true since
+    // that cap moved to the root.)
   },
 });

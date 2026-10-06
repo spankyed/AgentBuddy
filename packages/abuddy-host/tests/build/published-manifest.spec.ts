@@ -1,3 +1,7 @@
+// @slow: seven `npm pack --dry-run` spawns at ~0.3s each, which is the subject and not a detail of how it works
+// `stagePublishTree` exists because reading `files` ourselves lost npm's force-included files, so asking
+// npm what it would publish is the thing under test. Re-measured on an idle machine and it came back
+// slightly slower rather than faster, so the cost is not an artefact of load.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';

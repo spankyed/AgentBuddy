@@ -2,8 +2,8 @@
  * The workspaces `test:unit` covers, and where each lives.
  *
  * One definition, because everything that runs or schedules them reads it — `scripts/test-unit.ts`, the
- * chain's steps, the pool's per-project cache, the spec-cost records — and a second list would drift the
- * first time a package was added.
+ * chain's steps, the pool's per-project cache, the per-machine duration cache — and a second list would
+ * drift the first time a package was added.
  *
  * **The order is not an execution order.** Vitest's sequencer decides what runs when, across every project
  * at once; the root `vitest.config.ts` is where that is written down. So this is not sorted by cost, and a
@@ -11,9 +11,9 @@
  * What the order does have to do is match the `projects` list in that config, which `chain-inputs.spec.ts`
  * asserts.
  *
- * If an order is ever wanted, sort at the point of use from `etc/spec-cost.json`, already the authority on
- * what a suite costs, rather than re-sorting this literal. A guard on sortedness is the thing not to add:
- * the largest fast halves sit within a few percent of each other in those records, so it would fail on
+ * If an order is ever wanted, sort at the point of use from what a run measured
+ * (`spec-durations.ts`'s cache) rather than re-sorting this literal. A guard on sortedness is the thing
+ * not to add: the largest fast halves sit within a few percent of each other, so it would fail on
  * measurement drift and never on a mistake.
  */
 export interface UnitSuite {
@@ -83,8 +83,8 @@ export type Size = keyof typeof SIZE_MS;
  * Which size a given test file runs at is `sizeOf` (`scripts/lib/test-timeouts.ts`), not a field here.
  *
  * It is derived rather than declared, because what it would declare is already decided elsewhere: a spec
- * lives in the fast half or the integration half, `spec-cost` moves it between them on measured cost, and
- * the halves *are* size classes. A per-suite `size` field would be a constant — every fast half small,
+ * lives in the fast half or the integration half, declared by its filename, and the halves *are* size
+ * classes. A per-suite `size` field would be a constant — every fast half small,
  * every integration half large — and a list whose every entry is the same value is one nobody maintains.
  *
  * It lives there rather than here so this module stays a leaf: answering for a *spec* needs

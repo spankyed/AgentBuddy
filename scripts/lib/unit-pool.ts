@@ -10,11 +10,14 @@
  * caches holds to and what happened when it did not.
  */
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { diffableStamp, REPO_ROOT, stampedRunAll, type BuildUnit, type StampedUnit } from '@abuddy/host/build/packages-built';
 import { INTEGRATION_SUITES, suiteInputs } from './chain-steps.ts';
-import { CONFIG_BY_HALF, type Half } from './spec-cost.ts';
+import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-halves.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
+import type { ReportedRun } from './spec-durations-reporter.ts';
+import { asDuration, cachedDurations, costliestFiles, costOf, halfBound, halfTotal, markedSpecs, outlierIn, placementOf, readDurationRuns, trendIn, uncheckedNote, UNMARKED_NOTE, type FileDuration } from './spec-durations.ts';
 
 /**
  * Beside the package builds' and the chain's stamps, in the same cache directory and the same format, so one
@@ -31,10 +34,11 @@ export const POOL_STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'ab
  *
  * **The path is where a record is kept, not what says which record it is** — that is the command in
  * `poolUnitFor`'s fingerprint, below. The half is in the path as well so that a reader of the cache
- * directory can tell the two files apart.
+ * directory can tell the two files apart, and the provenance for the same reason: a chain pass and a lone
+ * pass are two things to remember about one suite, exactly as its two halves are.
  */
-export const poolStampFor = (suite: UnitSuite, half: Half): string =>
-  path.join(POOL_STAMP_DIR, `${suite.dir}.${half}.json`);
+export const poolStampFor = (suite: UnitSuite, half: Half, provenance: Provenance): string =>
+  path.join(POOL_STAMP_DIR, `${suite.dir}.${half}.${provenance}.json`);
 
 /**
  * This module's export that names a stamp, beside `packages-built.ts`'s three.
@@ -67,6 +71,38 @@ export const STAMP_READERS = { poolStampFor } as const;
  */
 export const DIAGNOSTIC_RUN_ENV = 'ABUDDY_DIAGNOSTIC_RUN';
 
+/**
+ * Set by the chain on every step it spawns, and read here because this is where the stamps are kept.
+ *
+ * **It exists because a pass established alone is not the pass the chain is looking for.** That rule is
+ * already written for the chain's own classification re-run — *"a step that passes alone has not passed the
+ * chain"* — and `DIAGNOSTIC_RUN_ENV` enforces it by recording nothing. But that signal is one the chain
+ * sets, so it covers only the chain's retry. A person doing the same retry by hand is not covered, and the
+ * sequence is three commands: `npm run test:unit:host` passes serially and writes eleven project stamps,
+ * `npm run chain` finds its own step stamp stale and runs the pool, the pool finds every project fresh and
+ * runs **zero tests**, and the step records green in 0.8s. Observed repeatedly on 2026-10-06. The suites
+ * were never run under the concurrency that is the only condition reproducing what the chain was built to
+ * catch — the birpc timeout a blocked worker causes, and the 5s default a crowded `tsc` crosses.
+ *
+ * A positive signal rather than another negative one: the chain is the thing that knows it is the chain,
+ * and anything else running a pool is by definition running it some other way.
+ */
+export const CHAIN_RUN_ENV = 'ABUDDY_CHAIN_RUN';
+
+/**
+ * Under what conditions a pool run happened, as one declaration with the type derived from it.
+ *
+ * Two values because two is what has consumers, and the names are the claim each one makes: `chain` is a
+ * pass under the chain's concurrency, `alone` is a pass by itself. A third would need a condition anything
+ * distinguishes.
+ */
+export const PROVENANCES = ['chain', 'alone'] as const;
+export type Provenance = (typeof PROVENANCES)[number];
+
+/** Which kind of run this is. Anything that is not the chain is `alone`, including a pack author's. */
+export const provenanceOf = (env: NodeJS.ProcessEnv = process.env): Provenance =>
+  (env[CHAIN_RUN_ENV] === '1' ? 'chain' : 'alone');
+
 /** Whether this run may record what it proved */
 export const recordsVerdict = (env: NodeJS.ProcessEnv = process.env): boolean => env[DIAGNOSTIC_RUN_ENV] !== '1';
 
@@ -94,6 +130,18 @@ const projectArgs = (suites: readonly UnitSuite[]): string[] =>
   suites.flatMap((suite) => ['--project', suite.workspace]);
 
 /**
+ * The durations reporter, on every pool's invocation.
+ *
+ * `--reporter=default` goes with it because naming any reporter *replaces* the human output — the same
+ * rule `scripts/spec.ts` handles for the count reporter. The pool names the destination in the
+ * environment, so this path is stable and belongs in the fingerprint: a change to what the reporter
+ * records is a change to what a run proves, which is exactly the kind of thing `poolUnitFor`'s command
+ * text exists to notice.
+ */
+const REPORTER = path.join(REPO_ROOT, 'scripts', 'lib', 'spec-durations-reporter.ts');
+const reporterArgs = (): string[] => ['--reporter=default', `--reporter=${REPORTER}`];
+
+/**
  * The three pools: which half each one runs, which suites belong to it, and how it runs them.
  *
  * A pool is a resolution and a half, not a kind of test. `host` and `pack` split on resolution — Node
@@ -114,19 +162,20 @@ export const POOLS = {
     half: 'fast' as Half,
     suites: () => UNIT_SUITES.filter((suite) => suite.kind === 'host'),
     // with-source supplies the @abuddy/source condition the host suites resolve under
-    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'node', args: ['scripts/with-source.mjs', 'npx', 'vitest', 'run', ...projectArgs(stale)] }],
+    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'node', args: ['scripts/with-source.mjs', 'npx', 'vitest', 'run', ...projectArgs(stale), ...reporterArgs()] }],
   },
   pack: {
     half: 'fast' as Half,
     suites: () => UNIT_SUITES.filter((suite) => suite.kind === 'pack'),
-    run: (stale: readonly UnitSuite[]) => stale.map((suite) => ({ suites: [suite], command: 'npm', args: ['test', '-w', suite.workspace] })),
+    // `--` so npm forwards the reporter flags to vitest rather than reading them itself
+    run: (stale: readonly UnitSuite[]) => stale.map((suite) => ({ suites: [suite], command: 'npm', args: ['test', '-w', suite.workspace, '--', ...reporterArgs()] })),
   },
   integration: {
     half: 'integration' as Half,
     suites: () => INTEGRATION_SUITES,
     // The root integration config declares the condition itself, and carries the worker cap that makes this
     // pool faster at half the cores than at all of them
-    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'npx', args: ['vitest', 'run', '--config', CONFIG_BY_HALF.integration, ...projectArgs(stale)] }],
+    run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'npx', args: ['vitest', 'run', '--config', CONFIG_BY_HALF.integration, ...projectArgs(stale), ...reporterArgs()] }],
   },
 } as const;
 
@@ -141,7 +190,8 @@ export type Pool = keyof typeof POOLS;
  * something long gone is a silent pass.
  */
 export const livePoolStamps = (): Set<string> => new Set(
-  (Object.keys(POOLS) as Pool[]).flatMap((name) => POOLS[name].suites().map((suite) => path.basename(poolStampFor(suite, POOLS[name].half)))),
+  (Object.keys(POOLS) as Pool[]).flatMap((name) => POOLS[name].suites().flatMap((suite) =>
+    PROVENANCES.map((provenance) => path.basename(poolStampFor(suite, POOLS[name].half, provenance))))),
 );
 
 /** Drops the stamps no pool would write. Every pool knows every pool's keys, so any run may do it. */
@@ -168,43 +218,18 @@ export function prunePoolStamps(): void {
  *
  * So **a suite that moves pools re-runs**, being run a different way — where the stamp's path, keyed by the
  * half, would have called that the same record. Undo this and the two halves share one preimage again.
+ *
+ * **The provenance is in the preimage for the same reason**, and it is what keeps a lone pass out of the
+ * chain's answer: the two runs hash differently, so the chain never reads a suite that passed by itself as
+ * fresh, and a person's own loop goes on skipping what it has already run. Putting it only in the path
+ * would not do it — `unitStaleReason` consults the fingerprint and nothing else, so a record found under
+ * one name with the other's preimage comes back *fresh*, which is the defect the half was added to fix.
  */
-export const poolUnitFor = (suite: UnitSuite, pool: Pool): BuildUnit => ({
+export const poolUnitFor = (suite: UnitSuite, pool: Pool, provenance: Provenance): BuildUnit => ({
   inputs: suiteInputs(suite, POOLS[pool].half).map((input) => path.join(REPO_ROOT, input)),
   outputs: [],
-  command: POOLS[pool].run([suite]).map(({ command, args }) => [command, ...args].join(' ')).join(' && '),
+  command: `${POOLS[pool].run([suite]).map(({ command, args }) => [command, ...args].join(' ')).join(' && ')} [${provenance}]`,
 });
-
-// eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
-const ANSI = /\u001B\[[0-9;]*m/g;
-
-/**
- * **A project label has two forms, and which one you get is not this repo's choice.** vitest's
- * `formatProjectName` writes `|name|` only when colour is unsupported, and otherwise the name padded with a
- * space on each side, black on a background colour — so a TTY gets the second, and so does a pipe whose
- * environment sets `FORCE_COLOR`, which is how an agent's shell runs commands.
- *
- * Reading only the piped form is therefore a check that passes when colour is off and fails every
- * multi-project run when it is on: all eleven host projects reported absent, and the pool refused a run in
- * which every one of them had just passed. The piped form was the only one ever looked at, because the
- * fixture it was written against was invented rather than taken from a run.
- */
-// eslint-disable-next-line no-control-regex -- the colour is what identifies the label, so it is the anchor
-const COLOURED_LABEL = /^(?:\s|\u001B\[[0-9;]*m)*[✓×↓](?:\s|\u001B\[[0-9;]*m)*\u001B\[(?:4[0-7]|10[0-7])m ([^\u001B]+) \u001B\[49m/gm;
-const PIPED_LABEL = /^\s*[✓×↓]\s*\|([^|]+)\|/gm;
-
-/**
- * The projects a vitest run reported, from its own output.
- *
- * vitest labels every file with its project when a run covers more than one — `✓ |@abuddy/ears| tests/x.spec.ts`
- * — which is the only thing that says what a `--project` filter actually selected. Both label forms count;
- * the colours are stripped for the piped one and are the anchor for the other.
- */
-export function projectsThatRan(output: string): Set<string> {
-  const coloured = [...output.matchAll(COLOURED_LABEL)];
-  const piped = [...output.replace(ANSI, '').matchAll(PIPED_LABEL)];
-  return new Set([...coloured, ...piped].map(([, name]) => name));
-}
 
 /**
  * The projects a run was asked for and did not report.
@@ -213,19 +238,175 @@ export function projectsThatRan(output: string): Set<string> {
  * measured, `--project @abuddy/ears --project @abuddy/no-such-project` runs ears, ignores the second and
  * exits 0 with no warning. Only a filter matching *nothing at all* is an error. So a suite whose workspace
  * stopped matching its vitest project name would be stamped as having passed a run it was excluded from,
- * and would then stay cached — the same "recorded fresh having never run" this pool was already fixed for
- * once, through a different door.
+ * and would then stay cached — "recorded fresh having never run", through a different door.
  *
  * Checked rather than adapted to. Stamping only what reported would make the run "correct" while quietly
  * testing less, which is the failure being prevented, just smaller.
  *
- * Only meaningful when a run covers more than one project: with a single project vitest prints no labels,
- * and the process exiting 0 is itself the evidence.
+ * **It reads the reporter's account, which closed two holes the console output could not.** Scraping the
+ * labels meant handling both of vitest's spellings — `|name|` without colour, a space-padded coloured name
+ * with it — and this repo had already shipped a version reading only the first, which reported all eleven
+ * host projects absent from a run every one of them had passed. It also meant the answer was only
+ * available for a multi-project run, because vitest prints no label otherwise, and a project that ran
+ * *zero files* appeared in no output at all. The reporter names every project the run started
+ * (`onTestRunStart`), so both of those are gone and there is no longer a case this cannot answer.
  */
-export function projectsThatDidNotRun(asked: readonly string[], output: string): string[] {
-  if (asked.length < 2) return [];
-  const ran = projectsThatRan(output);
-  return asked.filter((project) => !ran.has(project));
+export function projectsThatDidNotRun(asked: readonly string[], run: ReportedRun): string[] {
+  const reported = new Set(run.projects);
+  return asked.filter((project) => !reported.has(project));
+}
+
+/**
+ * The one line a half gets when its slowest files stand apart from the rest of it.
+ *
+ * After the weight and the bound, before the ranking: it is a verdict *about* the ranking, so it reads as
+ * one once the reader knows how heavy the half is. Silent where nothing stands out, which is every half in
+ * this repo today — `outlierIn` carries what the thresholds are and what they were measured against.
+ */
+const outlierLines = (rows: readonly FileDuration[], half: Half, width: number, whole: boolean): string[] => {
+  // **Only over a half this run measured whole.** "Out of line with its half" is unanswerable from part of
+  // one: a pool runs the projects whose inputs moved, and a run covering a single suite's integration half
+  // read 23.2s over 9.1s — 2.54x, and an artefact of the population rather than a file worth splitting.
+  // Derived from which suites reported rather than a minimum file count, which would be a declared
+  // population floor standing in for the question actually being asked.
+  if (!whole) return [];
+  const found = outlierIn(rows, half);
+  if (found === undefined) return [];
+  const named = found.above.map((row) => `${row.dir}/${row.file}`).join(', ');
+  const sizes = found.above.map((row) => asDuration(row.ms)).join(' + ');
+  return [`${`${found.ratio.toFixed(1)}x`.padStart(width)}  ${named} at ${sizes} against `
+    + `${asDuration(found.belowMs)} — out of line with its half, so a candidate for splitting`];
+};
+
+/**
+ * What a run says about its own `@slow:` markers, for whoever reports on a run that passed.
+ *
+ * **The reported half of the gate was computed and never printed.** `placementOf`'s `unmarked` list is a
+ * report rather than a failure — load can push a file into a tail and never out of one — and the only
+ * thing that printed it was the pool's own stdout, which both callers buffer and show only when a step
+ * fails. So the direction deliberately left as a report was visible only when something else broke, which
+ * is the one shape a partial result must not take: silent.
+ *
+ * **The files are named rather than counted**, because the ranking below cannot stand in for them. That is
+ * ordered by cost and this list by test time (`slowestFiles`, the quantity the bar is taken over), so an
+ * unmarked file in the tail need not be among the five rows a reader can see.
+ *
+ * Gated on a whole half exactly as `outlierLines` is, and for the same reason — the bar is this run's own
+ * p90, so a partial run's is taken over whichever projects happened to be stale. Where it cannot speak it
+ * says why, rather than leaving the half with no line.
+ */
+const placementLines = (rows: readonly FileDuration[], marked: ReadonlyMap<string, Map<string, string>>,
+  half: Half, width: number, measured: number, all: number): string[] => {
+  const placement = placementOf(rows, marked, { whole: measured === all });
+  const unmarked = placement.unmarked.filter((row) => row.half === half);
+  const unchecked = placement.unplaceable.find((one) => one.half === half);
+  const lines: string[] = [];
+  if (unmarked.length > 0) {
+    const named = unmarked.map((row) => `${row.dir}/${row.file}`).join(', ');
+    lines.push(`${String(unmarked.length).padStart(width)}  in the slow tail and unmarked: ${named}`
+      + ` — ${UNMARKED_NOTE}`);
+  }
+  if (unchecked !== undefined) {
+    lines.push(`${'—'.padStart(width)}  no @slow: marker checked here — `
+      + uncheckedNote(unchecked.why, { files: unchecked.files, covered: measured, all }));
+  }
+  return lines;
+};
+
+/**
+ * How many of this pool's `@slow:` markers guard a spec that could not move anyway.
+ *
+ * The gate's whole subject is whether a spec belongs in the other half, and `hasSplit` already records
+ * what makes that available: *"a package with one config has nowhere to move a spec to."* Nothing counted
+ * the markers against it, and the count is the finding — measured 2026-10-06, **every marker in the repo
+ * is in such a package**, so the remedy the gate points at costs a new vitest config and a root project
+ * entry rather than a rename.
+ *
+ * That is what this line is for. The gate carries a deletion condition turning on a year passing with no
+ * spec having moved halves on its evidence, and while this number equals the marker count that year is
+ * guaranteed to pass whatever anyone does — so the condition would be met by arithmetic rather than by
+ * the gate having been found useless. A reader of a passing run should see which it was.
+ *
+ * Silent at zero, so the output stops mentioning it the moment a package gains a second half or a marker
+ * lands in one of the three that already have one.
+ */
+const markerReachLines = (marked: ReadonlyMap<string, Map<string, string>>, width: number, root: string): string[] => {
+  const dirs = [...marked].flatMap(([dir, files]) => [...files.keys()].map(() => dir));
+  const stuck = dirs.filter((dir) => !hasSplit(path.join(root, 'packages', dir)));
+  if (stuck.length === 0) return [];
+  return [`${String(stuck.length).padStart(width)}  of ${dirs.length} @slow: marker(s) sit in a package with`
+    + ' no second half, so no spec they guard can move without a new vitest config'];
+};
+
+/**
+ * What a finished pool run measured, as lines for whoever reports on it.
+ *
+ * Here rather than in either caller because both need it and neither performed the run: `scripts/chain.ts`
+ * and `scripts/test-unit.ts` each spawn a pool and buffer its output, printing it only on failure — so
+ * until this existed the ranking the pool printed reached nobody running `npm run chain` or
+ * `npm run test:unit`, which are the two commands anyone runs. It reads what the run *wrote* rather than
+ * parsing what it printed, so there is nothing to keep in step with vitest.
+ *
+ * The half's total comes first because it is the number a ranking cannot give: measured 2026-10-05, the
+ * five slowest files hold 46% of `repo-checks`' fast half and 97% of `abuddy-sdk`'s, and the shape no
+ * top-five can show at all is many files each creeping a little — 349 of 388 fast-half files are under
+ * 500ms and total 24.1s between them.
+ *
+ * **The root and the core count come from the caller**, defaulting to this repo and this box. Not for
+ * flexibility — nothing passes anything else in production. It is what makes the lines below assertable:
+ * a spec plants a cache under a temp root, names a core count, and reads back every line, which is
+ * otherwise impossible for the most-read output in this subsystem. The partial-run guard in particular
+ * rested on one hand-run check before this.
+ *
+ * **Only what the run being reported on actually measured**, which `since` is for. A pool runs the projects
+ * whose inputs moved, so a step can run, find none of them stale and measure nothing — and a chain step in
+ * exactly that state was observed returning in 0.8s and printing 17.3s of file time over 100 files that a
+ * direct run minutes earlier had measured. True of the machine, and not of that step. A record older than
+ * `since` is left out, so a partial run reports its own subset and a run that measured nothing reports
+ * nothing.
+ */
+export function poolDurationLines(pool: Pool, width: number, since: Date,
+  { root = REPO_ROOT, cores = os.availableParallelism() } = {}): string[] {
+  const { half, suites } = POOLS[pool];
+  const covered = suites();
+  const rows = cachedDurations(root, covered, half, since);
+  if (rows.length === 0) return [];
+  const total = halfTotal(rows, half);
+  const bound = halfBound(rows, half, cores);
+  /** Which of the pool's suites this run actually measured, which is what says whether a half is whole */
+  const measured = new Set(rows.map((row) => row.dir));
+  const marked = new Map(covered.map((suite) => [suite.dir, markedSpecs(path.join(root, 'packages', suite.dir))]));
+  const windows = new Map(covered.map((suite) => [suite.dir, readDurationRuns(root, suite.dir, half)]));
+  return [
+    `${asDuration(total.ms).padStart(width)}  ${half} half, ${total.files} file(s) this run measured`
+      + `, ${asDuration(total.overheadMs)} of import and setup around them`,
+    // Which of the two can bound the run, because a floor under `work/cores` cannot — and reading it the
+    // other way is what split a 96-case file for no gain. `halfBound` carries that story.
+    bound.binds === 'unknown'
+      // No verdict rather than the wrong one: without overhead the work is understated, so the floor looks
+      // binding when it is not — which is the reading that split a 96-case file for nothing
+      ? `${asDuration(bound.perCoreMs).padStart(width)}  work/cores over a ${asDuration(bound.floorMs)} floor`
+        + ` — which binds is unknown: ${bound.unmeasured} file(s) predate overhead, so re-run the pool`
+      : `${asDuration(bound.perCoreMs).padStart(width)}  work/cores against a ${asDuration(bound.floorMs)} floor`
+        + ` — ${bound.binds}-bound`,
+    ...outlierLines(rows, half, width, measured.size === covered.length),
+    ...placementLines(rows, marked, half, width, measured.size, covered.length),
+    ...markerReachLines(marked, width, root),
+    // Costliest, not slowest: the two lines above judge a file by what it cost, and a ranking by test time
+    // beside them could omit the very file the outlier line names
+    ...costliestFiles(rows, half).map((row) => {
+      const reason = marked.get(row.dir)?.get(row.file);
+      // The window's oldest reading beside the newest, which is the only thing the history is printed for
+      const trend = trendIn(windows.get(row.dir), row.file);
+      const moved = trend === undefined ? '' : `  (was ${asDuration(trend.was)} over ${trend.runs} runs)`;
+      // The cost, with the test time beside it where overhead is the larger part — otherwise a reader
+      // comparing this column to the half's total is comparing two different quantities
+      const cost = costOf(row);
+      return `${asDuration(cost).padStart(width)}  ${row.dir}/${row.file}`
+        + `${cost - row.ms > row.ms ? `, ${asDuration(row.ms)} of it tests` : ''}${moved}`
+        + `${reason === undefined ? '' : `  @slow: ${reason}`}`;
+    }),
+  ];
 }
 
 /**

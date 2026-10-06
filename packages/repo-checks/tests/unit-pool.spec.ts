@@ -1,4 +1,4 @@
-// Reading a vitest run's own output to find out what it actually covered.
+// Reading a run's own reporter to find out what it actually covered.
 //
 // The pool asks for N projects with `--project` and then stamps all N. That is only sound if the filter
 // selected them: measured, `--project @abuddy/ears --project @abuddy/no-such-project` runs ears, drops the
@@ -11,69 +11,223 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
 import { declaredPaths, diffableStamp } from '@abuddy/host/build/packages-built';
-import { DIAGNOSTIC_RUN_ENV, POOLS, livePoolStamps, poolStampFor, poolUnitFor, projectsThatRan, projectsThatDidNotRun, recordRun, recordsVerdict, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
+import { DIAGNOSTIC_RUN_ENV, POOLS, livePoolStamps, poolStampFor, poolUnitFor, projectsThatDidNotRun, recordRun, recordsVerdict, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
+import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { POOL_SECONDS } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
+import { poolDurationLines } from '../../../scripts/lib/unit-pool.ts';
+import { writeDurations } from '../../../scripts/lib/spec-durations.ts';
+import { CONFIG_BY_HALF } from '../../../scripts/lib/spec-halves.ts';
+import { CHAIN_RUN_ENV, PROVENANCES, provenanceOf } from '../../../scripts/lib/unit-pool.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
-// vitest's `formatProjectName`: `|name|` only when colour is unsupported, otherwise the name padded with a
-// space on each side, black on one of four background colours. Both of these are that function's output, the
-// coloured one copied byte for byte from a real run — which is the thing this file previously guessed at, and
-// the guess is why the pool failed every run with colour on while reporting that no project had run
-const line = (project: string, file: string) => ` ✓ |${project}| ${file} (3 tests) 12ms`;
-const colouredLine = (project: string, file: string) =>
-  ` \u001B[32m✓\u001B[39m \u001B[30m\u001B[46m ${project} \u001B[49m\u001B[39m ${file} \u001B[2m(\u001B[22m\u001B[2m4 tests\u001B[22m\u001B[2m)\u001B[22m\u001B[32m 2\u001B[2mms\u001B[22m\u001B[39m`;
+/** A run as its reporter recorded it, which is the only account the pool reads now */
+/**
+ * Under what conditions a pass counts, which is a different question from whether the inputs moved.
+ *
+ * The two cache layers over a pool — the chain's step stamp and the per-project stamps — cannot disagree
+ * about *freshness*: a step's inputs are `inputsForSuites`, the union of the same `suiteInputs` each
+ * project is keyed on, so a cached step cannot hide a stale project. What they could disagree about is who
+ * established the pass, and that is the hole this closes.
+ *
+ * Three commands reproduced it, observed on 2026-10-06: `npm run test:unit:host` passes serially and
+ * writes eleven project stamps; `npm run chain` finds its own step stamp stale and runs the pool; the pool
+ * finds every project fresh, runs **zero tests**, and the step records green in 0.8s. The chain had then
+ * reported green for suites it never ran under its own concurrency — which is the only condition that
+ * reproduces what it was built to catch. The chain already refuses to inherit its *own* lone retry
+ * (`DIAGNOSTIC_RUN_ENV`); this is the same rule through the other door.
+ */
+describe('a pass under the chain and a pass alone are different records', () => {
+  const suite = UNIT_SUITES.find((one) => one.kind === 'host')!;
 
-describe('projectsThatRan', () => {
-  it('reads the project label vitest puts on every file of a multi-project run', () => {
-    const output = [line('@abuddy/ears', 'tests/a.spec.ts'), line('@app/main', 'tests/b.spec.ts'), line('@abuddy/ears', 'tests/c.spec.ts')].join('\n');
-    expect([...projectsThatRan(output)].sort()).toEqual(['@abuddy/ears', '@app/main']);
+  it('reads the chain\'s own signal, and calls everything else alone', () => {
+    expect(provenanceOf({ [CHAIN_RUN_ENV]: '1' })).toBe('chain');
+    expect(provenanceOf({})).toBe('alone');
+    // Only the exact signal, as `recordsVerdict` treats its own: a stray value is not the chain
+    expect(provenanceOf({ [CHAIN_RUN_ENV]: 'true' })).toBe('alone');
   });
 
-  it('reads the coloured label, which is the only one a terminal or a FORCE_COLOR pipe ever prints', () => {
-    const output = [colouredLine('@abuddy/ears', 'tests/a.spec.ts'), colouredLine('@app/main', 'tests/b.spec.ts')].join('\n');
-    expect([...projectsThatRan(output)].sort()).toEqual(['@abuddy/ears', '@app/main']);
+  /**
+   * The preimage differs, which is the half that decides anything.
+   *
+   * `unitStaleReason` consults the fingerprint and nothing else, by design — it recomputes its own side —
+   * so a record found under one name carrying the other's preimage reads as **fresh**. Putting the
+   * provenance only in the path would leave the hole exactly where it was, which is the mistake the half
+   * was added to this key to fix.
+   */
+  it('hashes differently, so neither reads the other as fresh', () => {
+    const [chain, alone] = PROVENANCES.map((provenance) => poolUnitFor(suite, 'host', provenance));
+    expect(chain!.command).not.toBe(alone!.command);
+    expect(declaredPaths(chain!), 'the inputs are the same work either way').toEqual(declaredPaths(alone!));
   });
 
-  it('sees through the colours around a piped label, which a partly-coloured run still has', () => {
-    expect([...projectsThatRan(' \u001B[32m✓\u001B[39m |@abuddy/sdk| tests/a.spec.ts (1 test) 2ms')]).toEqual(['@abuddy/sdk']);
+  it('keeps them in separate files, so a reader of the cache can tell them apart', () => {
+    const [chain, alone] = PROVENANCES.map((provenance) => poolStampFor(suite, 'fast', provenance));
+    expect(chain).not.toBe(alone);
   });
 
-  it('counts a failed or skipped file, which still proves the project ran', () => {
-    expect([...projectsThatRan([' × |@app/api| tests/a.spec.ts', ' ↓ |@app/api| tests/b.spec.ts'].join('\n'))]).toEqual(['@app/api']);
-  });
-
-  it('finds nothing in a run that printed no labels', () => {
-    expect([...projectsThatRan(' ✓ tests/a.spec.ts (3 tests) 12ms\n Test Files  1 passed (1)')]).toEqual([]);
+  /**
+   * And a prune keeps both, which is the thing easiest to get wrong here.
+   *
+   * `livePoolStamps` is what `prunePoolStamps` spares. Derived over one provenance it would delete the
+   * other's records on every run — so the chain would clear a developer's loop and the loop would clear
+   * the chain's, and each would look like a cache that never warms.
+   */
+  it('spares both from a prune', () => {
+    const live = livePoolStamps();
+    for (const provenance of PROVENANCES) {
+      expect(live, `${provenance} records would be pruned on every run`)
+        .toContain(path.basename(poolStampFor(suite, 'fast', provenance)));
+    }
+    expect(live.size, 'one record per suite, half and provenance').toBe(
+      (Object.keys(POOLS) as Pool[]).reduce((sum, name) => sum + POOLS[name].suites().length, 0) * PROVENANCES.length,
+    );
   });
 });
 
+/**
+ * Every way this repo runs a unit suite carries the durations reporter.
+ *
+ * **This is the check the defect it covers went without.** `scripts/test-unit.ts` ran the suites through
+ * its own copy of what a pool is and spawned vitest directly, so `npm run test:unit` — the command a person
+ * runs by hand — carried no reporter, checked no `@slow:` marker and wrote no duration. Nothing failed,
+ * because nothing asked. The durations are now a thing a run has to opt into, which makes "did every
+ * launcher opt in" the question worth gating, and both halves of it are derived rather than listed.
+ */
+describe('a unit suite is never run without the durations reporter', () => {
+  const REPORTER = 'spec-durations-reporter.ts';
+
+  it('is passed by every pool, for every run it builds', () => {
+    const pools = Object.keys(POOLS) as Pool[];
+    expect(pools.length, 'no pools derived, so this passes over nothing').toBeGreaterThan(2);
+    for (const pool of pools) {
+      const runs = POOLS[pool].run(POOLS[pool].suites());
+      expect(runs.length, `${pool} builds no run`).toBeGreaterThan(0);
+      for (const { args } of runs) {
+        expect(args.some((arg) => arg.includes(REPORTER)), `${pool}: ${args.join(' ')}`).toBe(true);
+        // Naming any reporter replaces the human output, so the default has to be asked for back
+        expect(args, `${pool} would lose vitest's own output`).toContain('--reporter=default');
+      }
+    }
+  });
+
+  /**
+   * And no other script launches one, which is the half that would have caught the defect.
+   *
+   * A pool's own args are easy to keep right; what went wrong was a *second launcher*. So this asks the
+   * tree instead: any script naming `vitest` as the thing it runs has to be one of the pools or carry a
+   * reason. The reasons are specific — `spec-plan.ts` builds the `npm run spec` runs, which are a
+   * different question (which specs cover a change) and carry their own counting reporter.
+   */
+  const LAUNCHES_VITEST_BY_DESIGN: Record<string, string> = {
+    'lib/spec-plan.ts': 'the runs `npm run spec` builds — a different question from a pool, and they carry '
+      + "spec-count-reporter.ts, whose count is what tells a covered run from one that did nothing",
+    'lib/unit-pool.ts': 'the pools themselves, whose args the case above checks',
+  };
+
+  const launchers = (): string[] => {
+    const root = path.join(REPO_ROOT, 'scripts');
+    const walk = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) return walk(full);
+      return entry.name.endsWith('.ts') ? [full] : [];
+    });
+    // `'vitest'` as an argument, which is how a spawn names the binary — not the word in a comment or a
+    // path like `vitest.config.ts`, which every chain step declares
+    return walk(root)
+      .filter((file) => /['"`]vitest['"`]\s*,/.test(fs.readFileSync(file, 'utf-8')))
+      .map((file) => path.relative(root, file))
+      .sort();
+  };
+
+  it('finds the launchers, so this is not vacuous', () => {
+    expect(launchers().length, 'no script names vitest as a spawn, so the rule below sees nothing')
+      .toBeGreaterThan(0);
+  });
+
+  it('leaves no script launching one outside the pools', () => {
+    const stray = launchers().filter((file) => !(file in LAUNCHES_VITEST_BY_DESIGN));
+    expect(stray, 'run the suites through scripts/test-unit-pool.ts, or add a reason here: a launcher of '
+      + 'its own gets no durations reporter, so it checks no @slow: marker and records nothing').toEqual([]);
+  });
+
+  // A list of exceptions is honest only while each entry is still one
+  it('lists no exception that has stopped launching one', () => {
+    const live = new Set(launchers());
+    expect(Object.keys(LAUNCHES_VITEST_BY_DESIGN).filter((file) => !live.has(file)),
+      'drop these from LAUNCHES_VITEST_BY_DESIGN').toEqual([]);
+  });
+});
+
+/**
+ * Each pool's chain step, which is two declarations held to each other rather than one generator.
+ *
+ * `poolStepName` cannot *be* the table's name: `declaredAt` finds a generated step by matching the
+ * template literal it came from, so a call there left all three pool steps unlocatable and a run unable to
+ * point at their reasoning. So the table writes the names and this checks the reverse lookup lands on a
+ * real step — which is the firing case for a rename of either one alone.
+ */
+describe('poolStepName', () => {
+  it('names a step the table really has, for every pool', () => {
+    const names = new Set(CHAIN_STEPS.map((step) => step.name));
+    for (const pool of Object.keys(POOLS) as Pool[]) {
+      expect(names, `${pool} pool's step`).toContain(poolStepName(pool));
+    }
+  });
+
+  it('gives each pool its own step, so no two report from one', () => {
+    const named = (Object.keys(POOLS) as Pool[]).map(poolStepName);
+    expect(new Set(named).size, named.join(', ')).toBe(named.length);
+  });
+});
+
+const ran = (...projects: string[]): ReportedRun => ({ projects, modules: [] });
+
+/**
+ * What a run covered, and what it did not.
+ *
+ * **This used to read vitest's console labels, and the cases that went with it are worth knowing about.**
+ * `formatProjectName` writes `|name|` when colour is unsupported and a space-padded coloured name when it
+ * is, so there were two spellings to handle, one of them copied byte for byte from a real run after a
+ * version that guessed at it failed every coloured run while reporting that no project had run. Two cases
+ * also encoded limits that were the *parse's* and not the question's: a single-project run prints no label
+ * at all, so absence proved nothing there, and a project that ran zero files appeared in no output.
+ *
+ * The reporter names every project the run started, so none of that survives: there is no spelling, no
+ * minimum project count, and no case this cannot answer.
+ */
 describe('projectsThatDidNotRun', () => {
   const asked = ['@abuddy/ears', '@app/main'];
 
   it('names a project that was asked for and never reported', () => {
-    expect(projectsThatDidNotRun(asked, line('@abuddy/ears', 'tests/a.spec.ts'))).toEqual(['@app/main']);
+    expect(projectsThatDidNotRun(asked, ran('@abuddy/ears'))).toEqual(['@app/main']);
   });
 
   it('says nothing when every project reported', () => {
-    expect(projectsThatDidNotRun(asked, [line('@abuddy/ears', 'a'), line('@app/main', 'b')].join('\n'))).toEqual([]);
-  });
-
-  // A single-project run prints no labels at all, so absence proves nothing there — the process exiting 0
-  // is the evidence, and the pack pool runs exactly one project per invocation
-  it('says nothing about a single-project run, which prints no labels', () => {
-    expect(projectsThatDidNotRun(['@app/default-setup'], ' ✓ tests/a.spec.ts (3 tests) 12ms')).toEqual([]);
+    expect(projectsThatDidNotRun(asked, ran('@abuddy/ears', '@app/main'))).toEqual([]);
   });
 
   it('names them all when the filter matched none of several', () => {
-    expect(projectsThatDidNotRun(asked, ' Test Files  0 passed (0)')).toEqual(asked);
+    expect(projectsThatDidNotRun(asked, ran())).toEqual(asked);
   });
 
-  // The failure this guard had: eleven projects ran, every one of them printed a coloured label, and the pool
-  // refused the run. Colour is the normal case, not the exotic one
-  it('says nothing when every project reported under colour', () => {
-    const output = [colouredLine('@abuddy/ears', 'tests/a.spec.ts'), colouredLine('@app/main', 'tests/b.spec.ts')].join('\n');
-    expect(projectsThatDidNotRun(asked, output)).toEqual([]);
+  /**
+   * And it answers for a single-project run, which the parse could not.
+   *
+   * The pack pool runs exactly one project per invocation, so this was the common case and the one with
+   * no coverage: vitest prints no label for it, and the old check returned `[]` for any run of fewer than
+   * two projects. A pack suite whose workspace name had drifted would have been stamped on a run it was
+   * excluded from, and nothing could have said so.
+   */
+  it('answers for a one-project run, where a label was never printed', () => {
+    expect(projectsThatDidNotRun(['@app/default-setup'], ran())).toEqual(['@app/default-setup']);
+    expect(projectsThatDidNotRun(['@app/default-setup'], ran('@app/default-setup'))).toEqual([]);
+  });
+
+  // A project the run started and found no file for is still a project that ran, and it is nameable from
+  // nowhere else: it appears in no reporter's output, only in the specifications the run began with
+  it('counts a project that reported no files, which no output could have shown', () => {
+    expect(projectsThatDidNotRun(['@abuddy/ui'], { projects: ['@abuddy/ui'], modules: [] })).toEqual([]);
   });
 });
 
@@ -142,7 +296,15 @@ describe('whyItRuns', () => {
 // The subject is derived from `POOLS` rather than listed, so a fourth pool is covered on arrival.
 describe('the pools', () => {
   const names = Object.keys(POOLS) as Pool[];
-  const entries = names.flatMap((name) => POOLS[name].suites().map((suite) => ({ name, suite, half: POOLS[name].half })));
+  /**
+   * Every record a pool could write: a suite, in a pool, under a provenance.
+   *
+   * The provenance joined this on 2026-10-06 and the two uniqueness cases below are what hold it. A pass
+   * established alone is not a pass under the chain — the rule the chain already applies to its own retry —
+   * so the two keep separate stamps, and nothing but a distinct preimage makes that true.
+   */
+  const entries = names.flatMap((name) => POOLS[name].suites().flatMap((suite) =>
+    PROVENANCES.map((provenance) => ({ name, suite, provenance, half: POOLS[name].half }))));
 
   it('there are some, and none of them is empty', () => {
     expect(names).not.toEqual([]);
@@ -150,7 +312,7 @@ describe('the pools', () => {
   });
 
   it('give no two of their projects the same stamp', () => {
-    const keys = entries.map(({ suite, half }) => poolStampFor(suite, half));
+    const keys = entries.map(({ suite, half, provenance }) => poolStampFor(suite, half, provenance));
     const duplicated = keys.filter((key, index) => keys.indexOf(key) !== index);
     expect(duplicated, 'two pools would write one stamp, so running either would mark the other fresh')
       .toEqual([]);
@@ -170,8 +332,8 @@ describe('the pools', () => {
    * both halves by definition. These two are what the hash is a function of beside them.
    */
   it('give no two of their projects the same preimage', () => {
-    const identity = entries.map(({ name, suite }) => {
-      const unit = poolUnitFor(suite, name);
+    const identity = entries.map(({ name, suite, provenance }) => {
+      const unit = poolUnitFor(suite, name, provenance);
       return JSON.stringify([declaredPaths(unit), unit.command]);
     });
     const duplicated = identity.filter((key, index) => identity.indexOf(key) !== index);
@@ -187,28 +349,39 @@ describe('the pools', () => {
    * `@abuddy/source` condition. Two pools running one suite two ways is the whole subject.
    */
   it('record what each pool would run, as its command', () => {
-    const [both] = entries.filter(({ suite }) => entries.filter((other) => other.suite.dir === suite.dir).length > 1);
+    // Counted over pools, not entries: every suite has an entry per provenance, so counting those called
+    // each one "in two pools" and picked a suite that is in one
+    const [both] = entries.filter(({ suite }) =>
+      (Object.keys(POOLS) as Pool[]).filter((name) => POOLS[name].suites().some((one) => one.dir === suite.dir)).length > 1);
     expect(both, 'no suite is in two pools, so this case has nothing to be about').toBeDefined();
     const commands = (Object.keys(POOLS) as Pool[])
       .filter((name) => POOLS[name].suites().some((suite) => suite.dir === both!.suite.dir))
-      .map((name) => poolUnitFor(both!.suite, name).command ?? '');
+      .map((name) => poolUnitFor(both!.suite, name, 'chain').command ?? '');
     expect(commands.filter((command) => command.includes('vitest.integration.config.ts')).length,
       'no command names the config that makes it the expensive half').toBe(1);
     expect(new Set(commands).size, 'two pools run this suite and their commands do not differ').toBe(commands.length);
   });
 
   it('reach every unit suite, each in exactly one of the fast pools', () => {
-    const fast = entries.filter(({ half }) => half === 'fast').map(({ suite }) => suite.dir);
+    // One provenance, since the question is which pool covers a suite and not how many records it keeps
+    const fast = entries.filter(({ half, provenance }) => half === 'fast' && provenance === 'chain')
+      .map(({ suite }) => suite.dir);
     expect(fast.sort()).toEqual(UNIT_SUITES.map((suite) => suite.dir).sort());
   });
 
-  // What prune keeps. The dead file it has to recognise is the shape the key used to have, before the half
-  // joined it — a stamp named for the directory alone, which one pool would read as the other's record.
+  /**
+   * What prune keeps. The dead files it has to recognise are the shapes the key used to have: a stamp named
+   * for the directory alone, from before the half joined it, and one named for the directory and half, from
+   * before the provenance did. Either would be read as some other record's — which is the whole reason both
+   * components are in the key.
+   */
   it('count their own stamps live and nothing else', () => {
     const live = livePoolStamps();
     expect(live.size).toBe(entries.length);
-    expect([...live].filter((file) => !/\.(fast|integration)\.json$/.test(file)),
-      'a stamp keyed by the directory alone is the pre-half shape, which prune must drop').toEqual([]);
+    const shape = new RegExp(`\\.(fast|integration)\\.(${PROVENANCES.join('|')})\\.json$`);
+    expect([...live].filter((file) => !shape.test(file)),
+      'a stamp keyed by less than the suite, half and provenance is an earlier shape, which prune must drop')
+      .toEqual([]);
   });
 
   // `POOL_SECONDS` cannot be keyed off `Pool`: `unit-pool.ts` imports the steps, so the steps cannot import
@@ -330,5 +503,165 @@ describe("the chain's classification re-run", () => {
     expect([...fromPool].some((binding) => passed.has(binding)),
       'the re-run passes the pool nothing, so a step that caches inside itself records a verdict the chain '
       + 'refuses to record, and the next chain skips the step that just failed').toBe(true);
+  });
+});
+
+/**
+ * The lines a finished pool run prints, which nothing could assert until the function took its root.
+ *
+ * It is the most-read output in this subsystem — every chain run and every `npm run test:unit` shows it —
+ * and it was checked nowhere, because it read the real cache and this machine's core count. Both come from
+ * the caller now, so a cache can be planted under a temp root and every line read back. The partial-run
+ * guard below had no case at all before this; it rested on one hand-run check.
+ */
+describe('poolDurationLines', () => {
+  const temp: string[] = [];
+  afterEach(() => {
+    for (const dir of temp.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /**
+   * A root holding a cache, and the package tree the marker scan walks.
+   *
+   * Both, because the lines are built from two readings of the root: the duration records, and each
+   * covered suite's specs, which `markedSpecs` walks for `@slow:` headers. A fixture with only the first
+   * is not a stand-in for a repo root — it throws on the walk.
+   */
+  const planted = (perSuite: Record<string, { file: string; ms: number; overheadMs: number }[]>): string => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pool-lines-'));
+    temp.push(root);
+    for (const suite of POOLS.host.suites()) {
+      fs.mkdirSync(path.join(root, 'packages', suite.dir, 'tests'), { recursive: true });
+    }
+    for (const [dir, files] of Object.entries(perSuite)) {
+      writeDurations(root, files.map((f) => ({ dir, half: 'fast' as const, ...f })), new Date().toISOString());
+    }
+    return root;
+  };
+
+  /** Every suite the host pool covers, so a planted cache can be a whole half */
+  const hostSuites = POOLS.host.suites().map((suite) => suite.dir);
+  const one = (ms: number, overheadMs: number) => [{ file: 'tests/a.spec.ts', ms, overheadMs }];
+  const whole = (files: Record<string, { file: string; ms: number; overheadMs: number }[]>) =>
+    planted({ ...Object.fromEntries(hostSuites.map((dir) => [dir, one(10, 10)])), ...files });
+
+  const lines = (root: string, cores = 10): string[] =>
+    poolDurationLines('host', 6, new Date(0), { root, cores });
+
+  it('leads with the half it measured, and what it cost around the tests', () => {
+    const root = whole({ 'abuddy-sdk': [{ file: 'tests/a.spec.ts', ms: 4000, overheadMs: 1000 }] });
+    expect(lines(root)[0]).toMatch(/fast half, \d+ file\(s\) this run measured, .* of import and setup around them/);
+  });
+
+  // The figure whose absence let an 18.3s floor read as binding: `work/cores` against the floor, and which wins
+  it('says which of the floor and the work bounds the run', () => {
+    // Work-bound: many files of middling cost, so the total over ten cores beats any one of them
+    const work = planted(Object.fromEntries(hostSuites.map((dir) =>
+      [dir, Array.from({ length: 20 }, (_, n) => ({ file: `tests/a${n}.spec.ts`, ms: 3000, overheadMs: 500 }))])));
+    expect(lines(work)[1]).toMatch(/work\/cores against a .* floor — work-bound/);
+    // Floor-bound: one file larger than everything else put together
+    const floor = whole({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 60_000, overheadMs: 1000 }] });
+    expect(lines(floor)[1]).toMatch(/floor — floor-bound/);
+  });
+
+  /**
+   * And draws no verdict where overhead was never recorded, rather than the wrong one.
+   *
+   * A record written before that field reads with overhead zero, which understates the work and so makes
+   * the floor look binding — the reading that split a 96-case file for nothing.
+   */
+  it('withholds the verdict where a record predates overhead', () => {
+    const root = whole({ 'abuddy-sdk': [{ file: 'tests/a.spec.ts', ms: 4000, overheadMs: 0 }] });
+    expect(lines(root)[1]).toMatch(/which binds is unknown: \d+ file\(s\) predate overhead/);
+  });
+
+  /**
+   * The partial-run guard, in both directions.
+   *
+   * "Out of line with its half" is unanswerable from part of one: a run covering a single suite's
+   * integration half read 23.2s over 9.1s across 7 files, which is 2.54x and an artefact of the population.
+   * A pool runs only the projects whose inputs moved, so a partial run is the ordinary case.
+   */
+  it('names an outlier when it measured the whole half', () => {
+    const root = whole({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 30_000, overheadMs: 1000 }] });
+    expect(lines(root).join('\n')).toMatch(/out of line with its half, so a candidate for splitting/);
+  });
+
+  it('names none from a half it measured in part, however wide the gap', () => {
+    const root = planted({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 30_000, overheadMs: 1000 },
+      { file: 'tests/small.spec.ts', ms: 100, overheadMs: 100 }] });
+    expect(lines(root).join('\n'), 'one suite of eleven is not a half').not.toMatch(/out of line with its half/);
+  });
+
+  // An outlier is judged on what a file cost, so the ranking beside it is ordered the same way — otherwise
+  // the line can name a file the list does not show
+  it('ranks by cost, so the file it names is the one listed first', () => {
+    const root = whole({ 'abuddy-sdk': [{ file: 'tests/setup-heavy.spec.ts', ms: 100, overheadMs: 30_000 },
+      { file: 'tests/test-heavy.spec.ts', ms: 5000, overheadMs: 100 }] });
+    const printed = lines(root);
+    // Indexed from the end, because the ranking is the trailing block and the verdicts above it vary in
+    // number — the outlier, the unmarked tail and the marker reach each appear only when they apply. Five
+    // rows, `costliestFiles`' limit, this fixture's half having twelve files
+    const ranking = printed.slice(-5);
+    expect(ranking[0], 'the costliest file leads the ranking').toContain('tests/setup-heavy.spec.ts');
+    expect(printed.join('\n')).toMatch(/setup-heavy\.spec\.ts[^\n]*out of line|out of line[^\n]*setup-heavy/);
+  });
+
+  /**
+   * The reported half of the gate, which was computed and printed where a passing run could not show it.
+   *
+   * `placementOf`'s `unmarked` list was only ever written by the pool's own stdout, which both callers
+   * buffer and print on failure alone — so the direction deliberately left as a report was visible only
+   * when something else broke. These two cases are what fails if that line goes again.
+   *
+   * Named rather than counted, because the ranking is ordered by cost and this list by test time, so an
+   * unmarked file in the tail need not be among the rows a reader can see.
+   */
+  it('names a file in the slow tail that carries no marker', () => {
+    const root = whole({ 'abuddy-sdk': [{ file: 'tests/loud.spec.ts', ms: 30_000, overheadMs: 100 }] });
+    const printed = lines(root).join('\n');
+    expect(printed).toMatch(/in the slow tail and unmarked:[^\n]*abuddy-sdk\/tests\/loud\.spec\.ts/);
+    expect(printed, 'with what makes it a report rather than a failure').toContain('reported, not failed');
+  });
+
+  /**
+   * And on a partial run it reports why it drew no verdict, rather than printing nothing.
+   *
+   * Twenty files in one suite of eleven: enough that the half has a tail, so this reaches `a partial run`
+   * rather than the `too few files` branch the two-file fixture above lands on.
+   */
+  it('checks no marker on a partial run, and says which run it was', () => {
+    const root = planted({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 30_000, overheadMs: 100 },
+      ...Array.from({ length: 19 }, (_, n) => ({ file: `tests/small${n}.spec.ts`, ms: 100, overheadMs: 10 }))] });
+    expect(lines(root).join('\n')).toMatch(/no @slow: marker checked here — this run covered 1 of \d+ project\(s\)/);
+  });
+
+  /**
+   * The count that makes the gate's deletion condition answerable.
+   *
+   * Measured 2026-10-06, every marker in the repo is in a package with one vitest config, so the move the
+   * gate's remedy names costs a new config rather than a rename — and a condition turning on a year
+   * passing with no spec moving halves cannot tell that apart from the gate having been found useless.
+   */
+  it('counts the markers whose package has nowhere to move a spec', () => {
+    const root = whole({});
+    fs.writeFileSync(path.join(root, 'packages', 'abuddy-sdk', 'tests', 'a.spec.ts'),
+      '// @slow: it builds a program per case\nimport x from \'y\';\n');
+    expect(lines(root).join('\n')).toMatch(/1\s+of 1 @slow: marker\(s\) sit in a package with no second half/);
+  });
+
+  it('says nothing of reach once the marked package has a half to move to', () => {
+    const root = whole({});
+    fs.writeFileSync(path.join(root, 'packages', 'abuddy-sdk', 'tests', 'a.spec.ts'),
+      '// @slow: it builds a program per case\nimport x from \'y\';\n');
+    // Both configs, which is what `hasSplit` reads — the line is about what the repo makes possible
+    for (const config of Object.values(CONFIG_BY_HALF)) {
+      fs.writeFileSync(path.join(root, 'packages', 'abuddy-sdk', config), '');
+    }
+    expect(lines(root).join('\n')).not.toMatch(/sit in a package with no second half/);
+  });
+
+  it('says nothing at all where no run has measured anything', () => {
+    expect(lines(fs.mkdtempSync(path.join(os.tmpdir(), 'pool-lines-empty-')))).toEqual([]);
   });
 });
