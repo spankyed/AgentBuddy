@@ -242,6 +242,28 @@ const brainState = setup({
         } as any
       };
     }),
+    /**
+     * Opens the failing node's details when a step errors, which is what asking for them is for: the panel
+     * and the canvas highlight both read `selectedStepNode`, so there is nowhere else the answer can land.
+     *
+     * It selects the node *before* asking, as the other two asking actions do, because `answersSelectedNode`
+     * admits a reply only for the node being waited on. Asking without selecting is an answer the guard drops.
+     */
+    selectAndShowFailingNode: assign(({ event }) => {
+      if (event.type !== 'BRAIN_RUNTIME_ERROR' || !event.error.tNodeId) return {};
+      const tNodeId = event.error.tNodeId;
+
+      sendToSystem(id, {
+        type: 'GET_TNODE_DETAILS',
+        tNodeId,
+      });
+
+      return {
+        selectedStepNode: {
+          id: tNodeId
+        } as any
+      };
+    }),
     setStepNodeDetails: assign(({ event }) => {
       if (event.type !== 'TNODE_DETAILS') return {};
       return {
@@ -343,9 +365,14 @@ const brainState = setup({
     /**
      * Whether these details describe the node still being waited on.
      *
-     * `selectedStepNode.id` is that node at every request site: a click assigns it before the send,
-     * and the refresh path only asks about the node already selected. So the reply's own `tNodeId` is
-     * enough to tell it from an answer for a node the view has since moved off.
+     * **The invariant it rests on: every action that asks assigns `selectedStepNode` first.** Three set the
+     * id and then send (a click, the first node shown, a step's error) and the fourth only asks about the
+     * node already selected. So the reply's own `tNodeId` tells it from an answer for a node the view has
+     * since moved off, and no request id is needed.
+     *
+     * An action that asks without selecting gets its answer dropped here, silently — which is what the
+     * error path did, so the failing node's details never reached the panel. `tnode-correlation.spec.ts`
+     * holds each asking action to it, rather than this comment enumerating them.
      */
     answersSelectedNode: ({ context, event }) =>
       (event as { tNodeId?: string }).tNodeId === context.selectedStepNode?.id,
@@ -506,13 +533,7 @@ const brainState = setup({
           actions: 'setBrainResumed'
         },
         BRAIN_RUNTIME_ERROR: {
-          actions: ['addRuntimeError', ({ event }) => {
-            if (event.type !== 'BRAIN_RUNTIME_ERROR' || !event.error.tNodeId) return;
-            sendToSystem(id, {
-              type: 'GET_TNODE_DETAILS',
-              tNodeId: event.error.tNodeId,
-            });
-          }]
+          actions: ['addRuntimeError', 'selectAndShowFailingNode']
         },
         DISMISS_RUNTIME_ERROR: {
           actions: 'dismissRuntimeError'

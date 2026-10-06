@@ -143,10 +143,14 @@ does not.
 A guard is what you write when the shape is wrong, and six in this pack still are. The two page guards in
 `features/{actions,prompts}` are a page number used as a key and are the idea in miniature;
 `pendingActionId`, `pendingPromptId` and `answersSelectedNode` are hand-written correlation standing in for
-a slot. `answersSelectedNode` is the one that is *wrong* rather than merely verbose: `brain/fe/state.ts`
-fetches details for an **erroring** node and the guard drops the answer unless that node is also selected,
-so the shape error costs a feature. `answersCurrentFlow` stays whatever happens — `FLOW_EVENTS_RESULT`
-echoes no `offset`, so its paging needs the backend to say which page it answered.
+a slot. `answersSelectedNode` is the one that showed what a guard costs when it is wrong: a step's error
+asked for the failing node's details and never selected it, so the guard dropped the answer and the panel
+that exists to show them was never given any. **What a guard needs that a slot does not is an invariant
+every asker has to hold** — here, select before you ask — and this one was stated over two of its four
+askers and broken by the fourth. It holds now, and `tests/features/brain/fe/tnode-correlation.spec.ts`
+asks each asker rather than describing them, which is the thing to copy if a guard stays.
+`answersCurrentFlow` stays whatever happens — `FLOW_EVENTS_RESULT` echoes no `offset`, so its paging needs
+the backend to say which page it answered.
 
 And one that is worse than a guard: `code/be/features/pull-request.ts`'s `prDetailsRequestId` is a counter
 **stamped by the replier** and shared across windows, which `database/be/types.ts` spells out as the thing
