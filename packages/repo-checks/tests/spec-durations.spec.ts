@@ -457,46 +457,63 @@ describe('halfBound', () => {
     // the rest of the half, spread as 280 files are rather than heaped into one that would be the floor
     ...Array.from({ length: 280 }, (_, n) => row('a', `tests/rest-${n}.spec.ts`, 436, 491))];
 
+  it('measures the floor by what a file cost, not by its test time alone', () => {
+    expect(halfBound(host, 'fast', 10).floorMs, 'compiles: 10.0s of tests and 1.0s around them')
+      .toBe(11_000);
+  });
+
   it('calls a half work-bound when its work outweighs its slowest file', () => {
     const bound = halfBound(host, 'fast', 10);
-    expect(bound.floorMs).toBe(10_000);
+    expect(bound.floorMs, 'the floor is what the file cost, tests and overhead').toBe(11_000);
     expect(bound.perCoreMs / 1000, 'tests and overhead, over the cores').toBeCloseTo(28.1, 0);
     expect(bound.binds).toBe('work');
   });
 
   /**
-   * **And the pre-split half reads floor-bound without its overhead, which is the error reproduced.**
+   * **And it refuses to judge a half whose records predate overhead, rather than reaching the wrong verdict.**
    *
-   * The figures are the ones the mistake was made on: `generate-entries.spec.ts` at 18.3s in a fast half
-   * of 86.5s of test time. From test time alone that is `work/cores` of 8.7s against an 18.3s floor —
-   * floor-bound, and a file worth splitting. With the 139.6s of import and setup the same half also costs,
-   * it is 22.6s and work-bound, and splitting the floor could buy nothing. It bought nothing.
+   * The figures are the ones the mistake was made on: `generate-entries.spec.ts` at 18.3s in a fast half of
+   * 86.5s of test time. From test time alone that is a `work/cores` of 8.7s against an 18.3s floor —
+   * floor-bound, and a file worth splitting. With the import and setup the same half also costs it is 22.6s
+   * and work-bound, and splitting the floor could buy nothing. It bought nothing.
    *
-   * Today's numbers cannot show this: post-split the half is work-bound either way, 14.1s against a 10.0s
-   * floor. So the case is built from the recorded pre-split figures rather than from the tree.
+   * So a record with no overhead figures gets both numbers, because they are facts about what is recorded,
+   * and no verdict — the one it would reach is the wrong one, and a missing overhead always errs toward
+   * calling the floor binding.
    */
-  it('reads the pre-split half floor-bound without overhead and work-bound with it', () => {
+  it('refuses a verdict where overhead was never recorded, and says how many files', () => {
+    const floor = row('abuddy-sdk', 'tests/generate-entries.spec.ts', 18_300, 0);
+    const rest = Array.from({ length: 287 }, (_, n) => row('a', `tests/rest-${n}.spec.ts`, 238, 0));
+    const bound = halfBound([floor, ...rest], 'fast', 10);
+    expect(bound.perCoreMs / 1000, 'tests alone, which is half the truth').toBeCloseTo(8.7, 0);
+    expect(bound.floorMs).toBe(18_300);
+    expect(bound.binds, 'and the figure that would have been drawn from it is not drawn').toBe('unknown');
+    expect(bound.unmeasured).toBe(288);
+  });
+
+  // The same half once overhead is recorded: work-bound, as it really was
+  it('judges it work-bound once the overhead is there', () => {
     const floor = row('abuddy-sdk', 'tests/generate-entries.spec.ts', 18_300, 1000);
     const rest = Array.from({ length: 287 }, (_, n) => row('a', `tests/rest-${n}.spec.ts`, 238, 483));
-    expect(halfBound([floor, ...rest], 'fast', 10).binds, 'with overhead, as it really was').toBe('work');
-    const blind = [floor, ...rest].map((r) => row(r.dir, r.file, r.ms, 0));
-    const bound = halfBound(blind, 'fast', 10);
-    expect(bound.perCoreMs / 1000, 'tests alone, which is half the truth').toBeCloseTo(8.7, 0);
-    expect(bound.binds, 'and so the floor looked binding when it was not').toBe('floor');
+    const bound = halfBound([floor, ...rest], 'fast', 10);
+    expect(bound.perCoreMs / 1000).toBeCloseTo(22.6, 0);
+    expect(bound.binds).toBe('work');
+    expect(bound.unmeasured).toBe(0);
   });
 
   it('calls a half floor-bound when one file really does exceed its work', () => {
-    const rows = [row('a', 'tests/one.spec.ts', 60_000, 0), row('a', 'tests/two.spec.ts', 1000, 0)];
+    const rows = [row('a', 'tests/one.spec.ts', 60_000, 100), row('a', 'tests/two.spec.ts', 1000, 100)];
     expect(halfBound(rows, 'fast', 10).binds).toBe('floor');
   });
 
   it('answers for a half it has no rows for, rather than dividing by nothing', () => {
-    expect(halfBound([], 'fast', 10)).toEqual({ floorMs: 0, perCoreMs: 0, binds: 'work' });
+    expect(halfBound([], 'fast', 10)).toEqual({ floorMs: 0, perCoreMs: 0, binds: 'work', unmeasured: 0 });
     expect(halfBound(host, 'fast', 0).perCoreMs, 'a box with no cores is not a division').toBe(0);
   });
 });
 
 describe('outlierIn', () => {
+  // Overhead left at zero so each peer's cost is its `ms`, which keeps the ratios in these cases readable
   const peers = [row('abuddy-host', 'tests/write-lock.spec.ts', 4900),
     row('abuddy-cli', 'tests/run-install.spec.ts', 4000),
     row('abuddy-host', 'tests/published-manifest.spec.ts', 3400),
@@ -520,6 +537,21 @@ describe('outlierIn', () => {
     const found = outlierIn(rows, 'fast')!;
     expect(found.above.map((r) => r.file)).toEqual(['tests/one.spec.ts', 'tests/two.spec.ts']);
     expect(found.ratio).toBeCloseTo(4.08, 1);
+  });
+
+  /**
+   * **A file whose cost is all setup is an outlier too, which it was not for one commit.**
+   *
+   * `outlierIn` compared `ms` until 2026-10-06, so a spec with a thirty-second setup and no test time was
+   * invisible to it — in a subsystem whose own commit had just established that `ms` is about half of what
+   * a file costs. The pack pool is where this is not hypothetical: every file there carries ~1.7s of setup
+   * and none of it was visible to any comparison here.
+   */
+  it('reports a file whose cost is its setup rather than its tests', () => {
+    const rows = [row('a', 'tests/heavy-setup.spec.ts', 100, 29_900), ...peers];
+    const found = outlierIn(rows, 'fast')!;
+    expect(found.above.map((r) => r.file)).toEqual(['tests/heavy-setup.spec.ts']);
+    expect(found.ratio, '30.0s of cost over a 4.9s peer').toBeCloseTo(6.1, 0);
   });
 
   // The other direction, and the one that is true of this repo on every run

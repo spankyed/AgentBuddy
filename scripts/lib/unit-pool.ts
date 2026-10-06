@@ -263,7 +263,13 @@ export function projectsThatDidNotRun(asked: readonly string[], run: ReportedRun
  * one once the reader knows how heavy the half is. Silent where nothing stands out, which is every half in
  * this repo today — `outlierIn` carries what the thresholds are and what they were measured against.
  */
-const outlierLines = (rows: readonly FileDuration[], half: Half, width: number): string[] => {
+const outlierLines = (rows: readonly FileDuration[], half: Half, width: number, whole: boolean): string[] => {
+  // **Only over a half this run measured whole.** "Out of line with its half" is unanswerable from part of
+  // one: a pool runs the projects whose inputs moved, and a run covering a single suite's integration half
+  // read 23.2s over 9.1s — 2.54x, and an artefact of the population rather than a file worth splitting.
+  // Derived from which suites reported rather than a minimum file count, which would be a declared
+  // population floor standing in for the question actually being asked.
+  if (!whole) return [];
   const found = outlierIn(rows, half);
   if (found === undefined) return [];
   const named = found.above.map((row) => `${row.dir}/${row.file}`).join(', ');
@@ -300,6 +306,8 @@ export function poolDurationLines(pool: Pool, width: number, since: Date): strin
   if (rows.length === 0) return [];
   const total = halfTotal(rows, half);
   const bound = halfBound(rows, half, os.availableParallelism());
+  /** Which of the pool's suites this run actually measured, which is what says whether a half is whole */
+  const measured = new Set(rows.map((row) => row.dir));
   const marked = new Map(covered.map((suite) => [suite.dir, markedSpecs(path.join(REPO_ROOT, 'packages', suite.dir))]));
   const windows = new Map(covered.map((suite) => [suite.dir, readDurationRuns(REPO_ROOT, suite.dir, half)]));
   return [
@@ -307,9 +315,14 @@ export function poolDurationLines(pool: Pool, width: number, since: Date): strin
       + `, ${asDuration(total.overheadMs)} of import and setup around them`,
     // Which of the two can bound the run, because a floor under `work/cores` cannot — and reading it the
     // other way is what split a 96-case file for no gain. `halfBound` carries that story.
-    `${asDuration(bound.perCoreMs).padStart(width)}  work/cores against a ${asDuration(bound.floorMs)} floor`
-      + ` — ${bound.binds}-bound`,
-    ...outlierLines(rows, half, width),
+    bound.binds === 'unknown'
+      // No verdict rather than the wrong one: without overhead the work is understated, so the floor looks
+      // binding when it is not — which is the reading that split a 96-case file for nothing
+      ? `${asDuration(bound.perCoreMs).padStart(width)}  work/cores over a ${asDuration(bound.floorMs)} floor`
+        + ` — which binds is unknown: ${bound.unmeasured} file(s) predate overhead, so re-run the pool`
+      : `${asDuration(bound.perCoreMs).padStart(width)}  work/cores against a ${asDuration(bound.floorMs)} floor`
+        + ` — ${bound.binds}-bound`,
+    ...outlierLines(rows, half, width, measured.size === covered.length),
     ...slowestFiles(rows, half).map((row) => {
       const reason = marked.get(row.dir)?.get(row.file);
       // The window's oldest reading beside the newest, which is the only thing the history is printed for

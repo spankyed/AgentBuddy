@@ -210,12 +210,19 @@ export const halfTotal = (rows: readonly FileDuration[], half: Half): { ms: numb
  * ask it about a ten-core box from any box.
  */
 export const halfBound = (rows: readonly FileDuration[], half: Half, cores: number): {
-  floorMs: number; perCoreMs: number; binds: 'floor' | 'work';
+  floorMs: number; perCoreMs: number; binds: 'floor' | 'work' | 'unknown'; unmeasured: number;
 } => {
+  const held = rows.filter((row) => row.half === half);
   const total = halfTotal(rows, half);
-  const floorMs = slowestFiles(rows, half, 1)[0]?.ms ?? 0;
+  const floorMs = Math.max(0, ...held.map(costOf));
   const perCoreMs = cores > 0 ? (total.ms + total.overheadMs) / cores : 0;
-  return { floorMs, perCoreMs, binds: floorMs > perCoreMs ? 'floor' : 'work' };
+  // A file that ran was imported, so an overhead of zero is a record written before the field existed
+  // rather than a file that cost nothing to load. Both figures are still facts about what is recorded, so
+  // they are returned — but no verdict is drawn from them, because the one it would reach is the wrong
+  // one: a missing overhead understates the work and so makes the floor look binding when it is not.
+  const unmeasured = held.filter((row) => row.overheadMs === 0).length;
+  if (unmeasured > 0) return { floorMs, perCoreMs, binds: 'unknown', unmeasured };
+  return { floorMs, perCoreMs, binds: floorMs > perCoreMs ? 'floor' : 'work', unmeasured: 0 };
 };
 
 /**
@@ -249,6 +256,20 @@ export const halfBound = (rows: readonly FileDuration[], half: Half, cores: numb
  * the same decision, which has been made zero times.
  */
 export const OUTLIER_GAP = 2;
+
+/**
+ * What a file cost the run: its tests and hooks plus everything around them.
+ *
+ * Every judgement about a file's *weight* is on this rather than on `ms`, because `ms` is about half of it
+ * and which half depends on the pool. A spec with a thirty-second setup and no test time is invisible to a
+ * comparison of `ms`, and that was true of this detector for one commit.
+ *
+ * `ms` keeps its own uses, which are different questions: it is the figure the console prints, so it is
+ * what a `@slow:` marker is judged on and what the ranking shows. **That split is deliberate and worth
+ * knowing**: a marker says why a spec's tests take long, which is not the same claim as a file being
+ * expensive to run.
+ */
+export const costOf = (row: FileDuration): number => row.ms + row.overheadMs;
 export const OUTLIER_FLOOR_MS = 10_000;
 
 /** A half's slowest files, where they stand apart from the rest of their half */
@@ -278,14 +299,14 @@ export function outlierIn(
   half: Half,
   { gap = OUTLIER_GAP, floorMs = OUTLIER_FLOOR_MS } = {},
 ): Outlier | undefined {
-  const held = rows.filter((row) => row.half === half).sort((a, b) => b.ms - a.ms);
+  const held = rows.filter((row) => row.half === half).sort((a, b) => costOf(b) - costOf(a));
   let worst: Outlier | undefined;
   for (let k = 1; k <= 3 && k < held.length; k += 1) {
     const above = held.slice(0, k);
     // Every file above the step has to be worth acting on, not just the first
-    if (above.some((row) => row.ms < floorMs)) continue;
-    const belowMs = held[k]!.ms;
-    const ratio = belowMs > 0 ? above[k - 1]!.ms / belowMs : Infinity;
+    if (above.some((row) => costOf(row) < floorMs)) continue;
+    const belowMs = costOf(held[k]!);
+    const ratio = belowMs > 0 ? costOf(above[k - 1]!) / belowMs : Infinity;
     if (ratio >= gap && (worst === undefined || ratio > worst.ratio)) worst = { above, belowMs, ratio };
   }
   return worst;
