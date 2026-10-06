@@ -525,6 +525,36 @@ export function classifyLine(
 }
 
 /**
+ * How much shortening each step on the critical path could *possibly* buy — which is the question
+ * "what should I make faster" actually wants, and not the one a duration answers.
+ *
+ * A step's saving is capped by the second-longest path, so a long step on a dense graph is worth almost
+ * nothing: measured 2026-10-06, `test:packaged-authoring:author` is 95s of a 118s path and making it
+ * **free** buys 19s, because another route sits at 99s. Three proposals in one day were sized by reading a
+ * duration and each was bounded by a path nobody had computed — the pack pool (0s, off the path), the
+ * integration pool (0s cold), the renderer's vite build (0s). This is the line that answers them before
+ * anyone spends a day.
+ *
+ * **Only a step on the path is asked**, because zeroing one off it cannot shorten the longest route — so
+ * this is as many `criticalPath` calls as the path is long, three today, and not one per step.
+ *
+ * Silent where the path is a single step, as `criticalPathLine` is: there is no competing route to be
+ * bounded by, so the step's own duration is the answer and its line already said it.
+ */
+export function pathSavingsLine(steps: readonly SchedulableStep[]): string {
+  const base = criticalPath(steps);
+  if (base.names.length < 2) return '';
+  const freed = (name: string): number =>
+    criticalPath(steps.map((step) => (step.name === name ? { ...step, seconds: 0 } : step))).seconds;
+  const buys = base.names
+    .map((name) => ({ name, saving: base.seconds - freed(name) }))
+    .filter(({ saving }) => saving > 0)
+    .sort((a, b) => b.saving - a.saving);
+  if (buys.length === 0) return '';
+  return `the most any one can buy: ${buys.map(({ name, saving }) => `${name} ${saving}s`).join(', ')}`;
+}
+
+/**
  * The longest chain of steps a run has to wait through, as a line — and the answer to "which step is
  * worth making faster".
  *

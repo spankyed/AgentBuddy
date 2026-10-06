@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { firstChange, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, orderedSteps } from '../../../scripts/lib/chain-steps.ts';
 import { machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
-import { briefly, classifyLine, criticalPathLine, outgrownReport, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, classifyLine, criticalPathLine, pathSavingsLine, outgrownReport, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   /**
@@ -653,5 +653,53 @@ describe('criticalPathLine', () => {
     const ordered = orderedSteps(CHAIN_STEPS);
     const line = criticalPathLine(ordered, 'declared');
     expect(line, 'the chain is a graph, so it has a longest route through it').toMatch(/^critical path \d+s declared \(.+ -> .+\)$/);
+  });
+});
+
+/**
+ * What shortening a step could buy, which is not what it costs.
+ *
+ * A step's saving is capped by the second-longest route, so the interesting case — and the one these
+ * fixtures are built to show — is a long step worth almost nothing. Three proposals in one day were sized
+ * by reading a duration and every one was bounded by a path nobody had computed.
+ */
+describe('pathSavingsLine', () => {
+  /** `a -> b` is the longest route at 100; `c` is an independent route at 85, which is what caps a saving */
+  const dense = [
+    { name: 'a', seconds: 10, dependsOn: [] },
+    { name: 'b', seconds: 90, dependsOn: ['a'] },
+    { name: 'c', seconds: 85, dependsOn: [] },
+  ];
+
+  it('names each step on the path and what freeing it would buy, largest first', () => {
+    expect(pathSavingsLine(dense)).toBe('the most any one can buy: b 15s, a 10s');
+  });
+
+  /**
+   * The point of the line: `b` is 90 of the 100 and buys 15.
+   *
+   * Asserted as the relation rather than the number, because that is the claim — a duration is not a
+   * saving — where the figures are only this fixture's.
+   */
+  it('reports a saving far below the duration where another route is close behind', () => {
+    const b = dense.find((step) => step.name === 'b')!;
+    const buys = Number(/b (\d+)s/.exec(pathSavingsLine(dense))![1]);
+    expect(buys).toBeLessThan(b.seconds / 2);
+  });
+
+  // And the contrast: with no competing route, a step buys its whole duration — which is why
+  // `packages:ensure`, the smallest step on the real path, is the one whose time is fully recoverable
+  it('reports the whole duration where nothing else competes', () => {
+    const chain = dense.filter((step) => step.name !== 'c');
+    expect(pathSavingsLine(chain)).toBe('the most any one can buy: b 90s, a 10s');
+  });
+
+  it('names no step that is off the path, since freeing one shortens nothing', () => {
+    expect(pathSavingsLine(dense)).not.toContain('c ');
+  });
+
+  it('says nothing of a path of one, where the step is its own answer', () => {
+    expect(pathSavingsLine([dense[0]!])).toBe('');
+    expect(pathSavingsLine([])).toBe('');
   });
 });

@@ -210,12 +210,15 @@ Things that waste the most time, in order:
   skips every `CLAUDE.md`, so `npm run chain -- --dry` reports every step cached. A full `typecheck` is 11s
   against a doc edit's 0s, and repo-checks' *"prose costs nothing"* holds this claim. The two exceptions are
   a spec that asserts the text and a code fence someone will copy.
-- **Optimising a step that is not on the critical path.** The chain admits steps in parallel, so only the
-  durations along its longest dependency chain add up — `npm run chain -- --dry --all` prints it. Nothing
-  else is a saving. `test:unit:pack` is the worked warning: **89% setup overhead**, the most alarming ratio
-  in the repo, off the path, so halving it buys zero chain wall. **Read the path before measuring a ratio** —
-  and in the other direction, moving a step off the path need not shorten the run, because a cold chain is
-  core-bound. What it shortens is whatever was waiting behind it.
+- **Sizing an optimisation from a duration.** Three errors, and `npm run chain -- --dry --all` prints the
+  answer to the first two. A step **off** the critical path contributes nothing, because the chain admits
+  steps in parallel: `test:unit:pack` is the worked warning — **89% setup overhead**, the most alarming
+  ratio in the repo, off the path, so halving it buys zero. A step **on** it is capped by the second-longest
+  route, so a long step on a dense graph is worth little — `test:packaged-authoring:author` is 95s of a 118s
+  path and buys 19s, because another route sits at 99s. Three proposals in one day were sized by reading a
+  duration and all three were bounded by a path nobody had computed. And in the other direction, moving a
+  step off the path need not shorten the run, because a cold chain is core-bound; what it shortens is
+  whatever was waiting behind it. **Read the path and the saving before measuring a ratio.**
 - **Running `npm run build` to test a change no build output depends on.** The renderer and API build from
   source; a CLI or SDK change does not need them rebuilt to be tested.
 - **Running an E2E suite to find a bug you have a stack trace for.** Build once with `sourcemap: true`,
@@ -414,10 +417,12 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # contradicted — a step past double its declared `seconds`, one that passed and is
                          # already stale again, one whose measured cost outgrew its timeout rung.
                          #   --dry      the plan, why each step is or is not cached, and **what bounds it**:
-                         #              the critical path, which is the answer to "which step is worth
-                         #              making faster". A step off it runs in the shadow of the ones on it,
-                         #              so its own duration is not a saving. `--dry --all` gives the cold
-                         #              chain's path, since `--all` plans every step
+                         #              the critical path, plus **the most any step on it could buy**. A
+                         #              step off the path runs in the shadow of the ones on it, and a step
+                         #              on it is capped by the second-longest route — measured 2026-10-06,
+                         #              a 95s step on a 118s path buys 19s, because another route sits at
+                         #              99s. Read both before sizing an optimisation. `--dry --all` gives
+                         #              the cold chain's, since `--all` plans every step
                          #   --all      every step regardless of its stamp
                          #   --cores N  how much of the machine to spend; this machine's cores by default,
                          #              and a step declares its own width (POOL_WIDTH, core-budget.ts)

@@ -45,7 +45,7 @@ import { asCount, driftVerdict, idleNow, movedBeyondBand, parseFlags, RECORD_IDL
 import { machineLine, recordMachine, recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { driftedSteps, measurementsFrom, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
-import { briefly, classifyLine, criticalPathLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, classifyLine, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { CHAIN_RUN_ENV, DIAGNOSTIC_RUN_ENV, POOLS, poolDurationLines, type Pool } from './lib/unit-pool.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
@@ -418,6 +418,11 @@ async function main(): Promise<void> {
     // ones that are, so its own duration is not a saving. `criticalPathLine` has what that cost to learn.
     const plannedPath = criticalPathLine(planned, 'declared');
     if (plannedPath !== '') console.log(`\n${plannedPath}`);
+    // What shortening any of them could buy, which a duration does not say: a step's saving is capped by
+    // the second-longest route, so a long step on a dense graph can be worth nothing. `pathSavingsLine`
+    // has the three proposals that cost.
+    const plannedSavings = pathSavingsLine(planned);
+    if (plannedSavings !== '') console.log(`  ${plannedSavings}`);
     return;
   }
 
@@ -562,7 +567,10 @@ async function main(): Promise<void> {
   const ran = steps.filter((step) => measuredMs.has(step.name))
     .map((step) => ({ ...step, seconds: Math.round((measuredMs.get(step.name) ?? 0) / 1000) }));
   const measuredPath = criticalPathLine(ran, 'measured');
-  const floor = measuredPath === '' ? '' : `\n${measuredPath}`;
+  const measuredSavings = pathSavingsLine(ran);
+  const floor = measuredPath === ''
+    ? ''
+    : `\n${measuredPath}${measuredSavings === '' ? '' : `\n  ${measuredSavings}`}`;
   // Named rather than folded in, so the verdict's number stays comparable between runs and the wall time still
   // adds up — a reader who times the command should not find seconds the chain does not account for.
   const reran = classifyMs > 0 ? ` (+${secs(classifyMs)} re-run)` : '';
