@@ -206,7 +206,18 @@ Load inflates a duration — 1.27x median, 3.29x at worst — so it can hide a s
 one; an *unmarked* spec that reads slow is therefore reported and never failed. The bar is the half's p90
 from the same run, so a slow run moves the file and the bar together, which is what a fixed millisecond
 could not do: measured, it left two of the five markers 13% clear of a 2,500ms edge and 5.2x clear of this
-one. **The lesson for a future sample: price the apparatus against the decision it informs.** 1,884 lines, twelve records, two idle floors and a machine identity decided which of
+one.
+
+**"Load cannot invent one" is true of the file's time and was never true of the bar**, which is that same
+p90 — so what the gate also needs is a population the marked file belongs to. A pool runs the projects whose
+inputs moved, so most runs are partial, and a marked spec at a constant duration is above or below a partial
+run's bar depending on which projects ran beside it: measured 2026-10-06 by holding one at 2,900ms and
+changing only its neighbours, it was stale against a bar of 7,000ms in an 11-file run and 5,600ms in a
+31-file run, having not moved. So `placementOf` takes `whole` and checks no marker without it, reporting the
+half as unchecked the way it already did for one too small to have a tail. It was unreachable when found —
+only four files are slower than the slowest marked one and each sits in a project of 61 to 100 files, so two
+slow files can never be a tenth of a run — and that is arithmetic about this suite rather than anything the
+code held, which is the kind of safety worth replacing rather than recording. **The lesson for a future sample: price the apparatus against the decision it informs.** 1,884 lines, twelve records, two idle floors and a machine identity decided which of
 two config files a spec was listed in, where nine of twelve packages had only one config to begin with.
 
 **And the successor carries a deletion condition from the start, which is the part this lesson was missing.**
