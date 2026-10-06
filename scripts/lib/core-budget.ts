@@ -78,7 +78,18 @@ export const POOL_WIDTH: Readonly<Record<string, PoolWidth>> = {
   // else is running. It does assume the work is awaited — a step that detaches a child would read low,
   // and neither of these does.
   compile: { cores: 2 },
-  'build:app': { cores: 2 },
+  // **`build:app` was re-measured on 2026-10-06, when it stopped running its four builds in series**:
+  // 2.57, 2.57, 2.56, 2.49, 2.44 cores over five readings, median 2.56, against 2.2 when it was serial.
+  //
+  // **The rounding does not do the work here, and that has to be said rather than glossed.** The range
+  // straddles the 2.5 boundary, so jitter alone moves this between 2 and 3 — which is the argument the
+  // doc above demands of a measured entry, failing. Two things settle it anyway. The readings are
+  // monotonic in wall time (16.68s → 2.57, 17.05s → 2.56, 17.46s → 2.49, 18.81s → 2.44): contention
+  // inflates the wall without adding CPU, so it *depresses* this ratio and the quiet-box figure is the top
+  // of the range. And on a boundary the tie goes **up**, because the two errors are not alike — a width
+  // below the truth over-admits and starves the step beside it, which is the failure this table exists to
+  // prevent and the one its own history records, where a width above the truth only leaves a core idle.
+  'build:app': { cores: 3 },
   // Three independent extractions at once (`scripts/api-check.ts`), measured the same way: 25.6s of CPU in
   // 7.1s, so 3.6 cores. It ran serially and counted as one until 2026-10-05, which is a step using a third
   // of this box while the budget admitted it as a single core

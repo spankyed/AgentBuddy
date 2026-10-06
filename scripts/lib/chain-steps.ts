@@ -548,6 +548,25 @@ const APP_ENTRY = ['packages/entry-point.mjs', 'packages/dev-mode.js'];
 const BOUNDED_RUNNER = ['scripts/bounded.ts', 'scripts/lib/bounded-spawn.ts'];
 
 /**
+ * What *runs* the app's builds, as against what those builds read.
+ *
+ * `build:app` was `npm run build -w a -w b …`, which npm runs serially; it is a scheduler over the same
+ * four commands now, and these decide which workspaces are built and how. A pass recorded before the leg
+ * table changed is not evidence about the pass after it — drop a leg and the step would otherwise stay
+ * fresh while producing one `dist` fewer.
+ *
+ * `scripts/lib/measure.ts` is here for `--cores`'s parser alone, which is the shape `SUITE_RUNNER` has
+ * too: a module that decides *how much of the machine* the step takes is part of what the step does.
+ * `chain-inputs.spec.ts` derives this closure and fails anything in it left undeclared.
+ *
+ * `bounded-spawn.ts` alone and not `BOUNDED_RUNNER`: this step spawns through the module, not through the
+ * `scripts/bounded.ts` wrapper a shell-script step runs under, and declaring the wrapper would re-run four
+ * builds for an edit that cannot reach them.
+ */
+const APP_RUNNER = ['scripts/build-app.ts', 'scripts/lib/app-build-legs.ts', 'scripts/lib/bounded-spawn.ts',
+  'scripts/lib/chain-schedule.ts', 'scripts/lib/exit-on-epipe.ts', 'scripts/lib/measure.ts'];
+
+/**
  * What *runs* a unit suite, as against what the suite reads — and an input to every project all the same.
  *
  * These decide what runs and how: the runner picks which projects a pool runs, `unit-suites.ts` says which
@@ -1015,7 +1034,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // measured, a warm chain cached 7 of 17 steps instead of 16. `npm run build` still builds everything, for
   // CI and `build/build.sh`; the chain does not need it to, because `compile` is a declared `need`.
   { name: 'build:app', timeout: 'suite', seconds: 39, outputs: APP_OUTPUTS,
-    inputs: [...ROOT, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
+    inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
       'packages/api/tsup.config.ts', ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   { name: 'test:external-pack:app', timeout: 'scenario', seconds: 24,
