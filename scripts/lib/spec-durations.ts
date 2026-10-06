@@ -13,6 +13,29 @@
  * reads fast is therefore a fact about the spec, and is failed; an unmarked spec that reads slow may be a
  * fact about the machine, and is only ever reported. Swapping those two directions is the mistake that
  * cost the deleted subsystem its window, its band and its two idle floors.
+ *
+ * ## When to delete the gate, and what it is costing while it lives
+ *
+ * **The gate is the part of this with a condition on it.** `SLOW_QUANTILE`, `tailBar`, `SLOW_MARKER`,
+ * `slowReason`, `markedSpecs` and `placementOf` are ~160 lines here and five of `spec-durations.spec.ts`'
+ * fifteen describes — about 320 of the 1,356 across this module, its reporter and their specs. Everything
+ * else is the parse, the ranking, the totals, the cache, the window and `spec:dry`'s pricing, which are
+ * read whether or not a marker is ever checked. So deleting the gate leaves the instrument intact.
+ *
+ * **What it guards is five annotations, in one direction, and its failure mode is a stale comment.** What
+ * it is *for* is the decision underneath: whether a spec should move between halves. **As of 2026-10-06
+ * that decision has been made zero times** — `run-install.spec.ts` is the standing candidate, named in
+ * `goal-placement-without-a-clock.md` and worth ~4.4s of the worst `npm run spec` loop (93 specs, 24.4s,
+ * from an `@abuddy/sdk` entity-type change), and nothing has moved it.
+ *
+ * So: **if a year of this repo's work passes without one spec having moved halves on this gate's
+ * evidence, delete it** and keep the ranking. That is a judgement and not a thing a run can check, which
+ * is why it is written here rather than asserted — the mechanical half, that the marker population has
+ * not collapsed to nothing, is already a case in `markedSpecs`' describe.
+ *
+ * And price any addition against that figure before making one. The subsystem this replaced grew to 1,884
+ * lines by answering each objection with another mechanism, and the lesson recorded for it in the root
+ * `CLAUDE.md` — *"price the apparatus against the decision it informs"* — applies to its successor first.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';

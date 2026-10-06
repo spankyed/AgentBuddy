@@ -209,6 +209,16 @@ could not do: measured, it left two of the five markers 13% clear of a 2,500ms e
 one. **The lesson for a future sample: price the apparatus against the decision it informs.** 1,884 lines, twelve records, two idle floors and a machine identity decided which of
 two config files a spec was listed in, where nine of twelve packages had only one config to begin with.
 
+**And the successor carries a deletion condition from the start, which is the part this lesson was missing.**
+`spec-cost.json` accumulated one only in hindsight. The `@slow:` marker gate — `SLOW_QUANTILE`, `tailBar`,
+`slowReason`, `markedSpecs`, `placementOf` and their five describes, about 320 of the 1,356 lines across
+`spec-durations.ts`, its reporter and their specs — guards five annotations in one direction, and its failure
+mode is a stale comment. What it is *for* is whether a spec should move between halves, and as of 2026-10-06
+that decision has been made **zero times**. So: if a year passes with no spec having moved halves on its
+evidence, delete the gate and keep the ranking, which is the other 1,000 lines and is read either way. The
+condition is a judgement rather than something a run can check, which is why it is prose; the mechanical
+half — that the markers have not collapsed to none — is a case in `markedSpecs`' describe.
+
 **One window came back, and it is worth saying why it is not a sample in the fatal sense.** The duration
 cache (`scripts/lib/spec-durations.ts`) keeps ten readings per suite and half. It is uncommitted, it cannot
 leave the machine that wrote it, and **nothing compares it against an edge** — its whole output is one
