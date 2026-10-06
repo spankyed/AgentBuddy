@@ -8,7 +8,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import {
+import { WORTH_NAMING_MS,
   asDuration, asLocalTime, durationCacheDir, durationsOf, markedSpecs, placementOf, pruneDurationCache,
   cachedDurations, halfBound, halfTotal, KEPT_RUNS, outlierIn, quantileOf, readDurationRuns, readDurations,
   slowestFiles,
@@ -235,35 +235,98 @@ describe('placementOf', () => {
   const nine = [5, 10, 15, 20, 25, 30, 35, 40, 45].map((ms, index) => row('abuddy-host', `tests/f${index}.spec.ts`, ms));
   const marked = (file: string, reason = 'a reason'): Map<string, Map<string, string>> =>
     new Map([['abuddy-host', new Map([[file, reason]])]]);
-  /** Every case below is about the gate's own logic, so each one says it had the whole half to judge from */
+  /** Every case below had the whole half to judge from, which is what lets the gate speak at all */
   const WHOLE = { whole: true } as const;
+
+  /**
+   * The bar alone, with the absolute floor taken out of the way.
+   *
+   * **The two guards want opposite things of a fixture, which is why they are named apart here.** These
+   * rows are milliseconds apart and production's floor is ten seconds, so a case about the quantile has to
+   * lift the floor to say anything, and a case about the report has to drop it. Each guard then gets its
+   * own case at the real value — `leaves a marked spec alone while it is still slow in absolute terms` and
+   * `names none of a half whose slowest files are small in absolute terms` — so neither is only ever
+   * exercised at a value no run uses.
+   */
+  const BAR_ONLY = { ...WHOLE, worthNamingMs: Number.POSITIVE_INFINITY } as const;
+
+  /** And the report's side: named whatever its size, so what the case is about is the ranking */
+  const ANY_SIZE = { ...WHOLE, worthNamingMs: 0 } as const;
 
   it('fails a marked spec that is no longer in its half\'s tail, quoting its reason', () => {
     const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
-    const { stale } = placementOf(rows, marked('tests/f0.spec.ts', 'it spawns seven processes'), WHOLE);
+    const { stale } = placementOf(rows, marked('tests/f0.spec.ts', 'it spawns seven processes'), BAR_ONLY);
     expect(stale).toEqual([
       { dir: 'abuddy-host', file: 'tests/f0.spec.ts', ms: 5, bar: 45, reason: 'it spawns seven processes' },
     ]);
   });
 
+  /**
+   * The file that *is* the bar is not below it.
+   *
+   * A nearest-rank quantile returns one of the readings, so a marked spec can land exactly on its half's
+   * p90 and `<=` would call it stale for an arithmetic reason. The chain caught this on 2026-10-06:
+   * `facade-typing-published` at 23.5s against a 23.5s p90, third of 28 files, where `ceil(0.9 * 28)`
+   * lands on it — and the remedy it printed was to drop a true marker from a 23.5s spec.
+   */
+  it('leaves alone the marked spec whose own reading is the bar', () => {
+    const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 46), row('abuddy-host', 'tests/mid.spec.ts', 45)];
+    const bar = tailBar(rows, 'fast')!;
+    expect(bar, 'the fixture puts a marked file exactly on the bar').toBe(45);
+    expect(placementOf(rows, marked('tests/mid.spec.ts'), BAR_ONLY).stale).toEqual([]);
+  });
+
+  /**
+   * And a marked spec that is still large is never called stale, whatever its neighbours did.
+   *
+   * "No longer in the slow tail" is not the claim a marker makes. A half whose every file is big has a big
+   * p90, and telling someone to drop the marker from a 20s spec because its neighbours grew past it is
+   * advice that is simply false.
+   */
+  it('leaves a marked spec alone while it is still slow in absolute terms', () => {
+    const big = Array.from({ length: 9 }, (_, index) =>
+      row('abuddy-host', `tests/big${index}.spec.ts`, WORTH_NAMING_MS * (index + 3)));
+    const rows = [...big, row('abuddy-host', 'tests/marked.spec.ts', WORTH_NAMING_MS * 2)];
+    expect(placementOf(rows, marked('tests/marked.spec.ts'), { whole: true }).stale,
+      'under its half\'s bar, and still 20s').toEqual([]);
+  });
+
   it('leaves a marked spec that is still in the tail alone', () => {
     const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
-    expect(placementOf(rows, marked('tests/slow.spec.ts'), WHOLE).stale).toEqual([]);
+    expect(placementOf(rows, marked('tests/slow.spec.ts'), BAR_ONLY).stale).toEqual([]);
   });
 
   // The other direction, and the reason it is not a failure: load inflates a duration by a measured 1.27x
   // median and 3.29x at worst, so a busy machine can put a file here on its own
   it('reports an unmarked spec in the slowest few without failing', () => {
     const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
-    const { stale, unmarked } = placementOf(rows, new Map(), WHOLE);
+    const { stale, unmarked } = placementOf(rows, new Map(), ANY_SIZE);
     expect(stale).toEqual([]);
     expect(unmarked.map((found) => found.file)).toEqual(['tests/slow.spec.ts']);
   });
 
   it('bounds that report by the ranking, not by the bar, since a tenth of a half is over it by construction', () => {
     const many = Array.from({ length: 100 }, (_, index) => row('abuddy-host', `tests/f${index}.spec.ts`, index * 10));
-    expect(placementOf(many, new Map(), WHOLE).unmarked).toHaveLength(5);
-    expect(placementOf(many, new Map(), { ...WHOLE, limit: 2 }).unmarked).toHaveLength(2);
+    expect(placementOf(many, new Map(), ANY_SIZE).unmarked).toHaveLength(5);
+    expect(placementOf(many, new Map(), { ...ANY_SIZE, limit: 2 }).unmarked).toHaveLength(2);
+  });
+
+  /**
+   * And the ranking cannot carry it either, which is what the absolute floor is for.
+   *
+   * The case above is the reason: in a half of a hundred files the slowest five are above its p90 by
+   * construction, so without a floor this report names five files forever however small they are. Observed
+   * 2026-10-06 before the floor existed — three `default-setup` specs at 469ms, 591ms and 1.4s, in a half
+   * whose p90 is ~450ms. The only way to quiet that is to mark a 591ms spec slow, which is annotating a
+   * file to satisfy an instrument rather than because it is true.
+   */
+  it('names none of a half whose slowest files are small in absolute terms', () => {
+    const many = Array.from({ length: 100 }, (_, index) => row('abuddy-host', `tests/f${index}.spec.ts`, index * 10));
+    expect(placementOf(many, new Map(), { whole: true }).unmarked, 'the real floor mutes a 990ms tail')
+      .toEqual([]);
+    const big = [...many, row('abuddy-host', 'tests/huge.spec.ts', WORTH_NAMING_MS + 1)];
+    expect(placementOf(big, new Map(), { whole: true }).unmarked.map((found) => found.file))
+      .toEqual(['tests/huge.spec.ts']);
   });
 
   // A nearest-rank quantile of a small population is its maximum, and then nothing is above the bar —
@@ -271,7 +334,7 @@ describe('placementOf', () => {
   // project is ordinary: measured 2026-10-05, `publish-checks` alone is four files and `renderer` eight
   it('checks no marker in a half too small to have a tail, and says which half', () => {
     const four = [1000, 2000, 3000, 3035].map((ms, index) => row('abuddy-host', `tests/f${index}.spec.ts`, ms));
-    const { stale, unplaceable } = placementOf(four, marked('tests/f0.spec.ts'), WHOLE);
+    const { stale, unplaceable } = placementOf(four, marked('tests/f0.spec.ts'), BAR_ONLY);
     expect(stale, 'a bar that is its own population\'s maximum places nothing, so it may fail nothing')
       .toEqual([]);
     expect(unplaceable).toEqual([{ half: 'fast', files: 4, why: 'too few files' }]);
@@ -301,14 +364,14 @@ describe('placementOf', () => {
     expect(partial.stale, 'it has not moved; only its neighbours have').toEqual([]);
     expect(partial.unplaceable).toEqual([{ half: 'fast', files: 11, why: 'a partial run' }]);
 
-    const complete = placementOf(rows, marked('tests/marked.spec.ts'), WHOLE);
+    const complete = placementOf(rows, marked('tests/marked.spec.ts'), BAR_ONLY);
     expect(complete.stale.map((found) => found.bar), 'the same rows do fail a whole half, so the guard is '
       + 'what differs and not the population').toEqual([7000]);
   });
 
   it('still ranks a partial run, since the ranking is a report and not a gate', () => {
     const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
-    expect(placementOf(rows, new Map(), { whole: false }).unmarked.map((found) => found.file))
+    expect(placementOf(rows, new Map(), { ...ANY_SIZE, whole: false }).unmarked.map((found) => found.file))
       .toEqual(['tests/slow.spec.ts']);
   });
 
@@ -316,7 +379,7 @@ describe('placementOf', () => {
   // whose answer depends on which projects happened to be stale
   it('ignores a marked spec that this run did not measure', () => {
     const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
-    expect(placementOf(rows, marked('tests/never-ran.spec.ts'), WHOLE).stale).toEqual([]);
+    expect(placementOf(rows, marked('tests/never-ran.spec.ts'), BAR_ONLY).stale).toEqual([]);
   });
 });
 

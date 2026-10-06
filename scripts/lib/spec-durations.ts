@@ -17,7 +17,7 @@
  * ## When to delete the gate, and what it is costing while it lives
  *
  * **The gate is the part of this with a condition on it**, and the outlier detector is now part of it —
- * `OUTLIER_GAP`, `OUTLIER_FLOOR_MS` and `outlierIn` inform the same decision and so carry the same
+ * `OUTLIER_GAP`, `WORTH_NAMING_MS` and `outlierIn` inform the same decision and so carry the same
  * condition. With `SLOW_QUANTILE`, `tailBar`, `SLOW_MARKER`, `slowReason`, `markedSpecs`,
  * `placementOf`, `UNCHECKED_NOTE` and `UNMARKED_NOTE` that is ~300 lines here and six of
  * `spec-durations.spec.ts`' seventeen describes — **about 550 of the 1,901** across this module, its
@@ -240,6 +240,21 @@ export const halfTotal = (rows: readonly FileDuration[], half: Half): { ms: numb
  * no wall-clock gain, because the honest figure was 28.1s and the half was work-bound the whole time
  * (`generate-entries/_support/pack.ts` records the null result). This line is what would have said so.
  *
+ * **What the verdict does not license, learned by acting on it.** Both figures come from readings taken
+ * *inside* the pool, so both carry the same contention — which makes comparing them sound and makes
+ * neither of them the wall. "floor-bound" says the slowest file is the larger of the two numbers; it does
+ * **not** say that splitting that file shortens the run. Measured 2026-10-06 on the integration half: its
+ * floor was `facade-typing.integration.spec.ts` at 44.1s against a 30.2s `work/cores`, the file was split
+ * on that verdict and came apart as intended — 42.1s to 19.6s and 18.3s, and the half's floor fell to
+ * 23.8s — while the pool went **49.9s to 51.4s**, medians of 3. The wall sat above both figures before and
+ * after, because the pool is contention-bound rather than packing-bound and a split adds a worker that
+ * contends with the rest.
+ *
+ * So the figure is for deciding *which question to ask* — is there one file to look at, or a hundred — and
+ * a before-and-after `npm run measure` is the only thing that answers whether a change to scheduling
+ * worked. Reading it as a prediction is the same mistake in the other direction as the one above: that one
+ * trusted a floor over an understated work figure, this one trusts the pair over a measurement.
+ *
  * `cores` is a parameter rather than read here, so the answer is a function of its inputs and a spec can
  * ask it about a ten-core box from any box.
  */
@@ -304,7 +319,29 @@ export const OUTLIER_GAP = 2;
  * expensive to run.
  */
 export const costOf = (row: FileDuration): number => row.ms + row.overheadMs;
-export const OUTLIER_FLOOR_MS = 10_000;
+
+/**
+ * Below this, a file is not worth naming to a person, whichever question found it.
+ *
+ * **Shared by the outlier detector and the unmarked-spec report, because "is this big enough to be worth
+ * someone's afternoon" is one question asked twice.** Each applies it to the quantity its own claim is
+ * about — `outlierIn` to `costOf`, since splitting a file is about what it costs the run, and the unmarked
+ * report to `ms`, since a `@slow:` marker explains why a spec's *tests* take long (the split `costOf`'s
+ * doc above sets out). One constant rather than two of the same value, which would be two copies of a
+ * number nobody could keep equal.
+ *
+ * **What it is for, measured 2026-10-06.** Without it the unmarked report named three `default-setup`
+ * specs at 469ms, 591ms and 1.4s — not because they are slow but because a half's p90 over 100 files is
+ * ~450ms, so "the slowest five, above the bar" is five files by construction and never goes quiet. The
+ * only way to silence that is to mark a 591ms spec as slow, which is annotating a file to satisfy an
+ * instrument. With it, the host and pack halves are silent and the integration half names two files at
+ * 17.1s and 16.0s, which are findings.
+ *
+ * It is a millisecond and so a fact about a machine, which is tolerable here for the reason the sample
+ * section in the root guide gives: nothing is compared against it across runs or boxes, and being 2x out
+ * changes which of a handful of files gets mentioned rather than any decision a run makes.
+ */
+export const WORTH_NAMING_MS = 10_000;
 
 /** A half's slowest files, where they stand apart from the rest of their half */
 export interface Outlier {
@@ -331,7 +368,7 @@ export interface Outlier {
 export function outlierIn(
   rows: readonly FileDuration[],
   half: Half,
-  { gap = OUTLIER_GAP, floorMs = OUTLIER_FLOOR_MS } = {},
+  { gap = OUTLIER_GAP, floorMs = WORTH_NAMING_MS } = {},
 ): Outlier | undefined {
   const held = rows.filter((row) => row.half === half).sort((a, b) => costOf(b) - costOf(a));
   let worst: Outlier | undefined;
@@ -518,7 +555,8 @@ export function placementOf(
    * `whole` says the run covered every project in the pool, and it has no default on purpose: it is what
    * decides whether the gate may fire, and a caller that forgot it would get the permissive answer.
    */
-  { whole, q = SLOW_QUANTILE, limit = 5 }: { whole: boolean; q?: number; limit?: number },
+  { whole, q = SLOW_QUANTILE, limit = 5, worthNamingMs = WORTH_NAMING_MS }:
+    { whole: boolean; q?: number; limit?: number; worthNamingMs?: number },
 ): Placement {
   const stale: Placement['stale'] = [];
   const unmarked: FileDuration[] = [];
@@ -536,14 +574,32 @@ export function placementOf(
       for (const row of rows) {
         if (row.half !== half) continue;
         const reason = reasonOf(row);
-        if (reason !== undefined && row.ms <= bar) stale.push({ dir: row.dir, file: row.file, ms: row.ms, bar, reason });
+        // **Strictly below the bar, and small in absolute terms.** Both guards exist because this list
+        // fails a run and the remedy it prints is "drop the marker", which has to be true advice.
+        //
+        // `<` rather than `<=`: a nearest-rank quantile *is* one of the readings, so the file that defines
+        // the bar equals it, and `<=` called that file stale for an arithmetic reason. Caught by the chain
+        // 2026-10-06 — `facade-typing-published` at 23.5s against a 23.5s p90, the third of 28 files,
+        // where `ceil(0.9 * 28)` lands on it. The report's own `> bar` stays strict: it only names a file,
+        // where this stops a merge.
+        //
+        // And `worthNamingMs`, because "no longer in the slow tail" is not the same claim as "no longer
+        // slow". A half whose every file is large has a large p90, and a 23.5s spec is slow by any
+        // absolute reading of the word; telling someone to drop its marker is telling them to delete a
+        // true comment because its neighbours grew.
+        if (reason !== undefined && row.ms < bar && row.ms < worthNamingMs) {
+          stale.push({ dir: row.dir, file: row.file, ms: row.ms, bar, reason });
+        }
       }
     }
     // Outside that branch, because the ranking is a report rather than a gate and is worth having from any
     // run — the line the pool prints beside it says its membership is this run's. It costs nothing in the
     // `too few files` case either: `placeable` being false means nothing is above the bar, so this finds none.
+    // Above its half's bar **and** big enough to be worth naming. The bar alone cannot carry this: a p90
+    // over a hundred files is ~450ms, so the slowest five are above it by construction and the report
+    // would name five files forever, whatever they cost. `WORTH_NAMING_MS` has the measurement.
     for (const row of slowestFiles(rows, half, limit)) {
-      if (reasonOf(row) === undefined && row.ms > bar) unmarked.push(row);
+      if (reasonOf(row) === undefined && row.ms > bar && row.ms >= worthNamingMs) unmarked.push(row);
     }
   }
   return { stale, unmarked, unplaceable };
