@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { CONSUMER_MATRIX, PACKAGES_BUILT, TSC_VERSIONS, installPublishedPackages } from '../src/published-packages.ts';
 
 /** Every export of the packed @abuddy/ears, @abuddy/sdk and @abuddy/ui resolves to declarations for consumers. */
@@ -30,6 +30,26 @@ function codeExports(name: string): string[] {
 function nonCodeExports(name: string): string[] {
   return exportsOf(name).filter((entry) => !entry.code).map(({ key }) => key);
 }
+
+/**
+ * Turn the event loop between cases.
+ *
+ * A pool worker runs each case synchronously and `await`ing a resolved promise only drains microtasks, so a
+ * file of synchronous cases is **one** event-loop block however many `it`s it holds — and a worker that
+ * never turns its loop cannot read the reply to the `onTaskUpdate` it has already sent. birpc's window is
+ * 60s and no config can widen it, so the run fails with `[vitest-worker]: Timeout calling` while every
+ * test passes.
+ *
+ * Found by `npm run measure:loop` on 2026-10-06, which is what that command is for: this file read
+ * 9.1s out of four cases of ~550ms each — a sum being reported as a block, not a slow file.
+ *
+ * **It came down to 5.6s rather than to one case, and the remainder is the `beforeAll` above.**
+ * `installPublishedPackages()` is three `npm pack`s and three untars through `execFileSync`, so it is one
+ * synchronous block that no `afterEach` can break up; the hook caps the *cases*, and a setup like that is
+ * the floor under them. Headroom went from 6.6x to 10.7x slower before it breaches. Making that setup cheaper
+ * or shared is the only thing left here — three files in this half call it independently, unmemoised.
+ */
+afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
 
 describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
   it.each(CONSUMER_MATRIX)('all resolve to declarations under TypeScript $tsc, moduleResolution $moduleResolution', ({ tsc, moduleResolution }) => {

@@ -688,9 +688,17 @@ npm run test:integration # The expensive half of every suite that has one (@abud
                          # knob for; vitest-dev/vitest#4497, #6479, #8164). Every test passes and the run
                          # exits 1.
                          # The fix is to turn the loop: `afterEach(() => new Promise(r => setImmediate(r)))`
-                         # caps a file at its longest case. Four files needed it; `npm run measure:loop`
-                         # finds the next one. What that hook cannot help is a single long case —
-                         # types-bundler-determinism is one test of ~10s, the closest left.
+                         # caps a file's *cases* at the longest of them. Six files have it, and
+                         # `npm run measure:loop` found the last two — measured 2026-10-06,
+                         # `published-sdk-any` was the half's worst block at 13.6s over eight ~200ms cases
+                         # and `published-exports` 9.1s over four. Neither was slow; each was a sum being
+                         # reported as a block, which is the shape to look for.
+                         # **The hook is not a cap on the file**: those two came down to 9.6s and 5.6s, not
+                         # to one case, because a synchronous `beforeAll` is its own block — theirs packs
+                         # three tarballs through execFileSync. The half's worst block went 13.6s to 11.6s
+                         # and its headroom 4.4x to 5.2x. What is left is a setup to make cheaper, and a
+                         # single long case the hook can never help: `types-bundler-determinism` is one
+                         # test of ~11.6s and is the floor on this headroom now.
                          # To reproduce on demand rather than wait for it:
                          #   npm run measure -- --trials 3 --busy 12 "npx vitest run --config vitest.integration.config.ts"
 npm run test:unit:host   # Two of the three pools, running only the projects whose own inputs changed

@@ -80,7 +80,7 @@ const poolLines = (name: string, ms: number): string[] => {
   const pool = (Object.keys(POOLS) as Pool[]).find((kind) => poolStepName(kind) === name);
   if (pool === undefined) return [];
   // When the step started, so records a previous run wrote are left out rather than printed as this one's
-  const measured = poolDurationLines(pool, 6, new Date(Date.now() - ms));
+  const measured = poolDurationLines(pool, 6, new Date(Date.now() - ms), { wallMs: ms });
   if (measured.length > 0) return measured;
   // **A pool step that ran and measured nothing is the one line that otherwise reads as a mystery**: `ok`
   // in 0.7s with no ranking under it, for a step whose reason says its inputs changed. The step did its

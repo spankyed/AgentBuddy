@@ -579,6 +579,29 @@ describe('poolDurationLines', () => {
   });
 
   /**
+   * And the remainder, where the caller measured the step.
+   *
+   * `max(floor, work/cores)` is a lower bound and a real run sits above it — nineteen seconds above, on the
+   * integration half. Two numbers side by side cannot show that, which is how the pair came to be read as a
+   * prediction; the third makes the gap a fact. A spec reading the cache passes no wall and gets no line.
+   */
+  it('names what neither figure accounts for, once a caller measures the step', () => {
+    // Overhead non-zero, or `halfBound` reads the record as predating the field and withholds the verdict —
+    // which is the other reason this line can be absent, and is covered above
+    const root = whole({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 19_000, overheadMs: 1000 }] });
+    const bound = lines(root)[1]!;
+    expect(bound, 'the fixture is floor-bound on its one big file').toContain('20.0s floor');
+
+    const measured = poolDurationLines('host', 6, new Date(0), { root, cores: 10, wallMs: 32_000 });
+    expect(measured.find((line) => line.includes('is neither figure')),
+      "the step's 32s over a 20s bound leaves 12s")
+      .toMatch(/12\.0s\s+of the step's 32\.0s is neither figure/);
+
+    expect(lines(root).join('\n'), 'and nothing of the sort without a wall to compare against')
+      .not.toContain('is neither figure');
+  });
+
+  /**
    * And draws no verdict where overhead was never recorded, rather than the wrong one.
    *
    * A record written before that field reads with overhead zero, which understates the work and so makes

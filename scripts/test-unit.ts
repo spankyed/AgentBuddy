@@ -99,7 +99,7 @@ async function main(): Promise<void> {
     results.push(result);
     console.log(`  ${(result.code === 0 ? 'ok' : result.why ? 'TIMEOUT' : 'FAIL').padEnd(7)} ${result.pool.padEnd(22)} ${(result.ms / 1000).toFixed(1)}s`);
     // What that pool measured, since its own output is buffered and printed only on failure
-    if (result.code === 0) for (const line of poolDurationLines(pool.kind, 8, new Date(Date.now() - result.ms))) console.log(`  ${line}`);
+    if (result.code === 0) for (const line of poolDurationLines(pool.kind, 8, new Date(Date.now() - result.ms), { wallMs: result.ms })) console.log(`  ${line}`);
   }
 
   const failed = results.filter((result) => result.code !== 0);

@@ -24,9 +24,16 @@
  * it does not license the inference that splitting the floor file makes the run shorter. That inference
  * is what this split tested, and the answer was no.
  *
- * What it did buy is the thing worth keeping it for: the half's largest single block halved, 44.1s against
- * the 60s window birpc gives a call and vitest hardcodes. A 44s block is one busy afternoon from a run
- * that fails while every test passes.
+ * What it did buy is smaller and is not what this comment first claimed. It said the half's largest
+ * *event-loop block* halved from 44.1s against birpc's 60s window — which was never true, because the
+ * loop-turn hook below already caps a file at its longest single case rather than the sum of them. The
+ * file's longest case is ~2s, so its block was `beforeAll` plus that, not the 44.1s the duration cache
+ * records for the whole file. Measured with `npm run measure:loop` on 2026-10-06: 5.8s after the split,
+ * against ~9s before, when one `beforeAll` installed the packed packages as well.
+ *
+ * So the honest payoff is the loop nobody was measuring: **running these tests alone is 23.1s before and
+ * 13.9s after**, two files in parallel instead of one in series, which is what anyone iterating on the
+ * facade gate pays. Plus the file-level floor, and two files named for what they cover.
  *
  * **And layout is the only axis that splits it without paying the fixture twice.** `buildPacks` runs two
  * real `abuddy build`s, and for the published layout an `installPublishedPackages()` that npm-packs three

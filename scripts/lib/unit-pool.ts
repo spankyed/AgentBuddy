@@ -279,6 +279,32 @@ const outlierLines = (rows: readonly FileDuration[], half: Half, width: number, 
 };
 
 /**
+ * The part of a pool step nobody's figures account for.
+ *
+ * **`max(floor, work/cores)` is a lower bound and the run is reliably above it**, which is the thing two
+ * numbers side by side cannot show. Measured 2026-10-06 on the integration half: a 31.2s floor and a 27.0s
+ * `work/cores` under a ~50s wall, so nineteen seconds belonged to neither — and acting on the pair as
+ * though it predicted the wall is what split that half's largest file for no gain. Printing the remainder
+ * turns that from an inference a reader has to avoid into a number they can see, and gives anyone
+ * attacking contention a figure that moves.
+ *
+ * Both readings here come from inside the pool, so the gap is scheduling and contention together: workers
+ * waiting on each other, and the step's own start-up. Nothing in this subsystem measures either, which is
+ * what the line says rather than implies.
+ */
+const unaccountedLines = (bound: { floorMs: number; perCoreMs: number; binds: string },
+  width: number, wallMs: number | undefined): string[] => {
+  // No bound to subtract from where overhead was never recorded, and nothing to say about a step whose
+  // wall this caller did not measure — a spec reading the cache is the case for the second
+  if (wallMs === undefined || bound.binds === 'unknown') return [];
+  const lower = Math.max(bound.floorMs, bound.perCoreMs);
+  const gap = wallMs - lower;
+  if (gap <= 0) return [];
+  return [`${asDuration(gap).padStart(width)}  of the step's ${asDuration(wallMs)} is neither figure`
+    + ' — contention and start-up, which nothing here measures'];
+};
+
+/**
  * What a run says about its own `@slow:` markers, for whoever reports on a run that passed.
  *
  * **The reported half of the gate was computed and never printed.** `placementOf`'s `unmarked` list is a
@@ -366,7 +392,8 @@ const markerReachLines = (marked: ReadonlyMap<string, Map<string, string>>, widt
  * nothing.
  */
 export function poolDurationLines(pool: Pool, width: number, since: Date,
-  { root = REPO_ROOT, cores = os.availableParallelism() } = {}): string[] {
+  { root = REPO_ROOT, cores = os.availableParallelism(), wallMs }:
+    { root?: string; cores?: number; wallMs?: number } = {}): string[] {
   const { half, suites } = POOLS[pool];
   const covered = suites();
   const rows = cachedDurations(root, covered, half, since);
@@ -393,6 +420,7 @@ export function poolDurationLines(pool: Pool, width: number, since: Date,
       // `halfBound` carries the measurement; this is the half of it a reader of the output needs.
       : `${asDuration(bound.perCoreMs).padStart(width)}  work/cores against a ${asDuration(bound.floorMs)} floor`
         + ` — ${bound.binds}-bound: the larger of the two, which is not a prediction of the wall`,
+    ...unaccountedLines(bound, width, wallMs),
     ...outlierLines(rows, half, width, measured.size === covered.length),
     ...placementLines(rows, marked, half, width, measured.size, covered.length),
     ...markerReachLines(marked, width, root),
