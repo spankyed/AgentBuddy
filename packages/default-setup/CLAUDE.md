@@ -122,8 +122,10 @@ drives navigation, a key fixes which data lands but not that the user is moved: 
 is correct as written, and the better move is to delete the request: let the plugin that owns the list hold
 it and have other views select it. `features/browser` has **no request/reply pairs at all**: one emit,
 `BROWSER_CONNECTED` on connect, and its `SYNC_TABS`/`SYNC_BOOKMARKS` handlers write and return nothing.
-The code panel reads the prompts plugin's list with `usePluginState` and sends no fetch of its own
-(`features/code/fe/features/prompts/PromptsPanel.vue:266`). The host does the same with
+The code panel reads the prompts plugin's list with `usePluginState` rather than fetching it, so what it
+does send is paging and edits — and it sends those **through its own child machine**, because a component
+is in no delivery and a send from one carries no `Message.sender` for the owning plugin to answer. The
+host does the same with
 `FEATURE_SETTINGS_UPDATED`: all eleven feature contracts carry a `settings` field and `GET_SETTINGS`
 appears nowhere under `features/`.
 
@@ -140,21 +142,33 @@ command's outcome is replied** — and once it is, it needs an id only where one
 same command in flight, which is rarer than it looks: the database's two query kinds do, a settings save
 does not.
 
-A guard is what you write when the shape is wrong, and six in this pack still are. The two page guards in
-`features/{actions,prompts}` are a page number used as a key and are the idea in miniature;
-`pendingActionId`, `pendingPromptId` and `answersSelectedNode` are hand-written correlation standing in for
-a slot. `answersSelectedNode` is the one that showed what a guard costs when it is wrong: a step's error
-asked for the failing node's details and never selected it, so the guard dropped the answer and the panel
-that exists to show them was never given any. **What a guard needs that a slot does not is an invariant
-every asker has to hold** — here, select before you ask — and this one was stated over two of its four
-askers and broken by the fourth. It holds now, and `tests/features/brain/fe/tnode-correlation.spec.ts`
-asks each asker rather than describing them, which is the thing to copy if a guard stays.
-`answersCurrentFlow` stays whatever happens — `FLOW_EVENTS_RESULT` echoes no `offset`, so its paging needs
-the backend to say which page it answered.
+A guard is where a slot would have made the correlation structural, and six in this pack still are. None
+is wrong now; the two that were failed in opposite ways, which is what makes them worth knowing.
 
-And one that is worse than a guard: `code/be/features/pull-request.ts`'s `prDetailsRequestId` is a counter
-**stamped by the replier** and shared across windows, which `database/be/types.ts` spells out as the thing
-not to do — an abandoned request's late answer carries the newest id and wins. The PR number is the key.
+**A guard needs an invariant every asker holds, and a slot does not.** `answersSelectedNode` admits a
+reply only for the node in `selectedStepNode`, so every asker must select before it asks — stated over two
+of its four askers and broken by the fourth, which asked for an erroring node's details and never selected
+it, so the panel that exists to show them was never given any.
+`tests/features/brain/fe/tnode-correlation.spec.ts` asks each asker rather than describing them, which is
+the thing to copy if a guard stays.
+
+**And a guard cannot correlate on what the answer does not carry.** `answersCurrentPage` matched a flow
+while `FLOW_EVENTS_RESULT` echoed no `offset`, so re-selecting a flow while a later page was in flight let
+that page replace the whole list. The answer carries its offset now; `loadMoreEvents` keeps one page in
+flight, which the correlation requires rather than prefers.
+
+The other four are correct, and the check that says so is the one to reuse: `pendingActionId` and
+`pendingPromptId` have exactly one setter each, so their invariant holds by construction, and the page
+guards in `features/{actions,prompts}` admit `page + 1` where `page` advances only on a reply — two clicks
+ask for the same page and the dedupe is the intent. Converting any of them to a slot would be churn with
+no failure behind it.
+
+And one that was worse than a guard: `code/be/features/pull-request.ts` stamped a module-scoped counter on
+every `pr.PR_DETAILS_RECEIVED`, justified as "monotonic within this process" — true, and beside the point,
+since what it is compared against lives in the renderer and outlives the backend. An API restart or a pack
+reload put it back to zero, every later answer then read as older than the viewer had accepted, and PR
+details silently stopped updating. The PR number was always the key; what the tie-break wanted was a clock,
+so it is `fetchedAt` now.
 
 ## Services
 
