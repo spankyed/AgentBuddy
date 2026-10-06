@@ -565,6 +565,20 @@ describe('poolDurationLines', () => {
   });
 
   /**
+   * And says what the verdict is not, where the reader is.
+   *
+   * Both figures are measured inside the pool, so they compare with each other and with nothing else —
+   * and a reader who takes `floor-bound` as "split that file and the run shortens" is doing what this repo
+   * already did: the integration half's largest file came apart as intended, 42.1s to 19.6s and 18.3s,
+   * while the pool went 49.9s to 51.4s. The caveat is long on `halfBound` and no use there to someone
+   * reading a chain run, which is why it is a clause and why this case holds it to the line.
+   */
+  it('says the verdict is the larger figure and not a prediction', () => {
+    const floor = whole({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 60_000, overheadMs: 1000 }] });
+    expect(lines(floor)[1]).toContain('not a prediction of the wall');
+  });
+
+  /**
    * And draws no verdict where overhead was never recorded, rather than the wrong one.
    *
    * A record written before that field reads with overhead zero, which understates the work and so makes

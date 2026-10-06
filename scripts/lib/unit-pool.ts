@@ -387,8 +387,12 @@ export function poolDurationLines(pool: Pool, width: number, since: Date,
       // binding when it is not — which is the reading that split a 96-case file for nothing
       ? `${asDuration(bound.perCoreMs).padStart(width)}  work/cores over a ${asDuration(bound.floorMs)} floor`
         + ` — which binds is unknown: ${bound.unmeasured} file(s) predate overhead, so re-run the pool`
+      // The clause is on the line because the verdict alone reads as a prediction, and acting on one that
+      // way is what split the integration half's largest file for no wall-clock gain — both figures are
+      // measured inside the pool, so they compare soundly with each other and with nothing else.
+      // `halfBound` carries the measurement; this is the half of it a reader of the output needs.
       : `${asDuration(bound.perCoreMs).padStart(width)}  work/cores against a ${asDuration(bound.floorMs)} floor`
-        + ` — ${bound.binds}-bound`,
+        + ` — ${bound.binds}-bound: the larger of the two, which is not a prediction of the wall`,
     ...outlierLines(rows, half, width, measured.size === covered.length),
     ...placementLines(rows, marked, half, width, measured.size, covered.length),
     ...markerReachLines(marked, width, root),
