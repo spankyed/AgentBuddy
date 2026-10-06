@@ -4,6 +4,17 @@
 // backend entry builds.
 //
 // One of five files split from a 1,365-line original; `_support/pack.ts` holds the fixture and why.
+//
+// @slow: 16 cases, every one a temp pack and a full codegen pass — the file 2.3-3.6s
+// Every case mkdtemps a pack and removes it (`setupPackFixture`) and runs `generatePackFiles` over a
+// fresh manifest, so the cost is the work rather than the test, and it is per case rather than per file —
+// which is why splitting the original by subject moved the three compiling cases into `compiles.spec.ts`
+// and left the pure ones costing what they cost. `goal-one-job-pool.md` Phase 5 has the boundary.
+//
+// The range is the span across runs rather than noise: a pool spreads across workers, so these read
+// faster when fewer projects run beside them — measured 2026-10-06, this file was at the low end in a
+// two-project run and the high end in an eleven-project one. Which is why the count is the durable
+// figure here and a per-case millisecond is not.
 import { describe, expect, it } from 'vitest';
 import { setupPackFixture, dependency, generate, system, writePluginEntry  } from './_support/pack.ts';
 
