@@ -286,6 +286,16 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
     const receiver = _currentDelivery()?.receiver;
     return receiver ? { sender: receiver } : {};
   };
+  /**
+   * The connection the message being handled arrived on, which is the one window a backend send can name.
+   *
+   * A system knows no other: nothing holds a registry of open windows, and the only one it has an address
+   * for is whoever it is serving. Absent when that message came from another system or from nothing.
+   */
+  const servedConnection = () => {
+    const asker = _currentDelivery()?.asker;
+    return asker?.kind === 'connection' ? asker.client : undefined;
+  };
   return {
     broadcastToPlugin(name: string, event: { type: string; [key: string]: unknown }): void {
       // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it
@@ -302,6 +312,27 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
         throw new Error(`sendToPlugin("${name}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
       }
       deliverInWindow({ to: resolve(name), event, ...labels, ...answerAddress() });
+    },
+
+    /**
+     * Sends an event to a plugin in **the one window being served** — the connection the message under
+     * handling arrived on — rather than to every window showing it.
+     *
+     * The pair with `broadcastToPlugin` is the whole point, and which to reach for follows the job: news
+     * every window needs is a broadcast, and anything only the window that asked should act on is this.
+     * Before it existed a system could be *answered* by a window but could only *ask* by broadcasting, so
+     * one question collected one answer per open window.
+     *
+     * It throws outside a connection's message rather than falling back to a broadcast: a send that
+     * silently widened from one window to all of them is the bug this exists to prevent, and a system
+     * handling another system's message or running on a timer has no window to name.
+     */
+    sendToWindow(name: string, event: { type: string; [key: string]: unknown }): void {
+      const client = servedConnection();
+      if (client === undefined) {
+        throw new Error(`sendToWindow("${name}") needs a message from a window being handled, and this is not one — a system's message, a timer or a subscription names no connection. To reach every window showing that plugin, use broadcastToPlugin.`);
+      }
+      boundHost().transport.rootEvents.emitPluginSend({ to: resolve(name), event, ...labels, ...answerAddress(), client });
     },
 
     sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
@@ -340,6 +371,16 @@ export function untypedBroadcastToPlugin(to: string, event: { type: string; [key
  */
 export function _sendToLocalPlugin(ref: string, event: { type: string; [key: string]: unknown }): void {
   unboundSends.sendToPlugin(ref, event);
+}
+
+/**
+ * Sends an event to a plugin in the one window being served, rather than to every window showing it.
+ * Backend only, and only while handling a message that came from a connection.
+ *
+ * Untyped: packs use the `sendToWindow` from their `#generated/events`.
+ */
+export function untypedSendToWindow(to: string, event: { type: string; [key: string]: unknown }): void {
+  unboundSends.sendToWindow(to, event);
 }
 
 /** A system: its ref, or the role a system plays (`{ role: 'brain' }`), found when the message is sent */
@@ -434,6 +475,8 @@ export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S &
 export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
   /** Backend: over the bus, to every window showing that plugin */
   broadcastToPlugin: TypedSendToPlugin<P>;
+  /** Backend: to that plugin in the one window being served, which is the connection the message came from */
+  sendToWindow: TypedSendToPlugin<P>;
   /** Renderer: straight to this window's actor for that plugin */
   sendToPlugin: TypedSendToPlugin<P>;
   sendToSystem: TypedSendToSystem<S>;

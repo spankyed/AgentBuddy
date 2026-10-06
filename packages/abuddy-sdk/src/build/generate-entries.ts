@@ -1062,7 +1062,7 @@ export type SendablePluginEvents = WithOwnNames<${pack}, QualifiedPluginEvents>;
 /** The systems this pack's code sends to: \`QualifiedSystemEvents\`, with its own named by feature id instead of ref */
 export type SendableSystemEvents = WithOwnNames<${pack}, QualifiedSystemEvents>;
 
-export const { broadcastToPlugin, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<SendablePluginEvents, SendableSystemEvents>('${manifest.id}');
+export const { broadcastToPlugin, sendToWindow, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<SendablePluginEvents, SendableSystemEvents>('${manifest.id}');
 `;
   }
 
@@ -1183,8 +1183,9 @@ ${entries.join('\n')}
  * feature, or nothing — where a ref that no longer fits is wrong visibly, and is refused at the bus rather
  * than doing something else.
  */
-export type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToSystem'> & {
+export type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToWindow' | 'sendToSystem'> & {
   broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
+  sendToWindow: TypedSendToPlugin<QualifiedPluginEvents>;
   sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 

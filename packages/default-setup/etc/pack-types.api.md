@@ -4268,8 +4268,9 @@ type OwnRepositories = {
  * feature, or nothing — where a ref that no longer fits is wrong visibly, and is refused at the bus rather
  * than doing something else.
  */
-type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToSystem'> & {
+type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToSystem' | 'sendToWindow'> & {
     broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
+    sendToWindow: TypedSendToPlugin<QualifiedPluginEvents>;
     sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 

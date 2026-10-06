@@ -33,6 +33,10 @@ export function createSends(input?: SendBinding): {
         type: string;
         [key: string]: unknown;
     }): void;
+    sendToWindow(name: string, event: {
+        type: string;
+        [key: string]: unknown;
+    }): void;
     sendToSystem(to: SystemTarget, event: {
         type: string;
         [key: string]: unknown;
@@ -221,6 +225,7 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
     sendToPlugin: TypedSendToPlugin<P>;
     // (undocumented)
     sendToSystem: TypedSendToSystem<S>;
+    sendToWindow: TypedSendToPlugin<P>;
 }
 
 // @public
@@ -249,6 +254,12 @@ export function untypedBroadcastToPlugin(to: string, event: {
 
 // @public
 export function untypedSendToSystem(to: SystemTarget, event: {
+    type: string;
+    [key: string]: unknown;
+}): void;
+
+// @public
+export function untypedSendToWindow(to: string, event: {
     type: string;
     [key: string]: unknown;
 }): void;

@@ -1,6 +1,6 @@
 import type { repository } from '@abuddy/ears';
 import { boundHost, type HostRuntimeServices } from '../runtime/host-runtime.ts';
-import { createSends, untypedBroadcastToPlugin, untypedSendToSystem } from '../events/index.ts';
+import { createSends, untypedBroadcastToPlugin, untypedSendToWindow, untypedSendToSystem } from '../events/index.ts';
 import { resolveRegistered } from '../ids/refs.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
@@ -48,6 +48,8 @@ export interface HostServices {
    */
   emitter: {
     broadcastToPlugin: typeof untypedBroadcastToPlugin;
+    /** To that plugin in the one window being served; throws where the action runs for no window */
+    sendToWindow: typeof untypedSendToWindow;
     sendToSystem: typeof untypedSendToSystem;
   };
   repository: typeof repository;
@@ -96,6 +98,9 @@ export function createActionEmitter(sender?: ActionSender): HostServices['emitte
   const sends = createSends(sender);
   return {
     broadcastToPlugin: (name, event) => sends.broadcastToPlugin(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
+    // An action usually runs a tick after whatever triggered it, so there is no connection in scope and this
+    // throws — deliberately, since the alternative is widening one window's event to all of them in silence
+    sendToWindow: (name, event) => sends.sendToWindow(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
     sendToSystem: (to, event) => sends.sendToSystem(typeof to === 'string' ? actionRef('system', to, boundHost().packs.systemIds()) : to, event),
   };
 }
