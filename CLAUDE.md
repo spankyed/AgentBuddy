@@ -715,6 +715,17 @@ npm run test:integration # The expensive half of every suite that has one (@abud
                          # and its headroom 4.4x to 5.2x. What is left is a setup to make cheaper, and a
                          # single long case the hook can never help: `types-bundler-determinism` is one
                          # test of ~11.6s and is the floor on this headroom now.
+                         # **Do not try to split that one.** It is a single `it` that builds the facade
+                         # twice — once from the workspace, once from the packed tarballs — and compares
+                         # them, so the comparison needs both in one scope: two cases would share a
+                         # `beforeAll`, which is its own block and shrinks nothing (watched on
+                         # `published-sdk-any`, 13.6s to 9.6s and no further), and two files would need one
+                         # to write a hash for the other, which is the cross-file state a determinism test
+                         # must not have. The levers are making the two builds faster or leaving it.
+                         # **The margin is the thing to watch, not the duration**: it breaches at 5.2x
+                         # against a worst observed load inflation of 3.29x, so the trigger is the block
+                         # passing ~18s (60s / 3.29), where that load would breach. `measure:loop` is how
+                         # you find out; nothing watches it for you.
                          # To reproduce on demand rather than wait for it:
                          #   npm run measure -- --trials 3 --busy 12 "npx vitest run --config vitest.integration.config.ts"
 npm run test:unit:host   # Two of the three pools, running only the projects whose own inputs changed

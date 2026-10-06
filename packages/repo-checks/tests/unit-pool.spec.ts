@@ -15,6 +15,7 @@ import { DIAGNOSTIC_RUN_ENV, POOLS, livePoolStamps, poolStampFor, poolUnitFor, p
 import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
+import { coresFor } from '../../../scripts/lib/core-budget.ts';
 import { poolDurationLines } from '../../../scripts/lib/unit-pool.ts';
 import { writeDurations } from '../../../scripts/lib/spec-durations.ts';
 import { CONFIG_BY_HALF } from '../../../scripts/lib/spec-halves.ts';
@@ -545,8 +546,8 @@ describe('poolDurationLines', () => {
   const whole = (files: Record<string, { file: string; ms: number; overheadMs: number }[]>) =>
     planted({ ...Object.fromEntries(hostSuites.map((dir) => [dir, one(10, 10)])), ...files });
 
-  const lines = (root: string, cores = 10): string[] =>
-    poolDurationLines('host', 6, new Date(0), { root, cores });
+  const lines = (root: string, workers = 10): string[] =>
+    poolDurationLines('host', 6, new Date(0), { root, workers });
 
   it('leads with the half it measured, and what it cost around the tests', () => {
     const root = whole({ 'abuddy-sdk': [{ file: 'tests/a.spec.ts', ms: 4000, overheadMs: 1000 }] });
@@ -592,7 +593,7 @@ describe('poolDurationLines', () => {
     const bound = lines(root)[1]!;
     expect(bound, 'the fixture is floor-bound on its one big file').toContain('20.0s floor');
 
-    const measured = poolDurationLines('host', 6, new Date(0), { root, cores: 10, wallMs: 32_000 });
+    const measured = poolDurationLines('host', 6, new Date(0), { root, workers: 10, wallMs: 32_000 });
     expect(measured.find((line) => line.includes('is neither figure')),
       "the step's 32s over a 20s bound leaves 12s")
       .toMatch(/12\.0s\s+of the step's 32\.0s is neither figure/);
@@ -696,6 +697,30 @@ describe('poolDurationLines', () => {
       fs.writeFileSync(path.join(root, 'packages', 'abuddy-sdk', config), '');
     }
     expect(lines(root).join('\n')).not.toMatch(/sit in a package with no second half/);
+  });
+
+  /**
+   * The divisor is the pool's own worker count, not the machine's.
+   *
+   * `work/cores` asks how many of a half's files run at once, which the scheduler already declares per step
+   * (`POOL_WIDTH`, read through `coresFor`): the two unit pools take the box less one and the integration
+   * pool half of it. Handing `halfBound` `availableParallelism()` instead understated the integration half's
+   * work by 2x, and the gap line above then reported 47% of that step's wall as belonging to neither figure.
+   * It belonged to this.
+   *
+   * Skipped on a box too small to tell the two apart, which says so rather than passing vacuously.
+   */
+  it.skipIf(os.availableParallelism() < 3)("divides the work by the pool's workers, not the machine's cores", () => {
+    const root = whole({ 'abuddy-sdk': [{ file: 'tests/a.spec.ts', ms: 80_000, overheadMs: 10_000 }] });
+    const declared = coresFor(poolStepName('host'));
+    expect(declared, 'an uncapped pool is the box less one, so there is something to tell apart')
+      .toBeLessThan(os.availableParallelism());
+
+    const byDefault = poolDurationLines('host', 6, new Date(0), { root })[1];
+    expect(byDefault, 'the default is the declared width')
+      .toBe(poolDurationLines('host', 6, new Date(0), { root, workers: declared })[1]);
+    expect(byDefault, "and the machine's cores are a different answer, which is what this replaced")
+      .not.toBe(poolDurationLines('host', 6, new Date(0), { root, workers: os.availableParallelism() })[1]);
   });
 
   it('says nothing at all where no run has measured anything', () => {

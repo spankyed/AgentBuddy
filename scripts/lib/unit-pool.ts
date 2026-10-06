@@ -10,11 +10,11 @@
  * caches holds to and what happened when it did not.
  */
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import { diffableStamp, REPO_ROOT, stampedRunAll, type BuildUnit, type StampedUnit } from '@abuddy/host/build/packages-built';
-import { INTEGRATION_SUITES, suiteInputs } from './chain-steps.ts';
+import { INTEGRATION_SUITES, poolStepName, suiteInputs } from './chain-steps.ts';
 import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-halves.ts';
+import { coresFor } from './core-budget.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import type { ReportedRun } from './spec-durations-reporter.ts';
 import { asDuration, cachedDurations, costliestFiles, costOf, halfBound, halfTotal, markedSpecs, outlierIn, placementOf, readDurationRuns, trendIn, uncheckedNote, UNMARKED_NOTE, type FileDuration } from './spec-durations.ts';
@@ -392,14 +392,18 @@ const markerReachLines = (marked: ReadonlyMap<string, Map<string, string>>, widt
  * nothing.
  */
 export function poolDurationLines(pool: Pool, width: number, since: Date,
-  { root = REPO_ROOT, cores = os.availableParallelism(), wallMs }:
-    { root?: string; cores?: number; wallMs?: number } = {}): string[] {
+  { root = REPO_ROOT, workers = coresFor(poolStepName(pool)), wallMs }:
+    { root?: string; workers?: number; wallMs?: number } = {}): string[] {
   const { half, suites } = POOLS[pool];
   const covered = suites();
   const rows = cachedDurations(root, covered, half, since);
   if (rows.length === 0) return [];
   const total = halfTotal(rows, half);
-  const bound = halfBound(rows, half, cores);
+  // **The pool's own worker count, not the machine's cores.** `work/cores` is about how many of this half's
+  // files run at once, which is what the scheduler admits the step on (`coresFor`, `POOL_WIDTH`) — and the
+  // integration pool declares half the box, so handing it `availableParallelism()` understated its work by
+  // 2x and the gap line below reported 47% of that step's wall as unexplained. It was this.
+  const bound = halfBound(rows, half, workers);
   /** Which of the pool's suites this run actually measured, which is what says whether a half is whole */
   const measured = new Set(rows.map((row) => row.dir));
   const marked = new Map(covered.map((suite) => [suite.dir, markedSpecs(path.join(root, 'packages', suite.dir))]));
