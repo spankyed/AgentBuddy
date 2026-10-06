@@ -10,7 +10,7 @@ import { _currentDelivery, type _Delivery } from './delivery.ts';
 import type { ContractIncoming, ContractOutgoing, SystemEvents } from '../framework/define-system.ts';
 
 export { eventTypes, type TypeOfEvent } from './event-types.ts';
-export { _currentDelivery, _installAsyncDeliveryReader, _runDelivery, type _Delivery } from './delivery.ts';
+export { _currentDelivery, _runDelivery, type _Delivery } from './delivery.ts';
 
 /**
  * A message on the bus: the ref of the system or plugin it goes to, and the event exactly as the sender wrote it.

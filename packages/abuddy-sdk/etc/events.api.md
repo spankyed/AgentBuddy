@@ -100,9 +100,6 @@ export type HostSystemEvents = {
 // @public
 export type IncomingEventsOf<C> = ContractIncoming<C>;
 
-// @internal
-export function _installAsyncDeliveryReader(reader: () => _Delivery | undefined): void;
-
 // @public
 export interface Message {
     client?: string;

@@ -18,14 +18,11 @@
  * `createSends` reads its `receiver` to stamp `Message.sender` on an ordinary send. That one cannot be a
  * parameter, because every send in pack code would have to carry it.
  *
- * **Two readers, because one module serves two runtimes.** The default is a plain variable set and restored
- * around the delivery, which is exact for a handler that answers before it yields. One that `await`s first —
- * the ordinary shape of backend work — needs more than a variable can give, so `@abuddy/host/bus` installs an
- * `AsyncLocalStorage` reader over the same interface. What then inherits the scope is anything the handler's
- * own code creates inside the delivery, an **invoked actor included**, since its promise is created while the
- * transition is being processed; `reply.spec.ts` pins that one, and removing the async reader fails it along
- * with every other awaited answer. This module stays free of `node:` imports because `@abuddy/sdk/events` is
- * bundled into pack frontends.
+ * **One reader, and it is a plain variable set and restored around the delivery.** It is exact for what reads
+ * it: a handler is *handed* its answer, and the wrapper builds that answer synchronously as the handler is
+ * entered, before any `await` can have happened. The backend installed an `AsyncLocalStorage` over this until
+ * `reply` stopped being ambient, which is the change that made the store unnecessary — see
+ * `@abuddy/host/bus`'s `delivery.ts` for what removing it cost and what it bought.
  *
  * **Four doors set it, and that they are doors rather than call sites is the point.** On the backend,
  * `@abuddy/host/bus`'s `deliverAs`: the bus routing a message to a system, and the host handing one to an early
@@ -58,11 +55,8 @@ export interface _Delivery {
   client?: string;
 }
 
-/** The synchronous holder, which is the whole mechanism in a browser and the fallback on the backend */
-let synchronous: _Delivery | undefined;
-
-/** Installed by the host so an answer survives an `await`; absent in the renderer, which has no equivalent */
-let asyncReader: (() => _Delivery | undefined) | undefined;
+/** The holder, and the whole mechanism — in a window and on the backend alike */
+let current: _Delivery | undefined;
 
 /**
  * The message being handled in this call stack, if any.
@@ -70,7 +64,7 @@ let asyncReader: (() => _Delivery | undefined) | undefined;
  * @internal Host and SDK only: a pack reads its sender through `reply`, which needs no address.
  */
 export function _currentDelivery(): _Delivery | undefined {
-  return asyncReader?.() ?? synchronous;
+  return current;
 }
 
 /**
@@ -80,20 +74,12 @@ export function _currentDelivery(): _Delivery | undefined {
  * `usePlugin` in a window.
  */
 export function _runDelivery<T>(delivery: _Delivery, body: () => T): T {
-  const previous = synchronous;
-  synchronous = delivery;
+  const previous = current;
+  current = delivery;
   try {
     return body();
   } finally {
-    synchronous = previous;
+    current = previous;
   }
 }
 
-/**
- * Gives this process a reader that survives `await`. The host passes an `AsyncLocalStorage`'s `getStore`.
- *
- * @internal
- */
-export function _installAsyncDeliveryReader(reader: () => _Delivery | undefined): void {
-  asyncReader = reader;
-}

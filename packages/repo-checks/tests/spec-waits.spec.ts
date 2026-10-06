@@ -36,6 +36,10 @@ const BARE_WAIT_BY_DESIGN: Record<string, string> = {
   'packages/abuddy-host/tests/bus/reply.spec.ts > after':
     "a delay inside the handler under test — a backend system's work is I/O, so it awaits before it answers, "
     + 'which is what makes the delivery scope load-bearing. The cases await the answer',
+  'packages/abuddy-host/tests/bus/delivery-is-synchronous.spec.ts > onATimer':
+    'the timer *is* the subject: what the case asserts is that a send made from one carries no sender, '
+    + 'because the delivery it was scheduled in has ended. Awaiting an event instead would remove the only '
+    + 'thing being tested',
   'packages/abuddy-testing/tests/engine/api-client.spec.ts > after':
     'the keep-alive case has to let several ping/terminate windows come and go while the client sits idle: the '
     + 'elapsed time is the assertion, not a proxy for an event',
