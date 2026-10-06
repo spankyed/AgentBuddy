@@ -125,7 +125,9 @@ describe('a pool step and its projects cache on the same inputs', () => {
   });
 
   it.each(['host', 'pack'] as const)('%s declares nothing its projects cannot see', (kind) => {
-    const fingerprinted = new Set(projects(kind).flatMap((suite) => poolUnitFor(suite, kind).inputs.map(repoRelative)));
+    // Either provenance: it changes the preimage's command and never the declared inputs, which is what
+    // keeps this question — does the step declare anything its projects cannot see — about the inputs alone
+    const fingerprinted = new Set(projects(kind).flatMap((suite) => poolUnitFor(suite, kind, 'chain').inputs.map(repoRelative)));
     const unseen = poolStep(kind).inputs.filter((input) => !fingerprinted.has(input));
     expect(unseen, 'the step would go stale for these and every project would still read fresh, so it would run '
       + 'and test nothing: put them in suiteInputs, where both cache layers read them').toEqual([]);

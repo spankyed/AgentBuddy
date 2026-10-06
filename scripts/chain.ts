@@ -36,6 +36,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, poolStepName, STEP_TABLES } from './lib/chain-steps.ts';
+import { stampFor, STAMP_DIR } from './lib/chain-stamps.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredMachine, machineText, MEASURED_ON, scheduleMismatch, thisMachine } from './lib/core-budget.ts';
@@ -46,7 +47,7 @@ import { schedule } from './lib/chain-schedule.ts';
 import { criticalPath, driftedSteps, measurementsFrom, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
-import { DIAGNOSTIC_RUN_ENV, POOLS, poolDurationLines, type Pool } from './lib/unit-pool.ts';
+import { CHAIN_RUN_ENV, DIAGNOSTIC_RUN_ENV, POOLS, poolDurationLines, type Pool } from './lib/unit-pool.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
@@ -77,11 +78,18 @@ import { boundedSpawn } from './lib/bounded-spawn.ts';
  */
 const poolLines = (name: string, ms: number): string[] => {
   const pool = (Object.keys(POOLS) as Pool[]).find((kind) => poolStepName(kind) === name);
+  if (pool === undefined) return [];
   // When the step started, so records a previous run wrote are left out rather than printed as this one's
-  return pool === undefined ? [] : poolDurationLines(pool, 6, new Date(Date.now() - ms));
+  const measured = poolDurationLines(pool, 6, new Date(Date.now() - ms));
+  if (measured.length > 0) return measured;
+  // **A pool step that ran and measured nothing is the one line that otherwise reads as a mystery**: `ok`
+  // in 0.7s with no ranking under it, for a step whose reason says its inputs changed. The step did its
+  // job — it asked the pool, and the pool found every project already current against its own records — but
+  // nothing on screen said which of those two things happened. The pool says it in output the chain buffers
+  // and prints only on failure, so this is where it has to be said.
+  return [`${''.padStart(6)}  nothing measured — every project was already fresh`];
 };
 
-const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-chain');
 
 /**
  * Where a run points when it says a step is never cached: the sentence is there, the argument above it.
@@ -98,7 +106,6 @@ const declaredIn = (name: string): string | undefined => {
   }
   return undefined;
 };
-const stampFor = (step: string): string => path.join(STAMP_DIR, `${step.replace(/[:/]/g, '-')}.json`);
 
 /**
  * Drop stamps for steps that no longer exist, and for steps that are not cached.
@@ -225,8 +232,17 @@ const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
  *
  * `packages:ensure` is excluded because it is that writer: with the flag it would refuse the one job it has.
  */
-const envFor = (step: ChainStep): NodeJS.ProcessEnv =>
-  step.name === 'packages:ensure' ? process.env : { ...process.env, [PACKAGES_PREBUILT_ENV]: '1' };
+/**
+ * What a step is spawned with. `CHAIN_RUN_ENV` on every one of them, because a step that caches inside
+ * itself has to know whose run this is: a pool's per-project stamps record a pass under the chain's
+ * concurrency separately from one established alone, and the chain is the only thing that can say which
+ * this is. The classification re-run gets it too and records nothing anyway, through `DIAGNOSTIC_RUN_ENV`.
+ */
+const envFor = (step: ChainStep): NodeJS.ProcessEnv => ({
+  ...process.env,
+  [CHAIN_RUN_ENV]: '1',
+  ...(step.name === 'packages:ensure' ? {} : { [PACKAGES_PREBUILT_ENV]: '1' }),
+});
 
 
 /** Thrown to leave `stampedRun` without a stamp: a failed step must read as never run */

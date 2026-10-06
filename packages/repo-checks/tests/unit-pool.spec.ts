@@ -15,9 +15,73 @@ import { DIAGNOSTIC_RUN_ENV, POOLS, livePoolStamps, poolStampFor, poolUnitFor, p
 import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
+import { CHAIN_RUN_ENV, PROVENANCES, provenanceOf } from '../../../scripts/lib/unit-pool.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
 /** A run as its reporter recorded it, which is the only account the pool reads now */
+/**
+ * Under what conditions a pass counts, which is a different question from whether the inputs moved.
+ *
+ * The two cache layers over a pool — the chain's step stamp and the per-project stamps — cannot disagree
+ * about *freshness*: a step's inputs are `inputsForSuites`, the union of the same `suiteInputs` each
+ * project is keyed on, so a cached step cannot hide a stale project. What they could disagree about is who
+ * established the pass, and that is the hole this closes.
+ *
+ * Three commands reproduced it, observed on 2026-10-06: `npm run test:unit:host` passes serially and
+ * writes eleven project stamps; `npm run chain` finds its own step stamp stale and runs the pool; the pool
+ * finds every project fresh, runs **zero tests**, and the step records green in 0.8s. The chain had then
+ * reported green for suites it never ran under its own concurrency — which is the only condition that
+ * reproduces what it was built to catch. The chain already refuses to inherit its *own* lone retry
+ * (`DIAGNOSTIC_RUN_ENV`); this is the same rule through the other door.
+ */
+describe('a pass under the chain and a pass alone are different records', () => {
+  const suite = UNIT_SUITES.find((one) => one.kind === 'host')!;
+
+  it('reads the chain\'s own signal, and calls everything else alone', () => {
+    expect(provenanceOf({ [CHAIN_RUN_ENV]: '1' })).toBe('chain');
+    expect(provenanceOf({})).toBe('alone');
+    // Only the exact signal, as `recordsVerdict` treats its own: a stray value is not the chain
+    expect(provenanceOf({ [CHAIN_RUN_ENV]: 'true' })).toBe('alone');
+  });
+
+  /**
+   * The preimage differs, which is the half that decides anything.
+   *
+   * `unitStaleReason` consults the fingerprint and nothing else, by design — it recomputes its own side —
+   * so a record found under one name carrying the other's preimage reads as **fresh**. Putting the
+   * provenance only in the path would leave the hole exactly where it was, which is the mistake the half
+   * was added to this key to fix.
+   */
+  it('hashes differently, so neither reads the other as fresh', () => {
+    const [chain, alone] = PROVENANCES.map((provenance) => poolUnitFor(suite, 'host', provenance));
+    expect(chain!.command).not.toBe(alone!.command);
+    expect(declaredPaths(chain!), 'the inputs are the same work either way').toEqual(declaredPaths(alone!));
+  });
+
+  it('keeps them in separate files, so a reader of the cache can tell them apart', () => {
+    const [chain, alone] = PROVENANCES.map((provenance) => poolStampFor(suite, 'fast', provenance));
+    expect(chain).not.toBe(alone);
+  });
+
+  /**
+   * And a prune keeps both, which is the thing easiest to get wrong here.
+   *
+   * `livePoolStamps` is what `prunePoolStamps` spares. Derived over one provenance it would delete the
+   * other's records on every run — so the chain would clear a developer's loop and the loop would clear
+   * the chain's, and each would look like a cache that never warms.
+   */
+  it('spares both from a prune', () => {
+    const live = livePoolStamps();
+    for (const provenance of PROVENANCES) {
+      expect(live, `${provenance} records would be pruned on every run`)
+        .toContain(path.basename(poolStampFor(suite, 'fast', provenance)));
+    }
+    expect(live.size, 'one record per suite, half and provenance').toBe(
+      (Object.keys(POOLS) as Pool[]).reduce((sum, name) => sum + POOLS[name].suites().length, 0) * PROVENANCES.length,
+    );
+  });
+});
+
 /**
  * Every way this repo runs a unit suite carries the durations reporter.
  *
@@ -229,7 +293,15 @@ describe('whyItRuns', () => {
 // The subject is derived from `POOLS` rather than listed, so a fourth pool is covered on arrival.
 describe('the pools', () => {
   const names = Object.keys(POOLS) as Pool[];
-  const entries = names.flatMap((name) => POOLS[name].suites().map((suite) => ({ name, suite, half: POOLS[name].half })));
+  /**
+   * Every record a pool could write: a suite, in a pool, under a provenance.
+   *
+   * The provenance joined this on 2026-10-06 and the two uniqueness cases below are what hold it. A pass
+   * established alone is not a pass under the chain — the rule the chain already applies to its own retry —
+   * so the two keep separate stamps, and nothing but a distinct preimage makes that true.
+   */
+  const entries = names.flatMap((name) => POOLS[name].suites().flatMap((suite) =>
+    PROVENANCES.map((provenance) => ({ name, suite, provenance, half: POOLS[name].half }))));
 
   it('there are some, and none of them is empty', () => {
     expect(names).not.toEqual([]);
@@ -237,7 +309,7 @@ describe('the pools', () => {
   });
 
   it('give no two of their projects the same stamp', () => {
-    const keys = entries.map(({ suite, half }) => poolStampFor(suite, half));
+    const keys = entries.map(({ suite, half, provenance }) => poolStampFor(suite, half, provenance));
     const duplicated = keys.filter((key, index) => keys.indexOf(key) !== index);
     expect(duplicated, 'two pools would write one stamp, so running either would mark the other fresh')
       .toEqual([]);
@@ -257,8 +329,8 @@ describe('the pools', () => {
    * both halves by definition. These two are what the hash is a function of beside them.
    */
   it('give no two of their projects the same preimage', () => {
-    const identity = entries.map(({ name, suite }) => {
-      const unit = poolUnitFor(suite, name);
+    const identity = entries.map(({ name, suite, provenance }) => {
+      const unit = poolUnitFor(suite, name, provenance);
       return JSON.stringify([declaredPaths(unit), unit.command]);
     });
     const duplicated = identity.filter((key, index) => identity.indexOf(key) !== index);
@@ -274,28 +346,39 @@ describe('the pools', () => {
    * `@abuddy/source` condition. Two pools running one suite two ways is the whole subject.
    */
   it('record what each pool would run, as its command', () => {
-    const [both] = entries.filter(({ suite }) => entries.filter((other) => other.suite.dir === suite.dir).length > 1);
+    // Counted over pools, not entries: every suite has an entry per provenance, so counting those called
+    // each one "in two pools" and picked a suite that is in one
+    const [both] = entries.filter(({ suite }) =>
+      (Object.keys(POOLS) as Pool[]).filter((name) => POOLS[name].suites().some((one) => one.dir === suite.dir)).length > 1);
     expect(both, 'no suite is in two pools, so this case has nothing to be about').toBeDefined();
     const commands = (Object.keys(POOLS) as Pool[])
       .filter((name) => POOLS[name].suites().some((suite) => suite.dir === both!.suite.dir))
-      .map((name) => poolUnitFor(both!.suite, name).command ?? '');
+      .map((name) => poolUnitFor(both!.suite, name, 'chain').command ?? '');
     expect(commands.filter((command) => command.includes('vitest.integration.config.ts')).length,
       'no command names the config that makes it the expensive half').toBe(1);
     expect(new Set(commands).size, 'two pools run this suite and their commands do not differ').toBe(commands.length);
   });
 
   it('reach every unit suite, each in exactly one of the fast pools', () => {
-    const fast = entries.filter(({ half }) => half === 'fast').map(({ suite }) => suite.dir);
+    // One provenance, since the question is which pool covers a suite and not how many records it keeps
+    const fast = entries.filter(({ half, provenance }) => half === 'fast' && provenance === 'chain')
+      .map(({ suite }) => suite.dir);
     expect(fast.sort()).toEqual(UNIT_SUITES.map((suite) => suite.dir).sort());
   });
 
-  // What prune keeps. The dead file it has to recognise is the shape the key used to have, before the half
-  // joined it — a stamp named for the directory alone, which one pool would read as the other's record.
+  /**
+   * What prune keeps. The dead files it has to recognise are the shapes the key used to have: a stamp named
+   * for the directory alone, from before the half joined it, and one named for the directory and half, from
+   * before the provenance did. Either would be read as some other record's — which is the whole reason both
+   * components are in the key.
+   */
   it('count their own stamps live and nothing else', () => {
     const live = livePoolStamps();
     expect(live.size).toBe(entries.length);
-    expect([...live].filter((file) => !/\.(fast|integration)\.json$/.test(file)),
-      'a stamp keyed by the directory alone is the pre-half shape, which prune must drop').toEqual([]);
+    const shape = new RegExp(`\\.(fast|integration)\\.(${PROVENANCES.join('|')})\\.json$`);
+    expect([...live].filter((file) => !shape.test(file)),
+      'a stamp keyed by less than the suite, half and provenance is an earlier shape, which prune must drop')
+      .toEqual([]);
   });
 
   // `POOL_SECONDS` cannot be keyed off `Pool`: `unit-pool.ts` imports the steps, so the steps cannot import

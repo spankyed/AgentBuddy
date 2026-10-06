@@ -19,7 +19,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { diffableStamp, firstChange, freshnessSweep, REPO_ROOT, stampRecord } from '@abuddy/host/build/packages-built';
 import type { UnitSuite } from './lib/unit-suites.ts';
-import { POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool } from './lib/unit-pool.ts';
+import { POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, provenanceOf, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool, type Provenance } from './lib/unit-pool.ts';
 import type { ReportedRun } from './lib/spec-durations-reporter.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 import { POOL_SECONDS } from './lib/chain-steps.ts';
@@ -46,11 +46,11 @@ exitOnEpipe();
  * verdict and an explanation taken from two readings can describe two different trees, which is the shape the
  * chain's report had removed from it a week ago.
  */
-function decide(suites: readonly UnitSuite[], pool: Pool, all: boolean): Array<{ suite: UnitSuite; why: string }> {
+function decide(suites: readonly UnitSuite[], pool: Pool, all: boolean, provenance: Provenance): Array<{ suite: UnitSuite; why: string }> {
   const sweep = freshnessSweep();
   return suites.flatMap((suite) => {
-    const stamp = poolStampFor(suite, POOLS[pool].half);
-    const unit = poolUnitFor(suite, pool);
+    const stamp = poolStampFor(suite, POOLS[pool].half, provenance);
+    const unit = poolUnitFor(suite, pool, provenance);
     const read = diffableStamp(stampRecord(stamp));
     if (!all && sweep.staleReason(unit, stamp) === null) return [];
     // The stamp is read once and handed to both halves, rather than fetched again inside the diff
@@ -139,8 +139,11 @@ async function main(): Promise<void> {
   const suites = suitesOf();
   const all = process.argv.includes('--all');
 
+  // Under what conditions this run counts. A pass by itself is not a pass under the chain, so the two keep
+  // separate records — `CHAIN_RUN_ENV` has the sequence that made this necessary.
+  const provenance = provenanceOf();
   // The sweep lives and dies inside this call, and what comes back is text
-  const running = decide(suites, kind, all);
+  const running = decide(suites, kind, all, provenance);
   const stale = running.map(({ suite }) => suite);
   if (stale.length === 0) {
     console.log(`${kind} pool: all ${suites.length} project(s) up to date`);
@@ -150,7 +153,7 @@ async function main(): Promise<void> {
   // claim about which projects moved — and `npm run chain -- --dry` cannot answer it, because it reports on the
   // *step*, a different unit with a different input set. It can say what moved under `test:unit:host` while
   // being unable to say which of the eleven projects inside it that was
-  console.log(`${kind} pool: ${stale.length} of ${suites.length} project(s) to run`);
+  console.log(`${kind} pool: ${stale.length} of ${suites.length} project(s) to run${provenance === 'chain' ? '' : ' (not under the chain, so recorded apart from it)'}`);
   const width = Math.max(...stale.map((suite) => suite.workspace.length));
   for (const { suite, why } of running) {
     console.log(`  ${suite.workspace.padEnd(width)}  ${why}`);
@@ -172,7 +175,7 @@ async function main(): Promise<void> {
       // filename does: a person opening the cache directory has to be able to tell two records apart. Nothing
       // reads it — `unitStaleReason` consults the fingerprint and nothing else — so this is a diagnostic, and
       // what keeps the two records *distinct* is the command inside that fingerprint.
-      covered.map((suite) => ({ label: `${suite.dir} (${half})`, unit: poolUnitFor(suite, kind), stamp: poolStampFor(suite, half) })),
+      covered.map((suite) => ({ label: `${suite.dir} (${half}, ${provenance})`, unit: poolUnitFor(suite, kind, provenance), stamp: poolStampFor(suite, half, provenance) })),
       async () => {
         // `suite`, the same class the chain gives this pool as a step — a pool fans out across workers, so
         // it is the rung that stretches most on a smaller box. The *deadline* is never `POOL_SECONDS`, which

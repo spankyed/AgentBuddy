@@ -33,10 +33,11 @@ export const POOL_STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'ab
  *
  * **The path is where a record is kept, not what says which record it is** — that is the command in
  * `poolUnitFor`'s fingerprint, below. The half is in the path as well so that a reader of the cache
- * directory can tell the two files apart.
+ * directory can tell the two files apart, and the provenance for the same reason: a chain pass and a lone
+ * pass are two things to remember about one suite, exactly as its two halves are.
  */
-export const poolStampFor = (suite: UnitSuite, half: Half): string =>
-  path.join(POOL_STAMP_DIR, `${suite.dir}.${half}.json`);
+export const poolStampFor = (suite: UnitSuite, half: Half, provenance: Provenance): string =>
+  path.join(POOL_STAMP_DIR, `${suite.dir}.${half}.${provenance}.json`);
 
 /**
  * This module's export that names a stamp, beside `packages-built.ts`'s three.
@@ -68,6 +69,38 @@ export const STAMP_READERS = { poolStampFor } as const;
  * verdict about behaviour, which is the chain's to record and not a diagnostic's.
  */
 export const DIAGNOSTIC_RUN_ENV = 'ABUDDY_DIAGNOSTIC_RUN';
+
+/**
+ * Set by the chain on every step it spawns, and read here because this is where the stamps are kept.
+ *
+ * **It exists because a pass established alone is not the pass the chain is looking for.** That rule is
+ * already written for the chain's own classification re-run — *"a step that passes alone has not passed the
+ * chain"* — and `DIAGNOSTIC_RUN_ENV` enforces it by recording nothing. But that signal is one the chain
+ * sets, so it covers only the chain's retry. A person doing the same retry by hand is not covered, and the
+ * sequence is three commands: `npm run test:unit:host` passes serially and writes eleven project stamps,
+ * `npm run chain` finds its own step stamp stale and runs the pool, the pool finds every project fresh and
+ * runs **zero tests**, and the step records green in 0.8s. Observed repeatedly on 2026-10-06. The suites
+ * were never run under the concurrency that is the only condition reproducing what the chain was built to
+ * catch — the birpc timeout a blocked worker causes, and the 5s default a crowded `tsc` crosses.
+ *
+ * A positive signal rather than another negative one: the chain is the thing that knows it is the chain,
+ * and anything else running a pool is by definition running it some other way.
+ */
+export const CHAIN_RUN_ENV = 'ABUDDY_CHAIN_RUN';
+
+/**
+ * Under what conditions a pool run happened, as one declaration with the type derived from it.
+ *
+ * Two values because two is what has consumers, and the names are the claim each one makes: `chain` is a
+ * pass under the chain's concurrency, `alone` is a pass by itself. A third would need a condition anything
+ * distinguishes.
+ */
+export const PROVENANCES = ['chain', 'alone'] as const;
+export type Provenance = (typeof PROVENANCES)[number];
+
+/** Which kind of run this is. Anything that is not the chain is `alone`, including a pack author's. */
+export const provenanceOf = (env: NodeJS.ProcessEnv = process.env): Provenance =>
+  (env[CHAIN_RUN_ENV] === '1' ? 'chain' : 'alone');
 
 /** Whether this run may record what it proved */
 export const recordsVerdict = (env: NodeJS.ProcessEnv = process.env): boolean => env[DIAGNOSTIC_RUN_ENV] !== '1';
@@ -156,7 +189,8 @@ export type Pool = keyof typeof POOLS;
  * something long gone is a silent pass.
  */
 export const livePoolStamps = (): Set<string> => new Set(
-  (Object.keys(POOLS) as Pool[]).flatMap((name) => POOLS[name].suites().map((suite) => path.basename(poolStampFor(suite, POOLS[name].half)))),
+  (Object.keys(POOLS) as Pool[]).flatMap((name) => POOLS[name].suites().flatMap((suite) =>
+    PROVENANCES.map((provenance) => path.basename(poolStampFor(suite, POOLS[name].half, provenance))))),
 );
 
 /** Drops the stamps no pool would write. Every pool knows every pool's keys, so any run may do it. */
@@ -183,11 +217,17 @@ export function prunePoolStamps(): void {
  *
  * So **a suite that moves pools re-runs**, being run a different way — where the stamp's path, keyed by the
  * half, would have called that the same record. Undo this and the two halves share one preimage again.
+ *
+ * **The provenance is in the preimage for the same reason**, and it is what keeps a lone pass out of the
+ * chain's answer: the two runs hash differently, so the chain never reads a suite that passed by itself as
+ * fresh, and a person's own loop goes on skipping what it has already run. Putting it only in the path
+ * would not do it — `unitStaleReason` consults the fingerprint and nothing else, so a record found under
+ * one name with the other's preimage comes back *fresh*, which is the defect the half was added to fix.
  */
-export const poolUnitFor = (suite: UnitSuite, pool: Pool): BuildUnit => ({
+export const poolUnitFor = (suite: UnitSuite, pool: Pool, provenance: Provenance): BuildUnit => ({
   inputs: suiteInputs(suite, POOLS[pool].half).map((input) => path.join(REPO_ROOT, input)),
   outputs: [],
-  command: POOLS[pool].run([suite]).map(({ command, args }) => [command, ...args].join(' ')).join(' && '),
+  command: `${POOLS[pool].run([suite]).map(({ command, args }) => [command, ...args].join(' ')).join(' && ')} [${provenance}]`,
 });
 
 /**
