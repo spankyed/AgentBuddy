@@ -8,7 +8,7 @@ import * as _abuddy_sdk from '@abuddy/sdk';
 import { ActionEntity, ActionParameter, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TNodeEntity as TNodeEntity$1, TemplateInput } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
-import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PluginInboxOf, PublicPluginInboxOf, Qualified, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
+import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PluginInboxOf, PublicPluginInboxOf, Qualified, Reply, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
 import { HotkeysMap, NavHistory, PluginInbox, PluginStateOf, TabGroup } from '@abuddy/sdk/fe';
 import { Simplify as Simplify$1 } from '@abuddy/sdk/helpers';
 import { EmbeddingModelId, ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
@@ -6223,7 +6223,10 @@ declare const noteQueries: {
  * - Load thread data for chat
  * - Refresh recent threads list
  */
-declare function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, restore?: boolean): void;
+declare function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, options?: {
+    restore?: boolean;
+    reply?: Reply<OutgoingThreadsEvents>;
+}): void;
 
 /**
  * Open thread tab and refresh recent threads list
@@ -6233,7 +6236,9 @@ declare function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, restore
  * - Load thread tab data with artifacts
  * - Refresh recent threads list
  */
-declare function openThreadTabAndRefresh(threadId: EARS.EntityId): void;
+declare function openThreadTabAndRefresh(threadId: EARS.EntityId, options?: {
+    reply?: Reply<OutgoingThreadsEvents>;
+}): void;
 
 declare function paginatedMessages(threadId: EARS.EntityId, cursor?: string | null): {
     messages: Partial<MessageEntity>[];

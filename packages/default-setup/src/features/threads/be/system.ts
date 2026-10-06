@@ -4,8 +4,7 @@ import { sendToSystem, broadcastToPlugin } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
 import { REQUIRED_PROVIDERS } from '#app-settings/providers.ts';
 import { assign, setup } from 'xstate';
-import type { Reply } from '@abuddy/sdk/events';
-import type { OutgoingThreadsEvents } from './types.ts';
+import { answer } from './answer.ts';
 import { defineSystem } from '@abuddy/sdk/framework';
 
 import { tx, EARS } from '#generated/ears.ts';
@@ -20,15 +19,6 @@ import { generateAsideText } from './services/chat.ts';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { ref } from '#generated/ref.ts';
 
-/**
- * Answers whoever asked for this, and tells every window when nobody did.
- *
- * An import's or an export's *outcome* belongs to the window that started it — another window showing a
- * result for work it did not do, and flipping its own status to success, is what broadcasting it did. The
- * data the import changed is separate news and stays a broadcast.
- */
-const answer = (reply: Reply<OutgoingThreadsEvents> | undefined, event: OutgoingThreadsEvents): void =>
-  (reply ? reply(event) : broadcastToPlugin('threads', event));
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('threads');
@@ -427,10 +417,10 @@ export const threadsSystem = setup({
       });
     },
     rememberSentCommands: assign({ sentCommands: () => JSON.stringify(services.library.commands()) }),
-    sendThreadChatData: ({ event }) => {
+    sendThreadChatData: ({ event, reply }) => {
       const { threadId, restore } = threadsSpec.typeOf('OPEN_THREAD_CHAT', event);
       try {
-        services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, restore);
+        services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, { restore, reply });
       } catch (err) {
         logger.warn('Thread not found for chat open, skipping', { threadId });
         broadcastToPlugin('threads', {
@@ -449,10 +439,10 @@ export const threadsSystem = setup({
         ...result,
       });
     },
-    sendThreadTabData: ({ event }) => {
+    sendThreadTabData: ({ event, reply }) => {
       const { threadId } = threadsSpec.typeOf('OPEN_THREAD_TAB', event);
       try {
-        services.chat.openThreadTabAndRefresh(threadId as EARS.EntityId);
+        services.chat.openThreadTabAndRefresh(threadId as EARS.EntityId, { reply });
       } catch (err) {
         logger.warn('Thread not found for tab open, skipping', { threadId });
         broadcastToPlugin('threads', {
@@ -661,7 +651,7 @@ export const threadsSystem = setup({
         logger.error('forwardUserCommand failed', { error: err });
       }
     },
-    forkThread: ({ event }) => {
+    forkThread: ({ event, reply }) => {
       const { messageId, threadId, threadTopic } = threadsSpec.typeOf('FORK_THREAD', event);
       if (!threadId) return;
 
@@ -703,7 +693,7 @@ export const threadsSystem = setup({
           repository.threadCommands.update(result.id, { context: forkContext });
         }
 
-        services.chat.openThreadChatAndRefreshRecent(result.id);
+        services.chat.openThreadChatAndRefreshRecent(result.id, { reply });
 
         sendToSystem('brain', {
           type: 'TRIGGER_BRAIN_EVENT',
@@ -726,7 +716,7 @@ export const threadsSystem = setup({
         }
       }
     },
-    revertThread: ({ event }) => {
+    revertThread: ({ event, reply }) => {
       try {
       const { messageId, threadId, restoreFiles, userCliUuid } = threadsSpec.typeOf('REVERT_THREAD', event);
       const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
@@ -757,7 +747,7 @@ export const threadsSystem = setup({
         ? deletedMessages.filter((m: any) => m.sender === 'user' && m.context?.agent === 'Codex').length
         : 0;
 
-      services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
+      services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, { reply });
 
       // Unified `thread.revert` brain event — the `kind` discriminator
       // tells the claude-code flow which variant to run.
@@ -779,7 +769,7 @@ export const threadsSystem = setup({
         logger.error('revertThread failed', { error: err });
       }
     },
-    summarizeThread: ({ event }) => {
+    summarizeThread: ({ event, reply }) => {
       try {
       const { messageId, threadId } = threadsSpec.typeOf('SUMMARIZE_THREAD', event);
       const beforeMessages = repository.chatQueries.threadData(threadId as EARS.EntityId)?.messages ?? [];
@@ -810,7 +800,7 @@ export const threadsSystem = setup({
         ? deletedMessages.filter((m: any) => m.sender === 'user' && m.context?.agent === 'Codex').length
         : 0;
 
-      services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
+      services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, { reply });
 
       sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
