@@ -360,22 +360,6 @@ describe('the duration cache', () => {
 });
 
 /**
- * The window each record keeps, and the one thing it must not become.
- *
- * It holds `KEPT_RUNS` readings so a creep is visible on a line already being printed. What it is *not* is
- * the window this branch deleted: that one chose which half a spec belonged in, and because the choice was
- * impossible the readings needed hysteresis, a band, a tie rule, a machine field and two idle floors.
- * Nothing compares these against an edge, which is why there is no threshold here to get wrong.
- */
-/**
- * A half's whole weight, which is the number a ranking cannot give.
- *
- * The two come apart exactly where it matters: measured 2026-10-05, the five slowest files hold 46% of
- * `repo-checks`' fast half and 97% of `abuddy-sdk`'s. And the shape no top-five can show at all is many
- * files each creeping a little — 349 of 388 fast-half files are under 500ms and total 24.1s between them,
- * so every one of them could double without entering any ranking.
- */
-/**
  * What a run measured, as against what the machine happens to hold.
  *
  * A pool runs only the projects whose inputs moved, so a step can run, find none of them stale and measure
@@ -407,6 +391,14 @@ describe('cachedDurations', () => {
   });
 });
 
+/**
+ * A half's whole weight, which is the number a ranking cannot give.
+ *
+ * The two come apart exactly where it matters: measured 2026-10-05, the five slowest files hold 46% of
+ * `repo-checks`' fast half and 97% of `abuddy-sdk`'s. And the shape no top-five can show at all is many
+ * files each creeping a little — 349 of 388 fast-half files are under 500ms and total 24.1s between them,
+ * so every one of them could double without entering any ranking.
+ */
 describe('halfTotal', () => {
   const rows = [
     row('abuddy-host', 'tests/a.spec.ts', 1200),
@@ -431,17 +423,6 @@ describe('halfTotal', () => {
   });
 });
 
-/**
- * Whether a half's slowest files stand apart from the rest of it.
- *
- * **Nothing in this repo fires it today, so every case here is the firing case.** A detector whose
- * reporting branch no case reaches is the "gate nothing has watched fail" the root guide names, and the
- * output it feeds is unassertable — `poolDurationLines`' text is checked nowhere, because `scripts/chain.ts`
- * runs the chain on import and cannot be imported. This pure function is the whole testable surface.
- *
- * The rows below are the recorded pre-split world: `generate-entries.spec.ts` at 18.3s over a 4.9s peer,
- * which is what it read in five of the window's runs (3.39-4.09x) before it became five files.
- */
 /**
  * Which of the two things that can bound a half's run actually does.
  *
@@ -512,6 +493,19 @@ describe('halfBound', () => {
   });
 });
 
+/**
+ * Whether a half's slowest files stand apart from the rest of it.
+ *
+ * **Nothing in this repo fires it today, so every case here is the firing case.** A detector whose
+ * reporting branch no case reaches is the "gate nothing has watched fail" the root guide names, so the
+ * ratios below are the only place that branch is ever taken. The line it feeds is covered separately —
+ * `poolDurationLines`' describe in `unit-pool.spec.ts` plants a cache under a temp root and reads the text
+ * back — and what stays unchecked is `scripts/chain.ts` assembling those lines, which runs the chain on
+ * import and so cannot be imported.
+ *
+ * The rows below are the recorded pre-split world: `generate-entries.spec.ts` at 18.3s over a 4.9s peer,
+ * which is what it read in five of the window's runs (3.39-4.09x) before it became five files.
+ */
 describe('outlierIn', () => {
   // Overhead left at zero so each peer's cost is its `ms`, which keeps the ratios in these cases readable
   const peers = [row('abuddy-host', 'tests/write-lock.spec.ts', 4900),
@@ -584,6 +578,14 @@ describe('outlierIn', () => {
   });
 });
 
+/**
+ * The window each record keeps, and the one thing it must not become.
+ *
+ * It holds `KEPT_RUNS` readings so a creep is visible on a line already being printed. What it is *not* is
+ * the window this branch deleted: that one chose which half a spec belonged in, and because the choice was
+ * impossible the readings needed hysteresis, a band, a tie rule, a machine field and two idle floors.
+ * Nothing compares these against an edge, which is why there is no threshold here to get wrong.
+ */
 describe('the duration window', () => {
   it('keeps the newest run first and the older ones behind it', () => {
     const root = tmpdir();
