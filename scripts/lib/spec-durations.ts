@@ -257,8 +257,24 @@ export function markedSpecs(packageDir: string): Map<string, string> {
   return found;
 }
 
+/** Why a half's markers went unchecked — two shapes, and the message each one needs is different */
+export type Unchecked = 'too few files' | 'a partial run';
+
 export interface Placement {
-  /** Marked and no longer in its half's tail: the one direction load cannot fabricate, so the one that fails */
+  /**
+   * Marked and no longer in its half's tail: the direction load cannot fabricate, so the one that fails.
+   *
+   * **Load cannot fabricate it; a partial run could, and that is why `whole` gates this list.** "Load only
+   * inflates a duration" is true of the file's own time and says nothing about the bar, which is the run's
+   * own p90 — so a marked spec sitting at a constant duration is below the bar or above it depending on
+   * which projects ran beside it. Measured 2026-10-06 by holding one at 2,900ms and changing only its
+   * neighbours: below a bar of 7,000ms in an 11-file run and 5,600ms in a 31-file run, stale both times,
+   * having not moved. Unreachable on this repo's numbers — only four files are slower than the slowest
+   * marked one and each sits in a project of 61 to 100 files, so two slow files can never be a tenth of a
+   * run — but that is arithmetic about today's suite rather than anything the code holds, and splitting a
+   * project or adding a few slow specs to a small one would break it. So the check asks for a whole half
+   * instead, which is the only population that can answer what it asks.
+   */
   readonly stale: { readonly dir: string; readonly file: string; readonly ms: number; readonly bar: number; readonly reason: string }[];
   /**
    * Among a half's slowest few and carrying no marker: reported only, never failed.
@@ -269,8 +285,8 @@ export interface Placement {
    * can fabricate.
    */
   readonly unmarked: FileDuration[];
-  /** Halves this run measured but could not place anything in, with how many files it had */
-  readonly unplaceable: { readonly half: Half; readonly files: number }[];
+  /** Halves this run measured but checked no marker in, with how many files it had and why */
+  readonly unplaceable: { readonly half: Half; readonly files: number; readonly why: Unchecked }[];
 }
 
 /**
@@ -301,7 +317,11 @@ const placeable = (rows: readonly FileDuration[], half: Half, bar: number): bool
 export function placementOf(
   rows: readonly FileDuration[],
   marked: ReadonlyMap<string, Map<string, string>>,
-  { q = SLOW_QUANTILE, limit = 5 }: { q?: number; limit?: number } = {},
+  /**
+   * `whole` says the run covered every project in the pool, and it has no default on purpose: it is what
+   * decides whether the gate may fire, and a caller that forgot it would get the permissive answer.
+   */
+  { whole, q = SLOW_QUANTILE, limit = 5 }: { whole: boolean; q?: number; limit?: number },
 ): Placement {
   const stale: Placement['stale'] = [];
   const unmarked: FileDuration[] = [];
@@ -310,15 +330,21 @@ export function placementOf(
   for (const half of HALVES) {
     const bar = tailBar(rows, half, q);
     if (bar === undefined) continue;
-    if (!placeable(rows, half, bar)) {
-      unplaceable.push({ half, files: rows.filter((row) => row.half === half).length });
-      continue;
+    const files = rows.filter((row) => row.half === half).length;
+    // Two reasons to check no marker, and they are not the same question: `placeable` asks whether this
+    // half has a tail at all, `whole` whether the population is the one the marked file belongs to.
+    if (!placeable(rows, half, bar)) unplaceable.push({ half, files, why: 'too few files' });
+    else if (!whole) unplaceable.push({ half, files, why: 'a partial run' });
+    else {
+      for (const row of rows) {
+        if (row.half !== half) continue;
+        const reason = reasonOf(row);
+        if (reason !== undefined && row.ms <= bar) stale.push({ dir: row.dir, file: row.file, ms: row.ms, bar, reason });
+      }
     }
-    for (const row of rows) {
-      if (row.half !== half) continue;
-      const reason = reasonOf(row);
-      if (reason !== undefined && row.ms <= bar) stale.push({ dir: row.dir, file: row.file, ms: row.ms, bar, reason });
-    }
+    // Outside that branch, because the ranking is a report rather than a gate and is worth having from any
+    // run — the line the pool prints beside it says its membership is this run's. It costs nothing in the
+    // `too few files` case either: `placeable` being false means nothing is above the bar, so this finds none.
     for (const row of slowestFiles(rows, half, limit)) {
       if (reasonOf(row) === undefined && row.ms > bar) unmarked.push(row);
     }

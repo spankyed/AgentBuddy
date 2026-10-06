@@ -232,10 +232,12 @@ describe('placementOf', () => {
   const nine = [5, 10, 15, 20, 25, 30, 35, 40, 45].map((ms, index) => row('abuddy-host', `tests/f${index}.spec.ts`, ms));
   const marked = (file: string, reason = 'a reason'): Map<string, Map<string, string>> =>
     new Map([['abuddy-host', new Map([[file, reason]])]]);
+  /** Every case below is about the gate's own logic, so each one says it had the whole half to judge from */
+  const WHOLE = { whole: true } as const;
 
   it('fails a marked spec that is no longer in its half\'s tail, quoting its reason', () => {
     const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
-    const { stale } = placementOf(rows, marked('tests/f0.spec.ts', 'it spawns seven processes'));
+    const { stale } = placementOf(rows, marked('tests/f0.spec.ts', 'it spawns seven processes'), WHOLE);
     expect(stale).toEqual([
       { dir: 'abuddy-host', file: 'tests/f0.spec.ts', ms: 5, bar: 45, reason: 'it spawns seven processes' },
     ]);
@@ -243,22 +245,22 @@ describe('placementOf', () => {
 
   it('leaves a marked spec that is still in the tail alone', () => {
     const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
-    expect(placementOf(rows, marked('tests/slow.spec.ts')).stale).toEqual([]);
+    expect(placementOf(rows, marked('tests/slow.spec.ts'), WHOLE).stale).toEqual([]);
   });
 
   // The other direction, and the reason it is not a failure: load inflates a duration by a measured 1.27x
   // median and 3.29x at worst, so a busy machine can put a file here on its own
   it('reports an unmarked spec in the slowest few without failing', () => {
     const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
-    const { stale, unmarked } = placementOf(rows, new Map());
+    const { stale, unmarked } = placementOf(rows, new Map(), WHOLE);
     expect(stale).toEqual([]);
     expect(unmarked.map((found) => found.file)).toEqual(['tests/slow.spec.ts']);
   });
 
   it('bounds that report by the ranking, not by the bar, since a tenth of a half is over it by construction', () => {
     const many = Array.from({ length: 100 }, (_, index) => row('abuddy-host', `tests/f${index}.spec.ts`, index * 10));
-    expect(placementOf(many, new Map()).unmarked).toHaveLength(5);
-    expect(placementOf(many, new Map(), { limit: 2 }).unmarked).toHaveLength(2);
+    expect(placementOf(many, new Map(), WHOLE).unmarked).toHaveLength(5);
+    expect(placementOf(many, new Map(), { ...WHOLE, limit: 2 }).unmarked).toHaveLength(2);
   });
 
   // A nearest-rank quantile of a small population is its maximum, and then nothing is above the bar —
@@ -266,22 +268,52 @@ describe('placementOf', () => {
   // project is ordinary: measured 2026-10-05, `publish-checks` alone is four files and `renderer` eight
   it('checks no marker in a half too small to have a tail, and says which half', () => {
     const four = [1000, 2000, 3000, 3035].map((ms, index) => row('abuddy-host', `tests/f${index}.spec.ts`, ms));
-    const { stale, unplaceable } = placementOf(four, marked('tests/f0.spec.ts'));
+    const { stale, unplaceable } = placementOf(four, marked('tests/f0.spec.ts'), WHOLE);
     expect(stale, 'a bar that is its own population\'s maximum places nothing, so it may fail nothing')
       .toEqual([]);
-    expect(unplaceable).toEqual([{ half: 'fast', files: 4 }]);
+    expect(unplaceable).toEqual([{ half: 'fast', files: 4, why: 'too few files' }]);
   });
 
   it('says nothing about a half the run never measured', () => {
     const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
-    expect(placementOf(rows, new Map()).unplaceable).toEqual([]);
+    expect(placementOf(rows, new Map(), WHOLE).unplaceable).toEqual([]);
+  });
+
+  /**
+   * And the same principle one step out: a project that *did* run is not evidence either, while the
+   * projects beside it are missing.
+   *
+   * The case below already refuses to judge a marked spec whose project did not run, "the alternative
+   * being a gate whose answer depends on which projects happened to be stale" — which is exactly what the
+   * bar was, since it is the run's own p90. These two hold the same rows and differ only in `whole`, so
+   * what changes the answer is the guard and not the data: a marked spec at a constant 2,900ms is stale
+   * against a whole half and unjudged against part of one.
+   */
+  it('judges no marker from part of a half, however far under that part\'s bar a marked spec sits', () => {
+    const slower = [8000, 7000, 6000, 5000, 4000, 3500].map((ms, index) => row('abuddy-host', `tests/s${index}.spec.ts`, ms));
+    const faster = [100, 90, 80, 70].map((ms, index) => row('abuddy-host', `tests/q${index}.spec.ts`, ms));
+    const rows = [row('abuddy-host', 'tests/marked.spec.ts', 2900), ...slower, ...faster];
+
+    const partial = placementOf(rows, marked('tests/marked.spec.ts'), { whole: false });
+    expect(partial.stale, 'it has not moved; only its neighbours have').toEqual([]);
+    expect(partial.unplaceable).toEqual([{ half: 'fast', files: 11, why: 'a partial run' }]);
+
+    const complete = placementOf(rows, marked('tests/marked.spec.ts'), WHOLE);
+    expect(complete.stale.map((found) => found.bar), 'the same rows do fail a whole half, so the guard is '
+      + 'what differs and not the population').toEqual([7000]);
+  });
+
+  it('still ranks a partial run, since the ranking is a report and not a gate', () => {
+    const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
+    expect(placementOf(rows, new Map(), { whole: false }).unmarked.map((found) => found.file))
+      .toEqual(['tests/slow.spec.ts']);
   });
 
   // A marked spec in a project the pool did not run is not evidence either way. The alternative is a gate
   // whose answer depends on which projects happened to be stale
   it('ignores a marked spec that this run did not measure', () => {
     const rows = [...nine, row('abuddy-host', 'tests/slow.spec.ts', 5000)];
-    expect(placementOf(rows, marked('tests/never-ran.spec.ts')).stale).toEqual([]);
+    expect(placementOf(rows, marked('tests/never-ran.spec.ts'), WHOLE).stale).toEqual([]);
   });
 });
 

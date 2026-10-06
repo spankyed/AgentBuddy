@@ -93,7 +93,10 @@ function reportDurations(kind: Pool, covered: readonly UnitSuite[], reported: Re
   writeDurations(REPO_ROOT, rows);
 
   const marked = new Map(covered.map((suite) => [suite.dir, markedSpecs(path.join(REPO_ROOT, 'packages', suite.dir))]));
-  const placement = placementOf(rows, marked);
+  // A pool runs the projects whose inputs moved, so most runs are partial — and a bar taken from part of a
+  // half cannot say a marked spec has left that half's tail. `Placement.stale` has the measurement.
+  const all = POOLS[kind].suites();
+  const placement = placementOf(rows, marked, { whole: covered.length === all.length });
   // Only the ones `placementOf` found in the tail, not every ranked file without a marker: a run of one
   // small project has a slowest five like any other, and annotating those read as five findings about a
   // suite whose slowest file takes 100ms
@@ -127,8 +130,11 @@ function reportDurations(kind: Pool, covered: readonly UnitSuite[], reported: Re
         + 'marker — reported, not failed, since load can push a file into a tail and never out of one');
     }
   }
-  for (const { half, files } of placement.unplaceable) {
-    console.log(`${kind} pool: no marker checked in the ${half} half — ${files} file(s) is too few for a tail, so its p90 is its slowest`);
+  for (const { half, files, why } of placement.unplaceable) {
+    console.log(`${kind} pool: no marker checked in the ${half} half — ${why === 'too few files'
+      ? `${files} file(s) is too few for a tail, so its p90 is its slowest`
+      : `this run covered ${covered.length} of ${all.length} project(s), and a bar from part of a half cannot`
+        + ' say a marked spec has left its tail'}`);
   }
   if (placement.stale.length > 0) {
     const lines = placement.stale.map(({ dir, file, ms, bar, reason }) =>
