@@ -2,6 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Where a new lesson goes, because this file is loaded into every session and grew to 1,095 lines before
+anyone asked.** Three quarters of it was two sections, and the largest single block was a 101-line
+post-mortem of a subsystem deleted the day before. The rule it taught was three sentences.
+
+So: **the rule lives here in its imperative form with one citation; its evidence lives in `docs/`.**
+A paragraph of measurement, a list of what was tried first, or the history of something that no longer
+exists is the sign it belongs there — [`reference/pipeline-lessons.md`](docs/reference/pipeline-lessons.md)
+for what a rule cost to learn, [`reference/pipeline-commands.md`](docs/reference/pipeline-commands.md) for
+what a flag was measured against, [`reference/recorded-artifacts.md`](docs/reference/recorded-artifacts.md)
+for the two recorded artifacts that were built and deleted, and `docs/archive/goals/` for a goal that
+closed. This is the repo's own comment rule — *"a comment is for whoever opens the file cold, not for
+whoever reads the diff"* — applied to the guide that states it, which had been exempting itself.
+
+There is deliberately **no line-count gate**: that would be a figure with no decision behind it, which the
+rule below on figures rejects. The guard is this paragraph, where the next person adding a lesson reads it.
+
 ## Overview
 
 AgentBuddy is an Electron desktop app with an actor-based architecture. Both frontend and backend are built on XState state machines that communicate through typed events.
@@ -149,119 +165,27 @@ cheap. It runs `exclusive`, alone: `attw --pack <dir>` packs a tarball inside th
 dangling-published-path check, which publint cannot be — it skips any target behind a custom condition, which
 is how 99 published paths named files no tarball held. `@app/publish-checks`' `published-manifest-paths` is
 that one.
+**Three kinds of recorded artifact, and the question to ask of a new one is which it is.** A
+**derivation** re-takes its answer on every run and compares (`schema:check`, `exports:check`,
+`facade:check`, `seed-parity:check`, `api:check`) — a missing input cannot happen to one. A **proxy**
+records a hash of what it *believes* the inputs are; **nothing here is one any more**, because a proxy can
+go stale from an input nobody listed and its remedy *writes*. A **sample** records a measurement, so
+neither check is available to it — **there are none, and do not add one.**
 
-**Three kinds of recorded artifact, and the question to ask of a new one is which it is.**
+**Price the derivation before reaching for either.** `api:stamp` was a proxy for `api:check` purely because
+that cost 55s; at 6.9s the derivation is cheaper to keep, and the proxy's whole justification went with the
+speedup. And a sample's apparatus outgrows the decision it informs: `spec-cost.json` was 1,884 lines, twelve
+records, a band, a window, a tie rule, a machine field and two idle floors, to decide which of two config
+files a spec was listed in — a question nine of twelve packages could not even ask. **The quantity was never
+one number**, which no amount of hysteresis fixes: one spec read 2.8s in the fast half and 0.64s in the
+integration half, 4.37x apart against a band of 2.5x. The half is a decision now, declared by a filename
+(`scripts/lib/spec-halves.ts`), and nothing re-derives it.
 
-A **derivation** re-takes its answer on every run and compares — `schema:check`, `exports:check`,
-`facade:check`, `seed-parity:check`. A missing input is not a thing that can happen to one, so a case
-perturbing the recorded file would only prove that `!==` works.
-
-A **proxy** records a hash of what it *believes* the inputs are. **Nothing here is one any more**, and the
-one that was is why: a proxy's key is a list of someone else's inputs, so it can go stale from an input
-nobody listed, and its remedy *writes*. `api:stamp` was a proxy for `api:check` purely because that cost
-55s; at 6.9s the derivation is the cheaper thing to keep. Before reaching for one, price the derivation
-again — the paragraph above has what this one cost.
-
-A **sample** records a measurement, which cannot re-derive, so neither check is available to it. **There
-are none left, and the one there was is the most expensive lesson in this section.** `spec-cost.json`
-recorded what every spec cost in milliseconds, so that a gate could move a file between the fast and
-integration halves. It was deleted on 2026-10-05, and what it cost to keep is the thing to read before
-adding another sample:
-
-- Treated as a derivation it churned — measured 2026-09-28, **125 of 163 entries changed between two runs on
-  an idle machine** while the answer it supported changed zero times. So it needed hysteresis on the record,
-  a band rather than equality for its check, and a refusal to record a run that had moved too much to have
-  been measuring the code.
-- Those three were not enough, because hysteresis says nothing about *which* reading became the answer: the
-  first one in won, and for a crossing it won outright. Measured 2026-10-03, a recording at 78% idle moved
-  two specs across the upper edge and the gate demanded two renames nobody had earned; the same band then
-  stopped two clean runs correcting it, since displacing a value takes 35% of it. So it grew a **window** of
-  readings whose median was the answer — one reading kept but unable to decide, two that agree able to.
-- A millisecond is a fact about a machine, so it also needed a `machine` field, a path for a record measured
-  on another box, and an idle floor on recording.
-- And a sum of it needed a drift report, because a correlated slowdown sits under every per-spec tolerance.
-  That report fired on one file's noise in five of the twelve records, where a single spec was 64% or more of
-  the body (`@abuddy/ui` 93%, `main` 89%, `@abuddy/sdk` 86%) and the worst single spec moves 74% between two
-  quiet runs.
-
-**What finally settled it was not the cost of the apparatus but a contradiction.** Once each spec was
-measured in the pool that actually runs it, one read 2.8s in the fast half and 0.64s in the integration
-half — 4.37x apart, against a band of 2.5x. It was over the upper edge in one half and under the lower edge
-in the other, so a gate acting on either reading demanded a move the other reading demanded back. The
-quantity was never one number, and no amount of hysteresis fixes that.
-
-So the half is a decision now, declared by a filename, and nothing re-derives it
-(`scripts/lib/spec-halves.ts`). Slowness is reported where it happens rather than adjudicated against a
-record, in three places: vitest prints any test over its 300ms `slowTestThreshold` under its file, the
-chain prints each step's five slowest tests (`slow-tests.ts`), and each unit pool prints its five slowest
-*files* per half, ranked, which is the one thing vitest's output does not give
-(`scripts/lib/spec-durations.ts`), **with each half's total beside it**, since a ranking says what is worst
-and never whether a half is getting heavy — measured, the five slowest hold 46% of one suite's fast half and
-97% of another's. Both reach `npm run chain` and `npm run test:unit`, which buffer a step's output and print
-it only on failure: until that was wired the pools printed a ranking nobody running either command saw.
-A spec may say in its header why it is slow — `// @slow: <reason>` — and
-the pool holds that marker to still being true: a marked spec that is no longer in its half's slow tail
-fails the step, quoting the reason, so the remedy is to drop the marker. **Only that direction is a gate.**
-Load inflates a duration — 1.27x median, 3.29x at worst — so it can hide a stale marker and cannot invent
-one; an *unmarked* spec that reads slow is therefore reported and never failed. The bar is the half's p90
-from the same run, so a slow run moves the file and the bar together, which is what a fixed millisecond
-could not do: measured, it left two of the five markers 13% clear of a 2,500ms edge and 5.2x clear of this
-one.
-
-**"Load cannot invent one" is true of the file's time and was never true of the bar**, which is that same
-p90 — so what the gate also needs is a population the marked file belongs to. A pool runs the projects whose
-inputs moved, so most runs are partial, and a marked spec at a constant duration is above or below a partial
-run's bar depending on which projects ran beside it: measured 2026-10-06 by holding one at 2,900ms and
-changing only its neighbours, it was stale against a bar of 7,000ms in an 11-file run and 5,600ms in a
-31-file run, having not moved. So `placementOf` takes `whole` and checks no marker without it, reporting the
-half as unchecked the way it already did for one too small to have a tail. It was unreachable when found —
-only four files are slower than the slowest marked one and each sits in a project of 61 to 100 files, so two
-slow files can never be a tenth of a run — and that is arithmetic about this suite rather than anything the
-code held, which is the kind of safety worth replacing rather than recording. **The lesson for a future sample: price the apparatus against the decision it informs.** 1,884 lines, twelve records, two idle floors and a machine identity decided which of
-two config files a spec was listed in, where nine of twelve packages had only one config to begin with.
-
-**And the successor carries a deletion condition from the start, which is the part this lesson was missing.**
-`spec-cost.json` accumulated one only in hindsight. The `@slow:` marker gate — `SLOW_QUANTILE`, `tailBar`,
-`slowReason`, `markedSpecs`, `placementOf`, the outlier detector and their six describes, about 550 of the
-1,901 lines across `spec-durations.ts`, its reporter and their specs, plus 115 in `unit-pool.ts` and its
-spec where the report is printed — guards eleven annotations in one direction, and its failure
-mode is a stale comment. What it is *for* is whether a spec should move between halves, and as of 2026-10-06
-that decision has been made **zero times**.
-
-**A year's wait cannot tell you why, which is the correction the condition needed.** All eleven markers sit
-in packages with a single vitest config, so the move the remedy names costs a new config and a root project
-entry rather than a rename — `hasSplit` is where that fact lives, and nothing counted the markers against it
-until a passing run started printing the count (`markerReachLines`). While that count equals the marker
-total the decision is *unavailable* rather than unmade, and a year would pass with nothing having moved
-whatever anyone decided. So: delete the gate and keep the ranking — the other 1,000 lines, read either
-way — once either a year passes with no spec having moved halves on this evidence **while a move was
-available to it**, or the markers are judged not worth their weight. Both are judgements rather than things
-a run can check, which is why they are prose; the mechanical halves are cases — that the markers have not
-collapsed to none, in `markedSpecs`' describe, and how many of them could move, in `poolDurationLines`'.
-
-**And the reported half was computed where no passing run could print it**, which is the defect that found
-all of the above. `placementOf`'s unmarked list was written only to the pool's own stdout, and both callers
-buffer a step's output and print it on failure alone — so the direction deliberately left as a report was
-visible only when something else broke, which is the one shape the four ways of saying a result is partial
-forbid. It is a line on the pass path now, naming the files rather than counting them, because the ranking
-beside it is ordered by cost and that list by test time, so an unmarked file in the tail need not be among
-the rows a reader can see. On the first run it printed, the integration half's two slowest files — 41.3s and
-31.5s — were both unmarked.
-
-**One window came back, and it is worth saying why it is not a sample in the fatal sense.** The duration
-cache (`scripts/lib/spec-durations.ts`) keeps ten readings per suite and half. It is uncommitted, it cannot
-leave the machine that wrote it, and **nothing compares it against an edge** — its whole output is one
-`(was Xs over N runs)` column on the five slowest files a pool already prints. That is the distinction to
-carry: what made `spec-cost.json` cost 1,884 lines was not keeping readings, it was *deciding* with them.
-A record that informs a column needs no hysteresis, no band, no tie rule, no machine field and no idle
-floor, because there is no threshold for a reading to be wrong about. The file count does not grow either,
-so the prune still answers for every name in the directory.
-
-**The chain's `seconds` table is the sample-shaped thing that remains**, and it is a different case: its
-subject is one machine by declaration (`MEASURED_ON`), `--record` refuses any other, and its drift report
-answers the concentration objection outright — `driftVerdict` recomputes the movement without the largest
-mover, so a drift one step carried is named as that step's with `--forget --step <name>` as the remedy, and
-only a movement that survives the exclusion is called the table's.
+[`docs/reference/recorded-artifacts.md`](docs/reference/recorded-artifacts.md) has what each of those cost,
+measurement by measurement. **The one sample-shaped thing that remains is the chain's `seconds` table**, and
+it is a different case: its subject is one machine by declaration (`MEASURED_ON`), `--record` refuses any
+other, and `driftVerdict` recomputes a movement without its largest mover so one step's drift is named as
+that step's rather than the table's.
 
 The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
@@ -282,156 +206,66 @@ The condition is the machine, which is a fact a run can check.
 Things that waste the most time, in order:
 
 - **Running anything at all after a comment, a doc or a CLAUDE.md edit.** Nothing means nothing: not
-  `typecheck`, not the package's suite, not "just to be safe". Prose cannot break a build, and no step
-  declares `docs/` among its inputs, so the chain agrees — `npm run chain -- --dry` after a doc edit reports
-  every step cached. A `CLAUDE.md` is free wherever it sits, which took a change: five of them live inside
-  a declared `src/` or `tests/` tree rather than at a package root, so a sentence of prose used to re-run
-  up to four steps, `compile` among them. `fingerprintUnit` skips them by name now, and repo-checks'
-  *"prose costs nothing"* holds the claim this paragraph makes. The two exceptions are a spec that asserts the text and a code fence someone will
-  copy: check that one command. This is first on the list because it is the one most often ignored, and a
-  full `typecheck` is 11s against a doc edit's 0s.
-- **Optimising a step that is not on the critical path.** The chain admits steps in parallel, so the only
-  durations that add up are the ones along its longest chain of dependencies — `npm run chain -- --dry --all`
-  prints it, and as of 2026-10-06 it is **157s: `packages:ensure` -> `compile` -> `build:app` ->
-  `test:packaged-authoring`**, which matches the 158.3s cold run above. Nothing else is a saving.
-  `test:unit:pack` is the worked example and the warning: it is **89% setup overhead** — 115s of module
-  evaluation against 13s of tests, the most alarming ratio in the repo — and it is off the path, so halving
-  it buys zero chain wall and about a second of `npm run spec`. The diagnosis and the three dead ends are in
-  `packages/abuddy-testing/CLAUDE.md`; what makes it worth revisiting is appearing on that path, not the
-  ratio getting worse. **Read the path before measuring a ratio**, which is the mistake this bullet is made
-  of: two sessions went into that pool's overhead before anyone asked whether it was on the path.
-- **Running `npm run build` to test a change no build output depends on.** The renderer and API build
-  from source; a CLI or SDK change does not need them rebuilt to be tested.
-- **Running an E2E suite to find a bug you have a stack trace for.** A minified frame with a line and
-  column is a solved problem: build once with `sourcemap: true` in the renderer's Vite config, decode
-  the mapping, read the source. Do that before you grep, not after.
-- **Re-running the full chain after a fix to a thing the chain already covered.** If the CLI suite
-  caught it, the CLI suite proves the fix.
-- **Reading the source twice to explain a bug the running app would show you.** A hang or a dropped
-  event in the real app is worth one instrumented E2E run — a `console.error` in the failing path,
-  `npm run build:be`, `DEBUG_E2E=1 npm test -- <spec> --grep "<title>"` — and the run you already did wrote
-  the app's whole output to `tests/results/app-<workerIndex>.log`, so read that before re-running. Two carefully argued
-  explanations have been wrong where one such run was decisive. `tests/e2e/CLAUDE.md` has the method,
-  including what to rebuild first and how to put the instrumentation back.
+  `typecheck`, not the package's suite, not "just to be safe". No step declares `docs/` and `fingerprintUnit`
+  skips every `CLAUDE.md`, so `npm run chain -- --dry` reports every step cached. A full `typecheck` is 11s
+  against a doc edit's 0s, and repo-checks' *"prose costs nothing"* holds this claim. The two exceptions are
+  a spec that asserts the text and a code fence someone will copy.
+- **Optimising a step that is not on the critical path.** The chain admits steps in parallel, so only the
+  durations along its longest dependency chain add up — `npm run chain -- --dry --all` prints it. Nothing
+  else is a saving. `test:unit:pack` is the worked warning: **89% setup overhead**, the most alarming ratio
+  in the repo, off the path, so halving it buys zero chain wall. **Read the path before measuring a ratio.**
+- **Running `npm run build` to test a change no build output depends on.** The renderer and API build from
+  source; a CLI or SDK change does not need them rebuilt to be tested.
+- **Running an E2E suite to find a bug you have a stack trace for.** Build once with `sourcemap: true`,
+  decode the mapping, read the source. Do that before you grep, not after.
+- **Re-running the full chain after a fix to a thing the chain already covered.** If the CLI suite caught
+  it, the CLI suite proves the fix.
+- **Reading the source twice to explain a bug the running app would show you.** One instrumented E2E run is
+  decisive where two carefully argued explanations were wrong, and the run you already did wrote the app's
+  output to `tests/results/app-<workerIndex>.log`. `tests/e2e/CLAUDE.md` has the method.
 - **Reading a chain step's `cached` as "the thing it guarantees is true".** It means only that the step's
-  declared inputs have not moved. `packages:ensure` used to be cached that way, and what it guarantees —
-  that the built packages are current — is recorded in `node_modules/.cache/abuddy-packages-build`, which
-  its fingerprint cannot see and `fingerprintUnit` excludes from the content hash by design. Measured
-  2026-09-26: with those stamps cleared and `dist` still present, the step reported `cached` while
-  `packagesBuiltOrRefuse()` refused, so every step reading the built packages failed at collection (five
-  files, thirty-three tests skipped). It carries a `neverCachedBecause` now — 0.3s warm, against a second record of one
-  fact that can disagree with the first. Two caches over one body of work is the bug, not the cost.
-  **The three pool steps keep two on purpose, and the reason is that theirs cannot disagree.** A pool step's
-  inputs are `inputsForSuites`, the union of the same `suiteInputs` each project inside it is keyed on, so a
-  cached step cannot hide a stale project — where `packages:ensure` guaranteed something its fingerprint
-  could not see. What the two layers buy is granularity: a one-package edit runs that package's project
-  rather than the pool. What they cost was measured 2026-10-06 — median of 3 on a box another process was
-  using, so each figure is an upper bound and the proportions are what the conclusion rests on — and a
-  fresh host pool step is 0.90s, of which
-  **0.38s is `tsx` starting, 0.30s is the nested `packages:ensure` spawn and ~0.22s is the prune and the
-  sweep over 2,372 files**. So the re-read of what the chain just hashed is the smallest of the three and
-  0.6-1% of a step doing real work. Collapsing to one layer was priced too: uncaching the pool steps puts
-  three ~0.9s steps on a 0.7s floor and fixes nothing, since the pool would still trust its own stamps.
-  What they *could* disagree about is who established the pass, and that is closed separately —
-  `CHAIN_RUN_ENV` in `scripts/lib/unit-pool.ts`, which keeps a pass under the chain apart from one
-  established alone.
-- **Running suites concurrently *before the packages are built*.** The hazard is the build itself, not
-  the suites: `ensurePackagesBuilt()` returns before taking the lock when nothing is stale
-  (`abuddy-host/src/build/packages-built.ts`), and only `stampedBuild` locks. So two suites that both
-  find a stale package race each other's build and fail about the race rather than the code — which is
-  what a background `test:unit` against a foreground `test:external-pack` used to do. Run
-  `npm run packages:ensure` once first and every later call is a stat and a return, which is what makes
-  a parallel chain safe; the 18 calls a serial chain makes are each paying that stat for nothing.
+  declared inputs have not moved. `packages:ensure` guarantees something its own fingerprint cannot see, so
+  it carries a `neverCachedBecause`; the three pool steps keep two layers on purpose, because a pool step's
+  inputs are the union of its projects' and so cannot disagree.
+- **Running suites concurrently *before the packages are built*.** Two suites that both find a stale package
+  race each other's build and fail about the race rather than the code. Run `npm run packages:ensure` once
+  first and every later call is a stat and a return.
 
 Six rules that pay for themselves:
 
-- **Measure before you optimise, and before you accept someone else's measurement.** Two proposals in
-  this repo were rejected by one command each, and both had been argued for at length first.
-- **A mutation check is worth more than a re-run.** Breaking the thing on purpose and watching the
-  right test fail proves more than running the whole suite again.
-- **A check that reports nothing may have looked at nothing**, and a green run cannot tell you which. This
-  repo has shipped both kinds: a step that skipped every test and returned green, a cached stamp for work
-  that was stale, an extractor that found no paths in the one manifest it was written for, a probe naming a
-  file that does not exist. A rule table already has the answer — *"a rule with no firing case is a gate
-  nothing has watched fail"* — and an ad-hoc check needs the same thing and rarely has it. Two habits, both
-  cheaper than the review that catches it otherwise. **Derive the subject from the declaration that defines
-  it, and assert it is not empty** — in that order, because the first is the half that keeps failing. A walk
-  of the tree cannot name something fictional, but it can miss an edge, and then it is a hand-written list
-  that looks derived: seven places listed `packages/` where the root `workspaces` field decides what a
-  workspace is, and a lint check expanded each `npm run` once and never saw the `-ws` fan-out. Neither was
-  empty, so an emptiness guard says nothing about either. **Where the input is data — a pattern list, a manifest, a
-  rule table — mutate it in the test**: drop the thing under test from a copy, assert the answer flips, and the
-  check proves it can fail on every run for microseconds. `repo-checks/tests/packaged-app-files.spec.ts` is the
-  worked example; its two mutation cases corrected two wrong beliefs about the patterns they check on the first
-  run, before the commit.
-- **A result that is partial says so, and there are four shapes for that — copy one rather than invent a
-  fifth.** The rule above is about a check that looked at nothing; this is about one that looked at *some* of
-  it and has to report the gap. Picking the right shape is picking what the caller can do about it:
-  **refuse**, where the evidence is missing and running on anyway is worthless (`packagesBuiltOrRefuse`,
-  `@abuddy/host/build/packages-built`, with an `ABUDDY_ALLOW_UNBUILT` hatch — it exists because thirteen spec
-  files, nine of them a whole package, reported green having checked nothing); **a distinct exit code**, where
-  "nothing covered this" and "everything covering it passed" are different answers a script has to tell apart
-  (`npm run spec`'s 3); **a named bucket beside the total**, where some of the input was unpriceable and only
-  part of it is anyone's to fix (`pricedSpecs`' `unpriced`, `scripts/lib/spec-dry.ts`, which names the specs
-  no run on this machine has measured rather than summing them as free); and **a
-  clause on the success line**, where the work happened but one claim in the sentence did not hold
-  (the chain's own `(N of M cached)`, and `spec-cost:check`'s *"placement unchecked for 1 of 12"* before it
-  was deleted). A skipped test takes its reason in the name instead, so a run that covers less says why
-  rather than quietly reporting fewer cases. What none of them is: silent.
+- **Measure before you optimise, and before you accept someone else's measurement.** Two proposals here were
+  rejected by one command each, both having been argued for at length first.
+- **A mutation check is worth more than a re-run.** Breaking the thing on purpose and watching the right
+  test fail proves more than running the whole suite again.
+- **A check that reports nothing may have looked at nothing**, and a green run cannot tell you which. Derive
+  the subject from the declaration that defines it, and assert it is not empty — in that order, because the
+  first is the half that keeps failing. Where the input is data, **mutate it in the test**: drop the thing
+  under test from a copy and assert the answer flips.
+- **A result that is partial says so, and there are four shapes — copy one rather than invent a fifth.**
+  **Refuse** where the evidence is missing (`packagesBuiltOrRefuse`); **a distinct exit code** where "nothing
+  covered this" and "everything passed" are different answers (`npm run spec`'s 3); **a named bucket beside
+  the total** where only part of the input is anyone's to fix (`pricedSpecs`' `unpriced`); **a clause on the
+  success line** where one claim in the sentence did not hold (the chain's `(N of M cached)`). What none of
+  them is: silent.
 - **A check that cannot fail today is a gate or an assertion, and they want opposite things.** A gate's
-  subject is input, which can be wrong, so it needs a firing case — the rule above. An assertion's subject is
-  the program's own construction, and being unreachable is the point: no input reaches it, so no case can, and
-  writing one means faking a state the program cannot be in. What it needs instead is a comment naming the
-  *edit* that would make it fire, because that edit is what you mutate to watch it. The worked example was
-  `spec-cost`'s `plans.length === 0`, deleted with that command: its argument parser refused the inputs that
-  could empty the list, so it read as dead code and was filed as a defect on exactly that reasoning — but
-  appending `.filter(() => false)` to the chain that built the list left every spec passing while the command
-  reported "every record is current" over no work at all. Judging one as the other costs a round trip at
-  best and deletes the only thing standing under a future edit at worst.
+  subject is input, so it needs a firing case. An assertion's subject is the program's own construction, so
+  being unreachable is the point — what it needs instead is a comment naming the *edit* that would make it
+  fire, because that edit is what you mutate to watch it.
 - **A list and its type are one declaration.** Write the list and derive the type from it
-  (`const XS = [...] as const; type X = (typeof XS)[number]`), or the other way round where the type is the
-  definition — never both by hand. Four pairs in this repo were written twice, and each had a different failure:
-  `PackRuleKey` beside `PACK_RULES` made adding a pack rule two edits; `APP_ENVS: readonly AppEnv[]` accepted a
-  list missing an environment, which its one consumer would have rejected at startup as invalid; `ALL_COLORS` and
-  `TabGroupColor` had already drifted into different orders, and a colour in the union but not the list is one the
-  picker never offers. Deriving turns each of those into a compile error at the site that would have broken. The
-  cost is that the widened form has to be exported separately when consumers read optional members — which is a
-  line, and it is written where it is done.
-
+  (`const XS = [...] as const; type X = (typeof XS)[number]`), or the other way round — never both by hand.
+  Four pairs here were written twice and each had a different failure.
 - **A cache needs a key that cannot go stale, or a scope in which it cannot — and a reset hatch is neither.**
-  Three adjacent modules answer this differently and the reasons are worth knowing.
-  `publishedEntryPoints` (`abuddy-cli/src/build/pack-features.ts`) keys on its manifest's path, mtime **and**
-  size, "so there is no cache to remember to clear" — the size because a filesystem with 1-second granularity
-  reads a rewrite inside one tick as unchanged. `readSource` (`pack-sources.ts`) is keyed by path alone behind
-  a `resetSourceCache()`, and a hatch is a thing to forget: two specs call it, the repo's largest spec did not
-  and worked around the stale reads by building a pack directory per cell, which made that test quadratic in
-  its own data until `7c4b8aacc`. `packDirs` (`scripts/lib/import-populations.ts`) can be keyed neither way —
-  a directory's mtime moves when its own entries do, not when something three levels down changes — so it is
-  memoised **only for this repo's root**, where nothing adds a pack mid-process and no test can reach it,
-  because every test builds under `mkdtemp`. That is a scope standing in for a key, and it took
-  `check:specifiers` from 4.6s to 2.5s and 103 286 `readdirSync` calls to 5 366.
-  So: content-key where the input is a file, scope where it is a tree, and if you reach for a hatch anyway,
-  give it a case that fails when it is forgotten — which is the one thing the hatch here never had.
-
+  Content-key where the input is a file (path, mtime **and** size), scope where it is a tree. If you reach
+  for a hatch anyway, give it a case that fails when it is forgotten.
 - **A comment is for whoever opens the file cold, not for whoever reads the diff.** What changed, how many
-  copies there used to be, what you measured to decide, why some other value would be worse — that is
-  commit-message material, and the commit message is where someone looks when they ask why. The test: will
-  this sentence still be true, and still worth reading, a year from now, to a reader who never saw the
-  change? "Three modules did X" needs rewriting the first time a fourth one does, and usually goes stale
-  before it lands. "This replaces the default rather than capping it" does not. Keep what the code cannot
-  say: why a non-obvious choice was made, what breaks if you undo it, and the condition that would make a
-  recorded tradeoff worth revisiting.
-
+  copies there used to be, what you measured — that is commit-message material. The test: will this sentence
+  still be true, and worth reading, a year from now, to someone who never saw the change?
 - **A comment justifying something by a past failure must name what prevents that failure now.** If it is
   this code, say how it fails; if it is something else, name the file; if it is nothing, say nothing checks
-  it. `packages-built.ts`'s *"correct by luck rather than by construction"* and `dep-files.integration`'s
-  *"which a reads-are-declared check cannot notice by construction — that failure is caught by the phase
-  set"* are the shape. The failure mode is inheriting the justification from a plan: `packFixture` was
-  documented as what stops a fixture too thin for a rule to fire, which is a real defect that
-  `import-specifiers.integration` had already closed five days earlier by asserting each rule fires. A
-  repo-wide rule mandating the fixture was then built on that premise and deleted (`487a8c115`). "X is the
-  whole point" cannot be checked; "Y fails when Z" can.
+  it. "X is the whole point" cannot be checked; "Y fails when Z" can.
 
+[`docs/reference/pipeline-lessons.md`](docs/reference/pipeline-lessons.md) has what each of these cost to
+learn — the measurements, what was tried first, and the commit that closed it.
 ### What a test may read
 
 **A step says what it reads, and whether it needs the built app follows from that.** `needsApp`
@@ -539,157 +373,60 @@ npm run typecheck:pack   # @app/default-setup only
 npm run exports:check -w @abuddy/ui  # Fails on a stale exports map or a component without an entry
 
 npm run spec             # The specs your uncommitted changes affect, wherever they live.
-                         # **Three exit codes**: 1 a spec failed; 2 the name was wide enough to be a
-                         # search, so the paths were listed rather than run; 3 the target exists and no
-                         # spec covers it, so nothing ran and nothing passed. 3 is the one worth knowing:
-                         # `vitest related` exits 0 when the graph reaches no spec, so a green run and a
-                         # run that did nothing were the same answer until it existed. Only a route that
-                         # promised coverage earns it — a whole-suite run, a `-t` matching no case and a
-                         # doc target all report zero correctly and exit 0
-npm run spec:dry [...]   # What the plan would run, and what the last run on this machine measured it at,
-                         # running nothing. Takes every argument spec does; ~1.6s whatever comes back, since
-                         # it is the project configs loading rather than a graph being walked. It prints
-                         # **file time summed across workers, never a wall estimate** — the ratio between
-                         # the two was 1.55:1 and 2.18:1 on one target three days apart — and when that run
-                         # was, since that is how stale the answer is.
-                         # **There is no record behind this and nothing to re-record.** It reads a cache the
-                         # unit pools write (`node_modules/.cache/abuddy-spec-durations`, keyed by suite and
-                         # half), so nothing is committed, nothing can describe another machine, and a spec
-                         # no run here has measured is named rather than counted free. A fresh clone prices
-                         # nothing and says so. It replaced `spec-cost.json`, which held a millisecond per
-                         # spec in git and needed a window, a band and two idle floors to be comparable at
-                         # all. The ordinary `npm run spec` collects nothing.
-                         # **That cache keeps a window too, and the difference from the deleted one is what
-                         # it is for**: ten runs per suite and half (`KEPT_RUNS`), uncommitted, feeding one
-                         # `(was Xs over N runs)` column on five lines the pools already print. The old
-                         # window *decided* a spec's half, and because that decision was impossible it
-                         # needed hysteresis, a band, a tie rule, a machine field and two idle floors to be
-                         # comparable. Nothing compares this one against an edge, so there is no threshold
-                         # to get wrong — which is also why the output is bounded to a list that was already
-                         # bounded rather than to whatever crossed a line
+                         # **Three exit codes**: 1 a spec failed; 2 the name was wide enough to be a search,
+                         # so the paths were listed rather than run; 3 the target exists and no spec covers
+                         # it, so nothing ran and nothing passed. 3 matters because `vitest related` exits 0
+                         # when the graph reaches no spec.
+npm run spec:dry [...]   # What the plan would run and what the last run here measured it at, running
+                         # nothing (~1.6s). File time summed across workers, never a wall estimate, with
+                         # the date it was measured; a spec no run here has seen is named, not counted free.
+                         # Nothing is committed and nothing can describe another machine.
 npm run spec:full [...]  # The same, plus the two answers the module graph cannot give: the pack suites a
                          # rebuilt dist would reach, and the integration halves behind a second config.
-                         # Costs a build when one is stale (14s), the pack suite (18s) and the pooled
-                         # integration run (47s), and adds nothing where neither depends on your change.
-                         # `--full` is the one argument spec.ts consumes, and only in first position,
-                         # which is what keeps "everything from the first - is vitest's" exact
 npm run spec -- <target> # You don't say what the target is; it works that out:
                          #   a source file  -> every spec that imports it, transitively, in ANY package
                          #   a spec path    -> that spec        a directory -> every spec under it
-                         #   part of a name -> every spec whose path contains it — how you run one while
-                         #                     working: `npm run spec -- chain-schedule` is 1.7s
-                         #   a pack's src/seeds/** or one of its build inputs (abuddy.json, package.json,
-                         #                     tsconfig.json) -> the walk, plus the specs that read what
-                         #                     building it produces. Named by default, run by spec:full
-                         # A source file runs one vitest over every host project, because that is the
-                         # honest answer to "what could this break". The cost is the blast radius: a
-                         # renderer module 1 spec, the api's runtime 13, abuddy-sdk's entity types 104.
-                         # **A pack suite is not in that answer.** It resolves the published dist while
-                         # the host projects resolve source, so no import edge runs from your edit to the
-                         # spec that covers it — that edge runs through a build. The command says so when
-                         # it is true, derived from the declared dependencies (workspace-deps.ts) and
-                         # including the transitive ones; repo-checks' spec-plan.spec.ts partitions which
-                         # packages those are, so a new edge fails a check instead of dating a sentence.
-                         # A pack's own source runs `related` inside that pack, since no root project
-                         # imports a pack's backend or frontend: 1-3 files in 2-6s against the whole
-                         # suite's 87 and 18s.
-                         # **Nor is an integration half**, for a duller reason: it is a second config and
-                         # the root projects exclude its specs. 22 modules in @abuddy/cli are imported
-                         # directly by one. Named the same way, run by spec:full.
+                         #   part of a name -> every spec whose path contains it
+                         #   a pack's src/seeds/** or a build input -> the walk, plus the specs that read
+                         #                     what building it produces (named here, run by spec:full)
                          # Anything from the first `-` goes to vitest untouched, so `-t "a case"`,
                          # `--bail 1` and `--changed HEAD~1` work. The routing is data
                          # (scripts/lib/spec-plan.ts), asserted by repo-checks' spec-plan.spec.ts.
-                         # Where a spec belongs: its path under tests/ mirrors the source it covers, no
-                         # directory names a level or a cost half, and support dirs take a _ prefix
-                         # (docs/reference/test-inventory.md; repo-checks' spec-placement.spec.ts)
-npm run chain            # Before a merge: every check in dependency order, cold 158s and warm 0.9s. Each
-                         # step is cached on the inputs it declares (scripts/lib/chain-steps.ts), so a doc
-                         # edit runs nothing and a one-package edit runs that package's suite; the E2E
-                         # suite is opt-in (`--e2e`) rather than a gate, with its reason on the step: it
-                         # was built to be driven, and taking it off the chain took a doc edit from 26s to
-                         # 0.9s. It runs api:check and packages:check, both of which regenerate what they
-                         # compare: neither has a cheaper proxy, and api:check's stopped being cheaper than
-                         # the thing it stood for.
-                         # **Never pipe a backgrounded run.** It buffers output and prints only a failing
-                         # step's, so `| tail` discards the one thing a failure leaves behind, and that
-                         # does not come back on a re-run that passes.
-                         # Afterwards, on the machine its table was measured on, it names the steps a run
-                         # contradicted: one past double its declared
-                         # `seconds`, and one that passed and is already stale again — the second with the
-                         # inputs that differ and whether each moved while the step ran (an ordering to
-                         # fix) or since. And a step whose *measured* cost outgrew the timeout rung it
-                         # declares: `declaredShare` gates on the declaration and the band above watches
-                         # declarations at half-to-double, which is looser than the bound's own margin, so a
-                         # run is the one place both numbers exist (`outgrownRungs`). That one needs the
-                         # measured schedule too, and for a reason the others do not share: `declaredShare`
-                         # projects a cost onto a machine `stretches` times slower, so a reading from a
-                         # slower box counts the slowdown twice — 17 of 29 steps on a 4x-slower runner,
-                         # every one of them inside its rung by declaration. A drift row is true wherever it
-                         # was taken and only its advice is gated; this number is the projection.
-                         #   --dry     the plan and why each step is or is not cached, running nothing —
-                         #             and **what bounds it**: the critical path over the declared table,
-                         #             which is the answer to "which step is worth making faster". A step
-                         #             off that path runs inside the shadow of the ones on it, so its own
-                         #             duration is not a saving. `--dry --all` gives the cold chain's path,
-                         #             since `--all` plans every step; no second flag, the composition
-                         #             already means it
-                         #   --all     every step regardless of its stamp, forcing those that keep a cache
-                         #             of their own; the run each step's `seconds` is checked on
-                         #   --cores N how much of the machine to spend. **This machine's cores by default**,
-                         #             and the only limit there is: a step declares what it takes
-                         #             (`POOL_WIDTH`, scripts/lib/core-budget.ts) and admission is the sum,
-                         #             so the eighteen single-threaded `tsc` legs run wide while the two
-                         #             nine-worker vitest pools do not pile on each other. It replaced
-                         #             `--lanes N`, which metered both as one unit each: measured
-                         #             2026-10-02, interleaved `--all` pairs on ten cores, three lanes is a
-                         #             median 202.8s and a ten-core budget 169.4s with half the spread.
-                         #             `--cores 1` is serial, which is what `--lanes 1` was for. It caps
-                         #             what to spend of *this* box rather than describing a box of N: the
-                         #             widths stay machine-sized, so a value above the box is deliberate
-                         #             oversubscription and one below it is a cap a wide step cannot fit
-                         #             inside, where it runs alone
-                         #   --e2e     run the E2E suite with the chain, ordered after test:smoke
-                         #   --record  write each step's measured cost back into its table. Needs --all,
-                         #             refuses a budget other than the one the table was measured at,
-                         #             refuses a busy machine, and refuses a run where too much moved to
-                         #             have been measuring the code. --force overrides the last two
-                         #   --force   record anyway, and know the number is forced
-                         #   --forget  with --all --record: write what this run measured for every step,
-                         #             not only the rows past their band. The band is max(1s, 35%), which is
-                         #             wider than a 10-20% staleness, so a row inside it cannot be corrected
-                         #             by any other means — `--force` overrides the refusals, not the band.
-                         #             It writes only rows whose value actually differs, so a run that agrees
-                         #             with the table leaves no edit and moves no mtime. The same word
-                         #             the deleted `spec-cost:update` took, for the same operation: ignore
-                         #             what is recorded, keep what this run measured.
-                         #             **For a change you know about — a bundler bump, a policy change — and
-                         #             not to chase a drift you do not.** It replaces the whole table from one
-                         #             run, so a run that measured the machine writes the machine into every
-                         #             row: watched 2026-10-04 putting `build:app` at 78s against the ~39s six
-                         #             other runs agreed on, which then failed `declaredShare`.
-                         #             **The drift report now says which of the two you have**, so you need not
-                         #             guess: `driftVerdict` recomputes the movement without the largest mover,
-                         #             and a movement that does not survive that is one step's — reported with
-                         #             `--forget --step <name>` as the remedy. Only a movement that does
-                         #             survive is the table's, where the answer is to re-run on an idle machine
-                         #             until it settles. `scripts/chain.ts` records the three cheaper guards
-                         #             that were tried and do not separate the two cases
-                         #   --step <name>  with --forget: write that one step and no other. **The usual
-                         #             form**, and now the one the report names for you — a wrong number
-                         #             confined to the row you named cannot reach the other twenty-eight, and
-                         #             `declaredShare` catches the one. Bare --forget stays for a correlated
-                         #             drift, which is all-rows by nature and is the other branch the report
-                         #             distinguishes. Refused where it names no step in the run, which would
-                         #             record nothing and report a quiet table
-                         #   --adopt   record on another machine, writing `MEASURED_ON` with the costs.
-                         #             The table and the box it was measured on are one fact, so one
-                         #             operation writes both — without this the costs moved and the
-                         #             constant did not, and every check scoped on it then skipped the box
-                         #             whose numbers were in the file. Needs --all and this machine's cores
-                         #             as the budget, since it records what this machine costs
-                         #   --no-classify  a step failing while the machine is busy is re-run alone, to
-                         #             tell the code apart from contention; the retry never stamps and the
-                         #             chain still exits 1. This turns that off
+                         # Where a spec belongs: its path under tests/ mirrors the source it covers
+                         # (docs/reference/test-inventory.md; repo-checks' spec-placement.spec.ts).
+                         # **A pack suite and an integration half are not in a plain run's answer** — one
+                         # resolves the published dist, the other is a second config the root projects
+                         # exclude. docs/reference/pipeline-commands.md has the blast-radius figures.
+npm run chain            # Before a merge: every check in dependency order, cold 158s and warm 0.9s.
+                         # Each step is cached on the inputs it declares (scripts/lib/chain-steps.ts), so a
+                         # doc edit runs nothing and a one-package edit runs that package's suite. The E2E
+                         # suite is opt-in rather than a gate.
+                         # **Never pipe a backgrounded run**: it buffers output and prints only a failing
+                         # step's, which `| tail` discards and a passing re-run never brings back.
+                         # Afterwards, on the machine its table was measured on, it names what the run
+                         # contradicted — a step past double its declared `seconds`, one that passed and is
+                         # already stale again, one whose measured cost outgrew its timeout rung.
+                         #   --dry      the plan, why each step is or is not cached, and **what bounds it**:
+                         #              the critical path, which is the answer to "which step is worth
+                         #              making faster". A step off it runs in the shadow of the ones on it,
+                         #              so its own duration is not a saving. `--dry --all` gives the cold
+                         #              chain's path, since `--all` plans every step
+                         #   --all      every step regardless of its stamp
+                         #   --cores N  how much of the machine to spend; this machine's cores by default,
+                         #              and a step declares its own width (POOL_WIDTH, core-budget.ts)
+                         #   --e2e      run the E2E suite with the chain, ordered after test:smoke
+                         #   --record   write each step's measured cost into its table. Needs --all, and
+                         #              refuses another machine, another budget, or a busy box
+                         #   --force    record anyway, and know the number is forced
+                         #   --forget   with --all --record, write every row rather than the drifted ones —
+                         #              for a change you know about, not to chase a drift you do not
+                         #   --step <name>  with --forget, that one row and no other. **The usual form**,
+                         #              and the one the drift report names for you
+                         #   --adopt    record on another machine, rewriting MEASURED_ON with the costs
+                         #   --no-classify  do not re-run a step that failed while the machine was busy
+                         # docs/reference/pipeline-commands.md: what each flag replaced and what was
+                         # measured to choose it, including the three guards that do not separate a
+                         # correlated drift from one step's.
 npm test                 # Playwright E2E tests. **A harness, not a gate** — see below
 npm run test:unit        # Vitest, as two pools: the host suites as one root run under the
                          # @abuddy/source condition, and the pack suite on its own resolving the published
@@ -790,60 +527,27 @@ npm run seed-parity:update  # Re-record them; deliberate, see "What to run after
 
 npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a number you can quote:
                          # `48.2s median of 5 (45.0s-49.3s), 92% idle, 2026-09-30`. A number without its
-                         # conditions is an assertion; with them it is a citation, and the difference is
-                         # three commit messages in goal-integration-pool that had to be corrected.
+                         # conditions is an assertion; with them it is a citation.
                          #   --runs N          how many (5)
-                         #   --against "<B>"   an A/B, **interleaved**, reported as the median of the pairs.
-                         #                     Blocked arms let a drifting box in: measured, that turned
-                         #                     49.1s->48.2s into a reported 71s->46.1s.
-                         #                     Prints **cores busy per arm**, which a lone measurement does
-                         #                     not get: between two arms it is what says the treatment landed
-                         #                     (`coresBusy` has the case). Nothing warns when the two agree —
-                         #                     most null results are real, so a gate on that would be wrong
-                         #                     more often than right. Reading it is the method's, below
-                         #   --trials N        how often does it *fail*? The rate and its 95% upper bound —
-                         #                     0 of 5 bounds it at 45%, 0 of 20 at 14%. Failures group by a
-                         #                     normalised signature: it groups, it does not classify
-                         #   --busy N          N CPU burners, so contention is induced rather than waited
-                         #                     for. Implies --force and says so in the conditions
+                         #   --against "<B>"   an A/B, interleaved, reported as the median of the pairs,
+                         #                     with cores busy per arm
+                         #   --trials N        how often does it *fail*? The rate and its 95% upper bound
+                         #   --busy N          N CPU burners, so contention is induced rather than waited for
                          #   --idle PERCENT    lower the floor    --force  measure anyway
-                         # It refuses below IDLE_FLOOR (70%) — the floor for a command that *prints*, where
-                         # the output carries its own conditions; a command that records asks
-                         # RECORD_IDLE_FLOOR (80%) instead. Read from os.cpus() rather than load average,
-                         # which lags — measured, loadavg 3.20 on a box that was 78.7% idle. **Idle is
-                         # sampled between runs, never during one**: a reading taken while the command runs
-                         # measures the command, and a quiet box reads 0% while a suite uses it.
-                         # Prints, never records — a timings file would be a sample, and the deleted
-                         # spec-cost.json is what that costs (see the sample section above)
-                         #
+                         # Refuses below 70% idle, or 80% for a command that records; idle is sampled
+                         # between runs, never during one. Prints, never records — a timings file would be
+                         # a sample, and the deleted spec-cost.json is what that costs.
                          # **A null A/B is unfalsifiable until the independent variable is shown to have
-                         # moved**, and the instrument cannot do that half for you: `measure` takes the
-                         # command as an opaque string, so it never knows what configuration you meant to
-                         # change. Three habits, in the order they pay:
-                         #   - **Read the config before guessing at the knob.** The first failed attempt at
-                         #     capping `test:integration`'s pool passed `--maxWorkers`, which
-                         #     `vitest.integration.config.ts`'s own comment says `poolOptions.maxThreads`
-                         #     overrides. The answer was on screen and the run was wasted anyway; no readout
-                         #     prevents that one
-                         #   - **Run the positive control first.** Set the knob to the value that *must*
-                         #     change the answer and confirm it does, before trusting any null. Measured
-                         #     2026-10-04, that run — the pool genuinely capped, 42.5s to 82.5s — arrived
-                         #     third, after two nulls that had been read as "the pool does not scale"
-                         #   - **Prefer the direct signal to the proxy.** Cores busy is the fallback that
-                         #     covers most cases; where the thing under test reports its own state (vitest
-                         #     names its worker count, a cache its hits), read that instead. A -1% delta
-                         #     should read as "the knob did nothing", and only a second signal says which
+                         # moved**, and this cannot do that half for you: read the config before guessing
+                         # at the knob, run the positive control first, and prefer the thing's own report
+                         # (vitest names its worker count) to the cores-busy proxy.
 
 npm run measure:loop -- "<cmd>"  # Not how long a command took, but how long each process it started went
                          # without turning its event loop, against the 60s window birpc gives a call and
-                         # vitest hardcodes. Per process, worst block first:
-                         #   worker  abuddy-cli/tests/…/types-bundler-determinism…  10.0s  6.0x slower  100%
-                         # Headroom rather than the block alone, which reads as fine until it is not: 38s
-                         # against 60s is one busy afternoon from failing. `elu` says *why* a process was
-                         # quiet — 4% was waiting, 99% was working, and only the second can be shortened.
-                         # It answers what `[vitest-worker]: Timeout calling` does not, which is which side
-                         # failed; see the test:integration entry above for the mechanism and the fix
-
+                         # vitest hardcodes. Per process, worst block first, with the headroom rather than
+                         # the block alone — 38s against 60s is one busy afternoon from failing. `elu` says
+                         # whether a quiet process was waiting or working.
+                         # docs/reference/pipeline-commands.md has the measured habits behind both.
 # Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)
 npm run check:idle       # Is this machine quiet enough to measure on, and for which kind of measurement —
                          # `89% idle — quiet enough to record on`, exit 1 below the recording floor.
