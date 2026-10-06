@@ -10,7 +10,7 @@ export const memosSpec = defineSystem<Contract>();
 
 export const memosSystem = setup({
   types: memosSpec.types,
-  actions: {
+  actions: memosSpec.actions({
     sendConnectedData: () => {
       broadcastToPlugin('memos', { type: 'MEMOS_CONNECTED', memos: repository.memoQueries.all() });
     },
@@ -30,7 +30,7 @@ export const memosSystem = setup({
       const { text } = memosSpec.typeOf('ADD_MEMO_NOTE', event);
       broadcastToPlugin('memos', { type: 'MEMO_NOTE_ADDED', text, note: addMemoNote(text) });
     },
-  },
+  }),
 }).createMachine({
   id: 'memos',
   initial: 'idle',
