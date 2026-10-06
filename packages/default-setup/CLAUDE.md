@@ -76,12 +76,24 @@ Backend systems wired via `__generated__/pack-entry.ts`, each feature's with `pa
 
 Code names a system by feature id, and reaches another system with the typed `sendToSystem(name, event)` from `__generated__/events`, never its actor. Each system file defines its events with `defineSystem()`; its identity is its feature's, from `abuddy.json`. A feature's designation comes only from `abuddy.json` `features[].designation`. It is a role, not a name: it need not equal the feature id, and every one default-setup declares happens to.
 
-## What a system sends a plugin, and the three jobs one verb does
+## What a system sends a plugin: pick the channel, then the shape
 
-`broadcastToPlugin` is fire-and-forget to **every window**. There is no reply channel and no
-"send to whoever asked", so everything a system tells a plugin arrives the same way — and three
-different jobs are done through that one verb. Which job an event is doing decides its shape, and
-getting that wrong is where a class of bug comes from.
+**There are two channels, and choosing wrongly is where this class of bug comes from.**
+`broadcastToPlugin` is fire-and-forget to **every window**. `reply` — the one a handler is handed
+(`spec.actions`, `@abuddy/sdk/framework`) — answers the sender on the connection they asked from, and is
+absent when the message named none. Three jobs ride those two channels:
+
+| the job | the channel | correlation |
+|---|---|---|
+| a **notification** — a mutation happened | broadcast | none; guarding one is a category error |
+| a **view fetching data** | broadcast | a slot keyed by what was asked |
+| a **command's outcome** | **reply** | an id only where one window can have two in flight |
+
+**Ask which job it is, then pick the channel.** Everything below is the second question — what shape the
+payload wants — and it only arises once the first is answered. For a long time there was no reply channel
+and every job was a broadcast, which is why the bugs it caused all look alike: a terminal opened in every
+window, a flow navigated every window, and six features announced an import to windows that had not run
+one. None of those was a missing id.
 
 **A notification has no requester, so it is never correlated.** `NOTE_UPDATED`, `THREAD_UPDATED`,
 `commit.FILES_STAGED`, `ITEM_RENAMED` — a mutation happened and every view that cares folds it into its
@@ -122,13 +134,23 @@ request's late answer carries the newest id and wins) and every reply echoes it.
 is the other shape of this — its id is minted *by the reply*, so nothing the requester knows can identify
 it.
 
-**The rule this leaves:** before adding a guard to a reply handler, decide which of the three the event is.
-A notification needs nothing, a fetch wants a keyed slot, and only a command wants an id. A guard is what
-you write when the shape is wrong, and six of them in this pack are exactly that: the two page guards in
-`features/{actions,prompts}` are a page number used as a key and are this idea in miniature, while
-`pendingActionId`, `pendingPromptId`, `answersSelectedNode` and `answersCurrentFlow` are hand-written
-correlation standing in for a slot. `answersCurrentFlow` stays whatever happens — `FLOW_EVENTS_RESULT`
+**The rule this leaves**, in order: *which job is this?* decides the channel, and only then does the shape
+follow. A notification broadcasts and needs nothing. A fetch broadcasts and wants a keyed slot. **A
+command's outcome is replied** — and once it is, it needs an id only where one window can have two of the
+same command in flight, which is rarer than it looks: the database's two query kinds do, a settings save
+does not.
+
+A guard is what you write when the shape is wrong, and six in this pack still are. The two page guards in
+`features/{actions,prompts}` are a page number used as a key and are the idea in miniature;
+`pendingActionId`, `pendingPromptId` and `answersSelectedNode` are hand-written correlation standing in for
+a slot. `answersSelectedNode` is the one that is *wrong* rather than merely verbose: `brain/fe/state.ts`
+fetches details for an **erroring** node and the guard drops the answer unless that node is also selected,
+so the shape error costs a feature. `answersCurrentFlow` stays whatever happens — `FLOW_EVENTS_RESULT`
 echoes no `offset`, so its paging needs the backend to say which page it answered.
+
+And one that is worse than a guard: `code/be/features/pull-request.ts`'s `prDetailsRequestId` is a counter
+**stamped by the replier** and shared across windows, which `database/be/types.ts` spells out as the thing
+not to do — an abandoned request's late answer carries the newest id and wins. The PR number is the key.
 
 ## Services
 
