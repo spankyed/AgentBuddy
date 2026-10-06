@@ -301,3 +301,160 @@ describe('an integration suffix names a half that exists', () => {
     expect(homeless([`packages/${single!}/tests/a.spec.ts`]), 'an unsuffixed spec is not its business').toEqual([]);
   });
 });
+
+/**
+ * And some config actually runs it.
+ *
+ * The three checks above ask where a spec *should* be. This asks the blunter question none of them does:
+ * whether any runner looks at the directory it is in. A spec nothing collects is the worst shape a test
+ * can take — it reads as coverage in review, costs nothing to keep, and runs zero times for ever.
+ *
+ * **It is reachable today.** Every config's include is `tests/**`, so a spec colocated in `src/` is
+ * collected by nothing: planted one and asked vitest, which matched 0 files. No package colocates now, but
+ * `@app/default-setup` ran six that way until they moved, and `specFiles` still walks `src/` as a net.
+ *
+ * **It had a check and lost it.** `suite-split.spec.ts`'s *"records every spec, so a new one cannot be
+ * placed by accident"* compared every spec on disk against the recorded costs and failed on a difference,
+ * so an uncollected spec showed up as one nothing had ever measured. That file went on 2026-10-05 with the
+ * cost records it asserted, and this question went with it — which is the one loss in that deletion worth
+ * paying a check for, since the other four are dormant, deliberate, or cheaper gone.
+ *
+ * The roots are derived from the configs rather than from the convention: asserting "under `tests/`" would
+ * restate a population the configs decide, which is the failure the root `CLAUDE.md` records for the seven
+ * places that listed `packages/` where the root `workspaces` field already said it.
+ */
+describe('a spec is collected by some config', () => {
+  /** Where a config's globs are declared, following the helper a pack's config delegates to */
+  const DELEGATES: Record<string, string> = {
+    definePackTestConfig: path.join('packages', 'abuddy-testing', 'src', 'vitest.ts'),
+  };
+
+  /**
+   * The literal directory a glob starts with, or nothing where it starts with a wildcard.
+   *
+   * A prefix rather than a match, because the globs here are not all translatable by hand —
+   * `tests/**\/*.{spec,test}.?(c|m)[jt]s?(x)` is extglob — and a hand-rolled translator getting that
+   * wrong is how a check starts passing over the thing it was written for. The prefix is enough for the
+   * defect: a spec in an unlooked-at directory is under no included root at all.
+   */
+  const globRoot = (glob: string): string | undefined => {
+    const literal: string[] = [];
+    for (const part of glob.split('/')) {
+      if (/[*?{[]/.test(part)) break;
+      literal.push(part);
+    }
+    return literal.length === 0 ? undefined : literal.join('/');
+  };
+
+  /**
+   * The roots a config's `include` or `exclude` arrays name, read as text.
+   *
+   * Text rather than an import, for `suite-timeouts.spec.ts`' reason: importing a pack's config creates a
+   * temp data dir. The cost is that every array under the key is collected, `@abuddy/ears`' nested
+   * `benchmark.include` among them — so the included set is a little wider than the test runner's, and the
+   * direction of that error is a spec under `bench/` going unreported. Narrowing it means parsing the
+   * nesting, which means importing.
+   */
+  /**
+   * The quoted strings of the array starting at `from`, scanned with the quotes in mind.
+   *
+   * Not a regular expression over the brackets, and the reason is the first thing this check found — about
+   * itself. `@app/renderer` includes `tests/**` + an extglob ending `[jt]s?(x)`, so a capture bounded by
+   * the next `]` stopped inside the glob, read the array as holding nothing, and reported all eight of that
+   * package's specs as collected by no config. A `]` inside a string is not a bracket, so quoted runs are
+   * skipped whole and the depth count never sees one.
+   */
+  const globsFrom = (text: string, from: number): string[] => {
+    const found: string[] = [];
+    let at = text.indexOf('[', from);
+    if (at === -1) return found;
+    let depth = 0;
+    for (; at < text.length; at++) {
+      const ch = text[at]!;
+      if (ch === '\'' || ch === '"' || ch === '`') {
+        const end = text.indexOf(ch, at + 1);
+        if (end === -1) break;
+        found.push(text.slice(at + 1, end));
+        at = end;
+        continue;
+      }
+      if (ch === '[') depth += 1;
+      else if (ch === ']') {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    return found;
+  };
+
+  const rootsOf = (file: string, key: 'include' | 'exclude'): string[] => {
+    const own = fs.readFileSync(path.join(REPO_ROOT, file), 'utf-8');
+    const delegate = Object.entries(DELEGATES).find(([name]) => own.includes(name));
+    const text = delegate === undefined ? own : `${own}\n${fs.readFileSync(path.join(REPO_ROOT, delegate[1]), 'utf-8')}`;
+    const found: string[] = [];
+    for (const match of text.matchAll(new RegExp(`\\b${key}:\\s*\\[`, 'g'))) {
+      for (const glob of globsFrom(text, match.index)) {
+        const root = globRoot(glob);
+        if (root !== undefined) found.push(root);
+      }
+    }
+    return found;
+  };
+
+  const configsOf = (dir: string): string[] =>
+    ['vitest.config.ts', 'vitest.integration.config.ts']
+      .map((name) => path.join('packages', dir, name))
+      .filter((file) => fs.existsSync(path.join(REPO_ROOT, file)));
+
+  const under = (file: string, root: string): boolean => file === root || file.startsWith(`${root}/`);
+
+  /** The rule, over whatever list it is given, so a case can hand it one that breaks */
+  const uncollected = (files: readonly string[]): string[] => files.filter((file) => {
+    const [, dir, ...rest] = file.split('/');
+    const relative = rest.join('/');
+    return !configsOf(dir!).some((config) =>
+      rootsOf(config, 'include').some((root) => under(relative, root))
+      && !rootsOf(config, 'exclude').some((root) => under(relative, root)));
+  });
+
+  /**
+   * `templates/` is left out: the CLI's scaffold holds two `tests/e2e/*.spec.ts` that belong to whatever
+   * pack is generated from them, and no config here should collect one. `specFiles` ignores that directory
+   * for the same reason.
+   */
+  const specs = (): string[] => tracked()
+    .filter((file) => file.startsWith('packages/') && IS_SPEC.test(file))
+    .filter((file) => !file.split('/').includes('templates'))
+    .filter((file) => configsOf(file.split('/')[1]!).length > 0);
+
+  it('finds the specs and the configs, so this is not vacuous', () => {
+    expect(specs().length, 'no specs derived, so every case below passes over nothing').toBeGreaterThan(300);
+    const parsed = packageDirs().flatMap(configsOf).map((config) => rootsOf(config, 'include'));
+    expect(parsed.length, 'no configs found').toBeGreaterThan(10);
+    // A config whose globs did not parse reads as one that includes nothing, which would fail every spec
+    // in its package rather than pass — but say it here, so the cause is named once instead of inferred
+    // from a wall of paths
+    expect(parsed.filter((roots) => roots.length === 0), 'these configs declare no include this could read').toEqual([]);
+  });
+
+  it('leaves none that nothing would collect', () => {
+    expect(uncollected(specs()), 'no config looks in the directory these are in, so they never run').toEqual([]);
+  });
+
+  // The firing case, built from a real package rather than a named one. The tree is green, so the
+  // reporting branch is unreachable from it — and a rule nothing has watched report is one that can be
+  // broken without anything noticing.
+  it('reports a spec colocated in src/, which is the way this really happens', () => {
+    const dir = packageDirs().find((d) => configsOf(d).length > 0 && rootsOf(configsOf(d)[0]!, 'include').includes('tests'));
+    expect(dir, 'no package includes a tests/ root, so this case has nothing to build on').toBeDefined();
+    expect(uncollected([`packages/${dir!}/src/colocated.spec.ts`])).toHaveLength(1);
+    expect(uncollected([`packages/${dir!}/tests/collected.spec.ts`]), 'one under tests/ is left alone').toEqual([]);
+  });
+
+  // And the other way a directory goes unlooked-at: inside an included root but excluded again
+  it('reports a spec under a subtree its own config excludes', () => {
+    const pack = packageDirs().find((d) => configsOf(d).some((c) => rootsOf(c, 'exclude').includes('tests/_support')));
+    expect(pack, 'no config excludes tests/_support, so this case has nothing to build on').toBeDefined();
+    expect(uncollected([`packages/${pack!}/tests/_support/helper.spec.ts`])).toHaveLength(1);
+  });
+});
