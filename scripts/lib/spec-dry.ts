@@ -16,6 +16,14 @@
  * The caveat the old one carried is still true and still has to be said: this is **file time summed across
  * workers, never a wall estimate**. Measured on one target three days apart, the ratio between the two was
  * 1.55:1 and 2.18:1.
+ *
+ * **And it prices tests and hooks only, which is about half of what a run costs.** The cache records a
+ * file's import and setup beside its test time (`overheadMs`, `spec-durations.ts`), and this sums `ms`
+ * alone — so a plan's figure is roughly half the truth: measured 2026-10-06, the host pool is 141.4s of
+ * tests against 139.6s of the rest, and the pack pool 19.9s against 163.8s. It stays on `ms` because that
+ * is the quantity every figure already written down is in, and re-basing it re-dates all of them.
+ * **Change it when someone takes a decision on this number rather than reading which specs run** — the
+ * listing is what the command is for, and for that the understatement is uniform and harmless.
  */
 import * as path from 'node:path';
 import { CHAIN_STEPS , needsApp as needsAppStep } from './chain-steps.ts';

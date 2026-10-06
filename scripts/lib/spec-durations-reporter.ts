@@ -75,8 +75,11 @@ export interface ReportedModule {
    * cost. So the quantity worth keeping is the sum, which is what `work/cores` needs.
    *
    * One figure rather than four, because no decision here wants the breakdown: a reader asking why a half
-   * is heavy reads the vitest summary, which prints all of them. If one ever does want it, the four are
-   * on the same `diagnostic()` call.
+   * is heavy reads the vitest summary, which prints all of them. **Record the four separately when someone
+   * takes on the overhead itself** — the pack pool is 19.9s of tests against 163.8s of this, the largest
+   * single cost in the suite, and `goal-one-job-pool.md` identified it and deferred it. That work would
+   * want to know which of setup and collection to attack per file, and the four are on the same
+   * `diagnostic()` call. Until then a breakdown is storage sizing no decision.
    *
    * The console prints no such figure, so unlike `ms` this one is not checkable against it — which is why
    * the agreement case pins it only as present and positive.

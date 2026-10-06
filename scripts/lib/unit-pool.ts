@@ -17,7 +17,7 @@ import { INTEGRATION_SUITES, suiteInputs } from './chain-steps.ts';
 import { CONFIG_BY_HALF, type Half } from './spec-halves.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import type { ReportedRun } from './spec-durations-reporter.ts';
-import { asDuration, cachedDurations, halfBound, halfTotal, markedSpecs, outlierIn, readDurationRuns, slowestFiles, trendIn, type FileDuration } from './spec-durations.ts';
+import { asDuration, cachedDurations, costliestFiles, costOf, halfBound, halfTotal, markedSpecs, outlierIn, readDurationRuns, trendIn, type FileDuration } from './spec-durations.ts';
 
 /**
  * Beside the package builds' and the chain's stamps, in the same cache directory and the same format, so one
@@ -292,6 +292,12 @@ const outlierLines = (rows: readonly FileDuration[], half: Half, width: number, 
  * top-five can show at all is many files each creeping a little — 349 of 388 fast-half files are under
  * 500ms and total 24.1s between them.
  *
+ * **The root and the core count come from the caller**, defaulting to this repo and this box. Not for
+ * flexibility — nothing passes anything else in production. It is what makes the lines below assertable:
+ * a spec plants a cache under a temp root, names a core count, and reads back every line, which is
+ * otherwise impossible for the most-read output in this subsystem. The partial-run guard in particular
+ * rested on one hand-run check before this.
+ *
  * **Only what the run being reported on actually measured**, which `since` is for. A pool runs the projects
  * whose inputs moved, so a step can run, find none of them stale and measure nothing — and a chain step in
  * exactly that state was observed returning in 0.8s and printing 17.3s of file time over 100 files that a
@@ -299,17 +305,18 @@ const outlierLines = (rows: readonly FileDuration[], half: Half, width: number, 
  * `since` is left out, so a partial run reports its own subset and a run that measured nothing reports
  * nothing.
  */
-export function poolDurationLines(pool: Pool, width: number, since: Date): string[] {
+export function poolDurationLines(pool: Pool, width: number, since: Date,
+  { root = REPO_ROOT, cores = os.availableParallelism() } = {}): string[] {
   const { half, suites } = POOLS[pool];
   const covered = suites();
-  const rows = cachedDurations(REPO_ROOT, covered, half, since);
+  const rows = cachedDurations(root, covered, half, since);
   if (rows.length === 0) return [];
   const total = halfTotal(rows, half);
-  const bound = halfBound(rows, half, os.availableParallelism());
+  const bound = halfBound(rows, half, cores);
   /** Which of the pool's suites this run actually measured, which is what says whether a half is whole */
   const measured = new Set(rows.map((row) => row.dir));
-  const marked = new Map(covered.map((suite) => [suite.dir, markedSpecs(path.join(REPO_ROOT, 'packages', suite.dir))]));
-  const windows = new Map(covered.map((suite) => [suite.dir, readDurationRuns(REPO_ROOT, suite.dir, half)]));
+  const marked = new Map(covered.map((suite) => [suite.dir, markedSpecs(path.join(root, 'packages', suite.dir))]));
+  const windows = new Map(covered.map((suite) => [suite.dir, readDurationRuns(root, suite.dir, half)]));
   return [
     `${asDuration(total.ms).padStart(width)}  ${half} half, ${total.files} file(s) this run measured`
       + `, ${asDuration(total.overheadMs)} of import and setup around them`,
@@ -323,12 +330,19 @@ export function poolDurationLines(pool: Pool, width: number, since: Date): strin
       : `${asDuration(bound.perCoreMs).padStart(width)}  work/cores against a ${asDuration(bound.floorMs)} floor`
         + ` — ${bound.binds}-bound`,
     ...outlierLines(rows, half, width, measured.size === covered.length),
-    ...slowestFiles(rows, half).map((row) => {
+    // Costliest, not slowest: the two lines above judge a file by what it cost, and a ranking by test time
+    // beside them could omit the very file the outlier line names
+    ...costliestFiles(rows, half).map((row) => {
       const reason = marked.get(row.dir)?.get(row.file);
       // The window's oldest reading beside the newest, which is the only thing the history is printed for
       const trend = trendIn(windows.get(row.dir), row.file);
       const moved = trend === undefined ? '' : `  (was ${asDuration(trend.was)} over ${trend.runs} runs)`;
-      return `${asDuration(row.ms).padStart(width)}  ${row.dir}/${row.file}${moved}${reason === undefined ? '' : `  @slow: ${reason}`}`;
+      // The cost, with the test time beside it where overhead is the larger part — otherwise a reader
+      // comparing this column to the half's total is comparing two different quantities
+      const cost = costOf(row);
+      return `${asDuration(cost).padStart(width)}  ${row.dir}/${row.file}`
+        + `${cost - row.ms > row.ms ? `, ${asDuration(row.ms)} of it tests` : ''}${moved}`
+        + `${reason === undefined ? '' : `  @slow: ${reason}`}`;
     }),
   ];
 }

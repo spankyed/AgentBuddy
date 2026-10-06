@@ -15,6 +15,8 @@ import { DIAGNOSTIC_RUN_ENV, POOLS, livePoolStamps, poolStampFor, poolUnitFor, p
 import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
+import { poolDurationLines } from '../../../scripts/lib/unit-pool.ts';
+import { writeDurations } from '../../../scripts/lib/spec-durations.ts';
 import { CHAIN_RUN_ENV, PROVENANCES, provenanceOf } from '../../../scripts/lib/unit-pool.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 
@@ -500,5 +502,107 @@ describe("the chain's classification re-run", () => {
     expect([...fromPool].some((binding) => passed.has(binding)),
       'the re-run passes the pool nothing, so a step that caches inside itself records a verdict the chain '
       + 'refuses to record, and the next chain skips the step that just failed').toBe(true);
+  });
+});
+
+/**
+ * The lines a finished pool run prints, which nothing could assert until the function took its root.
+ *
+ * It is the most-read output in this subsystem — every chain run and every `npm run test:unit` shows it —
+ * and it was checked nowhere, because it read the real cache and this machine's core count. Both come from
+ * the caller now, so a cache can be planted under a temp root and every line read back. The partial-run
+ * guard below had no case at all before this; it rested on one hand-run check.
+ */
+describe('poolDurationLines', () => {
+  const temp: string[] = [];
+  afterEach(() => {
+    for (const dir of temp.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /**
+   * A root holding a cache, and the package tree the marker scan walks.
+   *
+   * Both, because the lines are built from two readings of the root: the duration records, and each
+   * covered suite's specs, which `markedSpecs` walks for `@slow:` headers. A fixture with only the first
+   * is not a stand-in for a repo root — it throws on the walk.
+   */
+  const planted = (perSuite: Record<string, { file: string; ms: number; overheadMs: number }[]>): string => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pool-lines-'));
+    temp.push(root);
+    for (const suite of POOLS.host.suites()) {
+      fs.mkdirSync(path.join(root, 'packages', suite.dir, 'tests'), { recursive: true });
+    }
+    for (const [dir, files] of Object.entries(perSuite)) {
+      writeDurations(root, files.map((f) => ({ dir, half: 'fast' as const, ...f })), new Date().toISOString());
+    }
+    return root;
+  };
+
+  /** Every suite the host pool covers, so a planted cache can be a whole half */
+  const hostSuites = POOLS.host.suites().map((suite) => suite.dir);
+  const one = (ms: number, overheadMs: number) => [{ file: 'tests/a.spec.ts', ms, overheadMs }];
+  const whole = (files: Record<string, { file: string; ms: number; overheadMs: number }[]>) =>
+    planted({ ...Object.fromEntries(hostSuites.map((dir) => [dir, one(10, 10)])), ...files });
+
+  const lines = (root: string, cores = 10): string[] =>
+    poolDurationLines('host', 6, new Date(0), { root, cores });
+
+  it('leads with the half it measured, and what it cost around the tests', () => {
+    const root = whole({ 'abuddy-sdk': [{ file: 'tests/a.spec.ts', ms: 4000, overheadMs: 1000 }] });
+    expect(lines(root)[0]).toMatch(/fast half, \d+ file\(s\) this run measured, .* of import and setup around them/);
+  });
+
+  // The figure whose absence let an 18.3s floor read as binding: `work/cores` against the floor, and which wins
+  it('says which of the floor and the work bounds the run', () => {
+    // Work-bound: many files of middling cost, so the total over ten cores beats any one of them
+    const work = planted(Object.fromEntries(hostSuites.map((dir) =>
+      [dir, Array.from({ length: 20 }, (_, n) => ({ file: `tests/a${n}.spec.ts`, ms: 3000, overheadMs: 500 }))])));
+    expect(lines(work)[1]).toMatch(/work\/cores against a .* floor — work-bound/);
+    // Floor-bound: one file larger than everything else put together
+    const floor = whole({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 60_000, overheadMs: 1000 }] });
+    expect(lines(floor)[1]).toMatch(/floor — floor-bound/);
+  });
+
+  /**
+   * And draws no verdict where overhead was never recorded, rather than the wrong one.
+   *
+   * A record written before that field reads with overhead zero, which understates the work and so makes
+   * the floor look binding — the reading that split a 96-case file for nothing.
+   */
+  it('withholds the verdict where a record predates overhead', () => {
+    const root = whole({ 'abuddy-sdk': [{ file: 'tests/a.spec.ts', ms: 4000, overheadMs: 0 }] });
+    expect(lines(root)[1]).toMatch(/which binds is unknown: \d+ file\(s\) predate overhead/);
+  });
+
+  /**
+   * The partial-run guard, in both directions.
+   *
+   * "Out of line with its half" is unanswerable from part of one: a run covering a single suite's
+   * integration half read 23.2s over 9.1s across 7 files, which is 2.54x and an artefact of the population.
+   * A pool runs only the projects whose inputs moved, so a partial run is the ordinary case.
+   */
+  it('names an outlier when it measured the whole half', () => {
+    const root = whole({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 30_000, overheadMs: 1000 }] });
+    expect(lines(root).join('\n')).toMatch(/out of line with its half, so a candidate for splitting/);
+  });
+
+  it('names none from a half it measured in part, however wide the gap', () => {
+    const root = planted({ 'abuddy-sdk': [{ file: 'tests/big.spec.ts', ms: 30_000, overheadMs: 1000 },
+      { file: 'tests/small.spec.ts', ms: 100, overheadMs: 100 }] });
+    expect(lines(root).join('\n'), 'one suite of eleven is not a half').not.toMatch(/out of line with its half/);
+  });
+
+  // An outlier is judged on what a file cost, so the ranking beside it is ordered the same way — otherwise
+  // the line can name a file the list does not show
+  it('ranks by cost, so the file it names is the one listed first', () => {
+    const root = whole({ 'abuddy-sdk': [{ file: 'tests/setup-heavy.spec.ts', ms: 100, overheadMs: 30_000 },
+      { file: 'tests/test-heavy.spec.ts', ms: 5000, overheadMs: 100 }] });
+    const printed = lines(root);
+    expect(printed[3], 'the costliest file leads the ranking').toContain('tests/setup-heavy.spec.ts');
+    expect(printed.join('\n')).toMatch(/setup-heavy\.spec\.ts[^\n]*out of line|out of line[^\n]*setup-heavy/);
+  });
+
+  it('says nothing at all where no run has measured anything', () => {
+    expect(lines(fs.mkdtempSync(path.join(os.tmpdir(), 'pool-lines-empty-')))).toEqual([]);
   });
 });

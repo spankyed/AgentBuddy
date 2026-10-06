@@ -16,9 +16,13 @@
  *
  * ## When to delete the gate, and what it is costing while it lives
  *
- * **The gate is the part of this with a condition on it.** `SLOW_QUANTILE`, `tailBar`, `SLOW_MARKER`,
- * `slowReason`, `markedSpecs` and `placementOf` are ~160 lines here and five of `spec-durations.spec.ts`'
- * fifteen describes — about 320 of the 1,356 across this module, its reporter and their specs. Everything
+ * **The gate is the part of this with a condition on it**, and the outlier detector is now part of it —
+ * `OUTLIER_GAP`, `OUTLIER_FLOOR_MS` and `outlierIn` inform the same decision and so carry the same
+ * condition. With `SLOW_QUANTILE`, `tailBar`, `SLOW_MARKER`, `slowReason`, `markedSpecs` and
+ * `placementOf` that is ~256 lines here and six of `spec-durations.spec.ts`' seventeen describes —
+ * **about 505 of the 1,855** across this module, its reporter and their specs, re-counted 2026-10-06
+ * after three commits of additions (it read "320 of 1,356" and a pricing rule with a stale denominator
+ * prices nothing). Everything
  * else is the parse, the ranking, the totals, the cache, the window and `spec:dry`'s pricing, which are
  * read whether or not a marker is ever checked. So deleting the gate leaves the instrument intact.
  *
@@ -160,7 +164,25 @@ export const tailBar = (rows: readonly FileDuration[], half: Half, q = SLOW_QUAN
   quantileOf(rows.filter((row) => row.half === half).map((row) => row.ms), q);
 
 /**
- * The slowest files of a half, which is what the run prints.
+ * The costliest files of a half: what each one took the run, tests and overhead together.
+ *
+ * **Two orderings, named apart, because one function quietly switching basis is how they came to disagree.**
+ * `outlierIn` and `halfBound` judge a file by `costOf`, and for one commit the ranking printed beside them
+ * was ordered by `ms` — so the detector could name a file that did not appear in the list above it, which
+ * is reachable for anything whose cost is its setup rather than its tests. This is the ordering for
+ * anything about a file's *weight*; `slowestFiles` below is the ordering for anything about its *tests*.
+ *
+ * Bounded rather than thresholded, for the same reason as `slowestFiles`.
+ */
+export const costliestFiles = (rows: readonly FileDuration[], half: Half, limit = 5): FileDuration[] =>
+  rows.filter((row) => row.half === half).sort((a, b) => costOf(b) - costOf(a)).slice(0, limit);
+
+/**
+ * The slowest files of a half by test time, which is the figure the console prints.
+ *
+ * Kept on `ms` because its consumers are about tests: `placementOf` bounds which unmarked files it reports,
+ * and a `@slow:` marker explains why a spec's *tests* take long — a different claim from a file being
+ * expensive to load. `costliestFiles` is the one to reach for otherwise.
  *
  * Bounded rather than thresholded: a tenth of a half is above its own p90 by construction, which is ~38
  * files of the fast half and far too many to read. What this adds to what vitest already printed is the
