@@ -48,7 +48,11 @@ export interface HostServices {
    */
   emitter: {
     broadcastToPlugin: typeof untypedBroadcastToPlugin;
-    /** To that plugin in the one window being served; throws where the action runs for no window */
+    /**
+     * To that plugin on one connection, which the caller supplies. A handler is handed the connection it
+     * is serving; an action is handed nothing, so it has one only if something passed it in a payload —
+     * nothing does today, which is why this has no caller yet rather than why it would fail.
+     */
     sendToWindow: typeof untypedSendToWindow;
     sendToSystem: typeof untypedSendToSystem;
   };
@@ -98,9 +102,7 @@ export function createActionEmitter(sender?: ActionSender): HostServices['emitte
   const sends = createSends(sender);
   return {
     broadcastToPlugin: (name, event) => sends.broadcastToPlugin(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
-    // An action usually runs a tick after whatever triggered it, so there is no connection in scope and this
-    // throws — deliberately, since the alternative is widening one window's event to all of them in silence
-    sendToWindow: (name, event) => sends.sendToWindow(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
+    sendToWindow: (client, name, event) => sends.sendToWindow(client, actionRef('plugin', name, boundHost().packs.pluginIds()), event),
     sendToSystem: (to, event) => sends.sendToSystem(typeof to === 'string' ? actionRef('system', to, boundHost().packs.systemIds()) : to, event),
   };
 }

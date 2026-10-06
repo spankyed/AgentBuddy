@@ -262,6 +262,7 @@ export interface SystemSpec<C extends SystemContract> extends Handlers<ContractC
             reply?: Reply<Extract<ContractOutgoing<C>, {
                 type: string;
             }>>;
+            client?: string;
         }, params: P[K]) => void;
     }): {
         [K in keyof P]: (args: SystemArgs<C>, params: P[K]) => void;
@@ -270,6 +271,7 @@ export interface SystemSpec<C extends SystemContract> extends Handlers<ContractC
         reply?: Reply<Extract<ContractOutgoing<C>, {
             type: string;
         }>>;
+        client?: string;
     }) => I): Mapper<ContractContext<C>, MachineEvents<C>, I, MachineEvents<C>>;
     // (undocumented)
     typeOf: ReturnType<typeof safeEvents<MachineEvents<C>>>;

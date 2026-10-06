@@ -1163,7 +1163,7 @@ ${nodeEntity}`;
 import type { z } from 'zod';
 import type { EARS } from '@abuddy/ears';
 import { services as sdkServices, type HostServices } from '@abuddy/sdk/services';
-import type { TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
+import type { TypedSendToPlugin, TypedSendToWindow, TypedSendToSystem } from '@abuddy/sdk/events';
 import type { Repositories } from './repository.ts';
 import type { QualifiedPluginEvents, QualifiedSystemEvents } from './events.ts';
 ${imports.join('\n')}
@@ -1185,7 +1185,7 @@ ${entries.join('\n')}
  */
 export type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToWindow' | 'sendToSystem'> & {
   broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
-  sendToWindow: TypedSendToPlugin<QualifiedPluginEvents>;
+  sendToWindow: TypedSendToWindow<QualifiedPluginEvents>;
   sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 

@@ -138,6 +138,52 @@ describe('an action built from the spec', () => {
   });
 });
 
+/**
+ * The connection the handler is serving, handed beside the answer.
+ *
+ * `reply` answers whoever asked; `client` is the window they asked *from*, which is what a system needs to
+ * reach a *different* plugin in that same window (`sendToWindow`). Both come off one read at entry, and the
+ * last case here is why: a handler that stores it and runs later still has the right window, where a send
+ * that looked the connection up when called would find none.
+ */
+describe('the connection an action is handed', () => {
+  const clientSeen = (delivery: Parameters<typeof _runDelivery>[0]) => {
+    let seen: string | undefined | 'untouched' = 'untouched';
+    const table = spec.actions({ note: ({ client }) => { seen = client; } });
+    _runDelivery(delivery, () => table.note(args(), undefined));
+    return seen;
+  };
+
+  it('is the window the asker asked from', () => {
+    expect(clientSeen(asked)).toBe('c-1');
+  });
+
+  // A system asking another system named no connection, so there is no window to address
+  it('is absent when the ask came from no connection', () => {
+    expect(clientSeen({ receiver: 'pack/feature', asker: { kind: 'bus', ref: 'pack/asker' } })).toBeUndefined();
+  });
+
+  it('is absent when the message named no sender at all', () => {
+    expect(clientSeen(unasked)).toBeUndefined();
+  });
+
+  /**
+   * The case that distinguishes bound from ambient, and the one that fails if this is ever looked up at
+   * the moment a send is made: a handler routinely awaits before it acts, and the delivery is gone by then.
+   */
+  it('still names that window after the delivery has ended', async () => {
+    let later: (() => string | undefined) | undefined;
+    const table = spec.actions({
+      remember: ({ client }) => { later = () => client; },
+    });
+
+    _runDelivery(asked, () => table.remember(args(), undefined));
+    await Promise.resolve();
+
+    expect(later!(), 'the window it was serving, from outside any delivery').toBe('c-1');
+  });
+});
+
 describe('an invoke input built from the spec', () => {
   it('hands the actor an answer bound to the delivery that started it', () => {
     const build = spec.input(({ reply }) => ({ reply }));
@@ -152,5 +198,13 @@ describe('an invoke input built from the spec', () => {
     const build = spec.input(({ reply }) => ({ reply }));
 
     expect(_runDelivery(unasked, () => build(args())).reply).toBeUndefined();
+  });
+
+  // The actor gets the connection the same way, so work it does later can still reach that window
+  it('hands the actor the connection too', () => {
+    const build = spec.input(({ client }) => ({ client }));
+
+    expect(_runDelivery(asked, () => build(args())).client).toBe('c-1');
+    expect(_runDelivery(unasked, () => build(args())).client).toBeUndefined();
   });
 });

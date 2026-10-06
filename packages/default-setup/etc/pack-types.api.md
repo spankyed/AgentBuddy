@@ -8,7 +8,7 @@ import * as _abuddy_sdk from '@abuddy/sdk';
 import { ActionEntity, ActionParameter, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TNodeEntity as TNodeEntity$1, TemplateInput } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
-import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PluginInboxOf, PublicPluginInboxOf, Qualified, Reply, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
+import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PluginInboxOf, PublicPluginInboxOf, Qualified, Reply, TypedSendToPlugin, TypedSendToSystem, TypedSendToWindow } from '@abuddy/sdk/events';
 import { HotkeysMap, NavHistory, PluginInbox, PluginStateOf, TabGroup } from '@abuddy/sdk/fe';
 import { Simplify as Simplify$1 } from '@abuddy/sdk/helpers';
 import { EmbeddingModelId, ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
@@ -4270,7 +4270,7 @@ type OwnRepositories = {
  */
 type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToSystem' | 'sendToWindow'> & {
     broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
-    sendToWindow: TypedSendToPlugin<QualifiedPluginEvents>;
+    sendToWindow: TypedSendToWindow<QualifiedPluginEvents>;
     sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 

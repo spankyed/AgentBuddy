@@ -228,7 +228,7 @@ describe('generated services', () => {
     expect(files['src/__generated__/events.ts']).toContain("export type QualifiedSystemEvents = Qualified<'demo-pack', PackSystemEvents> & Qualified<'base-pack', __dep_base_pack_PackSystemEvents> & HostSystemEvents;");
     const services = files['src/__generated__/services.ts'];
     expect(services).toContain("import type { QualifiedPluginEvents, QualifiedSystemEvents } from './events.ts';");
-    expect(services).toContain('  broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;\n  sendToWindow: TypedSendToPlugin<QualifiedPluginEvents>;\n  sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;');
+    expect(services).toContain('  broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;\n  sendToWindow: TypedSendToWindow<QualifiedPluginEvents>;\n  sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;');
   });
 });
 

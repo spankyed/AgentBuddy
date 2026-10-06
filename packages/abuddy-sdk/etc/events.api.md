@@ -23,6 +23,9 @@ export type _Asker =
     ref: string;
 };
 
+// @internal
+export function _clientOf(delivery: _Delivery | undefined): string | undefined;
+
 // @public
 export function createSends(input?: SendBinding): {
     broadcastToPlugin(name: string, event: {
@@ -33,7 +36,7 @@ export function createSends(input?: SendBinding): {
         type: string;
         [key: string]: unknown;
     }): void;
-    sendToWindow(name: string, event: {
+    sendToWindow(client: string, name: string, event: {
         type: string;
         [key: string]: unknown;
     }): void;
@@ -225,7 +228,7 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
     sendToPlugin: TypedSendToPlugin<P>;
     // (undocumented)
     sendToSystem: TypedSendToSystem<S>;
-    sendToWindow: TypedSendToPlugin<P>;
+    sendToWindow: TypedSendToWindow<P>;
 }
 
 // @public
@@ -240,6 +243,9 @@ export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S &
     type: string;
     [key: string]: unknown;
 }) => void) & ((system: FeatureRef, event: SystemEvents) => void);
+
+// @public
+export type TypedSendToWindow<M extends PluginEvents> = (<P extends keyof M & string>(client: string, plugin: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void) & ((client: string, plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
 
 // @public
 export type TypeOfEvent<E> = E extends {
@@ -259,7 +265,7 @@ export function untypedSendToSystem(to: SystemTarget, event: {
 }): void;
 
 // @public
-export function untypedSendToWindow(to: string, event: {
+export function untypedSendToWindow(client: string, to: string, event: {
     type: string;
     [key: string]: unknown;
 }): void;

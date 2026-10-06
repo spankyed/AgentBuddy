@@ -211,12 +211,14 @@ export interface Handlers<TContext extends MachineContext, TEvent extends EventO
     actions<P extends ActionParams>(defs: {
         [K in keyof P]: (args: Args<TContext, TEvent> & {
             reply?: Reply<TOut>;
+            client?: string;
         }, params: P[K]) => void;
     }): {
         [K in keyof P]: (args: Args<TContext, TEvent>, params: P[K]) => void;
     };
     input<I>(build: (args: InputArgs<TContext, TEvent> & {
         reply?: Reply<TOut>;
+        client?: string;
     }) => I): Mapper<TContext, TEvent, I, TEvent>;
 }
 

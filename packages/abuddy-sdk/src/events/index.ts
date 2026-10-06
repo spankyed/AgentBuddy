@@ -286,16 +286,7 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
     const receiver = _currentDelivery()?.receiver;
     return receiver ? { sender: receiver } : {};
   };
-  /**
-   * The connection the message being handled arrived on, which is the one window a backend send can name.
-   *
-   * A system knows no other: nothing holds a registry of open windows, and the only one it has an address
-   * for is whoever it is serving. Absent when that message came from another system or from nothing.
-   */
-  const servedConnection = () => {
-    const asker = _currentDelivery()?.asker;
-    return asker?.kind === 'connection' ? asker.client : undefined;
-  };
+
   return {
     broadcastToPlugin(name: string, event: { type: string; [key: string]: unknown }): void {
       // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it
@@ -315,22 +306,29 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
     },
 
     /**
-     * Sends an event to a plugin in **the one window being served** — the connection the message under
-     * handling arrived on — rather than to every window showing it.
+     * Sends an event to a plugin on **one connection** — the window a handler is serving — rather than to
+     * every window showing it.
      *
      * The pair with `broadcastToPlugin` is the whole point, and which to reach for follows the job: news
      * every window needs is a broadcast, and anything only the window that asked should act on is this.
      * Before it existed a system could be *answered* by a window but could only *ask* by broadcasting, so
      * one question collected one answer per open window.
      *
-     * It throws outside a connection's message rather than falling back to a broadcast: a send that
-     * silently widened from one window to all of them is the bug this exists to prevent, and a system
-     * handling another system's message or running on a timer has no window to name.
+     * **The connection is a parameter, not something this finds.** A handler is handed the one it is
+     * serving (`client`, beside `reply`), so the address survives an `await` or being stored for later —
+     * which is the same reason `reply` is handed rather than read from the scope at the moment it is
+     * called. Reading it here instead would throw for exactly the handlers that most need it.
+     *
+     * What does *not* survive an await is `Message.sender`: `answerAddress()` reads the delivery when the
+     * send is made, by the one exception documented there. So a send made later reaches the right window
+     * carrying no sender, and that window cannot answer it.
      */
-    sendToWindow(name: string, event: { type: string; [key: string]: unknown }): void {
-      const client = servedConnection();
-      if (client === undefined) {
-        throw new Error(`sendToWindow("${name}") needs a message from a window being handled, and this is not one — a system's message, a timer or a subscription names no connection. To reach every window showing that plugin, use broadcastToPlugin.`);
+    sendToWindow(client: string, name: string, event: { type: string; [key: string]: unknown }): void {
+      // An empty connection would send with none, and absent means *every* connection — the silent
+      // widening from one window to all of them that this verb exists to prevent. The type says `string`,
+      // so reaching this takes a cast or untyped code; it is a gate on the one wrong value, not on a shape.
+      if (!client) {
+        throw new Error(`sendToWindow("${name}") was given no connection to send to. A handler is handed the one it is serving as \`client\`, which is absent when the message came from another system or from nothing — to reach every window showing that plugin, use broadcastToPlugin.`);
       }
       boundHost().transport.rootEvents.emitPluginSend({ to: resolve(name), event, ...labels, ...answerAddress(), client });
     },
@@ -379,8 +377,8 @@ export function _sendToLocalPlugin(ref: string, event: { type: string; [key: str
  *
  * Untyped: packs use the `sendToWindow` from their `#generated/events`.
  */
-export function untypedSendToWindow(to: string, event: { type: string; [key: string]: unknown }): void {
-  unboundSends.sendToWindow(to, event);
+export function untypedSendToWindow(client: string, to: string, event: { type: string; [key: string]: unknown }): void {
+  unboundSends.sendToWindow(client, to, event);
 }
 
 /** A system: its ref, or the role a system plays (`{ role: 'brain' }`), found when the message is sent */
@@ -437,6 +435,22 @@ export function _replyTo(delivery: _Delivery | undefined): Reply | undefined {
 }
 
 /**
+ * The connection a delivery's asker arrived on, or nothing where it named none.
+ *
+ * **Given the delivery rather than reading the scope**, for `_replyTo`'s reason: both handed members come
+ * off one read taken as the handler is entered, so an address a handler stores still points at the window
+ * it was serving. A system knows no other window — nothing holds a registry of them — so this is the whole
+ * of what `sendToWindow` can address.
+ *
+ * @internal The SDK hands these to handlers (`defineHandlers`, `@abuddy/sdk/framework`); pack code receives
+ * one rather than asking for it.
+ */
+export function _clientOf(delivery: _Delivery | undefined): string | undefined {
+  const asker = delivery?.asker;
+  return asker?.kind === 'connection' ? asker.client : undefined;
+}
+
+/**
  * Sends an event to a backend system, by ref or by the role it plays. Untyped: packs use the `sendToSystem` from
  * their `#generated/events`, which takes names and checks the event against what the system declares.
  */
@@ -462,6 +476,21 @@ export type TypedSendToPlugin<M extends PluginEvents> = (<P extends keyof M & st
 ) => void) & ((plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
 
 /**
+ * `sendToWindow` typed against a plugin event map, with the connection it addresses in front.
+ *
+ * `TypedSendToPlugin` with that one parameter added through both arms, so a plugin's events are checked
+ * exactly as a broadcast's are and only the address differs. `client` is `string` rather than
+ * `string | undefined` deliberately: a handler is handed `client?: string`, so it cannot call this until
+ * it has said what it does when there is no window — which is `reply?.()`'s discipline written for a
+ * three-argument send.
+ */
+export type TypedSendToWindow<M extends PluginEvents> = (<P extends keyof M & string>(
+  client: string,
+  plugin: P,
+  event: OneSend<IsUnion<P>, M[P]['type'], M[P]>,
+) => void) & ((client: string, plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
+
+/**
  * `sendToSystem` typed against a system event map; `type` picks the event, so a missing field names it. A role
  * (`{ role: 'brain' }`) names whichever system plays it, which the build can't know, so its event is unchecked. Any
  * feature's system, named by its ref, takes the events every system does (`SystemEvents`).
@@ -475,8 +504,8 @@ export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S &
 export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
   /** Backend: over the bus, to every window showing that plugin */
   broadcastToPlugin: TypedSendToPlugin<P>;
-  /** Backend: to that plugin in the one window being served, which is the connection the message came from */
-  sendToWindow: TypedSendToPlugin<P>;
+  /** Backend: to that plugin on one connection — the window a handler is serving, handed to it as `client` */
+  sendToWindow: TypedSendToWindow<P>;
   /** Renderer: straight to this window's actor for that plugin */
   sendToPlugin: TypedSendToPlugin<P>;
   sendToSystem: TypedSendToSystem<S>;
