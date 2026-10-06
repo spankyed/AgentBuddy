@@ -1,3 +1,14 @@
+// In the expensive half because it runs a real Vite build, which is this package's rule for that half.
+//
+// **The first spec in this repo to change halves on the slow report's evidence**, moved 2026-10-06. It was
+// the fast half's costliest at 3.07s — against `run-install`'s 3.05s, which spawns nothing, and the two
+// other fe-bundler specs at 1.5s and 1.3s, which build but need none of what this half gives. What decided
+// it is not the 3.07s but `vite.build` below: a multi-threaded bundler running in a nine-worker pool
+// oversubscribes the box, which is what the capped pool here exists for.
+//
+// It is a *decision* and not a measurement — the filename is the whole mechanism, and nothing re-derives
+// it. `spec-cost.json` tried deciding this from a recorded millisecond and the root guide's sample section
+// has what that cost.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { init as initLexer, parse } from 'es-module-lexer';

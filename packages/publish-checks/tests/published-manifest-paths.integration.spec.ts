@@ -1,3 +1,13 @@
+// In the expensive half because it packs, which is the line this suite's two halves are drawn on.
+//
+// **Moved 2026-10-06, on the slow report's evidence and against a recorded decision.** It was the one spec
+// in the fast half that packed anything — five `npm pack --dry-run` subprocesses — and `CLAUDE.md` kept it
+// there on the strength of that costing ~1.5s. It measured **3.74s of the half's 4.5s**, 83% of it, so the
+// figure the decision rested on was 2.5x out of date and the fast half was this spec with three
+// near-instant specs beside it. That is the first time a placement decision here has been revisited with a
+// number rather than an impression.
+//
+// Which half a spec is in stays a decision, declared by this filename and re-derived by nothing.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { BUILD_UNITS, publishedTreeDirs } from '@abuddy/host/build/packages-built';

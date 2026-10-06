@@ -49,10 +49,15 @@ is published; a consumer fixture reads the derived manifest, as a consumer does.
 
 Two halves, as every suite with an expensive one has: the integration half gives a spec 60s per test and a worker pool capped at half the cores. Which half a spec is in is its filename, decided when it is written rather than re-derived from a measurement.
 
-- **`npm test -w @app/publish-checks`** — 4 specs: three read the built `dist` without packing anything, and
-  `published-manifest-paths` packs five file lists with `--dry-run`, ~1.5s, which keeps it in this half.
-- **`npm run test:integration -w @app/publish-checks`** — 5 specs, about 28s. Each packs and compiles, so
-  the config caps worker threads; the comment there has the reason.
+- **`npm test -w @app/publish-checks`** — 3 specs, 0.8s: each reads the built `dist` and packs nothing.
+- **`npm run test:integration -w @app/publish-checks`** — 6 specs, about 33s. Each packs, and most compile,
+  so the config caps worker threads; the comment there has the reason.
+
+**Packing is the line between them**, and `published-manifest-paths` was on the wrong side of it until
+2026-10-06. It was kept in the fast half on the strength of its five `npm pack --dry-run` calls costing
+~1.5s; measured, it was **3.74s of that half's 4.5s** — 83% of it — so the half was one packing spec beside
+three near-instant ones, and the figure the decision rested on was 2.5x stale. The spec's own header
+records the move. Nothing re-derives a half: the filename is the decision.
 
 Both halves have a `pretest` that builds the packages, because `npm run test:integration` fires no `pretest`
 hook of its own — npm only runs `pre<script>` for the script named. Without it the standalone command tests

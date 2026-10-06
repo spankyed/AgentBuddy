@@ -99,12 +99,19 @@ Because host code is inlined, `@abuddy/host` imports are fine in `src/`. The CLI
 
 Two suites, split by what a spec costs:
 
-- **`npm test -w @abuddy/cli`** — the fast half (`tests/**/*.spec.ts`, `vitest.config.ts`): 38 specs and
-  about 13.5s of file time, a couple of seconds of wall. The per-change loop.
+- **`npm test -w @abuddy/cli`** — the fast half (`tests/**/*.spec.ts`, `vitest.config.ts`): 46 specs and
+  about 16s of file time, a couple of seconds of wall. The per-change loop.
 - **`npm run test:integration -w @abuddy/cli`** — the expensive half (`tests/**/*.integration.spec.ts`,
   `vitest.integration.config.ts`, which caps worker threads because many of these specs spawn compilers of
-  their own): 16 specs, about 213s of file time measured 2026-10-06 running this half alone, which is the
+  their own): 17 specs, about 251s of file time measured 2026-10-06 running this half alone, which is the
   only basis the figure has — every reading here is taken under the pool's own contention.
+
+**A spec changed halves on 2026-10-06, the first in this repo to do so on the slow report's evidence.**
+`fe-bundler-proxy-exports` was the fast half's costliest at 3.07s and calls `vite.build` directly, which is
+what the rule above means by spawning a compiler; a multi-threaded bundler in a nine-worker pool is what
+this half's cap exists for. Its two siblings build as well and stayed — 1.5s and 1.3s, needing neither the
+budget nor the cap — and `run-install` at 3.05s stayed because it spawns nothing at all, which is the
+distinction the rule is about rather than the duration. The spec's header records it.
 
 **Specs about the repo's own tooling are not here.** Fifteen of them were, and none was about the CLI: they
 moved to `@app/repo-checks`, which is where a spec that reads `scripts/` belongs and where `npm run spec`
