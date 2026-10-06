@@ -164,8 +164,14 @@ if (dry) {
       continue;
     }
     listed += specs.length;
-    for (const spec of specs) console.log(`   ${spec}`);
     const price = pricedSpecs(specs, ROOT);
+    // What each one cost, and what it cost at the far end of the window where there is one. The pools show
+    // a trend for the five slowest of a half; here the caller named the spec, so every one of them can have
+    // it without a threshold deciding which are worth mentioning.
+    for (const spec of specs) {
+      const moved = price.trend.get(spec);
+      console.log(`   ${spec}${moved === undefined ? '' : `  (was ${asDuration(moved.was)} over ${moved.runs} runs)`}`);
+    }
     measured += price.ms;
     unpriced += price.unpriced.length;
     if (price.measuredAt !== undefined && (oldest === undefined || price.measuredAt < oldest)) oldest = price.measuredAt;

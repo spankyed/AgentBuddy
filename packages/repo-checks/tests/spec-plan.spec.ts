@@ -729,7 +729,9 @@ describe('pricedSpecs', () => {
 
   it('sums what this machine measured, and reports when it measured it', () => {
     const priced = pricedSpecs(['packages/abuddy-host/tests/a.spec.ts', 'packages/abuddy-host/tests/b.spec.ts'], root);
-    expect(priced).toEqual({ ms: 1500, priced: 2, unpriced: [], measuredAt: '2026-10-05T21:07:00.000Z' });
+    expect(priced).toEqual({ ms: 1500, priced: 2, unpriced: [], measuredAt: '2026-10-05T21:07:00.000Z',
+      // One reading apiece, so no trend: `trendOf` has nothing to compare against until a second run
+      trend: new Map() });
   });
 
   // The half is in the key, so a spec is priced from the run that measured *it* rather than from whichever
@@ -759,9 +761,31 @@ describe('pricedSpecs', () => {
     const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-dry-empty-'));
     try {
       const priced = pricedSpecs(['packages/abuddy-host/tests/a.spec.ts'], empty);
-      expect(priced).toEqual({ ms: 0, priced: 0, unpriced: ['packages/abuddy-host/tests/a.spec.ts'], measuredAt: undefined });
+      expect(priced).toEqual({ ms: 0, priced: 0, unpriced: ['packages/abuddy-host/tests/a.spec.ts'],
+        measuredAt: undefined, trend: new Map() });
     } finally {
       fs.rmSync(empty, { recursive: true, force: true });
+    }
+  });
+
+  /**
+   * And it reports what a spec cost at the far end of the window, which is where the window becomes
+   * readable at all.
+   *
+   * The pools record ten runs for every spec and print a trend for five — the slowest of a half — which is
+   * what keeps that output bounded without a threshold. That left the ~349 fast-half specs under 500ms with
+   * history and no way to see it. Asking by name needs no threshold, because the asking is the filter.
+   */
+  it('reports how a named spec has moved across the window', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-dry-trend-'));
+    try {
+      writeDurations(root, [{ dir: 'abuddy-host', file: 'tests/a.spec.ts', half: 'fast', ms: 1200 }], '2026-10-01T00:00:00.000Z');
+      writeDurations(root, [{ dir: 'abuddy-host', file: 'tests/a.spec.ts', half: 'fast', ms: 2900 }], '2026-10-02T00:00:00.000Z');
+      const priced = pricedSpecs(['packages/abuddy-host/tests/a.spec.ts'], root);
+      expect(priced.ms, 'the price is still the newest reading').toBe(2900);
+      expect(priced.trend.get('packages/abuddy-host/tests/a.spec.ts')).toEqual({ was: 1200, runs: 2 });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
     }
   });
 

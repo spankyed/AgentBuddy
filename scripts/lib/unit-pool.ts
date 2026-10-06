@@ -16,7 +16,7 @@ import { INTEGRATION_SUITES, suiteInputs } from './chain-steps.ts';
 import { CONFIG_BY_HALF, type Half } from './spec-halves.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 import type { ReportedRun } from './spec-durations-reporter.ts';
-import { asDuration, cachedDurations, halfTotal, markedSpecs, slowestFiles, trendOf } from './spec-durations.ts';
+import { asDuration, cachedDurations, halfTotal, markedSpecs, readDurationRuns, slowestFiles, trendIn } from './spec-durations.ts';
 
 /**
  * Beside the package builds' and the chain's stamps, in the same cache directory and the same format, so one
@@ -283,12 +283,13 @@ export function poolDurationLines(pool: Pool, width: number, since: Date): strin
   if (rows.length === 0) return [];
   const total = halfTotal(rows, half);
   const marked = new Map(covered.map((suite) => [suite.dir, markedSpecs(path.join(REPO_ROOT, 'packages', suite.dir))]));
+  const windows = new Map(covered.map((suite) => [suite.dir, readDurationRuns(REPO_ROOT, suite.dir, half)]));
   return [
     `${asDuration(total.ms).padStart(width)}  ${half} half, ${total.files} file(s) this run measured`,
     ...slowestFiles(rows, half).map((row) => {
       const reason = marked.get(row.dir)?.get(row.file);
       // The window's oldest reading beside the newest, which is the only thing the history is printed for
-      const trend = trendOf(REPO_ROOT, row.dir, half, row.file);
+      const trend = trendIn(windows.get(row.dir), row.file);
       const moved = trend === undefined ? '' : `  (was ${asDuration(trend.was)} over ${trend.runs} runs)`;
       return `${asDuration(row.ms).padStart(width)}  ${row.dir}/${row.file}${moved}${reason === undefined ? '' : `  @slow: ${reason}`}`;
     }),

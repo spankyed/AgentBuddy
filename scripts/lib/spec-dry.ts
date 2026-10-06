@@ -21,7 +21,7 @@ import * as path from 'node:path';
 import { CHAIN_STEPS , needsApp as needsAppStep } from './chain-steps.ts';
 import { UNIT_SUITES } from './unit-suites.ts';
 import { halfOfPath, specFiles } from './spec-halves.ts';
-import { readDurations, type DurationRecord } from './spec-durations.ts';
+import { readDurationRuns, trendIn, type DurationRecord } from './spec-durations.ts';
 import { IS_SPEC, type Run } from './spec-plan.ts';
 
 /**
@@ -109,6 +109,16 @@ export interface Priced {
   readonly unpriced: readonly string[];
   /** The oldest run any of these prices came from, so a reader can say how old the answer is */
   readonly measuredAt: string | undefined;
+  /**
+   * What each priced spec cost at the far end of the window, where it holds more than one reading.
+   *
+   * **This is where the window becomes readable.** The pools record ten runs for every spec and show a
+   * trend for five — the slowest of a half — which is what keeps that output bounded and free of a
+   * threshold. The ~349 fast-half specs under 500ms, any of which could double without entering a ranking,
+   * had history and no way to see it. Here the caller named the spec, so there is nothing to threshold:
+   * the question was asked about this one.
+   */
+  readonly trend: ReadonlyMap<string, { was: number; runs: number }>;
 }
 
 /**
@@ -119,11 +129,14 @@ export interface Priced {
  * a total over three of twelve specs that does not say so is the wrong answer rather than a small one.
  */
 export function pricedSpecs(specs: readonly string[], root: string): Priced {
-  const records = new Map<string, DurationRecord | undefined>();
+  // The window per suite and half, read once: `trendIn` takes it, where `trendOf` would re-read the file
+  // for every spec in the suite
+  const windows = new Map<string, readonly DurationRecord[] | undefined>();
   const unpriced: string[] = [];
   let ms = 0;
   let priced = 0;
   let measuredAt: string | undefined;
+  const trend = new Map<string, { was: number; runs: number }>();
   for (const spec of specs) {
     const parts = spec.split(path.sep === '\\' ? /[\\/]/ : '/');
     // A spec outside `packages/` belongs to no suite, so no pool measured it and no record could hold it
@@ -135,8 +148,9 @@ export function pricedSpecs(specs: readonly string[], root: string): Priced {
       unpriced.push(spec);
       continue;
     }
-    if (!records.has(key)) records.set(key, readDurations(root, dir, half));
-    const record = records.get(key);
+    if (!windows.has(key)) windows.set(key, readDurationRuns(root, dir, half));
+    const window = windows.get(key);
+    const record = window?.[0];
     const found = record?.ms[relative];
     if (record === undefined || found === undefined) {
       unpriced.push(spec);
@@ -144,7 +158,9 @@ export function pricedSpecs(specs: readonly string[], root: string): Priced {
     }
     ms += found;
     priced += 1;
+    const moved = trendIn(window, relative);
+    if (moved !== undefined) trend.set(spec, moved);
     if (measuredAt === undefined || record.measuredAt < measuredAt) measuredAt = record.measuredAt;
   }
-  return { ms, priced, unpriced, measuredAt };
+  return { ms, priced, unpriced, measuredAt, trend };
 }

@@ -428,13 +428,22 @@ export function writeDurations(root: string, rows: readonly FileDuration[], meas
  *
  * `undefined` for a window of one, where there is no trend to report yet.
  */
-export function trendOf(root: string, dir: string, half: Half, file: string): { was: number; runs: number } | undefined {
-  const runs = readDurationRuns(root, dir, half);
+export function trendIn(runs: readonly DurationRecord[] | undefined, file: string): { was: number; runs: number } | undefined {
   if (runs === undefined || runs.length < 2) return undefined;
   const seen = runs.filter((run) => typeof run.ms[file] === 'number');
   if (seen.length < 2) return undefined;
   return { was: seen[seen.length - 1]!.ms[file]!, runs: seen.length };
 }
+
+/**
+ * The same over a window this reads for itself, for a caller asking about one file.
+ *
+ * **A caller asking about many takes `trendIn` and reads the window once.** This re-reads and re-parses the
+ * record on every call, which for a whole suite is one file read per spec in it — 100 reads of one JSON for
+ * `@app/default-setup`. `pricedSpecs` did exactly that for a day.
+ */
+export const trendOf = (root: string, dir: string, half: Half, file: string): { was: number; runs: number } | undefined =>
+  trendIn(readDurationRuns(root, dir, half), file);
 
 /**
  * Every record a run could write, which is what says a file in there answers for nobody.
