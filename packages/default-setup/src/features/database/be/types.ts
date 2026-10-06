@@ -83,7 +83,11 @@ export type OutgoingDatabaseEvents =
    */
   | { type: 'AI_QUERY_ERROR'; error: string }
   | { type: 'TRACE_FLOWS_RESULT'; flows: TNodeEntity[] }
-  | { type: 'FLOW_EVENTS_RESULT'; flowId: string; events: TNodeEntity[]; hasMore: boolean }
+  /**
+   * `offset` is which page these events are, which is what tells two pages of one flow apart — the flow id
+   * alone cannot, so a viewer correlating on it places a late page by wherever it has since got to.
+   */
+  | { type: 'FLOW_EVENTS_RESULT'; flowId: string; events: TNodeEntity[]; hasMore: boolean; offset: number }
   | { type: 'NODE_DETAILS_RESULT'; nodeId: string; details: TNodeEntity | null }
   | { type: 'EXPORT_DATABASE_SUCCESS'; path: string }
   | { type: 'EXPORT_DATABASE_ERROR'; error: string }
