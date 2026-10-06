@@ -81,7 +81,7 @@ export function startEarlySystems(registry: Pick<PackRegistry, 'getEarlySystems'
     _rootEvents.onIncoming((message) => {
       const found = actors.find(({ id }) => id === message.to);
       if (!found) return;
-      deliverAs({ receiver: message.to, replyTo: message.sender, client: message.client }, () => found.actor.send(message.event));
+      deliverAs(message, () => found.actor.send(message.event));
     }),
   ];
   return {

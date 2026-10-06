@@ -127,7 +127,7 @@ describe('a feature whose settings change', () => {
     const app = await startApp({ systems: ['database', 'memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    await app.send('database', { type: 'IMPORT_DATABASE', path: '/backups/1' } as never);
+    await app.send('database', { type: 'IMPORT_DATABASE', path: '/backups/1' });
     await app.settle();
 
     expect(heardBy(app)).toEqual([{ type: 'FEATURE_SETTINGS_UPDATED', settings: { tags: [{ name: 'imported' }] }, changes: null }]);
@@ -155,7 +155,7 @@ describe('a feature whose settings change', () => {
       const app = await startApp({ systems: ['database', 'memo-pack/memos', 'host/settings'] });
       await app.connect();
 
-      await app.send('database', { type: 'IMPORT_DATABASE', path: '/backups/1' } as never);
+      await app.send('database', { type: 'IMPORT_DATABASE', path: '/backups/1' });
       await app.settle();
 
       expect(heardBy(app)).toEqual([{ type: 'FEATURE_SETTINGS_UPDATED', settings: { tags: [{ name: 'migrated' }] }, changes: null }]);
@@ -187,7 +187,7 @@ describe('a feature whose settings change', () => {
       let finish!: () => void;
       const done = new Promise<void>((resolve) => { finish = resolve; });
       mockService('appData', { importBackup: async () => { await done; return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] }; } });
-      await app.send('database', { type: 'IMPORT_DATABASE', path: '/backups/1' } as never);
+      await app.send('database', { type: 'IMPORT_DATABASE', path: '/backups/1' });
       return { finish };
     }
 
@@ -212,7 +212,7 @@ describe('a feature whose settings change', () => {
       const { finish } = await importing(app);
 
       untypedTx('Settings-app' as EARS.EntityId).put('data', { plugins: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
-      await app.send('host/settings', { type: 'PACK_CHANGED', packId: 'memo-pack' } as never);
+      await app.send('host/settings', { type: 'PACK_CHANGED', packId: 'memo-pack' });
       expect(heardBy(app)).toHaveLength(heardBefore);
 
       finish();
@@ -227,7 +227,7 @@ describe('a feature whose settings change', () => {
       await app.connect();
       const { finish } = await importing(app);
 
-      await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/memos', path: ['tags'], value: [] } as never);
+      await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/memos', path: ['tags'], value: [] });
 
       expect(app.emitted('host/settings')).toContainEqual({
         type: 'SETTINGS_REFUSED',
@@ -244,7 +244,7 @@ describe('a feature whose settings change', () => {
       const { finish } = await importing(app);
       const before = app.emitted('host/settings').length;
 
-      await app.send('host/settings', { type: 'GET_SETTINGS' } as never);
+      await app.send('host/settings', { type: 'GET_SETTINGS' });
 
       expect(app.emitted('host/settings').slice(before)).toContainEqual(
         expect.objectContaining({ type: 'SETTINGS_LOADED' }),
@@ -346,7 +346,7 @@ describe('settings naming prototype machinery', () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'UPDATE_SETTINGS', ...update, value: 'yes' } as never);
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', ...update, value: 'yes' });
 
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     expect(Object.getPrototypeOf(services.settings.getAll().general)).toBe(Object.prototype);
@@ -440,13 +440,13 @@ describe('the help entries the Settings view shows', () => {
     const before = helpFrom(app.emitted('host/settings'), 'SETTINGS_LOADED')[0];
 
     registerPack({ id: 'helpful-pack', features: {}, help: () => [{ id: 'helpful', question: 'Can a pack answer here?', answer: 'Yes' }] } as never);
-    await app.send('host/settings', { type: 'PACK_CHANGED', packId: 'helpful-pack' } as never);
+    await app.send('host/settings', { type: 'PACK_CHANGED', packId: 'helpful-pack' });
     await app.settle();
 
     expect(helpFrom(app.emitted('host/settings'), 'HELP_UPDATED').at(-1)).toEqual([...before, 'helpful']);
 
     unregisterPack('helpful-pack');
-    await app.send('host/settings', { type: 'PACK_CHANGED', packId: 'helpful-pack' } as never);
+    await app.send('host/settings', { type: 'PACK_CHANGED', packId: 'helpful-pack' });
     await app.settle();
 
     expect(helpFrom(app.emitted('host/settings'), 'HELP_UPDATED').at(-1)).toEqual(before);

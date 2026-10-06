@@ -21,7 +21,7 @@ export type SettingsAnswer = Extract<OutgoingSettingsEvents, { type: 'SETTINGS_S
  * `reply` is passed in rather than read from the delivery in scope, which is what makes the absent case a
  * thing a caller must handle rather than a global it might not think to probe.
  */
-export function answerSettings(reply: Reply | undefined, event: SettingsAnswer): void {
+export function answerSettings(reply: Reply<SettingsAnswer> | undefined, event: SettingsAnswer): void {
   if (reply === undefined) broadcastToPlugin('settings', event);
   else reply(event);
 }

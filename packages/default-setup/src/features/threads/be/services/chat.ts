@@ -1,7 +1,9 @@
 import { broadcastToPlugin } from '#generated/events.ts';
+import type { Reply } from '@abuddy/sdk/events';
+import { answer } from '../answer.ts';
 import { EARS } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
-import type { BlockConfig, BlockResponse, MessageEntity, ThreadCreateData, MessageReferences } from '#features/threads/be/types.ts';
+import type { BlockConfig, BlockResponse, MessageEntity, OutgoingThreadsEvents, ThreadCreateData, MessageReferences } from '#features/threads/be/types.ts';
 
 import { readMediaBuffer } from '@abuddy/sdk/utils';
 import * as threadsService from './threads.ts';
@@ -377,7 +379,11 @@ export function createThreadAndNotify(
  * - Load thread data for chat
  * - Refresh recent threads list
  */
-export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, restore?: boolean) {
+export function openThreadChatAndRefreshRecent(
+  threadId: EARS.EntityId,
+  options: { restore?: boolean; reply?: Reply<OutgoingThreadsEvents> } = {},
+) {
+  const { restore, reply } = options;
   if (!restore) {
     repository.threadCommands.markAsVisited(threadId);
   }
@@ -392,7 +398,9 @@ export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, restore?
     throw new Error(`Thread ${threadId} not found`);
   }
 
-  broadcastToPlugin('threads', {
+  // The window that asked, not every window: this broadcast is what pulled a window showing another thread
+  // over to this one. An action that opens a thread has no asker, and `answerThreads` broadcasts for it.
+  answer(reply, {
     type: 'LOAD_CHAT_THREAD',
     data,
     ...(restore && { restore }),
@@ -411,7 +419,10 @@ export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, restore?
  * - Load thread tab data with artifacts
  * - Refresh recent threads list
  */
-export function openThreadTabAndRefresh(threadId: EARS.EntityId) {
+export function openThreadTabAndRefresh(
+  threadId: EARS.EntityId,
+  options: { reply?: Reply<OutgoingThreadsEvents> } = {},
+) {
   // Mark thread as visited when opening tab
   repository.threadCommands.markAsVisited(threadId);
 
@@ -424,8 +435,9 @@ export function openThreadTabAndRefresh(threadId: EARS.EntityId) {
     threadsService.updateChatState(threadId, 'idle');
   }
 
-  // Send thread tab data
-  broadcastToPlugin('threads', {
+  // A tab belongs to one window — the window's own list, persisted in its own storage — so this is the
+  // asker's answer and never news. The recent-threads refresh below is the news half, and stays a broadcast.
+  answer(options.reply, {
     type: 'THREAD_TAB_REQUESTED',
     threadId,
     topic: thread?.topic || `Thread ${threadId}`,

@@ -22,7 +22,12 @@ export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 export function checkFeatureSettings(featureId: string, settings: unknown): string[];
 
 // @public
-export function defineHandlers<TContext extends MachineContext, TEvent extends EventObject>(): Handlers<TContext, TEvent>;
+export function defineHandlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends {
+    type: string;
+} = {
+    type: string;
+    [key: string]: unknown;
+}>(): Handlers<TContext, TEvent, TOut>;
 
 // @public
 export function defineSystem<C extends SystemContract>(): SystemSpec<C>;
@@ -58,16 +63,23 @@ export function getPackHelp(): HelpEntry[];
 export function getPackSettingsDefaults(): PackSettingsDefaults;
 
 // @public
-export interface Handlers<TContext extends MachineContext, TEvent extends EventObject> {
+export interface Handlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends {
+    type: string;
+} = {
+    type: string;
+    [key: string]: unknown;
+}> {
     actions<P extends ActionParams>(defs: {
         [K in keyof P]: (args: Args<TContext, TEvent> & {
-            reply?: Reply;
+            reply?: Reply<TOut>;
+            client?: string;
         }, params: P[K]) => void;
     }): {
         [K in keyof P]: (args: Args<TContext, TEvent>, params: P[K]) => void;
     };
     input<I>(build: (args: InputArgs<TContext, TEvent> & {
-        reply?: Reply;
+        reply?: Reply<TOut>;
+        client?: string;
     }) => I): Mapper<TContext, TEvent, I, TEvent>;
 }
 
@@ -287,16 +299,24 @@ export type SystemEvents =
 };
 
 // @public
-export interface SystemSpec<C extends SystemContract> extends Handlers<ContractContext<C>, MachineEvents<C>> {
+export interface SystemSpec<C extends SystemContract> extends Handlers<ContractContext<C>, MachineEvents<C>, Extract<ContractOutgoing<C>, {
+    type: string;
+}>> {
     actions<P extends ActionParams>(defs: {
         [K in keyof P]: (args: SystemArgs<C> & {
-            reply?: Reply;
+            reply?: Reply<Extract<ContractOutgoing<C>, {
+                type: string;
+            }>>;
+            client?: string;
         }, params: P[K]) => void;
     }): {
         [K in keyof P]: (args: SystemArgs<C>, params: P[K]) => void;
     };
     input<I>(build: (args: InputArgs<ContractContext<C>, MachineEvents<C>> & {
-        reply?: Reply;
+        reply?: Reply<Extract<ContractOutgoing<C>, {
+            type: string;
+        }>>;
+        client?: string;
     }) => I): Mapper<ContractContext<C>, MachineEvents<C>, I, MachineEvents<C>>;
     // (undocumented)
     typeOf: ReturnType<typeof safeEvents<MachineEvents<C>>>;

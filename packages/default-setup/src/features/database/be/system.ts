@@ -135,7 +135,8 @@ export const databaseSystem = setup({
           type: 'FLOW_EVENTS_RESULT',
           flowId,
           events: result.events,
-          hasMore: result.hasMore
+          hasMore: result.hasMore,
+          offset
         });
       } catch (error: unknown) {
         logger.error('Failed to get flow events:', { error: errorMessage(error), flowId });
@@ -143,7 +144,8 @@ export const databaseSystem = setup({
           type: 'FLOW_EVENTS_RESULT',
           flowId,
           events: [],
-          hasMore: false
+          hasMore: false,
+          offset
         });
       }
     },

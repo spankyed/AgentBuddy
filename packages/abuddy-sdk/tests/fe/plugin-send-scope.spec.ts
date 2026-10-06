@@ -64,7 +64,7 @@ afterEach(() => {
 /** A component that does what a click handler does: send to its own plugin */
 const Sends = defineComponent({
   setup: () => {
-    usePlugin<AnyActorRef>().send({ type: 'FETCH' } as never);
+    usePlugin<AnyActorRef>().send({ type: 'FETCH' });
     return () => '';
   },
 });
@@ -117,7 +117,7 @@ describe("a component's send", () => {
         const plugin = usePlugin<AnyActorRef>();
         plugin.subscribe((snapshot) => { seen.push((snapshot.context as { count: number }).count); });
         readBefore = (plugin.getSnapshot().context as { count: number }).count;
-        plugin.send({ type: 'BUMP' } as never);
+        plugin.send({ type: 'BUMP' });
         readAfter = (plugin.getSnapshot().context as { count: number }).count;
         return () => '';
       },

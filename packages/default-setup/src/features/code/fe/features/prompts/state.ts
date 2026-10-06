@@ -1,9 +1,10 @@
 import type { PromptTab } from '../../contract.ts';
 export type { PromptTab } from '../../contract.ts';
 import { setup , type ActorRefFrom } from 'xstate';
-import { sendToSystem } from '#generated/events.ts';
+import { sendToPlugin, sendToSystem } from '#generated/events.ts';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication.ts';
 import type { PromptEntity } from '@abuddy/sdk';
+import type { EARS } from '#generated/ears.ts';
 
 
 export type Event =
@@ -13,7 +14,25 @@ export type Event =
   | { type: 'codePrompts.PROMPT_SELECTED'; promptId: string; data: PromptEntity & { templateFnContent?: string } }
   | { type: 'codePrompts.PROMPT_UPDATED'; prompt: PromptEntity; promptId: string }
   // Tab restoration
-  | { type: 'codePrompts.OPEN_TABS'; promptIds: string[] };
+  | { type: 'codePrompts.OPEN_TABS'; promptIds: string[] }
+  /**
+   * What the panel asks of the **prompts plugin**, which owns the list and the rows.
+   *
+   * The panel used to send these straight to that plugin from its click handlers. Two things were wrong
+   * with that and the second is why they are here rather than merely tidier: a component is not inside any
+   * delivery, so the send carried no `Message.sender` and the prompts plugin had no address to answer — a
+   * refusal or an error had nowhere to go but a toast. A send made from this machine carries the code
+   * plugin's ref, because the shell names a plugin while it handles anything (`sendToPluginActor`).
+   *
+   * The names match what they forward, so the hand-off reads as one; the `codePrompts.` prefix is how the
+   * code plugin routes an event to this child.
+   */
+  | { type: 'codePrompts.LOAD_ALL' }
+  | { type: 'codePrompts.LOAD_MORE' }
+  | { type: 'codePrompts.UPDATE_INPUTS'; promptId: string; inputs: Record<string, unknown> }
+  | { type: 'codePrompts.UPDATE_LABEL'; promptId: string; label: string }
+  | { type: 'codePrompts.DELETE'; promptId: EARS.EntityId }
+  | { type: 'codePrompts.CREATE_INLINE'; label: string; templateFn: string; inputs: Record<string, unknown> };
 
 export const promptsState = setup({
   types: {
@@ -82,6 +101,30 @@ export const promptsState = setup({
       updateParentState(self, { openFiles: updatedFiles })
     },
 
+    // The panel's asks of the prompts plugin, forwarded from here so each one carries a sender
+    loadAllPrompts: () => { sendToPlugin('prompts', { type: 'PROMPTS.LOAD_ALL' }) },
+    loadMorePrompts: () => { sendToPlugin('prompts', { type: 'PROMPTS.LOAD_MORE' }) },
+
+    updatePromptInputs: ({ event }) => {
+      const ev = event as { type: 'codePrompts.UPDATE_INPUTS'; promptId: string; inputs: Record<string, unknown> }
+      sendToPlugin('prompts', { type: 'PROMPT.UPDATE_INPUTS', promptId: ev.promptId, inputs: ev.inputs })
+    },
+
+    updatePromptLabel: ({ event }) => {
+      const ev = event as { type: 'codePrompts.UPDATE_LABEL'; promptId: string; label: string }
+      sendToPlugin('prompts', { type: 'PROMPT.UPDATE_LABEL', promptId: ev.promptId, label: ev.label })
+    },
+
+    deletePrompt: ({ event }) => {
+      const ev = event as { type: 'codePrompts.DELETE'; promptId: EARS.EntityId }
+      sendToPlugin('prompts', { type: 'PROMPT.DELETE', promptId: ev.promptId })
+    },
+
+    createPromptInline: ({ event }) => {
+      const ev = event as { type: 'codePrompts.CREATE_INLINE'; label: string; templateFn: string; inputs: Record<string, unknown> }
+      sendToPlugin('prompts', { type: 'PROMPT.CREATE_INLINE', label: ev.label, templateFn: ev.templateFn, inputs: ev.inputs })
+    },
+
     // Handle tab restoration
     openPromptTabs: ({ event }) => {
       const ev = event as { type: 'codePrompts.OPEN_TABS'; promptIds: string[] }
@@ -111,7 +154,14 @@ export const promptsState = setup({
     },
     'codePrompts.PROMPT_UPDATED': {
       actions: 'updatePromptInOpenFiles'
-    }
+    },
+    // The panel's asks of the prompts plugin
+    'codePrompts.LOAD_ALL': { actions: 'loadAllPrompts' },
+    'codePrompts.LOAD_MORE': { actions: 'loadMorePrompts' },
+    'codePrompts.UPDATE_INPUTS': { actions: 'updatePromptInputs' },
+    'codePrompts.UPDATE_LABEL': { actions: 'updatePromptLabel' },
+    'codePrompts.DELETE': { actions: 'deletePrompt' },
+    'codePrompts.CREATE_INLINE': { actions: 'createPromptInline' }
   },
   states: {
     idle: {}

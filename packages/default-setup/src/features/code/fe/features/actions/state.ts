@@ -1,9 +1,10 @@
 import type { ActionTab } from '../../contract.ts';
 export type { ActionTab } from '../../contract.ts';
 import { setup , type ActorRefFrom } from 'xstate';
-import { sendToSystem } from '#generated/events.ts';
+import { sendToPlugin, sendToSystem } from '#generated/events.ts';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication.ts';
 import type { ActionEntity } from '@abuddy/sdk';
+import type { EARS } from '#generated/ears.ts';
 
 
 export type Event =
@@ -13,7 +14,25 @@ export type Event =
   | { type: 'codeActions.ACTION_SELECTED'; actionId: string; data: ActionEntity & { actionFnContent?: string } }
   | { type: 'codeActions.ACTION_UPDATED'; action: ActionEntity; actionId: string }
   // Tab restoration
-  | { type: 'codeActions.OPEN_TABS'; actionIds: string[] };
+  | { type: 'codeActions.OPEN_TABS'; actionIds: string[] }
+  /**
+   * What the panel asks of the **actions plugin**, which owns the list and the rows.
+   *
+   * The panel used to send these straight to that plugin from its click handlers. Two things were wrong
+   * with that and the second is why they are here rather than merely tidier: a component is not inside any
+   * delivery, so the send carried no `Message.sender` and the actions plugin had no address to answer — a
+   * refusal or an error had nowhere to go but a toast. A send made from this machine carries the code
+   * plugin's ref, because the shell names a plugin while it handles anything (`sendToPluginActor`).
+   *
+   * The names match what they forward, so the hand-off reads as one; the `codeActions.` prefix is how the
+   * code plugin routes an event to this child.
+   */
+  | { type: 'codeActions.LOAD_ALL' }
+  | { type: 'codeActions.LOAD_MORE' }
+  | { type: 'codeActions.UPDATE_INPUT'; actionId: string; input: Record<string, unknown> }
+  | { type: 'codeActions.UPDATE_LABEL'; actionId: string; label: string }
+  | { type: 'codeActions.DELETE'; actionId: EARS.EntityId }
+  | { type: 'codeActions.CREATE_INLINE'; label: string; actionFn: string; input: Record<string, unknown> };
 
 export const actionsState = setup({
   types: {
@@ -82,6 +101,30 @@ export const actionsState = setup({
       updateParentState(self, { openFiles: updatedFiles })
     },
 
+    // The panel's asks of the actions plugin, forwarded from here so each one carries a sender
+    loadAllActions: () => { sendToPlugin('actions', { type: 'ACTIONS.LOAD_ALL' }) },
+    loadMoreActions: () => { sendToPlugin('actions', { type: 'ACTIONS.LOAD_MORE' }) },
+
+    updateActionInput: ({ event }) => {
+      const ev = event as { type: 'codeActions.UPDATE_INPUT'; actionId: string; input: Record<string, unknown> }
+      sendToPlugin('actions', { type: 'ACTION.UPDATE_INPUT', actionId: ev.actionId, input: ev.input })
+    },
+
+    updateActionLabel: ({ event }) => {
+      const ev = event as { type: 'codeActions.UPDATE_LABEL'; actionId: string; label: string }
+      sendToPlugin('actions', { type: 'ACTION.UPDATE_LABEL', actionId: ev.actionId, label: ev.label })
+    },
+
+    deleteAction: ({ event }) => {
+      const ev = event as { type: 'codeActions.DELETE'; actionId: EARS.EntityId }
+      sendToPlugin('actions', { type: 'ACTION.DELETE', actionId: ev.actionId })
+    },
+
+    createActionInline: ({ event }) => {
+      const ev = event as { type: 'codeActions.CREATE_INLINE'; label: string; actionFn: string; input: Record<string, unknown> }
+      sendToPlugin('actions', { type: 'ACTION.CREATE_INLINE', label: ev.label, actionFn: ev.actionFn, input: ev.input })
+    },
+
     // Handle tab restoration
     openActionTabs: ({ event }) => {
       const ev = event as { type: 'codeActions.OPEN_TABS'; actionIds: string[] }
@@ -111,7 +154,14 @@ export const actionsState = setup({
     },
     'codeActions.ACTION_UPDATED': {
       actions: 'updateActionInOpenFiles'
-    }
+    },
+    // The panel's asks of the actions plugin
+    'codeActions.LOAD_ALL': { actions: 'loadAllActions' },
+    'codeActions.LOAD_MORE': { actions: 'loadMoreActions' },
+    'codeActions.UPDATE_INPUT': { actions: 'updateActionInput' },
+    'codeActions.UPDATE_LABEL': { actions: 'updateActionLabel' },
+    'codeActions.DELETE': { actions: 'deleteAction' },
+    'codeActions.CREATE_INLINE': { actions: 'createActionInline' }
   },
   states: {
     idle: {}

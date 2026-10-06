@@ -48,7 +48,7 @@ export type BusSourceEvent = Extract<BackendEvents, { type: 'INCOMING' | 'OUTGOI
 
 export interface BusOptions {
   /** The registered packs whose systems the bus runs */
-  registry: Pick<PackRegistry, 'getRegisteredSystems' | 'getRegisteredPackSystemIds' | 'getPluginEventValidationMap' | 'isPluginReplacing'>;
+  registry: Pick<PackRegistry, 'getRegisteredSystems' | 'getRegisteredPackSystemIds' | 'getPluginEventValidationMap' | 'getEventValidationMap' | 'isPluginReplacing'>;
   /** The systems the bus runs, by id; defaults to every system in `registry` */
   systems?(): ReadonlyMap<string, AnyStateMachine>;
   /** Delivers a message a system sent to a frontend plugin */
@@ -215,13 +215,53 @@ export function createBusMachine(options: BusOptions) {
         options.onOutgoing(event.message);
       },
       routeIncoming: ({ event, system }) => {
+        /**
+         * Reports a send to a system that declares no such event, which XState would otherwise ignore in
+         * silence — delivered, dropped by the machine, nothing said.
+         *
+         * **This is the net for `untypedSendToSystem`**, and the asymmetry it closes is between the two
+         * untyped twins rather than between typed and untyped: `untypedBroadcastToPlugin` has always been
+         * checked here on the way out (`notify`), while its inward mirror was not. The facade's
+         * `sendToSystem` and a handler's `reply` are both typed against a contract, so what is left for a
+         * runtime check is exactly the hatch — host code, tooling, a target or an event that arrives as
+         * data.
+         *
+         * Measured 2026-10-06, no send in either unit pool trips it: this nets the hatch rather than
+         * fixing a live defect, and the case that fires it is written rather than found.
+         *
+         * Reported and dropped-through rather than thrown, as the outgoing side does: the caller is a
+         * running system and a malformed message must not take it down. The event is still delivered —
+         * the machine ignoring it is the existing behaviour, and refusing it here would be a second
+         * decision about the same message.
+         */
+        const reportUndeclared = (to: string, type: string, message: Message) => {
+          const accepted = options.registry.getEventValidationMap().get(to);
+          // No entry is a system nothing registered, which `routeIncoming` already warns about below; a `*`
+          // accepts any type, and the events every system takes are the SDK's rather than a pack's to declare
+          if (accepted === undefined || accepted.has('*') || accepted.has(type)) return;
+          if ((SYSTEM_EVENT_TYPES as readonly string[]).includes(type)) return;
+          const sender = senderSuffix(message);
+          const pair = `${to}/${type}/${sender}`;
+          if (reportedDrops.has(pair)) return;
+          reportedDrops.add(pair);
+          reportError({
+            source: 'bus',
+            operation: 'sendToSystem',
+            severity: 'diagnostic',
+            error: new Error(`Sent "${type}"${sender} to the "${to}" system, which declares no such event — it will be ignored. A system receives what its contract's incoming events declare: add it there, or send an event the system handles.`),
+          });
+        };
+
         if (event.type !== 'INCOMING') return;
         const { to, event: incoming, sender, client } = event.message;
         const actor = system.get(to);
         // Delivered inside a scope naming the message, so the system can answer its sender with `reply` and a
         // send it makes while handling carries its own ref. The event itself is untouched: a return address on it
         // would be a field of the event deciding where things go, which the envelope exists to prevent.
-        if (actor) deliverAs({ receiver: to, replyTo: sender, client }, () => actor.send(incoming));
+        if (actor) {
+          reportUndeclared(to, incoming.type, event.message);
+          deliverAs({ to, sender, client }, () => actor.send(incoming));
+        }
         // An event every system accepts (a feature's settings changing) is the feature's system's if it runs one
         else if (!(SYSTEM_EVENT_TYPES as readonly string[]).includes(incoming.type)) {
           console.warn(`[bus] routeIncoming: system "${to}" not found (may be reloading), dropping event "${incoming.type}"`);

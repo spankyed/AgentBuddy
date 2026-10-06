@@ -43,7 +43,7 @@ describe('llm step', () => {
         const { text, usage, finishReason } = await inference.generateText(call);
         return { text, usage, finishReason, warnings };
       },
-    } as never);
+    });
 
     const sent = await run({ model: 'anthropic:claude-opus-5', prompt: 'Summarize the memo', temperature: 0.7 });
 
@@ -59,7 +59,7 @@ describe('llm step', () => {
         options.push(call);
         return inference.generateText(call);
       },
-    } as never);
+    });
 
     const sent = await run({ prompt: 'Summarize the memo' });
 

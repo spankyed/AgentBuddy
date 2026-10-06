@@ -4,6 +4,28 @@
 
 ```ts
 
+// @internal
+export type _Asker =
+/** Over the backend bus, which is where a system is */
+    {
+    kind: 'bus';
+    ref: string;
+}
+/** Out over one connection, where a plugin in another window or a claimed participant is */
+| {
+    kind: 'connection';
+    ref: string;
+    client: string;
+}
+/** Inside this window, where a plugin beside the answerer is */
+| {
+    kind: 'window';
+    ref: string;
+};
+
+// @internal
+export function _clientOf(delivery: _Delivery | undefined): string | undefined;
+
 // @public
 export function createSends(input?: SendBinding): {
     broadcastToPlugin(name: string, event: {
@@ -11,6 +33,10 @@ export function createSends(input?: SendBinding): {
         [key: string]: unknown;
     }): void;
     sendToPlugin(name: string, event: {
+        type: string;
+        [key: string]: unknown;
+    }): void;
+    sendToWindow(client: string, name: string, event: {
         type: string;
         [key: string]: unknown;
     }): void;
@@ -28,9 +54,8 @@ export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(p
 
 // @internal
 export interface _Delivery {
-    client?: string;
+    asker?: _Asker;
     receiver: string;
-    replyTo?: string;
 }
 
 // @public
@@ -156,10 +181,12 @@ export type Qualified<PackId extends string, M> = {
 };
 
 // @public
-export type Reply = (event: {
+export type Reply<E extends {
+    type: string;
+} = {
     type: string;
     [key: string]: unknown;
-}) => void;
+}> = (event: E) => void;
 
 // @internal
 export function _replyTo(delivery: _Delivery | undefined): Reply | undefined;
@@ -201,6 +228,7 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
     sendToPlugin: TypedSendToPlugin<P>;
     // (undocumented)
     sendToSystem: TypedSendToSystem<S>;
+    sendToWindow: TypedSendToWindow<P>;
 }
 
 // @public
@@ -217,6 +245,9 @@ export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S &
 }) => void) & ((system: FeatureRef, event: SystemEvents) => void);
 
 // @public
+export type TypedSendToWindow<M extends PluginEvents> = (<P extends keyof M & string>(client: string, plugin: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void) & ((client: string, plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
+
+// @public
 export type TypeOfEvent<E> = E extends {
     type: infer K extends string;
 } ? K : never;
@@ -229,6 +260,12 @@ export function untypedBroadcastToPlugin(to: string, event: {
 
 // @public
 export function untypedSendToSystem(to: SystemTarget, event: {
+    type: string;
+    [key: string]: unknown;
+}): void;
+
+// @public
+export function untypedSendToWindow(client: string, to: string, event: {
     type: string;
     [key: string]: unknown;
 }): void;

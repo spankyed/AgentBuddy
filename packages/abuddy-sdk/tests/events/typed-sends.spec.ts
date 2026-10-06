@@ -1,6 +1,6 @@
 // Compile-time checks of the typed sends, run by `tsc --noEmit`: the sends sit in functions that never run.
 import { describe, expectTypeOf, it } from 'vitest';
-import type { TypedSendToPlugin, TypedSendToSystem } from '../../src/events/index.ts';
+import type { TypedSendToPlugin, TypedSendToSystem, TypedSendToWindow } from '../../src/events/index.ts';
 import type { FeatureRef } from '../../src/ids/index.ts';
 
 type Systems = {
@@ -20,6 +20,7 @@ type Plugins = {
 
 declare const sendToSystem: TypedSendToSystem<Systems>;
 declare const sendToPlugin: TypedSendToPlugin<Plugins>;
+declare const sendToWindow: TypedSendToWindow<Plugins>;
 
 describe('sendToSystem', () => {
   it('checks the event its type names', () => {
@@ -86,6 +87,37 @@ describe('sendToPlugin', () => {
   });
 });
 
+/**
+ * The addressed send, which is `sendToPlugin`'s checking with the connection in front.
+ *
+ * **This is the only thing exercising the declared shape.** `defineEvents` casts its implementation to
+ * `TypedEvents`, and no pack calls the typed `sendToWindow` yet, so without these the declaration could
+ * drift from the function and nothing would say. They do not *bind* the two — only dropping the cast
+ * would — but they keep the half a reader relies on honest.
+ */
+describe('sendToWindow', () => {
+  it("checks the plugin's events, with the connection first", () => {
+    expectTypeOf(() => {
+      sendToWindow('c-main', 'memos', { type: 'MEMO_ADDED', text: 'x' });
+      // @ts-expect-error the memos plugin doesn't receive TAG_ADDED
+      sendToWindow('c-main', 'memos', { type: 'TAG_ADDED', name: 'x' });
+      // @ts-expect-error MEMO_ADDED needs its text
+      sendToWindow('c-main', 'memos', { type: 'MEMO_ADDED' });
+      // @ts-expect-error the connection is not optional: a handler holding one must narrow it first
+      sendToWindow(undefined, 'memos', { type: 'MEMO_ADDED', text: 'x' });
+      // @ts-expect-error and it is not the thing you can leave out
+      sendToWindow('memos', { type: 'MEMO_ADDED', text: 'x' });
+    }).toBeFunction();
+  });
+
+  it('rejects a union plugin id, as the broadcast does', () => {
+    expectTypeOf((pluginId: 'memos' | 'tags') => {
+      // @ts-expect-error one plugin per send
+      sendToWindow('c-main', pluginId, { type: 'TAG_ADDED', name: 'x' });
+    }).toBeFunction();
+  });
+});
+
 // A feature this pack's maps don't name (another pack's, found at run time) still takes what every system and
 // plugin takes, by its ref: default-setup's settings system tells any feature its settings changed
 describe('a feature named by its ref', () => {
@@ -95,6 +127,7 @@ describe('a feature named by its ref', () => {
       sendToSystem(feature, { type: 'FEATURE_SETTINGS_UPDATED', settings: {}, changes: null });
       sendToSystem(feature, { type: 'PACK_CHANGED', packId: 'other-pack' });
       sendToPlugin(feature, { type: 'FEATURE_SETTINGS_UPDATED', settings: {} });
+      sendToWindow('c-main', feature, { type: 'FEATURE_SETTINGS_UPDATED', settings: {} });
       // @ts-expect-error only the app-wide events: nothing declares what else that system takes
       sendToSystem(feature, { type: 'ADD_MEMO', text: 'x' });
       // @ts-expect-error a plugin takes only the settings update from outside its pack's maps

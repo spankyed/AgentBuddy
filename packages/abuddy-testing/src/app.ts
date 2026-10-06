@@ -119,6 +119,8 @@ interface AppPacks {
   getRegisteredPackSystemIds(packId: string): string[];
   /** What each plugin receives, so a test app drops a send no plugin declares, as the app does */
   getPluginEventValidationMap(): Map<string, Set<string>>;
+  /** And what each system accepts, so a send a system declares no event for is reported rather than ignored */
+  getEventValidationMap(): Map<string, Set<string>>;
   /**
    * Whether a plugin's pack is mid-replacement, so a send to it is an expected drop rather than a
    * mistake. A pack test replaces nothing, so the harness's registry always answers false.

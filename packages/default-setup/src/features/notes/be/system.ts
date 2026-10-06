@@ -27,7 +27,7 @@ import { ref } from '#generated/ref.ts';
  * did. The data the import changed is separate news and stays a broadcast. `answerSettings`
  * (`@abuddy/host`) is the same shape for the same reason.
  */
-const answer = (reply: Reply | undefined, event: OutgoingNotesEvents): void =>
+const answer = (reply: Reply<OutgoingNotesEvents> | undefined, event: OutgoingNotesEvents): void =>
   (reply ? reply(event) : broadcastToPlugin('notes', event));
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 

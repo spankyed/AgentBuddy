@@ -20,15 +20,34 @@
 // handler creates inside it, a timer included — so a send made minutes later, long after the asker stopped
 // waiting, carried that asker's address, and a `reply` made there would have answered a request nobody was
 // listening for. Binding at entry cannot do that: a handler either took an answer with it or it did not.
-import { _runDelivery, type _Delivery } from '@abuddy/sdk/events';
+import { _runDelivery, type _Asker, type Message } from '@abuddy/sdk/events';
 
 /**
- * Runs `body` as the handling of `delivery`: a send made inside it carries the handler's ref as
+ * The way back to whoever sent this message, read off the envelope.
+ *
+ * **One reader, because the two doors used to each build it and could disagree.** A `sender` with a `client` is
+ * a plugin or a claimed participant on that connection; a `sender` without one came from the backend, so it is
+ * a system reachable over the bus; no `sender` means nobody said where an answer would go, and there is then
+ * nothing for a handler to answer with.
+ *
+ * `client` is never read from the wire — the API mints it per connection and stamps it on the way in — so this
+ * is a return address a sender cannot forge into pointing at someone else's window.
+ */
+function askerOf({ sender, client }: Pick<Message, 'sender' | 'client'>): _Asker | undefined {
+  if (sender === undefined) return undefined;
+  return client === undefined ? { kind: 'bus', ref: sender } : { kind: 'connection', ref: sender, client };
+}
+
+/**
+ * Runs `body` as the handling of `message`: a send made inside it carries the handler's ref as
  * `Message.sender`, and a handler entered inside it is handed the answer for this message.
+ *
+ * It takes the envelope rather than a prepared delivery so that reading a return address happens in one place
+ * (`askerOf`), which is what stops the bus's two doors from drifting apart.
  *
  * Synchronous by design — see the header. A send a handler makes after an `await` carries no sender, which
  * `tests/bus/delivery-is-synchronous.spec.ts` pins, so the limit is a decision rather than a surprise.
  */
-export function deliverAs<T>(delivery: _Delivery, body: () => T): T {
-  return _runDelivery(delivery, body);
+export function deliverAs<T>(message: Pick<Message, 'to' | 'sender' | 'client'>, body: () => T): T {
+  return _runDelivery({ receiver: message.to, asker: askerOf(message) }, body);
 }

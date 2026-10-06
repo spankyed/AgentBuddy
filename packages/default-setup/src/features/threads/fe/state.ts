@@ -184,15 +184,11 @@ type UIEvent =
   | { type: 'SET_CHAT_STATE'; threadId: string; chatState: string }
   | { type: 'CLEAR_CHAT_STATE_OVERRIDE'; threadId: string }
   | { type: 'SELECT_TAB'; tabId: string }
-  | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string; pinned?: boolean }
   | { type: 'CLOSE_TAB'; tabId: string }
   | { type: 'CLOSE_ACTIVE_TAB' }
   | { type: 'SELECT_ARTIFACT'; artifactId: string }
   | { type: 'SET_MODE'; mode: string }
   | { type: 'SET_PHASE'; phase: string }
-  | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
-  | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
-  | { type: 'REJECT_TODO_LIST'; artifactId: string }
   | { type: 'RESPOND_TO_BLOCK_INTERACTION'; messageId: string; response: BlockResponse }
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp?: number; blockResponse?: BlockResponse; asideText?: string; context?: Record<string, unknown>; compacted?: boolean }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
@@ -1038,31 +1034,6 @@ const threadsState = setup({
     selectTab: assign(({ event }) => ({
       activeTabId: typeOf('SELECT_TAB', event).tabId
     })),
-    openThreadTab: assign(({ context, event }) => {
-      const { threadId, label, pinned } = typeOf('OPEN_THREAD_TAB', event) as { threadId: string; label: string; pinned?: boolean };
-      const existingTab = context.tabs.find(t => t.id === threadId);
-
-      if (existingTab) {
-        if (pinned !== undefined && existingTab.pinned !== pinned) {
-          return {
-            tabs: context.tabs.map(t => t.id === threadId ? { ...t, pinned } : t),
-            activeTabId: threadId
-          };
-        }
-        return { activeTabId: threadId };
-      }
-
-      return {
-        tabs: [...context.tabs, {
-          id: threadId,
-          label,
-          artifacts: [],
-          selectedArtifactId: undefined,
-          ...(pinned && { pinned }),
-        }],
-        activeTabId: threadId
-      };
-    }),
     closeTab: enqueueActions(({ enqueue, context, event, self }) => {
       const tabId = typeOf('CLOSE_TAB', event).tabId;
       const tab = context.tabs.find(t => t.id === tabId);
@@ -1297,31 +1268,6 @@ const threadsState = setup({
       });
       return { tabs };
     }),
-    updateTodoTask: assign(({ context, event }) => {
-      const { artifactId, taskId, completed } = typeOf('UPDATE_TODO_TASK', event);
-      const tabs = context.tabs.map(tab => ({
-        ...tab,
-        artifacts: tab.artifacts.map(artifact => {
-          if (artifact.id === artifactId && artifact.type === 'todo') {
-            const content = artifact.content as { tasks: Array<{ id: string; completed?: boolean }> };
-            const tasks = content.tasks.map(task =>
-              task.id === taskId ? { ...task, completed } : task
-            );
-            return { ...artifact, content: { ...content, tasks } };
-          }
-          return artifact;
-        })
-      }));
-      return { tabs };
-    }),
-    approveTodoList: async ({ event }) => {
-      const { artifactId, tasks } = typeOf('APPROVE_TODO_LIST', event);
-      sendToSystem(id, { type: 'APPROVE_TODO_LIST', artifactId, tasks });
-    },
-    rejectTodoList: async ({ event }) => {
-      const { artifactId } = typeOf('REJECT_TODO_LIST', event);
-      sendToSystem(id, { type: 'REJECT_TODO_LIST', artifactId });
-    },
     handleHotkey: createHotkeyProcessor({
       quickPrompts: 'TOGGLE_QUICK_PROMPTS',
       closeTab: 'CLOSE_ACTIVE_TAB',
@@ -1783,9 +1729,6 @@ const threadsState = setup({
         commands: typeOf('COMMANDS_UPDATED', event).commands
       }))
     },
-    UPDATE_TODO_TASK: { actions: 'updateTodoTask' },
-    APPROVE_TODO_LIST: { actions: 'approveTodoList' },
-    REJECT_TODO_LIST: { actions: 'rejectTodoList' },
     RESPOND_TO_BLOCK_INTERACTION: {
       actions: [
         'respondToBlockInteraction',
@@ -1843,7 +1786,6 @@ const threadsState = setup({
       actions: 'finishStream',
     },
     SELECT_TAB: { actions: ['selectTab', 'persistTabs'] },
-    OPEN_THREAD_TAB: { actions: ['openThreadTab', 'persistTabs'] },
     CLOSE_TAB: { actions: ['closeTab', 'cleanupEmptyGroups', 'persistTabs', 'persistTabGroups'] },
     CLOSE_ACTIVE_TAB: { actions: ['closeActiveTab', 'cleanupEmptyGroups', 'persistTabs', 'persistTabGroups'] },
     // Tab reorder & group events

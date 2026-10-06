@@ -7,10 +7,10 @@
           <ListTodo :size="14" class="text-neutral-500" />
           <h3 class="text-sm font-medium text-neutral-200">
             {{ artifact.title || 'Proposed Tasks' }}
-            <span class="ml-1 text-xs font-normal text-neutral-500">({{ todoData.tasks.length }})</span>
+            <span class="ml-1 text-xs font-normal text-neutral-500">({{ tasks.length }})</span>
           </h3>
         </div>
-        <div v-if="todoData.status === 'pending'" class="flex gap-2">
+        <div v-if="status === 'pending'" class="flex gap-2">
           <button
             @click="handleReject"
             class="px-3 py-1 text-xs font-medium text-red-400 transition-colors border rounded bg-red-500/10 border-red-500/20 hover:bg-red-500/15"
@@ -25,22 +25,22 @@
           </button>
         </div>
         <span
-          v-else-if="todoData.status === 'approved' || todoData.status === 'rejected'"
+          v-else-if="status === 'approved' || status === 'rejected'"
           :class="[
             'text-xs px-2 py-0.5 rounded',
-            todoData.status === 'approved' 
+            status === 'approved' 
               ? 'bg-green-500/10 text-green-400' 
               : 'bg-red-500/10 text-red-400'
           ]"
         >
-          {{ todoData.status === 'approved' ? 'Approved' : 'Rejected' }}
+          {{ status === 'approved' ? 'Approved' : 'Rejected' }}
         </span>
       </div>
       
       <!-- Todo Tasks -->
       <div class="space-y-0">
         <div 
-          v-for="task in todoData.tasks" 
+          v-for="task in tasks" 
           :key="task.id"
           :class="[
             'flex items-center gap-3 px-3 py-2.5 border-t border-neutral-700/30 transition-colors',
@@ -98,7 +98,8 @@
 </template>
 
 <script setup lang="ts">
-import { sendToPlugin } from '#generated/events.ts'
+import { sendToSystem } from '#generated/events.ts'
+import { usePluginState } from '#generated/fe.ts'
 import { ref, computed, watch } from 'vue';
 import { ListTodo, Check } from 'lucide-vue-next';
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
@@ -118,40 +119,61 @@ const props = defineProps<{
   artifact: ArtifactItem<Partial<TodoContent>>;
 }>();
 
-// Use reactive data to allow local edits
-const todoData = ref<TodoContent>({
-  tasks: props.artifact.content?.tasks || [],
-  status: props.artifact.content?.status || 'pending'
-});
+const currentThread = usePluginState('threads', (s) => s.currentThread);
 
-// Sync when artifact prop updates (e.g. from UPDATE_TODO_TASK)
-watch(() => props.artifact.content, (newContent) => {
-  if (newContent) {
-    todoData.value = {
-      tasks: newContent.tasks || [],
-      status: newContent.status || 'pending'
-    };
-  }
+/**
+ * The decision is the artifact's, read from it rather than kept here.
+ *
+ * It used to be a local `ref` this set as the button was clicked, which read as working and was not: the
+ * artifact never changed, so the same list open elsewhere stayed pending and a remount dropped the
+ * decision. Whatever acts on `user.todo.*` records the outcome on the artifact, and this shows it.
+ */
+const status = computed(() => props.artifact.content?.status ?? 'pending');
+
+/** The tasks, which the user may reword while the list is pending — local until a decision sends them */
+const tasks = ref<TodoTask[]>(props.artifact.content?.tasks ?? []);
+
+watch(() => props.artifact.content?.tasks, (next) => {
+  if (next) tasks.value = next;
 }, { deep: true });
 
-const isEditable = computed(() => todoData.value.status === 'pending');
+const isEditable = computed(() => status.value === 'pending');
 
 function updateTaskDescription(taskId: string, event: Event) {
   const target = event.target as HTMLInputElement;
-  const task = todoData.value.tasks.find(t => t.id === taskId);
+  const task = tasks.value.find(t => t.id === taskId);
   if (task) {
     task.description = target.value;
   }
 }
 
+/**
+ * A decision is raised as a brain event, which is how an artifact asks for something to happen: the
+ * threads system forwards any `eventType` to the brain (`FORWARD_BRAIN_EVENT`) and a flow listens. The
+ * session artifacts do the same for a permission mode and a cleared goal.
+ *
+ * That generic route is the point of an artifact being an extension: nothing about todo lists belongs in
+ * the threads feature, which is where three events and three handlers for them used to sit.
+ */
+function decide(eventType: 'user.todo.approved' | 'user.todo.rejected', payload: Record<string, unknown>) {
+  const threadId = currentThread.value?.id;
+  if (!threadId) {
+    console.warn('[todo-artifact] no current thread; cannot raise the decision');
+    return;
+  }
+  sendToSystem('threads', {
+    type: 'FORWARD_BRAIN_EVENT',
+    eventType,
+    payload: { threadId, artifactId: props.artifact.id, ...payload },
+  });
+}
+
 function handleApprove() {
-  sendToPlugin('threads', { type: 'APPROVE_TODO_LIST', artifactId: props.artifact.id, tasks: todoData.value.tasks });
-  todoData.value.status = 'approved';
+  decide('user.todo.approved', { tasks: tasks.value });
 }
 
 function handleReject() {
-  sendToPlugin('threads', { type: 'REJECT_TODO_LIST', artifactId: props.artifact.id });
-  todoData.value.status = 'rejected';
+  decide('user.todo.rejected', {});
 }
 </script>
 

@@ -90,16 +90,17 @@ const databaseState = setup({
     answersPendingTransaction: ({ context, event }) =>
       (event as { requestId?: string }).requestId === context.pendingTransactionId,
     /**
-     * Whether these events belong to the flow the viewer is on.
+     * Whether these events are the page the viewer is waiting for: the right flow *and* the right offset.
      *
-     * `currentFlowId` is assigned before every `GET_FLOW_EVENTS` — by the explicit selection and by the
-     * auto-select on the flow list — so the reply's `flowId` is enough to tell it from an answer for a
-     * flow since left. It does **not** settle two pages of the same flow: the reply echoes no `offset`,
-     * and `setFlowEvents` decides append-or-replace from the context's. That needs the backend to echo
-     * it, so it is out of this guard's reach rather than covered by it.
+     * The flow alone was not enough, and the gap was reachable. `setFlowEvents` decided append-or-replace
+     * from whatever offset the context had reached, so re-selecting a flow while a later page was in
+     * flight made that page replace the whole list — page two shown as if it were the flow. The reply
+     * echoes its `offset` now, which is what lets this say *which* page rather than only which flow.
      */
-    answersCurrentFlow: ({ context, event }) =>
-      (event as { flowId?: string }).flowId === context.currentFlowId,
+    answersCurrentPage: ({ context, event }) => {
+      const ev = event as { flowId?: string; offset?: number };
+      return ev.flowId === context.currentFlowId && ev.offset === context.tracePagination.offset;
+    },
   },
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
@@ -380,7 +381,11 @@ const databaseState = setup({
     setFlowEvents: assign(({ event, context }) => {
       const ev = typeOf('FLOW_EVENTS_RESULT', event);
       return {
-        flowEvents: context.tracePagination.offset > 0
+        // The page this answer is *for*. Equal to the context's offset today, because the guard admits
+        // only the page being awaited — so no case can tell the two readings apart, and none pretends to.
+        // It is the event's to say: loosen that guard to accept a range and reading the context goes wrong
+        // silently, which is the edit that would make this line matter.
+        flowEvents: ev.offset > 0
           ? [...context.flowEvents, ...ev.events]
           : ev.events,
         tracePagination: {
@@ -392,7 +397,9 @@ const databaseState = setup({
     }),
 
     loadMoreEvents: enqueueActions(({ context, enqueue }) => {
-      if (!context.currentFlowId || !context.tracePagination.hasMore) return;
+      // One page at a time. The guard admits the offset being awaited, so a second click while the first
+      // page is in flight would move that offset and strand the page already asked for.
+      if (!context.currentFlowId || !context.tracePagination.hasMore || context.isLoadingTrace) return;
 
       const newOffset = context.tracePagination.offset + context.tracePagination.limit;
       sendToSystem(id, {
@@ -549,7 +556,7 @@ AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
     FEATURE_SETTINGS_UPDATED: { actions: 'setDatabaseSettings' },
     // Trace viewer events
     TRACE_FLOWS_RESULT: { actions: 'setTraceFlows' },
-    FLOW_EVENTS_RESULT: { guard: 'answersCurrentFlow', actions: 'setFlowEvents' },
+    FLOW_EVENTS_RESULT: { guard: 'answersCurrentPage', actions: 'setFlowEvents' },
     NODE_DETAILS_RESULT: { actions: 'setNodeDetails' },
     // Backup events
     BACKUP_INFO_RESULT: { actions: 'setBackupInfo' },

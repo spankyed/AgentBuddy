@@ -107,6 +107,7 @@ export interface HostServices {
     appData: AppDataService;
     emitter: {
         broadcastToPlugin: typeof untypedBroadcastToPlugin;
+        sendToWindow: typeof untypedSendToWindow;
         sendToSystem: typeof untypedSendToSystem;
     };
     filesystem: FilesystemService;

@@ -150,7 +150,15 @@ export type OutgoingPullRequestEvents =
   | { type: 'pr.STATUS_CHANGED'; data: { timestamp: Date } }
   | { type: 'pr.GIT_STATUS_REFRESHED'; data: { timestamp: Date } }
   | { type: 'pr.OPEN_PRS_RECEIVED'; data: { prs: GhPullRequest[] } }
-  | { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; requestId: number } }
+  /**
+   * `fetchedAt` is when these details were read from GitHub, and the viewer keeps the newest per PR so a
+   * slow retry cannot overwrite fresher data from a concurrent fetch.
+   *
+   * **A clock rather than a counter, because the two sides do not share a lifetime.** What this is
+   * compared against lives in the renderer, which outlives the backend: anything reset by an API restart
+   * or a pack reload reads as older there forever after, and every later answer is dropped.
+   */
+  | { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; fetchedAt: number } }
   | { type: 'pr.PR_CREATED'; data: { pr: GhPullRequest } }
   | { type: 'pr.PR_MERGED'; data: { number: number } }
   | { type: 'pr.PR_CLOSED'; data: { number: number } }

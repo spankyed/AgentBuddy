@@ -26,7 +26,7 @@ import { ref } from '#generated/ref.ts';
  * result for work it did not do, and flipping its own status to success, is what broadcasting it did. The
  * data the import changed is separate news and stays a broadcast.
  */
-const answer = (reply: Reply | undefined, event: OutgoingLibraryEvents): void =>
+const answer = (reply: Reply<OutgoingLibraryEvents> | undefined, event: OutgoingLibraryEvents): void =>
   (reply ? reply(event) : broadcastToPlugin('library', event));
 import type { Reply } from '@abuddy/sdk/events';
 import type { OutgoingLibraryEvents } from './types.ts';

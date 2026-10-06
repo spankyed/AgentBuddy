@@ -46,13 +46,27 @@ export interface ShellParams {
 export type MessageSender = Pick<Message, 'from' | 'via'>;
 
 /**
- * Asking for a plugin: which one, whether to open it or only hand it its events, and who asked. The sender
- * travels with the request so that a refusal names it however long the request waited for its pack's frontend.
+ * Asking for a plugin: which one, whether to open it or only hand it its events, and who asked. Both ways of
+ * saying who asked travel with the request, so each survives however long it waited for its pack's frontend.
  */
 export interface PluginRequest {
   plugin: string;
   select: boolean;
-  sender: MessageSender;
+  /**
+   * Labels a refusal names — which pack asked, and what in it. Deliberately **not** an address: `from` is a
+   * pack, and a pack is not a participant anything can answer.
+   */
+  labels: MessageSender;
+  /**
+   * The ref of the plugin that asked, so the receiving plugin's handler is handed a `reply` that reaches it.
+   * Absent for the shell's own sends — a lifecycle event, a hotkey, a navigation — and for an `OPEN_PLUGIN`,
+   * which is a navigation command rather than a question.
+   *
+   * A ref and not an `_Asker`, because every request through this queue came from a plugin in this window: the
+   * kind is invariant, so the variant is built where it is used (`deliverPluginEvents`) rather than carried,
+   * which keeps the shell's event types free of it and the round trip out of the queue's drain.
+   */
+  sender?: string;
 }
 
 export interface ShellContext {
@@ -116,9 +130,9 @@ export interface ShellContext {
 export type ShellEvent =
   | { type: 'SELECT_PLUGIN'; plugin: string; historyIndex?: number }
   | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[] }
-  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string; via?: string }
+  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string; via?: string; sender?: string }
   /** Hands an opened plugin its events, once the shell has selected it */
-  | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[] }
+  | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[]; sender?: string }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }
   | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target?: string; menuItems: ContextMenuItem[] }
   | { type: 'TRAIL_CLICK'; target: string; info?: unknown }

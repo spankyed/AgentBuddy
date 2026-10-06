@@ -1,34 +1,50 @@
-// The trace viewer's flow events: a reply that names its flow, against a view that has switched flows.
+// The trace viewer's flow events: a reply that names which page of which flow it is, against a view that
+// has moved on.
 //
-// Every `GET_FLOW_EVENTS` assigns `currentFlowId` before it sends — both the auto-select on the flow list
-// and an explicit selection — so the reply's own `flowId` tells it from an answer for a flow the viewer
-// has left. Without the check, clicking two flows quickly shows the first one's events under the second.
+// Every `GET_FLOW_EVENTS` assigns `currentFlowId` and the offset it asked for before it sends — both the
+// auto-select on the flow list and an explicit selection — so the reply's own `flowId` and `offset` tell
+// it from an answer the viewer has left behind. Without the flow half, clicking two flows quickly shows
+// the first one's events under the second.
 //
-// **What `flowId` cannot settle, and the contract is why.** `GET_FLOW_EVENTS` carries `flowId`, `offset`
-// and `limit`; the reply echoes `flowId` and `hasMore` only. `setFlowEvents` decides append-or-replace
-// from `context.tracePagination.offset` rather than from an echoed offset, so two paginated requests for
-// the *same* flow can still both append. Closing that needs the backend to echo `offset` — it is not a
-// guard this side can write — so this file covers the cross-flow half and says so rather than implying
-// the pair is finished.
+// **The offset half was the gap this file used to describe rather than cover.** `FLOW_EVENTS_RESULT`
+// echoed `flowId` and `hasMore` only, and `setFlowEvents` decided append-or-replace from whatever offset
+// the context had since reached — so re-selecting a flow while a later page was in flight let that page
+// *replace* the whole list, page two shown as if it were the flow. The reply carries its `offset` now,
+// which is what lets the viewer place an answer by the page it is for instead of by where it has got to.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
+import type { TNodeEntity } from '@abuddy/sdk/steps';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
 vi.mock('#generated/events.ts', () => ({ sendToSystem }));
 
 const { default: databaseState } = await import('#features/database/fe/state.ts');
 
-const anEvent = (id: string) => ({ id, label: id }) as never;
+/**
+ * A trace node as the viewer lists it: the two fields it reads, which is deliberately not a whole
+ * `TNodeEntity`. **The cast stops here** — the events the cases send are checked, so a misspelled event
+ * type is a compile error rather than a send the machine ignores while the case asserts nothing.
+ */
+const anEvent = (id: string) => ({ id, label: id }) as unknown as TNodeEntity;
+
+/** An answer, which says which page of which flow it is */
+const page = (flowId: string, offset: number, ids: string[], hasMore = false) =>
+  ({ type: 'FLOW_EVENTS_RESULT' as const, flowId, offset, hasMore, events: ids.map(anEvent) });
 
 /** The trace viewer, which is where flow selection is handled */
 function tracing() {
   const actor = createActor(databaseState).start();
-  actor.send({ type: 'VIEW_MODE.TOGGLE' } as never);
+  actor.send({ type: 'VIEW_MODE.TOGGLE' });
   return actor;
 }
 
 const flowEvents = (actor: ReturnType<typeof tracing>) =>
   actor.getSnapshot().context.flowEvents.map((event: { id: string }) => event.id);
+
+const askedOffsets = () => sendToSystem.mock.calls
+  .map(([, event]) => event as { type: string; offset?: number })
+  .filter((event) => event.type === 'GET_FLOW_EVENTS')
+  .map((event) => event.offset);
 
 beforeEach(() => {
   sendToSystem.mockReset();
@@ -37,37 +53,75 @@ beforeEach(() => {
 it('shows the flow last selected, not the answer that arrived last', () => {
   const actor = tracing();
 
-  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f1' } as never);
-  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f2' } as never);
+  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f1' });
+  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f2' });
   expect(actor.getSnapshot().context.currentFlowId, 'the selection assigns it at once').toBe('f2');
 
   // f1's answer turns up after the viewer has moved on
-  actor.send({
-    type: 'FLOW_EVENTS_RESULT',
-    flowId: 'f1',
-    events: [anEvent('from-f1')],
-    hasMore: false,
-  } as never);
+  actor.send(page('f1', 0, ['from-f1']));
   expect(flowEvents(actor), 'not shown under f2').toEqual([]);
 
-  actor.send({
-    type: 'FLOW_EVENTS_RESULT',
-    flowId: 'f2',
-    events: [anEvent('from-f2')],
-    hasMore: false,
-  } as never);
+  actor.send(page('f2', 0, ['from-f2']));
   expect(flowEvents(actor)).toEqual(['from-f2']);
 });
 
 it('clears the previous flow\'s events when a new one is selected', () => {
   const actor = tracing();
 
-  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f1' } as never);
-  actor.send({
-    type: 'FLOW_EVENTS_RESULT', flowId: 'f1', events: [anEvent('from-f1')], hasMore: false,
-  } as never);
+  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f1' });
+  actor.send(page('f1', 0, ['from-f1']));
   expect(flowEvents(actor)).toEqual(['from-f1']);
 
-  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f2' } as never);
+  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f2' });
   expect(flowEvents(actor), 'the view does not show one flow under another while loading').toEqual([]);
+});
+
+/**
+ * The case the offset exists for: a page the viewer has left behind must not land, and the flow id cannot
+ * say so because it is the same flow.
+ *
+ * Re-selecting puts the viewer back on page one. The second page, still in flight, then answers — and
+ * before the offset was echoed it *replaced* the list, so the flow appeared to consist of its own page two.
+ */
+it('drops a page the viewer has paged away from, in the same flow', () => {
+  const actor = tracing();
+  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f1' });
+  actor.send(page('f1', 0, ['one'], true));
+
+  actor.send({ type: 'TRACE.LOAD_MORE' });
+  expect(askedOffsets(), 'the second page was asked for').toEqual([0, 50]);
+
+  // Back to page one while that page is still coming
+  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f1' });
+  actor.send(page('f1', 50, ['two']));
+
+  expect(flowEvents(actor), 'page two is not the flow').toEqual([]);
+});
+
+// A page is placed by the offset it is for: page one replaces, a later page appends
+it('appends a later page and replaces on the first', () => {
+  const actor = tracing();
+  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f1' });
+
+  actor.send(page('f1', 0, ['one'], true));
+  expect(flowEvents(actor)).toEqual(['one']);
+
+  actor.send({ type: 'TRACE.LOAD_MORE' });
+  actor.send(page('f1', 50, ['two']));
+  expect(flowEvents(actor), 'the later page adds to the list').toEqual(['one', 'two']);
+});
+
+/**
+ * One page in flight at a time, which the offset correlation requires rather than merely prefers: a second
+ * click would move the offset the viewer awaits and strand the page already asked for.
+ */
+it('asks for one page at a time', () => {
+  const actor = tracing();
+  actor.send({ type: 'TRACE.SELECT_FLOW', flowId: 'f1' });
+  actor.send(page('f1', 0, ['one'], true));
+
+  actor.send({ type: 'TRACE.LOAD_MORE' });
+  actor.send({ type: 'TRACE.LOAD_MORE' });
+
+  expect(askedOffsets(), 'the second click waits for the first page').toEqual([0, 50]);
 });

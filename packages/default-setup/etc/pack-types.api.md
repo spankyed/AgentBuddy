@@ -8,7 +8,7 @@ import * as _abuddy_sdk from '@abuddy/sdk';
 import { ActionEntity, ActionParameter, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TNodeEntity as TNodeEntity$1, TemplateInput } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
-import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PluginInboxOf, PublicPluginInboxOf, Qualified, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
+import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PluginInboxOf, PublicPluginInboxOf, Qualified, Reply, TypedSendToPlugin, TypedSendToSystem, TypedSendToWindow } from '@abuddy/sdk/events';
 import { HotkeysMap, NavHistory, PluginInbox, PluginStateOf, TabGroup } from '@abuddy/sdk/fe';
 import { Simplify as Simplify$1 } from '@abuddy/sdk/helpers';
 import { EmbeddingModelId, ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
@@ -2610,13 +2610,6 @@ type IncomingThreadsEvents = {
     type: 'PAUSE_TURN';
     threadId: string;
 } | {
-    type: 'APPROVE_TODO_LIST';
-    artifactId: string;
-    tasks: any[];
-} | {
-    type: 'REJECT_TODO_LIST';
-    artifactId: string;
-} | {
     type: 'INTERACTIVE_MSG_RESPONSE';
     messageId: string;
     threadId: string;
@@ -3432,11 +3425,17 @@ type OutgoingDatabaseEvents = {
 } | {
     type: 'TRACE_FLOWS_RESULT';
     flows: TNodeEntity[];
-} | {
+}
+/**
+ * `offset` is which page these events are, which is what tells two pages of one flow apart — the flow id
+ * alone cannot, so a viewer correlating on it places a late page by wherever it has since got to.
+ */
+ | {
     type: 'FLOW_EVENTS_RESULT';
     flowId: string;
     events: TNodeEntity[];
     hasMore: boolean;
+    offset: number;
 } | {
     type: 'NODE_DETAILS_RESULT';
     nodeId: string;
@@ -3882,12 +3881,21 @@ type OutgoingPullRequestEvents = {
     data: {
         prs: GhPullRequest[];
     };
-} | {
+}
+/**
+ * `fetchedAt` is when these details were read from GitHub, and the viewer keeps the newest per PR so a
+ * slow retry cannot overwrite fresher data from a concurrent fetch.
+ *
+ * **A clock rather than a counter, because the two sides do not share a lifetime.** What this is
+ * compared against lives in the renderer, which outlives the backend: anything reset by an API restart
+ * or a pack reload reads as older there forever after, and every later answer is dropped.
+ */
+ | {
     type: 'pr.PR_DETAILS_RECEIVED';
     data: {
         pr: GhPullRequest;
         comments: GhPRComment[];
-        requestId: number;
+        fetchedAt: number;
     };
 } | {
     type: 'pr.PR_CREATED';
@@ -4166,11 +4174,6 @@ type OutgoingThreadsEvents = {
     threadId: string;
     message: MessageEntity;
 } | {
-    type: 'UPDATE_TODO_TASK';
-    artifactId: string;
-    taskId: string;
-    completed: boolean;
-} | {
     type: 'SET_MODE';
     mode: string;
 } | {
@@ -4265,8 +4268,9 @@ type OwnRepositories = {
  * feature, or nothing — where a ref that no longer fits is wrong visibly, and is refused at the bus rather
  * than doing something else.
  */
-type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToSystem'> & {
+type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToSystem' | 'sendToWindow'> & {
     broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
+    sendToWindow: TypedSendToWindow<QualifiedPluginEvents>;
     sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 
@@ -5351,13 +5355,6 @@ type ThreadsInboxEvent = {
     type: 'SELECT_ARTIFACT';
     artifactId: string;
 } | {
-    type: 'APPROVE_TODO_LIST';
-    artifactId: string;
-    tasks: unknown[];
-} | {
-    type: 'REJECT_TODO_LIST';
-    artifactId: string;
-} | {
     type: 'OPEN_THREAD_CHAT';
     threadId: string;
 } | {
@@ -6223,7 +6220,10 @@ declare const noteQueries: {
  * - Load thread data for chat
  * - Refresh recent threads list
  */
-declare function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, restore?: boolean): void;
+declare function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, options?: {
+    restore?: boolean;
+    reply?: Reply<OutgoingThreadsEvents>;
+}): void;
 
 /**
  * Open thread tab and refresh recent threads list
@@ -6233,7 +6233,9 @@ declare function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, restore
  * - Load thread tab data with artifacts
  * - Refresh recent threads list
  */
-declare function openThreadTabAndRefresh(threadId: EARS.EntityId): void;
+declare function openThreadTabAndRefresh(threadId: EARS.EntityId, options?: {
+    reply?: Reply<OutgoingThreadsEvents>;
+}): void;
 
 declare function paginatedMessages(threadId: EARS.EntityId, cursor?: string | null): {
     messages: Partial<MessageEntity>[];
