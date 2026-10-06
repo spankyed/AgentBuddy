@@ -16,7 +16,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { HALVES, halfOfPath, specFiles, type Half } from './spec-halves.ts';
+import { CONFIG_BY_HALF, HALVES, halfOfPath, specFiles, type Half } from './spec-halves.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
 
 // eslint-disable-next-line no-control-regex -- vitest colours its output and this reads it back
@@ -55,8 +55,32 @@ export const SLOW_QUANTILE = 0.9;
  */
 export const asDuration = (ms: number): string => (ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`);
 
-/** The marker a slow spec carries in its header, with its reason after the colon */
-const SLOW_MARKER = /^\/\/\s*@slow:\s*(.+)$/;
+/**
+ * When a run measured something, on the clock of whoever is reading it.
+ *
+ * A record's `measuredAt` is UTC, which is right for a stored field and wrong for a printed one: slicing
+ * the ISO string drops the `Z`, and the result reads as wall-clock time. Observed four hours out on the
+ * box that wrote it, under the words "measured here" — and past 20:00 at UTC-4 it printed tomorrow's date.
+ * The whole purpose of the value is how stale the answer is, which is a question about the reader's clock.
+ */
+export const asLocalTime = (iso: string): string => {
+  const at = new Date(iso);
+  // An unparseable stamp is handed back as it came: this is a label, and a reader seeing the raw field is
+  // better served than one seeing `NaN-NaN-NaN`
+  if (Number.isNaN(at.getTime())) return iso;
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
+};
+
+/**
+ * The marker a slow spec carries in its header, with its reason after the colon.
+ *
+ * Both comment spellings, because a header is written either way: a run of `//` lines, or a block whose
+ * body lines open with `*`. Reading only the first ignored the marker on every spec that opens with a
+ * block — 14 of 326 — and ignored it *silently*, so a contributor following the documented convention got
+ * a marker nothing read and nothing reported. The trailing-delimiter branch is for a one-line block.
+ */
+const SLOW_MARKER = /^(?:\/\/|\*|\/\*+)\s*@slow:\s*(.+?)\s*(?:\*\/)?$/;
 
 export interface FileDuration {
   /** The suite's directory under `packages/`, which is what a cache key and an input path need */
@@ -150,14 +174,28 @@ export const slowestFiles = (rows: readonly FileDuration[], half: Half, limit = 
  * The leading comment block only, so the marker is where a reader who opened the file because it was slow
  * will see it. A `@slow:` further down is not a header and is not read — which is deliberate, since the
  * one place it could otherwise appear is a test's own body, describing something else.
+ *
+ * **The header is whichever comment forms open the file**, a block and line comments in any order, since
+ * that is what "the header" means to whoever is writing one. Stopping at the first line that was not a
+ * `//` read a block-comment header as no header at all.
  */
 export function slowReason(source: string): string | undefined {
+  let inBlock = false;
   for (const line of source.split('\n')) {
     const text = line.trim();
     if (text === '') continue;
-    if (!text.startsWith('//')) return undefined;
     const match = SLOW_MARKER.exec(text);
     if (match !== null) return match[1]!.trim();
+    if (inBlock) {
+      if (text.includes('*/')) inBlock = false;
+      continue;
+    }
+    // A one-line block opens and closes on this line, so it leaves the header open for the next
+    if (text.startsWith('/*')) {
+      inBlock = !text.includes('*/');
+      continue;
+    }
+    if (!text.startsWith('//')) return undefined;
   }
   return undefined;
 }
@@ -326,7 +364,13 @@ export function readDurations(root: string, dir: string, half: Half): DurationRe
 export function pruneDurationCache(root: string): void {
   const dir = durationCacheDir(root);
   if (!fs.existsSync(dir)) return;
-  const live = new Set(UNIT_SUITES.flatMap((suite) => HALVES.map((half) => `${suite.dir}.${half}.json`)));
+  // The halves a suite *has*, read from its own configs, rather than every half there is. A package with
+  // one config can hold no integration record, so a cross product admits names no run would ever write and
+  // a prune that admits them never removes them. `livePoolStamps` derives its set from the pools for the
+  // same reason, and this is the same question asked of the configs the pools are themselves derived from.
+  const live = new Set(UNIT_SUITES.flatMap((suite) => HALVES
+    .filter((half) => fs.existsSync(path.join(root, 'packages', suite.dir, CONFIG_BY_HALF[half])))
+    .map((half) => `${suite.dir}.${half}.json`)));
   for (const file of fs.readdirSync(dir)) {
     if (file.endsWith('.json') && !live.has(file)) fs.rmSync(path.join(dir, file));
   }

@@ -9,10 +9,11 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import {
-  asDuration, durationCacheDir, fileDurations, markedSpecs, placementOf, quantileOf, readDurations,
-  slowestFiles, slowReason, tailBar, writeDurations, type FileDuration,
+  asDuration, asLocalTime, durationCacheDir, fileDurations, markedSpecs, placementOf, pruneDurationCache,
+  quantileOf, readDurations, slowestFiles, slowReason, tailBar, writeDurations, type FileDuration,
 } from '../../../scripts/lib/spec-durations.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
+import { CONFIG_BY_HALF, type Half } from '../../../scripts/lib/spec-halves.ts';
 
 /** Two suites that really exist and really hold these files, since attribution is by path on disk */
 const HOST = UNIT_SUITES.filter((suite) => ['abuddy-host', 'abuddy-sdk'].includes(suite.dir));
@@ -145,6 +146,53 @@ describe('slowReason', () => {
   it('has no reason for a header that carries none', () => {
     expect(slowReason('// Just a subject line\nimport x from \'y\';')).toBeUndefined();
   });
+
+  /**
+   * A block-comment header carries one too, and reading only `//` lines was the defect.
+   *
+   * 14 of this repo's 326 specs open with a block, and on every one of them a marker was ignored
+   * *silently*: the gate read the spec as unmarked, which it reports rather than fails, so a contributor
+   * following the documented convention got no marker and no complaint about it either.
+   */
+  it('reads the marker out of a block-comment header, which is how most headers here are written', () => {
+    const source = ['/**', ' * What this spec covers.', ' *', ' * @slow: it compiles a program per case', ' */', 'import x from \'y\';'].join('\n');
+    expect(slowReason(source)).toBe('it compiles a program per case');
+  });
+
+  it('reads one written as a single-line block', () => {
+    expect(slowReason('/* @slow: it spawns a compiler */\nimport x from \'y\';')).toBe('it spawns a compiler');
+  });
+
+  // A header is whichever comment forms open the file, in any order — the rule is where the code starts
+  it('keeps reading line comments after a block header closes', () => {
+    const source = ['/** A subject. */', '// @slow: still the header', 'import x from \'y\';'].join('\n');
+    expect(slowReason(source)).toBe('still the header');
+  });
+
+  it('still stops where the code starts, past a block header', () => {
+    const source = ['/**', ' * A subject.', ' */', 'import x from \'y\';', '', '// @slow: not a header'].join('\n');
+    expect(slowReason(source)).toBeUndefined();
+  });
+});
+
+describe('asLocalTime', () => {
+  /**
+   * A stored stamp is UTC and a printed one is the reader's own clock, and conflating them printed a time
+   * four hours out — past 20:00 at UTC-4, tomorrow's date. The value exists to say how stale an answer is,
+   * which is a comparison against the clock on the wall.
+   */
+  it('renders a UTC stamp on this machine\'s clock rather than slicing the ISO string', () => {
+    const iso = '2026-10-05T23:49:17.566Z';
+    const at = new Date(iso);
+    const pad = (n: number): string => String(n).padStart(2, '0');
+    expect(asLocalTime(iso)).toBe(`${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`);
+    // The failure, stated as the thing that must not happen: the old rendering was a slice of the string
+    if (at.getTimezoneOffset() !== 0) expect(asLocalTime(iso)).not.toBe(iso.slice(0, 16).replace('T', ' '));
+  });
+
+  it('hands back a stamp it cannot parse, rather than a line of NaN', () => {
+    expect(asLocalTime('not a date')).toBe('not a date');
+  });
 });
 
 describe('markedSpecs', () => {
@@ -263,5 +311,64 @@ describe('asDuration', () => {
     expect(asDuration(999)).toBe('999ms');
     expect(asDuration(1000)).toBe('1.0s');
     expect(asDuration(17_745)).toBe('17.7s');
+  });
+});
+
+/**
+ * What a prune leaves, which is what says a file in the cache answers for nobody.
+ *
+ * The live set is the halves a suite *has*, read from the configs in the tree it is given — not every half
+ * there is. A cross product admits `<dir>.integration.json` for the nine packages with one config, and a
+ * name no run would write is one the prune then never removes, which is the growing cache its own comment
+ * warns about. These cases build the tree too, since the configs are what the answer is derived from.
+ */
+describe('pruneDurationCache', () => {
+  /** A root holding the configs a real checkout would, so the derivation has something to read */
+  const rootWith = (halves: Readonly<Record<string, readonly Half[]>>, records: readonly string[]): string => {
+    const root = tmpdir();
+    for (const [dir, has] of Object.entries(halves)) {
+      const at = path.join(root, 'packages', dir);
+      fs.mkdirSync(at, { recursive: true });
+      for (const half of has) fs.writeFileSync(path.join(at, CONFIG_BY_HALF[half]), '');
+    }
+    fs.mkdirSync(durationCacheDir(root), { recursive: true });
+    for (const name of records) fs.writeFileSync(path.join(durationCacheDir(root), name), '{}\n');
+    return root;
+  };
+  const left = (root: string): string[] => fs.readdirSync(durationCacheDir(root)).sort();
+
+  const split = UNIT_SUITES.find((suite) => fs.existsSync(path.join(REPO_ROOT, 'packages', suite.dir, CONFIG_BY_HALF.integration)))!;
+  const single = UNIT_SUITES.find((suite) => !fs.existsSync(path.join(REPO_ROOT, 'packages', suite.dir, CONFIG_BY_HALF.integration)))!;
+
+  it('finds both kinds of suite in the real tree, or the cases below prove nothing', () => {
+    expect(split, 'no unit suite has an integration config').toBeDefined();
+    expect(single, 'every unit suite has an integration config').toBeDefined();
+  });
+
+  it('keeps both halves of a suite whose package has both configs', () => {
+    const root = rootWith({ [split.dir]: ['fast', 'integration'] }, [`${split.dir}.fast.json`, `${split.dir}.integration.json`]);
+    pruneDurationCache(root);
+    expect(left(root)).toEqual([`${split.dir}.fast.json`, `${split.dir}.integration.json`].sort());
+  });
+
+  // The firing case the cross product did not have: a record for a half its package has no config for is
+  // one no pool would ever write, and the old live set called it alive
+  it('drops an integration record for a suite with no integration half', () => {
+    const root = rootWith({ [single.dir]: ['fast'] }, [`${single.dir}.fast.json`, `${single.dir}.integration.json`]);
+    pruneDurationCache(root);
+    expect(left(root)).toEqual([`${single.dir}.fast.json`]);
+  });
+
+  it('drops a record for a package that is gone', () => {
+    const root = rootWith({ [single.dir]: ['fast'] }, ['no-such-package.fast.json']);
+    pruneDurationCache(root);
+    expect(left(root)).toEqual([]);
+  });
+
+  it('leaves anything that is not a record alone, and a missing directory is not an error', () => {
+    const root = rootWith({ [single.dir]: ['fast'] }, ['README.md']);
+    pruneDurationCache(root);
+    expect(left(root)).toEqual(['README.md']);
+    expect(() => pruneDurationCache(tmpdir())).not.toThrow();
   });
 });

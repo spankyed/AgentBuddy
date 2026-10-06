@@ -142,7 +142,7 @@ function counted(run: Run, index: number): { args: string[]; env: NodeJS.Process
  */
 if (dry) {
   const { collectFor, checkedSpecs, specsOfSuites, needsAppForRun, pricedSpecs } = await import('./lib/spec-dry.ts');
-  const { asDuration } = await import('./lib/spec-durations.ts');
+  const { asDuration, asLocalTime } = await import('./lib/spec-durations.ts');
   // Each distinct note once, as the run itself says them: two targets in one package carry the same sentence
   const said = new Set<string>();
   let listed = 0;
@@ -184,7 +184,7 @@ if (dry) {
   // the ratio between the two was 1.55:1 and 2.18:1, so a wall figure here would be wrong by more than it
   // is worth. And it is the last run on this machine rather than a record: nothing is committed, so there
   // is no number to go stale and a clone that has run nothing says so instead of guessing.
-  const where = oldest === undefined ? 'nothing measured on this machine yet' : `${asDuration(measured)} of file time, measured here ${oldest.slice(0, 16).replace('T', ' ')}`;
+  const where = oldest === undefined ? 'nothing measured on this machine yet' : `${asDuration(measured)} of file time, measured here ${asLocalTime(oldest)}`;
   console.log(`\n${listed} spec${listed === 1 ? '' : 's'} across ${runs.length} run${runs.length === 1 ? '' : 's'}; ${where}${unpriced === 0 ? '' : ` (${unpriced} unmeasured)`}.`);
   if (oldest !== undefined) console.log('File time, not wall: a pool runs it across workers. Run the unit pools to refresh it.');
   process.exit(0);
