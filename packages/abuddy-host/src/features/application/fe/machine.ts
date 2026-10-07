@@ -42,6 +42,9 @@ function packFrontendsPending(context: ShellContext): boolean {
  * Opening and sending can each be refused at once or after waiting for pack frontends, and one function writes
  * every one of those so the wording can't differ by which branch the app happened to take — which would tell the
  * reader about the app's internals and nothing about their problem.
+ *
+ * Not every refusal has a user to tell, so `refuse` picks the audience and this writes only that audience's
+ * words. An answer gets the other wording, for the reason given there.
  */
 function refusal({ plugin, select, sender }: PluginRequest): [string, string] {
   const suffix = senderSuffix(sender);
@@ -63,6 +66,27 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
   };
 
   /**
+   * Tells whoever this concerns that the plugin isn't here, and **who that is depends on whether a person is
+   * waiting.** A command someone gave in this window failed, so they are told; an answer to a question had no
+   * user behind it, so a toast would be an app telling someone about its own plumbing in the middle of their
+   * work — unactionable by construction, since the thing that asked was a machine.
+   *
+   * It is still a loss worth recording, so it goes to the console as the bus's undeliverable sends do
+   * (`connection.ts`), with a sentence written for a log rather than for a person.
+   *
+   * The case it fires in is a race, not a bug: a plugin asks, its answer is built, and the answering pack
+   * unloads before the answer lands. Nothing holds the asker open.
+   */
+  const refuse = (request: PluginRequest): void => {
+    if (!request.answering) {
+      notify.error(...refusal(request));
+      return;
+    }
+    const suffix = senderSuffix(request.sender);
+    console.warn(`[shell] Dropped an answer for "${request.plugin}": no plugin is registered there${suffix && `, answering${suffix}`}`);
+  };
+
+  /**
    * Whether the plugin is here to take the request, and what to do when it isn't: wait, while pack frontends may
    * still add it (finishPackFrontendLoad refuses whatever is still waiting), or refuse it now. Both requests ask
    * the same question and answer it the same way, so `false` means the caller has nothing left to do but return.
@@ -70,7 +94,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
   const readyFor = (context: ShellContext, request: PluginRequest & { events: PluginEvent[] }, enqueue: Enqueue): boolean => {
     if (context.plugins.some((p) => p.id === request.plugin)) return true;
     if (packFrontendsPending(context)) enqueue.assign({ awaitingPlugin: [...context.awaitingPlugin, request] });
-    else enqueue(() => notify.error(...refusal(request)));
+    else enqueue(() => refuse(request));
     return false;
   };
 
@@ -135,10 +159,17 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           if (arrived.length > 0) {
             enqueue.assign({ awaitingPlugin: context.awaitingPlugin.filter((work) => !added.has(work.plugin)) });
             // `select` is what the wait was for: an open selects the plugin, a send only hands it its events
-            for (const { plugin, events, select, sender } of arrived) {
+            for (const { plugin, events, select, sender, answering } of arrived) {
               // One spread, because who asked is one member: the labels a refusal would name and the address an
-              // answer goes to left the queue together, as they entered it
-              enqueue.raise(select ? { type: 'OPEN_PLUGIN', plugin, events } : { type: 'SEND_TO_PLUGIN', plugin, events, ...sender });
+              // answer goes to left the queue together, as they entered it.
+              //
+              // `answering` rides along to keep the re-raised event identical to the one that was queued, and
+              // **no case covers it, because nothing reads it on this path**: the drain re-raises only the
+              // requests whose plugin arrived, so `readyFor` says yes and the send is delivered rather than
+              // refused. Measured by mutation 2026-10-06 — dropping it here fails nothing. What would make it
+              // matter is the plugin going away again between arriving and this re-raise being handled, which
+              // `PACK_PLUGINS_UNLOADED` can do; then it is refused after all, and the flag decides how.
+              enqueue.raise(select ? { type: 'OPEN_PLUGIN', plugin, events } : { type: 'SEND_TO_PLUGIN', plugin, events, ...sender, answering });
             }
           }
         }
@@ -183,7 +214,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
             const refused = context.awaitingPlugin;
             enqueue.assign({ awaitingPlugin: [] });
             enqueue(() => {
-              for (const request of refused) notify.error(...refusal(request));
+              for (const request of refused) refuse(request);
             });
           }
         }
@@ -305,8 +336,8 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
 
       /** Hands a plugin its events and leaves the view where it is — what `SEND_TO_PLUGIN` asks for */
       deliverWithoutSelecting: enqueueActions(({ context, event, enqueue }) => {
-        const { plugin, events, from, via, asker } = typeOf('SEND_TO_PLUGIN', event);
-        if (!readyFor(context, { plugin, events, select: false, sender: { from, via, asker } }, enqueue)) return;
+        const { plugin, events, from, via, asker, answering } = typeOf('SEND_TO_PLUGIN', event);
+        if (!readyFor(context, { plugin, events, select: false, sender: { from, via, asker }, answering }, enqueue)) return;
         if (events.length > 0) enqueue(({ self }) => self.send({ type: 'DELIVER_PLUGIN_EVENTS', plugin, events, asker }));
       }),
 

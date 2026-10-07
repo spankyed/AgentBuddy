@@ -52,8 +52,12 @@ export type HostShellEvent =
    * inside the window, so what answers it answers an actor beside it. The shell carries the value whole from
    * here to the delivery, through the queue a plugin whose pack is still loading waits in — where a ref would
    * have had to be read back as a channel someone had to remember was a window's.
+   *
+   * `answering` says this send is an answer to a question rather than something a person asked for, which is
+   * what decides how the shell reports a plugin that isn't there — a toast tells a user their command failed,
+   * and there is no user behind an answer. Only `reply` sets it.
    */
-  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string; via?: string; asker?: _Asker }
+  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string; via?: string; asker?: _Asker; answering?: boolean }
   | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
   | { type: 'RESTORE_CHAT' }
   | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }

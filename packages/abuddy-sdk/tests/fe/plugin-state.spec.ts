@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { effectScope, watchSyncEffect, type Ref } from 'vue';
 import type { AnyActorRef } from 'xstate';
-import { _sendToLocalPlugin, untypedBroadcastToPlugin } from '../../src/events/index.ts';
+import { _replyTo, _sendToLocalPlugin, untypedBroadcastToPlugin } from '../../src/events/index.ts';
 import { _runDelivery } from '../../src/events/delivery.ts';
 import { readUntypedPluginState, useUntypedPluginState } from '../../src/fe/plugin-state.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
@@ -254,6 +254,49 @@ describe('_sendToLocalPlugin', () => {
       events: [{ type: 'ASK' }],
       asker: { kind: 'window', ref: 'default-setup/threads' },
     }]);
+  });
+
+  /**
+   * **`reply` is what marks a send as an answer**, and nothing else does. The shell uses that to decide
+   * whether a plugin that isn't there is worth telling the user about — a command someone gave is, an answer
+   * to a machine's question is not (`abuddy-host`'s `open-plugin.spec.ts`).
+   *
+   * Here rather than there because the host's cases build the flag by hand, so they hold what the shell does
+   * with it and say nothing about who sets it. Measured by mutation: with this case absent, dropping
+   * `{ answering: true }` from `_replyTo` failed nothing anywhere.
+   */
+  it('marks an answer as one, so a window can tell it from a command', () => {
+    const sent: unknown[] = [];
+    unbindFeHost();
+    bindFeHost({
+      application: { send: (event: unknown) => sent.push(event), system: { get: () => undefined } } as never,
+      secrets: {} as never, settings: {} as never, client: { send() {} }, packs: {} as never,
+    });
+
+    const reply = _replyTo({ receiver: 'default-setup/notes', asker: { kind: 'window', ref: 'default-setup/threads' } });
+    reply?.({ type: 'ANSWER' });
+
+    expect(sent).toEqual([{
+      type: 'SEND_TO_PLUGIN',
+      plugin: 'default-setup/threads',
+      events: [{ type: 'ANSWER' }],
+      asker: { kind: 'window', ref: 'default-setup/notes' },
+      answering: true,
+    }]);
+  });
+
+  // And an ordinary send is not marked, which is what makes the flag mean anything
+  it('leaves an ordinary in-window send unmarked', () => {
+    const sent: Array<{ answering?: boolean }> = [];
+    unbindFeHost();
+    bindFeHost({
+      application: { send: (event: unknown) => sent.push(event as { answering?: boolean }), system: { get: () => undefined } } as never,
+      secrets: {} as never, settings: {} as never, client: { send() {} }, packs: {} as never,
+    });
+
+    _sendToLocalPlugin('default-setup/notes', { type: 'ASK' });
+
+    expect(sent[0]?.answering).toBeUndefined();
   });
 
   // A plugin that isn't here yet is the shell's to wait for and, once loading settles, to report through `notify`

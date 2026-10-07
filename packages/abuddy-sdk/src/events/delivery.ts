@@ -53,12 +53,17 @@
  *    `raise`.** The brain turns every `TRIGGER_BRAIN_EVENT` into `raise(…, { delay: 0 })`, so every step
  *    runtime and every action's code runs a tick after the delivery that triggered it, unconditionally.
  *
- * **What this costs today, measured 2026-10-06**: of 33 backend system-to-system send sites, 18 are inside a
- * delivery and 25 are outside (one is either, depending on a branch). But only three are asking a question at
- * all, and all three route their answer around the bus — so the loss is real and currently buys nothing back.
- * A send that wants an answer and cannot be made inside a delivery needs the address threaded explicitly; the
- * bound `reply` is the half of that which already works, since an answer handed to a handler keeps working
- * wherever the handler stores it, because it never comes back here.
+ * **What this costs: most backend sends carry no sender, and almost none of them wants one.** A census of the
+ * send sites lived here and is gone, for two reasons worth keeping. It sized no decision — nothing was chosen
+ * differently because the number was what it was — and it did not add up: its two halves came to more than the
+ * total it opened with, and the line survived review in that state because a figure reads as evidence whether
+ * or not anyone can check it. And nothing re-derives it: whether a send site sits inside a delivery is a
+ * question about what called what at runtime, which no check here answers, so the number could only ever go
+ * stale in place.
+ *
+ * The claim that mattered is not a count: a send that wants an answer and cannot be made inside a delivery
+ * needs its address threaded explicitly. The bound `reply` is the half of that which already works, since an
+ * answer handed to a handler keeps working wherever the handler stores it, because it never comes back here.
  */
 
 /**

@@ -73,6 +73,15 @@ export interface PluginRequest {
   plugin: string;
   select: boolean;
   sender: RequestSender;
+  /**
+   * Whether this send is an answer to a question rather than something a person asked for. It travels with the
+   * request because the wait is what makes it matter: a reply to a plugin whose pack is still loading sits in
+   * the queue, and what tells the user about it when loading settles would be a toast nobody could act on.
+   *
+   * Set only by `reply` (`deliverInWindow`, `@abuddy/sdk/events`). Not a property of the asker: a send *to* an
+   * asker is an answer, a send *from* one is not, and both carry the same `sender`.
+   */
+  answering?: boolean;
 }
 
 export interface ShellContext {
@@ -136,7 +145,7 @@ export interface ShellContext {
 export type ShellEvent =
   | { type: 'SELECT_PLUGIN'; plugin: string; historyIndex?: number }
   | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[] }
-  | ({ type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[] } & RequestSender)
+  | ({ type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; answering?: boolean } & RequestSender)
   /** Hands an opened plugin its events, once the shell has selected it */
   | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[]; asker?: RequestSender['asker'] }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }

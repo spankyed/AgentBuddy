@@ -42,10 +42,16 @@ const answering = setup({
       await after((event as { wait?: number }).wait ?? 0);
       reply?.({ type: 'MEMO_ADDED', tag: (event as { tag?: string }).tag });
     },
+    // Progress and then a result, which is the ordinary shape a second answer has
+    answerTwice: ({ event, reply }) => {
+      reply?.({ type: 'MEMO_ADDED', tag: `${(event as { tag?: string }).tag}-first` });
+      reply?.({ type: 'MEMO_ADDED', tag: `${(event as { tag?: string }).tag}-second` });
+    },
   }),
 }).createMachine({
   on: {
     PING: { actions: 'answer' },
+    PING_TWICE: { actions: 'answerTwice' },
     // Names its target rather than answering, which is what every system did before `reply` existed. The
     // envelope should still say who sent it, and that stamp is `createSends`' rather than `reply`'s.
     ANNOUNCE: {
@@ -102,7 +108,7 @@ const asking = setup({}).createMachine({
 });
 
 const memoFeatures = {
-  memos: { system: { machine: answering, receives: ['PING', 'ANNOUNCE'] }, plugin: { receives: ['MEMOS_CONNECTED', 'MEMO_ADDED'] } },
+  memos: { system: { machine: answering, receives: ['PING', 'PING_TWICE', 'ANNOUNCE'] }, plugin: { receives: ['MEMOS_CONNECTED', 'MEMO_ADDED'] } },
   invoker: { system: { machine: invoking, receives: ['PING'] }, plugin: { receives: ['MEMO_ADDED'] } },
   asker: { system: { machine: asking, receives: ['GO', 'MEMO_ADDED'] }, plugin: { receives: ['MEMO_ADDED'] } },
 };
@@ -121,7 +127,8 @@ const ask = (message: Message) => { bus.send({ type: 'INCOMING', message }); };
  *
  * Both directions, because an answer goes out to a connection or in to a system depending on who asked, and a
  * case should not have to know which to subscribe to. A negative assertion beside it — "and no window saw it" —
- * is safe once the positive one has arrived: `reply` makes one send, so when it has happened the other has not.
+ * is safe once the positive one has arrived: one `reply` call makes one send, so when it has happened the
+ * other has not. The case that answers twice calls it twice, and says so.
  */
 const untilBus = (satisfied: () => boolean, describe: string) => _whenSatisfied(
   (notify) => {
@@ -214,6 +221,23 @@ describe('reply', () => {
 
     expect(answers().map(({ client }) => client), 'one connection, not a broadcast').toEqual(['c-main']);
     expect(answered, 'and no system was sent it').toEqual([]);
+  });
+
+  /**
+   * **A handler may answer more than once, and that is a decision** — `Reply`'s own comment has the reasoning:
+   * there is no request id to answer against and no machine can await, so an answer is an event and two of
+   * them are two events. A handler reporting progress and then a result is the ordinary shape.
+   *
+   * Pinned because every other case in this file answers exactly once, so dropping or refusing the second
+   * answer would pass all of them — the decision would be reversed and nothing would notice. When a
+   * correlating layer arrives, at-most-once belongs to *it*, where the request id exists.
+   */
+  it('sends both when a handler answers twice, to the one connection that asked', async () => {
+    ask({ to: 'memo-pack/memos', event: { type: 'PING_TWICE', tag: 'progress' }, sender: 'memo-pack/memos', client: 'c-main' });
+    await untilBus(() => answers().length === 2, 'both answers to go out');
+
+    expect(answers().map(({ event }) => (event as { tag?: string }).tag)).toEqual(['progress-first', 'progress-second']);
+    expect(answers().map(({ client }) => client), 'neither widened into a broadcast').toEqual(['c-main', 'c-main']);
   });
 });
 

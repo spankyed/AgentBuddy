@@ -183,6 +183,71 @@ it('reports a send to a plugin no pack provides once loading settles, naming who
   );
 });
 
+/**
+ * **An answer that cannot be delivered is not the user's problem.** A toast exists to tell someone the thing
+ * they just did failed; nobody did anything here — a plugin asked a question and the pack that would have
+ * taken the answer is not loaded. Telling the user interrupts work they are in the middle of with a sentence
+ * about plumbing they cannot act on.
+ *
+ * It is still a loss, so it goes to the console where the bus's undeliverable sends go. Drop the `answering`
+ * branch from `refuse` and this is what fails — on the toast, which is the assertion that matters.
+ */
+it('logs rather than toasts when an answer reaches no plugin', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  await connectLoading([]);
+  await settle();
+
+  // What `reply` builds for a `window` asker whose plugin has gone
+  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'ANSWER' }], asker: { kind: 'window', ref: 'default-setup/notes' }, answering: true, from: 'memo-pack' });
+  await settle();
+
+  expect(shell.notify.error, 'no toast for a machine-to-machine loss').not.toHaveBeenCalled();
+  expect(warn).toHaveBeenCalledWith(expect.stringContaining('Dropped an answer for "memo-pack/memoz"'));
+  expect(warn, 'and it names who was answering').toHaveBeenCalledWith(expect.stringContaining('memo-pack'));
+  warn.mockRestore();
+});
+
+/**
+ * **The queued branch, which is why the flag travels with the request rather than only on the event.** An
+ * answer for a plugin whose pack is still loading waits like anything else, and the refusal comes later, read
+ * off the queued request by `finishPackFrontendLoad` — not through the drain, which re-raises only the
+ * requests whose plugin *did* arrive and so never refuses anything. Take `answering` off `PluginRequest` and
+ * every case above still passes while this one toasts.
+ */
+it('logs rather than toasts for an answer refused after waiting', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  let loaded!: () => void;
+  const release = new Promise<void>((resolve) => { loaded = resolve; });
+  await connectLoading([{ id: 'memo-pack', plugins: [recording('memo-pack/memos')] }], release);
+
+  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'ANSWER' }], asker: { kind: 'window', ref: 'default-setup/notes' }, answering: true, from: 'memo-pack' });
+  expect(app.getSnapshot().context.awaitingPlugin, 'it waited like any other send').toHaveLength(1);
+
+  loaded();
+  await settle();
+
+  expect(shell.notify.error).not.toHaveBeenCalled();
+  expect(warn).toHaveBeenCalledWith(expect.stringContaining('Dropped an answer for "memo-pack/memoz"'));
+  warn.mockRestore();
+});
+
+/**
+ * The same send without `answering` is the ordinary refusal, so the flag is what decides and not the asker's
+ * presence — a plugin asking another plugin is a command someone gave, and its failure is worth a toast.
+ */
+it('still toasts for an ordinary send that carries an asker', async () => {
+  await connectLoading([]);
+  await settle();
+
+  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'ASK' }], asker: { kind: 'window', ref: 'default-setup/notes' }, from: 'memo-pack' });
+  await settle();
+
+  expect(shell.notify.error).toHaveBeenCalledWith(
+    "Couldn't reach memo-pack/memoz",
+    'No plugin is registered at "memo-pack/memoz". Sent by "memo-pack".',
+  );
+});
+
 // A pack's system or action asks the app to open a plugin with broadcastToPlugin('host/application', …); every window
 // hears it, and only a main window acts: a popout shows its own plugin
 describe('a request from the app to open a plugin', () => {

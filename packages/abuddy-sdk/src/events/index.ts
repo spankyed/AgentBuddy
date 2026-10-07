@@ -239,7 +239,7 @@ function sendIncoming(message: Message): void {
  * already answers it for `OPEN_PLUGIN`: a plugin whose pack's frontend is still loading is waited for, and one
  * no pack provides is reported to the user once loading settles.
  */
-function deliverInWindow(message: Message): void {
+function deliverInWindow(message: Message, { answering = false } = {}): void {
   const ref = message.to;
   if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
   const { from, via, sender } = message;
@@ -249,6 +249,9 @@ function deliverInWindow(message: Message): void {
     events: [message.event],
     ...(from ? { from } : {}),
     ...(via ? { via } : {}),
+    // Whether a person is waiting on this, which only the sender knows and which decides how the shell reports
+    // a plugin that isn't there: a command someone gave is worth a toast, an answer to a question is not
+    ...(answering ? { answering: true } : {}),
     // The window's counterpart of the bus's `askerOf`: each door turns the envelope's `sender` into the channel
     // it arrived on, because that door is the only place the channel is known. This one stays inside the window,
     // so a plugin answering it answers an actor beside it rather than something over the bus.
@@ -390,6 +393,19 @@ export type SystemTarget = string | { role: string };
 /**
  * What a handler answers its asker with. Absent where the message named no sender, which is the whole point:
  * "is there anybody to answer?" is a question the type asks rather than one a global is probed for.
+ *
+ * **It is a send, not a resolve, so calling it twice sends twice — on purpose.** Nothing here is at-most-once
+ * and nothing should be: there is no request id to answer against and an XState machine cannot await, so the
+ * asker handles each answer as an event like any other. A handler that reports progress and then a result is
+ * doing something ordinary, and refusing the second call would forbid it to protect against a mistake nobody
+ * has made. What a double call cannot do is go somewhere unexpected: both answers carry the same address, so
+ * the risk is a confused asker rather than a leak.
+ *
+ * Two things follow, and the second is the one to hold onto. A handler must not treat `reply` as evidence that
+ * it has not already answered — it has no memory. And **a correlating layer built on top of this owns
+ * at-most-once itself**: the moment answers are matched to requests, a second answer to a settled request is a
+ * real error, and the place to refuse it is that layer, where the request id exists. Putting the rule here
+ * instead would make it unavailable exactly where it could be checked properly.
  */
 export type Reply<E extends { type: string } = { type: string; [key: string]: unknown }> = (event: E) => void;
 
@@ -415,6 +431,22 @@ export type Reply<E extends { type: string } = { type: string; [key: string]: un
  * exception and is not: the window's one channel to the backend is its connection, and the API routes the
  * message on from there.
  *
+ * **Both are assertions, not gates, and that is why they stay throws.** Nothing can reach either: an asker is
+ * built at one of three doors and each door can only build the channel it is — `askerOf`
+ * (`@abuddy/host/bus`'s `delivery.ts`) returns `bus` or `connection`, `connection.ts` in the shell returns
+ * `bus`, `deliverInWindow` returns `window`, and `usePlugin` builds no asker at all. So the subject is this
+ * program's own construction rather than anything a caller passes, and a `reportError` here would turn a
+ * proven-impossible state into a line in a log while the process carried on inside it.
+ *
+ * Being unreachable means a mutation is the only way to watch them, so here are the two edits that fire them.
+ * For the window cell: make the shell's `connection.ts` pass the message's `client` through as a
+ * `{ kind: 'connection' }` asker instead of the `{ kind: 'bus' }` it builds. For the backend cell: make
+ * `askerOf` return `{ kind: 'window' }`. Each is one line, and each is a real way someone could get this
+ * wrong, which is what makes them worth naming rather than a trick to make a branch run.
+ *
+ * The messages say the host built the delivery, not that the handler called `reply` wrongly, because a pack's
+ * handler is where the throw lands and it is the one party that cannot have caused it.
+ *
  * The host is resolved on each call rather than at binding, so building one costs nothing and needs no app.
  *
  * @internal The SDK builds these for handlers (`defineHandlers`, `@abuddy/sdk/framework`); pack code receives
@@ -426,14 +458,14 @@ export function _replyTo(delivery: _Delivery | undefined): Reply | undefined {
   return (event) => {
     const message: Message = { to: asker.ref, event, sender: receiver };
     if (_isFeHostBound()) {
-      if (asker.kind === 'window') { deliverInWindow(message); return; }
+      if (asker.kind === 'window') { deliverInWindow(message, { answering: true }); return; }
       if (asker.kind === 'bus') { boundFeHost().client.send(message); return; }
-      throw new Error(`Can't answer "${asker.ref}" on connection "${asker.client}" from a window: a window reaches the backend and the plugins beside it, not another window's connection. A message naming a connection was delivered in the wrong process.`);
+      throw new Error(`Can't answer "${asker.ref}" on connection "${asker.client}" from a window: a window reaches the backend and the plugins beside it, not another window's connection. Nothing in this window builds a connection asker, so the delivery was constructed wrongly rather than answered wrongly — the handler that called reply is not at fault.`);
     }
     const { rootEvents } = boundHost().transport;
     if (asker.kind === 'connection') { rootEvents.emitPluginSend({ ...message, client: asker.client }); return; }
     if (asker.kind === 'bus') { rootEvents.emitIncoming(message); return; }
-    throw new Error(`Can't answer the "${asker.ref}" plugin in its own window from the backend: there is no window-local bus here. A backend send to a plugin either reaches every window (broadcastToPlugin) or one connection.`);
+    throw new Error(`Can't answer the "${asker.ref}" plugin in its own window from the backend: there is no window-local bus here, so a backend send to a plugin either reaches every window (broadcastToPlugin) or one connection (sendToWindow). Nothing on the backend builds a window asker, so the delivery was constructed wrongly rather than answered wrongly — the handler that called reply is not at fault.`);
   };
 }
 
