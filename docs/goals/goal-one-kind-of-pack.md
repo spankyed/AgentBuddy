@@ -51,7 +51,7 @@ Never:
 - Add a read-only fallback that loads a shipped pack straight from resources/ when its install fails
   (Decision 7) — that is the built-in load path returning in disguise.
 - Put file times back into a seed hash, or add a second record beside a seed hash (Decision 6).
-- Generalise `earlySystem` to any pack instead of moving `logs` to the host pack (Decision 4).
+- Generalise `earlySystem` to any pack (Decision 4) — it is deleted, not widened.
 ```
 
 ## Background (2026-10-07, at 02688f256 on master)
@@ -314,9 +314,15 @@ stored data is written for users this repo does not have. An earlier version of 
 by "needs no stored-data migration" and deferred half of it on that premise; see *What an earlier version
 got wrong*.
 
-**4. `logs` moves into the host pack, and `earlySystem` leaves the pack contract.** Generalising it
-instead is circular — the refinement's own reason is *"before external packs load"*, which cannot hold for
-a pack that is external — and it would let an arbitrary pack's system run before the data layer exists.
+**4. `earlySystem` is deleted, and `logs` stays in default-setup.** Generalising it is circular — the
+refinement's own reason is *"before external packs load"*, which cannot hold for a pack that is external —
+and it would let an arbitrary pack's system run before the data layer exists. Moving `logs` to the host
+would also have removed the privilege, and is deferred rather than rejected
+([`plans/logs-to-host.md`](../plans/logs-to-host.md)): whether the Logs plugin should become a core app
+feature, updated only by a full app release, is a product question this goal does not need answered. Deleting the field removes more than the move would and touches nothing else.
+**The cost, which is the reason this is a decision and not a tidy-up:** `logs` stops starting before
+hydration, so hydration, `onInit`, migrations and seeding stop reaching the in-app viewer. They still reach
+stdout and the log file. Pack loading was already outside that window.
 
 **5. `partitionPolicy` is deleted, not generalised.** Nothing uses it: the only pack allowed one declares
 `{"excludedEntityTypes": []}`.
@@ -518,25 +524,57 @@ If the first bullet fails, this phase is not done whatever else passes. Then: `n
 `DEBUG_E2E=1 npm test -- smoke`. Mutation: drop the dev source map and the first two bullets fail together,
 which is what says the path is shared.
 
-### Phase 4 — Move `logs` into the host pack
+### Phase 4 — Delete `earlySystem`
 
-`earlySystem` exists for one feature, and a system that must run
-before the data layer is up is app infrastructure — which is what `@abuddy/host/features/` already holds.
-Moving it deletes `earlySystem` from the pack contract rather than generalising it, which matters: an
-arbitrary pack's system running before hydration is a footgun, and the refinement's own reason
-(*"before external packs load"*) is circular once the pack declaring it is external.
-**Cost:** 11 files, 1407 lines, and the ref `default-setup/logs` → `host/logs` is a key in three stored
-places — the settings row's `plugins` section, `AppState.pluginVisibility` and `AppState.lastActivePlugin`.
-A migration moves them (`0.3.15.ts` is the precedent, `tests/migrations/plugin-settings-0.3.15.spec.ts` the
-test to copy); skipping it costs the one user his logs settings and tab-visibility choice, which is why this
-is a convenience rather than a gate.
+`earlySystem` has one user — default-setup's `logs` (`abuddy.json:238`) — and forces
+`loadSingleExternalPack` to strip it from every external pack (`loader.ts:235-243`). The pack-facing half
+goes for good: the manifest field, its refinement, the codegen branch and the strip. No pack should ever
+get it back, and the host needs no manifest to express anything.
 
-**Done when:** `earlySystem` is absent from `manifest-schema.ts`, `PackFeatureSystem` and
-`abuddy.json`; `@abuddy/host/features/logs/` holds the feature and `packages/default-setup/src/features/logs/`
-is gone; `startEarlySystems` starts the host's logs system and the app's boot logs still reach the Logs
-plugin. With the migration: a data dir carrying `default-setup/logs` settings shows them under `host/logs`
-after one boot, asserted the way `tests/migrations/plugin-settings-0.3.15.spec.ts` asserts its own.
-Mutation: skip the ref rename in the migration and that case fails.
+`logs` stays in default-setup. Moving it would also have removed the privilege, but whether the Logs plugin
+should become a core app feature — updated only by a full app release — is a product question this goal
+does not need answered, and deleting the field removes more while moving nothing.
+
+**Cost:** `logs` stops starting before hydration, so hydration, `onInit`, migrations and seeding stop
+reaching the in-app viewer. Every line still reaches stdout and the log file, and pack loading was already
+outside the captured window — `startEarlySystems` is step 6 of the boot order, pack loading step 4.
+
+**What goes.** The pack-facing half, whose every piece exists only to express or to police the field:
+the manifest field (`manifest-schema.ts:173`) and the whole `if (!manifest.builtIn)` refinement block
+(`:258-263`), which holds nothing else, so `.strict()` refuses the key afterwards rather than a bespoke
+message; the codegen branch that turns it into `packSystem(…, { early: true })`
+(`generate-entries.ts:578`); the strip in `loadSingleExternalPack` (`loader.ts:235-243`) and its case
+(`loader.spec.ts:92-95`); the declaration in `packages/default-setup/abuddy.json:238`. Then
+`npm run schema:update -w @abuddy/sdk` for `abuddy.schema.json:179-182` and `npm run api:update`.
+Three specs assert the field and move with it: `manifest-schema.spec.ts:148-150` (the refusal — delete),
+`entries.spec.ts:116-126` (drop it from the fixture and drop the `early: true` expectation), and
+`modules.spec.ts:339,401`, whose exhaustive field lists fail by design when a field goes.
+
+**What is lost, by boot step** (`packages/abuddy-host/src/packs/runtime/CLAUDE.md`):
+
+| step | logged | reaches the viewer after this |
+|---|---|---|
+| 1-4 — dirs, discovery, pack load, registration | pack loading, every load problem | no change — already outside the window, since `startEarlySystems` is step 6 |
+| 5-6 — store open, early systems start | — | — |
+| 7+ — hydration, `onInit`, migrations, seeding | the data layer coming up | **no**, this is the loss |
+| the bus on | everything else | yes |
+
+Everything in the lost row still reaches stdout and the log file, which is where this repo reads boot
+problems anyway.
+
+**Left open:** whether the host-side mechanism (`PackFeatureSystem.early`, `packSystem`'s option,
+`startEarlySystems`, `getEarlySystems`, ~40 lines and a 122-line spec) goes too. For deleting it: nothing
+sets `early` afterwards, which is exactly what Decision 5 deletes `partitionPolicy` for, and a mechanism
+with no caller is a mechanism nobody is testing against reality. Against: `hostRegistration` writes its
+`PackFeatureSystem` literally, so re-expressing `early` for a host feature is one property rather than a
+manifest field — and [`plans/logs-to-host.md`](../plans/logs-to-host.md) is the deferred move that would
+want it back the same day. Decide it when Phase 4 is implemented; either answer keeps the capability out
+of the pack contract, which is the part that is settled.
+
+**Done when:** `earlySystem` is absent from `manifest-schema.ts`, `abuddy.schema.json` and
+`packages/default-setup/abuddy.json`; a manifest declaring it is refused by `.strict()` rather than by a
+bespoke refinement; and the Logs plugin still shows everything logged from the bus actor on.
+Mutation: put `earlySystem: true` in a fixture manifest and watch the schema refuse it.
 
 ### Phase 5 — Merge the two seed paths
 
