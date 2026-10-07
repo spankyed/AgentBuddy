@@ -94,7 +94,7 @@ it("sends to systems over the API client, reporting a rejected send to the conso
   untypedSendToSystem('notes', { type: 'SAVE_NOTE', body: 'secret text' });
   await new Promise(resolve => setTimeout(resolve, 0));
 
-  expect(mutate).toHaveBeenCalledWith({ to: 'notes', event: { type: 'SAVE_NOTE', body: 'secret text' } });
+  expect(mutate).toHaveBeenCalledWith({ to: 'notes', call: expect.any(String), event: { type: 'SAVE_NOTE', body: 'secret text' } });
   expect(unhandled).not.toHaveBeenCalled();
   expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('SAVE_NOTE'));
   expect(logWrite).toHaveBeenCalledWith(expect.objectContaining({ level: 'error', source: 'fe-client' }));

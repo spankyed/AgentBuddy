@@ -41,7 +41,8 @@ export interface BusMessage {
   readonly via?: string;
   readonly sender?: string;
   readonly client?: string;
-  readonly answering?: true;
+  readonly call?: string;
+  readonly answering?: string;
 }
 
 /* `from`, `via`, `client` and `answering` are read by nothing here; they are declared because this interface is

@@ -159,7 +159,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           if (arrived.length > 0) {
             enqueue.assign({ awaitingPlugin: context.awaitingPlugin.filter((work) => !added.has(work.plugin)) });
             // `select` is what the wait was for: an open selects the plugin, a send only hands it its events
-            for (const { plugin, events, select, sender, answering } of arrived) {
+            for (const { plugin, events, select, sender, answering, call } of arrived) {
               // One spread, because who asked is one member: the labels a refusal would name and the address an
               // answer goes to left the queue together, as they entered it.
               //
@@ -169,7 +169,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
               // refused. Measured by mutation 2026-10-06 — dropping it here fails nothing. What would make it
               // matter is the plugin going away again between arriving and this re-raise being handled, which
               // `PACK_PLUGINS_UNLOADED` can do; then it is refused after all, and the flag decides how.
-              enqueue.raise(select ? { type: 'OPEN_PLUGIN', plugin, events } : { type: 'SEND_TO_PLUGIN', plugin, events, ...sender, answering });
+              enqueue.raise(select ? { type: 'OPEN_PLUGIN', plugin, events } : { type: 'SEND_TO_PLUGIN', plugin, events, ...sender, answering, call });
             }
           }
         }
@@ -336,9 +336,9 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
 
       /** Hands a plugin its events and leaves the view where it is — what `SEND_TO_PLUGIN` asks for */
       deliverWithoutSelecting: enqueueActions(({ context, event, enqueue }) => {
-        const { plugin, events, from, via, asker, answering } = typeOf('SEND_TO_PLUGIN', event);
-        if (!readyFor(context, { plugin, events, select: false, sender: { from, via, asker }, answering }, enqueue)) return;
-        if (events.length > 0) enqueue(({ self }) => self.send({ type: 'DELIVER_PLUGIN_EVENTS', plugin, events, asker }));
+        const { plugin, events, from, via, asker, answering, call } = typeOf('SEND_TO_PLUGIN', event);
+        if (!readyFor(context, { plugin, events, select: false, sender: { from, via, asker }, answering, call }, enqueue)) return;
+        if (events.length > 0) enqueue(({ self }) => self.send({ type: 'DELIVER_PLUGIN_EVENTS', plugin, events, asker, answering, call }));
       }),
 
       // A backend's request carries whatever the sending pack built: a payload that isn't a plugin and its events
@@ -354,15 +354,19 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       }),
 
       deliverPluginEvents: ({ event, system }) => {
-        const { plugin, events, asker } = typeOf('DELIVER_PLUGIN_EVENTS', event);
+        const { plugin, events, asker, answering, call } = typeOf('DELIVER_PLUGIN_EVENTS', event);
         // A registered plugin's actor is running: the shell spawns it in the same step that registers the plugin
         const actor = system.get(plugin);
         if (!actor) return;
         // The address arrived built, so nothing here decides which channel an answer takes — only whether there
         // is one. A send that named no sender is news, and its handler is handed no `reply`.
+        //
+        // The call rides with it for the receiver's guards, which is the in-window half of what `connection.ts`
+        // does for a backend send: one reader, `callOf(event)`, whichever channel the event came in on.
+        const correlation = { ...(call === undefined ? {} : { call }), ...(answering === undefined ? {} : { answering }) };
         for (const e of events) {
-          if (asker) sendToPluginActor(actor, plugin, e, asker);
-          else notifyPluginActor(actor, plugin, e);
+          if (asker) sendToPluginActor(actor, plugin, e, asker, correlation);
+          else notifyPluginActor(actor, plugin, e, correlation);
         }
       },
 

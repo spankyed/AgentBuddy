@@ -70,7 +70,7 @@ afterEach(() => {
  * being no case over the fixture. The case below that asserts `operation` is unchanged is what holds it.
  */
 describe('a dropped answer', () => {
-  const answer = (type: string) => send({ to: 'memo-pack/memos', event: { type }, answering: true });
+  const answer = (type: string) => send({ to: 'memo-pack/memos', event: { type }, answering: 'c-asked' });
 
   /**
    * **The report says it was an answer without changing what verb it says.** Both halves matter: lose the flag
@@ -99,7 +99,7 @@ describe('a dropped answer', () => {
 
   // A plugin nothing declares at all is a race rather than a mistake: nothing holds an asker open
   it('calls an answer to an unregistered plugin a race', async () => {
-    await send({ to: 'ghost-pack/ghost', event: { type: 'ANYTHING' }, answering: true });
+    await send({ to: 'ghost-pack/ghost', event: { type: 'ANYTHING' }, answering: 'c-asked' });
     expect(takeSystemErrors()[0]?.message).toContain('most likely a race');
   });
 

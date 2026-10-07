@@ -24,6 +24,19 @@ export type _Asker =
 };
 
 // @internal
+export const _CALL_KEY = "_call";
+
+// @public
+export const callOf: (event: {
+    [key: string]: unknown;
+}) => string | undefined;
+
+// @internal
+export const _callOn: (message: Pick<Message, "answering">) => {
+    [_CALL_KEY]?: string;
+};
+
+// @internal
 export function _clientOf(delivery: _Delivery | undefined): string | undefined;
 
 // @public
@@ -43,7 +56,9 @@ export function createSends(input?: SendBinding): {
     sendToSystem(to: SystemTarget, event: {
         type: string;
         [key: string]: unknown;
-    }): void;
+    }, options?: {
+        call?: string;
+    }): string;
 };
 
 // @internal
@@ -55,6 +70,7 @@ export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(p
 // @internal
 export interface _Delivery {
     asker?: _Asker;
+    call?: string;
     receiver: string;
 }
 
@@ -127,7 +143,8 @@ export type IncomingEventsOf<C> = ContractIncoming<C>;
 
 // @public
 export interface Message {
-    answering?: true;
+    answering?: string;
+    call?: string;
     client?: string;
     // (undocumented)
     event: {
@@ -140,6 +157,9 @@ export interface Message {
     to: string;
     via?: string;
 }
+
+// @public
+export const newCall: () => string;
 
 // @public
 export function onConnected(callback: () => void): () => void;
@@ -238,12 +258,18 @@ export type TypedSendToPlugin<M extends PluginEvents> = (<P extends keyof M & st
 // @public
 export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(system: Id, event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, {
     type: Type;
-} & WithoutType<EventsOfType<S[Id], Type>>>) => void) & ((target: {
+} & WithoutType<EventsOfType<S[Id], Type>>>, options?: {
+    call?: string;
+}) => string) & ((target: {
     role: string;
 }, event: {
     type: string;
     [key: string]: unknown;
-}) => void) & ((system: FeatureRef, event: SystemEvents) => void);
+}, options?: {
+    call?: string;
+}) => string) & ((system: FeatureRef, event: SystemEvents, options?: {
+    call?: string;
+}) => string);
 
 // @public
 export type TypedSendToWindow<M extends PluginEvents> = (<P extends keyof M & string>(client: string, plugin: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void) & ((client: string, plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
@@ -263,7 +289,9 @@ export function untypedBroadcastToPlugin(to: string, event: {
 export function untypedSendToSystem(to: SystemTarget, event: {
     type: string;
     [key: string]: unknown;
-}): void;
+}, options?: {
+    call?: string;
+}): string;
 
 // @public
 export function untypedSendToWindow(client: string, to: string, event: {

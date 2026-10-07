@@ -101,7 +101,7 @@ describe('a plugin asked by a backend system', () => {
     expect(handed, 'the asking system arrived on the wire, so there is an answer to give')
       .toEqual([{ plugin: NOTES, type: 'ASK', canAnswer: true }]);
     expect(answersOut()).toEqual([
-      { to: MEMOS, event: { type: 'ANSWER', asked: 'from-a-system' }, sender: NOTES, answering: true },
+      { to: MEMOS, call: expect.any(String), event: { type: 'ANSWER', asked: 'from-a-system' }, sender: NOTES, answering: undefined },
     ]);
   });
 
@@ -120,7 +120,7 @@ describe('a plugin asked by a backend system', () => {
 
     expect(heard, 'the plugin at that ref is not who asked').toEqual([]);
     expect(answersOut(), 'the system at that ref is').toEqual([
-      { to: THREADS, event: { type: 'ANSWER', asked: 'outward' }, sender: NOTES, answering: true },
+      { to: THREADS, call: expect.any(String), event: { type: 'ANSWER', asked: 'outward' }, sender: NOTES, answering: undefined },
     ]);
   });
 

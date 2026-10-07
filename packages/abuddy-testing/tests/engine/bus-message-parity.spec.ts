@@ -35,8 +35,8 @@ describe('BusMessage mirrors Message', () => {
 
   // The mirror is readonly and the envelope is not, which must not be what makes them differ
   it('differs from the envelope only in readonly-ness, which assignability ignores', () => {
-    const fromWire: BusMessage = { to: 'pack/feature', event: { type: 'PING' }, answering: true };
+    const fromWire: BusMessage = { to: 'pack/feature', event: { type: 'PING' }, call: 'c-1', answering: 'c-0' };
     const asEnvelope: Message = fromWire;
-    expect(asEnvelope.answering).toBe(true);
+    expect(asEnvelope.answering).toBe('c-0');
   });
 });

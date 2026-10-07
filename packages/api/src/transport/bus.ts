@@ -42,6 +42,11 @@ export const systemBusRouter = router({
     // `sender` is named, and that is not the same decision. It is where an answer goes, and a client has to be
     // able to say — a window knows which of its plugins asked, and a participant which name it claimed.
     //
+    // `call` and `answering` are named for the same reason, in both directions: a window's ask crosses inbound
+    // and must be answerable, and a *system* asking a window is answered inbound — so a round trip correlates
+    // only if both survive. Neither routes, so a forged one buys a confused asker and nothing more; `answering`
+    // used to be omitted here on the reasoning that every reader was local, which carrying a call made false.
+    //
     // **It is checked for existence and not for identity, and the difference is worth knowing.** A `sender` must
     // name something addressable, the way `to` must; what it cannot do is prove the caller *is* that thing. One
     // window could name another's plugin, and the bound on that is `client`: a reply goes to the connection the
@@ -50,7 +55,7 @@ export const systemBusRouter = router({
     // today means every caller holds the API token and no pack exists outside this repo — a premise the root
     // CLAUDE.md gives an expiry for. Closing it properly needs per-connection knowledge of which plugins a
     // window actually loaded, which `packClientReady` does not keep.
-    .input(z.object({ to: z.string().min(1), from: z.string().min(1).optional(), via: z.string().min(1).optional(), sender: z.string().min(1).optional(), event: z.object({ type: z.string().min(1) }).passthrough() }))
+    .input(z.object({ to: z.string().min(1), from: z.string().min(1).optional(), via: z.string().min(1).optional(), sender: z.string().min(1).optional(), call: z.string().min(1).optional(), answering: z.string().min(1).optional(), event: z.object({ type: z.string().min(1) }).passthrough() }))
     .mutation(({ input, ctx }) => {
       if (input.sender !== undefined && !addressable(input.sender)) {
         throw new TRPCError({

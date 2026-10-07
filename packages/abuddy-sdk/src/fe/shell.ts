@@ -57,7 +57,7 @@ export type HostShellEvent =
    * what decides how the shell reports a plugin that isn't there — a toast tells a user their command failed,
    * and there is no user behind an answer. Only `reply` sets it.
    */
-  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string; via?: string; asker?: _Asker; answering?: true }
+  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string; via?: string; asker?: _Asker; answering?: string; call?: string }
   | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
   | { type: 'RESTORE_CHAT' }
   | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }

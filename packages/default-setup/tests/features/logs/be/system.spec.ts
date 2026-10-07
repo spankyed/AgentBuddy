@@ -28,6 +28,7 @@ describe('logs system', () => {
 
     expect(toPlugin).toEqual([{
       to: 'default-setup/logs',
+      call: expect.any(String),
       // The pack that sent it, stamped by this pack's generated broadcastToPlugin
       from: 'default-setup',
       event: expect.objectContaining({

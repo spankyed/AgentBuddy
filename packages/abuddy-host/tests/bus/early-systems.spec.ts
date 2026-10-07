@@ -80,7 +80,7 @@ it("delivers what an early system sends in answer to the first client connection
     testRootEvents.emitConnected();
 
     stop();
-    expect(outgoing).toContainEqual({ to: 'boot-pack/boot', event: { type: 'BOOT_LOGS' } });
+    expect(outgoing).toContainEqual({ to: 'boot-pack/boot', call: expect.any(String), event: { type: 'BOOT_LOGS' } });
   } finally {
     registry.unregisterPack('boot-pack');
   }
@@ -115,7 +115,7 @@ it('lets an early system answer whoever asked, on the connection they asked from
     testRootEvents.emitIncoming({ to: 'ask-pack/boot', event: { type: 'CLEAR' }, sender: 'ask-pack/boot', client: 'c-main' });
 
     stop();
-    expect(outgoing).toContainEqual({ to: 'ask-pack/boot', event: { type: 'BOOT_LOGS' }, sender: 'ask-pack/boot', client: 'c-main', answering: true });
+    expect(outgoing).toContainEqual({ to: 'ask-pack/boot', call: expect.any(String), event: { type: 'BOOT_LOGS' }, sender: 'ask-pack/boot', client: 'c-main', answering: undefined });
   } finally {
     registry.unregisterPack('ask-pack');
   }

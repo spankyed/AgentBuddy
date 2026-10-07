@@ -58,6 +58,6 @@ describe('the bound app', () => {
       stop();
       unregisterPack('bound-pack');
     }
-    expect(incoming).toEqual([{ to: 'bound-pack/memos', event: { type: 'PING' } }, { to: 'bound-pack/memos', event: { type: 'PING' } }]);
+    expect(incoming).toEqual([{ to: 'bound-pack/memos', call: expect.any(String), event: { type: 'PING' } }, { to: 'bound-pack/memos', call: expect.any(String), event: { type: 'PING' } }]);
   });
 });

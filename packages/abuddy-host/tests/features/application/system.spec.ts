@@ -45,6 +45,7 @@ describe('the host application system', () => {
     expect(system.visibilitySent()).toEqual([{
       to: 'host/application',
       from: 'host',
+      call: expect.any(String), 
       event: { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'default-setup/logs': false, 'default-setup/notes': false } },
     }]);
   });
@@ -74,6 +75,6 @@ describe('the host application system', () => {
 
     system.send({ type: 'SEND_STATE' });
 
-    expect(system.visibilitySent()).toEqual([{ to: 'host/application', from: 'host', event: expect.objectContaining({ pluginVisibility: { 'memo-pack/memos': false } }) }]);
+    expect(system.visibilitySent()).toEqual([{ to: 'host/application', from: 'host', call: expect.any(String), event: expect.objectContaining({ pluginVisibility: { 'memo-pack/memos': false } }) }]);
   });
 });

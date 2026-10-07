@@ -4,6 +4,7 @@ import { boundHost, _isHostBound } from '../runtime/host-runtime.ts';
 import { _isFeHostBound, boundFeHost } from '../runtime/fe-host.ts';
 import { getDesignated } from '../designations/index.ts';
 import { resolveName, splitRef, type FeatureRef } from '../ids/refs.ts';
+import { randomId } from '../utils/random-id.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
 import { eventTypes } from './event-types.ts';
 import { _currentDelivery, type _Delivery } from './delivery.ts';
@@ -79,25 +80,106 @@ export interface Message {
    */
   sender?: string;
   /**
-   * That this message is an answer to one somebody sent — set by `_replyTo` and by nothing else, so a reader can
-   * treat it as "a `reply` built this" rather than a hint.
+   * The call this message **is** — minted by every send, so a request can be named by the answer to it.
    *
-   * `true` or absent, never `false`: there is no "not answering" value and nobody should be computing one.
+   * It exists because correlation was a three-step obligation every feature discharged by hand — mint an id,
+   * store it, settle it — and the failures distributed across the steps rather than clustering: the database
+   * did all three, settings declared a `requestId` end to end and minted none, actions and prompts stored one
+   * and never cleared it, and a terminal's id did not exist until its answer, so nothing the asker sent could
+   * have identified it. One id on the envelope serves all four shapes, because a per-send id is what works
+   * when there is no natural key, no domain id that distinguishes windows, and nothing to key on yet.
+   *
+   * **Optional in the type and set by every send.** It cannot be required: `reply` takes an event and nothing
+   * else, so `_replyTo` has no caller to source one from, and the pack test harness's `app.send` is built on
+   * every field past `event` being omittable. What holds the invariant is `createSends`, which is the one
+   * place a send is built, plus the spec that every verb stamps one.
+   *
+   * A pack never writes this. `sendToSystem` returns the call it used and takes one for the case that needs
+   * the id before the send happens; the other three verbs mint internally and say nothing about it.
+   */
+  call?: string;
+  /**
+   * The call this message **answers** — set by `_replyTo` and by nothing else, so a reader can treat it as
+   * "a `reply` built this, for that request" rather than a hint.
+   *
+   * Absent, or a call: there is no "not answering" value and nobody should be computing one. It was
+   * `answering?: true` until the envelope carried a call, which is the same fact with the request named.
    *
    * It exists because an undeliverable answer is not the same event as an undeliverable command. A command was
    * given by someone who is still there to be told it failed; an answer has no user behind it, and the asker may
    * simply be gone — a pack unloading mid-request is a race, not a mistake. So the renderer's wire send keeps the
    * log and drops the toast for one of these (`renderer/src/transport/client.ts`), and the bus's two drop
-   * diagnostics name `reply` as the verb rather than the one the caller did not call.
+   * diagnostics mark the report as an answer rather than naming the verb the caller did not call.
    *
-   * **Local to each side, and deliberately not on the wire.** `bus.send`'s input schema does not name it, so a
-   * client's copy is dropped at the boundary like any other unnamed field — and nothing is lost, because every
-   * reader is either in the window that built the message or on the backend that built it. A window answering a
-   * backend system is refused by `receiveClientEvent` against the same validation map the bus would use, before
-   * the bus sees it, so there is no backend reader for a wire-borne one to reach.
+   * **On the wire in both directions, which is a change.** This said "local to each side, and deliberately not
+   * on the wire", on the reasoning that every reader was in the window or on the backend that built the
+   * message. Carrying a call makes that false: a window's ask crosses inbound and its answer comes back out,
+   * and a *system* asking a window is answered inbound — so a round trip correlates only if both fields
+   * survive `bus.send`'s whitelist. Both are named there now.
    */
-  answering?: true;
+  answering?: string;
 }
+
+/**
+ * A new call id.
+ *
+ * **Random rather than a counter, and the reason is the same one the database's own minting recorded.** A
+ * broadcast reaches every window, so a per-window counter would collide with another's; and an id stamped
+ * when the *answer* is built would give an abandoned request's late answer the newest id, so it would win.
+ * `counterSafe` because a burst of sends shares a millisecond.
+ *
+ * Exported for the one shape that needs the id before the send happens — an `enqueueActions` body, where the
+ * send is deferred past the `assign` that stores it. Every other caller lets the send mint and takes what
+ * `sendToSystem` returns.
+ */
+export const newCall = (): string => randomId({ prefix: 'c-', counterSafe: true });
+
+/**
+ * The call a delivered event belongs to, or nothing for one that belongs to none.
+ *
+ * **Why the event and not a handed member.** A correlation is read in a transition guard in three of the
+ * four features that have one, and a guard is handed `{ context, event }` and nothing else — `defineHandlers`
+ * wraps a machine's *actions*, not its guards. Context cannot be written before a guard runs, so the event is
+ * the only channel to one, and a reserved key on it is how a call reaches a guard without every machine
+ * declaring a field for it.
+ *
+ * The key is `_call` and the delivery doors inject it. It holds the message's `answering`, so it is present
+ * on an answer and absent on anything else — a request's own call is on the envelope for `reply` to echo and
+ * has no reader on the event.
+ *
+ * **Reserved**: the injected value wins over a pack's own field of that name, which `outgoing-events.spec.ts`
+ * pins beside its deliberate `pluginId` collision, and a pack rule refuses one written in pack source.
+ */
+export const callOf = (event: { [key: string]: unknown }): string | undefined => {
+  const call = event[_CALL_KEY];
+  return typeof call === 'string' ? call : undefined;
+};
+
+/**
+ * The reserved key `callOf` reads, and the doors write.
+ *
+ * `_`-prefixed for what the prefix means everywhere here — not yours to write — and a key rather than a
+ * member because the thing it sits in is an open bag (`{ type: string; [key: string]: unknown }`) where a
+ * collision is possible. `Message.call` is un-prefixed for the opposite reason: a closed interface has
+ * nothing to collide with, and a pack *does* supply a call through `sendToSystem`.
+ *
+ * @internal Host and SDK only. Pack code reads a call with `callOf` and never names the key.
+ */
+export const _CALL_KEY = '_call';
+
+/**
+ * What a door adds to the event it delivers, so the receiver's guards can read the call it answers.
+ *
+ * **Only an answer carries one, which is narrower than it first looked.** The first version injected
+ * `answering ?? call`, so every delivered event named a call — and nothing needed a *request's* own call on
+ * the event: whoever receives a request answers it with `reply`, which takes the call from the delivery. It
+ * is the asker that needs one, and only on the answer. The pack suite is what found it: a system recording
+ * what it heard recorded `_call` on every notification too, and a notification has no call to belong to.
+ *
+ * @internal Called by the delivery doors. Pack code reads the result with `callOf`.
+ */
+export const _callOn = (message: Pick<Message, 'answering'>): { [_CALL_KEY]?: string } =>
+  message.answering === undefined ? {} : { [_CALL_KEY]: message.answering };
 
 /**
  * How a diagnostic names who sent a message, as a suffix to append: ` by "default-setup" (action:summarise)`,
@@ -261,13 +343,17 @@ function sendIncoming(message: Message): void {
 function deliverInWindow(message: Message): void {
   const ref = message.to;
   if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
-  const { from, via, sender, answering } = message;
+  const { from, via, sender, answering, call } = message;
   boundFeHost().application.send({
     type: 'SEND_TO_PLUGIN',
     plugin: ref,
     events: [message.event],
     ...(from ? { from } : {}),
     ...(via ? { via } : {}),
+    // Forwarded by name, like every other field here — which is why this door is the one place a new envelope
+    // field is lost quietly rather than loudly, and why `shell-envelope-parity.spec.ts` holds the two shapes
+    // to each other the way `bus-message-parity.spec.ts` does for the wire
+    ...(call ? { call } : {}),
     // Whether a person is waiting on this, which decides how the shell reports a plugin that isn't there: a
     // command someone gave is worth a toast, an answer to a question is not. It rides on the envelope, so this
     // door and the renderer's wire send read one field rather than each being told separately
@@ -296,9 +382,16 @@ export interface SendBinding {
 }
 
 /**
- * The three sends, bound to whoever is making them. One place builds a send, so what travels beside the event —
- * `from` today — is threaded here rather than added as a parameter to each of them, and to every caller that
- * has nothing to pass.
+ * The four sends, bound to whoever is making them. One place builds a send, so what travels beside the event —
+ * `from` and `via` — is threaded here rather than added as a parameter to each of them, and to every caller
+ * that has nothing to pass.
+ *
+ * **`call` is the one thing that could not follow that policy, and `sendToSystem` takes it.** A binding is one
+ * value for the life of a pack; a call is one value per send, so `SendBinding` cannot carry it. Minting still
+ * happens here — all four verbs stamp one, and 728 call sites across the repo are untouched — but an *ask*
+ * needs the id before the answer can be matched against it, and in an `enqueueActions` body the send is
+ * deferred past the `assign` that would store it. So `sendToSystem` accepts one and returns the one it used,
+ * and the three verbs nobody asks with keep their signatures exactly.
  */
 export function createSends({ resolve = (name: string) => name, from, via }: SendBinding = {}) {
   // Only the fields this binding has. An envelope carrying `from: undefined` reads as a sender that was there and
@@ -320,7 +413,7 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
       if (!_isHostBound() && _isFeHostBound()) {
         throw new Error(`broadcastToPlugin("${name}") is the backend's, over the bus to every window. In the renderer, send to this window's plugin with sendToPlugin from #generated/events`);
       }
-      boundHost().transport.rootEvents.emitPluginSend({ to: resolve(name), event, ...labels, ...answerAddress() });
+      boundHost().transport.rootEvents.emitPluginSend({ to: resolve(name), event, call: newCall(), ...labels, ...answerAddress() });
     },
 
     sendToPlugin(name: string, event: { type: string; [key: string]: unknown }): void {
@@ -328,7 +421,7 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
       if (!_isFeHostBound() && _isHostBound()) {
         throw new Error(`sendToPlugin("${name}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
       }
-      deliverInWindow({ to: resolve(name), event, ...labels, ...answerAddress() });
+      deliverInWindow({ to: resolve(name), event, call: newCall(), ...labels, ...answerAddress() });
     },
 
     /**
@@ -356,11 +449,26 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
       if (!client) {
         throw new Error(`sendToWindow("${name}") was given no connection to send to. A handler is handed the one it is serving as \`client\`, which is absent when the message came from another system or from nothing — to reach every window showing that plugin, use broadcastToPlugin.`);
       }
-      boundHost().transport.rootEvents.emitPluginSend({ to: resolve(name), event, ...labels, ...answerAddress(), client });
+      boundHost().transport.rootEvents.emitPluginSend({ to: resolve(name), event, call: newCall(), ...labels, ...answerAddress(), client });
     },
 
-    sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
-      sendIncoming({ to: typeof to === 'string' ? resolve(to) : getDesignated(to.role), event, ...labels, ...answerAddress() });
+    /**
+     * Sends an event to a backend system, and answers with the call it was sent under.
+     *
+     * **The call is returned, and may be supplied.** Returned because an ask has to store what it asked
+     * under; supplied because the shape most asks are written in — an `enqueueActions` body — defers the
+     * send past the `assign` that stores it, so the id has to exist before the send does (`newCall`). Given
+     * one, this uses it; given none, it mints. Either way the answer to it carries the same value as
+     * `Message.answering`, which `callOf` reads off the delivered event.
+     *
+     * The three other verbs take no call, because nothing asks with them: a broadcast has no single asker,
+     * and the two addressed plugin sends are answers or news. One of them gains the parameter the day
+     * something asks with it, and not before.
+     */
+    sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }, options?: { call?: string }): string {
+      const call = options?.call ?? newCall();
+      sendIncoming({ to: typeof to === 'string' ? resolve(to) : getDesignated(to.role), event, call, ...labels, ...answerAddress() });
+      return call;
     },
   };
 }
@@ -474,9 +582,14 @@ export type Reply<E extends { type: string } = { type: string; [key: string]: un
  */
 export function _replyTo(delivery: _Delivery | undefined): Reply | undefined {
   if (delivery?.asker === undefined) return undefined;
-  const { asker, receiver } = delivery;
+  const { asker, receiver, call } = delivery;
   return (event) => {
-    const message: Message = { to: asker.ref, event, sender: receiver, answering: true };
+    // The call this answers, read off the delivery rather than the event: `reply` is bound at handler entry,
+    // so an answer sent after an `await` still names the request it is for
+    // Its own call as well as the one it answers: a reply is a message, so it mints like every other send and
+    // can itself be answered — which is the pattern this channel already supports. `answering` names another
+    // message's call; `call` names this one.
+    const message: Message = { to: asker.ref, event, sender: receiver, call: newCall(), ...(call === undefined ? {} : { answering: call }) };
     if (_isFeHostBound()) {
       if (asker.kind === 'window') { deliverInWindow(message); return; }
       if (asker.kind === 'bus') { boundFeHost().client.send(message); return; }
@@ -509,8 +622,8 @@ export function _clientOf(delivery: _Delivery | undefined): string | undefined {
  * Sends an event to a backend system, by ref or by the role it plays. Untyped: packs use the `sendToSystem` from
  * their `#generated/events`, which takes names and checks the event against what the system declares.
  */
-export function untypedSendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
-  unboundSends.sendToSystem(to, event);
+export function untypedSendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }, options?: { call?: string }): string {
+  return unboundSends.sendToSystem(to, event, options);
 }
 
 
@@ -553,7 +666,8 @@ export type TypedSendToWindow<M extends PluginEvents> = (<P extends keyof M & st
 export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(
   system: Id,
   event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, { type: Type } & WithoutType<EventsOfType<S[Id], Type>>>,
-) => void) & ((target: { role: string }, event: { type: string; [key: string]: unknown }) => void) & ((system: FeatureRef, event: SystemEvents) => void);
+  options?: { call?: string },
+) => string) & ((target: { role: string }, event: { type: string; [key: string]: unknown }, options?: { call?: string }) => string) & ((system: FeatureRef, event: SystemEvents, options?: { call?: string }) => string);
 
 /** A pack's typed sends */
 export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
