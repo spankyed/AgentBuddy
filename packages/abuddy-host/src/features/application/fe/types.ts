@@ -81,7 +81,7 @@ export interface PluginRequest {
    * Set only by `reply` (`deliverInWindow`, `@abuddy/sdk/events`). Not a property of the asker: a send *to* an
    * asker is an answer, a send *from* one is not, and both carry the same `sender`.
    */
-  answering?: boolean;
+  answering?: true;
 }
 
 export interface ShellContext {
@@ -145,7 +145,7 @@ export interface ShellContext {
 export type ShellEvent =
   | { type: 'SELECT_PLUGIN'; plugin: string; historyIndex?: number }
   | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[] }
-  | ({ type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; answering?: boolean } & RequestSender)
+  | ({ type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; answering?: true } & RequestSender)
   /** Hands an opened plugin its events, once the shell has selected it */
   | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[]; asker?: RequestSender['asker'] }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }

@@ -56,12 +56,15 @@ describe('bus.send carries the sender across the boundary', () => {
    * file compiling until it is named here (`npm run typecheck:be` covers these tests), and then fails the
    * assertion until `bus.send`'s schema names it too.
    *
-   * `client` is omitted from the type deliberately — a new field that routes belongs in the stamped cases below
-   * rather than here, and the `Omit` is what forces that choice to be made rather than defaulted into.
+   * Two fields are omitted from the type deliberately, and the `Omit` is what forces each choice to be made
+   * rather than defaulted into. `client` routes, so it is the API's to stamp and a new field like it belongs in
+   * the stamped cases below. `answering` is local to each side: every reader of it is in the window that built
+   * the message or on the backend that built it, and a window answering a backend system is refused by
+   * `receiveClientEvent` before the bus sees it, so a wire-borne one would reach nobody.
    */
   it('carries every field a sender may set, whatever the envelope grows', async () => {
     received.length = 0;
-    const whole: Required<Omit<Message, 'client'>> = { to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, from: 'default-setup', via: 'action:Summarise', sender: 'memo-pack/memos' };
+    const whole: Required<Omit<Message, 'client' | 'answering'>> = { to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, from: 'default-setup', via: 'action:Summarise', sender: 'memo-pack/memos' };
     await caller.send(whole);
     expect(received).toEqual([{ ...whole, client: 'c-one' }]);
   });
@@ -107,6 +110,17 @@ describe('bus.send carries the sender across the boundary', () => {
   it('refuses that same name when the claim has gone', async () => {
     await expect(caller.send({ to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, sender: 'host/drive' }))
       .rejects.toThrow(/no claimed participant/);
+  });
+
+  /**
+   * `answering` gets its own case rather than riding on the one below, because it is a field of `Message` and a
+   * reader would reasonably expect the schema to name it. It does not: a client claiming its answer is an answer
+   * would only change what a diagnostic calls the send, and the omission is what keeps that unavailable.
+   */
+  it('drops answering, which is a Message field the schema deliberately omits', async () => {
+    received.length = 0;
+    await caller.send({ to: 'memo-pack/memos', event: { type: 'ADD_MEMO' }, answering: true } as never);
+    expect(received[0]).not.toHaveProperty('answering');
   });
 
   // The fields are named rather than the object made passthrough, so the boundary stays closed to the rest

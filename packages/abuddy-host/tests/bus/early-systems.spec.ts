@@ -115,7 +115,7 @@ it('lets an early system answer whoever asked, on the connection they asked from
     testRootEvents.emitIncoming({ to: 'ask-pack/boot', event: { type: 'CLEAR' }, sender: 'ask-pack/boot', client: 'c-main' });
 
     stop();
-    expect(outgoing).toContainEqual({ to: 'ask-pack/boot', event: { type: 'BOOT_LOGS' }, sender: 'ask-pack/boot', client: 'c-main' });
+    expect(outgoing).toContainEqual({ to: 'ask-pack/boot', event: { type: 'BOOT_LOGS' }, sender: 'ask-pack/boot', client: 'c-main', answering: true });
   } finally {
     registry.unregisterPack('ask-pack');
   }

@@ -41,10 +41,17 @@ export interface BusMessage {
   readonly via?: string;
   readonly sender?: string;
   readonly client?: string;
+  readonly answering?: true;
 }
 
-/* `from`, `via` and `client` are read by nothing here; they are declared because this interface is the wire
- * shape, and a reader comparing it against `Message` should find the same fields. */
+/* `from`, `via`, `client` and `answering` are read by nothing here; they are declared because this interface is
+ * the wire shape, and a reader comparing it against `Message` should find the same fields. Hand-written on
+ * purpose — this module declares almost no dependencies, because it talks to a *running* app that may be a
+ * downloaded Beta rather than this checkout — so the agreement is checked by a case
+ * (`tests/engine/bus-message-parity.spec.ts`) rather than by the compiler seeing one type.
+ *
+ * `answering` reaches here on the way *out* only: `bus.sub` delivers a backend `reply` with it, while
+ * `bus.send`'s input schema deliberately omits it, so a message this client sends never carries one. */
 
 /** Where the API is and what it accepts. Resolved by the caller, so this module owns no app lifecycle. */
 export interface ApiAddress {

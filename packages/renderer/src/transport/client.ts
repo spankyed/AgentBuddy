@@ -19,12 +19,18 @@ function failureOf(event: ApiStatusEvent): ShellFailure {
 export const feClient: ShellClient = {
   send: (message) => {
     // Caught, since an unhandled rejection shows the error page. The report leaves out the payload, and goes to
-    // the app's log (and so diagnostics) as well as the console
+    // the app's log (and so diagnostics) as well as the console.
+    //
+    // **An answer that cannot be delivered is a log line, not a toast** (`Message.answering`, set by `reply` and
+    // nothing else). A command someone gave is worth telling them about; an answer has nobody behind it to tell,
+    // and the asking system may legitimately no longer declare the event — so the person would get a sentence
+    // about plumbing they did not cause and cannot act on. The shell makes the same call for a send that stays
+    // inside the window; this is the path that leaves it, and the two now read one field.
     trpc.bus.send.mutate(message).catch((error: unknown) => {
       const report = `Couldn't send ${message.event.type} to ${message.to}: ${errorMessage(error)}`;
       console.error(`[fe-client] ${report}`);
       window.electronAPI?.rendererLog?.write({ level: 'error', source: 'fe-client', message: report }).catch(() => {});
-      globalToast.error(report);
+      if (!message.answering) globalToast.error(report);
     });
   },
 

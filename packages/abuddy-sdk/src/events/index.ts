@@ -78,6 +78,25 @@ export interface Message {
    * answered somebody else. `bus.send` has the rest, including what closing it properly would take.
    */
   sender?: string;
+  /**
+   * That this message is an answer to one somebody sent — set by `_replyTo` and by nothing else, so a reader can
+   * treat it as "a `reply` built this" rather than a hint.
+   *
+   * `true` or absent, never `false`: there is no "not answering" value and nobody should be computing one.
+   *
+   * It exists because an undeliverable answer is not the same event as an undeliverable command. A command was
+   * given by someone who is still there to be told it failed; an answer has no user behind it, and the asker may
+   * simply be gone — a pack unloading mid-request is a race, not a mistake. So the renderer's wire send keeps the
+   * log and drops the toast for one of these (`renderer/src/transport/client.ts`), and the bus's two drop
+   * diagnostics name `reply` as the verb rather than the one the caller did not call.
+   *
+   * **Local to each side, and deliberately not on the wire.** `bus.send`'s input schema does not name it, so a
+   * client's copy is dropped at the boundary like any other unnamed field — and nothing is lost, because every
+   * reader is either in the window that built the message or on the backend that built it. A window answering a
+   * backend system is refused by `receiveClientEvent` against the same validation map the bus would use, before
+   * the bus sees it, so there is no backend reader for a wire-borne one to reach.
+   */
+  answering?: true;
 }
 
 /**
@@ -239,19 +258,20 @@ function sendIncoming(message: Message): void {
  * already answers it for `OPEN_PLUGIN`: a plugin whose pack's frontend is still loading is waited for, and one
  * no pack provides is reported to the user once loading settles.
  */
-function deliverInWindow(message: Message, { answering = false } = {}): void {
+function deliverInWindow(message: Message): void {
   const ref = message.to;
   if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
-  const { from, via, sender } = message;
+  const { from, via, sender, answering } = message;
   boundFeHost().application.send({
     type: 'SEND_TO_PLUGIN',
     plugin: ref,
     events: [message.event],
     ...(from ? { from } : {}),
     ...(via ? { via } : {}),
-    // Whether a person is waiting on this, which only the sender knows and which decides how the shell reports
-    // a plugin that isn't there: a command someone gave is worth a toast, an answer to a question is not
-    ...(answering ? { answering: true } : {}),
+    // Whether a person is waiting on this, which decides how the shell reports a plugin that isn't there: a
+    // command someone gave is worth a toast, an answer to a question is not. It rides on the envelope, so this
+    // door and the renderer's wire send read one field rather than each being told separately
+    ...(answering ? { answering } : {}),
     // The window's counterpart of the bus's `askerOf`: each door turns the envelope's `sender` into the channel
     // it arrived on, because that door is the only place the channel is known. This one stays inside the window,
     // so a plugin answering it answers an actor beside it rather than something over the bus.
@@ -456,9 +476,9 @@ export function _replyTo(delivery: _Delivery | undefined): Reply | undefined {
   if (delivery?.asker === undefined) return undefined;
   const { asker, receiver } = delivery;
   return (event) => {
-    const message: Message = { to: asker.ref, event, sender: receiver };
+    const message: Message = { to: asker.ref, event, sender: receiver, answering: true };
     if (_isFeHostBound()) {
-      if (asker.kind === 'window') { deliverInWindow(message, { answering: true }); return; }
+      if (asker.kind === 'window') { deliverInWindow(message); return; }
       if (asker.kind === 'bus') { boundFeHost().client.send(message); return; }
       throw new Error(`Can't answer "${asker.ref}" on connection "${asker.client}" from a window: a window reaches the backend and the plugins beside it, not another window's connection. Nothing in this window builds a connection asker, so the delivery was constructed wrongly rather than answered wrongly — the handler that called reply is not at fault.`);
     }

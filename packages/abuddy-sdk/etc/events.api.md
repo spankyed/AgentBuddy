@@ -127,6 +127,7 @@ export type IncomingEventsOf<C> = ContractIncoming<C>;
 
 // @public
 export interface Message {
+    answering?: true;
     client?: string;
     // (undocumented)
     event: {

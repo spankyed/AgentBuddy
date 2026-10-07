@@ -164,7 +164,7 @@ describe('reply', () => {
     await untilBus(() => answers().length === 1, 'the answer to the ask');
 
     expect(answers()).toEqual([
-      { to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', tag: undefined }, sender: 'memo-pack/memos', client: 'c-main' },
+      { to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', tag: undefined }, sender: 'memo-pack/memos', client: 'c-main', answering: true },
     ]);
   });
 
@@ -195,7 +195,7 @@ describe('reply', () => {
     await untilBus(() => answers().length === 1, 'the answer from the invoked actor');
 
     expect(answers()).toEqual([
-      { to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', tag: 'invoked' }, sender: 'memo-pack/invoker', client: 'c-main' },
+      { to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', tag: 'invoked' }, sender: 'memo-pack/invoker', client: 'c-main', answering: true },
     ]);
   });
 
@@ -238,6 +238,54 @@ describe('reply', () => {
 
     expect(answers().map(({ event }) => (event as { tag?: string }).tag)).toEqual(['progress-first', 'progress-second']);
     expect(answers().map(({ client }) => client), 'neither widened into a broadcast').toEqual(['c-main', 'c-main']);
+  });
+});
+
+/**
+ * `Message.answering` says a `reply` built this, and the value of that claim is that nothing else sets it.
+ *
+ * Two readers depend on it being exact rather than a hint: the renderer's wire send keeps the log and drops the
+ * toast for one of these, and the bus's two drop diagnostics name `reply` as the verb. A send that acquired the
+ * flag some other way would silence a toast somebody is waiting for.
+ */
+describe('an answer says it is one', () => {
+  it('stamps the answer that goes out to a connection', async () => {
+    ask({ to: 'memo-pack/memos', event: { type: 'PING', tag: 'to-a-window' }, sender: 'memo-pack/memos', client: 'c-main' });
+    await untilBus(() => answers().length === 1, 'the answer to go out');
+
+    expect(answers().map(({ answering }) => answering)).toEqual([true]);
+  });
+
+  /**
+   * The same for the inward branch, which is a different line of `_replyTo` — it is stamped once at construction
+   * so all four branches carry it, and these two cases are the pair that would catch stamping per branch instead.
+   */
+  it('stamps the answer that goes back to a system', async () => {
+    const incoming: Message[] = [];
+    const stop = testRootEvents.onIncoming((message) => { incoming.push(message); });
+    try {
+      bus.send({ type: 'INCOMING', message: { to: 'memo-pack/asker', event: { type: 'GO' } } });
+      await untilBus(() => answered.length === 1, 'the asking system to be answered');
+
+      const answer = incoming.find(({ event }) => event.type === 'MEMO_ADDED');
+      expect(answer?.answering, 'the inward branch stamps it too').toBe(true);
+    } finally {
+      stop();
+    }
+  });
+
+  /**
+   * The invariant, and the one worth the case: a send made *while handling* a message is not thereby an answer,
+   * however much scope it shares with one. `ANNOUNCE` makes the handler broadcast, which carries the handler's
+   * ref for the same reason a reply does — so `sender` cannot tell the two apart and this field has to.
+   */
+  it('leaves an ordinary send made inside a delivery unstamped', async () => {
+    ask({ to: 'memo-pack/memos', event: { type: 'ANNOUNCE' }, sender: 'memo-pack/memos', client: 'c-main' });
+    await untilBus(() => outgoing.some(({ event }) => event.type === 'MEMOS_CONNECTED'), 'the announcement');
+
+    const announced = outgoing.filter(({ event }) => event.type === 'MEMOS_CONNECTED');
+    expect(announced[0]?.sender, 'it does carry the handler ref, which is why sender cannot distinguish them').toBe('memo-pack/memos');
+    expect(announced[0]?.answering, 'but only reply stamps this').toBeUndefined();
   });
 });
 
