@@ -53,8 +53,14 @@ describe('a call is minted by the send', () => {
     expect(returned, 'and the send answers with it, so a caller that minted none can still store it').toBe(call);
   });
 
-  it('mints distinct calls', () => {
-    expect(newCall()).not.toBe(newCall());
+  /**
+   * A burst, which is the case a clock cannot separate and the counter is for: these all land in the same
+   * millisecond, so nothing timestamp-derived would tell them apart.
+   */
+  it('mints distinct calls, however many share a millisecond', () => {
+    const minted = Array.from({ length: 1000 }, () => newCall());
+
+    expect(new Set(minted).size, 'every one distinct').toBe(minted.length);
   });
 });
 

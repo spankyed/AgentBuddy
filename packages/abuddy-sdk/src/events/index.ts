@@ -121,18 +121,35 @@ export interface Message {
 }
 
 /**
- * A new call id.
+ * Tags this process once, so a call is one increment.
  *
- * **Random rather than a counter, and the reason is the same one the database's own minting recorded.** A
- * broadcast reaches every window, so a per-window counter would collide with another's; and an id stamped
- * when the *answer* is built would give an abandoned request's late answer the newest id, so it would win.
- * `counterSafe` because a burst of sends shares a millisecond.
+ * **Every send mints a call, and two of those sends are hot** — a log line per log line, a `terminal.OUTPUT`
+ * per pty chunk, thousands during a build. So minting has to be arithmetic: per-call entropy means a CSPRNG
+ * call, a typed-array allocation and a `BigInt.toString` on that path, where the uniqueness it buys is
+ * available from one random tag taken at load.
+ */
+const PROCESS_TAG = randomId({ includeTimestamp: false });
+
+/** The last call this process minted. A plain integer, so it cannot wrap back onto a live call. */
+let minted = 0;
+
+/**
+ * A new call id, unique across every window and every burst.
+ *
+ * **Across windows by the process tag, within one by the counter**, which is what the two uniqueness
+ * requirements each need: an answer can reach every window, so a bare counter would collide with another
+ * window's; and a burst of sends shares a millisecond, so a clock cannot separate them.
+ *
+ * **Guessable, deliberately.** `c-<tag>-7` implies `c-<tag>-8`, and that costs nothing here because a call
+ * routes nothing and refuses nothing — it is read only by whoever is holding the matching ask. `client` is
+ * the field that routes, and the API mints that per connection with its own entropy. A call is not a
+ * capability and must not become one.
  *
  * Exported for the one shape that needs the id before the send happens — an `enqueueActions` body, where the
  * send is deferred past the `assign` that stores it. Every other caller lets the send mint and takes what
  * `sendToSystem` returns.
  */
-export const newCall = (): string => randomId({ prefix: 'c-', counterSafe: true });
+export const newCall = (): string => `c-${PROCESS_TAG}-${++minted}`;
 
 /**
  * The call a delivered event belongs to, or nothing for one that belongs to none.
