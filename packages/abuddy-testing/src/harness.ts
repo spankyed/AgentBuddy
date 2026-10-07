@@ -405,7 +405,7 @@ export async function importSeeds(options: ImportOptions = {}): Promise<Record<s
  */
 export function importFlows(dsl: FlowDSL): void {
   const byLabel = (rows: Array<{ id: string; label?: string }>) => new Map(rows.map((row) => [String(row.label), row.id]));
-  const flows = byLabel(untypedQx('Flow' as never).pickAll() as Array<{ id: string; label?: string }>);
+  const flows = byLabel(untypedQx('Flow').pickAll() as Array<{ id: string; label?: string }>);
   flowRepository.importFromDSL(compileFlowDSL(dsl, { actions: byLabel(actionRepository.all()), prompts: byLabel(promptRepository.all()), flows }));
 }
 

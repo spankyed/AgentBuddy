@@ -26,8 +26,8 @@ describe('mode name routing', () => {
       seedDefaultFlows()
       // The chat action would drive the CLI: mocked, so it never starts
       mockService<Services, 'cli'>('cli', { claudeCode: {} } as never)
-      mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn(), sendBlockMessage: vi.fn() } as never)
-      mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() } as never)
+      mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn(), sendBlockMessage: vi.fn() })
+      mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() })
       app = await startApp({ systems: ['brain'] })
     })
 

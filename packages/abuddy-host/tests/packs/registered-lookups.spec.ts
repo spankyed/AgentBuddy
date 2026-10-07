@@ -252,7 +252,7 @@ describe('a type two packs contribute facets of', () => {
   });
 
   it('is gone once the last pack contributing it unregisters', () => {
-    add({ id: 'only-pack', artifacts: [{ type: 'solo-view' } as never] });
+    add({ id: 'only-pack', artifacts: [{ type: 'solo-view' }] });
     expect(artifactRegistry.has('solo-view')).toBe(true);
 
     remove('only-pack');
@@ -302,9 +302,9 @@ describe('a pack whose registration is refused', () => {
     add({
       id: 'incumbent',
       steps: [noteStep],
-      artifacts: [{ type: 'note-view' } as never],
-      blocks: [{ type: 'note-block' } as never],
-      seedHooks: { Note: {} as never },
+      artifacts: [{ type: 'note-view' }],
+      blocks: [{ type: 'note-block' }],
+      seedHooks: { Note: {} },
       seeders: [aSeeder('notes')],
       commands: [{ name: 'standup', placeholder: 'Topic' }],
       features: { notes: { plugin: { receives: [] }, settings: { plugins: { notes: { from: 'incumbent' } } } } },
@@ -314,9 +314,9 @@ describe('a pack whose registration is refused', () => {
     expect(() => add({
       id: 'refused',
       steps: [tickTrigger],
-      artifacts: [{ type: 'card-view' } as never],
-      blocks: [{ type: 'card-block' } as never],
-      seedHooks: { Card: {} as never },
+      artifacts: [{ type: 'card-view' }],
+      blocks: [{ type: 'card-block' }],
+      seedHooks: { Card: {} },
       seeders: [aSeeder('cards')],
       commands: [{ name: 'standup', placeholder: 'Theirs' }],
       features: { cards: { plugin: { receives: [] }, settings: { plugins: { cards: {} } } } },

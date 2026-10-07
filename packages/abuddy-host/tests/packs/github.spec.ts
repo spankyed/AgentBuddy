@@ -119,7 +119,7 @@ describe('githubFetch', () => {
     });
 
     it('reports a network error as a generic failure, keeping the cause in the message', async () => {
-      const err = await fail(vi.fn(async () => { throw new Error('ECONNREFUSED'); }) as never);
+      const err = await fail(vi.fn(async () => { throw new Error('ECONNREFUSED'); }));
       expect(err.reason).toBe('failed');
       expect(err.message).toContain('ECONNREFUSED');
     });

@@ -6,6 +6,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { EARS } from '@abuddy/ears';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-app-reset-'));
 process.env.ABUDDY_ENV = 'test';
@@ -27,7 +28,7 @@ const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 const storedSettings = () => services.settings.getStored();
 
 /** The flows' ids and labels, sorted */
-const flows = () => (untypedQx('Flow' as never).pickAll() as Array<{ id: string; label?: string }>)
+const flows = () => (untypedQx('Flow').pickAll() as Array<{ id: EARS.EntityId; label?: string }>)
   .map(({ id, label }) => ({ id, label }))
   .sort((a, b) => a.id.localeCompare(b.id));
 
@@ -58,7 +59,7 @@ describe('services.appData.reset()', () => {
     services.settings.setInSection('general', ['application', 'openLinksInApp'], false);
     expect(storedSettings()).not.toEqual(fresh.settings);
     const [deleted] = fresh.flows;
-    flowRepository.deleteFlow(deleted.id as never, { allowRoot: true });
+    flowRepository.deleteFlow(deleted.id, { allowRoot: true });
     expect(flows()).not.toContainEqual(deleted);
 
     await services.appData.reset();

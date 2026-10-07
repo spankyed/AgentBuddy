@@ -13,7 +13,7 @@ it("pauses a running Claude Code turn: CC: Pause Turn's event, log entry and thr
   seedDefaultFlows()
   // No CLI process runs in the test
   mockService<Services, 'cli'>('cli', { claudeCode: { getHandle: () => undefined, clearHandle: vi.fn() } } as never)
-  mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() } as never)
+  mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() })
   vi.spyOn(console, 'info').mockImplementation(() => {})
   const { id } = repository.threadCommands.create({ topic: 'A running turn', instructions: '' })
   const threadId = id as EARS.EntityId
@@ -21,7 +21,7 @@ it("pauses a running Claude Code turn: CC: Pause Turn's event, log entry and thr
   await app.connect()
   // The Claude Code flow's entry track clears run state left over from a previous process: the turn starts after it
   await app.runFlow('Claude Code')
-  repository.threadCommands.update(threadId, { context: { claudeCode: { sessionId: 'session-1', isRunning: true } } } as never)
+  repository.threadCommands.update(threadId, { context: { claudeCode: { sessionId: 'session-1', isRunning: true } } })
 
   const logs: LogEvent[] = []
   const stopLogs = testRootEvents.onLog((event) => { logs.push(event) })

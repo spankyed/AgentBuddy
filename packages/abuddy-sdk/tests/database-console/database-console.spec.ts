@@ -42,7 +42,7 @@ describe('the helpers console code sees', () => {
 
 describe('runQueryCode', () => {
   it('returns what the code returns, reading the installed engine and the EARS it is given', async () => {
-    untypedTx('Flow-1' as never, true).put('entityType', 'Flow').put('label', 'Main');
+    untypedTx('Flow-1', true).put('entityType', 'Flow').put('label', 'Main');
     await expect(runQueryCode("return qx(EARS.Entity.Flow).pickAll().map((f) => f.label)", scope)).resolves.toEqual(['Main']);
     await expect(runQueryCode('return getAttr("Flow-1", "label")', scope)).resolves.toBe('Main');
     await expect(runQueryCode('return getSchemaStats().entities', scope)).resolves.toEqual({ Flow: 1 });
@@ -83,8 +83,8 @@ describe('runTransactionCode', () => {
 
 describe('getSchemaStats', () => {
   it('counts entities, attribute kinds and relation kinds', () => {
-    untypedTx('Flow-1' as never, true).put('entityType', 'Flow').put('label', 'a');
-    untypedTx('Flow-2' as never, true).put('entityType', 'Flow').put('label', 'b').link('contains', 'Flow-1' as never);
+    untypedTx('Flow-1', true).put('entityType', 'Flow').put('label', 'a');
+    untypedTx('Flow-2', true).put('entityType', 'Flow').put('label', 'b').link('contains', 'Flow-1');
     const stats = getSchemaStats();
     expect(stats.entities.Flow).toBe(2);
     expect(stats.attributes.label).toEqual({ entityCount: 2, totalValues: 2 });

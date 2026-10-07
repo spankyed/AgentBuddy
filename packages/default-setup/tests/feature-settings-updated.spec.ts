@@ -53,7 +53,7 @@ describe('a feature whose settings change', () => {
     const app = await startApp({ systems: ['memo-pack/memos', 'host/settings'] });
     await app.connect();
 
-    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: { general: {}, plugins: { 'memo-pack/board': { columns: 3 } } } as never });
+    await app.send('host/settings', { type: 'REPLACE_SETTINGS', data: { general: {}, plugins: { 'memo-pack/board': { columns: 3 } } } });
     expect(heardBy(app)).toEqual([]);
     expect(app.emitted('memo-pack/board')).toContainEqual({ type: 'FEATURE_SETTINGS_UPDATED', settings: { columns: 3 } });
 
@@ -413,7 +413,7 @@ describe('the help entries the Settings view shows', () => {
   // The list is read in the action that sends the Settings view all of its data, so a pack that threw reading its
   // own help took the whole view down with it: no settings, no secrets, no hotkeys, and no error to say why
   it("loads the view when an installed pack can't read its own help", async () => {
-    registerPack({ id: 'broken-pack', features: {}, help: () => { throw new Error('no compiled seeds'); } } as never);
+    registerPack({ id: 'broken-pack', features: {}, help: () => { throw new Error('no compiled seeds'); } });
     try {
       const app = await startApp({ systems: ['host/settings'] });
       await app.connect();
@@ -439,7 +439,7 @@ describe('the help entries the Settings view shows', () => {
     await app.connect();
     const before = helpFrom(app.emitted('host/settings'), 'SETTINGS_LOADED')[0];
 
-    registerPack({ id: 'helpful-pack', features: {}, help: () => [{ id: 'helpful', question: 'Can a pack answer here?', answer: 'Yes' }] } as never);
+    registerPack({ id: 'helpful-pack', features: {}, help: () => [{ id: 'helpful', question: 'Can a pack answer here?', answer: 'Yes' }] });
     await app.send('host/settings', { type: 'PACK_CHANGED', packId: 'helpful-pack' });
     await app.settle();
 

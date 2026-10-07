@@ -14,9 +14,10 @@ import { dropAttribute } from '@abuddy/sdk/testing';
 import { findRelations, untypedTx } from '@abuddy/ears';
 import { repository } from '#generated/repository.ts';
 import { PACK_DIR, resetDatabase } from './harness.ts';
+import type { EARS } from '@abuddy/ears';
 
-type FlowRow = { id: never; label: string; sourceHash?: string };
-const flow = (label: string) => findWhere('Flow' as never, 'label', label) as FlowRow[];
+type FlowRow = { id: EARS.EntityId; label: string; sourceHash?: string };
+const flow = (label: string) => findWhere('Flow', 'label', label) as FlowRow[];
 const nodesOf = (label: string) => repository.flowsQueries.flowNodes(flow(label)[0].id);
 
 const dirs: string[] = [];
@@ -60,14 +61,14 @@ describe('re-seeding edited flows', () => {
     expect(counts.errors).toBeUndefined();
     expect(flow('Codex')[0].sourceHash).toMatch(/^changed-/);
     // Tracked again: an edit after this replacement is detected
-    repository.flowsCommands.updateNode(nodesOf('Codex')[0].id, { description: 'My note' } as never);
+    repository.flowsCommands.updateNode(nodesOf('Codex')[0].id, { description: 'My note' });
     expect(seedFlows(compiled(['Codex', 'Claude Code'], 'changed-again'))).toMatchObject({ updated: 1 });
     expect(flow('Codex')[0].sourceHash).not.toMatch(/^changed-again-/);
   });
 
   it("leaves a flow alone when one of its nodes was edited, and still replaces the others", () => {
     const node = nodesOf('Codex')[0];
-    repository.flowsCommands.updateNode(node.id, { description: 'My note' } as never);
+    repository.flowsCommands.updateNode(node.id, { description: 'My note' });
     const counts = seedFlows(compiled(['Codex', 'Claude Code']));
     expect(counts).toMatchObject({ updated: 1 });
     expect(repository.flowsQueries.node(node.id)).toMatchObject({ description: 'My note' });
@@ -95,9 +96,9 @@ describe('re-seeding edited flows', () => {
 
   it("doesn't count relations stored in another order as an edit", () => {
     // Relinking a transition (as loading relations from disk in another order would) keeps its content
-    const [transition] = nodesOf('Codex').flatMap((node) => findRelations({ sourceEntity: node.id, relationType: 'transitions_to' as never }));
-    untypedTx(transition.sourceEntity).unlinkIf('transitions_to' as never, transition.targetEntity);
-    untypedTx(transition.sourceEntity).link('transitions_to' as never, transition.targetEntity, transition.info as never);
+    const [transition] = nodesOf('Codex').flatMap((node) => findRelations({ sourceEntity: node.id, relationType: 'transitions_to' }));
+    untypedTx(transition.sourceEntity).unlinkIf('transitions_to', transition.targetEntity);
+    untypedTx(transition.sourceEntity).link('transitions_to', transition.targetEntity, transition.info);
     expect(seedFlows(compiled(['Codex']))).toMatchObject({ updated: 1 });
   });
 
@@ -118,7 +119,7 @@ describe('re-seeding edited flows', () => {
 
   it("points a replaced flow's subflow steps at the seeded flow, not a user's flow with its label", () => {
     const codex = flow('Codex')[0].id;
-    const mine = repository.flowsCommands.createFlow({ label: 'Codex' } as never).id;
+    const mine = repository.flowsCommands.createFlow({ label: 'Codex' }).id;
     expect(seedFlows(compiled(['Root Flow']))).toMatchObject({ updated: 1 });
     const refs = nodesOf('Root Flow').filter((node) => node.nodeType === 'subflow').map((node) => (node as { flowRef?: string }).flowRef);
     expect(refs).toContain(codex);
@@ -127,7 +128,7 @@ describe('re-seeding edited flows', () => {
 
   it("runs a user's flow with a seeded flow's name when the seed left that flow alone for it", () => {
     repository.flowsCommands.deleteFlow(flow('Codex')[0].id);
-    const mine = repository.flowsCommands.createFlow({ label: 'Codex' } as never).id;
+    const mine = repository.flowsCommands.createFlow({ label: 'Codex' }).id;
     const counts = seedFlows(compiled(['Root Flow', 'Codex']));
     expect(counts).toMatchObject({ updated: 1, created: 0 });
     expect(counts.errors).toBeUndefined();
@@ -169,7 +170,7 @@ describe('a flow whose name another flow already has', () => {
     // No default-setup flows: only the actions and prompts flows use
     resetDatabase();
     seedFlows(compiled([], 'changed', { only: [] }));
-    const mine = repository.flowsCommands.createFlow({ label: 'Codex' } as never).id;
+    const mine = repository.flowsCommands.createFlow({ label: 'Codex' }).id;
     const before = graph('Codex');
     expect(seedFlows(pack)).toMatchObject({ created: 0, skipped: 1 });
     expect(flow('Codex')).toEqual([before.row]);

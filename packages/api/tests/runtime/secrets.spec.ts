@@ -180,7 +180,7 @@ describe('secrets procedures', () => {
 describe('logs and error reports', () => {
   it('redact key-shaped strings and credential fields in every sink', () => {
     const logged: Array<Record<string, unknown>> = [];
-    const stop = rootEvents.onLog((event) => { logged.push(event as never); });
+    const stop = rootEvents.onLog((event) => { logged.push(event); });
     const console = vi.spyOn(originalConsole, 'error').mockImplementation(() => {});
 
     createLogger('spec').error(`Provider said: Incorrect API key provided: ${KEY}`, {
@@ -202,7 +202,7 @@ describe('logs and error reports', () => {
   /** What `run`'s console calls print through the console method `method` replaces, and emit as log events */
   function captureConsole(method: 'log' | 'error', run: () => void) {
     const logged: Array<Record<string, unknown>> = [];
-    const stop = rootEvents.onLog((event) => { logged.push(event as never); });
+    const stop = rootEvents.onLog((event) => { logged.push(event); });
     // The capture keeps the console method it replaces: spy on it first
     const printed = vi.spyOn(originalConsole, method).mockImplementation(() => {});
     initializeLogCapture();
@@ -268,7 +268,7 @@ describe('logs and error reports', () => {
 
     const logged: Array<Record<string, unknown>> = [];
     const outgoing: Message[] = [];
-    const stopLog = rootEvents.onLog((event) => { logged.push(event as never); });
+    const stopLog = rootEvents.onLog((event) => { logged.push(event); });
     const stopOutgoing = rootEvents.onOutgoing((event) => { outgoing.push(event); });
     const printedError = vi.spyOn(originalConsole, 'error').mockImplementation(() => {});
     createLogger('spec').error(`Provider said: Incorrect API key provided: ${MISTRAL} (job ${OTHER})`);

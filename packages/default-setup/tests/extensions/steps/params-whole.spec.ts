@@ -11,7 +11,7 @@ import { untypedQx } from '@abuddy/ears'
 const LONG_TEXT_LENGTH = 20_000
 const LONG_LIST_LENGTH = 150
 
-const noteRows = () => untypedQx('Note' as never).pickAll() as Array<Record<string, unknown>>
+const noteRows = () => untypedQx('Note').pickAll() as Array<Record<string, unknown>>
 
 /** A flow whose first step returns oversized data, mapped into a create step's fields */
 async function runCreateWithBigFields() {
@@ -26,7 +26,7 @@ async function runCreateWithBigFields() {
         entry([keepAlive()]),
         on('go', [[
           action('Big', { label: 'big' }),
-          { type: 'create', entity: 'Note', label: 'mk', map: { content: '$.lastStep.result.text', tags: '$.lastStep.result.items' } } as never,
+          { type: 'create', entity: 'Note', label: 'mk', map: { content: '$.lastStep.result.text', tags: '$.lastStep.result.items' } },
         ]]),
       ],
     },

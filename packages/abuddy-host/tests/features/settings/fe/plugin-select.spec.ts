@@ -12,7 +12,7 @@ afterEach(() => vi.restoreAllMocks())
 
 function readySettingsPlugin() {
   const actor = createActor(createSettingsMachine({ restart: () => {}, report: () => {} })).start()
-  actor.send({ type: 'SETTINGS_LOADED', data: { general: {}, plugins: {}, assistant: {} } as never, help: [] })
+  actor.send({ type: 'SETTINGS_LOADED', data: { general: {}, plugins: {}, assistant: {} }, help: [] })
   return actor
 }
 

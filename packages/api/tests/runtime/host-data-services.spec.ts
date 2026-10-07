@@ -93,18 +93,18 @@ describe('services.appData', () => {
     const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
     fs.writeFileSync(metadataPath, JSON.stringify({ ...metadata, databases: ['lmdb', 'unknownLmdb'] }));
     fs.mkdirSync(path.join(backup, 'unknownLmdb'));
-    untypedTx('Note-kept' as never, true).put('title', 'still here');
+    untypedTx('Note-kept', true).put('title', 'still here');
 
     // A partial restore of a backup a newer AgentBuddy made would cost the user their data to learn that
     const refused = services.appData.importBackup(backup);
     await expect(refused).rejects.toThrow("The backup holds data this AgentBuddy doesn't have: unknownLmdb");
     await expect(refused).rejects.toMatchObject({ name: 'UnknownBackupDatabasesError', databases: ['unknownLmdb'] });
-    expect(untypedQx('Note-kept' as never).pickOne(['title'])).toMatchObject({ title: 'still here' });
+    expect(untypedQx('Note-kept').pickOne(['title'])).toMatchObject({ title: 'still here' });
 
     // The app asks the user first, and imports it without that store when they say to
     expect(await services.appData.importBackup(backup, { skipUnknownDatabases: true }))
       .toEqual({ databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] });
-    expect(untypedQx('Note-kept' as never).pickOne(['title'])).toBeNull();
+    expect(untypedQx('Note-kept').pickOne(['title'])).toBeNull();
   });
 
   it('restores a backup whose listed store it holds nothing for, and says which', async () => {
@@ -127,7 +127,7 @@ describe('services.appData', () => {
     dirs.push(dir);
     // The settings as 0.3.14 stored them: the app's state in `internal`, and no AppState
     engine.admin.clear();
-    untypedTx('Settings-app' as never, true).put('entityType', 'Settings').put('data', { internal: { hasOnboarded: true, version: '0.3.14' } });
+    untypedTx('Settings-app', true).put('entityType', 'Settings').put('data', { internal: { hasOnboarded: true, version: '0.3.14' } });
     await new Promise((resolve) => setTimeout(resolve, 0));
     const backup = await services.appData.exportBackup(dir, 'old', ['lmdb']);
     expect(appState.exists()).toBe(false);
@@ -150,8 +150,8 @@ describe('services.appData', () => {
       id: 'bookmarks',
       ears: { entities: { Bookmark: 'Bookmark', Tag: 'Tag' }, relKinds: {} },
     });
-    const bookmark = untypedTx('Bookmark' as never).put('url', 'https://example.com').id();
-    untypedTx('Tag' as never).put('name', 'reading');
+    const bookmark = untypedTx('Bookmark').put('url', 'https://example.com').id();
+    untypedTx('Tag').put('name', 'reading');
     await new Promise((resolve) => setTimeout(resolve, 0));
     const backup = await services.appData.exportBackup(dir, 'with-pack', ['lmdb']);
     packs.unregisterPack('bookmarks');
@@ -164,7 +164,7 @@ describe('services.appData', () => {
       expect(result.unknownEntityTypes).toContainEqual(['Bookmark', 1]);
       expect(result.unknownEntityTypes.map(([type]) => type)).not.toContain('Tag');
       // The row is there, found by id: with no pack declaring the type, a query by type reads 'Bookmark' as an id
-      expect(untypedQx(bookmark as never).pickOne(['url'])).toMatchObject({ url: 'https://example.com' });
+      expect(untypedQx(bookmark).pickOne(['url'])).toMatchObject({ url: 'https://example.com' });
     } finally {
       packs.unregisterPack('tags');
     }

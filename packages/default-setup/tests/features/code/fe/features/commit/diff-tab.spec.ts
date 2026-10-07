@@ -25,7 +25,7 @@ const { commitState } = await import('#features/code/fe/features/commit/state.ts
 const aFile = (path: string, staged = false) => ({ path, staged, status: 'M' }) as never;
 const aDiff = (path: string, staged = false) => ({
   path, staged, diff: `diff of ${path}`, modifiedContent: `content of ${path}`,
-}) as never;
+});
 
 /** The tab ids the view was asked to open, in order */
 const openedTabs = () => addTabToParent.mock.calls.map(([, tab]) => (tab as { path: string }).path);

@@ -181,9 +181,12 @@ describe('notes seeding (generic pipeline)', () => {
     resetDatabase();
     addLinkTargets();
     seedNotes('v1');
-    const welcome = (entityIds() as string[]).find((id) =>
-      id.startsWith('Note-') && (qx(id as never).pickAll() as Array<Record<string, unknown>>)[0]?.title === 'Welcome');
-    dropAttribute(welcome as never, 'sourceHash');
+    const welcome = (entityIds() as EARS.EntityId[]).find((id) =>
+      id.startsWith('Note-') && (qx(id).pickAll() as Array<Record<string, unknown>>)[0]?.title === 'Welcome');
+    // `find` can miss, and `dropAttribute(undefined)` drops nothing: the case would then seed, re-seed and
+    // assert that an untracked note was left alone without ever having untracked one. The premise is checked.
+    if (!welcome) throw new Error('no seeded Welcome note to untrack, so this case would assert nothing');
+    dropAttribute(welcome, 'sourceHash');
     const before = snapshot();
     seedNotes('v2', { mode: 'replace-on-collision' });
     const after = snapshot();

@@ -72,7 +72,7 @@ describe('a flow the export cannot write', () => {
    * count saying nothing about it.
    */
   it('is named rather than missing, when it has no trigger to build a track from', () => {
-    repository.flowsCommands.createFlow({ label: 'Not started yet' } as never)
+    repository.flowsCommands.createFlow({ label: 'Not started yet' })
 
     const { skipped, flowCount } = exportFlowsToDSL(tmp(), { rootFlowRole: ROOT_FLOW_ROLE }, false)
 

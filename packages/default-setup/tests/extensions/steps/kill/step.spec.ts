@@ -33,12 +33,12 @@ describe('the kill step, on the brain', () => {
 })
 
 describe('the kill step, compiled', () => {
-  const ctx = { actions: new Map(), prompts: new Map(), flows: new Map() } as never
+  const ctx = { actions: new Map(), prompts: new Map(), flows: new Map() }
 
   it('takes the label it was given, and names itself when it was given none', () => {
-    expect(compile({ type: 'kill', label: 'Stop here' }, 'n1' as never, 1, ctx).entity)
+    expect(compile({ type: 'kill', label: 'Stop here' }, 'n1', 1, ctx).entity)
       .toMatchObject({ nodeType: 'kill', label: 'Stop here' })
-    expect(compile({ type: 'kill' }, 'n2' as never, 1, ctx).entity).toMatchObject({ label: 'Kill Flow' })
+    expect(compile({ type: 'kill' }, 'n2', 1, ctx).entity).toMatchObject({ label: 'Kill Flow' })
   })
 
   it('round-trips its label and description, and emits neither when it has neither', () => {

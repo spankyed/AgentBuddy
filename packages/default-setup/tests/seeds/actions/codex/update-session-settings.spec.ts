@@ -3,20 +3,21 @@ import { mockService } from '@abuddy/testing/harness';
 import { services, type Services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
 import { action as updateSessionSettings } from '../../../../src/seeds/actions/codex/update-session-settings.ts';
+import type { EARS } from '@abuddy/ears';
 
 // The action runs on the harness's services: a real thread in the in-memory database, with the Codex
 // app server and the chat and threads services it drives mocked
 function createThread(codexState: Record<string, unknown>) {
   const { id } = repository.threadCommands.create({ topic: 'Codex', instructions: '', tags: [] });
   repository.threadCommands.update(id, { context: { codex: codexState } });
-  mockService<Services, 'codex'>('codex', { respondToApproval: vi.fn().mockResolvedValue(undefined) } as never);
-  mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn() } as never);
-  mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() } as never);
+  mockService<Services, 'codex'>('codex', { respondToApproval: vi.fn().mockResolvedValue(undefined) });
+  mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn() });
+  mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() });
   return id;
 }
 
-const codexState = (threadId: string) =>
-  (repository.threadQueries.byId(threadId as never)?.context as { codex?: Record<string, unknown> } | undefined)?.codex;
+const codexState = (threadId: EARS.EntityId) =>
+  (repository.threadQueries.byId(threadId)?.context as { codex?: Record<string, unknown> } | undefined)?.codex;
 
 describe('CDX: Update Session Settings', () => {
   it('approves a pending Codex tool approval when switching to auto', async () => {

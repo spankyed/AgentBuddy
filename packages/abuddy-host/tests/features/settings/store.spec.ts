@@ -197,7 +197,7 @@ describe('the row', () => {
   it('is created by the first change, as a findable Settings row', () => {
     store.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
 
-    expect(untypedQx('Settings' as never).ids()).toEqual([SETTINGS_ID]);
+    expect(untypedQx('Settings').ids()).toEqual([SETTINGS_ID]);
     expect(rowData()).toEqual({ [PLUGINS_SECTION]: { [THREADS]: { sort: 'oldest' } } });
   });
 });

@@ -68,7 +68,7 @@ describe('the order external packs seed in', () => {
 describe('the order the registry hands out', () => {
   const origin = (id: string, ...deps: string[]) => ({
     id, name: id, version: '1.0.0', dir: `/packs/${id}`, builtIn: false,
-    manifest: { name: id, version: '1.0.0', ...pack(id, ...deps) } as never,
+    manifest: { name: id, version: '1.0.0', ...pack(id, ...deps) },
   });
 
   it('puts a dependency before the pack that names it, whichever order they registered in', () => {

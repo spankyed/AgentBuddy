@@ -70,8 +70,8 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     // the volatile partition, which neither hydrates
     const first = await bootApi();
     startPacks(first.packs);
-    untypedTx('Note-parity' as never, true).put('entityType', 'Note').put('title', 'mine').grant('pinned').link('parent_of', 'Note-child' as never);
-    untypedTx('TNode-parity' as never, true).put('entityType', 'TNode').put('status', 'done');
+    untypedTx('Note-parity', true).put('entityType', 'Note').put('title', 'mine').grant('pinned').link('parent_of', 'Note-child');
+    untypedTx('TNode-parity', true).put('entityType', 'TNode').put('status', 'done');
     first.store.close();
     unbindHost();
 
@@ -108,17 +108,17 @@ describe('what the tool writes', () => {
     unbindHost();
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dataDir, log: () => {} });
-    untypedTx('Note-tool' as never, true).put('entityType', 'Note').put('title', 'from the tool').grant('pinned');
-    untypedTx('TNode-tool' as never, true).put('entityType', 'TNode').put('status', 'done');
+    untypedTx('Note-tool', true).put('entityType', 'Note').put('title', 'from the tool').grant('pinned');
+    untypedTx('TNode-tool', true).put('entityType', 'TNode').put('status', 'done');
     db.close();
 
     const api = await bootApi();
     try {
       // The note is in the data the API hydrates, with its role
-      expect(api.engine.query.getAttr('Note-tool' as never, 'title' as never)).toBe('from the tool');
-      expect([...api.engine.query.getRoles('Note-tool' as never)]).toEqual(['pinned']);
+      expect(api.engine.query.getAttr('Note-tool', 'title')).toBe('from the tool');
+      expect([...api.engine.query.getRoles('Note-tool')]).toEqual(['pinned']);
       // The run history isn't hydrated, and is in the partition the app keeps it in
-      expect(api.engine.query.getAttr('TNode-tool' as never, 'status' as never)).toBeNull();
+      expect(api.engine.query.getAttr('TNode-tool', 'status')).toBeNull();
       expect(api.store.query('volatileBackup').getFirstAttr('status', 'TNode-tool')).toBe('done');
     } finally {
       api.store.close();

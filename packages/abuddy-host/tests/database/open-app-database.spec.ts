@@ -149,7 +149,7 @@ describe('openAppDatabase', () => {
     expect(installedEngine()).toBe(db.query);
     expect(db.paths).toEqual(_appDataPaths(dir));
     expect(getEntitiesOfType('Note').sort()).toEqual(['Note-1', 'Note-2']);
-    expect(untypedQx('Note' as never).ids()).toHaveLength(2);
+    expect(untypedQx('Note').ids()).toHaveLength(2);
     expect(db.query.getRoles(id('Note-1'))).toEqual(['pinned']);
     expect(db.query.findRelations({ sourceEntity: id('Note-1') })).toHaveLength(1);
     // The volatile partition isn't hydrated, as in the app
@@ -164,7 +164,7 @@ describe('openAppDatabase', () => {
     const db2 = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
     expect(db2.query.getAttr(id('Trace-1'), 'step')).toBeNull();
     // An entity type creates an entity
-    const created = db2.query.tx('Note' as never).put('title', 'new').id();
+    const created = db2.query.tx('Note').put('title', 'new').id();
     expect(created.startsWith('Note-')).toBe(true);
     db2.close();
     expect(() => installedEngine()).toThrow();

@@ -216,7 +216,7 @@ type TNodeUpdated = PluginEvent & { type: 'TNODE_UPDATED'; data: { tNodeId: stri
 const isSpawn = (event: PluginEvent): event is TNodeSpawned => event.type === 'TNODE_SPAWNED';
 const isUpdate = (event: PluginEvent): event is TNodeUpdated => event.type === 'TNODE_UPDATED';
 
-const readTNode = (id: string) => (untypedQx(id as never).pickAll() as Array<Record<string, unknown>>)[0];
+const readTNode = (id: string) => (untypedQx(id).pickAll() as Array<Record<string, unknown>>)[0];
 
 function stepTrace(spawned: TNodeSpawned, lastSeen: ReadonlyMap<string, Record<string, unknown>>): FlowStepTrace {
   // The brain clears its trace nodes when it stops (its root flow finished): fall back to the row as last reported
@@ -431,7 +431,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       if (!brainId || !systems.has(brainId)) {
         throw new Error("runFlow runs flows on the brain: start the app with the brain system, startApp({ systems: ['brain', …] })");
       }
-      const flows = untypedQx('Flow' as never).pickAll() as Array<{ label?: string }>;
+      const flows = untypedQx('Flow').pickAll() as Array<{ label?: string }>;
       if (!flows.some((flow) => flow.label === label)) {
         throw new Error(`No flow "${label}". Flows: ${flows.map((flow) => flow.label).join(', ') || 'none (seed them first)'}`);
       }
@@ -469,7 +469,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
           const inner = since().filter((e): e is TNodeSpawned => isSpawn(e) && e.flowTNodeId === spawned.tNode.id && e.tNode.tNodeType !== 'event');
           return inner.length > 0 && inner.every(settledNode);
         }
-        const stepType = (untypedQx(spawned.tNode.id as never).pickAll() as Array<{ stepNodeType?: string }>)[0]?.stepNodeType;
+        const stepType = (untypedQx(spawned.tNode.id).pickAll() as Array<{ stepNodeType?: string }>)[0]?.stepNodeType;
         return stepType !== undefined && stepRegistry.get(stepType)?.runtime?.waits === true;
       };
       const trackFinished = (eventTNodeId: string) =>

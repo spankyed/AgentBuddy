@@ -198,7 +198,7 @@ export function _createInferenceService(resolveModel: _ResolveModel): InferenceS
     },
     async rerank({ model, ...options }) {
       const { rerank } = await import('ai');
-      return rerank({ ...options, model: await resolveModel('reranking', model) }) as never;
+      return rerank({ ...options, model: await resolveModel('reranking', model) });
     },
   };
 }

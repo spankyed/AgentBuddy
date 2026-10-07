@@ -11,7 +11,7 @@ const step = (label: string) => transform('return true', { label })
 
 /** The keys the root flow tracks its spawned children by */
 function childKeys(): string[] {
-  const actor = getFlowActor(ROOT_FLOW_TNODE as never)
+  const actor = getFlowActor(ROOT_FLOW_TNODE)
   expect(actor, 'the root flow actor is running').toBeDefined()
   return Object.keys(actor.getSnapshot().children as Record<string, unknown>)
 }

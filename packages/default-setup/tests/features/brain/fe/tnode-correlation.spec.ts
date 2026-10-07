@@ -43,7 +43,7 @@ function ready() {
     type: 'RECEIVE_PLUGIN_DATA',
     // The fields the machine reads to reach `ready`; the rest of that payload is not this file's subject,
     // and the cast sits on it rather than on the event so the type above stays checked
-    data: { flowTNodeId: 'f1', possibleEvents: [], flowHierarchy: [] } as never,
+    data: { flowTNodeId: 'TNode-f1', possibleEvents: [], flowHierarchy: [] } as never,
   });
   return actor;
 }

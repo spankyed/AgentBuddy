@@ -153,7 +153,7 @@ function backfillLibraryOrdering(): number {
   (untypedQx(EARS.Entity.Document).pickAll() as Array<{ id: EARS.EntityId; shortCode?: unknown }>)
     .forEach((document, index) => {
       if (document.shortCode) return;
-      untypedTx(document.id).put('shortCode', `DOC-${index + 1}` as never);
+      untypedTx(document.id).put('shortCode', `DOC-${index + 1}`);
       changed++;
     });
 
@@ -162,7 +162,7 @@ function backfillLibraryOrdering(): number {
     for (const row of untypedQx(entity).pickAll() as Array<{ id: EARS.EntityId; displayOrder?: unknown }>) {
       const stored = row.displayOrder;
       if (!Array.isArray(stored) && stored) continue;
-      untypedTx(row.id).update('displayOrder', (Array.isArray(stored) ? stored[0] || order : order) as never);
+      untypedTx(row.id).update('displayOrder', (Array.isArray(stored) ? stored[0] || order : order));
       order += 1000;
       changed++;
     }
@@ -177,7 +177,7 @@ function addressStoredLinkBlocks(): number {
   for (const row of untypedQx(EARS.Entity.Message).pickAll() as Array<{ id: EARS.EntityId; blocks?: unknown }>) {
     const blocks = addressLinkBlocks(row.blocks);
     if (blocks === row.blocks) continue;
-    untypedTx(row.id).put('blocks', blocks as never);
+    untypedTx(row.id).put('blocks', blocks);
     changed++;
   }
   return changed;

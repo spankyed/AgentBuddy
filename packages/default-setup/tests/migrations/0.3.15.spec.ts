@@ -28,7 +28,7 @@ function seededTheOldWay(name: string) {
   return row.id
 }
 
-const attrs = (id: string) => (untypedQx(id as never).pickAll() as Array<Record<string, unknown>>)[0]
+const attrs = (id: string) => (untypedQx(id).pickAll() as Array<Record<string, unknown>>)[0]
 
 describe('the 0.3.15 migration', () => {
   it("drops the app's state from the stored settings, and keeps the user's", () => {
@@ -56,7 +56,7 @@ describe('the 0.3.15 migration', () => {
     dropAttribute(old.id, 'displayOrder')
     // `displayOrder` was stored as an array once; the first entry is the order meant
     const array = createEntityWithDefaults(EARS.Entity.Collection, { name: 'ordered by array' })
-    untypedTx(array.id).update('displayOrder', [7000] as never)
+    untypedTx(array.id).update('displayOrder', [7000])
 
     migration.up()
 
@@ -285,12 +285,12 @@ describe('the 0.3.15 migration', () => {
     const link = (target: string, data: Record<string, unknown> = { type: 'OPEN' }) => ({ label: target, event: { target, data } })
 
     it("points a bare target this pack's plugin had at its ref, and leaves external links, refs and other packs' ids", () => {
-      const message = createEntityWithDefaults(EARS.Entity.Message, { text: 'see' } as never)
+      const message = createEntityWithDefaults(EARS.Entity.Message, { text: 'see' })
       const blocks = [
         { type: 'link', props: { links: [link('settings'), link('external', { url: 'https://x.dev' }), link('memo-pack/memos'), link('memos')] } },
         { type: 'text', props: { text: 'unchanged' } },
       ]
-      untypedTx(message.id as never).put('blocks', blocks as never)
+      untypedTx(message.id).put('blocks', blocks)
 
       migration.up()
       const moved = attrs(message.id).blocks as typeof blocks
@@ -305,12 +305,12 @@ describe('the 0.3.15 migration', () => {
 
     // A link can't send the app shell an event any more: opening an `application` target would throw
     it('opens the plugin an application link selected, drops the other application links, and a link block left empty', () => {
-      const message = createEntityWithDefaults(EARS.Entity.Message, { text: 'see' } as never)
-      untypedTx(message.id as never).put('blocks', [
+      const message = createEntityWithDefaults(EARS.Entity.Message, { text: 'see' })
+      untypedTx(message.id).put('blocks', [
         { type: 'link', props: { links: [link('application', { type: 'SELECT_PLUGIN', pluginId: 'notes' }), link('application', { type: 'SHOW_INSPECTION_PANEL' })] } },
         { type: 'link', props: { links: [link('application', { type: 'SHOW_INSPECTION_PANEL' })] } },
         { type: 'link', props: { links: [link('application', { type: 'SELECT_PLUGIN', pluginId: 'memos' })] } },
-      ] as never)
+      ])
 
       migration.up()
       migration.up()
@@ -322,11 +322,11 @@ describe('the 0.3.15 migration', () => {
 
     // 0.3.14's calendar plugin is gone: opening a link to it would throw
     it('drops a link to a plugin removed since 0.3.14, and a link block left empty', () => {
-      const message = createEntityWithDefaults(EARS.Entity.Message, { text: 'see' } as never)
-      untypedTx(message.id as never).put('blocks', [
+      const message = createEntityWithDefaults(EARS.Entity.Message, { text: 'see' })
+      untypedTx(message.id).put('blocks', [
         { type: 'link', props: { links: [link('calendar'), link('notes')] } },
         { type: 'link', props: { links: [link('calendar', { type: 'SELECT_EVENT', id: 'e1' })] } },
-      ] as never)
+      ])
 
       migration.up()
       migration.up()

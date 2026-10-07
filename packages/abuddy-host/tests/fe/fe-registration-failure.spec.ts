@@ -38,7 +38,7 @@ describe('a frontend registration that throws partway', () => {
     const registry = createFePackRegistry();
     registry.registerPackFE(registration('neighbour-pack', { features: { neighbour: { plugin: plugin('neighbour') } } }));
 
-    expect(() => registry.registerPackFE(registration('partial-pack', { features: { ghost: { plugin: plugin('ghost') } }, artifacts: [{ type: 'ghost-view' } as never], steps: [unloadable('ghost-step')] }))).toThrow('ghost-step components are broken');
+    expect(() => registry.registerPackFE(registration('partial-pack', { features: { ghost: { plugin: plugin('ghost') } }, artifacts: [{ type: 'ghost-view' }], steps: [unloadable('ghost-step')] }))).toThrow('ghost-step components are broken');
 
     expect(registry.getRegisteredPlugins().map((p) => p.id), 'its plugin stayed in the list').toEqual(['neighbour-pack/neighbour']);
     expect(registry.step('ghost-step'), 'its step stayed registered').toBeUndefined();

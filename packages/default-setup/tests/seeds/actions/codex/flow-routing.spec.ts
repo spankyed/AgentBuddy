@@ -11,9 +11,9 @@ const step = (run: FlowRun, action: string) => run.steps.find((s) => actionLabel
 let app: TestApp
 beforeEach(async () => {
   seedDefaultFlows()
-  mockService<Services, 'codex'>('codex', { status: 'ready', getHandle: vi.fn(), respondToApproval: vi.fn(), start: vi.fn() } as never)
-  mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn(), sendBlockMessage: vi.fn() } as never)
-  mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() } as never)
+  mockService<Services, 'codex'>('codex', { status: 'ready', getHandle: vi.fn(), respondToApproval: vi.fn(), start: vi.fn() })
+  mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn(), sendBlockMessage: vi.fn() })
+  mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() })
   app = await startApp({ systems: ['brain'] })
 })
 

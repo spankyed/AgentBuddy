@@ -55,7 +55,7 @@ function loaded(id: string, files: string[]) {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     fs.writeFileSync(path.join(dir, file), '');
   }
-  return { id, name: id, version: '1.0.0', dir, builtIn: false, manifest: { id, name: id, version: '1.0.0' } as never };
+  return { id, name: id, version: '1.0.0', dir, builtIn: false, manifest: { id, name: id, version: '1.0.0' } };
 }
 
 const withFrontend = ['runtime/fe.js'];

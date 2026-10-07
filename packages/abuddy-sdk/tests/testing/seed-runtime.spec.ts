@@ -1,6 +1,6 @@
 // A built pack's seed runtime (dist/build/seed-runtime.mjs) loaded into a bare SDK test runtime: no
 // host, no app. default-setup's is the example: a Note seeded through it gets default-setup's rows.
-import { installedEngine as ears } from '@abuddy/ears';
+import { installedEngine as ears, type EARS } from '@abuddy/ears';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -47,12 +47,12 @@ describe.skipIf(!built)("a built pack's seed runtime", () => {
     const counts = createSeeder({ key: 'notes', entities: ['Note'], identity: format.identity, relKind: format.tree?.relKind }).apply({ compiledDir: compiled, log: () => {} });
     expect(counts).toEqual({ created: 3, updated: 0, skipped: 0 });
 
-    const notes = ears().findWhere<Record<string, unknown> & { id: string }>('Note', 'title', 'Intro');
+    const notes = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>('Note', 'title', 'Intro');
     expect(notes[0]).toMatchObject({ shortCode: expect.stringMatching(/^NOTE-\d+$/), lastSeen: 0 });
-    expect(findRelations({ sourceEntity: notes[0].id as never, relationType: 'references' })).toEqual([
+    expect(findRelations({ sourceEntity: notes[0].id, relationType: 'references' })).toEqual([
       expect.objectContaining({ targetEntity: 'Note-plan-target' }),
     ]);
-    const [plan] = ears().findWhere<Record<string, unknown> & { id: string }>('Note', 'title', 'Plan');
-    expect(findRelations({ sourceEntity: plan.id as never, relationType: 'contains' })).toHaveLength(1);
+    const [plan] = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>('Note', 'title', 'Plan');
+    expect(findRelations({ sourceEntity: plan.id, relationType: 'contains' })).toHaveLength(1);
   });
 });

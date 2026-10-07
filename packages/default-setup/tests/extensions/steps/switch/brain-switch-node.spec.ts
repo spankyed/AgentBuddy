@@ -37,7 +37,7 @@ const ranAfterSwitch = (run: FlowRun) => run.steps.filter((s) => s.label !== 'Sw
 function setConditions(flowLabel: string, conditions: Condition[]): void {
   const flowId = findWhere(EARS.Entity.Flow, 'label', flowLabel)[0].id
   const node = repository.flowsQueries.flowNodes(flowId).find((n: { nodeType: string }) => n.nodeType === 'switch')!
-  repository.flowsCommands.updateNode(node.id, { conditions } as never)
+  repository.flowsCommands.updateNode(node.id, { conditions })
 }
 
 describe('switch step', () => {

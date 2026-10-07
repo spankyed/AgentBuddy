@@ -39,7 +39,7 @@ const newEngine = () => createEarsEngine({ isEntityType: () => false });
 /** An external pack the app loaded: where it came from, as the loader records it */
 const externalOrigin = (id: string, name: string) => ({
   id, name, version: '1.0.0', dir: '/nowhere', builtIn: false,
-  manifest: { id, name, version: '1.0.0' } as never,
+  manifest: { id, name, version: '1.0.0' },
 });
 
 describe('createHostRuntime', () => {
@@ -72,7 +72,7 @@ describe('createHostRuntime', () => {
   it("stops the packs, empties the engine, stores and keys, then starts the packs as a boot does", async () => {
     const store = { reset: async () => { order.push('store reset'); } } as unknown as LmdbStore;
     const engine = newEngine();
-    const id = engine.query.tx('Memo-1' as never).put('title', 'kept?').id();
+    const id = engine.query.tx('Memo-1').put('title', 'kept?').id();
     const clear = engine.admin.clear;
     engine.admin.clear = () => { order.push('engine cleared'); clear(); };
     const packs = createPackRegistry();

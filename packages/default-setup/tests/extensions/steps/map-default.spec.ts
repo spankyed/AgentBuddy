@@ -11,7 +11,7 @@ import { importFlows, startApp } from '@abuddy/testing/harness'
 import { entry, keepAlive, on } from '#generated/flow-helpers.ts'
 import { untypedQx } from '@abuddy/ears'
 
-const notes = () => untypedQx('Note' as never).pickAll() as Array<Record<string, unknown>>
+const notes = () => untypedQx('Note').pickAll() as Array<Record<string, unknown>>
 
 /** One create step, whose `content` is mapped from `source` with `fallback` to fall back on */
 async function runWithMapping(source: string, fallback?: unknown) {
@@ -26,7 +26,7 @@ async function runWithMapping(source: string, fallback?: unknown) {
             entity: 'Note',
             label: 'mk',
             map: { content: fallback === undefined ? source : { source, default: fallback } },
-          } as never,
+          },
         ]]),
       ],
     },

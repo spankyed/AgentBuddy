@@ -37,7 +37,7 @@ describe('what the loader says about a pack', () => {
       origin: { ...manifest, dir: tmpDir, builtIn: false, manifest },
     };
 
-    expect(registerExternalPacks(registry, [pack as never])).toHaveLength(1);
+    expect(registerExternalPacks(registry, [pack])).toHaveLength(1);
 
     expect(logged).toContain(packRegistered(PACK_ID, 0));
     // And the fragment the harness actually matches on is in it

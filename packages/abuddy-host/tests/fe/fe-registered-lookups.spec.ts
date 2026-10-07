@@ -94,7 +94,7 @@ describe("a pack's frontend", () => {
   // that stays keeps what it contributed when the other unregisters
   it("leaves the other pack's contributions in place when one of two unregisters", () => {
     const build = { type: 'note', kind: 'step' } as StepDefinition;
-    const otherWelcome = { name: 'OtherWelcome' } as never;
+    const otherWelcome = { name: 'OtherWelcome' };
     add('build-pack', { steps: [build], appExtensions: { welcome: Welcome }, dslTypes: { memo: memoDsl } });
     add('notebook-pack', { steps: [noteStepFE], appExtensions: { welcome: otherWelcome }, dslTypes: { memo: { other: true } as never } });
     expect(stepRegistry.get('note')?.fe).toBeDefined();

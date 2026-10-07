@@ -122,29 +122,29 @@ export function fakeInference(
     const names = { provider: parts?.provider, modelId: parts?.model ?? id };
     const response = { timestamp: new Date(0), modelId: names.modelId, headers: undefined };
     switch (kind) {
-      case 'language': return languageModel(mocks, id as ModelId, names) as never;
+      case 'language': return languageModel(mocks, id as ModelId, names);
       case 'embedding': return new mocks.MockEmbeddingModelV4({ ...names, maxEmbeddingsPerCall: 2048, doEmbed: async ({ values }) => {
         calls.push({ kind: 'embedding', model: id as EmbeddingModelId, values });
         return { embeddings: values.map(embedding), warnings: [] };
-      } }) as never;
+      } });
       case 'image': return new mocks.MockImageModelV4({ ...names, maxImagesPerCall: 10, doGenerate: async ({ prompt, n, size, aspectRatio }) => {
         calls.push({ kind: 'image', model: id as ImageModelId, ...(prompt !== undefined && { prompt }), n, ...(size && { size }), ...(aspectRatio && { aspectRatio }) });
         return { images: Array.from({ length: n }, () => image), warnings: [], response };
-      } }) as never;
+      } });
       case 'speech': return new mocks.MockSpeechModelV4({ ...names, doGenerate: async ({ text, voice, instructions, speed }) => {
         calls.push({ kind: 'speech', model: id as SpeechModelId, text, ...(voice !== undefined && { voice }), ...(instructions !== undefined && { instructions }), ...(speed !== undefined && { speed }) });
         return { audio: speech, warnings: [], response };
-      } }) as never;
+      } });
       case 'reranking': return new mocks.MockRerankingModelV4({ ...names, doRerank: async ({ query, documents, topN }) => {
         calls.push({ kind: 'reranking', model: id as RerankingModelId, query, documents: documents.values, ...(topN !== undefined && { topN }) });
         const ranking = documents.values.map((document, index) => ({ index, relevanceScore: relevance(query, document, index) }))
           .sort((a, b) => b.relevanceScore - a.relevanceScore);
         return { ranking: topN === undefined ? ranking : ranking.slice(0, topN), response };
-      } }) as never;
+      } });
       default: return new mocks.MockTranscriptionModelV4({ ...names, doGenerate: async ({ mediaType }) => {
         calls.push({ kind: 'transcription', model: id as TranscriptionModelId, mediaType });
         return { text: transcript, segments: [], language: undefined, durationInSeconds: undefined, warnings: [], response };
-      } }) as never;
+      } });
     }
   }) as _ResolveModel;
 

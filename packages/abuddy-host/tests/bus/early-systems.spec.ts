@@ -75,7 +75,7 @@ it("delivers what an early system sends in answer to the first client connection
     early = startEarlySystems(registry);
     bus = createActor(createAppBus(registry, early), { systemId: 'host/bus' }).start();
     const outgoing: Array<{ to: string; event: { type: string } }> = [];
-    const stop = testRootEvents.onOutgoing((message) => { outgoing.push(message as never); });
+    const stop = testRootEvents.onOutgoing((message) => { outgoing.push(message); });
 
     testRootEvents.emitConnected();
 

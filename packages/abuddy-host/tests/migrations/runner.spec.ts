@@ -62,7 +62,7 @@ describe('boot migrations', () => {
     const manifest = { id: 'migrations-external', name: 'External', version: TEST_APP_VERSION };
     const external = {
       registration: { id: manifest.id, migrations: [externalMigration] },
-      origin: { ...manifest, dir: builtInDir, builtIn: false, manifest: manifest as never },
+      origin: { ...manifest, dir: builtInDir, builtIn: false, manifest: manifest },
     } satisfies LoadedPack;
     expect(registerExternalPacks(registry, [external])).toHaveLength(1);
     // What the boot passes on: the registry joins each registered pack's origin with its migrations

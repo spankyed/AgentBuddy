@@ -33,7 +33,7 @@ describe('external pack runtime', () => {
     `);
     const { loadSingleExternalPack } = await import('../../../src/packs/runtime/loader.ts');
 
-    const pack = loadSingleExternalPack({ id: 'bridge-pack', name: 'Bridge', version: '1.0.0' } as never, packDir);
+    const pack = loadSingleExternalPack({ id: 'bridge-pack', name: 'Bridge', version: '1.0.0' }, packDir);
 
     if ('problem' in pack) throw new Error(pack.problem);
     expect(pack.registration.services).toEqual({ leaves: { cron: expect.any(String), newer: 1 } });

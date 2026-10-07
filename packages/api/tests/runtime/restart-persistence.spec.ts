@@ -22,7 +22,7 @@ describe('the API store across a restart', () => {
   it('hydrates what the previous run wrote', async () => {
     const first = openAppStore();
     expect(_getLmdbPath().startsWith(dataDir)).toBe(true);
-    untypedTx('Note-restart' as never, true).put('entityType', 'Note').put('title', 'written before the restart');
+    untypedTx('Note-restart', true).put('entityType', 'Note').put('title', 'written before the restart');
     await flushed();
     first.store.close();
     // A new process starts with nothing bound, and a new, empty engine
@@ -34,7 +34,7 @@ describe('the API store across a restart', () => {
       expect(getEntitiesOfType('Note')).toEqual([]);
       await second.store.hydrate();
       expect(getEntitiesOfType('Note')).toEqual(['Note-restart']);
-      expect(second.engine.query.getAttr('Note-restart' as never, 'title')).toBe('written before the restart');
+      expect(second.engine.query.getAttr('Note-restart', 'title')).toBe('written before the restart');
     } finally {
       second.store.close();
     }

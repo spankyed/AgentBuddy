@@ -62,7 +62,6 @@ function createServices(opts: {
     return opts.viewSessionResult ?? [];
   });
   mockService<Services, 'cli'>('cli', { claudeCode: { viewSession: viewSessionMock } as never });
-  mockService<Services, 'settings'>('settings', { updatePluginSetting: vi.fn() } as never);
   mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
 
   return {

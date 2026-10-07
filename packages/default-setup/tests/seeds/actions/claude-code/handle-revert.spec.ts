@@ -3,6 +3,7 @@ import { mockService } from '@abuddy/testing/harness';
 import { services, type Services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
 import { action as handleRevert } from '../../../../src/seeds/actions/claude-code/handle-revert.ts';
+import type { EARS } from '@abuddy/ears';
 
 // The action runs on the harness's services: a real thread and messages in the in-memory database,
 // with the CLI and the chat, threads, settings and artifact services it drives mocked
@@ -22,10 +23,9 @@ async function createServices(viewSessionResult: unknown[] | Error = [], sendBlo
       }),
     } as never,
   });
-  mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn(), sendBlockMessage } as never);
-  mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() } as never);
-  mockService<Services, 'settings'>('settings', { updatePluginSetting: vi.fn() } as never);
-  mockService<Services, 'artifact'>('artifact', { findOrCreateByType: vi.fn(() => ({ artifactId: 'art-1' })) } as never);
+  mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn(), sendBlockMessage });
+  mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() });
+  mockService<Services, 'artifact'>('artifact', { findOrCreateByType: vi.fn(() => ({ artifactId: 'Artifact-art-1' as EARS.EntityId, created: true })) });
   mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
   return { threadId, messageId: assistant.id };
 }

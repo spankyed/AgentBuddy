@@ -136,8 +136,8 @@ describe("the app's inference service", () => {
   });
 
   it('rejects an id whose provider it has no model for', async () => {
-    await expect(languageModel('nope:model' as never)).rejects.toThrow('Unknown model provider in "nope:model"');
-    await expect(languageModel('gpt-5' as never)).rejects.toThrow('as provider:model');
+    await expect(languageModel('nope:model')).rejects.toThrow('Unknown model provider in "nope:model"');
+    await expect(languageModel('gpt-5')).rejects.toThrow('as provider:model');
   });
 
   it("names the provider and where to add a key when the user hasn't stored one, whatever the environment holds", async () => {

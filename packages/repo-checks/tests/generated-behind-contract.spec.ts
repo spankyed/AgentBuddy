@@ -53,7 +53,7 @@ const ENTRIES = ['src/features/memos/be/system.ts', 'src/features/memos/fe/plugi
 function fixture(): PackManifest {
   write(CONTRACTS[0]!, "export type Contract = { incoming: { type: 'NOTES_RUN' }; outgoing: { type: 'NOTES_CONNECTED' } };\n");
   write(CONTRACTS[1]!, "export type Contract = { state: { ready: boolean }; inbox: { public: { type: 'NOTE.OPEN' } } };\n");
-  write(ENTRIES[0]!, 'export default { spec: undefined as never, machine: undefined as never };\n');
+  write(ENTRIES[0]!, 'export default { spec: undefined, machine: undefined };\n');
   write(ENTRIES[1]!, 'declare const plugin: { label: string };\nexport default plugin;\n');
   write('src/features/memos/be/repository/index.ts', 'export const memoQueries = { all: () => [] };\n');
   write('src/extensions/steps/tick/types.ts', "export type TickNode = { every: string };\n");

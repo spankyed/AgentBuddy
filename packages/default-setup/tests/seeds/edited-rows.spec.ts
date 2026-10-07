@@ -8,16 +8,17 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { findWhere } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
 import { compileSeeds, resetDatabase, seed, snapshot } from './harness.ts';
-
-type Row = { id: never; [field: string]: unknown };
-const note = (title: string) => findWhere('Note' as never, 'title', title)[0] as Row;
-const document = (name: string) => findWhere('Document' as never, 'name', name)[0] as Row;
+// No local row type: `findWhere` already returns the entity with its branded id and declared fields, and a
+// `{ id: never; [field: string]: unknown }` alias discarded both — `never` is assignable to every parameter,
+// so an id typed that way reaches any call unchecked.
+const note = (title: string) => findWhere('Note', 'title', title)[0];
+const document = (name: string) => findWhere('Document', 'name', name)[0];
 
 const EDITS = {
   "a note's content": () => repository.noteCommands.update(note('Welcome').id, { content: 'My own words' }),
   "a document's content": () => {
     const doc = document('Getting Started');
-    repository.libraryCommands.updateDocument(doc.id, doc.name as string, [{ type: 'text', content: 'My own words' }] as never, doc.tags as string[]);
+    repository.libraryCommands.updateDocument(doc.id, doc.name, [{ type: 'text', content: 'My own words' }] as never, doc.tags ?? []);
   },
   "a document's tags": () => repository.libraryCommands.updateDocumentTags(document('Getting Started').id, ['mine']),
 };
@@ -159,7 +160,7 @@ describe('re-seeding edited rows', () => {
     repository.libraryCommands.renameItem(document('Getting Started').id, '2024', 'document');
     seed(v2, { mode: 'replace-on-collision' });
     // The deleted document is seeded again, beside the renamed one
-    expect(findWhere('Document' as never, 'name', '2024')).toHaveLength(2);
+    expect(findWhere('Document', 'name', '2024')).toHaveLength(2);
   });
 });
 
