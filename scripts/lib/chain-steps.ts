@@ -595,6 +595,29 @@ const SUITE_RUNNER = ['scripts/test-unit-pool.ts', 'scripts/lib/unit-pool.ts', '
 export const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-setup/src/__generated__'];
 
 /**
+ * The built-in pack's own sources, which **two steps compile**: `compile`, which is the pack's build, and
+ * `build:app`, because the app is built from them too. That second reader is the surprising one and the reason
+ * this is named rather than spelled twice — the renderer's `builtInPacksPlugin` generates a module of static
+ * imports of the pack's generated FE entry, so Vite follows them into each feature's `fe` directory and the pack's
+ * components land in the renderer bundle, while the api's tsup traces its generated BE entry the same way.
+ *
+ * `src` whole rather than a frontend subset, for two independent reasons: a bundler's graph crosses `be`/`fe`
+ * freely (`fe/contract.ts` imports `be/types.ts`), and `renderer/tailwind.config.ts` adds
+ * `<srcDir>/**` to Tailwind's `content`, so the emitted CSS depends on class-name text in files no bundler
+ * traces at all. `abuddy.json` because the discovery parses it and its `id` is the alias prefix;
+ * `package.json` because Vite resolves the pack's `#generated/*` and `#features/*` specifiers through its
+ * `imports` map. Not `etc` or `tests`, which no build reads, and not `workspace('default-setup')`, which would
+ * make a pack test edit cost an app build.
+ *
+ * **Hand-written, and not derived from `discoverBuiltInPacksForBuild`** as `FIXTURE_OUTPUTS` below is derived
+ * from the fixtures: `chain-inputs.spec.ts` derives its population from exactly that function, and a check
+ * whose two sides come from one source cannot fail. The asymmetry is what makes a second built-in pack fail
+ * that case rather than silently satisfy it.
+ */
+const PACK_SOURCES = ['packages/default-setup/src', 'packages/default-setup/abuddy.json',
+  'packages/default-setup/package.json'];
+
+/**
  * What building the fixture packs writes, derived from the fixtures themselves. These sit *inside*
  * `tests/packs`, which the same step declares as an input, for the same reason as above.
  */
@@ -999,8 +1022,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // `etc` is the committed facade report, which that check compares against — so a hand-edited report
     // invalidates this step, the one case nothing else here can see. It is the `api:check` precedent above,
     // and it was missing while the check was read as a step that only looked at what the build wrote
-    inputs: [...ROOT, 'packages/default-setup/src', 'packages/default-setup/abuddy.json',
-      'packages/default-setup/package.json', 'packages/default-setup/tsconfig.json',
+    inputs: [...ROOT, ...PACK_SOURCES, 'packages/default-setup/tsconfig.json',
       'packages/default-setup/etc', 'packages/default-setup/dev-build.mjs', ...PACKAGE_BUILD_READS] },
   // The fixture packs depend on default-setup, so they need its snapshot from compile
   //
@@ -1042,10 +1064,18 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // it declares as an input. It invalidated itself, and the five steps that read that tree, on every run:
   // measured, a warm chain cached 7 of 17 steps instead of 16. `npm run build` still builds everything, for
   // CI and `build/build.sh`; the chain does not need it to, because `compile` is a declared `need`.
+  // `PACK_SOURCES` because two of the four builds compile the pack itself, not only the entry `compile` wrote:
+  // the renderer's plugin and the api's tsup each trace a generated entry into the pack's `src`, and Tailwind
+  // reads every file under it for class names. Measured 2026-10-07, before this: a `.vue` edit under the pack
+  // left this step `cached` after `compile` ran, so the app the chain then tested never held the change —
+  // `PACK_OUTPUTS` carries the pack's `dist`, which has no frontend bundle for a built-in pack, and
+  // `src/__generated__`, whose only file that moves on such an edit is the dot-prefixed `.inputs-hash` that
+  // `inputFiles` skips. `chain-inputs.spec.ts` holds this declaration; `one-kind-of-pack.md`'s step 3 is what
+  // removes the edge, and this comes back out with it
   { name: 'build:app', timeout: 'suite', seconds: 39, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
       'packages/api/tsup.config.ts', ...APP_ENTRY,
-      ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
+      ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS, ...PACK_SOURCES] },
   { name: 'test:external-pack:app', timeout: 'scenario', seconds: 33,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,

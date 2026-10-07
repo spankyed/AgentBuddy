@@ -16,6 +16,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BUILD_UNITS, covers, excludedBySuffix, fingerprintUnit, inputFiles, NOT_A_BUILD_INPUT, REPO_ROOT, repoRelative } from '@abuddy/host/build/packages-built';
+import { discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover';
+import { population } from '@abuddy/sdk/testing';
 import { PUBLISH_TREE } from '@abuddy/host/build/published-manifest';
 import { CHAIN_STEPS, dependsOn, suiteInputs, SUITE_READS, WORKSPACE_PARTS, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
@@ -477,6 +479,68 @@ describe('a step that drives the app fixture declares the bundle it drives', () 
       return fixture.filter((output) => !covered(output)).map((output) => `${step.name} runs ${output} and does not declare it`);
     });
     expect(undeclared).toEqual([]);
+  });
+});
+
+/**
+ * The same hole one layer over, and it was open. A step that **compiles a pack into the app** reads files no
+ * path in its script names: the renderer's `builtInPacksPlugin` generates a module of static imports of the
+ * pack's generated FE entry and the api's tsup traces the BE one, so a bundler walks into the pack's `src`
+ * where `reachableText` sees `tsx scripts/build-app.ts` and nothing else. The coverage case at the top of this
+ * file cannot see it either: `packages/default-setup/src` is `compile`'s input, so the tree is covered
+ * repo-wide while the other step that compiles it declares none of it.
+ *
+ * Measured 2026-10-07, before this existed. One `.vue` edit under the pack, one `compile`, and `chain --dry`
+ * reported `build:app` **cached** — `PACK_OUTPUTS` carries the pack's `dist`, which holds no frontend bundle
+ * for a built-in pack, and `src/__generated__`, whose only file that moves on such an edit is the
+ * dot-prefixed `.inputs-hash` that `inputFiles` skips. The app that `test:smoke` and the two packaged suites
+ * then drove had never held the change, which is the sibling rule's sentence again: a gate that skips when the
+ * thing it drives has changed is not a gate.
+ *
+ * **The subject is files rather than the `src` directory**, because a step that keeps the declaration and
+ * narrows its key with `excludeSuffixes` — which `api:check` does, for a measured saving — would satisfy a
+ * directory check and cache past the files anyway. `coveredBy` honours that field; `fingerprinted`
+ * (`fingerprint-scope.integration.spec.ts`) does not, which is why the check is written with this one.
+ */
+describe('a step that compiles a pack into the app declares that pack', () => {
+  // What the build itself reads: Vite follows the entry's imports through these, and the renderer's Tailwind
+  // config globs the same set out of every pack's `src` for class names. Markdown and JSON under there are
+  // read by neither, and a seed source already re-runs the step through the `dist` it compiles to
+  const COMPILED = /\.(vue|ts|tsx|js|jsx)$/;
+  /** The packs the app build compiles, from the one function all three of its configs call */
+  const packs = discoverBuiltInPacksForBuild(path.join(REPO_ROOT, 'packages'));
+  const compiledFiles = (pack: { srcDir: string }): readonly string[] =>
+    filesUnder(repoRelative(pack.srcDir)).filter((file) => COMPILED.test(file));
+  /** Derived from the table: the step that writes the renderer's bundle is the step that compiled them into it */
+  const buildsTheApp = (step: ChainStep): boolean =>
+    (step.outputs ?? []).some((out) => covers(out, 'packages/renderer/dist'));
+  const builders = CHAIN_STEPS.filter(buildsTheApp);
+
+  /** One path for the real case and the mutation, so the mutation exercises the rule rather than a copy of it */
+  const undeclared = (steps: readonly ChainStep[]): string[] => steps.filter(buildsTheApp).flatMap((step) => {
+    const covered = coveredBy([step]);
+    // One file per pack: the finding is the pack nobody declared, and 232 lines of it would bury that
+    return packs.flatMap((pack) => compiledFiles(pack).filter((file) => !covered.has(file)).slice(0, 1)
+      .map((file) => `${step.name} compiles ${pack.id} and does not declare ${file}`));
+  });
+
+  it('finds the steps that build it, so this is not a check over nothing', () => {
+    expect(builders.map((step) => step.name)).toEqual(['build:app']);
+    expect(population('the built-in packs the app build compiles', packs).length).toBeGreaterThan(0);
+    expect(population('the pack files it compiles', packs.flatMap(compiledFiles), { atLeast: 100 }).length)
+      .toBeGreaterThan(100);
+  });
+
+  it('leaves none of them compiling a pack it does not declare', () => {
+    expect(undeclared(CHAIN_STEPS),
+      'the app build walks into this pack and would cache past an edit to it — spread PACK_SOURCES').toEqual([]);
+  });
+
+  /** The declaration is a list, so the case mutates it rather than trusting that it could fail */
+  it('names a step that stops declaring one', () => {
+    const [build] = builders;
+    const narrowed = { ...build!, inputs: build!.inputs.filter((input) => !packs.some((pack) => covers(input, repoRelative(pack.srcDir)))) };
+    expect(undeclared([narrowed]).length, 'a step given no pack sources was not reported').toBe(packs.length);
   });
 });
 

@@ -23,11 +23,16 @@
  * reads another's `dist`. Their outputs are the four disjoint directories `APP_OUTPUTS` names, and the one
  * directory two of them share (`node_modules/.cache/tsbuildinfo/`) takes a distinct filename each.
  *
- * **The one real edge is external and must stay that way.** All four read what `compile` wrote
- * (`packages/default-setup/src/__generated__`), which the chain orders ahead of this step. Run before it
- * and the api build *throws* `No built-in packs found`, while the renderer fails **quietly** — its
- * `eligiblePacks` filters to `[]` and it emits an empty pack-loader map. Do not add a fallback here: it
- * would convert the loud failure into the quiet one.
+ * **The one real edge is external and must stay that way.** Two of the four — the renderer and the api —
+ * read the built-in pack, and they read more of it than the entry `compile` wrote: each traces a generated
+ * entry (`src/__generated__/pack-entry-fe.ts`, `pack-entry.ts`) into the pack's own `src`, so the pack's
+ * components are compiled into the renderer bundle and its systems into the api's, and the renderer's
+ * Tailwind config reads every file under that `src` for class names. `main` and `preload` name no pack at
+ * all. The chain orders `compile` ahead of this step and `build:app` declares the pack's sources
+ * (`PACK_SOURCES`, `lib/chain-steps.ts`) because of that. Run before `compile` and the api build *throws*
+ * `No built-in packs found`, while the renderer fails **quietly** — its `eligiblePacks` filters to `[]` and
+ * it emits an empty pack-loader map. Do not add a fallback here: it would convert the loud failure into the
+ * quiet one.
  *
  * WHAT THIS OWES THE CHECKS THAT READ IT
  *

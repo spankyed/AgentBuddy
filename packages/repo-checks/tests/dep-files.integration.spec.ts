@@ -577,7 +577,10 @@ describe('what has looked at a step at all', () => {
    * resolving from the published tarballs is the thing they exist to prove. There is nothing to build here,
    * and what protects them instead is that their inputs are **derived** (`PACKAGE_BUILD_OUTPUTS`,
    * `APP_OUTPUTS`) rather than hand-listed, which is the only protection available to a step nothing can
-   * observe. Two entries because the check is two steps, split at the app boundary. `test:smoke` and
+   * observe. `build:app` has one leg that derivation does not reach — it compiles the built-in pack's own
+   * sources into the renderer and the api, which no output of another step covers — so that leg is
+   * hand-listed and `chain-inputs.spec.ts` asserts it, which is the third kind of protection and the one to
+   * reach for when a step reads something nothing writes. Two entries because the check is two steps, split at the app boundary. `test:smoke` and
    * `test` are the same shape: Playwright driving a real Electron process.
    *
    * *A tool could report, and two now are asked.* `compile` and `test:external-pack:contract` both run
