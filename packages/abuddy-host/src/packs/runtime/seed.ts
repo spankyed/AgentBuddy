@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { createLogger } from '@abuddy/sdk/logger';
-import { PACK_LAYOUT, packLayoutDir, packSeedFiles } from '../layout.ts';
+import { PACK_LAYOUT, packSeedFiles } from '../layout.ts';
 import { recordSeedOutcomes } from '../installed.ts';
 import type { PackSeedManifest } from '@abuddy/sdk/framework';
 import type { PackManifest } from '@abuddy/sdk/build';
@@ -60,10 +60,8 @@ function importErrors(result: Record<string, { errors?: string[] }> | undefined)
  */
 export interface PackSeedTarget {
   manifest: Pick<PackManifest, 'id' | 'dependencies'>;
-  /** The pack's own directory; its compiled seeds are at `packLayoutDir(…)/runtime/seeds` under it */
+  /** The pack's own directory; its compiled seeds are at `runtime/seeds` under it */
   dir: string;
-  /** True for a pack the app ships, whose built files sit under `dist/` (`packLayoutDir`) */
-  builtIn?: boolean;
   /**
    * What the pack asks not to be seeded, and when (`boot.seedManifest.seedPolicy`). Read from its
    * registration rather than its manifest, since it is the pack's code that declares it.
@@ -90,7 +88,7 @@ function dependencyState(dependencies: Record<string, string> | undefined, seede
  *
  * **Every pack, by one rule**, whoever ships it: one hash over the files in its seeds directory, one record
  * (`AppState.packSeedHashes`), one retry rule, and its own `seedPolicy` honoured if it declares one. Which
- * directory that is follows from where the pack lives (`packLayoutDir`), so a pack does not tell the host
+ * directory that is follows from where the pack lives, so a pack does not tell the host
  * where its compiled data is — the host knows, because it is the host that put the pack there.
  *
  * A pack whose seed reports errors (an invalid flow, say) is a failed seed: the error is recorded as the
@@ -104,7 +102,7 @@ export function seedPacks(packs: Iterable<PackSeedTarget>, importSeeds: typeof i
 
   for (const pack of packs) {
     const packId = pack.manifest.id;
-    const seedsDir = path.join(packLayoutDir(pack), PACK_LAYOUT.seedsDir);
+    const seedsDir = path.join(pack.dir, PACK_LAYOUT.seedsDir);
     const currentHash = fs.existsSync(seedsDir) ? computePackSeedHash(seedsDir) : '';
     if (!currentHash) {
       // Nothing to seed: an earlier version's error no longer applies, and neither does what it faced

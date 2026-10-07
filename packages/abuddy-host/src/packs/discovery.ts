@@ -9,46 +9,7 @@ const logger = createLogger('pack-discovery');
 
 export type { PackManifest };
 
-// ── Built-in pack discovery ─────────────────────────────────────────
-
-export interface BuiltInPackInfo {
-  id: string;
-  name: string;
-  version: string;
-  dir: string;
-}
-
-export function discoverBuiltInPacks(packagesDir: string): BuiltInPackInfo[] {
-  if (!fs.existsSync(packagesDir)) return [];
-
-  const results: BuiltInPackInfo[] = [];
-  const entries = fs.readdirSync(packagesDir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const dir = path.join(packagesDir, entry.name);
-    const manifestPath = path.join(dir, 'abuddy.json');
-    if (!fs.existsSync(manifestPath)) continue;
-
-    try {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-      if (!manifest.builtIn || !manifest.id || !manifest.name) continue;
-
-      // No source check: packaged apps ship only abuddy.json and dist/. The code comes from the
-      // API bundle's loaders (loadBuiltInPacks' bundledLoaders), and loadBuiltInPacks skips packs without one.
-      results.push({
-        id: manifest.id,
-        name: manifest.name,
-        version: manifest.version ?? '0.0.0',
-        dir,
-      });
-    } catch {}
-  }
-
-  return results;
-}
-
-// ── External pack discovery ─────────────────────────────────────────
+// ── Pack discovery ─────────────────────────────────────────
 
 export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: string }[] {
   if (!fs.existsSync(packsDir)) return [];

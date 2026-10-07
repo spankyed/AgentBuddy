@@ -3,35 +3,29 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readInstalledSchema } from '../../src/database/schema.ts';
-import { pruneHostPackOutputs } from '../../src/packs/layout.ts';
 import { dataDirWithPacks, removeTempDirs, schemaContext } from './fixtures.ts';
 import { _appDirOf } from '@abuddy/sdk/env';
-import { PACK_LAYOUT } from '../../src/packs/layout.ts';
 
 afterEach(removeTempDirs);
 
-const snapshotFile = (dir: string, id = 'core') => path.join(_appDirOf(dir), 'host-packs', id, PACK_LAYOUT.snapshot);
 const manifestFile = (dir: string, id: string) => path.join(_appDirOf(dir), 'packs', id, 'abuddy.json');
 const write = (file: string, content: unknown) =>
   fs.writeFileSync(file, typeof content === 'string' ? content : JSON.stringify(content));
 
 describe('a file readInstalledSchema cannot use', () => {
-  it("names the built-in pack's snapshot", () => {
-    const dir = dataDirWithPacks();
-    write(snapshotFile(dir), 'not json');
-    expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`${snapshotFile(dir)} isn't readable a built-in pack's snapshot`);
-
-    write(snapshotFile(dir), { types: {} });
-    expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`${snapshotFile(dir)} holds no pack manifest`);
-
-    write(snapshotFile(dir), { manifest: { id: 'core', entities: ['Note'] } });
-    expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`${snapshotFile(dir)}: the manifest's entities isn't a set of names`);
-  });
-
-  it("names the external pack's manifest", () => {
+  // One kind of file to report on, since every pack is read from its own installed manifest — this named a
+  // published snapshot as well, which was the data dir's second account of itself
+  it("names the pack's manifest, whichever pack it is", () => {
     const dir = dataDirWithPacks({ external: [{ id: 'bookmarks', entities: { Bookmark: 'Bookmark' } }] });
     write(manifestFile(dir, 'bookmarks'), { id: 'bookmarks', name: 'Bookmarks', version: '1.0.0', relKinds: 'nonsense' });
     expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`${manifestFile(dir, 'bookmarks')}: the manifest's relKinds isn't a set of names`);
+  });
+
+  // The pack the app ships is read exactly the same way, from the same place
+  it("names the manifest of a pack the app ships", () => {
+    const dir = dataDirWithPacks();
+    write(manifestFile(dir, 'core'), { id: 'core', name: 'Core', version: '1.0.0', entities: ['Note'] });
+    expect(() => readInstalledSchema(schemaContext(dir))).toThrow(`${manifestFile(dir, 'core')}: the manifest's entities isn't a set of names`);
   });
 
   it("refuses a registry it can't read, rather than taking in packs the app leaves out", () => {
@@ -53,19 +47,5 @@ describe('packs declaring the same name', () => {
 
     const overApp = dataDirWithPacks({ external: [{ id: 'a', entities: { Flow: 'Flow' } }] });
     expect(() => readInstalledSchema(schemaContext(overApp))).toThrow('Two packs declare the entity type Flow: "AgentBuddy" and "a"');
-  });
-});
-
-describe('pruneHostPackOutputs', () => {
-  it('removes the artifacts of built-in packs the app no longer has, and keeps the rest', () => {
-    const dir = dataDirWithPacks();
-    const hostPacks = path.join(_appDirOf(dir), 'host-packs');
-    fs.cpSync(path.join(hostPacks, 'core'), path.join(hostPacks, 'dropped'), { recursive: true });
-    fs.mkdirSync(path.join(hostPacks, '.core.publishing-123-abc'), { recursive: true });
-
-    expect(pruneHostPackOutputs(hostPacks, ['core'])).toEqual(['dropped']);
-    expect(fs.readdirSync(hostPacks).sort()).toEqual(['.core.publishing-123-abc', 'core']);
-    expect(pruneHostPackOutputs(hostPacks, ['core'])).toEqual([]);
-    expect(pruneHostPackOutputs(path.join(dir, 'nowhere'), ['core'])).toEqual([]);
   });
 });

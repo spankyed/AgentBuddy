@@ -150,10 +150,10 @@ function unusable(depId: string, rejected: Rejected): Error {
   return new Error(`Dependency "${depId}" has no build this CLI can use:\n${rejected.map((r) => `  - ${r.where}: ${r.message}`).join('\n')}`);
 }
 
-/** Built-in packs published by an installed AgentBuddy (any channel) into its data dir at boot. */
+/** A pack installed in an AgentBuddy's data dir (any channel) — the ones it ships among them. */
 function resolveFromInstalledApp(depId: string, range: string, rejected: Rejected): (DepFiles & { env: AppEnv }) | null {
   for (const env of ['production', 'beta', 'development', 'test'] as const) {
-    const found = findDepFiles(path.join(resolveAppContext({ env }).hostPacksDir, depId));
+    const found = findDepFiles(path.join(resolveAppContext({ env }).packsDir, depId));
     if (usable(found, range, `installed app (${env})`, rejected)) return { ...found, env };
   }
   return null;

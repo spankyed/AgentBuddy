@@ -7,8 +7,8 @@ import { addressPluginKeys, pluginRefOf } from '../../src/migrations/app/0.3.15.
 
 const refs = [resolveName('memo-pack/memos'), resolveName('memo-pack/board'), resolveName('host/packs')];
 /** Those plugins, with no built-in pack among them */
-const owners = { refs, builtIn: [] };
-const withOther = { refs: [...refs, resolveName('other-pack/memos')], builtIn: [] };
+const owners = { refs, shipped: [] };
+const withOther = { refs: [...refs, resolveName('other-pack/memos')], shipped: [] };
 
 describe('addressPluginKeys', () => {
   it("moves each key a plugin's feature id stands for onto its ref, the host's included", () => {
@@ -43,7 +43,7 @@ describe('addressPluginKeys', () => {
 
   // Before 0.3.15 a built-in pack registered first, so the plugin running under a shared bare id was the built-in one
   it("gives a bare id a built-in pack shares with another pack to the built-in pack's plugin", () => {
-    const { record } = addressPluginKeys({ memos: { sort: 'newest' } }, { ...withOther, builtIn: ['other-pack'] });
+    const { record } = addressPluginKeys({ memos: { sort: 'newest' } }, { ...withOther, shipped: ['other-pack'] });
     expect(record).toEqual({ 'other-pack/memos': { sort: 'newest' } });
   });
 });

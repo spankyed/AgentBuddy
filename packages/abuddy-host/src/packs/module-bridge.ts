@@ -43,6 +43,79 @@ function missingModule(name: string): unknown {
   });
 }
 
+const cacheEntry = (id: string, exports: unknown) =>
+  ({ id, filename: id, loaded: true, exports, children: [], paths: [] }) as unknown as NodeJS.Module;
+
+/** Puts each bridged module in the require cache, under the bridge key and under the host's own path for it */
+function seedBridgedModules(cache: NodeJS.Dict<NodeJS.Module>, modules: Readonly<Record<string, unknown>>, hostRequire: NodeRequire): void {
+  for (const [specifier, exports] of Object.entries(modules)) {
+    const key = `${BRIDGE_PREFIX}${specifier}`;
+    if (cache[key]) continue;
+    const entry = cacheEntry(key, exports);
+    cache[key] = entry;
+    // A lazy initializer resolves the host's path for itself; point that at the bridged module too, so it
+    // gets this instance rather than loading a second copy from the same file
+    try {
+      const realPath = hostRequire.resolve(specifier);
+      if (!cache[realPath]) cache[realPath] = entry;
+    } catch { /* the bridge key is enough */ }
+  }
+}
+
+/** Resolves a host-provided package, and any subpath of one, from `hostRequire`; `null` for anything else */
+function hostPackageResolver(hostPackages: readonly string[], hostRequire: NodeRequire): (request: string) => string | null {
+  const resolved = new Map<string, string | null>();
+  return (request: string) => {
+    if (!hostPackages.some((name) => request === name || request.startsWith(`${name}/`))) return null;
+    if (!resolved.has(request)) {
+      try {
+        resolved.set(request, hostRequire.resolve(request));
+      } catch {
+        // Not installed for the host either: the pack's own resolution decides what happens
+        resolved.set(request, null);
+      }
+    }
+    return resolved.get(request) ?? null;
+  };
+}
+
+let hostModulesKept = false;
+
+/**
+ * Keeps the host's modules resolvable from pack code for the rest of the process.
+ *
+ * **Pack code requires a bridged module long after the load that produced it.** esbuild defers a module's
+ * body into an `__init` the bundle calls on first use, so default-setup's `extensions/steps/action/runtime.ts`
+ * runs its `require('@abuddy/sdk/logger')` when an action step first runs — any time, under any stack. A
+ * scoped patch is gone by then, and seeding the cache cannot cover it: Node resolves before it looks in the
+ * cache, and an installed pack has no `node_modules` for a bare specifier to resolve through. In a checkout
+ * the workspace one sits above the pack and answers, which is why this is invisible until a pack is
+ * installed — and then every action step fails with `Cannot find module '@abuddy/sdk/logger'`.
+ *
+ * **Resolution only, and it never throws.** `withModuleBridge`'s refusals are load-time diagnostics — they
+ * tell a pack author to rebuild, at the moment the pack's runtime is being required — so they stay scoped to
+ * that load. Keeping them installed would make them answer for host code too, and `appOnly` would then
+ * refuse the app its own `@abuddy/ears/lmdb`.
+ *
+ * Safe to leave installed because the only CJS `require` of a bridged specifier in this process is a pack's:
+ * host code is ESM, which never consults `Module._resolveFilename`, and the API bundle inlines these packages
+ * rather than requiring them. Idempotent, since every pack load asks for the same host.
+ */
+export function keepHostModulesResolvable(options: Pick<ModuleBridgeOptions, 'modules' | 'hostPackages' | 'resolveFrom'>): void {
+  if (hostModulesKept) return;
+  hostModulesKept = true;
+  const moduleInternals = Module as ModuleInternals;
+  const originalResolve = moduleInternals._resolveFilename;
+  const hostRequire = createRequire(options.resolveFrom ?? import.meta.url);
+  const resolveFromHost = hostPackageResolver(options.hostPackages ?? [], hostRequire);
+  seedBridgedModules(hostRequire.cache, options.modules, hostRequire);
+
+  moduleInternals._resolveFilename = function resolve(this: unknown, request: string, parent: unknown, ...rest: unknown[]) {
+    if (request in options.modules) return `${BRIDGE_PREFIX}${request}`;
+    return resolveFromHost(request) ?? originalResolve.call(this, request, parent, ...rest);
+  };
+}
+
 function isBareSpecifier(request: string): boolean {
   return !request.startsWith('.') && !request.startsWith('/') && !request.startsWith('node:') && !Module.builtinModules.includes(request);
 }
@@ -60,33 +133,9 @@ export function withModuleBridge<T>(options: ModuleBridgeOptions, fn: () => T): 
   // A host package's own subpaths come from the host too (`zod` and `zod/v4`, whatever a bundled dependency asks
   // for), so nothing has to list them: an installed pack has no node_modules, and a second copy of a package the
   // host provides is exactly what the bridge exists to prevent
-  const hostPackages = options.hostPackages ?? [];
-  const hostResolutions = new Map<string, string | null>();
-  const resolveFromHost = (request: string): string | null => {
-    if (!hostPackages.some((name) => request === name || request.startsWith(`${name}/`))) return null;
-    if (!hostResolutions.has(request)) {
-      try {
-        hostResolutions.set(request, hostRequire.resolve(request));
-      } catch {
-        // Not installed for the host either: the pack's own resolution decides what happens
-        hostResolutions.set(request, null);
-      }
-    }
-    return hostResolutions.get(request) ?? null;
-  };
+  const resolveFromHost = hostPackageResolver(options.hostPackages ?? [], hostRequire);
 
-  const cacheEntry = (id: string, exports: unknown) => ({ id, filename: id, loaded: true, exports, children: [], paths: [] }) as unknown as NodeJS.Module;
-  for (const [specifier, exports] of Object.entries(options.modules)) {
-    const key = `${BRIDGE_PREFIX}${specifier}`;
-    if (cache[key]) continue;
-    const entry = cacheEntry(key, exports);
-    cache[key] = entry;
-    // Lazy initializers resolve the real path after the patch is gone; point it at the bridged module too
-    try {
-      const realPath = hostRequire.resolve(specifier);
-      if (!cache[realPath]) cache[realPath] = entry;
-    } catch { /* the bridge key is enough */ }
-  }
+  seedBridgedModules(cache, options.modules, hostRequire);
 
   moduleInternals._resolveFilename = function resolve(this: unknown, request: string, parent: unknown, ...rest: unknown[]) {
     if (request in options.modules) return `${BRIDGE_PREFIX}${request}`;

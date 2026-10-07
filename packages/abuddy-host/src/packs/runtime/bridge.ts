@@ -1,5 +1,5 @@
-import { APP_ONLY_EXPORTS, SHARED_INSTANCE_PACKAGES, getSharedBeDeps } from '../../build/shared-deps.ts';
-import { withModuleBridge } from '../module-bridge.ts';
+import { APP_ONLY_EXPORTS, HOST_RESOLVED_BINARIES, SHARED_DEPS, SHARED_INSTANCE_PACKAGES } from '../../build/shared-deps.ts';
+import { keepHostModulesResolvable, withModuleBridge } from '../module-bridge.ts';
 import { SHARED_INSTANCE_MODULES } from './sdk-modules.ts';
 
 // The SDK bridge: pack runtime code shares the loader's shared-instance packages (@abuddy/sdk,
@@ -19,21 +19,55 @@ const SDK_BRIDGE: Record<string, unknown> = SHARED_INSTANCE_MODULES;
  * importing a shared-instance subpath that is missing here fails loudly, and
  * says what to do: `withModuleBridge` throws "isn't provided by this
  * AgentBuddy: rebuild the pack with the current @abuddy/cli" for any specifier
- * under a bridged package it has no entry for. That was not always so — before
- * `755385f15` the require fell through to real Node resolution and died on the
- * SDK's extensionless relative imports, which `loadBuiltInPacks` caught and
- * answered by falling back to the prebuilt bundle, booting the app with dev
- * hot-reload quietly broken. The built-in loader still has that fallback for
- * every other failure, so the throw is what keeps this one visible.
+ * under a bridged package it has no entry for.
+ *
+ * **It throws rather than falling through**, which is the whole of what this list buys. Real Node
+ * resolution of a missing subpath dies on the SDK's extensionless relative imports — an error about a
+ * file, naming nothing a pack author can act on. The loader records a load problem and the other packs
+ * load, so a pack built against an SDK entry this app no longer has is a pack reported missing with the
+ * reason attached, rather than one that fails obscurely.
  */
 export function getBridgedSdkSpecifiers(): readonly string[] {
   return Object.keys(SDK_BRIDGE);
 }
 
-const HOST_PROVIDED_PACKAGES = getSharedBeDeps();
+/**
+ * The packages the loader resolves from itself for a pack, rather than bridging a module of.
+ *
+ * Exported for the guard in `@abuddy/cli`'s `tests/build/pack-externals.spec.ts`, the one place that sees
+ * both this and the externals a pack bundle is built with.
+ */
+export function getHostProvidedPackages(): readonly string[] {
+  return HOST_PROVIDED_PACKAGES;
+}
 
-/** Runs `fn` (a require of pack runtime code) with the shared-instance packages bridged to the loader's instances and host-provided packages resolved from the loader (the API bundle, in the app) */
+/**
+ * Every specifier a pack's backend bundle leaves external, resolved from here.
+ *
+ * `hostPackages` is a resolution rather than a bridged module, so the question it answers is only "may a
+ * backend require this", and for anything the host provides the answer is yes — the packages `SHARED_DEPS`
+ * targets at `fe` included. A pack's backend bundle carries its steps' frontend facets, so
+ * `src/extensions/steps/<type>/fe.ts` puts a top-level `require("vue")` in one, which the backend never calls into
+ * and must still resolve. The host is the only place it can come from: an installed pack has no
+ * `node_modules` (`stagePack` copies `dist/{runtime,build,types}` and nothing else). A checkout's workspace
+ * one sits above the pack and answers anyway, which is what hides a gap here until a pack is installed —
+ * `@abuddy/cli`'s `tests/build/pack-externals.spec.ts` is what closes it, holding this against the externals
+ * a pack bundle is built with.
+ *
+ * This is not `getSharedBeDeps()` widened: that list is the modules a backend shares an *instance* of, which
+ * `@abuddy/testing`'s dependency runtime imports eagerly, and a frontend package belongs in neither.
+ */
+const HOST_PROVIDED_PACKAGES = [...Object.keys(SHARED_DEPS), ...HOST_RESOLVED_BINARIES];
+
+/**
+ * Runs `fn` (a require of pack runtime code) with the shared-instance packages bridged to the loader's
+ * instances and host-provided packages resolved from the loader (the API bundle, in the app).
+ *
+ * The resolution outlives the call, because a pack's require does too: `keepHostModulesResolvable` says
+ * why. What is scoped to `fn` is the refusals, which are diagnostics about the pack being loaded.
+ */
 export function withHostResolution<T>(fn: () => T): T {
+  keepHostModulesResolvable({ modules: SDK_BRIDGE, hostPackages: HOST_PROVIDED_PACKAGES, resolveFrom: import.meta.url });
   return withModuleBridge({
     modules: SDK_BRIDGE,
     hostPackages: HOST_PROVIDED_PACKAGES,

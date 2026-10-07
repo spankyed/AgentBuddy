@@ -156,7 +156,7 @@ must be "not logged".
 `sanitizeEnvironment` is `{...process.env}` minus six names (`be/services/terminal.ts:38-45`), applied on
 both spawn paths (`:85`, `:376`). The env it copies is the one Electron main built for the API process,
 which sets `ABUDDY_API_TOKEN` (`main/src/modules/api-server/config.ts:100`) along with `API_PORT`,
-`ABUDDY_USER_DATA_DIR`, `AGENTBUDDY_LOG_DIR` and `BUILT_IN_PACKS_DIR`. None is on the deny-list.
+`ABUDDY_USER_DATA_DIR`, `AGENTBUDDY_LOG_DIR` and `SHIPPED_PACKS_DIR`. None is on the deny-list.
 
 What the token buys is wider than a secrets read — `secrets.*` returns metadata only
 (`api/src/transport/secrets.ts:14-43`), correcting the original hypothesis. The escalation is `bus.send`:

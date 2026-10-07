@@ -482,7 +482,7 @@ While a command changes the database it holds a lock on the data dir (`db-write.
 
 **Seeding.** There is no seed command: AgentBuddy seeds each pack's data when it starts (and `abuddy run` re-seeds a pack it rebuilds), so start the app rather than seed a data dir by hand.
 
-**Installed packs.** Entity types, relation kinds and where each type is stored come from the packs installed in the data dir (the built-in packs the app published to `host-packs/`, and the enabled packs in `packs/`); no pack code runs. A data dir the app has never started on has none, and is refused.
+**Installed packs.** Entity types, relation kinds and where each type is stored come from the packs installed in the data dir — every enabled pack in `packs/`, the ones the app ships included, read from its own `abuddy.json`; no pack code runs. A data dir with no packs installed knows only the names the app itself declares, which is the truth about it rather than a degraded reading of it.
 
 #### `abuddy db query <code> | --file <path> [-o pretty|json|csv] [--out <file>]`
 

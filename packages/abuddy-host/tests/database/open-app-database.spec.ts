@@ -31,19 +31,21 @@ describe('readInstalledSchema', () => {
     expect(types.has('Hidden')).toBe(false);
     expect(schema.relKinds.MENTIONS).toBe('mentions');
     expect(schema.packs).toEqual([
-      { id: 'core', builtIn: true },
-      { id: 'bookmarks', builtIn: false },
-      { id: 'listed', builtIn: false },
+      { id: 'bookmarks' },
+      { id: 'core' },
+      { id: 'listed' },
     ]);
   });
 
   // It used to throw, which is wrong for a tool whose job is looking at a data dir something is already wrong
   // with. It reports instead, and the caller decides: a dir with no published snapshots still opens and every
   // row is still reachable by id — what is lost is naming a pack's entity type in a query.
-  it('reports, rather than refuses, a data dir the app never published its built-in packs to', () => {
+  // A data dir with nothing installed knows the app's own types and no pack's, which is the truth about it
+  // rather than an incomplete reading of it — every pack that is there has its manifest there
+  it('knows only the app\'s own types for a data dir with no packs installed', () => {
     const dir = tempDir('host-database-');
     const schema = readInstalledSchema(schemaContext(dir));
-    expect(schema.degraded).toMatch(/has no built-in pack snapshots .*--schema-from/s);
+    expect(schema.packs).toEqual([]);
     expect(schema.getRegisteredEntityTypes().has('AppState'), "the app's own types are still known").toBe(true);
     expect(schema.getRegisteredEntityTypes().has('Bookmark'), "a pack's are not").toBe(false);
   });
@@ -56,9 +58,9 @@ describe('readInstalledSchema', () => {
 
     const snapshot = path.join(dir, 'spare.json');
     fs.writeFileSync(snapshot, JSON.stringify({ manifest: { id: 'spare', entities: {} } }));
-    const { degraded, notes } = readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot });
-    expect(degraded, 'the dir accounted for itself, so nothing is degraded').toBeUndefined();
-    expect(notes.join('\n')).toMatch(/publishes its own built-in pack snapshots, so --schema-from .* was not used/);
+    // Named a pack the dir does not have, so it is read and added
+    const { notes } = readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot });
+    expect(notes).toEqual([]);
   });
 
   // The snapshot a caller names stands in for the ones the data dir never published
@@ -67,7 +69,6 @@ describe('readInstalledSchema', () => {
     const snapshot = path.join(dir, 'snapshot.json');
     fs.writeFileSync(snapshot, JSON.stringify({ manifest: { id: 'named', entities: { Bookmark: 'Bookmark' } } }));
     const schema = readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot });
-    expect(schema.degraded, 'nothing is degraded once a snapshot is named').toBeUndefined();
     expect(schema.getRegisteredEntityTypes().has('Bookmark')).toBe(true);
   });
 });
@@ -115,17 +116,20 @@ describe('openAppDatabase', () => {
    * row literally called `Note` — measured against a real data dir before this refusal existed. A read of the
    * same dir is fine and is the whole point of the fallback.
    */
-  it('refuses a writable open on an incomplete schema, and allows a read', async () => {
+  // A dir whose packs were removed opens, readable and writable alike: its remaining rows are reachable by
+  // id, and there is no second account of the dir that could disagree with the packs directory
+  it('opens a data dir whose packs were removed, knowing only the app\'s types', async () => {
     const dir = dataDirWithPacks();
     await writeData(dir, () => {});
-    fs.rmSync(path.join(_appDirOf(dir), 'host-packs'), { recursive: true });
+    fs.rmSync(path.join(_appDirOf(dir), 'packs'), { recursive: true });
 
-    await expect(openAppDatabase({ env: 'test', userDataDir: dir, ...quiet }))
-      .rejects.toThrow(/This command changes the database, and an incomplete schema would write the wrong rows/);
-
-    const db = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });
-    expect(db.schema.degraded, 'the read says so rather than pretending').toBeDefined();
-    db.close();
+    const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
+    try {
+      expect(db.schema.packs).toEqual([]);
+      expect(db.schema.getRegisteredEntityTypes().has('Note')).toBe(false);
+    } finally {
+      db.close();
+    }
   });
 
   it('hydrates the primary partition with the installed types, and installs the engine until close', async () => {

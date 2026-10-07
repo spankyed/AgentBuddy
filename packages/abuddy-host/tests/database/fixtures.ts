@@ -27,17 +27,17 @@ function writeJSON(file: string, value: unknown): void {
   fs.writeFileSync(file, JSON.stringify(value));
 }
 
-/** A data dir with the built-in pack `core` published (Note, Trace, `mentions`), and optionally external packs */
+/**
+ * A data dir with packs installed: `core`, which the app ships (Note, Trace, `mentions`), and any others
+ * given. Every pack is installed, so they are all written the same way — `core` used to be a published
+ * snapshot under `host-packs/`, which was the data dir's second account of itself.
+ */
 export function dataDirWithPacks({ external = [] as Array<{ id: string; entities: Record<string, string>; enabled?: boolean }> } = {}): string {
   const dir = tempDir('host-database-');
-  writeJSON(path.join(_appDirOf(dir), 'host-packs', 'core', 'types', 'snapshot.json'), {
-    types: {},
-    defs: {},
-    manifest: {
-      id: 'core', name: 'Core', version: '1.0.0', builtIn: true,
-      entities: { Note: 'Note', Trace: 'Trace' },
-      relKinds: { MENTIONS: 'mentions' },
-    },
+  writeJSON(path.join(_appDirOf(dir), 'packs', 'core', 'abuddy.json'), {
+    id: 'core', name: 'Core', version: '1.0.0', builtIn: true,
+    entities: { Note: 'Note', Trace: 'Trace' },
+    relKinds: { MENTIONS: 'mentions' },
   });
   for (const pack of external) {
     writeJSON(path.join(_appDirOf(dir), 'packs', pack.id, 'abuddy.json'), {
@@ -56,7 +56,6 @@ export function dataDirWithPacks({ external = [] as Array<{ id: string; entities
 const context = (userDataDir: string) => ({
   userDataDir,
   packsDir: path.join(_appDirOf(userDataDir), 'packs'),
-  hostPacksDir: path.join(_appDirOf(userDataDir), 'host-packs'),
   installedPacksFile: path.join(_appDirOf(userDataDir), 'installed-packs.json'),
 });
 

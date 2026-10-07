@@ -89,7 +89,7 @@ Importing `runtime/index.ts` opens and binds nothing. `openAppStore()` creates t
 `packages/main/src/modules/api-server/` (`ApiServer.ts`, `config.ts`) spawns `dist/server.js` with `cwd` = `packages/api`:
 
 - From source: `node --conditions=@abuddy/source dist/server.js`. Packaged: Electron's executable (`process.execPath`) with `ELECTRON_RUN_AS_NODE=1` and the full path.
-- Env (`getEnvironment`): `NODE_ENV` (`development` / `production`), `API_PORT` (from `get-port`, preferring the previous port), `AGENTBUDDY_STARTUP_ID`, `AGENTBUDDY_LOG_DIR` (main's log dir), `BUILT_IN_PACKS_DIR` (`packages/`, or `resources/app/packages` packaged), `ABUDDY_ENV`, `ABUDDY_USER_DATA_DIR`.
+- Env (`getEnvironment`): `NODE_ENV` (`development` / `production`), `API_PORT` (from `get-port`, preferring the previous port), `AGENTBUDDY_STARTUP_ID`, `AGENTBUDDY_LOG_DIR` (main's log dir), `SHIPPED_PACKS_DIR` (`packages/`, or `resources/app/packages` packaged: the packs the app installs at first boot), `ABUDDY_ENV`, `ABUDDY_USER_DATA_DIR`.
 - `process-manager.ts` parses stderr lines starting with `{"__fatal":` to report the crash.
 
 Builds: `npm start` (root) runs `build:be:dev` → this package's `build:dev` (tsup, ESM `server.js` only, no tsc/dts/minify; its `prebuild:be:dev` builds default-setup first). `npm run build` runs `tsc --noEmit`, then tsup with ESM + CJS, `types.ts` declarations and minification. tsup bundles workspace packages from source (`@abuddy/source` + `module` conditions), stubs `.vue` imports and resolves this package's `@/`. **It carries no pack's backend**: every pack's runtime is loaded from its own `dist/runtime/index.cjs` at boot.

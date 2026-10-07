@@ -324,12 +324,12 @@ describe('FE pack deregistration', () => {
   // A built-in pack's registration carries its id like any other, so it comes out the same way
   it('takes a built-in pack\'s frontend back out like any other pack\'s', async () => {
     const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
-    const builtIn = { label: 'Built-in', id: 'default-setup/main' } as unknown as Plugin;
+    const shipped = { label: 'Built-in', id: 'default-setup/main' } as unknown as Plugin;
 
     registerPackFE({ id: 'default-setup', features: { main: { plugin: { label: 'Built-in' } as PluginDefinition } } });
-    expect(getRegisteredPlugins()).toEqual([builtIn]);
+    expect(getRegisteredPlugins()).toEqual([shipped]);
 
-    expect(unregisterPackFE('default-setup')).toEqual([builtIn]);
+    expect(unregisterPackFE('default-setup')).toEqual([shipped]);
     expect(getRegisteredPlugins()).toEqual([]);
   });
 

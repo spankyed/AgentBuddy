@@ -10,8 +10,8 @@ There are two runners, both in this folder's `index.ts` (`packages/abuddy-host/s
 
 | Runner | Runs | Runs a migration when | Records |
 | --- | --- | --- | --- |
-| `runAppMigrations(registry)` | the host's own (`app/index.ts`), then the built-in packs' (each of `registry.builtInPacks()`'s registration's `migrations`, through `registry.getPackRegistration(id)`) | `stored app version < target <= app version` (`getAppVersion()`, the bound `HostRuntime`'s `appVersion`), with the exceptions below | `AppState.version` |
-| `runPackMigrations(externalPacks)` | each external pack's migrations (`LoadedPack.migrations`) | `stored pack version < target <= manifest version` | `AppState.packVersions[packId]` |
+| `runAppMigrations(registry)` | the host's own (`app/index.ts`), then the built-in packs' (each of `registry.shippedPacks()`'s registration's `migrations`, through `registry.getPackRegistration(id)`) | `stored app version < target <= app version` (`getAppVersion()`, the bound `HostRuntime`'s `appVersion`), with the exceptions below | `AppState.version` |
+| `runPackMigrations(loadedPacks)` | each external pack's migrations (`LoadedPack.migrations`) | `stored pack version < target <= manifest version` | `AppState.packVersions[packId]` |
 
 Which app migrations run, besides `stored < target`:
 - **A release** runs those up to its version, once: nothing runs while the recorded version is the app's.

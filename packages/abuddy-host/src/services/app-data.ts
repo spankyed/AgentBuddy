@@ -49,7 +49,7 @@ export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: Pac
         await reloadMemory(databases.includes('volatileLmdb'));
         // A backup from an earlier version is migrated now, not at the next boot (one from before AppState keeps
         // the app's state in its settings)
-        if (runAppMigrations(registry)) runPackMigrations(registry.externalPackTargets());
+        if (runAppMigrations(registry)) runPackMigrations(registry.packTargets());
         return { databases, missingDatabases: result.missingDatabases as BackupDatabase[], unknownEntityTypes: result.unknownEntityTypes };
       } catch (error) {
         // importDatabase has put the previous files back; reload them

@@ -66,7 +66,7 @@ describe('loading pack frontends from the loaded packs', () => {
   // kind of pack it is, and a reconnection does not load one again
   it("loads every pack's frontend once, whoever ships it", async () => {
     loadedPacksQuery.mockResolvedValue([
-      { id: 'default-setup', builtIn: true, feEntry: 'runtime/fe.js' },
+      { id: 'default-setup', feEntry: 'runtime/fe.js' },
       { id: 'ext', feEntry: 'runtime/fe.js' },
     ]);
     // A plugin's id is its feature's ref, so two packs cannot contribute the same one

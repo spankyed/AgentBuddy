@@ -731,6 +731,14 @@ repo is rebuilt by these phases. A stamp is for skew between a pack and a host t
 bumping it here would only mean rebuilding packs that this goal rebuilds anyway. The first bump belongs
 to the first structural change made after a release exists.
 
+> **The subject of this decision's second half no longer exists.** `goal-one-kind-of-pack` deleted
+> `publishHostPackOutput` and `host-packs/` with it: a pack the app ships is *installed*, in the one
+> full pack layout, `integrity.json` included. So the asymmetry below — a partial layout with a
+> `.fingerprint` and no `integrity.json` — is gone rather than undocumented, and the Phase 6 that was
+> to document it has nothing to document. What survives is the decision itself: the stamp stays at `1`.
+> The freshness question `.fingerprint` answered is now `packFileHashes` against `stagedFileHashes`,
+> compared at boot (`packs/installer.ts`).
+
 **The gap, why it does not bite, and why it needs writing down.** A published built-in pack
 (`host-packs/<id>/`) is a *partial* pack layout: `publishHostPackOutput` writes `types/snapshot.json`,
 `build/`, `runtime/index.cjs` with `runtime/seeds/`, and a `.fingerprint` — **no `abuddy.json` and no

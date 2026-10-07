@@ -11,7 +11,7 @@ import type { PackMigration } from '@abuddy/sdk/framework';
 process.env.ABUDDY_ENV = 'test';
 import { registry, TEST_APP_VERSION } from '../packs/runtime/test-host.ts';
 
-const runs = vi.hoisted(() => ({ builtIn: 0, external: 0 }));
+const runs = vi.hoisted(() => ({ shipped: 0, external: 0 }));
 
 /** The app version the runner reads; the test host's unless a test sets one */
 const version = vi.hoisted(() => ({ current: undefined as string | undefined }));
@@ -51,33 +51,33 @@ describe('boot migrations', () => {
 
     const registration = {
       id: 'migrations-built-in',
-      migrations: [{ target: TEST_APP_VERSION, description: 'built-in', up: () => { runs.builtIn++; } }],
+      migrations: [{ target: TEST_APP_VERSION, description: 'built-in', up: () => { runs.shipped++; } }],
     };
     // Registered straight into the registry: the subject is the runner, not how a pack's module is loaded
-    registry.registerPack(registration, { id: 'migrations-built-in', name: 'Built-in', version: TEST_APP_VERSION, dir: builtInDir, builtIn: true });
+    registry.registerPack(registration, { id: 'migrations-built-in', name: 'Built-in', version: TEST_APP_VERSION, dir: builtInDir, shipped: true });
 
     const externalMigration: PackMigration = { target: TEST_APP_VERSION, description: 'external', up: () => { runs.external++; } };
     const manifest = { id: 'migrations-external', name: 'External', version: TEST_APP_VERSION };
     const external = {
       registration: { id: manifest.id, migrations: [externalMigration] },
-      origin: { ...manifest, dir: builtInDir, builtIn: false, manifest: manifest },
+      origin: { ...manifest, dir: builtInDir, shipped: false, manifest: manifest },
     } satisfies LoadedPack;
     expect(registerExternalPacks(registry, [external])).toHaveLength(1);
     // What the boot passes on: the registry joins each registered pack's origin with its migrations
-    const externalPacks = registry.externalPackTargets();
+    const loadedPacks = registry.packTargets();
 
     // The boot's order (the API's setup/backend.ts)
     runAppMigrations(registry);
-    runPackMigrations(externalPacks);
+    runPackMigrations(loadedPacks);
 
-    expect(runs.builtIn).toBe(1);
+    expect(runs.shipped).toBe(1);
     expect(runs.external).toBe(1);
     expect(appState.get()).toMatchObject({ version: TEST_APP_VERSION, packVersions: { 'migrations-external': TEST_APP_VERSION } });
 
     // Recorded: a second run changes nothing
     runAppMigrations(registry);
-    runPackMigrations(externalPacks);
-    expect(runs).toEqual({ builtIn: 1, external: 1 });
+    runPackMigrations(loadedPacks);
+    expect(runs).toEqual({ shipped: 1, external: 1 });
   });
 
   it("stops an external pack's migrations at a failure and records its version once they all ran, keeping other packs'", () => {
@@ -129,7 +129,7 @@ describe('which migrations run', () => {
         },
       })),
     };
-    registry.registerPack(registration, { id: 'migrations-gate', name: 'Gate', version: TEST_APP_VERSION, dir: builtInDir, builtIn: true });
+    registry.registerPack(registration, { id: 'migrations-gate', name: 'Gate', version: TEST_APP_VERSION, dir: builtInDir, shipped: true });
   });
 
   beforeEach(() => {

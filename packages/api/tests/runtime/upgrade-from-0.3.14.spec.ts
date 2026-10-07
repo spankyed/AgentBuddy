@@ -19,7 +19,9 @@ process.env.ABUDDY_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
 const { store, packs } = openAppStore();
 const { hostRegistration } = await import('@abuddy/host/features');
-const { loadBuiltInPacks } = await import('@abuddy/host/packs/runtime');
+const { loadAppPacks } = await import('@abuddy/host/packs/runtime');
+const { installShippedPacks } = await import('@abuddy/host/packs');
+const { resolveAppContext } = await import('@abuddy/sdk/env');
 const { runAppMigrations } = await import('@abuddy/host/migrations');
 const { appState } = await import('@abuddy/host/app-state');
 const { untypedTx, untypedQx } = await import('@abuddy/ears');
@@ -67,7 +69,9 @@ const SETTINGS_0314 = {
 
 beforeAll(async () => {
   packs.registerPack(hostRegistration());
-  await loadBuiltInPacks(packs, PACKAGES_DIR);
+  // The app installs the packs it ships, then loads every installed pack
+  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppContext().packsDir);
+  loadAppPacks(packs, new Set(installed.map((result: { id: string }) => result.id)));
   await store.hydrate();
   // 0.3.14's data has no AppState row: its state is in the settings
   untypedTx(SETTINGS_ID, true).put('entityType', 'Settings').put('data', structuredClone(SETTINGS_0314));

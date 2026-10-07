@@ -21,14 +21,9 @@
  * quietly. It is never a cache key.
  *
  * **Keyed by phase, not one flat list**, because a phase that did not run has to be distinguishable from
- * one that read nothing: a built-in pack stops before the runtime and frontend bundles, and `--skip-fe`
- * and `--skip-generate` skip others. A flat list would answer "nothing was recorded" and "nothing was
- * read" with the same silence, which is the ambiguity `readsOf` was tightened to remove.
- *
- * `docs/goals/goal-one-kind-of-pack.md` removes the first of those two reasons: with no built-in packs, every
- * pack is built the same way and records the runtime and frontend bundles too. The keying stays, on the
- * second reason alone — the flags still skip phases — and what changes is that one pack's record then
- * exercises all nine, where today it takes a built-in pack and an external one between them.
+ * one that read nothing: `--skip-fe` and `--skip-generate` skip phases, so a flat list would answer
+ * "nothing was recorded" and "nothing was read" with the same silence — the ambiguity `readsOf` was
+ * tightened to remove. One pack's record exercises all nine phases, every pack being built the same way.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';

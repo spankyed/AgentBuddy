@@ -3,16 +3,8 @@ import * as path from 'path';
 import { createLogger } from '@abuddy/sdk/logger';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { packSystemIds, type PackRegistry } from '../registry.ts';
-import { publishHostPackOutput } from '../layout.ts';
 import type { PackManifest } from '../discovery.ts';
-import {
-  loadSingleExternalPack,
-  clearPackRequireCache,
-  registerExternalPacks,
-  builtInRuntimeEntry,
-  loadBuiltInRuntime,
-  refreshBuiltInPackInfo,
-} from './loader.ts';
+import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
 import { seedPacks } from './seed.ts';
 
@@ -100,22 +92,6 @@ export async function reloadPackById(
   packId: string,
   backendActor: import('xstate').AnyActorRef,
 ): Promise<void> {
-  // **The directory decides, not the registry.** A pack whose last load *failed* is installed and not
-  // registered, and reloading it is how an author fixes it — so asking the registry which kind it is would
-  // refuse exactly the case the reload is for. The packs dir is what makes a pack installed.
-  const { packsDir } = resolveAppContext();
-  if (fs.existsSync(path.join(packsDir, packId))) return reloadExternalPack(registry, packId, backendActor);
-  // The load and the seeding are the same either way now. What still differs is what follows: a pack the
-  // app ships has its build output published for pack authors to resolve, which Phase 6 of
-  // `docs/goals/goal-one-kind-of-pack.md` removes along with this branch
-  return reloadBuiltInPack(registry, packId, backendActor);
-}
-
-async function reloadExternalPack(
-  registry: PackRegistry,
-  packId: string,
-  backendActor: import('xstate').AnyActorRef,
-): Promise<void> {
   const { packsDir } = resolveAppContext();
   const packDir = path.join(packsDir, packId);
 
@@ -146,55 +122,9 @@ async function reloadExternalPack(
       onShutdown: pack.registration.boot?.onShutdown,
       onInit: pack.registration.boot?.onInit,
       afterRegister: () => {
-        runPackMigrations(registry.externalPackTargets([packId]));
+        runPackMigrations(registry.packTargets([packId]));
         seedPacks(registry.packSeedTargets([packId]));
       },
     };
   }, packDir);
-}
-
-async function reloadBuiltInPack(
-  registry: PackRegistry,
-  packId: string,
-  backendActor: import('xstate').AnyActorRef,
-): Promise<void> {
-  const packInfo = registry.packOrigin(packId);
-  if (!packInfo?.builtIn) throw new Error(`Built-in pack not found: ${packId}`);
-
-  const runtimeEntry = builtInRuntimeEntry(packInfo.dir);
-  if (!fs.existsSync(runtimeEntry)) {
-    throw new Error(`Built runtime not found: ${runtimeEntry}`);
-  }
-
-  await reloadPack(registry, packId, backendActor, () => {
-    const registration = loadBuiltInRuntime(packInfo.dir);
-    if (!registration) throw new Error(`Built runtime for ${packId} has no registration export`);
-
-    return {
-      // The origin survives the reload: the pack is in the same place, and a re-register that dropped it
-      // would leave the next reload unable to find the pack it just reloaded
-      register: () => registry.registerPack(registration, packInfo),
-      newSystemIds: packSystemIds(registration),
-      onShutdown: registration.boot?.onShutdown,
-      onInit: registration.boot?.onInit,
-      afterRegister: () => {
-        refreshBuiltInPackInfo(registry, packId);
-        // A rebuild can carry new compiled seeds; the seed is hash-checked, so unchanged data isn't
-        // re-imported. A rebuild running again mid-reload can take those files out from under it, so it
-        // doesn't stop the rest.
-        try {
-          seedPacks(registry.packSeedTargets([packId]));
-        } catch (err) {
-          logger.error(`Could not seed ${packId}'s compiled data on reload:`, err as Error);
-        }
-        // Pack authors resolve this pack's types, build code and seeds from the app's copy
-        const { hostPacksDir } = resolveAppContext();
-        try {
-          publishHostPackOutput(packInfo.dir, path.join(hostPacksDir, packId));
-        } catch (err) {
-          logger.warn(`Could not publish build output for ${packId}:`, err as Error);
-        }
-      },
-    };
-  }, path.join(packInfo.dir, 'dist'));
 }

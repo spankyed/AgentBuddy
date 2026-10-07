@@ -67,7 +67,7 @@ describe('the order external packs seed in', () => {
 // others.
 describe('the order the registry hands out', () => {
   const origin = (id: string, ...deps: string[]) => ({
-    id, name: id, version: '1.0.0', dir: `/packs/${id}`, builtIn: false,
+    id, name: id, version: '1.0.0', dir: `/packs/${id}`, shipped: false,
     manifest: { name: id, version: '1.0.0', ...pack(id, ...deps) },
   });
 
@@ -76,14 +76,14 @@ describe('the order the registry hands out', () => {
     registry.registerPack({ id: 'dependent' }, origin('dependent', 'provider'));
     registry.registerPack({ id: 'provider' }, origin('provider'));
 
-    expect(registry.externalPackTargets().map((t) => t.manifest.id)).toEqual(['provider', 'dependent']);
+    expect(registry.packTargets().map((t) => t.manifest.id)).toEqual(['provider', 'dependent']);
 
     // ...and a pack registered after that order was worked out is in the next one
     registry.registerPack({ id: 'later' }, origin('later', 'dependent'));
-    expect(registry.externalPackTargets().map((t) => t.manifest.id)).toEqual(['provider', 'dependent', 'later']);
+    expect(registry.packTargets().map((t) => t.manifest.id)).toEqual(['provider', 'dependent', 'later']);
 
     registry.unregisterPack('dependent');
-    expect(registry.externalPackTargets().map((t) => t.manifest.id)).toEqual(['provider', 'later']);
+    expect(registry.packTargets().map((t) => t.manifest.id)).toEqual(['provider', 'later']);
   });
 
   it('keeps that order in a subset, and reports a cycle once per pack set rather than per call', () => {
@@ -94,7 +94,7 @@ describe('the order the registry hands out', () => {
     registry.registerPack({ id: 'c' }, origin('c'));
 
     // Acting on one pack, as activation and reload do, three times over
-    for (let i = 0; i < 3; i++) expect(registry.externalPackTargets(['c']).map((t) => t.manifest.id)).toEqual(['c']);
+    for (let i = 0; i < 3; i++) expect(registry.packTargets(['c']).map((t) => t.manifest.id)).toEqual(['c']);
 
     expect(warnings().match(/depend on each other/g) ?? []).toHaveLength(1);
   });

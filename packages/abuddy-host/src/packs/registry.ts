@@ -97,9 +97,14 @@ export interface PackInfo extends PackExtensions {
   name: string;
   version: string;
   enabled: boolean;
-  builtIn: boolean;
+  /**
+   * Whether the app offers to uninstall it. False for whatever this app ships, which it needs to run — the
+   * Packs view hides the button rather than refusing the click. A pack property, so making a shipped pack
+   * uninstallable is one decision in one place.
+   */
+  canUninstall: boolean;
   entityCount: number;
-  /** Whether the pack has frontend code: an external pack's runtime/fe.js, a built-in pack's plugins */
+  /** Whether the pack has frontend code: its `runtime/fe.js` */
   hasFrontend: boolean;
   hostVersion?: string;
   description?: string;
@@ -131,10 +136,18 @@ export interface PackOrigin {
   id: string;
   name: string;
   version: string;
-  /** Where the pack's files are: `packs/<id>` for an external pack, `host-packs/<id>` for a built-in one */
+  /** Where the pack's files are: `packs/<id>`, for every pack */
   dir: string;
-  builtIn: boolean;
-  /** An external pack's `abuddy.json`, which its loader read to find the pack at all */
+  /**
+   * Whether this app shipped this pack's copy — the one thing left of "built-in", and a fact about where
+   * the installed copy came from rather than about the pack. Two things read it, both genuinely about
+   * shipping: a pack released with the app has migrations targeting *app* versions (`runAppMigrations`),
+   * and the app will not offer to uninstall what it needs to run (`PackInfo.canUninstall`).
+   *
+   * `manifest.builtIn` decides none of this, and nothing else decides anything by it.
+   */
+  shipped: boolean;
+  /** The pack's `abuddy.json`, which its loader read to find the pack at all */
   manifest?: PackManifest;
 }
 
@@ -192,10 +205,10 @@ export interface PackRegistry extends PackRegistryView {
   getPackRegistration(packId: string): PackRegistration | null;
   /** Where a registered pack came from, or `null` for one registered without an origin (a test's) */
   packOrigin(packId: string): PackOrigin | null;
-  /** The built-in packs this app loaded, in registration order */
-  builtInPacks(): PackOrigin[];
-  /** The external packs this app loaded, in registration order */
-  externalPacks(): PackOrigin[];
+  /** The packs whose installed copy this app shipped, in registration order */
+  shippedPacks(): PackOrigin[];
+  /** The packs this app loaded, in registration order */
+  loadedPacks(): PackOrigin[];
   /**
    * Each registered external pack as the runtime's per-pack helpers take it: where it came from, plus the
    * migrations it registered. One place joins the two halves, so no caller holds its own list of packs.
@@ -205,7 +218,7 @@ export interface PackRegistry extends PackRegistryView {
    * it depends on: its seeds may reference what they seeded. Registration order, which decides who wins a
    * designation or a plugin id, is a different order and is not this.
    */
-  externalPackTargets(packIds?: Iterable<string>): Array<{ manifest: PackManifest; dir: string; migrations?: PackMigration[] }>;
+  packTargets(packIds?: Iterable<string>): Array<{ manifest: PackManifest; dir: string; migrations?: PackMigration[] }>;
   /**
    * Every registered pack as `seedPacks` takes it, in dependency order: where its seeds are, what it
    * depends on, and the `seedPolicy` its registration declares. With `packIds`, only those — activation and
@@ -321,10 +334,10 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
    * reports a dependency cycle: computing it per call had activating or reloading any pack re-logging a
    * cycle between two others.
    */
-  const orderedExternalPacks = derived((): PackOrigin[] =>
+  const orderedPacks = derived((): PackOrigin[] =>
     packSeedOrder(
       [...origins.values()]
-        .filter((o) => !o.builtIn && o.manifest)
+        .filter((o) => o.manifest)
         // The dependencies are the manifest's, not the origin's own: spreading the origin would leave every
         // pack looking dependency-free, and `dependencies` being optional means nothing would say so
         .map((o) => ({ id: o.id, dependencies: o.manifest!.dependencies, origin: o })),
@@ -544,11 +557,11 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
 
     getRegisteredPackSystemIds,
     packOrigin: (packId) => origins.get(packId) ?? null,
-    builtInPacks: () => [...origins.values()].filter((o) => o.builtIn),
-    externalPacks: () => [...origins.values()].filter((o) => !o.builtIn),
-    externalPackTargets: (packIds) => {
+    shippedPacks: () => [...origins.values()].filter((o) => o.shipped),
+    loadedPacks: () => [...origins.values()],
+    packTargets: (packIds) => {
       const wanted = packIds && new Set(packIds);
-      return orderedExternalPacks()
+      return orderedPacks()
         .filter((o) => !wanted || wanted.has(o.id))
         .map((o) => ({ manifest: o.manifest!, dir: o.dir, migrations: registrations.get(o.id)?.migrations }));
     },
@@ -587,7 +600,6 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
       return ordered.map(({ origin }) => ({
         manifest: { id: origin.id, dependencies: origin.manifest?.dependencies },
         dir: origin.dir,
-        ...(origin.builtIn && { builtIn: true as const }),
         ...(registrations.get(origin.id)?.boot?.seedManifest?.seedPolicy
           && { seedPolicy: registrations.get(origin.id)!.boot!.seedManifest!.seedPolicy }),
       }));

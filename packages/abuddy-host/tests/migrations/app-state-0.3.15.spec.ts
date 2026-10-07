@@ -94,7 +94,7 @@ beforeAll(async () => {
   };
   // Registered straight into the registry: what this file is about is the migration runner, and routing
   // it through the loader would mean building a pack whose migrations close over this file's `ran`
-  registry.registerPack(registration, { id: BUILT_IN_ID, name: 'Built-in', version: TEST_APP_VERSION, dir: packDir, builtIn: true });
+  registry.registerPack(registration, { id: BUILT_IN_ID, name: 'Built-in', version: TEST_APP_VERSION, dir: packDir, shipped: true });
 });
 
 afterAll(() => {

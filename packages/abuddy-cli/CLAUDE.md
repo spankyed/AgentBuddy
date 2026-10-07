@@ -150,7 +150,7 @@ chain run both halves (`.github/workflows/ci.yml`), after `packages:build`. The 
   from its own module graph, each one either decided by `fixtureEnv` or allow-listed with its reason).
 - `tests/app/`: app target resolution, beta download (`ensureBetaApp`: macOS arm64 only), Playwright resolution, app version.
 - `tests/harness/`: `@abuddy/testing/harness` from a scaffolded pack (`harness-setup`) and a dependent pack running default-setup's runtime (`dependency-runtime`, skipped until default-setup is built).
-- `tests/packs/host-output.spec.ts`: `publishHostPackOutput` and dependency resolution from an installed app.
+- `tests/commands/installed-app-deps.spec.ts`: resolving a pack's declared dependency from an installed app, which is the packs installed in that app's data dir.
 
 A spec's path under `tests/` mirrors the source it covers, as it does in every package
 ([`test-inventory.md`](../../docs/reference/test-inventory.md)); `commands/`, `build/` and `app/` are

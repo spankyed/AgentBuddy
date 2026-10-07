@@ -13,8 +13,8 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-database-parity-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
-const { loadBuiltInPacks, loadExternalPacks, registerExternalPacks, startPacks } = await import('@abuddy/host/packs/runtime');
-const { installPackFromLocal, publishHostPackOutput } = await import('@abuddy/host/packs');
+const { loadAppPacks, startPacks } = await import('@abuddy/host/packs/runtime');
+const { installPackFromLocal, installShippedPacks } = await import('@abuddy/host/packs');
 const { openAppDatabase } = await import('@abuddy/host/database');
 const { resolveAppContext } = await import('@abuddy/sdk/env');
 const { unbindHost } = await import('@abuddy/sdk/runtime/internals');
@@ -35,12 +35,14 @@ function snapshot(query: EarsQuery) {
   };
 }
 
-/** The API's boot up to hydration (setup/backend.ts), for the built-in packs and the installed external ones; the caller closes the store */
+/**
+ * The API's boot up to hydration (`setupBackend`): the packs the app ships installed into the data dir,
+ * then every installed pack loaded. The caller closes the store.
+ */
 async function bootApi() {
   const app = openAppStore();
-  const infos = await loadBuiltInPacks(app.packs, PACKAGES_DIR);
-  for (const info of infos) publishHostPackOutput(info.dir, path.join(resolveAppContext().hostPacksDir, info.id));
-  registerExternalPacks(app.packs, loadExternalPacks());
+  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppContext().packsDir);
+  loadAppPacks(app.packs, new Set(installed.map((result: { id: string }) => result.id)));
   await app.store.hydrate();
   return app;
 }

@@ -10,8 +10,8 @@ export function startPacks(registry: PackRegistry): void {
   // The versions and seed hashes the packs' migrations and seeds read may only be in place once the app's migrations
   // ran: when one failed, nothing else runs, and the next boot retries
   if (!runAppMigrations(registry)) return;
-  const externalPacks = registry.externalPackTargets();
-  if (externalPacks.length > 0) runPackMigrations(externalPacks);
+  const loadedPacks = registry.packTargets();
+  if (loadedPacks.length > 0) runPackMigrations(loadedPacks);
 
   // One call for every pack, in dependency order. It was two — the shipped pack's boot seed, then the
   // installed packs' — which is why only the second half retried a failure or saw a dependency seed

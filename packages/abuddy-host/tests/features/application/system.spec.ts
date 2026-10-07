@@ -13,7 +13,7 @@ import { createApplicationSystem } from '../../../src/features/application/be/sy
 const withDefaults = (visibility: Record<string, boolean>, pluginIds: string[] = []) => ({
   settingsDefaults: () => ({ revision: 1, settings: { plugins: {} }, visibility }),
   pluginIds: () => pluginIds,
-  builtInPacks: () => [],
+  shippedPacks: () => [],
 });
 
 let stop: (() => void) | undefined;

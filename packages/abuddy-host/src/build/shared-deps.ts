@@ -64,6 +64,29 @@ export function sharedInstanceExports(pkg: string, fromFile: string): Record<str
   return (JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { exports: Record<string, unknown> }).exports;
 }
 
+/**
+ * Packages the host resolves for a pack, because neither the bundle nor the installed pack can carry them.
+ *
+ * Two shapes, both discovered the same way — the failure names the file it could not find:
+ * - a **native binding**. `node-pty` requires `build/Release/pty.node`; `chokidar` optionally requires
+ *   `fsevents`, whose binary is the same story. A `.node` is compiled machine code, so esbuild has no loader
+ *   for one and the only answer is to resolve it at run time.
+ * - a **shipped executable**. `@vscode/ripgrep` computes `rgPath` from its own `__dirname`, which inside a
+ *   bundle is the bundle's directory and not the package's.
+ *
+ * So a pack bundle leaves them external (`@abuddy/cli`'s `be-bundler.ts`) and the bridge resolves them from
+ * the loader (`withModuleBridge`'s `hostPackages`, `packs/runtime/bridge.ts`). Resolving from the loader is
+ * the half that has to be here: `stagePack` copies a pack's `dist/{runtime,build,types}` and nothing else, so
+ * an installed pack has no `node_modules` for an external specifier to come from, wherever it was installed
+ * from. `packages/api` declares the two this app ships, and `electron-builder.mjs` packages both its
+ * `node_modules` and the hoisted root one, which is what makes them resolvable beside the API bundle.
+ *
+ * A pack needing one this app does not have falls through to its own resolution and fails there, naming it —
+ * a question about that pack rather than about this list. `fsevents` is the counter-example: chokidar
+ * requires it in a try/catch and falls back to polling, so a pack runs without it either way.
+ */
+export const HOST_RESOLVED_BINARIES = ['node-pty', 'fsevents', '@vscode/ripgrep'];
+
 export interface SharedDep {
   globalKey?: string;
   target: 'fe' | 'be' | 'both';

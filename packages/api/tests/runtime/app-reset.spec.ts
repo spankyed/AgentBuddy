@@ -13,7 +13,9 @@ process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
 const { store, packs } = openAppStore();
-const { loadBuiltInPacks, startPacks } = await import('@abuddy/host/packs/runtime');
+const { loadAppPacks, startPacks } = await import('@abuddy/host/packs/runtime');
+const { installShippedPacks } = await import('@abuddy/host/packs');
+const { resolveAppContext } = await import('@abuddy/sdk/env');
 const { appState } = await import('@abuddy/host/app-state');
 const { getAppVersion } = await import('@abuddy/sdk/env');
 const { services } = await import('@abuddy/sdk/services');
@@ -36,7 +38,9 @@ let fresh: { settings: unknown; flows: ReturnType<typeof flows> };
 
 beforeAll(async () => {
   // The API's boot (setup/backend.ts), for the built-in packs
-  await loadBuiltInPacks(packs, PACKAGES_DIR);
+  // The app installs the packs it ships, then loads every installed pack
+  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppContext().packsDir);
+  loadAppPacks(packs, new Set(installed.map((result: { id: string }) => result.id)));
   await store.hydrate();
   startPacks(packs);
   fresh = { settings: storedSettings(), flows: flows() };

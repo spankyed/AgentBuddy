@@ -3,7 +3,7 @@ import { registry } from './test-host.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { loadAppPacks, loadBuiltInPacks, loadExternalPacks, type LoadedPack } from '../../../src/packs/runtime/loader.ts';
+import { loadAppPacks, loadExternalPacks, type LoadedPack } from '../../../src/packs/runtime/loader.ts';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { seedPacks, computePackSeedHash, type PackSeedTarget } from '../../../src/packs/runtime/seed.ts';
 import { appState } from '../../../src/app-state/index.ts';
@@ -194,62 +194,34 @@ describe('pack-loader', () => {
 
 });
 
-describe('loadBuiltInPacks', () => {
-  /** A pack dir the app ships, with a built runtime when `built` */
-  function writeBuiltIn(id: string, built: boolean): string {
-    const packagesDir = path.join(tmpDir, 'packages');
-    const packDir = path.join(packagesDir, id);
-    fs.mkdirSync(path.join(packDir, 'dist', 'runtime'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id, name: id, version: '1.0.0', builtIn: true }));
-    if (built) fs.writeFileSync(path.join(packDir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: '${id}' } };`);
-    return packagesDir;
-  }
-
-  afterEach(async () => {
-    for (const id of ['unbuilt', 'built-pack']) if (registry.getPackExtensions(id)) registry.unregisterPack(id);
-  });
-
-  it("loads each pack's built runtime from the directory it ships in", async () => {
-    const packagesDir = writeBuiltIn('built-pack', true);
-    expect((await loadBuiltInPacks(registry, packagesDir)).map(p => p.id)).toEqual(['built-pack']);
-  });
-
-  // There is nothing left to fall back to: the api bundle carries no pack's backend, so a pack that was
-  // never built is a pack the app does not have. It says so and loads the rest.
-  it('skips a pack with no built runtime, naming the command that writes one', async () => {
-    const packagesDir = writeBuiltIn('unbuilt', false);
-    const errors: string[] = [];
-    const spy = vi.spyOn(console, 'error').mockImplementation((...args) => { errors.push(args.join(' ')); });
-    try {
-      expect(await loadBuiltInPacks(registry, packagesDir)).toEqual([]);
-    } finally {
-      spy.mockRestore();
-    }
-    expect(errors.join('\n')).toMatch(/unbuilt has no .*runtime.index\.cjs.*npm run build/s);
-  });
-});
-
-// Every built-in pack registers before any external one, whatever a pack's own load costs: an installed
-// pack registering meanwhile would take any role a shipped pack designates, and the shipped one then failed
+// A pack this app shipped registers before one the user installed, whatever order the packs directory is
+// read in: registration order decides who wins a designation, so a pack that claimed `brain` would take it
+// from the pack the app needs to run. It was two load calls, which made the ordering structural.
 describe('loadAppPacks', () => {
   afterEach(() => {
-    for (const id of ['role-builtin', 'role-taker']) if (registry.getPackExtensions(id)) registry.unregisterPack(id);
+    for (const id of ['role-shipped', 'role-taker']) if (registry.getPackExtensions(id)) registry.unregisterPack(id);
   });
 
-  it('registers every built-in pack before any external one', async () => {
-    const builtInDir = path.join(tmpDir, 'packages');
-    fs.mkdirSync(path.join(builtInDir, 'role-builtin', 'dist', 'runtime'), { recursive: true });
-    fs.writeFileSync(path.join(builtInDir, 'role-builtin', 'abuddy.json'), JSON.stringify({ id: 'role-builtin', name: 'Built-in', version: '1.0.0', builtIn: true }));
-    fs.writeFileSync(path.join(builtInDir, 'role-builtin', 'dist', 'runtime', 'index.cjs'),
-      "module.exports = { registration: { id: 'role-builtin', features: { owner: { designation: 'loader-spec-role' } } } };");
-    makePack(path.join(_appDirOf(tmpDir), 'packs'), 'role-taker', { id: 'role-taker', name: 'Taker', version: '1.0.0' }, "{ taker: { designation: 'loader-spec-role' } }");
+  it('registers a pack this app shipped before one it did not', () => {
+    const packs = path.join(_appDirOf(tmpDir), 'packs');
+    // Named so the packs directory is read with the shipped one *last*, which is what makes this a check
+    makePack(packs, 'role-taker', { id: 'role-taker', name: 'Taker', version: '1.0.0' }, "{ taker: { designation: 'loader-spec-role' } }");
+    makePack(packs, 'role-shipped', { id: 'role-shipped', name: 'Shipped', version: '1.0.0' }, "{ owner: { designation: 'loader-spec-role' } }");
 
-    const { builtIn, external } = await loadAppPacks(registry, { builtInDir });
+    const { loaded } = loadAppPacks(registry, new Set(['role-shipped']));
 
-    expect(builtIn.map(p => p.id)).toEqual(['role-builtin']);
-    expect(registry.designation('loader-spec-role')).toBe('role-builtin/owner');
-    // The external pack's claim on the role is what fails, not the built-in pack
-    expect(external).toEqual([]);
+    expect(registry.designation('loader-spec-role')).toBe('role-shipped/owner');
+    // The other pack's claim on the role is what fails, not the shipped pack's
+    expect(loaded.map((pack) => pack.origin.id)).toEqual(['role-shipped']);
+    expect(registry.packOrigin('role-shipped')?.shipped, 'the origin records which copy the app shipped').toBe(true);
+  });
+
+  it('records a pack the app did not ship as one it did not', () => {
+    makePack(path.join(_appDirOf(tmpDir), 'packs'), 'role-taker', { id: 'role-taker', name: 'Taker', version: '1.0.0' }, '{}');
+
+    loadAppPacks(registry);
+
+    expect(registry.packOrigin('role-taker')?.shipped).toBe(false);
   });
 });
 
@@ -868,18 +840,21 @@ describe('loaded packs: the packs.loaded entries', () => {
     fs.writeFileSync(path.join(withFrontend, 'runtime', 'fe.css'), '');
     const backendOnly = path.join(tmpDir, 'be-only');
     fs.mkdirSync(backendOnly);
-    // The shipped pack's own frontend, under the `dist/` its build writes it to
+    // A pack the app ships, in the same layout as any other: it is installed
     const shipped = path.join(tmpDir, 'shipped');
-    fs.mkdirSync(path.join(shipped, 'dist', 'runtime'), { recursive: true });
-    fs.writeFileSync(path.join(shipped, 'dist', 'runtime', 'fe.js'), '');
-    const external = (id: string, dir: string) => ({ id, name: id, version: '2.0.0', dir, builtIn: false });
+    fs.mkdirSync(path.join(shipped, 'runtime'), { recursive: true });
+    fs.writeFileSync(path.join(shipped, 'runtime', 'fe.js'), '');
+    const pack = (id: string, dir: string) => ({ id, name: id, version: '2.0.0', dir, shipped: false });
     const loaded = {
-      builtInPacks: () => [{ id: 'built-in', name: 'Built-in', version: '1.0.0', dir: shipped, builtIn: true }],
-      externalPacks: () => [external('with-fe', withFrontend), external('be-only', backendOnly)],
+      loadedPacks: () => [
+        { id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: shipped, shipped: true },
+        pack('with-fe', withFrontend),
+        pack('be-only', backendOnly),
+      ],
     };
 
     expect(getLoadedPackEntries(loaded)).toEqual([
-      { id: 'built-in', name: 'Built-in', version: '1.0.0', builtIn: true, feEntry: 'runtime/fe.js', feStyles: undefined, feRevision: expect.stringMatching(/^[0-9a-f]{16}$/) },
+      { id: 'shipped-pack', name: 'Shipped', version: '1.0.0', feEntry: 'runtime/fe.js', feStyles: undefined, feRevision: expect.stringMatching(/^[0-9a-f]{16}$/) },
       { id: 'with-fe', name: 'with-fe', version: '2.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css', feRevision: expect.stringMatching(/^[0-9a-f]{16}$/) },
       // Listed with no frontend files: it has systems the renderer must know are running
       { id: 'be-only', name: 'be-only', version: '2.0.0' },
@@ -892,7 +867,7 @@ describe('loaded packs: the packs.loaded entries', () => {
     const dir = path.join(tmpDir, 'with-fe');
     fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'runtime', 'fe.js'), 'export default {};');
-    const loaded = { builtInPacks: () => [], externalPacks: () => [{ id: 'with-fe', name: 'with-fe', version: '2.0.0', dir, builtIn: false }] };
+    const loaded = { shippedPacks: () => [], loadedPacks: () => [{ id: 'with-fe', name: 'with-fe', version: '2.0.0', dir, shipped: false }] };
     const revision = () => getLoadedPackEntries(loaded)[0].feRevision;
 
     const first = revision();

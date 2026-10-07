@@ -169,9 +169,6 @@ const NOT_MIRRORED_YET: Record<string, string> = {
   'abuddy-cli/harness': "@abuddy/testing's harness: the scaffolded setup, a dependency's cached runtime, and "
     + 'isolatedDataDir. The CLI owns the commands that launch it (`abuddy test`, `init-tests`) and none of the '
     + 'harness itself, so a tests/commands/ name would say the wrong thing about all three',
-  'abuddy-cli/packs': "a pack's published output: publishHostPackOutput and stagePack are @abuddy/host/packs', "
-    + "the snapshot format is @abuddy/sdk/build's, and only dependency resolution is this package's "
-    + '(src/commands/fetch-deps). Three subjects in one suite about one artifact, and no src/packs to mirror',
 };
 
 describe("a spec's directory names one under src/", () => {

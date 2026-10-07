@@ -12,21 +12,31 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`), under `userDataDi
 
 | Path | Contents |
 |------|----------|
-| `packs/<id>/` | Installed external packs, in the pack layout (`abuddy.json`, `integrity.json`, `runtime/{index.cjs,fe.js,fe.css,seeds/}`, `build/`, `types/snapshot.json`; see `abuddy-host/src/packs/pack-layout.ts`) |
-| `host-packs/<id>/` | Built-in packs' build output, published at boot by `publishHostPackOutput` |
-| `installed-packs.json` | External pack install state and `enabled` flag |
+| `packs/<id>/` | Every installed pack, the ones the app ships included, in the pack layout (`abuddy.json`, `integrity.json`, `runtime/{index.cjs,fe.js,fe.css,seeds/}`, `build/`, `types/snapshot.json`; see `abuddy-host/src/packs/pack-layout.ts`) |
+| `installed-packs.json` | Install state and `enabled` flag, for the packs that have a row |
 
-Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs are installs or publishes in progress; discovery skips them and `prepareHostDataDirs` cleans up stale ones at boot.
+Hidden `.<id>.installing-*` and `.<id>.previous-*` dirs are installs in progress; discovery skips them and `prepareHostDataDirs` cleans up stale ones at boot.
 
-### Built-in packs
+### The packs the app ships
 
-`loadBuiltInPacks(registry, BUILT_IN_PACKS_DIR)` in `loader.ts`:
-- **Discovery** (`discoverBuiltInPacks()`) — scans the directory for `abuddy.json` with `builtIn: true`. Returns `BuiltInPackInfo[]` (id, name, version, dir).
-- **Loading** — `dist/runtime/index.cjs` in the pack's own directory, written by its `abuddy build`, required with `withHostResolution()`. There is nothing else: the api bundle carries no pack's backend, so this is the path packaged and from source alike, and the same `esmRequire` an installed external pack is loaded by.
-- A pack with no built runtime is **skipped with an error** naming the command that writes one, and the rest load. There is nothing to fall back to, so a pack that was never built is a pack the app does not have — the answer an installed pack has always had for the same condition.
-- Each loaded module's `setCompiledDir(<pack>/dist)` is called, then `registry.registerPack(mod.registration)`.
+They are installed packs, so they have no loader of their own. `installShippedPacks(SHIPPED_PACKS_DIR, packsDir)` (`packs/installer.ts`) runs before loading, because a pack has to be in the packs dir to be discovered there:
 
-### External packs
+- **Which** — a directory under `SHIPPED_PACKS_DIR` holding an `abuddy.json`. Not `builtIn`, which decides nothing: the manifest field survives as something a pack says about itself, and no load, reload, build, frontend or seed path reads it.
+- **Whether to write** — `packFileHashes` of the installed copy against `stagedFileHashes` of the shipped one. Equal is `current` and writes nothing, so only a first boot and a version bump install; unequal is `updated`, which covers both causes at once — a newer build was shipped, or something changed the installed copy. The comparison is of the files themselves rather than of either side's recorded `integrity.json`, which is what makes an edited install visible.
+- **A failed install** is reported and the rest proceed (`outcome: 'failed'`). It is not fallen back on: there is no read-only load straight from the shipped directory, because a pack the app could not install is a pack the app does not have, which is the answer an installed pack has always had for the same condition.
+- Its id is reserved against nothing. A later install may take it, replacing the installed copy, and the next boot's hash comparison puts the shipped one back.
+
+### Loading
+
+`loadAppPacks(registry, shippedIds)` in `loader.ts` — one path for every pack:
+
+- **Discovery** — `discoverPacks(packsDir)` plus the `installed-packs.json` rows, minus the disabled.
+- **Order** — the ids in `shippedIds` first, so a pack depending on one the app ships finds it registered.
+- **Loading** — `runtime/index.cjs` in the pack's own installed directory, written by its `abuddy build`, required with `withHostResolution()`. The api bundle carries no pack's backend, so this is the path packaged and from source alike.
+- A pack with no built runtime, or one whose load throws, has a **load problem recorded** and the rest load.
+- Each loaded module's `setCompiledDir(<pack>/runtime/seeds)` is called, then `registry.registerPack(mod.registration)`.
+
+### Installed packs
 
 `loadExternalPacks(registry?)`:
 1. Discovers packs in `packsDir` (`discoverPacks()`; each needs an `abuddy.json` with `id`, `name`, `version`)
@@ -57,13 +67,13 @@ In `packages/abuddy-host/src/packs/` (`@abuddy/host/packs`):
 
 | File | Purpose |
 |------|---------|
-| `pack-discovery.ts` | `discoverBuiltInPacks`, `discoverPacks`, `enabledExternalPacks`, `installedPacks` |
+| `pack-discovery.ts` | `discoverPacks`, `enabledExternalPacks`, `installedPacks` |
 | `pack-registration.ts` | `createPackRegistry()`, the registered packs as an instance: `registerPack`/`unregisterPack` (the host's own features too, `hostRegistration`), boot hooks, migrations, EARS policy, extensions, shutdown hooks (`registerShutdownHook`, `runShutdownHooks`, `runShutdownHooksForKey`, `removeShutdownHooksForKey`), `getEventValidationMap()` (what `bus.send` accepts, cached until a registration changes), and the lookups the SDK reads once it's bound (`PackRegistryView`). Collision detection with rollback |
 | `extensions.ts`, `backend-extensions.ts` | The stores a registry keeps: definitions by type (steps merge facet by facet), designations, seed hooks, seeders, feature settings defaults, commands, shutdown hooks |
 | `installed-packs.ts` | `installed-packs.json` CRUD |
 | `module-bridge.ts` | `withModuleBridge()` |
-| `pack-layout.ts` | Pack layout, stage/verify, archives, `publishHostPackOutput` |
-| `pack-installer.ts` | Install from a directory, archive, URL or GitHub release (stage, verify, place); uninstall; `checkDependencies` |
+| `pack-layout.ts` | Pack layout, stage/verify, archives, `packFileHashes`/`stagedFileHashes` |
+| `pack-installer.ts` | Install from a directory, archive, URL or GitHub release (stage, verify, place); `installShippedPacks`; uninstall; `checkDependencies` |
 | `staging.ts` | Staging dir names, `recoverStagingDirs`, `prepareHostDataDirs` |
 | `pack-updater.ts`, `github.ts` | Update checks against GitHub releases |
 | `host-info.ts` | Records the app version in the data dir for `abuddy install` |
@@ -79,13 +89,12 @@ The API's `transport/packs.ts` serves `packs.loaded` from `getLoadedPackEntries(
                                      bindHost(createHostRuntime({ ..., packs })), which installs the engine's query face
                                      and binds the registry for the SDK's lookups; every step below works on it
 1. registerPack(hostRegistration) — the app's own features as the pack `host`: the application and packs systems and plugins
-2. prepareHostDataDirs()           — record host version; recover staging in packs/ and host-packs/
+2. prepareHostDataDirs()           — record host version; recover staging in packs/
 3. forwardSecretsChanges()         — settings system hears of API key changes (@abuddy/host/secrets)
-4. loadBuiltInPacks() (async)      — each pack's built runtime from its own directory; started, runs while:
-   loadExternalPacks()             — discover + reconcile installed packs + load enabled
-   registerExternalPacks()         — registerPack() each
-   await built-in                  — registerPack() each, with where it was found (PackOrigin)
-5. publishHostPackOutput()      — each built-in pack into host-packs/<id>
+4. installShippedPacks()           — each pack the app ships into packs/<id>, when its files differ from the
+                                     installed copy's; before loading, since a pack is loaded from packs/
+5. loadAppPacks()                  — discover + reconcile installed packs + load enabled, shipped ids first;
+                                     registerPack() each, with where it was found (PackOrigin)
 6. registry.registerShutdownHook() — each pack's onShutdown, keyed by pack id
 7. store.hydrate()                 — EARS policy now sees all entity types
 8. startPacks(registry)            — start.ts; services.appData.reset() runs it too, after the shutdown hooks:
@@ -106,7 +115,7 @@ A pack's `__generated__/pack-entry.ts` (built-in, and bundled into an external p
 ```typescript
 export const registration: PackRegistration = {
   id: string;
-  features?: Record<string, PackFeature>;  // by feature id: designation?, system?: { machine, receives, early? } (packSystem), plugin?: { receives }, services?, settings?
+  features?: Record<string, PackFeature>;  // by feature id: designation?, system?: { machine, receives } (packSystem), plugin?: { receives }, services?, settings?
   services?: Record<string, unknown>;
   ears?: PackEARS;           // entities + relKinds
   repositories?: Record<string, unknown>;  // features[].repositories, registered with the app's engine
@@ -121,11 +130,11 @@ export const registration: PackRegistration = {
 };
 ```
 
-Designations come from the manifest's `features[].designation`, which generate-entries puts on the feature, and `registerPack()` maps each role to the feature's ref, `<packId>/<featureId>`, whether it has a system, an early one or none. A designation is a role, not a name, and need not equal the feature id: both registries map the role to the id of the system or plugin that plays it. `abuddy validate` rejects one role claimed by two features of a pack; across packs `registerPack` throws.
+Designations come from the manifest's `features[].designation`, which generate-entries puts on the feature, and `registerPack()` maps each role to the feature's ref, `<packId>/<featureId>`, whether it has a system or none. A designation is a role, not a name, and need not equal the feature id: both registries map the role to the id of the system or plugin that plays it. `abuddy validate` rejects one role claimed by two features of a pack; across packs `registerPack` throws.
 
 ## Collision detection
 
-`registerPack()` in `abuddy-host/src/packs/pack-registration.ts` checks for collisions before storing a registration:
+`registerPack()` in `abuddy-host/src/packs/registry.ts` checks for collisions before storing a registration:
 
 | What | Checked against | On collision |
 |------|----------------|--------------|
@@ -188,17 +197,10 @@ The renderer loads each such pack's frontend, then calls `trpc.bus.packClientRea
 
 A pack's frontend files are found on disk, not declared in the manifest: `packFrontendFiles(layoutDir)` (`@abuddy/host/packs`) returns `{ entry?: 'runtime/fe.js', styles?: 'runtime/fe.css' }` for whichever of the two `abuddy build` emitted.
 
-The `packs.loaded` query reports them as `feEntry` and `feStyles`. The frontend's `createPackFrontends` (`src/fe/packs/frontends.ts`, over the window's I/O) loads the styles, then imports `pack://{packId}/{feEntry}`. The module's default export must be a `PackFERegistration`-shaped object (or a subset): `{ plugins?, steps?, artifacts?, blocks?, tiptapPlugins?, appExtensions?, dslTypes? }`. It calls the window's registry's `registerPackFE()` with it, and the shell sends itself `PACK_FRONTEND_LOADED` (with no plugins when the load failed), which merges the plugins and calls `bus.packClientReady`.
+The `packs.loaded` query reports them as `feEntry` and `feStyles`. The frontend's `createPackFrontends` (`features/packs/fe/frontends.ts`, over the window's I/O) loads the styles, then imports `pack://{packId}/{feEntry}`. The module's default export must be a `PackFERegistration`-shaped object (or a subset): `{ plugins?, steps?, artifacts?, blocks?, tiptapPlugins?, appExtensions?, dslTypes? }`. It calls the window's registry's `registerPackFE()` with it, and the shell sends itself `PACK_FRONTEND_LOADED` (with no plugins when the load failed), which merges the plugins and calls `bus.packClientReady`.
 
 External pack FE modules cannot call `registerPackFE()` themselves: the renderer's registry (`createFePackRegistry()`, `renderer/src/core/fe-host.ts`) isn't theirs to reach, and they register nothing when imported. The host always mediates; pack frontends read what's registered through the SDK's lookups.
 
-## Publishing built-in pack build output
-
-At boot, `publishHostPackOutput(<pack dir>, host-packs/<id>)` copies a built-in pack's `dist/` into the pack layout so pack authors resolve it as a dependency from the installed app: `dist/types/snapshot.json` → `types/snapshot.json`, `dist/build/` → `build/`, and, when present, `dist/runtime/index.cjs` → `runtime/index.cjs` with the compiled seeds (`*.seed.json`, `seeds.json`, `media/`) → `runtime/seeds/`.
-
-- It does nothing without `dist/types/snapshot.json`, and returns `false` when the destination's `.fingerprint` (sha256 of every source) already matches.
-- It writes into a hidden `.<id>.publishing-*` staging dir and renames it into place.
-
 ## Tests
 
-`packages/abuddy-host/tests/packs/runtime/` runs on the SDK's test host (`test-host.ts`: `startTestRuntime({ appVersion, packs: registry })`, with the `registry` it exports, which the specs pass to the runtime): `loader` (external and built-in loading, the bundled loaders option, seeding, the installed-packs entries), `lifecycle`, `reload`, `activation-outcome`, `bridge-leaves`, `sdk-bridge-drift` (set `REQUIRE_RUNTIME_ENTRY` to require default-setup's built runtime) and `pack-e2e`. `tests/bus/app-bus.spec.ts` runs `createAppBus(registry)` on the test host; `tests/packs/shutdown-hooks.spec.ts` covers a registry's shutdown hooks. Elsewhere: `packages/api/tests/runtime/bus-client-connected.spec.ts` (the app bus on the API's transport) and `packages/abuddy-cli/tests/commands/init-install-load.spec.ts` (a scaffolded pack installed and loaded).
+`packages/abuddy-host/tests/packs/runtime/` runs on the SDK's test host (`test-host.ts`: `startTestRuntime({ appVersion, packs: registry })`, with the `registry` it exports, which the specs pass to the runtime): `loader` (one load path for every pack, the shipped-first order, seeding, the installed-packs entries), `lifecycle`, `reload`, `activation-outcome`, `bridge-leaves`, `sdk-bridge-drift` (set `REQUIRE_RUNTIME_ENTRY` to require default-setup's built runtime) and `pack-e2e`. `tests/bus/app-bus.spec.ts` runs `createAppBus(registry)` on the test host; `tests/packs/shutdown-hooks.spec.ts` covers a registry's shutdown hooks. Elsewhere: `packages/api/tests/runtime/bus-client-connected.spec.ts` (the app bus on the API's transport) and `packages/abuddy-cli/tests/commands/init-install-load.spec.ts` (a scaffolded pack installed and loaded).

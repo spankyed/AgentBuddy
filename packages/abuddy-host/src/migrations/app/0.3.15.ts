@@ -42,13 +42,13 @@ function legacyInternal(): LegacyInternal | undefined {
 }
 
 /** The built-in packs with a boot seed: the ones the single seed hash stood for */
-const bootSeedPacks = (registry: Pick<PackRegistry, 'getPackRegistration' | 'builtInPacks'>): string[] =>
-  registry.builtInPacks().map(({ id }) => id).filter((id) => registry.getPackRegistration(id)?.boot?.seedManifest);
+const bootSeedPacks = (registry: Pick<PackRegistry, 'getPackRegistration' | 'shippedPacks'>): string[] =>
+  registry.shippedPacks().map(({ id }) => id).filter((id) => registry.getPackRegistration(id)?.boot?.seedManifest);
 
 /** A per-pack record with the stored one's entries it lacks */
 const withMissing = (current: Record<string, string>, legacy: Record<string, string> | undefined) => ({ ...legacy, ...current });
 
-type MigrationRegistry = Pick<PackRegistry, 'getPackRegistration' | 'builtInPacks' | 'externalPacks' | 'pluginIds' | 'systemIds'>;
+type MigrationRegistry = Pick<PackRegistry, 'getPackRegistration' | 'shippedPacks' | 'loadedPacks' | 'pluginIds' | 'systemIds'>;
 
 /** The manifests of the external packs installed on disk, whether or not they loaded this boot */
 export type InstalledManifests = () => ReadonlyArray<Pick<PackManifest, 'id' | 'features'>>;
@@ -185,7 +185,7 @@ export interface PluginOwners {
    * The host and the built-in packs, whose plugins registered first under bare ids: a bare id one of them shares with
    * an external pack's feature was its
    */
-  builtIn: readonly string[];
+  shipped: readonly string[];
 }
 
 /**
@@ -197,7 +197,7 @@ function ownersIn(registry: MigrationRegistry, installed: ReturnType<InstalledMa
   // The bus is listed among the systems but is no feature: it never had settings or a plugin, so it owns no key
   const refs = [...new Set<string>([...registry.pluginIds(), ...registry.systemIds(), ...declared])]
     .filter((ref) => splitRef(ref) && ref !== HOST.bus);
-  return { refs: refs as FeatureRef[], builtIn: [HOST_PACK_ID, ...registry.builtInPacks().map(({ id }) => id)] };
+  return { refs: refs as FeatureRef[], shipped: [HOST_PACK_ID, ...registry.shippedPacks().map(({ id }) => id)] };
 }
 
 /**
@@ -212,7 +212,7 @@ function declaredFeatureRefs(manifest: { id?: unknown; features?: unknown }): st
 }
 
 /** Each bare feature id to its owner's ref, or null when no single one owns it (two external packs share it) */
-function ownersOf({ refs, builtIn }: PluginOwners): Map<string, FeatureRef | null> {
+function ownersOf({ refs, shipped }: PluginOwners): Map<string, FeatureRef | null> {
   const byFeature = new Map<string, FeatureRef[]>();
   for (const ref of refs) {
     const parts = splitRef(ref);
@@ -220,8 +220,8 @@ function ownersOf({ refs, builtIn }: PluginOwners): Map<string, FeatureRef | nul
   }
   const owners = new Map<string, FeatureRef | null>();
   for (const [featureId, candidates] of byFeature) {
-    const builtInOnes = candidates.filter((ref) => builtIn.includes(splitRef(ref)!.packId));
-    owners.set(featureId, candidates.length === 1 ? candidates[0] : builtInOnes.length === 1 ? builtInOnes[0] : null);
+    const shippedOnes = candidates.filter((ref) => shipped.includes(splitRef(ref)!.packId));
+    owners.set(featureId, candidates.length === 1 ? candidates[0] : shippedOnes.length === 1 ? shippedOnes[0] : null);
   }
   return owners;
 }

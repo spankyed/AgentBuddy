@@ -58,11 +58,11 @@ describe('two registries in one process', () => {
   });
 
   it("hold their own loaded packs, not one list between them", () => {
-    const origin = { id: 'memo-pack', name: 'Memo', version: '1.0.0', dir: '/packs/memo-pack', builtIn: false };
+    const origin = { id: 'memo-pack', name: 'Memo', version: '1.0.0', dir: '/packs/memo-pack', shipped: false };
     bound.registerPack(pack('origin-pack', 'origins', 'origin_step', 'originService', 'origins'), { ...origin, id: 'origin-pack' });
 
-    expect(bound.externalPacks().map((o) => o.id)).toContain('origin-pack');
-    expect(other.externalPacks()).toEqual([]);
+    expect(bound.loadedPacks().map((o) => o.id)).toContain('origin-pack');
+    expect(other.loadedPacks()).toEqual([]);
     expect(other.packOrigin('origin-pack')).toBeNull();
 
     bound.unregisterPack('origin-pack');

@@ -1,5 +1,4 @@
 import type { Contract } from './contract.ts';
-import * as fs from 'fs';
 import * as path from 'path';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
@@ -33,16 +32,6 @@ function toSeedInclude(include: Record<string, string[] | null>): Record<string,
   return Object.fromEntries(Object.entries(include).map(([key, items]) => [key, items === null ? true : new Set(items)]));
 }
 
-function readManifest(dir: string): Record<string, any> | null {
-  try {
-    const manifestPath = path.join(dir, 'abuddy.json');
-    if (fs.existsSync(manifestPath)) {
-      return JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-    }
-  } catch {}
-  return null;
-}
-
 function mergeExtensions(base: Omit<PackInfo, keyof PackExtensions>, contrib: PackExtensions | null): PackInfo {
   return {
     ...base,
@@ -58,7 +47,12 @@ function mergeExtensions(base: Omit<PackInfo, keyof PackExtensions>, contrib: Pa
   };
 }
 
-function toExternalPackInfoList(registry: PackRegistry, packs: InstalledPack[]): PackInfo[] {
+/**
+ * The packs the view lists: every installed pack, which since the app installs its own is all of them.
+ * There were two of these, one reading the installed packs and one the registry's built-in list, which is
+ * why a pack the app ships showed no version from its manifest and no install date.
+ */
+function toPackInfoList(registry: PackRegistry, packs: InstalledPack[], canUninstall: (packId: string) => boolean): PackInfo[] {
   return packs.map(({ manifest, dir, record }) => {
     const entities = manifest.entities ?? {};
     const contrib = registry.getPackExtensions(record.id);
@@ -67,7 +61,7 @@ function toExternalPackInfoList(registry: PackRegistry, packs: InstalledPack[]):
       name: manifest.name,
       version: manifest.version,
       enabled: record.enabled,
-      builtIn: false,
+      canUninstall: canUninstall(record.id),
       entityCount: Object.keys(entities).length,
       hasFrontend: !!packFrontendFiles(dir).entry,
       hostVersion: manifest.hostVersion,
@@ -84,36 +78,21 @@ function toExternalPackInfoList(registry: PackRegistry, packs: InstalledPack[]):
   });
 }
 
-function toBuiltInPackInfoList(registry: PackRegistry): PackInfo[] {
-  return registry.builtInPacks().map(p => {
-    const manifest = readManifest(p.dir);
-    const entities = manifest?.entities ?? {};
-    const contrib = registry.getPackExtensions(p.id);
-    return mergeExtensions({
-      id: p.id,
-      name: p.name,
-      version: p.version,
-      enabled: true,
-      builtIn: true,
-      entityCount: Object.keys(entities).length,
-      hasFrontend: (contrib?.features ?? []).some(f => f.hasPlugin),
-      description: manifest?.description,
-      entities,
-      permissions: manifest?.permissions ?? [],
-    }, contrib);
-  });
-}
-
-function emitPacksList(registry: PackRegistry, _system: any) {
-  const external = toExternalPackInfoList(registry, installedPacks());
-  const builtIn = toBuiltInPackInfoList(registry);
-  broadcastToPlugin('packs', { type: 'PACKS_LIST' as const, packs: [...builtIn, ...external] });
+function emitPacksList(registry: PackRegistry, canUninstall: (packId: string) => boolean) {
+  broadcastToPlugin('packs', { type: 'PACKS_LIST' as const, packs: toPackInfoList(registry, installedPacks(), canUninstall) });
 }
 
 /** The host `packs` system, installing, updating and toggling the packs in `registry` */
 export function createPacksSystem(registry: PackRegistry) {
-  /** The host, or a built-in pack: part of the app, which no install or uninstall replaces */
-  const shippedWithApp = (packId: string) => packId === HOST_PACK_ID || registry.packOrigin(packId)?.builtIn === true;
+  /**
+   * Whether the app would offer to uninstall this pack. False for the host and for whatever this app
+   * shipped — the app needs it to run, and an uninstall would leave a user with nothing. The Packs view
+   * reads the same answer as `PackInfo.canUninstall` to decide whether to show the button.
+   *
+   * Flipping a shipped pack to uninstallable is a product decision rather than a refactor, and this is the
+   * one place it would be made.
+   */
+  const canUninstall = (packId: string) => packId !== HOST_PACK_ID && registry.packOrigin(packId)?.shipped !== true;
 
   const _inFlightOps = new Set<string>();
   return setup({
@@ -148,8 +127,8 @@ export function createPacksSystem(registry: PackRegistry) {
       }
     },
 
-      sendPacksList: ({ system }) => {
-        emitPacksList(registry, system);
+      sendPacksList: () => {
+        emitPacksList(registry, canUninstall);
       },
 
       installPack: ({ system, event }) => {
@@ -178,10 +157,10 @@ export function createPacksSystem(registry: PackRegistry) {
           // source. It is torn down before its files are replaced rather than after: a pack left running
           // on a directory that has been swapped underneath it loads the new code on its next lazy
           // require. Silent (`replacing`), because the activation below announces the change.
+          // No id is reserved here. `host` is refused by the manifest schema, before any caller of
+          // `parseManifest` sees the manifest; a pack this app ships *is* an installed pack, so taking its
+          // id replaces one, which this tears down and the next boot re-installs over
           beforePlace: (manifest) => {
-            // Refused before anything is torn down or placed: the running built-in would stop, and the renderer
-            // refuses a second frontend for its id
-            if (shippedWithApp(manifest.id)) throw new Error(`"${manifest.id}" is a pack AgentBuddy ships, so an installed pack can't take its id`);
             if (!registry.packOrigin(manifest.id)) return;
             replacedId = manifest.id;
             teardownPack(registry, manifest.id, system.get(HOST.bus), { replacing: true });
@@ -203,7 +182,7 @@ export function createPacksSystem(registry: PackRegistry) {
               packSlug,
               error: `${result.name} was installed but ${problem}`,
             });
-            emitPacksList(registry, system);
+            emitPacksList(registry, canUninstall);
             return;
           }
 
@@ -215,7 +194,7 @@ export function createPacksSystem(registry: PackRegistry) {
             version: result.version,
           });
           broadcastToPlugin('packs', { type: 'PACK_ACTIVATED' as const, packId: result.id });
-          emitPacksList(registry, system);
+          emitPacksList(registry, canUninstall);
         }).catch(err => {
           const message = errorMessage(err);
           console.error(`[packs] Install failed for ${packSlug}:`, message);
@@ -237,7 +216,7 @@ export function createPacksSystem(registry: PackRegistry) {
       uninstallPack: ({ system, event }) => {
         const ev = packsSpec.typeOf('UNINSTALL_PACK', event);
         const packId = ev.packId;
-        if (shippedWithApp(packId)) {
+        if (!canUninstall(packId)) {
           broadcastToPlugin('packs', { type: 'PACK_UNINSTALL_FAILED' as const, packId, error: `"${packId}" is part of AgentBuddy, so it can't be uninstalled` });
           return;
         }
@@ -264,7 +243,7 @@ export function createPacksSystem(registry: PackRegistry) {
             type: 'PACK_UNINSTALL_COMPLETE' as const,
             packId,
           });
-          emitPacksList(registry, system);
+          emitPacksList(registry, canUninstall);
         }).catch(err => {
           const message = errorMessage(err);
           console.error(`[packs] Uninstall failed for ${packId}:`, message);
@@ -312,7 +291,6 @@ export function createPacksSystem(registry: PackRegistry) {
           packFormat: PACK_SNAPSHOT_FORMAT,
           // Refused before the files are replaced, so the failure below reactivates the copy still in place
           beforePlace: (manifest) => {
-            if (shippedWithApp(manifest.id)) throw new Error(`"${manifest.id}" is a pack AgentBuddy ships, so an installed pack can't take its id`);
             if (manifest.id !== packId) throw new Error(`${target} holds the pack "${manifest.id}", not "${packId}"`);
           },
         }).then(result => {
@@ -326,7 +304,7 @@ export function createPacksSystem(registry: PackRegistry) {
               packId,
               error: `Updated to ${result.version} but ${problem}`,
             });
-            emitPacksList(registry, system);
+            emitPacksList(registry, canUninstall);
             return;
           }
 
@@ -336,7 +314,7 @@ export function createPacksSystem(registry: PackRegistry) {
             version: result.version,
           });
           broadcastToPlugin('packs', { type: 'PACK_ACTIVATED' as const, packId });
-          emitPacksList(registry, system);
+          emitPacksList(registry, canUninstall);
         }).catch(err => {
           const message = errorMessage(err);
           console.error(`[packs] Update failed for ${packId}:`, message);
@@ -349,7 +327,7 @@ export function createPacksSystem(registry: PackRegistry) {
             packId,
             error: message,
           });
-          emitPacksList(registry, system);
+          emitPacksList(registry, canUninstall);
         }).finally(() => {
           // Registering the replacement clears this; if nothing registered, the window ends here rather
           // than leaving the pack's plugins marked as expected-to-be-missing for the rest of the run
@@ -360,9 +338,9 @@ export function createPacksSystem(registry: PackRegistry) {
         });
       },
 
-      checkForPackUpdates: ({ system }) => {
+      checkForPackUpdates: () => {
         checkForUpdates({ hostVersion: getAppVersion() }).then(() => {
-          emitPacksList(registry, system);
+          emitPacksList(registry, canUninstall);
         }).catch(err => {
           console.error('[packs] Update check failed:', err);
         });
@@ -409,7 +387,7 @@ export function createPacksSystem(registry: PackRegistry) {
           packId,
           enabled: newEnabled,
         });
-        emitPacksList(registry, system);
+        emitPacksList(registry, canUninstall);
       },
     }),
   }).createMachine({

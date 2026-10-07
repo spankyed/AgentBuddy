@@ -50,7 +50,7 @@ beforeEach(() => {
   fs.mkdirSync(path.join(packDir, 'runtime'));
   fs.writeFileSync(path.join(packDir, 'runtime', 'fe.js'), '');
   registry.registerPack({ id: 'fe-pack-fe' }, {
-    id: 'fe-pack', name: 'fe-pack', version: '1.0.0', dir: packDir, builtIn: false,
+    id: 'fe-pack', name: 'fe-pack', version: '1.0.0', dir: packDir, shipped: false,
     manifest: { id: 'fe-pack', name: 'fe-pack', version: '1.0.0' },
   });
   bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();

@@ -38,4 +38,32 @@ describe('external pack runtime', () => {
     if ('problem' in pack) throw new Error(pack.problem);
     expect(pack.registration.services).toEqual({ leaves: { cron: expect.any(String), newer: 1 } });
   });
+
+  /**
+   * The require that is not made during the load. esbuild defers a module's body into an `__init` the
+   * bundle calls on first use, so default-setup's `extensions/steps/action/runtime.ts` requires
+   * `@abuddy/sdk/logger` when an action step first runs. A resolution scoped to the load is gone by then,
+   * and seeding the require cache cannot cover it, because Node resolves before it reads the cache.
+   *
+   * It is invisible in a checkout: the workspace `node_modules` above a pack answers the bare specifier.
+   * This pack is in a temp dir, which is what an installed one is, so nothing answers but the host.
+   */
+  it('requires one lazily, after the load that produced it has returned', async () => {
+    fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: 'lazy-pack', name: 'Lazy', version: '1.0.0' }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 1, id: 'lazy-pack', version: '1.0.0', files: {} }));
+    fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+    fs.mkdirSync(path.join(packDir, 'runtime'));
+    fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `
+      exports.registration = { id: 'lazy-pack', services: { step: { run: () => typeof require('@abuddy/sdk/logger').createLogger } } };
+    `);
+    const { loadSingleExternalPack } = await import('../../../src/packs/runtime/loader.ts');
+
+    const pack = loadSingleExternalPack({ id: 'lazy-pack', name: 'Lazy', version: '1.0.0' }, packDir);
+
+    if ('problem' in pack) throw new Error(pack.problem);
+    const step = (pack.registration.services as { step: { run: () => string } }).step;
+    // Outside the load: the call happens here, with no bridge on the stack
+    expect(step.run()).toBe('function');
+  });
 });

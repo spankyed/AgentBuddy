@@ -284,8 +284,8 @@ describe('registerPack commands', () => {
 });
 
 describe('packSeedTargets', () => {
-  const origin = (id: string, builtIn: boolean, dependencies?: Record<string, string>) =>
-    ({ id, name: id, version: '1.0.0', dir: `/packs/${id}`, builtIn, manifest: { id, name: id, version: '1.0.0', dependencies } } as unknown as Parameters<typeof registerPack>[1]);
+  const origin = (id: string, shipped: boolean, dependencies?: Record<string, string>) =>
+    ({ id, name: id, version: '1.0.0', dir: `/packs/${id}`, shipped, manifest: { id, name: id, version: '1.0.0', dependencies } } as unknown as Parameters<typeof registerPack>[1]);
 
   // **A pack is seedable because it is somewhere.** Its compiled seeds are files in its directory, which the
   // origin knows and a registration does not — which is why a pack no longer has to tell the host where its
@@ -308,8 +308,9 @@ describe('packSeedTargets', () => {
 
     const targets = registry.packSeedTargets();
     expect(targets.find((t) => t.manifest.id === 'shipped-pack'))
-      .toEqual({ manifest: { id: 'shipped-pack', dependencies: undefined }, dir: '/packs/shipped-pack', builtIn: true, seedPolicy });
-    // No policy declared, and no `builtIn`: an installed pack's own directory is the pack layout
+      .toEqual({ manifest: { id: 'shipped-pack', dependencies: undefined }, dir: '/packs/shipped-pack', seedPolicy });
+    // No policy declared. Nothing in a seed target says which app shipped the pack: every pack's seeds are
+    // read from `runtime/seeds` under its own directory
     expect(targets.find((t) => t.manifest.id === 'installed-pack'))
       .toEqual({ manifest: { id: 'installed-pack', dependencies: undefined }, dir: '/packs/installed-pack' });
   });

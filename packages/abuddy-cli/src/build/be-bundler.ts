@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { APP_ONLY_EXPORTS, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
+import { APP_ONLY_EXPORTS, HOST_RESOLVED_BINARIES, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
 import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';
 import { checkSeedRuntimeLoads } from './seed-runtime-check';
 import type { RecordReads } from './build-reads';
@@ -16,26 +16,14 @@ export interface BundleRuntimeOptions {
   recordReads?: RecordReads;
 }
 
-/** The host-provided packages every pack bundle leaves external; the host loader resolves its own singletons. */
-const HOST_EXTERNALS = [...Object.keys(SHARED_DEPS), ...sharedInstanceExternals()];
-
 /**
- * Packages that locate a file beside themselves at run time, which a bundle moves them away from: a bundler
- * can inline their JavaScript but not the thing that JavaScript then goes looking for.
+ * The host-provided packages every pack bundle leaves external; the host loader resolves its own singletons.
  *
- * Two shapes, both discovered the same way — the failure names the file it could not find:
- * - a **native binding**. `node-pty` requires `build/Release/pty.node`; `chokidar` optionally requires
- *   `fsevents`, whose binary is the same story. A `.node` is compiled machine code, so esbuild has no loader
- *   for one and the only answer is to resolve it at run time.
- * - a **shipped executable**. `@vscode/ripgrep` computes `rgPath` from its own `__dirname`, which inside a
- *   bundle is the bundle's directory and not the package's.
- *
- * External means they resolve from the pack's own `node_modules`, which is where an installed pack's
- * dependencies are. A pack that cannot survive one being absent needs it installed beside it — a question
- * about that pack, not about this list. `fsevents` is the counter-example: chokidar requires it in a
- * try/catch and falls back to polling, so a pack installed without it still watches.
+ * Exported for `tests/build/pack-externals.spec.ts`, which holds these against what the loader actually
+ * provides: an external specifier the loader does not resolve is a pack that loads in this checkout, where
+ * node_modules sits above it, and fails once installed, where nothing does.
  */
-const RESOLVED_AT_RUNTIME = ['node-pty', 'fsevents', '@vscode/ripgrep'];
+export const HOST_EXTERNALS = [...Object.keys(SHARED_DEPS), ...sharedInstanceExternals()];
 
 type EsbuildOptions = import('esbuild').BuildOptions;
 
@@ -59,7 +47,7 @@ async function bundlePackSource<T extends EsbuildOptions>(
     format: 'esm',
     platform: 'node',
     target: 'node20',
-    external: [...HOST_EXTERNALS, ...RESOLVED_AT_RUNTIME],
+    external: [...HOST_EXTERNALS, ...HOST_RESOLVED_BINARIES],
     tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
     plugins,
     minify: options.release ?? false,

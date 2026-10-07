@@ -144,9 +144,7 @@ export async function openTarget(target: DbTarget, { write, command }: OpenOptio
       log: () => {},
       ...(target.schemaFrom !== undefined && { schemaFrom: target.schemaFrom }),
     });
-    // On stderr, before the command answers: a read against an incomplete schema answers a query that names
-    // an entity type with the whole database rather than an error, so this is the one chance to say so
-    if (db.schema.degraded !== undefined) io.err(`Warning: ${db.schema.degraded}`);
+    // On stderr, before the command answers
     for (const note of db.schema.notes) io.err(`Note: ${note}`);
     return lock ? { ...db, close: () => { try { db.close(); } finally { lock.release(); } } } : db;
   } catch (error) {

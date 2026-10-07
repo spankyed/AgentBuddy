@@ -15,8 +15,6 @@ export interface AppContext {
     appName: string;
     // (undocumented)
     env: AppEnv;
-    hostPacksDir: string;
-    // (undocumented)
     installedPacksFile: string;
     // (undocumented)
     packsDir: string;

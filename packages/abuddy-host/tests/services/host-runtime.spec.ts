@@ -39,7 +39,7 @@ const newEngine = () => createEarsEngine({ isEntityType: () => false });
 
 /** An external pack the app loaded: where it came from, as the loader records it */
 const externalOrigin = (id: string, name: string) => ({
-  id, name, version: '1.0.0', dir: '/nowhere', builtIn: false,
+  id, name, version: '1.0.0', dir: '/nowhere', shipped: false,
   manifest: { id, name, version: '1.0.0' },
 });
 
@@ -84,7 +84,7 @@ describe('createHostRuntime', () => {
     packs.registerPack({ id: 'reset-pack', boot }, externalOrigin('reset-pack', 'Reset'));
     // A pack the app ships, with a seed policy — seeded by the same call as the installed one
     packs.registerPack({ id: 'seeded-pack', boot: { seedManifest: { seedKeys: ['notes'], compiledDir: '/nowhere' } } },
-      { id: 'seeded-pack', name: 'Seeded', version: '1.0.0', dir: '/packs/seeded-pack', builtIn: true } as never);
+      { id: 'seeded-pack', name: 'Seeded', version: '1.0.0', dir: '/packs/seeded-pack', shipped: true } as never);
     packs.registerShutdownHook(boot.onShutdown, 'reset-pack');
     try {
       await runtime.services.appData.reset();

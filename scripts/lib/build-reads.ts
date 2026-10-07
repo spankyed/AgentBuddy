@@ -119,30 +119,17 @@ export function readsOf(packDir: string): BuildReads | undefined {
  * is asked about a directory the caller named, which may hold no pack at all — the spec asks about
  * `packages/api` — so this cannot be the place that requires a manifest to be there.
  */
-export function rebuildCommand(packDir: string): string {
-  const builtIn = isBuiltIn(packDir);
-  if (builtIn === true) return 'npm run compile';
-  if (builtIn === false && packDir.startsWith('tests/packs/')) return 'npm run test:external-pack:contract';
-  return 'abuddy build';
-}
-
 /**
- * Whether a pack is built into the app, which decides which phases its build can record at all — a
- * built-in pack's frontend and backend go into the app's own bundles, so it never runs those two.
- * `undefined` where there is no manifest to read, which is not a pack rather than a pack of either kind.
- *
- * **This is the one thing here whose subject `docs/goals/goal-one-kind-of-pack.md` deletes.** When there is one
- * kind of pack this function goes, and `rebuildCommand` decides on the path alone, as it already does for a
- * fixture. Nothing else in this module or in the producer asks what kind a pack is.
+ * The packs this repo builds through a script of its own rather than by `abuddy build` in the pack's own
+ * directory. A path, because there is one kind of pack: nothing here asks a manifest what kind it is.
  */
-export function isBuiltIn(packDir: string): boolean | undefined {
-  const manifest = path.join(REPO_ROOT, packDir, 'abuddy.json');
-  if (!fs.existsSync(manifest)) return undefined;
-  try {
-    return (JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { builtIn?: boolean }).builtIn === true;
-  } catch {
-    return undefined;
-  }
+const SCRIPTED_PACK_BUILDS: Record<string, string> = {
+  'packages/default-setup': 'npm run compile',
+};
+
+export function rebuildCommand(packDir: string): string {
+  if (packDir.startsWith('tests/packs/')) return 'npm run test:external-pack:contract';
+  return SCRIPTED_PACK_BUILDS[packDir] ?? 'abuddy build';
 }
 
 /** Every file a pack's build read, across its phases, pack-relative and deduplicated */

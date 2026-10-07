@@ -109,7 +109,7 @@ export function activatePack(
   }
   boot?.onInit?.();
   // The pack is registered by now, so its migrations and seeds are read from the registry like a boot's
-  runPackMigrations(registry.externalPackTargets([packId]));
+  runPackMigrations(registry.packTargets([packId]));
   seedPacks(registry.packSeedTargets([packId]));
 
   // The running systems read what the pack registered and seeded (the chat's slash commands, say). Sent

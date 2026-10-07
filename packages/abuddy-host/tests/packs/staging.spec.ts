@@ -48,13 +48,13 @@ describe('recoverStagingDirs', () => {
     mkdir('demo-pack');
     mkdir(`.demo-pack.installing-${exited}-a1B2c3`);
     mkdir(`.demo-pack.previous-${exited}-9f8e7d6c`);
-    mkdir(`.base-pack.publishing-${exited}`);
+    mkdir(`.base-pack.installing-${exited}`);
     mkdir(`.other-pack.installing-${running}-d4E5f6`);
     mkdir(`.other-pack.previous-${process.pid}-0a1b2c3d`);
 
     const result = recoverStagingDirs(packsDir);
     expect(result.removed.sort()).toEqual([
-      `.base-pack.publishing-${exited}`,
+      `.base-pack.installing-${exited}`,
       `.demo-pack.installing-${exited}-a1B2c3`,
       `.demo-pack.previous-${exited}-9f8e7d6c`,
     ]);
@@ -137,7 +137,7 @@ describe('prepareHostDataDirs', () => {
     fs.chmodSync(packsDir, 0o555);
     const log = { info: vi.fn(), warn: vi.fn() };
 
-    expect(() => prepareHostDataDirs({ userDataDir: path.join(packsDir, 'unwritable'), packsDir, hostPacksDir: path.join(root, 'not-a-dir.txt'), version: '1.0.0' }, log)).not.toThrow();
+    expect(() => prepareHostDataDirs({ userDataDir: path.join(packsDir, 'unwritable'), packsDir, version: '1.0.0' }, log)).not.toThrow();
     expect(log.warn.mock.calls.flat().join('\n')).toMatch(/Could not record the host version[\s\S]*Could not clean up \.demo-pack\.installing-/);
   });
 

@@ -48,12 +48,11 @@ function schemaContext(userDataDir: string) {
   return {
     userDataDir,
     packsDir: path.join(_appDirOf(userDataDir), 'packs'),
-    hostPacksDir: path.join(_appDirOf(userDataDir), 'host-packs'),
     installedPacksFile: path.join(_appDirOf(userDataDir), 'installed-packs.json'),
   };
 }
 
-/** Writes to the data dir's database as the app does (default-setup published, source layout) */
+/** Writes to the data dir's database as the app does, by the schema its installed packs declare */
 async function write(userDataDir: string, change: () => void): Promise<void> {
   const paths = _appDataPaths(userDataDir);
   const { store, engine } = openDatabaseStore({
@@ -71,12 +70,15 @@ async function write(userDataDir: string, change: () => void): Promise<void> {
   }
 }
 
-/** A data dir the app ran on: default-setup published, its state, settings, and notes with a relation and a role */
+/** A data dir the app ran on: default-setup installed, its state, settings, and notes with a relation and a role */
 async function appDataDir(): Promise<string> {
   const dir = tempDir('abuddy-db-');
-  const snapshot = path.join(_appDirOf(dir), 'host-packs', 'default-setup', PACK_LAYOUT.snapshot);
-  fs.mkdirSync(path.dirname(snapshot), { recursive: true });
-  fs.copyFileSync(DEFAULT_SETUP_SNAPSHOT, snapshot);
+  // Installed, in the packs dir, which is where the app puts every pack — the ones it ships included. The
+  // manifest is the one the pack's build wrote, taken from its snapshot, so the entity types and relation
+  // kinds these cases query are exactly default-setup's
+  const manifest = path.join(_appDirOf(dir), 'packs', 'default-setup', PACK_LAYOUT.manifest);
+  fs.mkdirSync(path.dirname(manifest), { recursive: true });
+  fs.writeFileSync(manifest, JSON.stringify(JSON.parse(fs.readFileSync(DEFAULT_SETUP_SNAPSHOT, 'utf-8')).manifest));
   await write(dir, () => {
     untypedTx(id('AppState-app'), true).put('entityType', 'AppState').put('hasOnboarded', true);
     untypedTx(id('Settings-app'), true).put('entityType', 'Settings').put('label', 'App').put('data', { general: { theme: 'dark' } });
@@ -1042,11 +1044,10 @@ describe('abuddy db import', () => {
   it('says when the backup holds rows of a type no installed pack declares, and keeps them', async () => {
     const dir = await appDataDir();
     const source = await appDataDir();
-    // A pack was installed when the backup was made: its snapshot declares Bookmark, which the target dir's doesn't
-    const snapshot = path.join(_appDirOf(source), 'host-packs', 'default-setup', PACK_LAYOUT.snapshot);
-    const manifest = JSON.parse(fs.readFileSync(snapshot, 'utf-8'));
-    manifest.entities = { ...manifest.entities, Bookmark: 'Bookmark' };
-    fs.writeFileSync(snapshot, JSON.stringify(manifest));
+    // A pack was installed when the backup was made and declared Bookmark, which the target dir's packs don't
+    const manifestFile = path.join(_appDirOf(source), 'packs', 'bookmarks', PACK_LAYOUT.manifest);
+    fs.mkdirSync(path.dirname(manifestFile), { recursive: true });
+    fs.writeFileSync(manifestFile, JSON.stringify({ id: 'bookmarks', name: 'Bookmarks', version: '1.0.0', entities: { Bookmark: 'Bookmark' } }));
     await write(source, () => {
       untypedTx(id('Bookmark-1'), true).put('entityType', 'Bookmark').put('url', 'https://example.com');
       untypedTx(id('Bookmark-2'), true).put('entityType', 'Bookmark').put('url', 'https://example.org');

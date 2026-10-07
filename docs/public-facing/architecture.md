@@ -11,9 +11,8 @@ Every process resolves its environment and data paths through `resolveAppContext
 
 | Path under the data dir | Contents |
 |---|---|
-| `packs/` | Installed external packs, one directory per pack id |
-| `host-packs/` | Build artifacts of the app's built-in packs, published at boot for pack authors' dependency resolution |
-| `installed-packs.json` | Installed external packs and their `enabled` state |
+| `packs/` | Installed packs, one directory per pack id — every pack, the ones the app ships included |
+| `installed-packs.json` | Installed packs' install state and their `enabled` state |
 | `ears-db/` | Primary LMDB database |
 | `ears-trace/` | Volatile LMDB database (flow execution records) |
 | `secrets.json` | API keys: metadata plain, values encrypted |
@@ -71,13 +70,10 @@ The source directory must be built first: installing a directory with neither a 
 
 0. Opens the app's data and binds the app (`openAppStore()`): it creates the app's registered packs (`createPackRegistry()` from `@abuddy/host/packs`), which the SDK's lookups read once bound, and the rest of the steps register into it.
 1. Registers the host `packs` system.
-2. `prepareHostDataDirs`: records the app version in the data dir (for `abuddy install`) and recovers staging dirs in `packs/` and `host-packs/`.
+2. `prepareHostDataDirs`: records the app version in the data dir (for `abuddy install`) and recovers staging dirs in `packs/`.
 3. `forwardSecretsChanges` (`@abuddy/host/secrets`): every system that takes `SECRETS_CHANGED` hears that API key changes, never their values.
-4. Loads packs. Built-in packs load asynchronously while external packs load and register:
-   - **Built-in:** discovered from `BUILT_IN_PACKS_DIR` (`abuddy.json` with `builtIn: true`). Each pack's `dist/runtime/index.cjs` is loaded from its own directory, the same way an installed pack is — the API bundle carries no pack's backend. A pack with no built runtime is skipped with an error naming the build command.
-   - **External:** discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed). For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded through the module bridge, and `seedManifest` stripped. Each pack's systems register as `<packId>/<featureId>`.
-   - The registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.
-5. Publishes each built-in pack's build output into `host-packs/<id>/`.
+4. Installs the packs the app ships into `packs/<id>`, each being a directory under `SHIPPED_PACKS_DIR` that holds an `abuddy.json`. It installs one only when its files differ from the installed copy's, so a first boot and a version bump write and every other boot writes nothing; a differing copy also covers one something changed on disk. This is before loading, not beside it: a pack is loaded from `packs/`, so it has to be there to be found.
+5. Loads packs — one path for all of them, the ones the app ships included. Discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed), the shipped ones ordered first so a pack depending on one finds it registered. For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded from its own installed directory through the module bridge, and `seedManifest` stripped. A pack with no built runtime, or one whose load throws, has a load problem recorded and the rest load. Each pack's systems register as `<packId>/<featureId>`, and the registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.
 7. Wires each pack's `onShutdown` hook, keyed by pack id.
 8. Hydrates the app's engine from LMDB. Every pack's entity types are registered by now, so the partition policy sees them all.
 9. Runs every pack's `onInit`.
@@ -342,7 +338,7 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 1. **`file:` path** — the given directory (relative to the pack root or absolute), in any layout. Not cached. A missing snapshot is an error.
 2. **Workspace** — `../<id>`, `../../packages/<id>`, `../../<id>`.
 3. **Configured app** — the built-in packs of the app `abuddy test` is configured for (`ABUDDY_APP`, `ABUDDY_ROOT` or the saved choice).
-4. **Installed apps** — `host-packs/<id>` in each environment's data dir (production, beta, development, test), which the app publishes at boot.
+4. **Installed apps** — `packs/<id>` in each environment's data dir (production, beta, development, test), which is where every pack that app has is installed, the ones it ships included.
 5. **Cache** — `.abuddy/deps/<id>/`, used only when no source on this machine matches and the cached version satisfies the range. `fetch-deps` skips it.
 6. **GitHub releases** — for `github:owner/repo [range]` values: the newest release matching the range, whose `<id>-<version>.tgz` is downloaded with its `.sha256`, checksum-checked, extracted and verified.
 7. **Registry** — a stub for future `api.abuddy.com` resolution. Currently a no-op.

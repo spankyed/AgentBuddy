@@ -5,16 +5,19 @@
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openAppStore } from '@/runtime';
-import { loadBuiltInPacks } from '@abuddy/host/packs/runtime';
+import { loadAppPacks } from '@abuddy/host/packs/runtime';
 
 export const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 /** The data dir's LMDB store, the engine persisting to it and the registered packs, opened as the API opens them (the engine is installed) */
 export const { store, engine, packs } = openAppStore();
 
-/** Registers the built-in packs and hydrates the store, as the app's boot does */
+/**
+ * Registers the installed packs and hydrates the store, as the app's boot does. It does not *install* the
+ * packs the app ships: a tool reads a data dir as it found it, and writing packs into one is the app's job.
+ */
 export async function openDatabase(): Promise<void> {
-  await loadBuiltInPacks(packs, packagesDir);
+  loadAppPacks(packs);
   await store.hydrate();
 }
 

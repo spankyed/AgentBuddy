@@ -14,7 +14,7 @@ process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
 const { loadAppPacks } = await import('@abuddy/host/packs/runtime');
-const { installPackFromLocal } = await import('@abuddy/host/packs');
+const { installPackFromLocal, installShippedPacks } = await import('@abuddy/host/packs');
 const { resolveAppContext } = await import('@abuddy/sdk/env');
 const { unbindHost } = await import('@abuddy/sdk/runtime/internals');
 const { getDesignated } = await import('@abuddy/sdk/designations');
@@ -39,6 +39,15 @@ async function installPackPlaying(id: string, role: string): Promise<void> {
   fs.rmSync(source, { recursive: true, force: true });
 }
 
+/**
+ * The pack half of the app's boot: the shipped packs installed into the data dir, then every installed pack
+ * loaded — shipped ones first, which is what keeps a designation theirs
+ */
+async function bootPacks(app: ReturnType<typeof openAppStore>) {
+  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppContext().packsDir);
+  return loadAppPacks(app.packs, new Set(installed.map((result) => result.id)));
+}
+
 /** The app's boot, closed and unbound however the test ends */
 async function packagedBoot(run: (app: ReturnType<typeof openAppStore>) => Promise<void>) {
   const app = openAppStore();
@@ -50,11 +59,11 @@ async function packagedBoot(run: (app: ReturnType<typeof openAppStore>) => Promi
   }
 }
 
-it("loads each shipped pack's built runtime, with its systems and plugins", async () => {
+it("installs each shipped pack and loads its built runtime, with its systems and plugins", async () => {
   await packagedBoot(async (app) => {
-    const { builtIn } = await loadAppPacks(app.packs, { builtInDir: PACKAGES_DIR });
+    const { loaded } = await bootPacks(app);
 
-    expect(builtIn.map(({ id }) => id)).toContain('default-setup');
+    expect(loaded.map((pack) => pack.origin.id)).toContain('default-setup');
     expect(app.packs.systemIds()).toContain('default-setup/threads');
     expect(app.packs.pluginIds()).toContain('default-setup/threads');
   });
@@ -67,10 +76,10 @@ it("keeps a shipped pack's role when an installed pack claims it", async () => {
   await installPackPlaying('role-taker', 'brain');
 
   await packagedBoot(async (app) => {
-    const { external } = await loadAppPacks(app.packs, { builtInDir: PACKAGES_DIR });
+    const { loaded } = await bootPacks(app);
 
     expect(getDesignated('brain')).toBe('default-setup/brain');
-    expect(external).toEqual([]);
+    expect(loaded.map((pack) => pack.origin.id)).toEqual(['default-setup']);
     expect(app.packs.loadProblem('role-taker')).toContain('brain');
   });
 });

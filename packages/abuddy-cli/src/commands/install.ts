@@ -41,7 +41,7 @@ Options:
     return;
   }
 
-  const { packsDir, hostPacksDir, userDataDir } = resolveAppContext({ env });
+  const { packsDir, userDataDir } = resolveAppContext({ env });
   // Recorded by the app when it starts with this data dir
   const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
   const kind = detectSource(source);
@@ -56,13 +56,13 @@ Options:
     : await installPack(resolvedSource, kind === 'registry' ? 'url' : kind, packsDir, { hostVersion, packFormat });
 
   if (result.missingDependencies.length > 0) {
-    if (fs.existsSync(hostPacksDir)) {
+    if (fs.existsSync(packsDir)) {
       console.warn(`\n  Warning: missing dependencies: ${result.missingDependencies.join(', ')}`);
-      console.warn(`  They are neither installed nor built into AgentBuddy. Install them first for full functionality.`);
+      console.warn(`  They are not installed. Install them first for full functionality.`);
     } else {
-      // The app publishes its built-in packs into the data dir when it starts
-      console.warn(`\n  Note: ${result.missingDependencies.join(', ')} not installed as packs. That's expected for packs built into AgentBuddy,`);
-      console.warn(`  which can't be checked until AgentBuddy${envLabel(env)} has started with this data dir.`);
+      // The app installs the packs it ships when it first starts with a data dir
+      console.warn(`\n  Note: ${result.missingDependencies.join(', ')} not installed. That's expected for a pack AgentBuddy ships,`);
+      console.warn(`  which isn't installed until AgentBuddy${envLabel(env)} has started with this data dir.`);
     }
   }
 

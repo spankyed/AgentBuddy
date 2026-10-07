@@ -3,7 +3,6 @@ import * as path from 'path';
 import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { parse, satisfies } from 'semver';
-import { discoverBuiltInPacks } from './discovery.ts';
 import { stagingDirName } from './staging.ts';
 import { DOWNLOAD_TIMEOUT_MS, fetchReleaseAsset, githubFetch, type GitHubReleaseAsset } from './github.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
@@ -20,8 +19,11 @@ import {
   stagePack,
   verifyPack,
   buildFormatProblem,
+  packFileHashes,
+  stagedFileHashes,
   type PackIntegrity,
 } from './layout.ts';
+import { errorMessage as reason } from '@abuddy/sdk/utils/pure';
 
 // The CLI installs without an app bound: its entries go to the console then
 const log = createLogger('pack-installer');
@@ -147,42 +149,80 @@ function findPackRoot(dir: string): string {
   return dir;
 }
 
-/** The app data dir's published built-in packs (`<userData>/host-packs`, written at app boot). */
-function hostPacksDirFor(packsDir: string): string {
-  return path.join(path.dirname(packsDir), 'host-packs');
-}
-
-/**
- * Packs the host provides: discovered from BUILT_IN_PACKS_DIR inside the app, otherwise the
- * built-in packs the app published into the data dir next to `packsDir`.
- */
-function getBuiltInPackIds(packsDir: string): Set<string> {
-  const builtInDir = process.env.BUILT_IN_PACKS_DIR;
-  if (builtInDir) return new Set(discoverBuiltInPacks(builtInDir).map(pack => pack.id));
-  const hostPacksDir = hostPacksDirFor(packsDir);
-  if (!fs.existsSync(hostPacksDir)) return new Set();
-  return new Set(
-    fs.readdirSync(hostPacksDir, { withFileTypes: true })
-      // Hidden dirs are publishes in progress (publishHostPackOutput)
-      .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
-      .map(entry => entry.name),
-  );
-}
-
-/** Dependencies neither installed in `packsDir` nor built into the host. */
+/** Dependencies not installed in `packsDir`. */
 export function checkDependencies(
   manifest: { dependencies?: Record<string, string> },
   packsDir: string,
 ): string[] {
   const deps = manifest.dependencies ?? {};
   if (Object.keys(deps).length === 0) return [];
-  const builtInIds = getBuiltInPackIds(packsDir);
-  const missing: string[] = [];
-  for (const depId of Object.keys(deps)) {
-    if (builtInIds.has(depId)) continue;
-    if (!fs.existsSync(path.join(packsDir, depId, 'abuddy.json'))) missing.push(depId);
+  // Every pack is installed, the ones the app ships included, so the packs directory is the whole answer —
+  // it used to consult the shipped directory and a published-output directory beside this one as well
+  return Object.keys(deps).filter((depId) => !fs.existsSync(path.join(packsDir, depId, PACK_LAYOUT.manifest)));
+}
+
+/** What installing the packs the app ships came to, per pack */
+export interface ShippedPackInstall {
+  id: string;
+  /** `installed` on a first install, `updated` when the shipped copy differs, `current` when it matches */
+  outcome: 'installed' | 'updated' | 'current' | 'failed';
+  /** Why, when it failed */
+  error?: string;
+}
+
+/**
+ * Installs the packs the app ships into `packsDir`, so they are installed packs like any other.
+ *
+ * **Idempotent by content.** The hashes staging would write are computed from the shipped directory and
+ * compared with the installed copy's `integrity.json`: equal means the installed copy is this build's, and
+ * nothing is copied. A version bump makes them differ, and so does a user who edited an installed file —
+ * a state that could not arise while the shipped pack was loaded from `resources/` in place.
+ *
+ * It does not fall back to loading a shipped pack from `resources/` when its install fails. A pack the app
+ * could not install is a pack that is not there, which the Packs view reports like any other failure; a
+ * read-only second load path is the thing this goal removed.
+ */
+export async function installShippedPacks(shippedDir: string, packsDir: string, options: InstallOptions = {}): Promise<ShippedPackInstall[]> {
+  if (!fs.existsSync(shippedDir)) return [];
+  const results: ShippedPackInstall[] = [];
+  for (const entry of fs.readdirSync(shippedDir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+    const source = path.join(shippedDir, entry.name);
+    if (!fs.existsSync(path.join(source, PACK_LAYOUT.manifest))) continue;
+
+    let id: string;
+    let shipped: Record<string, string>;
+    try {
+      id = (JSON.parse(fs.readFileSync(path.join(source, PACK_LAYOUT.manifest), 'utf-8')) as { id?: string }).id ?? entry.name;
+      shipped = stagedFileHashes(source);
+    } catch (err) {
+      results.push({ id: entry.name, outcome: 'failed', error: `could not read the pack the app ships at ${source}: ${reason(err)}` });
+      continue;
+    }
+
+    // The installed copy's files as they are, which is what makes one comparison cover both causes: a
+    // different build was shipped, or something changed the installed copy. An absent directory hashes to
+    // nothing, which is a first boot
+    const installedDir = path.join(packsDir, id);
+    const wasInstalled = fs.existsSync(path.join(installedDir, PACK_LAYOUT.manifest));
+    if (wasInstalled && sameHashes(packFileHashes(installedDir), shipped)) {
+      results.push({ id, outcome: 'current' });
+      continue;
+    }
+
+    try {
+      await installPackFromLocal(source, packsDir, options);
+      results.push({ id, outcome: wasInstalled ? 'updated' : 'installed' });
+    } catch (err) {
+      results.push({ id, outcome: 'failed', error: reason(err) });
+    }
   }
-  return missing;
+  return results;
+}
+
+function sameHashes(a: Record<string, string>, b: Record<string, string>): boolean {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
 }
 
 /** Replace <packsDir>/<id> with `sourceDir`'s contents without leaving a half-copied pack behind. */

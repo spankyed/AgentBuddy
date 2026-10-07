@@ -6,6 +6,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { REPO_ROOT } from '../../src/build/packages-built.ts';
 import { devPackFrontendsModule, discoverDevPackFrontends } from '../../src/build/discover.ts';
 
 let tmp: string;
@@ -78,6 +79,19 @@ describe('the packs a dev server serves from source', () => {
 
   // The scan is of a location, so a location that is not there holds no packs. Nothing is named here, so
   // nothing is worth saying about it
+  /**
+   * Over this repo, not a fixture. Every other case here writes the tree it then reads, so all of them
+   * would pass against a discovery that cannot read `packages/` at all — and the renderer's Vite and
+   * Tailwind configs call this to decide which packs the dev server serves from source. One returning
+   * nothing gives a dev server that serves no pack's frontend, with no error anywhere.
+   */
+  it("finds this checkout's packs", () => {
+    const found = discoverDevPackFrontends(path.join(REPO_ROOT, 'packages'), undefined, REPO_ROOT, warn);
+
+    expect(found.map((pack) => pack.id), 'discovery found nothing in this repo, which is not a tree with no packs')
+      .toContain('default-setup');
+  });
+
   it('reports no packs, quietly, when the root it scans does not exist', () => {
     expect(idsOf(path.join(tmp, 'no-such-dir'), undefined)).toEqual([]);
     expect(warnings).toEqual([]);
