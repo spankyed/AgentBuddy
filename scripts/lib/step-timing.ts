@@ -5,7 +5,7 @@
  */
 import type { SchedulableStep } from './chain-schedule.ts';
 import { type Machine, thisMachine, unmetRecordingConditions } from './core-budget.ts';
-import { declaredShare, rungLimitSeconds, type TimeoutClass } from './step-timeouts.ts';
+import { declaredShare, type TimeoutClass } from './step-timeouts.ts';
 
 /**
  * The longest chain of steps by `seconds`: the floor on wall time however many lanes there are. Reported so
@@ -52,21 +52,13 @@ export function criticalPath<S extends SchedulableStep>(steps: readonly S[]): { 
 export const BAND = 2;
 
 /**
- * How slow a step may read before its declaration has stopped describing it: double, or the point where the
- * declaration would fail its own bound, whichever comes first.
+ * Slower than a declared cost still describes.
  *
- * **The cap is the half that was missing.** `BAND` and `declaredShare` were chosen independently, and where
- * twice a declaration exceeds its rung's limit a cost could grow out of its own bound in silence — `suite`
- * admits 75s, so a step declaring 60s was watched only from 120s. Capping here closes that with the band
- * that already existed, rather than with a second watcher reading the same measurement.
- *
- * It bites three of the thirty steps, which is the point: for the rest `2 x declared` is the tighter number
- * and nothing changes.
+ * **The width is this and nothing else, which is a decision.** A cap at the rung's own limit looks like it
+ * belongs here — it would close the window between this band and `declaredShare`'s bound — and it does not:
+ * a rung limit is a projection onto a slower machine, where this band is a comparison on the box that took
+ * the reading. `outgrownRungs` owns that window and gates on the machine for exactly that reason.
  */
-export const driftBand = (declared: number, className?: TimeoutClass): number =>
-  (className === undefined ? declared * BAND : Math.min(declared * BAND, rungLimitSeconds(className)));
-
-/** Slower than a declared cost still describes */
 export const overBand = (declared: number, measured: number): boolean => measured > declared * BAND;
 
 /**
@@ -266,7 +258,7 @@ export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: T
  * with the packages fresh returns in 0.4s. Reporting that as drift told the first run of this to record
  * `seconds: 14 -> 0` — the cached cost, which is the exact confusion this field was corrected for.
  */
-export function driftedSteps<S extends SchedulableStep & { readonly timeout?: TimeoutClass }>(
+export function driftedSteps<S extends SchedulableStep>(
   steps: readonly S[],
   measuredMs: ReadonlyMap<string, number>,
   /**
@@ -300,7 +292,7 @@ export function driftedSteps<S extends SchedulableStep & { readonly timeout?: Ti
     // proves the declaration is high wherever it was taken. So the asymmetry here is the same inequality the
     // recorder's idle floor rests on, read in the one direction it holds.
     const alone = (peers.get(step.name)?.size ?? 0) === 0;
-    const slow = measured > driftBand(step.seconds, step.timeout);
+    const slow = overBand(step.seconds, measured);
     if (slow && !alone) {
       shared += 1;
       continue;
