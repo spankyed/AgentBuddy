@@ -86,6 +86,26 @@
  * `bus` and `connection`, a window reaches `bus` and `window`. The two remaining cells are impossible and throw
  * — there is no window-to-window channel, and a window cannot address another window's connection.
  *
+ * **`connection` covering two kinds of participant is a decision, not an oversight**, and splitting it is the
+ * obvious tidy-up to refuse. A plugin in another window and a claimed participant (`host/drive`) share that
+ * variant, and the one place the difference matters already asks the authority rather than the asker:
+ * `routeOutgoing` (`@abuddy/host/bus`'s `machine.ts`) looks the ref up in the participant claims and, for a
+ * claimed name, delivers to the connection holding it instead of checking the event against a plugin's
+ * declared list. Tested, not merely intended — `participants.spec.ts`'s *"leaves an answer addressed to the
+ * connection that asked"* is that path.
+ *
+ * So a fourth variant would be a *copy* of something re-derived at send time, and copies of this one go stale:
+ * a claim lives exactly as long as its socket, while `reply` is deliberately bound and storable, so a handler
+ * that answers after an `await` could carry a tag that was true when the delivery opened and is not when the
+ * answer is sent. The lookup cannot be wrong that way. It would also take `askerOf` — a leaf that imports
+ * nothing but this module — a dependency on the claims registry, and grow `_replyTo`'s table from six cells to
+ * eight with two more impossible ones to document.
+ *
+ * **What would change the answer**: an answer that has to be *shaped* differently per participant — a
+ * different envelope, a different validation, a different failure — because the kind would then be needed when
+ * the answer is built rather than when it is routed, and the lookup would have to move earlier. Diagnostics
+ * are not that: `senderSuffix` already names the ref, which is the part anyone can act on.
+ *
  * @internal Host and SDK only. Pack code never names it: a handler answers with `reply`, which takes no address.
  */
 export type _Asker =
