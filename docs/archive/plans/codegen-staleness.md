@@ -86,7 +86,7 @@ Generation    the on-disk barrels those two import from
 Both plugins scan `packages/` for `abuddy.json` at build time and generate a map of `import()` expressions;
 `packages/api/src/runtime/index.ts` and `packages/renderer/src/main.ts` are what consume them.
 
-**That top layer is what [`goal-one-kind-of-pack.md`](../../goals/goal-one-kind-of-pack.md) takes apart, and the generation layer
+**That top layer is what [`goal-one-kind-of-pack.md`](../goals/goal-one-kind-of-pack.md) takes apart, and the generation layer
 below it is untouched by that plan** — worth knowing before doing either, because the two live in the same two
 config files. Its step 3 deletes `virtual:built-in-pack-loaders` outright (production requires
 `dist/runtime/index.cjs` from the pack's own directory, as development already does) and re-keys

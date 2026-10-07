@@ -1,5 +1,11 @@
 # One kind of pack: retire "built-in"
 
+> **Done** (Phases 1-7, on `AS/one-kind-of-pack`: `9a6022043`, `14c377d26`, `e673a78c0`, `b5c2f0f06`,
+> `eec3c74f2`, `a0637b07f`, `1be49673d`). The text below is the plan as written; see **Outcome** at the
+> foot for what it came to, including the three places the plan's premises were wrong and the two
+> production bugs the change exposed.
+
+
 > **Written in session** `d364117f-5480-4324-a724-c63f04694b9f` (Claude Code, 2026-10-07). Resume it with `claude -r d364117f-5480-4324-a724-c63f04694b9f`.
 
 ```
@@ -322,7 +328,7 @@ got wrong*.
 refinement's own reason is *"before external packs load"*, which cannot hold for a pack that is external —
 and it would let an arbitrary pack's system run before the data layer exists. Moving `logs` to the host
 would also have removed the privilege, and is deferred rather than rejected
-([`plans/logs-to-host.md`](../plans/logs-to-host.md)): whether the Logs plugin should become a core app
+([`plans/logs-to-host.md`](../../plans/logs-to-host.md)): whether the Logs plugin should become a core app
 feature, updated only by a full app release, is a product question this goal does not need answered. Deleting the field removes more than the move would and touches nothing else.
 **The cost, which is the reason this is a decision and not a tidy-up:** `logs` stops starting before
 hydration, so hydration, `onInit`, migrations and seeding stop reaching the in-app viewer. They still reach
@@ -360,7 +366,7 @@ pack writes `PACK_LAYOUT.snapshot`.
 Then **delete `dev-build.mjs`** — 164 lines, of which the esbuild config is a *second* backend bundle
 rather than a copy of `bundlePackRuntime`: it leaves every package external where the CLI inlines them, and
 carries an alias plugin for `@/` specifiers that no default-setup source has used since
-[`goal-one-way-to-name-your-own-modules`](../archive/goals/goal-one-way-to-name-your-own-modules.md) and a
+[`goal-one-way-to-name-your-own-modules`](goal-one-way-to-name-your-own-modules.md) and a
 `.vue` stub the CLI's `stubFrontendAssetsPlugin` already does.
 
 **This is not free for the dev loop, which an earlier version of this doc got wrong.** `dev-build.mjs` is
@@ -470,7 +476,7 @@ does, and the frontend loads over `pack://` for every pack.
 **What this step does not touch, and the two config files are why it is worth saying:** the generated entries
 those virtual modules import. `pack-entry.ts` and `pack-entry-fe.ts` stay on disk, written by `abuddy
 generate-entries` on the triggers and under the stamp
-[`codegen-staleness.md`](../archive/plans/codegen-staleness.md) records — a pack's own typecheck reads them through
+[`codegen-staleness.md`](../plans/codegen-staleness.md) records — a pack's own typecheck reads them through
 `#generated/*`, so they could not be synthesised by a plugin even if this step wanted them to be. What changes
 is only who imports them: after this, each pack's own `abuddy build` rather than the renderer's and the api's.
 
@@ -591,7 +597,7 @@ problems anyway.
 sets `early` afterwards, which is exactly what Decision 5 deletes `partitionPolicy` for, and a mechanism
 with no caller is a mechanism nobody is testing against reality. Against: `hostRegistration` writes its
 `PackFeatureSystem` literally, so re-expressing `early` for a host feature is one property rather than a
-manifest field — and [`plans/logs-to-host.md`](../plans/logs-to-host.md) is the deferred move that would
+manifest field — and [`plans/logs-to-host.md`](../../plans/logs-to-host.md) is the deferred move that would
 want it back the same day. Decide it when Phase 4 is implemented; either answer keeps the capability out
 of the pack contract, which is the part that is settled.
 
@@ -753,3 +759,75 @@ phase's "Done when" names the narrow commands and the chain runs once at the end
 background while the diff is read. Phases 1 and 3 are the two that genuinely need a slow check every time —
 `npm run compile` for the first, a packaged build for the second — and that is a decision rather than a
 habit.
+
+---
+
+## Outcome
+
+**Every pack is installed, and loaded from where it is installed.** `installShippedPacks` copies each
+directory under `SHIPPED_PACKS_DIR` that holds an `abuddy.json` into `<userData>/abuddy/packs/<id>`, and
+`loadAppPacks` then loads every pack by one path. `manifest.builtIn` decides nothing: it survives as a
+field a pack declares and as `pack.ts`'s refusal to pack a pack that ships inside the app, which Phase 6's
+own text keeps as axis 1.
+
+**Phase by phase**
+
+| Phase | | |
+|---|---|---|
+| 1 | done | `abuddy build --watch` replaces `dev-build.mjs`; `RESOLVED_AT_RUNTIME` named. The watch rebuilds the runtime alone — 40ms against the full build's 23.7s |
+| 2 | done | `partitionPolicy` gone; `appPartitionPolicy()` is a constant in `database/open.ts` |
+| 3 | done | `npm run start` alone gives frontend and backend hot reload for every workspace pack, `tests/packs/external-pack` included, with no `abuddy run`. Held by `repo-checks`' `dev-pack-hmr` |
+| 4 | done | `earlySystem` deleted, not widened |
+| 5 | done | one `seedPacks`, one `packSeedHashes`/`packSeedDeps`, one policy for every pack |
+| 6 | done | install replaces publish; `publishHostPackOutput`, `pruneHostPackOutputs`, `hostPacksDir`, `loadBuiltInPacks`, `discoverBuiltInPacks`, the `publishing` staging kind and `schema.ts`'s `degraded` branch are gone |
+| 7 | done | 15 findings, all fixed; `npm run chain` green |
+
+**Two production bugs the change exposed, both invisible before it.** A pack loaded from a checkout has the
+workspace `node_modules` above it, which answered every bare specifier its bundle left external; an
+installed pack has none. So:
+
+- **`vue` and `@vscode/ripgrep` were externals nothing provided.** A pack's backend bundle carries its
+  steps' frontend facets, so `extensions/steps/<type>/fe.ts` puts a top-level `require("vue")` in it. The
+  loader provided only `getSharedBeDeps()` (`xstate`, `zod`). `HOST_RESOLVED_BINARIES` moved to
+  `shared-deps.ts`, where the bundler's externals and the loader's `hostPackages` both read it, and
+  `hostPackages` now covers every external. `pack-externals.spec.ts` holds the two halves together.
+- **A lazy `require` outlived the resolution that served it.** esbuild defers a module body into an
+  `__init` the bundle calls on first use, so default-setup's action step required `@abuddy/sdk/logger`
+  when a step first ran, long after `withHostResolution` had restored the resolver. Seeding the require
+  cache cannot cover it, Node resolving before it reads the cache. `keepHostModulesResolvable` installs
+  resolution for the process and never throws; `withModuleBridge`'s refusals stay scoped to the load they
+  diagnose, which is where a *rebuild this pack* message belongs.
+
+Both would have shipped: `DEBUG_E2E=1 npm test -- smoke` passed its four cases while the app logged
+`Cannot find module '@abuddy/sdk/logger'` for every action step. **A green suite beside a failing app is
+what that flag is for.**
+
+**Three premises in this plan were wrong**, corrected in place where they are stated: `dev-build.mjs`'s
+esbuild was not what rebuilt the pack's frontend, the published `host-packs/` layout's `.fingerprint`
+answered freshness rather than integrity, and `be-bundler.ts`'s comment claimed an installed pack resolves
+`RESOLVED_AT_RUNTIME` from its own `node_modules`, which it has none of.
+
+**Conventional choices, where the plan left a detail open**
+
+- `canUninstall` is derived (`packId !== HOST_PACK_ID && origin?.shipped !== true`) rather than a stored
+  property. `PackInfo.canUninstall` is the half the Packs view reads, which is what Decision 8 asked for;
+  flipping it later is one line.
+- `beforePlace`'s `HOST_PACK_ID` refusal was **deleted** rather than kept: `manifest-schema.ts` refuses the
+  id before any caller sees the manifest, so the second check could not fire. One gate, with its own case.
+- `rebuildCommand` names the one pack the repo builds through a script of its own
+  (`SCRIPTED_PACK_BUILDS`) rather than asking a manifest what kind a pack is.
+- A leftover `host-packs/` in an existing dev data dir is **left alone**. It is derived build output that
+  nothing reads any more, and deleting from a user's data dir was not asked for.
+- `installShippedPacks` filters on an `abuddy.json` being present, not on `builtIn`. In this checkout only
+  `packages/default-setup` matches; a second shipped pack would be installed, which is the point.
+
+**What was not done, and why**
+
+- **`grep -rn goal-one-kind-of-pack packages scripts` returns 3, not 1.** The dev-server spec's, plus
+  Phase 3's acceptance spec (`dev-pack-hmr`) and the `repo-checks` table row describing it — neither
+  existed when that line was written, and a spec whose whole subject is this goal's devex requirement is
+  the right place to cite it.
+- **`chain --record` was not run.** `compile` grew 13s → 31s and `test:smoke` 9s → 25s, both real: the
+  pack's build now produces its frontend bundle, and a fresh data dir now installs a pack. Recording needs
+  a quiet machine and is the user's call —
+  `npm run check:idle && npm run chain -- --all --record --forget --step compile` (and `--step test:smoke`).
