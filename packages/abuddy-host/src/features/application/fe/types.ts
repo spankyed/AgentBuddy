@@ -1,7 +1,7 @@
 // The app shell's state, events and the I/O it's given. Its machine (machine.ts) reads the rest of the app only
 // through these ports, so it runs the same in the renderer, over the API and the window, and in a pack's tests.
 import type { ContextMenuItem, HotkeyEvent, Plugin, PluginEvent, ShellPanelSizes } from '@abuddy/sdk/fe';
-import type { HostPluginEvents, Message } from '@abuddy/sdk/events';
+import type { HostPluginEvents, Message, _Asker } from '@abuddy/sdk/events';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import type { ShellClient, ShellFailure } from '../../../fe/client.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
@@ -46,27 +46,33 @@ export interface ShellParams {
 export type MessageSender = Pick<Message, 'from' | 'via'>;
 
 /**
- * Asking for a plugin: which one, whether to open it or only hand it its events, and who asked. Both ways of
- * saying who asked travel with the request, so each survives however long it waited for its pack's frontend.
+ * Who made a request, in the two forms the shell needs — **one declaration rather than one per hop.** Both come
+ * off the same `Message`, so they travel together and each survives however long the request waited for its
+ * pack's frontend.
+ *
+ * The two are not the same fact and must not be collapsed into one field: `from` is a pack and `via` is what in
+ * it, which is what a refusal can name usefully and what nothing can answer; `asker` is a participant, which is
+ * the only thing that can be.
  */
-export interface PluginRequest {
-  plugin: string;
-  select: boolean;
+export interface RequestSender extends MessageSender {
   /**
-   * Labels a refusal names — which pack asked, and what in it. Deliberately **not** an address: `from` is a
-   * pack, and a pack is not a participant anything can answer.
-   */
-  labels: MessageSender;
-  /**
-   * The ref of the plugin that asked, so the receiving plugin's handler is handed a `reply` that reaches it.
+   * Where an answer goes, so the receiving plugin's handler is handed a `reply` that reaches whoever asked.
    * Absent for the shell's own sends — a lifecycle event, a hotkey, a navigation — and for an `OPEN_PLUGIN`,
    * which is a navigation command rather than a question.
    *
-   * A ref and not an `_Asker`, because every request through this queue came from a plugin in this window: the
-   * kind is invariant, so the variant is built where it is used (`deliverPluginEvents`) rather than carried,
-   * which keeps the shell's event types free of it and the round trip out of the queue's drain.
+   * The address whole, not a ref: it is built at the door it arrived through (`deliverInWindow` in the SDK, as
+   * `askerOf` does on the bus) and carried untouched from there to the delivery. It was a ref through four
+   * hops with the channel rebuilt at the end, which read as a fact about this queue and was a guess — right
+   * only while every request in it came from a window, and silently wrong for the first that did not.
    */
-  sender?: string;
+  asker?: _Asker;
+}
+
+/** Asking for a plugin: which one, whether to open it or only hand it its events, and who asked */
+export interface PluginRequest {
+  plugin: string;
+  select: boolean;
+  sender: RequestSender;
 }
 
 export interface ShellContext {
@@ -130,9 +136,9 @@ export interface ShellContext {
 export type ShellEvent =
   | { type: 'SELECT_PLUGIN'; plugin: string; historyIndex?: number }
   | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[] }
-  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string; via?: string; sender?: string }
+  | ({ type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[] } & RequestSender)
   /** Hands an opened plugin its events, once the shell has selected it */
-  | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[]; sender?: string }
+  | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[]; asker?: RequestSender['asker'] }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }
   | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target?: string; menuItems: ContextMenuItem[] }
   | { type: 'TRAIL_CLICK'; target: string; info?: unknown }

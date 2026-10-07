@@ -249,7 +249,10 @@ function deliverInWindow(message: Message): void {
     events: [message.event],
     ...(from ? { from } : {}),
     ...(via ? { via } : {}),
-    ...(sender ? { sender } : {}),
+    // The window's counterpart of the bus's `askerOf`: each door turns the envelope's `sender` into the channel
+    // it arrived on, because that door is the only place the channel is known. This one stays inside the window,
+    // so a plugin answering it answers an actor beside it rather than something over the bus.
+    ...(sender ? { asker: { kind: 'window', ref: sender } as const } : {}),
   });
 }
 

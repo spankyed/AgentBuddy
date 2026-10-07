@@ -26,13 +26,13 @@
  *
  * **Four doors set it, and that they are doors rather than call sites is the point.** On the backend,
  * `@abuddy/host/bus`'s `deliverAs`: the bus routing a message to a system, and the host handing one to an early
- * system. In a window, `sendToPluginActor` — the one function every send to a plugin's actor goes through — and
+ * system. In a window, `notifyPluginActor` and `sendToPluginActor` — the two functions every send to a plugin's actor goes through — and
  * `usePlugin`, which wraps the actor it gives a component rather than any one send.
  *
  * It was a list of four *places* until a test asked each of them to answer, and the real number was nine: the
  * shell reached plugins from eight sites and named them at one, so a plugin handling anything the backend
  * broadcast, or its own `PLUGIN_ACTIVATED`, sent on with no `sender` and could not be answered. A count a
- * reader has to keep is the failure; `sendToPluginActor` is the correction.
+ * reader has to keep is the failure; the two `*PluginActor` functions are the correction.
  *
  * **Three ways a send ends up outside any delivery**, all of which leave `Message.sender` absent, so the system
  * it reaches cannot answer it. Worth knowing in this order, because only the first is widely known:
@@ -118,8 +118,8 @@ export function _currentDelivery(): _Delivery | undefined {
 /**
  * Runs `body` as the handling of `delivery`, restoring whatever was being handled before.
  *
- * @internal Called by the four doors named above: `deliverAs` on the backend, `sendToPluginActor` and
- * `usePlugin` in a window.
+ * @internal Called by the doors named above: `deliverAs` on the backend, `notifyPluginActor`,
+ * `sendToPluginActor` and `usePlugin` in a window.
  */
 export function _runDelivery<T>(delivery: _Delivery, body: () => T): T {
   const previous = current;

@@ -5,6 +5,7 @@ import { getCurrentScope, onScopeDispose, shallowReadonly, shallowRef, type Ref 
 import type { AnyActorRef } from 'xstate'
 import type { Plugin } from './plugin.ts'
 import { boundFeHost } from '../runtime/fe-host.ts'
+import type { _Asker } from '../events/delivery.ts'
 
 /** An event for a plugin's actor */
 export type PluginEvent = { type: string; [key: string]: unknown };
@@ -44,10 +45,15 @@ export type HostShellEvent =
    * frontend is still loading is waited for, and one no pack provides is reported once loading settles — but the
    * plugin the user has open doesn't change: a send is not a navigation.
    *
-   * `sender` is the ref of the plugin making the send, which is what lets the receiving plugin's handler answer
-   * it. `from`/`via` are labels a refusal names and deliberately not an address; this is the address.
+   * `asker` is where an answer goes, so the receiving plugin's handler is handed a `reply` that reaches whoever
+   * asked. `from`/`via` are labels a refusal names and deliberately not an address; this is the address.
+   *
+   * It is the address rather than a ref because the **channel** is known here and nowhere later: this send stays
+   * inside the window, so what answers it answers an actor beside it. The shell carries the value whole from
+   * here to the delivery, through the queue a plugin whose pack is still loading waits in — where a ref would
+   * have had to be read back as a channel someone had to remember was a window's.
    */
-  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string; via?: string; sender?: string }
+  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; from?: string; via?: string; asker?: _Asker }
   | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
   | { type: 'RESTORE_CHAT' }
   | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }

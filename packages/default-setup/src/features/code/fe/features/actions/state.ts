@@ -22,7 +22,7 @@ export type Event =
    * with that and the second is why they are here rather than merely tidier: a component is not inside any
    * delivery, so the send carried no `Message.sender` and the actions plugin had no address to answer — a
    * refusal or an error had nowhere to go but a toast. A send made from this machine carries the code
-   * plugin's ref, because the shell names a plugin while it handles anything (`sendToPluginActor`).
+   * plugin's ref, because the shell names a plugin while it handles anything (`notifyPluginActor`).
    *
    * The names match what they forward, so the hand-off reads as one; the `codeActions.` prefix is how the
    * code plugin routes an event to this child.

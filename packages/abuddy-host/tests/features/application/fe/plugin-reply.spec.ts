@@ -134,9 +134,9 @@ describe('a plugin asked by a backend system', () => {
 });
 
 describe('a plugin asked by another plugin in the same window', () => {
-  /** What the renderer's `sendToPlugin` builds: the shell's request, carrying the asking plugin's ref */
+  /** What the renderer's `sendToPlugin` builds: the shell's request, carrying the asking plugin's address */
   const askLocally = (tag: string) => main.app.send({
-    type: 'SEND_TO_PLUGIN', plugin: NOTES, events: [{ type: 'ASK', tag }], sender: THREADS,
+    type: 'SEND_TO_PLUGIN', plugin: NOTES, events: [{ type: 'ASK', tag }], asker: { kind: 'window', ref: THREADS },
   });
 
   it('answers that plugin beside it', async () => {

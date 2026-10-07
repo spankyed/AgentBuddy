@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { effectScope, watchSyncEffect, type Ref } from 'vue';
 import type { AnyActorRef } from 'xstate';
 import { _sendToLocalPlugin, untypedBroadcastToPlugin } from '../../src/events/index.ts';
+import { _runDelivery } from '../../src/events/delivery.ts';
 import { readUntypedPluginState, useUntypedPluginState } from '../../src/fe/plugin-state.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 import { bindHost, unbindHost } from '../../src/runtime/host-runtime.ts';
@@ -224,6 +225,35 @@ describe('_sendToLocalPlugin', () => {
   it("says broadcastToPlugin is the backend's when only a window is bound", () => {
     expect(() => untypedBroadcastToPlugin('default-setup/notes', { type: 'X' }))
       .toThrow(/broadcastToPlugin.*is the backend's.*sendToPlugin/s);
+  });
+
+  /**
+   * **Where the in-window channel is decided, and the only place it can be.** This send stays inside the
+   * window by construction, so what answers it answers an actor beside the sender — the shell is handed the
+   * address already built and carries it whole, rather than carrying a ref and rebuilding a channel four hops
+   * later from a fact about this queue that was a guess.
+   *
+   * It is the window's counterpart of the bus's `askerOf`, and the mutation is the same for both: change the
+   * `kind` here and `abuddy-host`'s `plugin-reply.spec.ts` fails on an answer leaving for the backend.
+   */
+  it("names the sending plugin as a window asker, from the delivery it is sent inside", () => {
+    const sent: unknown[] = [];
+    unbindFeHost();
+    bindFeHost({
+      application: { send: (event: unknown) => sent.push(event), system: { get: () => undefined } } as never,
+      secrets: {} as never, settings: {} as never, client: { send() {} }, packs: {} as never,
+    });
+
+    _runDelivery({ receiver: 'default-setup/threads' }, () => {
+      _sendToLocalPlugin('default-setup/notes', { type: 'ASK' });
+    });
+
+    expect(sent).toEqual([{
+      type: 'SEND_TO_PLUGIN',
+      plugin: 'default-setup/notes',
+      events: [{ type: 'ASK' }],
+      asker: { kind: 'window', ref: 'default-setup/threads' },
+    }]);
   });
 
   // A plugin that isn't here yet is the shell's to wait for and, once loading settles, to report through `notify`

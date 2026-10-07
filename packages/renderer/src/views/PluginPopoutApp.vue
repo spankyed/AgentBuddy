@@ -54,7 +54,7 @@ import Router from '@/views/layout/PluginRouter.vue'
 import ToastNotification from '@abuddy/ui/design/ToastNotification'
 import { registerGlobalToast } from '@/adapters/toast'
 import { PluginScope, type ContextMenuItem } from '@abuddy/sdk/fe'
-import { NOBODY_ASKED, sendToPluginActor } from '@abuddy/host/fe'
+import { notifyPluginActor } from '@abuddy/host/fe'
 
 const send = applicationState.send
 const toast = ref<InstanceType<typeof ToastNotification> | null>(null)
@@ -103,6 +103,6 @@ const handleMenuAction = (event: ContextMenuItem['event']) => {
   // Through the funnel, as the main window's does. The lookup stays guarded here rather than inside it:
   // whether a missing plugin is a bug or a race is the call site's to know.
   const actor = applicationState.system.get(activePlugin.value.id)
-  if (actor) sendToPluginActor(actor, activePlugin.value.id, event, NOBODY_ASKED)
+  if (actor) notifyPluginActor(actor, activePlugin.value.id, event)
 }
 </script>

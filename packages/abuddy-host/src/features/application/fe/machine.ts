@@ -15,7 +15,7 @@ import {
 } from './layout.ts';
 import { announcePackClientReady, PACK_FRONTEND_LOADER_ID, packFrontendLoader } from './pack-frontends.ts';
 import { historyAfter, neighbourOf, spawnPluginActor, withHostLast } from './plugins.ts';
-import { NOBODY_ASKED, sendToPluginActor } from '../../../fe/plugin-delivery.ts';
+import { notifyPluginActor, sendToPluginActor } from '../../../fe/plugin-delivery.ts';
 import { computeCrumbs, pluginTrailer } from './trail.ts';
 import type { PluginRequest, ShellContext, ShellEvent, ShellOptions, ShellParams } from './types.ts';
 
@@ -43,8 +43,8 @@ function packFrontendsPending(context: ShellContext): boolean {
  * every one of those so the wording can't differ by which branch the app happened to take — which would tell the
  * reader about the app's internals and nothing about their problem.
  */
-function refusal({ plugin, select, labels }: PluginRequest): [string, string] {
-  const suffix = senderSuffix(labels);
+function refusal({ plugin, select, sender }: PluginRequest): [string, string] {
+  const suffix = senderSuffix(sender);
   return [`Couldn't ${select ? 'open' : 'reach'} ${plugin}`, `No plugin is registered at "${plugin}".${suffix && ` Sent${suffix}.`}`];
 }
 
@@ -135,8 +135,10 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           if (arrived.length > 0) {
             enqueue.assign({ awaitingPlugin: context.awaitingPlugin.filter((work) => !added.has(work.plugin)) });
             // `select` is what the wait was for: an open selects the plugin, a send only hands it its events
-            for (const { plugin, events, select, labels, sender } of arrived) {
-              enqueue.raise(select ? { type: 'OPEN_PLUGIN', plugin, events } : { type: 'SEND_TO_PLUGIN', plugin, events, ...labels, ...(sender ? { sender } : {}) });
+            for (const { plugin, events, select, sender } of arrived) {
+              // One spread, because who asked is one member: the labels a refusal would name and the address an
+              // answer goes to left the queue together, as they entered it
+              enqueue.raise(select ? { type: 'OPEN_PLUGIN', plugin, events } : { type: 'SEND_TO_PLUGIN', plugin, events, ...sender });
             }
           }
         }
@@ -257,7 +259,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           enqueue(({ system }) => {
             // Tolerated: this runs as a pack's plugins arrive, where the actor may not be spawned yet
             const active = system.get(activePlugin.id);
-            if (active) sendToPluginActor(active, activePlugin.id, { type: 'PLUGIN_ACTIVATED' }, NOBODY_ASKED);
+            if (active) notifyPluginActor(active, activePlugin.id, { type: 'PLUGIN_ACTIVATED' });
           });
         }
       }),
@@ -293,7 +295,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
        */
       selectAndDeliver: enqueueActions(({ context, event, enqueue }) => {
         const { plugin, events } = typeOf('OPEN_PLUGIN', event);
-        if (!readyFor(context, { plugin, events, select: true, labels: {} }, enqueue)) return;
+        if (!readyFor(context, { plugin, events, select: true, sender: {} }, enqueue)) return;
         if (context.activePlugin.id !== plugin) enqueue.raise({ type: 'SELECT_PLUGIN', plugin });
         if (context.defaultToggles.canvas) enqueue.raise({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
         // Sent, not raised: it's handled after this step settles, so the plugin is open, as the shell's state reads,
@@ -303,9 +305,9 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
 
       /** Hands a plugin its events and leaves the view where it is — what `SEND_TO_PLUGIN` asks for */
       deliverWithoutSelecting: enqueueActions(({ context, event, enqueue }) => {
-        const { plugin, events, from, via, sender } = typeOf('SEND_TO_PLUGIN', event);
-        if (!readyFor(context, { plugin, events, select: false, labels: { from, via }, sender }, enqueue)) return;
-        if (events.length > 0) enqueue(({ self }) => self.send({ type: 'DELIVER_PLUGIN_EVENTS', plugin, events, sender }));
+        const { plugin, events, from, via, asker } = typeOf('SEND_TO_PLUGIN', event);
+        if (!readyFor(context, { plugin, events, select: false, sender: { from, via, asker } }, enqueue)) return;
+        if (events.length > 0) enqueue(({ self }) => self.send({ type: 'DELIVER_PLUGIN_EVENTS', plugin, events, asker }));
       }),
 
       // A backend's request carries whatever the sending pack built: a payload that isn't a plugin and its events
@@ -321,11 +323,16 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       }),
 
       deliverPluginEvents: ({ event, system }) => {
-        const { plugin, events, sender } = typeOf('DELIVER_PLUGIN_EVENTS', event);
+        const { plugin, events, asker } = typeOf('DELIVER_PLUGIN_EVENTS', event);
         // A registered plugin's actor is running: the shell spawns it in the same step that registers the plugin
         const actor = system.get(plugin);
-        // The asking plugin is in this window, so the answer goes to its actor here rather than onto the bus
-        if (actor) for (const e of events) sendToPluginActor(actor, plugin, e, sender ? { kind: 'window', ref: sender } : NOBODY_ASKED);
+        if (!actor) return;
+        // The address arrived built, so nothing here decides which channel an answer takes — only whether there
+        // is one. A send that named no sender is news, and its handler is handed no `reply`.
+        for (const e of events) {
+          if (asker) sendToPluginActor(actor, plugin, e, asker);
+          else notifyPluginActor(actor, plugin, e);
+        }
       },
 
       processGlobalHotkey: ({ self, context, event }) => {
@@ -349,7 +356,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       forwardNavToPlugin: ({ context, system, event }) => {
         // Tolerated: a mouse button can arrive while the open plugin's pack is unloading
         const navigating = system.get(context.activePlugin.id);
-        if (navigating) sendToPluginActor(navigating, context.activePlugin.id, { type: event.type as 'NAVIGATE_BACK' | 'NAVIGATE_FORWARD' }, NOBODY_ASKED);
+        if (navigating) notifyPluginActor(navigating, context.activePlugin.id, { type: event.type as 'NAVIGATE_BACK' | 'NAVIGATE_FORWARD' });
       },
 
       switchPluginByDirection: ({ context, event, self }) => {
@@ -363,10 +370,10 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         for (const plugin of context.plugins) {
           if (plugin.id === context.activePlugin.id) continue;
           const globalActions = plugin.hotkeys?.filter(h => h.global).map(h => h.action);
-          if (globalActions?.length) sendToPluginActor(system.get(plugin.id), plugin.id, { ...hotkeyEvent, allowedActions: new Set(globalActions) }, NOBODY_ASKED);
+          if (globalActions?.length) notifyPluginActor(system.get(plugin.id), plugin.id, { ...hotkeyEvent, allowedActions: new Set(globalActions) });
         }
         // The plugin open receives all of them
-        sendToPluginActor(system.get(context.activePlugin.id), context.activePlugin.id, hotkeyEvent, NOBODY_ASKED);
+        notifyPluginActor(system.get(context.activePlugin.id), context.activePlugin.id, hotkeyEvent);
       },
 
       setTargetView: assign(({ event }) => ({ targetView: (event as { target: string }).target })),
@@ -374,7 +381,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       // could make no answerable send of its own. Nobody asked for the click, so it carries no asker.
       sendRouteClick: ({ system, context, event }) => {
         const ref = context.defaultToggles.canvas ? context.defaultPlugin.id : context.activePlugin.id;
-        sendToPluginActor(system.get(ref), ref, event, NOBODY_ASKED);
+        notifyPluginActor(system.get(ref), ref, event);
       },
       setBreadcrumbs: assign(({ event }) => ({
         breadcrumbs: typeOf('TRAIL_UPDATE', event).crumbs,
@@ -393,8 +400,8 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         }
 
         if (context.activePlugin.id !== newPlugin.id) {
-          sendToPluginActor(system.get(context.activePlugin.id), context.activePlugin.id, { type: 'PLUGIN_DEACTIVATED' }, NOBODY_ASKED);
-          sendToPluginActor(system.get(newPlugin.id), newPlugin.id, { type: 'PLUGIN_ACTIVATED' }, NOBODY_ASKED);
+          notifyPluginActor(system.get(context.activePlugin.id), context.activePlugin.id, { type: 'PLUGIN_DEACTIVATED' });
+          notifyPluginActor(system.get(newPlugin.id), newPlugin.id, { type: 'PLUGIN_ACTIVATED' });
         }
 
         enqueue.assign(({ context }) => ({
@@ -481,7 +488,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
     entry: [
       'spawnPluginActors',
       ({ context, system }) => {
-        sendToPluginActor(system.get(context.activePlugin.id), context.activePlugin.id, { type: 'PLUGIN_ACTIVATED' }, NOBODY_ASKED);
+        notifyPluginActor(system.get(context.activePlugin.id), context.activePlugin.id, { type: 'PLUGIN_ACTIVATED' });
       },
       'trailActivePlugin',
       spawnChild('hotkeyListener', { id: 'hotkeyListener' }),

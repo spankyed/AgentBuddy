@@ -6,7 +6,7 @@ import { breadcrumb, safeEvents } from '@abuddy/sdk/fe';
 import { sendToSystem } from '../../../events.ts';
 import type { PackInfo } from '../../../packs/registry.ts';
 import { HOST } from '../../../refs.ts';
-import { NOBODY_ASKED, sendToPluginActor } from '../../../fe/plugin-delivery.ts';
+import { notifyPluginActor } from '../../../fe/plugin-delivery.ts';
 
 export type { PackInfo };
 
@@ -89,13 +89,13 @@ const packsState = setup({
       const ev = typeOf('PACK_DEACTIVATED', event);
       // Through the funnel: this runs while handling a bus message, and a direct send would leave the shell
       // handling the unload as *this* plugin, with this plugin's asker. Nobody waits on the unload itself.
-      sendToPluginActor(system.get(HOST.application), HOST.application, { type: 'PACK_PLUGINS_UNLOADED', packId: ev.packId }, NOBODY_ASKED);
+      notifyPluginActor(system.get(HOST.application), HOST.application, { type: 'PACK_PLUGINS_UNLOADED', packId: ev.packId });
     },
 
     // The application actor owns pack frontend loading — it loads the packs it hasn't yet, this one
     // included, and reports a failure the same way wherever the load was asked for
     onPackActivated: ({ system }) => {
-      sendToPluginActor(system.get(HOST.application), HOST.application, { type: 'LOAD_PACK_FRONTENDS' }, NOBODY_ASKED);
+      notifyPluginActor(system.get(HOST.application), HOST.application, { type: 'LOAD_PACK_FRONTENDS' });
     },
 
     sendInstall: ({ event }) => {
