@@ -122,7 +122,7 @@ export async function reloadPackById(
       onShutdown: pack.registration.boot?.onShutdown,
       onInit: pack.registration.boot?.onInit,
       afterRegister: () => {
-        runPackMigrations(registry.packTargets([packId]));
+        runPackMigrations(registry.packMigrationTargets([packId]));
         seedPacks(registry.packSeedTargets([packId]));
       },
     };

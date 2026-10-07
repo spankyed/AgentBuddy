@@ -210,15 +210,24 @@ export interface PackRegistry extends PackRegistryView {
   /** The packs this app loaded, in registration order */
   loadedPacks(): PackOrigin[];
   /**
-   * Each registered external pack as the runtime's per-pack helpers take it: where it came from, plus the
-   * migrations it registered. One place joins the two halves, so no caller holds its own list of packs.
-   * With `packIds`, only those — activation and reload migrate and seed the one pack they handled.
+   * The packs `runPackMigrations` runs, as it takes them: each one's manifest and the migrations it
+   * registered. With `packIds`, only those — activation and reload migrate the one pack they handled.
    *
-   * In dependency order (`packSeedOrder`), so a pack's migrations and seeds run after those of the packs
-   * it depends on: its seeds may reference what they seeded. Registration order, which decides who wins a
-   * designation or a plugin id, is a different order and is not this.
+   * **A pack this app ships is never in here**, and that is the whole reason this is not `loadedPacks()`
+   * joined with its registrations at the call site. A shipped pack's migrations target *app* versions and
+   * `runAppMigrations` runs them against `AppState.version`; running them again here, against the pack's
+   * own version, would run each one twice and record a second version for the same pack. Excluding them
+   * where the list is built rather than at each of the four callers is what keeps that true for the fifth.
+   *
+   * **The contrast with `packSeedTargets` is deliberate**: seeds are one path for every pack, because what
+   * a seed is keyed on is its own compiled data. Migrations are two, because what a migration is keyed on
+   * is a version, and a shipped pack's version is the app's.
+   *
+   * In dependency order (`packSeedOrder`), so a pack's migrations run after those of the packs it depends
+   * on. Registration order, which decides who wins a designation or a plugin id, is a different order and
+   * is not this.
    */
-  packTargets(packIds?: Iterable<string>): Array<{ manifest: PackManifest; dir: string; migrations?: PackMigration[] }>;
+  packMigrationTargets(packIds?: Iterable<string>): Array<{ manifest: PackManifest; migrations?: PackMigration[] }>;
   /**
    * Every registered pack as `seedPacks` takes it, in dependency order: where its seeds are, what it
    * depends on, and the `seedPolicy` its registration declares. With `packIds`, only those — activation and
@@ -559,11 +568,11 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     packOrigin: (packId) => origins.get(packId) ?? null,
     shippedPacks: () => [...origins.values()].filter((o) => o.shipped),
     loadedPacks: () => [...origins.values()],
-    packTargets: (packIds) => {
+    packMigrationTargets: (packIds) => {
       const wanted = packIds && new Set(packIds);
       return orderedPacks()
-        .filter((o) => !wanted || wanted.has(o.id))
-        .map((o) => ({ manifest: o.manifest!, dir: o.dir, migrations: registrations.get(o.id)?.migrations }));
+        .filter((o) => !o.shipped && (!wanted || wanted.has(o.id)))
+        .map((o) => ({ manifest: o.manifest!, migrations: registrations.get(o.id)?.migrations }));
     },
 
     // Both maps are keyed by the registered features' refs, the host's included

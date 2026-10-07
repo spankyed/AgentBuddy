@@ -53,8 +53,12 @@ describe('boot migrations', () => {
       id: 'migrations-built-in',
       migrations: [{ target: TEST_APP_VERSION, description: 'built-in', up: () => { runs.shipped++; } }],
     };
-    // Registered straight into the registry: the subject is the runner, not how a pack's module is loaded
-    registry.registerPack(registration, { id: 'migrations-built-in', name: 'Built-in', version: TEST_APP_VERSION, dir: builtInDir, shipped: true });
+    // Registered straight into the registry: the subject is the runner, not how a pack's module is loaded.
+    // **With a `manifest`, which is what makes "once" checkable here.** `packMigrationTargets` reads the
+    // origin's manifest, and the loader builds every origin with one — so a fixture without it is a shipped
+    // pack the second runner cannot see, and this case passed while a real one ran its migrations twice.
+    const shippedManifest = { id: 'migrations-built-in', name: 'Built-in', version: TEST_APP_VERSION };
+    registry.registerPack(registration, { ...shippedManifest, dir: builtInDir, shipped: true, manifest: shippedManifest as never });
 
     const externalMigration: PackMigration = { target: TEST_APP_VERSION, description: 'external', up: () => { runs.external++; } };
     const manifest = { id: 'migrations-external', name: 'External', version: TEST_APP_VERSION };
@@ -64,11 +68,13 @@ describe('boot migrations', () => {
     } satisfies LoadedPack;
     expect(registerExternalPacks(registry, [external])).toHaveLength(1);
     // What the boot passes on: the registry joins each registered pack's origin with its migrations
-    const loadedPacks = registry.packTargets();
+    const installedPacks = registry.packMigrationTargets();
+    expect(installedPacks.map((t) => t.manifest.id), 'the shipped pack is not a target: runAppMigrations owns it')
+      .toEqual(['migrations-external']);
 
     // The boot's order (the API's setup/backend.ts)
     runAppMigrations(registry);
-    runPackMigrations(loadedPacks);
+    runPackMigrations(installedPacks);
 
     expect(runs.shipped).toBe(1);
     expect(runs.external).toBe(1);
@@ -76,7 +82,7 @@ describe('boot migrations', () => {
 
     // Recorded: a second run changes nothing
     runAppMigrations(registry);
-    runPackMigrations(loadedPacks);
+    runPackMigrations(installedPacks);
     expect(runs).toEqual({ shipped: 1, external: 1 });
   });
 
