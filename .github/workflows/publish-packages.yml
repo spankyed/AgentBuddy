@@ -38,6 +38,42 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      # **Refused before the build, not at the push.** A real publish needs a credential and this repo has
+      # none: `NPM_TOKEN` is set at no scope, so without this the run spends twenty minutes on `api:check`,
+      # `packages:build` and `packages:check` and then fails inside Changesets, where the message is about
+      # npm auth rather than about what to set up. The dry run needs nothing and is left alone.
+      #
+      # **It names OIDC first because that is the end state.** `id-token: write` is already requested above,
+      # so trusted publishing needs no token at all — a standing npm credential is a thing to rotate and
+      # leak, for a registry these packages are not on yet. `docs/plans/npm-publishing.md` has the order.
+      - name: Refuse a publish with no credential
+        if: inputs.publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NODE_AUTH_TOKEN" ]; then
+            echo "Publishing with NODE_AUTH_TOKEN from secrets.NPM_TOKEN."
+            exit 0
+          fi
+          echo "::error title=No npm credential::A publish was asked for and nothing can authenticate it."
+          cat <<'WHY'
+          Nothing is configured to publish to npm, and none of these packages is on the registry yet.
+
+          The end state is trusted publishing (OIDC): this workflow already requests `id-token: write`,
+          so npm exchanges GitHub's token for publish rights and there is no standing credential to
+          rotate or leak. It is configured per package on npmjs.com, which needs the package to exist —
+          so the first publish is bootstrapped with one short-lived granular token, set as NPM_TOKEN,
+          and revoked the same day.
+
+          Re-run with `publish: false` for a dry run, which needs no credential and exercises everything
+          above this step.
+
+          Before switching it on: publishing creates consumers outside this repo, which is the condition
+          the root CLAUDE.md's "Backward compatibility" section says to revisit. That is a deliberate
+          decision, not a side effect of running this workflow.
+          WHY
+          exit 1
+
       - name: Check the published API surface
         run: npm run api:check --workspace @abuddy/ears --workspace @abuddy/sdk --workspace @abuddy/ui
 
