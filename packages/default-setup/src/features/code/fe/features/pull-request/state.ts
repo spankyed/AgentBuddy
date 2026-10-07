@@ -14,22 +14,22 @@ export type { GhPullRequest, GhPRComment }
 let placeholderIdCounter = -1
 
 /**
- * Returns true when a branch/file diff response doesn't match the currently-selected
- * PR's refs — i.e. the user switched PRs while a diff request was in flight. We
- * accept when there's no selectedPR (branch-only view) or when the response carries
- * no headBranch echo (legacy/local-branch flow) to preserve existing behavior.
+ * What a diff was asked for, as a key: GitHub's own `base...head` compare spelling, with the head absent
+ * for a branch that has no PR.
+ *
+ * **This replaced a staleness guard, which is the point.** A diff is a view fetching data, and the rule
+ * for that job is a slot keyed by what was asked (`packages/default-setup/CLAUDE.md`): a late or another
+ * window's answer writes its own key, the view reads the key it is showing, and correlation is structural
+ * rather than checked. What was here before compared the answer's refs against the selected PR and
+ * returned "stale", and it had the hole a guard can have and a key cannot — it skipped the head check
+ * when the answer carried no head, which is exactly what the branch-only asker's answers carry. Two PRs
+ * onto one base (the common case) then let a branch diff land as a PR's files.
  */
-function isStalePRDiffResponse(
-  context: { selectedPR: GhPullRequest | null },
-  baseBranch: string,
-  headBranch: string | undefined,
-): boolean {
-  const pr = context.selectedPR
-  if (!pr) return false
-  if (pr.baseRefName !== baseBranch) return true
-  if (headBranch && pr.headRefName !== headBranch) return true
-  return false
-}
+export const refKey = (base: string, head?: string): string => `${base}...${head ?? ''}`
+
+/** The same, for one file within that comparison — a file diff opens a tab, so it is tracked per request */
+export const fileKey = (base: string, head: string | undefined, path: string): string =>
+  `${refKey(base, head)}#${path}`
 
 const defaultLoadingStates = {
   isPrLoading: false,
@@ -53,12 +53,28 @@ export interface ActiveTokenInfo {
 
 export interface Context {
   // Branch comparison
-  prFiles: GitStatusFile[]
+  /**
+   * The files each comparison holds, keyed by `refKey` — the answer's own slot rather than one shared
+   * slot every answer overwrites. Reading it is `refKey(prBaseBranch, selectedPR?.headRefName)`, the
+   * comparison the view is on, so an answer for any other lands without being seen.
+   *
+   * It doubles as a cache, as `explorer`'s `dirContents` does: `needsDiff` asks whether *these* files are
+   * held rather than whether any are, which is the question a single slot could not ask.
+   */
+  diffsByRef: Record<string, GitStatusFile[]>
+  /**
+   * File diffs asked for and not yet handled, keyed by `fileKey`.
+   *
+   * A key alone is not enough for this one: its answer **opens a tab**, and a key decides which row to
+   * write, not whether there should be one — the limit `packages/default-setup/CLAUDE.md` names for a
+   * slot that is also a membership list or drives navigation. So the tab opens only for a diff this
+   * machine asked for, once.
+   */
+  inFlightFileDiffs: Set<string>
   prBaseBranch: string
   prError: string | null
   isPrLoading: boolean
   selectedPrFile: GitStatusFile | null
-  prDiff: GitDiff | null
 
   // GitHub PR state
   openPRs: GhPullRequest[]
@@ -218,15 +234,20 @@ export const pullRequestState = setup({
       }
     }),
 
-    viewPrDiff: ({ event, context }) => {
+    /** Arms the key before sending, so an answer that arrives at once is not one nothing asked for */
+    viewPrDiff: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.VIEW_DIFF'; path: string }
-      sendToSystem('code', {
+      const head = context.selectedPR?.headRefName
+      enqueue.assign({
+        inFlightFileDiffs: new Set(context.inFlightFileDiffs).add(fileKey(context.prBaseBranch, head, ev.path)),
+      })
+      enqueue(() => sendToSystem('code', {
         type: 'pr.GET_BRANCH_FILE_DIFF',
         path: ev.path,
         baseBranch: context.prBaseBranch,
-        headBranch: context.selectedPR?.headRefName,
-      })
-    },
+        headBranch: head,
+      }))
+    }),
 
     assignPrError: assign({
       prError: ({ event }) => {
@@ -256,45 +277,66 @@ export const pullRequestState = setup({
       const ev = event as { type: 'pr.SMART_BASE_BRANCH_RECEIVED'; data: { branch: string } }
       const newBase = ev.data.branch
       enqueue.assign({ prBaseBranch: newBase })
-      if (newBase !== context.prBaseBranch || context.prFiles.length === 0 || context.diffStale) {
+      // A branch with no PR compares against no head, which is what makes this asker's answers headless —
+      // the case the old staleness guard waved through
+      if (!context.diffsByRef[refKey(newBase)] || context.diffStale) {
         sendToSystem('code', { type: 'pr.GET_BRANCH_DIFF', baseBranch: newBase })
       }
     }),
 
+    /**
+     * Writes the answer into the comparison it answers, and checks nothing.
+     *
+     * **It does not set `prBaseBranch`**, which is what keeps the key honest: that field is the base the
+     * user is on, written by the askers, and an answer that moved it would move the view onto itself —
+     * a stale answer would redirect the view to its own slot and be read after all.
+     *
+     * `isPrLoading` and `diffStale` are the view's, not the comparison's, so a late answer still clears
+     * them; there is nothing stale about "no longer loading".
+     */
     handleBranchDiffReceived: enqueueActions(({ enqueue, context, event }) => {
       const ev = event as { type: 'pr.BRANCH_DIFF_RECEIVED'; data: { files: GitStatusFile[]; baseBranch: string; headBranch?: string } }
-      // Drop stale responses from a previously-selected PR. selectedPR may be null
-      // when the branch has no PR (branch-view-only); accept in that case.
-      if (isStalePRDiffResponse(context, ev.data.baseBranch, ev.data.headBranch)) return
       enqueue.assign({
-        prFiles: ev.data.files,
-        prBaseBranch: ev.data.baseBranch,
+        diffsByRef: { ...context.diffsByRef, [refKey(ev.data.baseBranch, ev.data.headBranch)]: ev.data.files },
         isPrLoading: false,
         diffStale: false,
       })
     }),
 
+    /**
+     * Opens a tab for a diff this machine asked for and still wants — the one handler a key could not
+     * answer on its own, because opening a tab *creates* a row rather than filling one.
+     *
+     * Two clauses, and each is a different question. `inFlightFileDiffs` says this machine asked: a slow
+     * diff for a PR the user has left, or another window's answer, is in nobody's set here. And
+     * `selectedPrFile` says it is still wanted and is what the tab is built from, so an answer for a file
+     * the user has since moved off would otherwise put that file's diff in a tab named for another.
+     *
+     * The key leaves the set as it is consumed, which is what makes a duplicate answer open one tab.
+     *
+     * There is no `prDiff` any more: it was written here and read nowhere, the tab being the only
+     * consumer, so keying it would have keyed something nothing looks at.
+     */
     handleFileDiffReceived: enqueueActions(({ enqueue, self, context, event }) => {
       const ev = event as { type: 'pr.FILE_DIFF_RECEIVED'; data: GitDiff & { baseBranch: string; headBranch?: string } }
-      // Drop stale responses from a previously-selected PR — without this, a slow
-      // diff from PR A arriving after the user switched to PR B would show PR A's
-      // content (and open a stale diff tab) for PR B.
-      if (isStalePRDiffResponse(context, ev.data.baseBranch, ev.data.headBranch)) return
-      enqueue.assign({ prDiff: ev.data })
+      const key = fileKey(ev.data.baseBranch, ev.data.headBranch, ev.data.path)
+      if (!context.inFlightFileDiffs.has(key)) return
+      const selected = context.selectedPrFile
+      if (selected?.path !== ev.data.path) return
+      const remaining = new Set(context.inFlightFileDiffs)
+      remaining.delete(key)
+      enqueue.assign({ inFlightFileDiffs: remaining })
       enqueue(() => {
-        if (context.selectedPrFile) {
-          const diffTabId = `pr-diff:${context.selectedPrFile.path}`;
-          const diffTab = {
-            path: diffTabId,
-            content: '',
-            modified: false,
-            isDiff: true,
-            isPrDiff: true,
-            gitDiff: ev.data,
-            gitFile: context.selectedPrFile
-          }
-          addTabToParent(self, diffTab)
+        const diffTab = {
+          path: `pr-diff:${selected.path}`,
+          content: '',
+          modified: false,
+          isDiff: true,
+          isPrDiff: true,
+          gitDiff: ev.data,
+          gitFile: selected
         }
+        addTabToParent(self, diffTab)
       })
     }),
 
@@ -401,8 +443,9 @@ export const pullRequestState = setup({
       // Only auto-load diff for the current branch PR if no manual selection is active
       if (!context.isManualPRSelection) {
         if (incoming) {
-          const needsDiff = incoming.baseRefName !== context.prBaseBranch
-            || context.prFiles.length === 0
+          // Keyed, so this asks whether *this* comparison is held rather than whether any files are —
+          // the question a single slot could not ask when two PRs share a base
+          const needsDiff = !context.diffsByRef[refKey(incoming.baseRefName, incoming.headRefName)]
             || context.diffStale
           if (needsDiff) {
             enqueue.assign({ prBaseBranch: incoming.baseRefName })
@@ -642,22 +685,29 @@ export const pullRequestState = setup({
     }),
 
     // Load diff for the PR whose details just arrived. Same stale-response guards as
-    // handlePRDetailsReceived — skip background refreshes for a different PR (unless
-    // manually selected), and skip responses older than the newest accepted so we don't kick off
-    // a pointless diff fetch that the updated guard in handleBranchDiffReceived would
-    // then drop anyway.
-    loadDiffForSelectedPR: ({ event, context }) => {
+    /**
+     * Asks for the selected PR's diff — skipping a background refresh for a different PR unless it was
+     * manually selected, and skipping an answer older than the newest accepted so it does not start a
+     * fetch for a PR the viewer has moved past.
+     *
+     * **It sets `prBaseBranch`, and that is load-bearing.** The base the view is on is half the key its
+     * files are read under, and it used to be written by `handleBranchDiffReceived` from whatever answer
+     * arrived — which with keyed slots would let a stale answer point the view at its own slot. Every
+     * asker names the base it is asking about; no answer does.
+     */
+    loadDiffForSelectedPR: enqueueActions(({ enqueue, event, context }) => {
       const ev = event as { type: 'pr.PR_DETAILS_RECEIVED'; data: { pr: GhPullRequest; comments: GhPRComment[]; fetchedAt: number } }
       const prNumber = ev.data.pr.number
       if (ev.data.fetchedAt < (context.latestPrDetailsFetchedAt[prNumber] ?? 0)) return
       const expected = context.pendingManualPRNumber ?? context.selectedPR?.number
       if (expected !== undefined && expected !== prNumber) return
-      sendToSystem('code', {
+      enqueue.assign({ prBaseBranch: ev.data.pr.baseRefName })
+      enqueue(() => sendToSystem('code', {
         type: 'pr.GET_BRANCH_DIFF',
         baseBranch: ev.data.pr.baseRefName,
         headBranch: ev.data.pr.headRefName,
-      })
-    },
+      }))
+    }),
 
     // --- Comment actions (optimistic) ---
 
@@ -824,12 +874,12 @@ export const pullRequestState = setup({
   id: 'pr',
   initial: 'idle',
   context: {
-    prFiles: [],
+    diffsByRef: {},
+    inFlightFileDiffs: new Set<string>(),
     prBaseBranch: '',
     prError: null,
     isPrLoading: false,
     selectedPrFile: null,
-    prDiff: null,
 
     openPRs: [],
     selectedPR: null,
@@ -876,7 +926,8 @@ export const pullRequestState = setup({
         'pr.REFRESH_STATUS': {
           actions: [
             assign({
-              isPrLoading: ({ context }) => context.prFiles.length === 0,
+              isPrLoading: ({ context }) =>
+                !context.diffsByRef[refKey(context.prBaseBranch, context.selectedPR?.headRefName)],
               isGhChecking: ({ context }) => !context.prCheckCompleted,
               branchPRCheckFailed: false,
             }),
@@ -900,7 +951,8 @@ export const pullRequestState = setup({
               prCheckCompleted: false,
               selectedPR: null,
               branchPR: null,
-              prFiles: [],
+              diffsByRef: {},
+              inFlightFileDiffs: new Set<string>(),
               prBaseBranch: '',
               diffStale: false,
               // Clear any dangling optimistic rollback snapshots — no selectedPR
@@ -972,7 +1024,7 @@ export const pullRequestState = setup({
         'pr.REFRESH_PR': { actions: ['refreshPRDetails', assign({ isLoadingDetails: true })] },
         'pr.BACK_TO_BRANCH': {
           actions: [
-            assign({ selectedPR: null, isManualPRSelection: false, pendingManualPRNumber: null, prFiles: [], diffStale: true, prCheckCompleted: false, isGhChecking: true }),
+            assign({ selectedPR: null, isManualPRSelection: false, pendingManualPRNumber: null, diffsByRef: {}, inFlightFileDiffs: new Set<string>(), diffStale: true, prCheckCompleted: false, isGhChecking: true }),
             'refreshPrStatus',
           ]
         },

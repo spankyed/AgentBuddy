@@ -249,6 +249,7 @@ import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { usePlugin, useShell } from '@abuddy/sdk/fe'
 import type { CodeState } from '#features/code/fe/state.ts'
+import { refKey } from '#features/code/fe/features/pull-request/state.ts'
 import {
   AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
   Loader2, ArrowLeft, X
@@ -273,7 +274,10 @@ const prActor = codeChild(codeActor, 'pr')!
 const commitActor = codeChild(codeActor, 'commit')!
 
 // State selectors
-const prFiles = useSelector(prActor, (state) => state.context.prFiles)
+// The comparison this view is on, read from the slot keyed by it (`refKey`): an answer for any other PR
+// lands in its own key and is never read here, which is what replaced a staleness guard
+const prFiles = useSelector(prActor, (state) =>
+  state.context.diffsByRef[refKey(state.context.prBaseBranch, state.context.selectedPR?.headRefName)] ?? [])
 const prBaseBranch = useSelector(prActor, (state) => state.context.prBaseBranch)
 const prError = useSelector(prActor, (state) => state.context.prError)
 const isPrLoading = useSelector(prActor, (state) => state.context.isPrLoading)

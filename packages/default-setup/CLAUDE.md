@@ -111,6 +111,7 @@ The worked examples here:
 | `GET_NODE_DETAILS` → `NODE_DETAILS_RESULT` | `Map<nodeId, TNodeEntity>` (`features/database/fe/state.ts`), and `expandNode` checks `nodeDetails.has(id)` before asking, so the slot doubles as a cache |
 | `explorer.LIST_FILES` → `explorer.FILES_LISTED` | `dirContents[ev.data.path]` (`features/code/fe/features/explorer/state.ts:259`) |
 | `CREATE_NODE{tempId}` → `NODE_CREATED{tempId}` | the temp node it replaces, via `reconcileNodeId` (`features/flows/fe/state.ts`) |
+| `pr.GET_BRANCH_DIFF` → `pr.BRANCH_DIFF_RECEIVED` | `diffsByRef[refKey(base, head)]` (`features/code/fe/features/pull-request/state.ts`), read as the comparison the view is on, and `needsDiff` asks the slot rather than counting files |
 
 **Two limits, worth knowing before reaching for a key.** Where the slot is also the view's *membership
 list* — a list of open tabs, say — a write **creates** the row, so a reply for something the user has
@@ -169,6 +170,22 @@ since what it is compared against lives in the renderer and outlives the backend
 reload put it back to zero, every later answer then read as older than the viewer had accepted, and PR
 details silently stopped updating. The PR number was always the key; what the tie-break wanted was a clock,
 so it is `fetchedAt` now.
+
+**And a seventh correlation check this census missed, which is why it was the one with a hole.**
+`isStalePRDiffResponse` was not a guard, so counting guards did not find it: a function called inside two
+`enqueueActions` handlers, returning *reject*-true where every guard here returns accept-true. Never
+triaged, and it skipped its head check for an answer that carried no head — which is exactly what the
+branch-only asker's answers carry, since a branch with no PR compares against no head. Two PRs onto one
+base, the ordinary case, then let a branch diff land as a PR's files.
+
+A guard could have been fixed; the rule above says this job wanted no guard. The diff is a fetch, so it is
+`diffsByRef` now and the hole has nowhere to live — a key matches or it does not, and there is no
+permissive branch to leave open. Two things that fell out of it are worth copying. The answer must **not**
+write `prBaseBranch`: that is half the key the view reads under, so an answer setting it from its own
+payload would point the view at its own slot and be read after all — every asker names the base it asks
+about, no answer does. And the file-diff half **keeps** an in-flight check beside its key, because its
+answer opens a tab: this is the membership-list limit above, in the flesh. `tests/features/code/fe/features/pull-request/pr-correlation.spec.ts`
+holds both, and was the first spec for any `code` frontend machine.
 
 ## Services
 
