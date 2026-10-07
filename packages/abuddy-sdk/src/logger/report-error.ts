@@ -23,7 +23,25 @@ export interface ReportErrorInput {
   /** What reported it: a system or step id (`notes`, `brain-llm`) */
   source?: string;
   title?: string;
+  /**
+   * The verb that was attempted: `setPackEnabled`, `broadcastToPlugin`, `sendToSystem`. A reader filters on it
+   * to pick out one kind of report from a list of them, so it names **one** fact and keeps naming it —
+   * `undeclared-incoming.spec.ts` separates the bus's inward reports from its outward ones this way, and the
+   * E2E fixture collects the outward ones to fail a test on a dropped send.
+   *
+   * That is why `answering` below is its own field and not a third value here. Folding it in was tried on
+   * 2026-10-07 and shipped a regression: the fixture's filter went on naming one value while the bus started
+   * sending two, so dropped answers stopped failing any Playwright test and nothing noticed.
+   */
   operation?: string;
+  /**
+   * That the thing being reported was an **answer** rather than something a person asked for, from
+   * `Message.answering`. A separate axis from `operation`, which says which verb: a report can be an outward
+   * send *and* an answer, and a reader filtering for either must not lose the other.
+   *
+   * `true` or absent, never `false`, like the envelope field it comes from.
+   */
+  answering?: true;
   entityId?: string;
   /**
    * How loudly the app shows it. `fatal` replaces the window with an error page, `error` raises a
@@ -52,6 +70,8 @@ export type SystemErrorEvent = {
   title?: string;
   source?: string;
   operation?: string;
+  /** That this reports an answer rather than a command — a separate axis from `operation`, which says the verb */
+  answering?: true;
   entityId?: string;
   severity: SystemErrorSeverity;
   stack?: string;
@@ -107,6 +127,7 @@ function reportSystemError(input: ReportSystemErrorInput): void {
     message,
     source: input.source,
     operation: input.operation,
+    answering: input.answering,
     entityId: input.entityId,
     severity,
     stack: normalized.stack,
@@ -117,7 +138,7 @@ function reportSystemError(input: ReportSystemErrorInput): void {
     source: input.source ?? 'system',
     message,
     stack: normalized.stack,
-    meta: { errorId: event.errorId, operation: input.operation, entityId: input.entityId, severity, error: normalized },
+    meta: { errorId: event.errorId, operation: input.operation, ...(input.answering ? { answering: input.answering } : {}), entityId: input.entityId, severity, error: normalized },
   });
   // `via`, not `from`: a report is sent on behalf of whoever called `reportError`, and that is a source
   // (`'bus'`, `'action:Summarise'`) rather than a pack — the one thing this function is never told.

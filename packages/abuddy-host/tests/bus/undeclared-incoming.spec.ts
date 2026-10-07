@@ -186,25 +186,26 @@ describe('what it leaves alone', () => {
   });
 });
 
-/** The hatch this exists for, reaching the same check as a client's send does through `receiveClientEvent` */
 /**
- * The same split the outgoing side makes: `reply` and `sendToSystem` both land in this check, and naming the one
- * the caller did not call sends the next reader to a call site with no target in it.
+ * The same split the outgoing side makes: `reply` and `sendToSystem` both land in this check, and advice to fix
+ * a target sends the next reader to a call site with none in it.
  *
- * Note the helper above filters on `operation === 'sendToSystem'`, so these need their own — which is itself the
- * point being asserted.
+ * **The helper above still works, which is the design.** `answering` is its own field on the report, so
+ * `operation` goes on meaning "the reports this function made" and a reader filtering for direction keeps
+ * getting all of them. The first attempt made `operation` itself `'reply'`, which forced a second filter here
+ * and — outside the specs — left `@abuddy/testing`'s fixture collecting one value while the bus sent two.
  */
 describe('an answer to a system that declares no such event', () => {
-  const answers = () => takeSystemErrors()
-    .filter((error) => error.operation === 'reply')
-    .map((error) => error.message);
   const answer = (type: string) => { send({ to: MEMOS, event: { type }, answering: true }); };
+  const answers = () => reported();
 
-  it('names reply as the operation', async () => {
+  it('is marked as an answer, and still reported as this function\'s own', async () => {
     answer('NOT_DECLARED');
     await flush();
 
-    expect(answers()).toHaveLength(1);
+    const [error] = takeSystemErrors();
+    expect(error?.answering).toBe(true);
+    expect(error?.operation, 'so the direction filter above keeps finding it').toBe('sendToSystem');
   });
 
   it('says why an answer can be undeclared, rather than pointing at the contract alone', async () => {
@@ -228,7 +229,7 @@ describe('an answer to a system that declares no such event', () => {
 
     const all = takeSystemErrors();
     expect(all).toHaveLength(2);
-    expect(all.map((error) => error.operation)).toEqual(['sendToSystem', 'reply']);
+    expect(all.map((error) => error.answering)).toEqual([undefined, true]);
   });
 });
 

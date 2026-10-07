@@ -178,9 +178,16 @@ export function createBusMachine(options: BusOptions) {
         // not thereby suspicious — it just has one fewer clue in it.
         const sender = senderSuffix(event.message);
         // Four senders reach this one path — `untypedBroadcastToPlugin`, the generated `broadcastToPlugin`,
-        // `sendToWindow` and `reply` — and `operation` is the verb the caller called everywhere else in this repo.
-        // A `reply` caller named no id: the address came off the envelope, which is the point of the verb, so
-        // telling it to "check the id" sends the next reader to look at a call site that has none.
+        // `sendToWindow` and `reply` — and a `reply` caller named no id: the address came off the envelope,
+        // which is the point of the verb, so telling it to "check the id" sends the next reader to look at a
+        // call site that has none. So the wording varies by this, and the report carries it as its own field.
+        //
+        // **Not as a third `operation` value, which was tried and regressed.** `operation` says which verb,
+        // and two readers filter on it to mean *direction*: `undeclared-incoming.spec.ts` separates this
+        // function's reports from `routeIncoming`'s, and `@abuddy/testing`'s fixture collects these to fail a
+        // test on a dropped send. Making it `answering ? 'reply' : 'broadcastToPlugin'` left that fixture
+        // filtering for one value while this sent two, so a dropped answer stopped failing any Playwright
+        // test — silently, there being no case over the fixture. Two facts, two fields.
         const answering = event.message.answering === true;
         const accepted = options.registry.getPluginEventValidationMap().get(pluginId);
         const reportDrop = (message: string) => {
@@ -196,7 +203,7 @@ export function createBusMachine(options: BusOptions) {
           // `diagnostic`: logged, recorded, and failing any pack test that leaves one — but no toast.
           // Whoever is using the app can do nothing about a send to a plugin nobody declares, and the
           // message already reaches the Logs plugin, where the person who can is looking.
-          reportError({ source: 'bus', operation: answering ? 'reply' : 'broadcastToPlugin', severity: 'diagnostic', error: new Error(message) });
+          reportError({ source: 'bus', operation: 'broadcastToPlugin', ...(answering ? { answering } : {}), severity: 'diagnostic', error: new Error(message) });
         };
         if (accepted === undefined) {
           // A name a connection claimed rather than a pack registering it (`host/drive`). No pack describes it, so
@@ -250,16 +257,19 @@ export function createBusMachine(options: BusOptions) {
           if (accepted === undefined || accepted.has('*') || accepted.has(type)) return;
           if ((SYSTEM_EVENT_TYPES as readonly string[]).includes(type)) return;
           const sender = senderSuffix(message);
-          // As on the outgoing side: `reply` and `sendToSystem` both land here, and naming the one the caller did
-          // not call sends the next reader to a call site with no target in it. In the key for the same reason the
-          // outgoing one has it — the wording varies by this, so the dedupe must too.
+          // As on the outgoing side: `reply` and `sendToSystem` both land here, and advice to fix a target sends
+          // the next reader to a call site with none in it. Its own field rather than an `operation` value, for
+          // the reason the outgoing side records — the helper in `undeclared-incoming.spec.ts` filters on
+          // `operation` to mean "the reports this function made", and a second value there takes that away. In
+          // the key because the wording varies by it, so the dedupe must too.
           const answering = message.answering === true;
           const pair = `${to}/${type}/${sender}/${answering}`;
           if (reportedDrops.has(pair)) return;
           reportedDrops.add(pair);
           reportError({
             source: 'bus',
-            operation: answering ? 'reply' : 'sendToSystem',
+            operation: 'sendToSystem',
+            ...(answering ? { answering } : {}),
             severity: 'diagnostic',
             error: new Error(answering
               ? `Answered "${type}"${sender} to the "${to}" system, which declares no such event — it will be ignored. \`reply\` is typed against the answering side's outgoing events and cannot be checked against the asking system's incoming, so this compiles: either "${to}" must declare "${type}" among its contract's incoming events, or the answer has to be an event it already declares.`

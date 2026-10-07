@@ -59,16 +59,33 @@ afterEach(() => {
  * What a dropped *answer* says, which is a different sentence from a dropped command.
  *
  * One path serves four senders — `untypedBroadcastToPlugin`, the generated `broadcastToPlugin`, `sendToWindow`
- * and `reply` — and `operation` is the verb the caller called everywhere else in this repo. A `reply` caller
- * named no id, so address advice sends the next reader to a call site that has none.
+ * and `reply` — and a `reply` caller named no id, so address advice sends the next reader to a call site that
+ * has none.
+ *
+ * **`answering` is its own field on the report, not a third `operation` value.** `operation` says which verb,
+ * and two readers filter on it to mean *direction*: `undeclared-incoming.spec.ts`'s helper, and
+ * `@abuddy/testing`'s fixture, which collects these to fail a test on a dropped send. The first attempt made
+ * it `answering ? 'reply' : 'broadcastToPlugin'` and shipped a regression — the fixture went on filtering for
+ * one value while this sent two, so a dropped answer stopped failing any Playwright test, silently, there
+ * being no case over the fixture. The case below that asserts `operation` is unchanged is what holds it.
  */
 describe('a dropped answer', () => {
   const answer = (type: string) => send({ to: 'memo-pack/memos', event: { type }, answering: true });
 
-  // Drop `answering` from the message `_replyTo` builds and this is the case that goes back to 'broadcastToPlugin'
-  it("names reply as the operation, not the verb the caller didn't call", async () => {
+  /**
+   * **The report says it was an answer without changing what verb it says.** Both halves matter: lose the flag
+   * and the diagnostic cannot tell the two apart; move it into `operation` and every reader filtering on that
+   * for direction breaks, which is what happened the first time.
+   *
+   * Drop `answering` from the message `_replyTo` builds and the first assertion fails.
+   */
+  it('is marked as an answer, on its own field rather than as a verb', async () => {
     await answer('NOT_DECLARED');
-    expect(takeSystemErrors()[0]?.operation).toBe('reply');
+    const [error] = takeSystemErrors();
+
+    expect(error?.answering).toBe(true);
+    expect(error?.operation, 'the verb this path is, which readers filter on for direction')
+      .toBe('broadcastToPlugin');
   });
 
   it('says why a reply can be undeclared at all, rather than giving address advice', async () => {
@@ -91,6 +108,7 @@ describe('a dropped answer', () => {
     await send({ to: 'memo-pack/memos', event: { type: 'NOT_DECLARED' } });
     const [error] = takeSystemErrors();
     expect(error?.operation).toBe('broadcastToPlugin');
+    expect(error?.answering, 'absent rather than false, as on the envelope').toBeUndefined();
     expect(error?.message).toContain('add it to that system\'s outgoing events');
   });
 
@@ -105,7 +123,7 @@ describe('a dropped answer', () => {
     await answer('NOT_DECLARED');
     const reported = takeSystemErrors();
     expect(reported).toHaveLength(2);
-    expect(reported.map((e) => e.operation)).toEqual(['broadcastToPlugin', 'reply']);
+    expect(reported.map((e) => e.answering)).toEqual([undefined, true]);
   });
 
   // And the dedupe still works within each kind, so the key gained a field rather than losing its job

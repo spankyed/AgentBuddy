@@ -100,7 +100,7 @@ describe('reportError', () => {
     });
     const event = {
       type: 'SYSTEM_ERROR', errorId: expect.stringMatching(/^err_/), title: 'Could not save',
-      message: 'boom', source: 'notes', operation: 'save', entityId: undefined, severity: 'error', stack: error.stack,
+      message: 'boom', source: 'notes', operation: 'save', answering: undefined, entityId: undefined, severity: 'error', stack: error.stack,
       timestamp: expect.any(Number),
     };
     expect(outgoing).toEqual([{ to: 'host/application', event, via: 'notes' }]);

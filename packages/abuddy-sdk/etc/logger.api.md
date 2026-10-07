@@ -55,11 +55,11 @@ export { reportError_2 as reportError }
 
 // @public (undocumented)
 export interface ReportErrorInput {
+    answering?: true;
     // (undocumented)
     entityId?: string;
     // (undocumented)
     error: unknown;
-    // (undocumented)
     operation?: string;
     severity?: SystemErrorSeverity;
     source?: string;
@@ -86,6 +86,7 @@ export type SystemErrorEvent = {
     title?: string;
     source?: string;
     operation?: string;
+    answering?: true;
     entityId?: string;
     severity: SystemErrorSeverity;
     stack?: string;
