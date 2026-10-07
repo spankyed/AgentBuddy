@@ -1,136 +1,110 @@
-# Codegen Staleness: Problem & Plan
+# Codegen staleness
 
-## Problem
+`src/__generated__/` is written by `abuddy generate-entries` (`@abuddy/cli`'s `commands/generate-entries.ts`,
+over `generatePackFiles` in `@abuddy/sdk/build`) from inputs that reach it through no module graph: nothing
+anyone imports connects `abuddy.json` to the barrels generated from it, so the files can describe a pack that
+is no longer there.
 
-Generated `__generated__/` files are a disconnected node in the build graph. They depend on three input categories but only regenerate on `npm install` (prepare hook) or an explicit `abuddy generate-entries`.
+**Nothing here is open work.** This records what keeps them current, what that mechanism cannot see, and the
+one thing that was planned for it and will not be built. The rule-level description lives with the command
+(`packages/abuddy-cli/CLAUDE.md`, the `generate-entries` row); the annotated list of what each generated file
+holds is `packages/default-setup/CLAUDE.md`.
 
-### Inputs that drive generation
+## What generation reads
 
-| Input | Changes when... | Example |
-|---|---|---|
-| **Manifest** (`abuddy.json`) | Feature added/removed, plugin paths change, extensions change | Adding a 14th feature |
-| **Generator template** (`generate-entries.ts`) | Codegen pattern changes | `registerPackFE()` -> `export default` |
-| **Source files** (existence + content) | FE extension files, service modules, step types | Renaming a service export |
-
-### What triggers regeneration
-
-| Trigger | Runs `generate-entries`? |
+| Input | Moves when |
 |---|---|
-| `npm install` | Yes (via `prepare` script) |
-| `abuddy generate-entries` (manual) | Yes |
-| `npm start` | Yes (via `prebuild:be`) |
-| `npm run start:gen` | Yes (via `npm run compile` + `prebuild:be`) |
-| `npm run build:be` | Yes (via `prebuild:be`) |
-| `npm run build` | Yes (via `prebuild:be`) |
-| Branch switch (`git checkout`) | No (picked up on next `npm start`) |
-| Vite dev server restart | No (picked up on next `npm start`) |
+| the manifest (`abuddy.json`) | a feature, plugin path, entity, extension, repository or seed format changes |
+| the generator | codegen's own output pattern changes (`codegenSource()` is what hashes it) |
+| the pack's `src/` | a service export's shape, a step's `build.ts`/`types.ts`, which `*-fe.ts` files exist |
+| a resolved dependency's snapshot | generated flow helpers and `deps/<id>.d.ts` follow every dependency |
 
-### Staleness scenarios
+## What regenerates
 
-What follows is the state before Phase 1. Every one of these is closed by the generation `prebuild:be`
-now runs; they are kept because Phase 3 is argued against them.
+Every caller of `generateEntries`, which is the whole set:
 
-1. **Branch switch**: `__generated__/` is gitignored, so files survive `git checkout`. Branch A's generated files persist when you switch to branch B, even if the manifest, template, or features differ.
+- **`prepare`** — so `npm install` in the pack regenerates.
+- **`abuddy generate-entries`** by hand, as `npm run generate:entries`; `--force` ignores the stamp below.
+- **`abuddy build`**, unless `--skip-generate`. This is the one every repo command arrives through:
+  `npm start` (`prebuild:be:dev` → `build:dev` → `abuddy build --skip-fe`), `npm run build:be`
+  (`prebuild:be`, which also runs `generate:entries` outright), `npm run build` (`-ws`, through the pack's own
+  `build`) and `npm run compile`.
+- **`abuddy facade-report`** — it bundles the facade from `src/__generated__/pack-types.ts`, so a report held
+  against a stale barrel would be held against nothing; it regenerates before it bundles.
+- **`abuddy init`**, and **`abuddy run`** on each rebuild (`--force`).
+- **`scripts/repro.ts`** (`--force`), because a second build that skipped codegen would re-hash output it never
+  regenerated — `npm run check:repro` compares two builds of one input and that is what makes them two.
 
-2. **Template change**: Editing `generate-entries.ts` (the codegen template) doesn't regenerate output. The on-disk files keep the old pattern until an explicit re-run.
+A **branch switch or a Vite restart is not one of them**: `src/__generated__/` is gitignored, so it survives
+`git checkout`, and what fixes it is the next command above. Mid-session that is a restart; the stamp is what
+makes paying for it nearly free.
 
-3. **Manifest change**: Adding/removing a feature, changing a plugin path, modifying extensions in `abuddy.json` -- all require manual re-generation.
+## Freshness is a recorded stamp, not a timestamp
 
-### Generation characteristics
+`.inputs-hash` holds `{ hash, files }` — a SHA-256 over the inputs above, and the list of files that run
+wrote. `staleReason` asks three questions in that order: is there a record, is every file it recorded still
+there, does the hash still match. The missing-output check is first on purpose, and the source comment has the
+measurement: recording only the hash let `rm src/__generated__/paths.ts` leave the pack unbuildable while the
+command printed *"inputs unchanged, skipping"*. The list is recorded rather than fixed because the output set
+follows the manifest — a pack with no plugins never writes `fe.ts`, and a hard-coded expectation would call it
+stale for ever. It is the shape `unitStaleReason` (`@abuddy/host/build/packages-built`) uses for the package
+builds, asked in the same order.
 
-- Produces **15 files** in **~0.8s**
-- Pure sync I/O: reads manifest, checks file existence, reads a few service/step files
-- No network calls, no node_modules scanning, no heavy compilation
-- **No incremental checking**: always rewrites all files unconditionally
-- **Idempotent**: safe to run repeatedly
+Measured on default-setup, median of 3 on an 86%-idle machine, 2026-10-07: **0.72s when it skips, 1.54s when
+it regenerates.** The ~0.8s between them is the work; the rest of either figure is npm and Node starting, which
+is why a command that regenerates once per start is not worth avoiding.
 
----
+**One writer per pack.** `.generating.lock` (`holdExclusiveLock`) refuses a second concurrent run by name,
+because two runs interleaving their writes lose silently: every file is written, the last writer wins each one,
+and the result reads as a build nobody can reproduce. It happened here — concurrent runs left the type barrel
+describing a fix that was already compiled.
 
-## Current state: pack loading is already virtual
+**What the stamp cannot see is bounded by hashing a superset.** A key over a *list* of what someone believed
+the reads were can go stale from a read nobody listed; this hashes all of `src/` instead, minus
+`__generated__`. So an unlisted read is not a failure mode, and what it costs instead is regenerating when an
+unrelated source file moves — the cheaper direction, at 0.8s of work.
 
-The **loading mechanism** for built-in packs now uses virtual modules on both sides:
+## Loading is virtual; generation is not
 
-- **BE**: `virtual:built-in-pack-loaders` (tsup esbuild plugin in `tsup.config.ts`) — scans `packages/` for `abuddy.json` at build time, generates a loader map of `import()` expressions. esbuild traces these and bundles the pack code as a separate chunk. `setup/backend.ts` imports this module and passes its loaders to the host pack loader (`loadBuiltInPacks`, `@abuddy/host/packs/runtime`) as `bundledLoaders`.
-- **FE**: `virtual:built-in-packs` (Vite plugin in `renderer/vite.config.ts`) — same discovery pattern, generates a lazy-loader map. `main.ts` imports this and registers each pack's frontend in the renderer's frontend registry (`fePacks.registerPackFE()`).
-
-These virtual modules handle **how** packs are loaded (dynamically, disableably). They import FROM the on-disk `__generated__/pack-entry.ts` and `pack-entry-fe.ts`. The staleness problem is about how those on-disk files are **generated**, which is a separate layer.
-
-### Two layers
-
-```
-Loading layer (virtual — done):
-  virtual:built-in-pack-loaders  →  import('pack-entry.ts')
-  virtual:built-in-packs         →  import('pack-entry-fe.ts')
-
-Generation layer (on-disk — staleness lives here):
-  pack-entry.ts, pack-entry-fe.ts    ← complex aggregation (systems, plugins, EARS, boot hooks)
-  ears.ts, system-ids.ts, services.ts, types.ts, ...  ← simple re-export barrels
-```
-
----
-
-## Plan
-
-Three changes, layered from immediate to structural.
-
-### Phase 1: Wire generation into the dev loop — DONE
-
-`generate-entries` now runs as part of `prebuild:be` (before `compile`), so every `npm start`, `npm run build:be`, and `npm run build` regenerates pack barrels. `start:gen` runs `npm run compile` first, which builds the built-in pack in full.
-
-**Cost**: ~0.8s added to every start. Negligible next to `build:be`.
-
-**Covers**: Template changes, manifest changes, branch switches (on next `npm start`).
-
-**Doesn't cover**: Mid-session branch switches without restart (Phase 2 hash check would make adding more trigger points cheap).
-
-### Phase 2: Content-hash freshness check — DONE
-
-The generator now hashes its inputs (`abuddy.json` content + `generate-entries.ts` template source) with SHA-256 and writes `.inputs-hash` to `__generated__/`. On subsequent runs, if the hash matches, generation is skipped entirely.
+Two layers, and only the first of them is a virtual module:
 
 ```
-__generated__/
-  .inputs-hash        <- sha256(abuddy.json + generate-entries.ts content)
-  pack-entry.ts
-  pack-entry-fe.ts
-  ...
+Loading       virtual:built-in-pack-loaders  (api, tsup plugin)      → import('pack-entry.ts')
+              virtual:built-in-packs         (renderer, vite plugin) → import('pack-entry-fe.ts')
+Generation    the on-disk barrels those two import from
 ```
 
-When inputs are unchanged, `generate-entries` exits in ~5ms instead of ~0.8s. Use `--force` to bypass the check.
+Both plugins scan `packages/` for `abuddy.json` at build time and generate a map of `import()` expressions;
+`packages/api/src/runtime/index.ts` and `packages/renderer/src/main.ts` are what consume them.
+[`one-kind-of-pack.md`](one-kind-of-pack.md) is the plan that reworks that layer, and it is about *how* packs
+are loaded rather than how the files they import are produced.
 
-Also provides a diagnostic: if someone reports a staleness bug, check whether `.inputs-hash` matches current inputs.
+## Virtualising the barrels: won't do
 
-### Phase 3: Virtualize simple barrels
+The plan this document opened with proposed making the simple re-export barrels virtual modules, produced from
+the manifest by a Vite/esbuild plugin, so they could not be stale at all. **That cannot work here, and the
+blocker is not cost.**
 
-The 15 generated files split into two categories with different virtualization tradeoffs:
+A virtual module has no file, so every tool that reads pack code has to be taught to resolve it — and the
+pack's own typecheck is one of those tools. `vue-tsc --noEmit` compiles `src/**` (the pack's
+`tsconfig.json` `include`), reaching the barrels through a `#generated/*` mapping that is declared **twice** by
+necessity, in `package.json` `imports` for the runtimes and `tsconfig.json` `paths` for the compiler. `tsc`
+has no plugin to ask, so a virtual barrel is `TS2307` to it, and the declarations would have to be written to
+disk anyway — which is the file the plan wanted to remove. The same reasoning retired the `@/` path aliases
+([`goal-one-way-to-name-your-own-modules.md`](../archive/goals/goal-one-way-to-name-your-own-modules.md)):
+four bundler configs each re-implementing a mapping no runtime reads.
 
-**Simple re-export barrels** (strong candidates for virtual modules):
-- `ears.ts` — re-exports EARS enums from `.abuddy/generated/ears`
-- `system-ids.ts` — re-exports system IDs from each feature's system file
-- `services.ts` — aggregates service exports from feature service modules
-- `types.ts` — type barrel from each feature's types file
-- `events.ts` — `PackEvents` and the typed `emit`/`broadcastToPlugin` facade
-- `step-types.ts` — step type registry
-- `references.ts` — reference type barrel from each feature's references file
-- `seeders.ts` — seeder aggregation
+What the plan was reaching for is already had by other means: the stamp makes regeneration cheap enough to run
+on every build, the missing-output check makes a deleted barrel loud instead of silent, and the lock makes two
+runs an error rather than a corruption.
 
-These are pure barrels: scan `abuddy.json`, generate `export { x } from '../features/y'`. A Vite/esbuild plugin can produce them on the fly from the manifest. Eliminates staleness for these files entirely.
+**The condition that would revive it:** a generated module that no pack source imports and no `tsc` program
+includes. There is none today, because a pack's tsconfig includes its `src/` whole.
 
-**Complex pack entries** (keep as generated files):
-- `pack-entry.ts` — aggregates 13 systems, services, EARS config, boot hooks, seed manifest, migrations, features list into a `PackRegistration` object
-- `pack-entry-fe.ts` — aggregates 13 plugins, step FE definitions, tiptap plugins, app extensions, artifacts, blocks into a `PackFERegistration` object
-- `dsl-register-fe.ts` — Monaco DSL type registration, importing the definitions `abuddy build` writes to `dist/defs/monaco/`
-- `flow-helpers.ts` — flow step helper generation
+## Related: the FE barrel
 
-The aggregation logic for pack entries (~200 lines in `generate-entries.ts`) is non-trivial. Moving it into build plugins means duplicating it for Vite and tsup (or abstracting into a shared function — which is the codegen called from a different place). Phases 1+2 keep these files fresh with minimal friction.
-
-**End state**: Simple barrels are virtual (zero staleness). Pack entries remain generated files kept fresh by Phase 1+2. The loading layer is already virtual.
-
----
-
-## Related: FE barrel contamination
-
-The staleness investigation uncovered a separate issue: the SDK `utils/index.ts` barrel mixes browser-safe and Node-only modules. FE-reachable SDK modules that import from the barrel pull `paths.ts` (process.env) and other Node-only modules into the browser bundle.
-
-**Fix applied**: Extracted `randomId` to `utils/random-id.ts`. FE-reachable consumers import directly from that file, bypassing the barrel (the EARS engine has since moved to `@abuddy/ears`, which has its own id helper).
-
-**Principle**: FE-reachable SDK modules must never import from the `utils/` barrel. Import the specific file instead. The barrel is a BE convenience -- inherently Node-only due to `paths`, `media`, `export`, `seed` (`resolve-cli` has since moved to default-setup's code feature).
+The investigation that produced this document also found the first instance of a separate rule, which now
+lives in the root `CLAUDE.md`: **frontend-reachable SDK code imports `@abuddy/sdk/utils/pure` or a specific
+file, never the `@abuddy/sdk/utils` barrel**, which is Node-only by construction (`paths`, `media`, `export`,
+`seed`). The instance was `randomId`, pulling `process.env` into the browser bundle through the barrel; it is
+`utils/random-id.ts` now, re-exported from `pure.ts`.
