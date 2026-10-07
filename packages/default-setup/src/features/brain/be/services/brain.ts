@@ -51,7 +51,12 @@ const listenersByEvent = new Map<string, Map<string, ListenerEntry>>();
 /** Secondary index: id -> entry for fast unlisten() lookup */
 const listenersById = new Map<string, ListenerEntry>();
 
-/** Auto-increment counter for unnamed listeners */
+/**
+ * Auto-increment counter for unnamed listeners. Safe as module state because it only ever names entries in
+ * the two maps above, which are module state too: `removeAllListeners` clears them and this keeps counting,
+ * so a reused number cannot collide with a live listener. It would stop being safe if an id generated here
+ * were ever written somewhere that outlives the process.
+ */
 let nextAutoId = 1;
 
 // --- Public API (exposed to action code via services.brain) ---

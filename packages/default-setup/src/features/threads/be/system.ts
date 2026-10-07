@@ -22,6 +22,13 @@ import { ref } from '#generated/ref.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('threads');
+/**
+ * De-duplicates the birth flow within one process, and nothing more: the durable answer is
+ * `services.appData.hasOnboarded()` (the app's `AppState` row), which `checkOnboarding` reads first. So a
+ * pack reload resetting this to `false` is correct rather than a bug — the guard falls back to the stored
+ * answer and starts onboarding only for a user who really has not onboarded. It would become one if the
+ * durable half were ever dropped from that condition, leaving this flag as the only gate.
+ */
 let birthFlowStarted = false;
 
 
