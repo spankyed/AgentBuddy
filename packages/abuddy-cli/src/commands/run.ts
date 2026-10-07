@@ -5,7 +5,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { build } from './build';
 import { findPackRoot, readManifest } from '../utils';
-import { findFEEntry, packExternalsPlugin } from '../build/fe-bundler';
+import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
 import { cliDirs, parseAppFlags, resolveDevelopmentApp, type AppTarget } from '../app/app-target';
 import { instanceFor, parseInstanceFlags, removeInstance, INSTANCE_USAGE } from '../app/instances';
 import { copySecretsInto } from '../app/instance-secrets.ts';
@@ -21,7 +21,7 @@ const HELP = `
 Usage: abuddy run [--app-root <path> | --app beta]
 
 Launch AgentBuddy with this pack installed, and keep it in step with your edits: FE changes
-hot-reload through Vite, BE changes rebuild, reinstall and reload in place.
+reload the window through Vite, BE changes rebuild, reinstall and reload in place.
 
 An app already running on the same data dir is used as it is; otherwise one is launched, and
 closing this command closes the app it started.
@@ -323,42 +323,7 @@ async function session(args: string[], hooks: SessionHooks) {
   }
 
   const vite = await import('vite');
-  const vue = (await import('@vitejs/plugin-vue')).default;
-
-  const entryRelative = '/' + path.relative(root, feEntry);
-
-  server = await vite.createServer({
-    root,
-    configFile: false,
-    plugins: [
-      packExternalsPlugin(root),
-      vue(),
-      {
-        name: 'pack-entry-redirect',
-        configureServer(srv) {
-          srv.middlewares.use((req, _res, next) => {
-            if (req.url === '/runtime/fe.js' || req.url === '/dist/fe.js' || req.url === '/@id/fe') {
-              req.url = entryRelative;
-            }
-            next();
-          });
-        },
-      },
-    ],
-    server: {
-      port: 5199,
-      strictPort: false,
-      cors: true,
-      hmr: {
-        protocol: 'ws',
-        host: 'localhost',
-      },
-    },
-    logLevel: 'info',
-    optimizeDeps: {
-      exclude: Object.keys((await import('@abuddy/host/build/shared-deps')).getSharedFeDeps(root)),
-    },
-  });
+  server = await vite.createServer(await packDevServerConfig(root, feEntry));
 
   const devServer = server as import('vite').ViteDevServer;
   await devServer.listen();
@@ -415,7 +380,10 @@ async function session(args: string[], hooks: SessionHooks) {
   });
 
   console.log(`\nDev server running at http://localhost:${port}`);
-  console.log(`FE changes hot-reload via Vite HMR.`);
+  // Measured 2026-10-07: a `.vue` edit reloads the window, it does not patch the component. Vite decides that
+  // because the pack's entry is imported by the app through `pack://`, outside Vite's module graph, so there is
+  // no accepting importer for the update to stop at. Saying "HMR" promised the component-level thing.
+  console.log(`FE changes reload the app's window (Vite watches this pack).`);
   console.log(`BE changes auto-rebuild and hot-reload via API.`);
   console.log('Press Ctrl+C to stop.\n');
 

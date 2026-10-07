@@ -2,13 +2,21 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import type { Plugin as VitePlugin, Rollup } from 'vite';
+import type { InlineConfig, Plugin as VitePlugin, Rollup } from 'vite';
 import { init as initModuleLexer, parse as parseModule } from 'es-module-lexer';
 import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeModules, sharedInstancePackage } from '@abuddy/host/build/shared-deps';
 import type { RecordReads } from './build-reads';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const EXTERNAL_PREFIX = '\0pack-external:';
+
+/**
+ * What a plugin hook sees of a Vite dev environment: enough to tell it from a build, and to ask it for a
+ * module's compiled source. Structural rather than imported, so this module keeps its one `vite` type import.
+ */
+interface DevEnvironmentLike {
+  readonly mode: string;
+}
 
 /**
  * A module that re-exports a host global. The host may be older than the pack's @abuddy/* packages:
@@ -141,13 +149,48 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
   }
 
   /**
+   * A module's source as this pipeline compiles it — SFCs through the Vue plugin, TypeScript through esbuild.
+   * The proxy's names have to come from the compiled form: an SFC's exports are not in its text.
+   *
+   * **The plugin runs in two contexts and they answer differently.** A build gives Rollup's `ModuleInfo`, where
+   * `ctx.load({ id }).code` is the compiled module. A dev server — which is `abuddy run` — gives a `ModuleInfo`
+   * **Proxy carrying only `id` and `meta`, which throws for every other property**, so reading `.code` there
+   * threw `[vite] The "code" property of ModuleInfo is not supported` for every host-shared module a pack
+   * imports. The pack's frontend then never transformed, and `abuddy run` printed "FE changes hot-reload via
+   * Vite HMR" over a loop that hot-reloaded nothing. Nothing caught it because every spec for this plugin drove
+   * it through `vite.build`; `fe-bundler-dev-server` drives the other context now.
+   *
+   * In dev it reads the file and strips types with esbuild, which is all the names need. Three things it is
+   * deliberately not, each tried first:
+   *
+   * - **not `transformRequest`**, which takes a URL and so answers to the dev server's file-serving rules —
+   *   these modules sit outside the pack root, where `/@fs` needs `server.fs.allow` to name the checkout;
+   * - **not the plugin container's `load`**, which routes through the dep optimizer and answers anything it
+   *   pre-bundles with "there is a new version of the pre-bundle";
+   * - **not the container's `transform`** either, which runs `vite:import-analysis` — and that throws the same
+   *   way for a module absent from the dev module graph. Nothing *serves* these modules in dev: the pack imports
+   *   the proxy, so the real module is never fetched and never enters the graph.
+   *
+   * What is left is the one thing a name needs, which is syntax. The gap to know: an SFC reached through
+   * `export * from './x.vue'` contributes nothing here, where a build compiles it through the Vue plugin. The
+   * `@abuddy/ui` entries that do that re-export a component as `default`, which a proxy always has.
+   */
+  async function compiledSource(ctx: Rollup.PluginContext, id: string): Promise<string | null> {
+    const dev = (ctx as { environment?: DevEnvironmentLike }).environment;
+    if (dev?.mode !== 'dev') return (await ctx.load({ id })).code;
+    if (!fs.existsSync(id) || id.endsWith('.vue')) return null;
+    const { transformWithEsbuild } = await import('vite');
+    return (await transformWithEsbuild(fs.readFileSync(id, 'utf-8'), id)).code;
+  }
+
+  /**
    * Named exports of a module as the build compiles it (SFCs through the Vue plugin, TypeScript
    * through esbuild), following `export * from` re-exports.
    */
   async function discoverModuleExports(ctx: Rollup.PluginContext, id: string, seen = new Set<string>()): Promise<string[]> {
     if (seen.has(id)) return [];
     seen.add(id);
-    const { code } = await ctx.load({ id });
+    const code = await compiledSource(ctx, id);
     if (code === null) return [];
     await initModuleLexer;
     const [imports, exports] = parseModule(code, id);
@@ -280,6 +323,45 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
         return generateGlobalProxy(specifier, sharedMod.globalKey, await discoverSharedExports(this, specifier));
       }
     },
+  };
+}
+
+/**
+ * The dev server `abuddy run` serves a pack's frontend from.
+ *
+ * Here rather than inline in the command, so a spec can drive the same server the command does. It is one
+ * declaration with two readers for a reason: the first spec to stand a dev server up wrote its own config, left
+ * out `optimizeDeps.exclude`, and spent its evidence on a dep optimizer the real server never reaches.
+ *
+ * `optimizeDeps.exclude` is what keeps the host-shared packages out of the pre-bundle: they are served as
+ * proxies over `window.__abuddy`, so pre-bundling them would both waste the work and hand the pack a second
+ * copy. No `resolve.conditions`, deliberately — a pack resolves the `@abuddy` packages the way its own author's
+ * install does, which is `dist` for an installed SDK and source for one linked to a checkout.
+ */
+export async function packDevServerConfig(root: string, feEntry: string): Promise<InlineConfig> {
+  const vue = (await import('@vitejs/plugin-vue')).default;
+  const entryRelative = '/' + path.relative(root, feEntry);
+  return {
+    root,
+    configFile: false,
+    plugins: [
+      packExternalsPlugin(root),
+      vue(),
+      {
+        name: 'pack-entry-redirect',
+        configureServer(srv) {
+          srv.middlewares.use((req, _res, next) => {
+            if (req.url === '/runtime/fe.js' || req.url === '/dist/fe.js' || req.url === '/@id/fe') {
+              req.url = entryRelative;
+            }
+            next();
+          });
+        },
+      },
+    ],
+    server: { port: 5199, strictPort: false, cors: true, hmr: { protocol: 'ws', host: 'localhost' } },
+    logLevel: 'info',
+    optimizeDeps: { exclude: Object.keys(getSharedFeDeps(root)) },
   };
 }
 
