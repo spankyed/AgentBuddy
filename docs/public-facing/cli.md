@@ -441,6 +441,25 @@ Show installed packs.
 
 Open the installed AgentBuddy app, or bring it to the front if it's running. Pass `-b` for AgentBuddy Beta. macOS only.
 
+#### `abuddy upgrade [-b] [--relaunch] [--force]`
+
+Install the newest published AgentBuddy into `/Applications`, replacing what is there. `-b` upgrades
+AgentBuddy Beta from the newest prerelease instead; the two channels never see each other's releases, so a
+beta never arrives as a production upgrade. macOS on Apple Silicon only, which is where the app is published.
+
+It takes the release's `.zip` and checks it against the `.sha256` published beside it, then expands it with
+`ditto` — which keeps the bundle's symlinks, permissions and code signature. Nothing is installed until that
+check passes, and the app already in `/Applications` is moved aside rather than deleted, so a failed install
+puts it back.
+
+It asks the running app to quit and waits for it to say it has, by the `app.lock` the app removes on
+shutdown; a copy that will not quit stops the upgrade rather than being killed, because replacing a bundle
+under a live process is the thing being avoided. Nothing here needs a GitHub token — the releases are public
+— though `GITHUB_TOKEN`/`GH_TOKEN` is used for the higher API rate limit if one is set.
+
+Already-current is reported rather than reinstalled; `--force` installs anyway, and `--relaunch` opens the
+app afterwards.
+
 ### Database
 
 `abuddy db` reads and changes the app's database (EARS on LMDB) from the command line: to look at data, repair it when the app can't start, or move it between machines.

@@ -25,6 +25,7 @@ Commands:
   drive [script]        Launch the app and drive it from a script in drive/ (not a test)
   test [args...]        Run E2E tests in AgentBuddy (--app-root <path> | --app beta)
   open [-b]           Open the installed AgentBuddy app
+  upgrade [-b] [--relaunch]  Install the latest AgentBuddy release into /Applications
   db <command>        Query, export, import or reset the app's database (AgentBuddy closed)
   info                Show pack summary
   doctor              Run health checks
@@ -54,6 +55,7 @@ const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>>
   'drive':      async () => (await import('./commands/drive')).drive,
   'test':       async () => (await import('./commands/test')).test,
   'open':       async () => (await import('./commands/open')).open,
+  'upgrade':    async () => (await import('./commands/upgrade')).upgrade,
   'db':         async () => (await import('./commands/db')).db,
   'info':       async () => (await import('./commands/info')).info,
   'doctor':     async () => (await import('./commands/doctor')).doctor,

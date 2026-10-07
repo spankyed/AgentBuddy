@@ -1,30 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { Readable, Transform } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
-import { Octokit } from '@octokit/rest';
 import semver from 'semver';
+import { downloadVerified, listAppReleases, type Download, type Release, type ReleaseAsset } from './app-releases.ts';
 
-/** Desktop app releases, published by .github/workflows/build-mac.yml. */
-const APP_RELEASES_REPO = { owner: 'spankyed', repo: 'AgentBuddy' };
 const PRODUCT_NAME = 'AgentBuddy Beta';
 /** Release file names use the product name without spaces (electron-builder.mjs artifactName). */
 const BETA_ARTIFACT_PREFIX = 'AgentBuddy-Beta';
-
-interface ReleaseAsset {
-  name: string;
-  browser_download_url: string;
-}
-
-interface Release {
-  tag_name: string;
-  draft?: boolean;
-  prerelease?: boolean;
-  assets: ReleaseAsset[];
-}
 
 export interface BetaRelease {
   version: string;
@@ -38,24 +21,13 @@ export interface BetaAppOptions {
   cacheDir: string;
   /** Injected for tests; defaults to Octokit (authenticated when GITHUB_TOKEN/GH_TOKEN is set). */
   listReleases?: () => Promise<Release[]>;
-  download?: (url: string) => Promise<Readable>;
+  download?: Download;
   log?: (message: string) => void;
 }
 
 export interface PackagedApp {
   version: string;
   executable: string;
-}
-
-async function listAppReleases(): Promise<Release[]> {
-  const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN, userAgent: 'abuddy-cli' });
-  return octokit.paginate(octokit.rest.repos.listReleases, { ...APP_RELEASES_REPO, per_page: 100 }) as Promise<Release[]>;
-}
-
-async function httpDownload(url: string): Promise<Readable> {
-  const response = await fetch(url, { headers: { 'User-Agent': 'abuddy-cli' } });
-  if (!response.ok || !response.body) throw new Error(`Download failed (${response.status}): ${url}`);
-  return Readable.fromWeb(response.body as import('node:stream/web').ReadableStream);
 }
 
 /**
@@ -80,12 +52,6 @@ export function pickBetaRelease(releases: Release[], hostVersion: string): BetaR
     if (semver.satisfies(appVersion, hostVersion, { includePrerelease: true })) return { version, zip, checksum };
   }
   return null;
-}
-
-async function readText(stream: Readable): Promise<string> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
-  return Buffer.concat(chunks).toString('utf-8');
 }
 
 export function packagedExecutable(appDir: string): string {
@@ -153,26 +119,12 @@ export async function ensureBetaApp(options: BetaAppOptions): Promise<PackagedAp
   const executable = packagedExecutable(appDir);
   if (fs.existsSync(executable)) return { version: release.version, executable };
 
-  const download = options.download ?? httpDownload;
-  const expected = (await readText(await download(release.checksum.browser_download_url))).trim().split(/\s+/)[0];
-
   fs.mkdirSync(path.dirname(appDir), { recursive: true });
   const staging = fs.mkdtempSync(path.join(path.dirname(appDir), `.${release.version}.download-`));
   try {
     log(`Downloading AgentBuddy Beta ${release.version}...`);
     const zipPath = path.join(staging, release.zip.name);
-    const hash = createHash('sha256');
-    const hashing = new Transform({
-      transform(chunk, _encoding, callback) {
-        hash.update(chunk);
-        callback(null, chunk);
-      },
-    });
-    await pipeline(await download(release.zip.browser_download_url), hashing, fs.createWriteStream(zipPath));
-    const actual = hash.digest('hex');
-    if (actual !== expected) {
-      throw new Error(`Checksum mismatch for ${release.zip.name}: expected ${expected}, got ${actual}`);
-    }
+    await downloadVerified({ asset: release.zip, checksum: release.checksum, to: zipPath, download: options.download });
 
     // ditto keeps the app bundle's symlinks, permissions and signature intact
     const extracted = path.join(staging, 'app');
