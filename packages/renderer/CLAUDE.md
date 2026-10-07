@@ -46,7 +46,7 @@ Its static imports are evaluated first: `virtual:built-in-packs` loads every bui
 - **`builtInPacksPlugin`**, using packs from `discoverBuiltInPacksForBuild(packages/)` (`@abuddy/host/build/discover`):
   - `virtual:built-in-packs` statically imports `@<packId>/__generated__/pack-entry-fe` for each pack that has an entry and that file, and exports `{ [packId]: () => Promise.resolve({ default }) }`. `generate-entries` writes the file (`npm run compile` / `abuddy build`).
   - `@<packId>/…` aliases into that pack's `src/`.
-  - `@/…` resolves into the importer's own pack `src/`, or into `renderer/src/` for renderer files. So `@/` inside default-setup means default-setup's `src`.
+  - `@/…` resolves into `renderer/src/`, whoever imports it — the renderer's own alias and nothing else's (`tsconfig.app.json` maps it the same way). A pack names its own modules with `#` subpath imports, which Node, Vite and esbuild resolve from the pack's own `package.json` without this hook, so the alias is not per-importer and no other bundler config implements it; `check:specifiers`' `pack-own-aliases` refuses a `@/` in pack code, which would resolve for `tsc` and for nothing else.
 - **`hostDepsPlugin`** generates `virtual:host-deps`: `window.__abuddy = { … }`, holding namespace imports of:
   - `getSharedFeDeps()` (vue, xstate, `@xstate/vue`, tiptap, reka-ui, lucide, vue-flow, every `@tiptap/pm/*` and `@tiptap/vue-3/*` subpath, `prosemirror-*` aliases);
   - `getSdkFeModules()` (`sdkFe`, `sdkEvents`, `sdkRuntime`, …);
