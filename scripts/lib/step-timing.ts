@@ -5,7 +5,7 @@
  */
 import type { SchedulableStep } from './chain-schedule.ts';
 import { type Machine, thisMachine, unmetRecordingConditions } from './core-budget.ts';
-import { declaredShare, type TimeoutClass } from './step-timeouts.ts';
+import { declaredShare, rungLimitSeconds, type TimeoutClass } from './step-timeouts.ts';
 
 /**
  * The longest chain of steps by `seconds`: the floor on wall time however many lanes there are. Reported so
@@ -50,6 +50,21 @@ export function criticalPath<S extends SchedulableStep>(steps: readonly S[]): { 
  * Written twice they drift apart silently, and the reasoning for the width lives here in one place.
  */
 export const BAND = 2;
+
+/**
+ * How slow a step may read before its declaration has stopped describing it: double, or the point where the
+ * declaration would fail its own bound, whichever comes first.
+ *
+ * **The cap is the half that was missing.** `BAND` and `declaredShare` were chosen independently, and where
+ * twice a declaration exceeds its rung's limit a cost could grow out of its own bound in silence — `suite`
+ * admits 75s, so a step declaring 60s was watched only from 120s. Capping here closes that with the band
+ * that already existed, rather than with a second watcher reading the same measurement.
+ *
+ * It bites three of the thirty steps, which is the point: for the rest `2 x declared` is the tighter number
+ * and nothing changes.
+ */
+export const driftBand = (declared: number, className?: TimeoutClass): number =>
+  (className === undefined ? declared * BAND : Math.min(declared * BAND, rungLimitSeconds(className)));
 
 /** Slower than a declared cost still describes */
 export const overBand = (declared: number, measured: number): boolean => measured > declared * BAND;
@@ -197,6 +212,21 @@ export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: T
    * carried on each row so the report can say which kind of run produced it.
    */
   wholeTable = true,
+  /**
+   * Which steps ran beside each one (`ScheduleResult.peers`). A step that shared the box was not measured —
+   * the chain admits steps in parallel, so an overlapped duration is the schedule's number rather than the
+   * step's, and projecting it onto a slower machine compounds a contention this rung was never sized for.
+   *
+   * **This is the gate the inequality argument did not supply.** A crowded reading is an upper bound, so it
+   * can exonerate and never convict — which was taken as a reason to report it with a caveat. The result was
+   * a row on every run against a step that had not moved, and a block a reader learns to skip takes
+   * `driftReport`'s sound rows with it. Where the evidence can only ever be one-sided, the honest output is
+   * none.
+   *
+   * Defaulted to no overlap so a caller measuring one step in isolation needs no argument, which is every
+   * unit case here and the `--cores 1` run the report's own advice names.
+   */
+  peers: ReadonlyMap<string, ReadonlySet<string>> = new Map(),
 ): Array<{ name: string; declared: number; measured: number; at: number; wholeTable: boolean }> {
   // Two of the three conditions, naming the one left out rather than leaving it absent: a partial run is
   // reported with that caveat, where another machine or another budget makes the number meaningless
@@ -209,6 +239,7 @@ export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: T
     // A cached step cost no time, so it is evidence of nothing — `criticalPath` skips it for the same reason
     if (ms === undefined || step.timeout === undefined || step.seconds === undefined) continue;
     if (declaredShare(step.seconds, step.timeout) > 1) continue;
+    if ((peers.get(step.name)?.size ?? 0) > 0) continue;
     const measured = Math.round(ms / 1000);
     const at = declaredShare(measured, step.timeout);
     if (at > 1) found.push({ name: step.name, declared: step.seconds, measured, at, wholeTable });
@@ -235,11 +266,20 @@ export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: T
  * with the packages fresh returns in 0.4s. Reporting that as drift told the first run of this to record
  * `seconds: 14 -> 0` — the cached cost, which is the exact confusion this field was corrected for.
  */
-export function driftedSteps<S extends SchedulableStep>(
+export function driftedSteps<S extends SchedulableStep & { readonly timeout?: TimeoutClass }>(
   steps: readonly S[],
   measuredMs: ReadonlyMap<string, number>,
-): Array<{ name: string; declared: number; measured: number }> {
+  /**
+   * Which steps ran beside each one (`ScheduleResult.peers`); empty means each was measured alone.
+   *
+   * Only the *slow* side reads it, which is the asymmetry that makes the gate sound: contention cannot make
+   * a step faster, so a reading under the band proves the declaration is high wherever it was taken, while
+   * one over the band proves nothing about a step that shared the box.
+   */
+  peers: ReadonlyMap<string, ReadonlySet<string>> = new Map(),
+): { drifted: Array<{ name: string; declared: number; measured: number }>; shared: number } {
   const drifted: Array<{ name: string; declared: number; measured: number }> = [];
+  let shared = 0;
   for (const step of steps) {
     const ms = measuredMs.get(step.name);
     if (ms === undefined || step.seconds === undefined) continue;
@@ -250,11 +290,26 @@ export function driftedSteps<S extends SchedulableStep>(
     // `check:tiers 0.3 -> 1` on every full run and the only thing it suggested, "re-measure, or record",
     // could not be done. Advice that cannot be taken teaches a reader to skip the report.
     if (Math.abs(measured - step.seconds) <= SECONDS_FLOOR) continue;
-    if (overBand(step.seconds, measured) || measured < step.seconds / BAND) {
+    // **A step that shared the box was not measured, and no threshold fixes that.** The chain admits steps
+    // in parallel — that is what makes it worth running — so an overlapped step's duration is a property of
+    // the schedule rather than of the step: `test:integration` caps itself at half the cores and reads
+    // 47.7s alone (median of 5, 93% idle) against 77-101s inside a run. Comparing that against a budget
+    // sized for the step alone can only convict the schedule.
+    //
+    // The *under* side still answers, because contention cannot make a step faster: a reading below the band
+    // proves the declaration is high wherever it was taken. So the asymmetry here is the same inequality the
+    // recorder's idle floor rests on, read in the one direction it holds.
+    const alone = (peers.get(step.name)?.size ?? 0) === 0;
+    const slow = measured > driftBand(step.seconds, step.timeout);
+    if (slow && !alone) {
+      shared += 1;
+      continue;
+    }
+    if (slow || measured < step.seconds / BAND) {
       drifted.push({ name: step.name, declared: step.seconds, measured });
     }
   }
-  return drifted;
+  return { drifted, shared };
 }
 
 /**

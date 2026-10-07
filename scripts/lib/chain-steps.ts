@@ -669,13 +669,19 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
  * (`step-timeouts.ts`), so neither deadline is a function of this number. What it still has to be is the
  * cost of the whole pool and never of a partial run, so that the drift report compares like with like.
  *
- * **Correcting one of these takes `--forget --step`.** A plain `--record` holds any move inside
- * `recordSeconds`' band, `max(1s, 35%)`, which is wider than the drift a row usually acquires; bare `--forget`
- * drops the band for every row at once, so a run that measured the machine rather than the code writes the
- * machine into all of them. `--step <step>` writes the row named and no other — the scope a correction wants,
- * and the reason a stale row here never needs editing by hand.
+ * **These come from `npm run measure`, not from `--record`, and that is a property of a pool.** A pool step
+ * overlaps peers in every chain run — the chain admits steps in parallel, which is what makes it worth
+ * running — so its duration there is the schedule's number and not the step's: `test:integration` reads
+ * 53.9s median of 5 (51.6s-55.4s) at 70% idle, 2026-10-07, and 77-101s inside a run. `--record` skips an
+ * overlapped step for that reason, so these three keys are the ones a correction edits here, with the
+ * measurement's conditions beside it.
+ *
+ * `measureCommandFor` (`unit-pool.ts`) gives each pool its own command, which is the one to measure: a pool
+ * caches inside itself, so its npm script is not what the chain ran.
  */
-export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 34, pack: 19, integration: 60 };
+// integration: 47.7s median of 5 at 93% idle and 48.2s on 2026-09-29 both agree; the 53.9s above was taken
+// at the printing floor and the gap is that contention, which is the whole reason this is not recorded
+export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 34, pack: 19, integration: 48 };
 
 /**
  * The files a chain step is declared in — the two tables, as one list, repo-relative.
