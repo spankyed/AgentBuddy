@@ -243,8 +243,9 @@ export function loadSingleExternalPack(
   }
   if (registration.boot?.seedManifest) {
     registration.boot = { ...registration.boot };
-    // External pack seeds are hash-checked per pack by importPackSeeds(); the declarative
-    // boot seed path tracks a single global hash and is reserved for built-in packs
+    // External pack seeds are hash-checked per pack by importPackSeeds(); the declarative boot seed path is
+    // reserved for built-in packs. It tracked a single global hash when that was the reason; it has been per
+    // pack since `builtInSeedHashes`, so what is left is that nothing has made the two paths one
     delete registration.boot.seedManifest;
   }
   const policy = registration.ears?.partitionPolicy;

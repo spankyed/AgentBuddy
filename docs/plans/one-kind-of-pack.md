@@ -86,11 +86,15 @@ The code that replaces (4) already exists, switched off by the four lines of (3)
 **Two reload paths.** `reloadBuiltInPack` (`reload.ts:133-177`) and `reloadExternalPack`, near-identical
 wrappers over one `reloadPack`.
 
-**Two seed-change mechanisms, both recorded in `AppState`.** `builtInSeedHashes` +
-`builtInSeedFingerprints` (a stat fingerprint and a global hash, `seed.ts:179-207`) against
-`externalSeedHashes` + `externalSeedDeps` (a per-pack hash and dependency state, `seed.ts:105-134`). The
-external one is the more capable; the built-in one carries `seedPolicy` (`evaluateSeedPolicy`,
-`seed.ts:152-162`), which the external path never evaluates.
+**Two seed-change mechanisms, both recorded in `AppState`.** `builtInSeedHashes`
+(`orchestrateDeclarativeSeed`, `seed.ts:170`) against `externalSeedHashes` + `externalSeedDeps` — a per-pack
+hash and the dependency state a failed seed faced (`importPackSeeds`, `seed.ts:88`). The external one is the
+more capable; the built-in one carries `seedPolicy` (`evaluateSeedPolicy`, `seed.ts:146`), which the external
+path never evaluates.
+
+**Narrowed on 2026-10-07** (`0a25ff990`): both hashes are content now, where the external one also hashed file
+times and the built-in one kept a `builtInSeedFingerprints` record of them as a fast path. What is left is two
+*records* over one question, not two answers to it — which is the half a merge can just rename.
 
 **Two discovery sources in the schema reader.** `database/schema.ts` reads published built-in snapshots from
 `hostPacksDir` (`:67-72`, `:147`) *and* installed external manifests, with a `degraded` fallback at `:156`
@@ -365,10 +369,16 @@ settings, so it needs an app migration. `0.3.15.ts` is the precedent and
 `tests/migrations/plugin-settings-0.3.15.spec.ts` the test to copy.
 
 **B. Merge the two seed paths.** Keep the external path's per-pack hashing and dependency tracking, port
-`seedPolicy` onto it, and fold `builtInSeedHashes`/`builtInSeedFingerprints` into one pair of fields —
-renamed, since "external" stops meaning anything. `0.3.15.ts:83-86` renamed *away from* `packSeedHashes` and
-`packSeedDeps`, so that migration is the map for renaming back. Measure whether dropping the built-in path's
-stat-fingerprint shortcut costs anything at boot before keeping it for every pack.
+`seedPolicy` onto it, and fold `builtInSeedHashes` into `externalSeedHashes` — renamed, since "external" stops
+meaning anything. `0.3.15.ts` renamed *away from* `packSeedHashes` and `packSeedDeps`, so that migration is the
+map for renaming back.
+
+**Cheaper than it was, because the semantics are settled.** This used to carry a decision as well as a rename:
+the two hashes disagreed about what "changed" means — the external one counted file times, so a `touch`
+re-seeded and a reinstall of identical bytes did too, while the built-in one counted bytes alone behind a
+`builtInSeedFingerprints` stat cache. `0a25ff990` made both content-only and deleted that field, measuring the
+cache at 0.38ms over default-setup's 490KB (0.07ms to stat the same files) — so there is no shortcut left to
+decide about, and the fields differ only in name. Asking for a pack's data back is `IMPORT_PACK_SEEDS`.
 
 **C. Install on first boot.** `installPackFromLocal(source, targetPacksDir, options)` →
 `installFromDirectory` (`installer.ts:216,252`) already verifies, stages and writes `integrity.json` from a
