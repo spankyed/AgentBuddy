@@ -113,12 +113,10 @@ describe('bus.send carries the sender across the boundary', () => {
   });
 
   /**
-   * **`answering` crosses now, and this case used to assert the opposite.** It was dropped deliberately, on
-   * the reasoning that a client claiming its answer was an answer would only change what a diagnostic called
-   * the send — true while `answering` was a boolean. Carrying a *call* made it false: a system asking a
-   * window is answered inbound, so the round trip correlates only if the answer's call survives the
-   * boundary. It still routes nothing, so the worst a forged one buys is an asker confused about its own
-   * request.
+   * **`answering` crosses the boundary, and it has to.** A system asking a window is answered *inbound*, so
+   * the round trip correlates only if the answer's call survives `bus.send`'s whitelist — the field names a
+   * call, not a boolean, and the asker holding that call is on the other side. It routes nothing, so the
+   * worst a forged one buys is an asker confused about its own request.
    */
   it('carries answering, so an answer to a system names the call it answers', async () => {
     received.length = 0;

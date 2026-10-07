@@ -22,8 +22,7 @@ export type DatabaseState = ActorRefFrom<typeof databaseState>
  *
  * It used to re-declare five of those members here as well. A union of a member with its own copy
  * narrows to *both*, so a field added to the canonical declaration read as optional with no type error
- * anywhere — which is how the `requestId` these events used to carry could have been threaded through the
- * backend and quietly never checked here.
+ * anywhere, so a field the backend adds reads as checked here when nothing checks it.
  */
 type SystemEvent = OutgoingDatabaseEvents |
   { type: 'FEATURE_SETTINGS_UPDATED'; settings: DatabaseSettings } |

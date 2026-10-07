@@ -86,10 +86,11 @@ describe('an answer names the call it answers', () => {
 
 describe('the reserved key a door injects', () => {
   /**
-   * **Only an answer carries one.** The first version injected `answering ?? call`, so every delivered event
-   * named a call — and a request's own has no reader on the event: whoever receives a request answers it with
-   * `reply`, which takes the call from the delivery. The pack suite found it, a system recording what it
-   * heard having recorded `_call` on every notification.
+   * **Only an answer carries one, and the alternative is the trap.** Injecting the message's `call` as well
+   * would name a call on every delivered event — but a request's own call has no reader there: whoever
+   * receives a request answers it with `reply`, which takes the call from the delivery. What it would buy
+   * instead is a `_call` on every notification, which belongs to no ask, so a system recording what it heard
+   * records one too.
    */
   it('is present on an answer and absent on anything else', () => {
     expect(_callOn({ answering: 'c-the-ask' })).toEqual({ [_CALL_KEY]: 'c-the-ask' });

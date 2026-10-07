@@ -423,11 +423,12 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       // Unresolved: a connection id is not a ref
       const client = options?.client === undefined ? {} : { client: options.client };
       // Minted here when the caller gave none, so every ask a test makes carries one as every real send does —
-      // a handler's `reply` then has a call to echo whether or not the spec cares which
-      const call = options?.call ?? newCall();
-      testRootEvents.emitIncoming({ to: resolveSystemId(systemId, systems), event, call, ...sender, ...client });
+      // a handler's `reply` then has a call to echo whether or not the spec cares which. Named `sentUnder`
+      // rather than `call`, which is the enclosing helper this body runs inside
+      const sentUnder = options?.call ?? newCall();
+      testRootEvents.emitIncoming({ to: resolveSystemId(systemId, systems), event, call: sentUnder, ...sender, ...client });
       await settle();
-      return call;
+      return sentUnder;
     }),
     emitted(plugin) {
       const id = resolvePluginId(plugin);

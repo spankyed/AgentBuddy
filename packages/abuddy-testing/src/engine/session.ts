@@ -343,10 +343,9 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
    * concurrent `/qx` calls can be told apart. An orphan matches nobody — an ask that timed out and then
    * finished, or an answer to someone querying in the Database plugin while a session drives.
    *
-   * **The call is the envelope's, where this used to mint a `requestId` the event carried.** Nothing in the
-   * app declares a correlation field any more: every send mints a call and `reply` names the one it answers,
-   * so this session asks and matches the way the app's own features do rather than by a convention the
-   * database and this file happened to share.
+   * The call is the envelope's, so this session asks and matches the way the app's own features do: nothing
+   * in the app declares a correlation field, because every send mints a call and `reply` names the one it
+   * answers.
    */
   const nextReply = (to: string, call: string, ok: string, bad: string): Promise<unknown> =>
     new Promise((resolve, reject) => {
@@ -407,10 +406,9 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
    * answers: the settings system replies to whoever asked for a write, and `/set-setting` reporting success for
    * a refused write was the whole reason it had to.
    *
-   * **The call goes on the envelope, not into the event.** This used to spread a `requestId` into the event
-   * (`{ ...event, requestId }`), which only worked for the two systems that declared such a field — the
-   * settings system declared one and minted none, so its answers matched by luck of this file supplying it.
-   * The envelope's call needs nothing of the receiver: `reply` echoes whatever it was entered under.
+   * **The call goes on the envelope, not into the event**, which is what lets this ask *any* system rather
+   * than only one that declares a correlation field: the envelope's call needs nothing of the receiver,
+   * because `reply` echoes whatever it was entered under.
    */
   const roundTrip = async (
     to: string,
@@ -539,6 +537,8 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
 
     send: (event) => attempt('send', () => sendToApp(event)),
 
+    // No call: this is the fire-and-forget verb, so nothing here waits for an answer and there is nothing to
+    // match one against. A system that replies to it answers a call nobody is holding, which the bus drops
     system: (to, event) => attempt('system', () => sendToSystem(to, event)),
 
     qx: (code) => attempt('qx', () => runCode('qx', 'EXECUTE_QUERY', code)),

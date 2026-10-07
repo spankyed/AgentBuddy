@@ -61,14 +61,13 @@ export type OutgoingDatabaseEvents =
    *
    * **None of them names the request, because the envelope does.** `reply` stamps `Message.answering` with
    * the call the request was sent under, and the delivery door puts that on the delivered event under a
-   * reserved key — so a requester tells its own answer from someone else's by reading `callOf(event)`
+   * reserved key — so a requester tells its own answer from someone else's by asking `answersCall`
    * (`@abuddy/sdk/events`), and neither side declares a field for it.
    *
-   * These carried a `requestId` until the envelope carried a call, and what the field had to be is what the
-   * call is: minted by the *requester*, so a reply identifies that request rather than saying which emit was
-   * most recent — the case it exists for is a requester that gave up waiting and asked again, and an id
-   * stamped when the answer is built gives the abandoned request's late answer the newest id, so it wins.
-   * Unique across windows too, since `broadcastToPlugin` reaches every one of them.
+   * **The call is the requester's, which is what makes it identify a request rather than an emit.** The case
+   * it exists for is a requester that gave up waiting and asked again: an id stamped when the *answer* is
+   * built gives the abandoned request's late answer the newest id, so that answer wins. It has to be unique
+   * across windows for the same reason — an answer can reach every one of them.
    */
   | { type: 'QUERY_RESULT'; result: any; executionTime: number }
   | { type: 'QUERY_ERROR'; error: string }
@@ -82,9 +81,8 @@ export type OutgoingDatabaseEvents =
    * **Its own event because it answers nothing.** It is broadcast, not replied, so it carries no call — and
    * the guard on `QUERY_ERROR` takes only an answer whose call is the one outstanding. Sent as a
    * `QUERY_ERROR` it would be dropped by that guard every time and the plugin's loading flag would never
-   * clear, which is the failure this split prevents. The carve-out predates the envelope's call and the
-   * reason it gave then was that the event could carry no `requestId`; the field is gone and the reason is
-   * the same one stated properly — an answer and an announcement are different things.
+   * clear, which is the failure this split prevents. An answer and an announcement are different things,
+   * and one event cannot be both.
    */
   | { type: 'AI_QUERY_ERROR'; error: string }
   | { type: 'TRACE_FLOWS_RESULT'; flows: TNodeEntity[] }

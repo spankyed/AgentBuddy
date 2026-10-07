@@ -85,11 +85,10 @@ it('takes the page it is waiting for', () => {
 /**
  * Two selections in flight, the older answer arriving second.
  *
- * **It correlates on the call, not on the prompt id.** It used to compare `promptId` against a
- * `pendingPromptId` the ask recorded, which worked for *this* case and left two it could not reach: the answer
- * was broadcast to every window, so another window's answer for the same prompt matched too, and
- * `pendingPromptId` was never cleared, so after the first selection it always named something. A call is per
- * ask and per window, so neither has anywhere to live. `answerTo` builds the answer as a delivery door would.
+ * **It correlates on the call, not on the prompt id** — though this case alone would not force that, since
+ * comparing `promptId` against what the ask recorded passes it too. What the id cannot reach are the two
+ * cases below it: it does not distinguish windows, and a slot holding one is never emptied. `answerTo`
+ * builds the answer as a delivery door would.
  */
 it('shows the prompt last asked for, not the answer that arrived last', () => {
   const actor = connected();
@@ -108,9 +107,9 @@ it('shows the prompt last asked for, not the answer that arrived last', () => {
 /**
  * The answer another window got, which the prompt id could not tell from this window's.
  *
- * `PROMPT_SELECTED` was broadcast, so every window showing the prompts plugin received it and each one's guard
- * admitted it on the prompt id alone — two people looking at the same prompt each took the other's answer. It
- * is replied now, and a call from an ask this window did not make matches nothing.
+ * A broadcast `PROMPT_SELECTED` reaches every window showing the prompts plugin, and a guard on the prompt id
+ * alone admits it in all of them — two people looking at the same prompt take each other's answers. Replying
+ * narrows it to the asker, and the call narrows it to the ask: one from elsewhere matches nothing here.
  */
 it('ignores an answer for an ask it did not make', () => {
   const actor = connected();
@@ -124,9 +123,9 @@ it('ignores an answer for an ask it did not make', () => {
 /**
  * Settled, so the answer just taken cannot be taken again.
  *
- * The pending field had one setter and no clear, so it named the last ask for the life of the plugin. Cleared
- * on the answer, the same answer arriving twice — a reconnect replaying it, a double delivery — matches
- * nothing the second time, and an ask made since is still outstanding.
+ * A slot that is only ever set names the last ask for the life of the plugin. Cleared on the answer, the
+ * same answer arriving twice — a reconnect replaying it, a double delivery — matches nothing the second
+ * time, and an ask made since is still outstanding.
  */
 it('clears what it is waiting for once the answer lands', () => {
   const actor = connected();

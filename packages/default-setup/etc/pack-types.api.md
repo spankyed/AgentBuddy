@@ -62,10 +62,10 @@ interface ActionsContext {
      * nothing to compare an arriving one against, and two quick selections are decided by whichever answer
      * arrives last.
      *
-     * **It held the action's own id, and that was not enough twice over.** The answer was broadcast to every
-     * window, so another window's answer for the same action matched too; and the field had one setter and no
-     * clear, so after the first selection it always named something. A call is per ask and per window, so
-     * neither has anywhere to live.
+     * **A domain id cannot do this job, for two independent reasons.** It does not distinguish windows, so
+     * another window's answer for the same action satisfies it; and it does not distinguish asks, so a slot
+     * holding one is only ever overwritten, never emptied — which names the last ask for the life of the
+     * plugin. A call is per ask and per window, and the slot is cleared when its answer lands.
      */
     pendingActionCall: string | null;
     actions: ActionEntity[];
@@ -1201,8 +1201,8 @@ interface DatabaseContext {
      * Two fields rather than one: the verbs are independent, and deleting a row chains a transaction into
      * a follow-up query, so a single slot would have the query overwrite the transaction it came from.
      *
-     * What goes in them is what `sendToSystem` returned for the ask, and what comes back is `callOf(event)`
-     * off the answer — so neither the request nor the reply declares a field for it.
+     * What goes in them is what `sendToSystem` returned for the ask; what reads them is `answersCall`, which
+     * refuses an empty slot — so neither the request nor the answer declares a field for it.
      */
     pendingQueryCall: string | null;
     pendingTransactionCall: string | null;
@@ -3387,14 +3387,13 @@ type OutgoingDatabaseEvents = {
  *
  * **None of them names the request, because the envelope does.** `reply` stamps `Message.answering` with
  * the call the request was sent under, and the delivery door puts that on the delivered event under a
- * reserved key — so a requester tells its own answer from someone else's by reading `callOf(event)`
+ * reserved key — so a requester tells its own answer from someone else's by asking `answersCall`
  * (`@abuddy/sdk/events`), and neither side declares a field for it.
  *
- * These carried a `requestId` until the envelope carried a call, and what the field had to be is what the
- * call is: minted by the *requester*, so a reply identifies that request rather than saying which emit was
- * most recent — the case it exists for is a requester that gave up waiting and asked again, and an id
- * stamped when the answer is built gives the abandoned request's late answer the newest id, so it wins.
- * Unique across windows too, since `broadcastToPlugin` reaches every one of them.
+ * **The call is the requester's, which is what makes it identify a request rather than an emit.** The case
+ * it exists for is a requester that gave up waiting and asked again: an id stamped when the *answer* is
+ * built gives the abandoned request's late answer the newest id, so that answer wins. It has to be unique
+ * across windows for the same reason — an answer can reach every one of them.
  */
  | {
     type: 'QUERY_RESULT';
@@ -3422,9 +3421,8 @@ type OutgoingDatabaseEvents = {
  * **Its own event because it answers nothing.** It is broadcast, not replied, so it carries no call — and
  * the guard on `QUERY_ERROR` takes only an answer whose call is the one outstanding. Sent as a
  * `QUERY_ERROR` it would be dropped by that guard every time and the plugin's loading flag would never
- * clear, which is the failure this split prevents. The carve-out predates the envelope's call and the
- * reason it gave then was that the event could carry no `requestId`; the field is gone and the reason is
- * the same one stated properly — an answer and an announcement are different things.
+ * clear, which is the failure this split prevents. An answer and an announcement are different things,
+ * and one event cannot be both.
  */
  | {
     type: 'AI_QUERY_ERROR';
@@ -4475,10 +4473,10 @@ interface PromptsContext {
      * `selectedPromptId` cannot do this job: it is written *from* the answer, so two quick selections are
      * otherwise decided by whichever answer arrives last.
      *
-     * **It held the prompt's own id, and that was not enough twice over.** The answer was broadcast to every
-     * window, so another window's answer for the same prompt matched too; and the field had one setter and no
-     * clear, so after the first selection it always named something. A call is per ask and per window, so
-     * neither has anywhere to live.
+     * **A domain id cannot do this job, for two independent reasons.** It does not distinguish windows, so
+     * another window's answer for the same prompt satisfies it; and it does not distinguish asks, so a slot
+     * holding one is only ever overwritten, never emptied — which names the last ask for the life of the
+     * plugin. A call is per ask and per window, and the slot is cleared when its answer lands.
      */
     pendingPromptCall: string | null;
     prompts: PromptEntity[];

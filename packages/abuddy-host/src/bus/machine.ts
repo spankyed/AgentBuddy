@@ -284,12 +284,11 @@ export function createBusMachine(options: BusOptions) {
         // send it makes while handling carries its own ref.
         //
         // **The event gains one reserved key and nothing else**: the call it belongs to, which a guard reads
-        // with `callOf`. This is the line that used to say the event is untouched "because a return address on
-        // it would be a field of the event deciding where things go" — and the distinction that argument was
-        // reaching for still holds. An *address* on the event decides where things go, and that is still
-        // forbidden; a *call* decides nothing and routes nothing, and the receiver is the only reader. It is on
-        // the event because a transition guard is handed `{ context, event }` and nothing else, and context
-        // cannot be written before a guard runs, so the event is the only channel to one.
+        // through `answersCall` or `settleCall`. The distinction that allows it is between an address and a
+        // call — an *address* on the event would decide where things go, which is forbidden, while a call
+        // decides nothing, routes nothing, and has the receiver as its only reader. It is on the event because
+        // a transition guard is handed `{ context, event }` and nothing else, and context cannot be written
+        // before a guard runs, so the event is the only channel to one.
         if (actor) {
           reportUndeclared(to, incoming.type, event.message);
           deliverAs({ to, sender, client, call }, () => actor.send({ ...incoming, ..._callOn(event.message) }));

@@ -2,7 +2,7 @@
 //
 // **Why a test needs this at all.** A correlation is read in a transition guard, and a guard is handed
 // `{ context, event }` and nothing else — so the call a message belongs to rides on the delivered event under
-// a reserved key (`_callOn`/`callOf`, `@abuddy/sdk/events`). In the app a door writes that key. A spec that
+// a reserved key (`_callOn`/`_callOf`, `@abuddy/sdk/events`). In the app a door writes that key. A spec that
 // starts a plugin's machine with `createActor` and sends it an answer has no door, so without this it would
 // have to name the key itself, which the `reserved-event-keys` pack rule refuses and which would make every
 // such spec depend on an `@internal` constant.

@@ -21,8 +21,8 @@ export interface DatabaseContext {
    * Two fields rather than one: the verbs are independent, and deleting a row chains a transaction into
    * a follow-up query, so a single slot would have the query overwrite the transaction it came from.
    *
-   * What goes in them is what `sendToSystem` returned for the ask, and what comes back is `callOf(event)`
-   * off the answer — so neither the request nor the reply declares a field for it.
+   * What goes in them is what `sendToSystem` returned for the ask; what reads them is `answersCall`, which
+   * refuses an empty slot — so neither the request nor the answer declares a field for it.
    */
   pendingQueryCall: string | null;
   pendingTransactionCall: string | null;

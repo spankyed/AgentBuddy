@@ -5,8 +5,8 @@
 //
 // The correlation is the envelope's call: an ask carries `Message.call` and its answer `Message.answering`,
 // so `answer` names the call it answers and the bridge path builds the same thing with `answerTo`, which is
-// what a window's delivery door puts on the event. This file minted its own `requestId` and spread it into
-// the event before that existed, which worked only for a system that declared such a field.
+// what a window's delivery door puts on the event. Nothing is in the event itself, which is why these cases
+// read the call off the send rather than out of a payload.
 import { describe, expect, it, vi } from 'vitest';
 import {
   BRIDGE_FLAG, BRIDGE_FUNCTION, createSession, DATABASE_SYSTEM, DRIVE_REF, evalSource, MAX_SEEN_EVENTS,

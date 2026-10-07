@@ -77,10 +77,10 @@ const promptsState = setup({
 
     /* ── prompt interactions ────────────────────────────── */
     /**
-     * **`enqueueActions`, so the call is stored before the ask is sent.** It was an `assign` whose producer
-     * sent as a side effect, which left the store happening after the send returned — fine against a real
-     * backend in another process, and not against one that answers synchronously, where the answer can
-     * arrive before the assign it would be matched against has been applied.
+     * **`enqueueActions`, so the call is stored before the ask is sent.** A send made from inside an
+     * `assign` producer runs before the assign is applied, so an answer that arrives synchronously is
+     * matched against a slot the ask has not written yet. Against a backend in another process the race
+     * never shows; against one that answers in the same turn it always does.
      */
     selectPrompt: enqueueActions(({ event, context, enqueue }) => {
       const ev = typeOf('PROMPT.SELECT', event);

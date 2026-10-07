@@ -30,10 +30,9 @@ describe('a query run by a plugin', () => {
   /**
    * **The call is the ask's, and the answer names it on the envelope rather than in the payload.**
    *
-   * These four events carried a `requestId` the asker minted and every reply echoed. The call does the same
-   * job for every ask in the app, so the field is gone: `app.send` returns what it sent under, `reply` stamps
-   * it as `Message.answering`, and `nextEmit`'s `answering` is what reads it — the event itself says nothing
-   * about which ask it belongs to, which is the point.
+   * `app.send` returns what it sent under, `reply` stamps it as `Message.answering`, and `nextEmit`'s
+   * `answering` is what reads it. The event itself says nothing about which ask it belongs to, which is the
+   * point: no event type declares a correlation field, so none can declare one and mint nothing.
    */
   it('is answered to the asker, naming the call it asked under', async () => {
     const app = await startApp({ systems: ['database'] })

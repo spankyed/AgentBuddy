@@ -158,10 +158,9 @@ export const settingsSystem = setup({
     /**
      * A change the store can't take now (`whileBusy`), with the reason the state gives.
      *
-     * **This one used to drop the asker's id**, and it was the only answer here that could: the other three
-     * threaded `ev.requestId` by hand and this guard-level refusal had no `ev` to thread. With the call on
-     * the envelope there is nothing to thread — `reply` stamps the call it was entered under — so the
-     * asymmetry went with the field rather than being fixed.
+     * **It names the asker's call without being given one**, which a guard-level refusal could not do if a
+     * correlation lived on the event: there is no `ev` here to thread one from. `reply` stamps the call it
+     * was entered under, so this answer is as identifiable as the three that read an event.
      */
     refuseChange: ({ reply }, { reason }: { reason: string }) =>
       answerSettings(reply, { type: 'SETTINGS_REFUSED', problems: [reason] }),

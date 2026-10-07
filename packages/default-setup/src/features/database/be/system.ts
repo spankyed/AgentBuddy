@@ -66,10 +66,10 @@ export const databaseSystem = setup({
      * was entered in, which carries the call the request was sent under, so the answer names it whether it
      * is built in one turn or ten.
      *
-     * That is what two handlers used to read an id out of the event and close over it for: this action is
-     * `async` on a state with no guard against re-entry, so a second `EXECUTE_QUERY` is accepted while this
-     * one is awaiting, and a single context field would be the newer request's by the time the reply is
-     * built. The binding is still a closure — it is `reply`'s now rather than each handler's.
+     * **That binding is load-bearing, because this action re-enters.** It is `async` on a state with no
+     * guard against it, so a second `EXECUTE_QUERY` is accepted while this one is awaiting — and anything
+     * holding the current request in context would be the *newer* one's by the time this reply is built.
+     * Each handler's `reply` is its own closure, so two answers in flight name two requests.
      */
     executeQuery: async ({ event, reply }) => {
       const { code } = databaseSpec.typeOf('EXECUTE_QUERY', event);

@@ -78,11 +78,11 @@ export const actionsSystem = setup({
       });
     },
     /**
-     * **Answered, not broadcast, and that was a bug rather than a style.** One window selecting a action
-     * sent `ACTION_SELECTED` to *every* window's actions plugin, and each one's guard admitted it on the
-     * action id alone — so two windows looking at the same action each accepted the other's answer, and a
-     * window that had moved on since asking took an answer it was no longer waiting for. `reply` sends to
-     * the asker on the connection they asked from, and the call names the ask within it.
+     * **Answered, not broadcast**, because a broadcast cannot be correlated by anything this event carries.
+     * Sent to every window's actions plugin it would be admitted on the action id alone, so two windows
+     * looking at the same action would each accept the other's answer, and a window that had moved on since
+     * asking would take an answer it was no longer waiting for. `reply` sends to the asker on the connection
+     * they asked from, and the call names the ask within it.
      *
      * `actionId` stays on the event because the view needs it — it is the row's identity, not the
      * correlation. What tells one answer from another is `Message.answering`.

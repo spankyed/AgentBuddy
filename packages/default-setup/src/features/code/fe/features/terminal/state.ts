@@ -40,16 +40,17 @@ export interface Context {
   /**
    * What each outstanding `terminal.CREATE_TERMINAL` meant, by the call it was asked under.
    *
-   * **Keyed, because this was one slot and a terminal's id does not exist until the answer.** A fetch keys
-   * its answers by what it asked for, and nothing a terminal ask carries identifies it — the backend mints
-   * the id. So two creates in flight shared the slot: the second overwrote it, the first answer read the
-   * second's intent, and the second answer found it cleared. `docs/issues/ISSUE-terminal-integration-review.md`
-   * records the repro — run "build" then "test" before the first answer, and `test` runs in the build
-   * terminal, which is both wrong and invisible.
+   * **Keyed by the call, because nothing about the terminal identifies the ask.** A fetch keys its answers
+   * by what it asked for; a terminal ask carries nothing that does, since the backend mints the id. The call
+   * is what the asker has and the answer echoes, so it is the only key available.
    *
-   * The call is what the asker has and the answer echoes, so it is the key. An entry is removed by whichever
-   * answer settles the ask (`terminal.OPENED` or `terminal.ERROR`, both replied), so the map holds only what
-   * is genuinely in flight.
+   * **One slot for all of them is the trap**, and it is invisible when it fires: two creates in flight share
+   * it, so the second's intent is what the first answer reads and the second answer finds nothing. Run
+   * "build" then "test" before the first answer and `test` runs in the build terminal
+   * (`docs/issues/ISSUE-terminal-integration-review.md`, T4).
+   *
+   * An entry is removed by whichever answer settles the ask (`terminal.OPENED` or `terminal.ERROR`, both
+   * replied), so the map holds only what is genuinely in flight.
    */
   pendingOpens: Record<string, PendingOpen>
 }
@@ -81,9 +82,9 @@ export const terminalState = setup({
   },
   actions: {
     /**
-     * **`enqueueActions`, so the intent is recorded under its call before the ask is sent.** It was an
-     * `assign` that sent from inside its producer, which left the store happening after the send — and the
-     * answer to a synchronous backend can arrive before an assign is applied.
+     * **`enqueueActions`, so the intent is recorded under its call before the ask is sent.** A send made
+     * from inside an `assign` producer runs before the assign is applied, so an answer arriving in the same
+     * turn is matched against a record the ask has not written yet.
      */
     createTerminal: enqueueActions(({ event, self, enqueue }) => {
       const ev = event as { type: 'terminal.CREATE'; title?: string; cwd?: string; target?: 'tab'; command?: string }
@@ -301,11 +302,12 @@ export const terminalState = setup({
     /**
      * Opens the terminal *this* window asked for, the way *that* ask asked for it.
      *
-     * Two correlations, and they answer different questions. Only the asker is sent `terminal.OPENED`, so the
-     * intent read here is this window's and could never have been another's — while this work hung off the
-     * broadcast `terminal.CREATED`, every open window routed a terminal it had not asked for into its own
-     * panel and ran a command it had not typed. The call then says *which* of this window's asks it answers,
-     * which addressing cannot: a window can have two creates in flight and they are not interchangeable.
+     * Two correlations, and they answer different questions. Only the asker is sent `terminal.OPENED`, so
+     * the intent read here is this window's and could never have been another's — hang this work off the
+     * broadcast `terminal.CREATED` instead and every open window routes a terminal it never asked for into
+     * its own panel and runs a command nobody typed there. The call then says *which* of this window's asks
+     * it answers, which addressing cannot: a window can have two creates in flight and they are not
+     * interchangeable.
      *
      * An answer whose call names no outstanding ask opens with the defaults — the panel, no command — which
      * is what a terminal this window did not ask for should do.

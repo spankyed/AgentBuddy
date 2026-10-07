@@ -44,8 +44,9 @@ export const systemBusRouter = router({
     //
     // `call` and `answering` are named for the same reason, in both directions: a window's ask crosses inbound
     // and must be answerable, and a *system* asking a window is answered inbound — so a round trip correlates
-    // only if both survive. Neither routes, so a forged one buys a confused asker and nothing more; `answering`
-    // used to be omitted here on the reasoning that every reader was local, which carrying a call made false.
+    // only if both survive the boundary. Neither routes, so a forged one buys a confused asker and nothing
+    // more. Omitting `answering` on the reasoning that every reader is local is the trap: a window's reader is
+    // not local to the backend that answered it.
     //
     // **It is checked for existence and not for identity, and the difference is worth knowing.** A `sender` must
     // name something addressable, the way `to` must; what it cannot do is prove the caller *is* that thing. One

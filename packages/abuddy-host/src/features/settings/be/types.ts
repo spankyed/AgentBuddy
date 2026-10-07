@@ -12,8 +12,8 @@ export type IncomingSettingsEvents =
   // No correlation field on any of the three writes: addressing says which connection an answer came back on,
   // and the envelope's `call` says which request it answers — `reply` stamps it, so a sender with several
   // writes in flight (a drive session) tells its own answer from another's without either side declaring a
-  // field. These carried an optional `requestId` end to end and **nothing ever minted one**, which is the
-  // shape the envelope's call was built for: three declarations, five readers, and no producer.
+  // field. A field declared here would need a producer in every sender, which is the part a per-event
+  // correlation gets wrong: declaring it is cheap and minting it everywhere is not.
   | { type: 'UPDATE_SETTINGS'; entityType: 'section' | 'plugin'; label: string; path: string[]; value: any }
   | { type: 'RESET_SETTINGS' }
   | { type: 'REPLACE_SETTINGS'; data: unknown }

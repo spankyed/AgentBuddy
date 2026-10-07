@@ -9,12 +9,12 @@
 // one save; and the reply is the better of the two for it anyway, since the broadcast told every window's view
 // that something it never did had been saved.
 //
-// **Which of the two arms ran is now what this file checks, and it could not be before.** The harness resolves
-// a `sender` against registered systems, so a driver's ref cannot be named here and naming the Settings plugin
-// makes a reply and a broadcast arrive at the same *place* — measured, deleting the reply once left every case
-// below passing. What tells them apart is not the address but `Message.answering`, which only `reply` stamps:
-// `nextEmit`'s `answering` waits for the answer to one ask, so a broadcast of the same type no longer satisfies
-// it. Checked by mutation: with `answerSettings`' reply arm deleted, the three cases that name a call fail.
+// **Which of the two arms ran is what this file checks, and the address is not how.** The harness resolves a
+// `sender` against registered systems, so a driver's ref cannot be named here, and naming the Settings plugin
+// makes a reply and a broadcast arrive at the same *place*. What tells them apart is `Message.answering`,
+// which only `reply` stamps: `nextEmit`'s `answering` waits for the answer to one ask, so a broadcast of the
+// same type does not satisfy it. Checked by mutation: with `answerSettings`' reply arm deleted, the three
+// cases that name a call fail and the no-sender one passes.
 //
 // The address itself is still watched where it can be, in `@abuddy/host`'s
 // `tests/features/settings/answer.spec.ts`, which opens a delivery with `_runDelivery` and reads it.
@@ -33,9 +33,8 @@ const WINDOW = 'c-window'
 /**
  * A write that the store takes, and one it refuses, so each case says which it is asking for.
  *
- * **No correlation field, which is the change.** The three write events each declared an optional `requestId`
- * and nothing in the app ever minted one — this helper was its only producer. The call is on the envelope
- * now: `app.send` returns the one it sent under and `reply` stamps it on the answer.
+ * **No correlation field on any of the three write events**, and none is wanted: `app.send` returns the call
+ * it sent under and `reply` stamps it on the answer, so a helper like this has nothing to supply.
  */
 const write = (label: string) => ({
   type: 'UPDATE_SETTINGS' as const,

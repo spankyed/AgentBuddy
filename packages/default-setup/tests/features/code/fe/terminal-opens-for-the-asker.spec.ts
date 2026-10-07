@@ -11,7 +11,7 @@
 // to the asker (`code/be/features/terminal.ts`), the same split the database system makes between
 // `TRANSACTION_RESULT` and `DATABASE_REFRESH`. **The call** says which of that window's asks, which addressing
 // cannot — a window can have two creates in flight, and the intent held for each (a tab or the panel, a
-// command to run) is not interchangeable. That was one slot, so the second create overwrote the first.
+// command to run) is not interchangeable, so one slot could not hold both.
 //
 // `answerTo` is how a spec with no delivery door in front of it builds an answer that names a call.
 import { beforeEach, expect, it, vi } from 'vitest';
@@ -113,11 +113,11 @@ it('leaves the asker with one entry and one open', () => {
 /**
  * **Two creates in flight, each opened the way it asked — the issue doc's repro.**
  *
- * `docs/issues/ISSUE-terminal-integration-review.md` (T4): run "build" then "test" before the first answer
- * and `test` runs in the build terminal. With one slot the second create overwrote it, so the *first*
- * answer read the second's command and the second answer found nothing. Keyed by call, each answer finds
- * its own intent whatever order the two arrive in — asserted here in the awkward order, the first ask
- * answered second, since that is the one a single slot gets wrong in both directions at once.
+ * `docs/issues/ISSUE-terminal-integration-review.md` (T4) is the repro: run "build" then "test" before the
+ * first answer. A single slot holds the second create's intent, so the *first* answer reads the second's
+ * command and the second answer finds nothing. Keyed by call, each answer finds its own intent whatever
+ * order the two arrive in — asserted here in the awkward order, the first ask answered second, since that
+ * is the order one slot gets wrong in both directions at once.
  */
 it('opens two terminals asked for together the way each was asked for', () => {
   const actor = createActor(terminalState).start();
@@ -162,8 +162,8 @@ it('holds an intent only while its ask is outstanding', () => {
 /**
  * A terminal this window did not ask for opens with the defaults.
  *
- * An answer whose call names no outstanding ask has no intent to read, and the branch that reads one must not
- * fall back to whatever another ask left behind — which is what a single slot did by construction.
+ * An answer whose call names no outstanding ask has no intent to read, and the branch that reads one must
+ * not fall back to whatever another ask left behind.
  */
 it('opens a terminal it has no record of asking for into the panel, with no command', () => {
   const actor = createActor(terminalState).start();

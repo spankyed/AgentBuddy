@@ -16,10 +16,10 @@ export interface PromptsContext {
    * `selectedPromptId` cannot do this job: it is written *from* the answer, so two quick selections are
    * otherwise decided by whichever answer arrives last.
    *
-   * **It held the prompt's own id, and that was not enough twice over.** The answer was broadcast to every
-   * window, so another window's answer for the same prompt matched too; and the field had one setter and no
-   * clear, so after the first selection it always named something. A call is per ask and per window, so
-   * neither has anywhere to live.
+   * **A domain id cannot do this job, for two independent reasons.** It does not distinguish windows, so
+   * another window's answer for the same prompt satisfies it; and it does not distinguish asks, so a slot
+   * holding one is only ever overwritten, never emptied — which names the last ask for the life of the
+   * plugin. A call is per ask and per window, and the slot is cleared when its answer lands.
    */
   pendingPromptCall: string | null;
   prompts: PromptEntity[];
