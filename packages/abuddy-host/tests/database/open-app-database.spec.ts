@@ -46,6 +46,7 @@ describe('readInstalledSchema', () => {
     const dir = tempDir('host-database-');
     const schema = readInstalledSchema(schemaContext(dir));
     expect(schema.packs).toEqual([]);
+    expect(schema.degraded, 'reported, because a caller about to write needs to know').toMatch(/has no packs installed .*--schema-from/s);
     expect(schema.getRegisteredEntityTypes().has('AppState'), "the app's own types are still known").toBe(true);
     expect(schema.getRegisteredEntityTypes().has('Bookmark'), "a pack's are not").toBe(false);
   });
@@ -116,17 +117,37 @@ describe('openAppDatabase', () => {
    * row literally called `Note` — measured against a real data dir before this refusal existed. A read of the
    * same dir is fine and is the whole point of the fallback.
    */
-  // A dir whose packs were removed opens, readable and writable alike: its remaining rows are reachable by
-  // id, and there is no second account of the dir that could disagree with the packs directory
-  it('opens a data dir whose packs were removed, knowing only the app\'s types', async () => {
+  // A dir whose packs were removed still holds their rows — uninstalling deletes a directory, not rows — so
+  // "no pack installed" is a schema that cannot be written against, however true it is about the directory
+  it('refuses a writable open on a data dir whose packs were removed, and allows a read', async () => {
     const dir = dataDirWithPacks();
     await writeData(dir, () => {});
     fs.rmSync(path.join(_appDirOf(dir), 'packs'), { recursive: true });
 
-    const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
+    await expect(openAppDatabase({ env: 'test', userDataDir: dir, ...quiet }))
+      .rejects.toThrow(/has no packs installed .*an incomplete schema would write the wrong rows/s);
+
+    const db = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });
     try {
       expect(db.schema.packs).toEqual([]);
       expect(db.schema.getRegisteredEntityTypes().has('Note')).toBe(false);
+    } finally {
+      db.close();
+    }
+  });
+
+  // The escape hatch the refusal names, so the message is not a dead end
+  it('takes the schema a caller names, and then writes', async () => {
+    const dir = dataDirWithPacks();
+    await writeData(dir, () => {});
+    fs.rmSync(path.join(_appDirOf(dir), 'packs'), { recursive: true });
+    const snapshot = path.join(dir, 'core.json');
+    fs.writeFileSync(snapshot, JSON.stringify({ manifest: { id: 'core', entities: { Note: 'Note' } } }));
+
+    const db = await openAppDatabase({ env: 'test', userDataDir: dir, schemaFrom: snapshot, ...quiet });
+    try {
+      expect(db.schema.degraded).toBeUndefined();
+      expect(db.query.tx('Note').put('title', 'new').id().startsWith('Note-')).toBe(true);
     } finally {
       db.close();
     }
