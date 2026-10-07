@@ -376,6 +376,16 @@ The phase proves the generated `ears.ts` is unchanged.
 
 **5. `partitionPolicy` becomes `volatile` on the entity that is volatile, and every pack may use it.**
 
+> **This decision's subject no longer exists.**
+> [`goal-one-kind-of-pack`](goal-one-kind-of-pack.md)'s Decision 5 deleted `partitionPolicy` outright —
+> the manifest field, `PackEARS.partitionPolicy`, `getRegisteredEARSPolicy` and the registry's policy
+> member. `appPartitionPolicy()` survives as a constant in `abuddy-host/src/database/open.ts` over
+> `SDK_EXCLUDED_ENTITY_TYPES`, and no pack contributes to it. So this is no longer *moving* a capability
+> onto a better declaration; it is **adding** one that nothing has asked for — which is the test the other
+> goal applied in deleting it. The plumbing this paragraph calls "unchanged" is the plumbing that went.
+> Decide it again before implementing it, against an actual volatile entity someone wants.
+
+
 The section goes; the capability moves onto the declaration it describes:
 
 ```jsonc

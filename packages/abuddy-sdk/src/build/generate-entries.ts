@@ -659,9 +659,6 @@ ${help ? '  help: __help,' : ''}
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
     entities: ${JSON.stringify(manifest.entities ?? {})},
     relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
-    partitionPolicy: {
-      excludedEntityTypes: ${JSON.stringify(manifest.partitionPolicy?.excludedEntityTypes ?? [])},
-    },
   },
   boot: {
 ${manifest.boot?.hooks ? '    ..._hooks,' : ''}

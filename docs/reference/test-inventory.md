@@ -145,7 +145,7 @@ Measured 2026-09-25 across 367 spec files: `count-pinned` 218, `msg-pinned` 32, 
 **`dupe-title` over-reports, and by a lot.** It compares `it(` titles without the `describe` above them, so a
 property asserted of three different things reads as three copies. All three pairs it flagged in 2026-09-19
 turned out to satisfy Decision 10 already, because the describe is what names the level:
-`getEventValidationMap` / `getPluginEventValidationMap` / `a registry's partitionPolicy`, `secrets store` /
+`getEventValidationMap` / `getPluginEventValidationMap`, `secrets store` /
 `secret rules`, `the command store` / `registerPack commands`. Read a `dupe-title` hit with its describe
 before believing it.
 

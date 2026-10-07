@@ -332,7 +332,7 @@ describe('the snapshot format', () => {
   const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
     $manifestVersion: true, $schema: true, artifacts: true, blocks: true, boot: true, builtIn: true, commands: true,
     dependencies: true, description: true, dsl: true, entities: true, entityShapes: true, help: true, fe: true, features: true,
-    hostVersion: true, id: true, license: true, migrations: true, name: true, packServices: true, partitionPolicy: true,
+    hostVersion: true, id: true, license: true, migrations: true, name: true, packServices: true,
     permissions: true, relKinds: true, seedFormats: true, seedHooks: true, settingsSections: true, steps: true, version: true,
   };
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
@@ -396,7 +396,7 @@ describe('the snapshot format', () => {
         fields: [
           '$manifestVersion', '$schema', 'artifacts', 'blocks', 'boot', 'builtIn', 'commands', 'dependencies', 'description', 'dsl',
           'entities', 'entityShapes', 'fe', 'features', 'help', 'hostVersion', 'id', 'license', 'migrations', 'name', 'packServices',
-          'partitionPolicy', 'permissions', 'relKinds', 'seedFormats', 'seedHooks', 'settingsSections', 'steps', 'version',
+          'permissions', 'relKinds', 'seedFormats', 'seedHooks', 'settingsSections', 'steps', 'version',
         ],
         feature: ['designation', 'earlySystem', 'id', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
         system: ['contract', 'entry', 'events'],

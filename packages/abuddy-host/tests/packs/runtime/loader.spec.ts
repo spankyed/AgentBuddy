@@ -292,7 +292,6 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
         ears: {
           entities: { Widget: 'Widget' },
           relKinds: {},
-          partitionPolicy: { excludedEntityTypes: [] },
         },
         boot: {
           onInit() {},
@@ -340,16 +339,15 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     }
   });
 
-  it('strips the declarative boot seed and an empty partition policy', () => {
+  it('strips the declarative boot seed', () => {
     makeBundledPack('strip-pack', registration('strip-pack'));
     const [pack] = loadExternalPacks();
     expect(pack.registration.boot?.seedManifest).toBeUndefined();
-    expect(pack.registration.ears?.partitionPolicy).toBeUndefined();
   });
 
-  // It strips them off copies. What the app refuses an external pack is the app's decision about this load,
-  // and `boot` and `ears` are the pack module's own objects: taking the keys off those would leave the pack
-  // exporting whatever the last load made of it, which a reload reusing the module would then read.
+  // It strips it off a copy. What the app refuses an external pack is the app's decision about this load,
+  // and `boot` is the pack module's own object: taking the key off that would leave the pack exporting
+  // whatever the last load made of it, which a reload reusing the module would then read.
   it('leaves the registration the pack module exports as the pack wrote it', () => {
     const dir = makeBundledPack('intact-pack', registration('intact-pack'));
 
@@ -357,7 +355,6 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
 
     const exported = (require(path.join(dir, 'runtime', 'index.cjs')) as { registration: PackRegistration }).registration;
     expect(exported.boot?.seedManifest, "the app's strip reached the pack's own object").toBeDefined();
-    expect(exported.ears?.partitionPolicy).toBeDefined();
   });
 
   it("never calls a seed function an external pack's boot hooks export; importPackSeeds seeds it once", async () => {

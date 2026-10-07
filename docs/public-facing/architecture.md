@@ -75,7 +75,7 @@ The source directory must be built first: installing a directory with neither a 
 3. `forwardSecretsChanges` (`@abuddy/host/secrets`): every system that takes `SECRETS_CHANGED` hears that API key changes, never their values.
 4. Loads packs. Built-in packs load asynchronously while external packs load and register:
    - **Built-in:** discovered from `BUILT_IN_PACKS_DIR` (`abuddy.json` with `builtIn: true`). In development each pack's `dist/runtime/index.cjs` is loaded when it exists, falling back to the loaders bundled into the API, which `setup/backend.ts` passes to `loadBuiltInPacks` as `bundledLoaders` (the API build generates them as `virtual:built-in-pack-loaders`); otherwise the bundled loader is used.
-   - **External:** discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed). For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded through the module bridge, and `earlySystem`, `seedManifest` and `partitionPolicy` stripped. Each pack's systems register as `<packId>/<featureId>`.
+   - **External:** discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed). For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded through the module bridge, and `earlySystem` and `seedManifest` stripped. Each pack's systems register as `<packId>/<featureId>`.
    - The registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.
 5. Publishes each built-in pack's build output into `host-packs/<id>/`.
 6. Starts the early systems (`system.early`: default-setup's logs system), outside the bus; the host delivers them the messages sent to their refs and each client connection, as the bus does for the others.
@@ -121,7 +121,7 @@ export const registration: PackRegistration = {
   id: string;
   features?: Record<string, PackFeature>;  // by feature id: { designation?, system?: { machine, receives, early? }, plugin?: { receives }, services?, settings? }
   services?: Record<string, unknown>;
-  ears?: PackEARS;                 // entities, relKinds, partitionPolicy?
+  ears?: PackEARS;                 // entities, relKinds
   boot?: PackBootHooks;            // onInit/onShutdown (boot.hooks), seedManifest (boot.seed, stripped from external packs)
   migrations?: PackMigration[];    // { target, description, up }
   repositories?: Record<string, unknown>;  // features[].repositories, registered with the app's engine
@@ -270,9 +270,9 @@ EARS persists through a sharded router (`makeShardedPersistence`, `@abuddy/ears`
 | Partition | Directory | Holds | Hydrated at boot |
 |---|---|---|---|
 | `primary` | `ears-db/` | Everything not excluded | Yes |
-| `volatileBackup` | `ears-trace/` | Entity types in the partition policy's `excludedEntityTypes` (always the SDK's `TNode`), and relations touching them | No |
+| `volatileBackup` | `ears-trace/` | The SDK's volatile entity types (`TNode`), and relations touching them | No |
 
-The policy (the app's registry's `partitionPolicy`) is the union of the SDK's excluded types and each registered pack's `partitionPolicy.excludedEntityTypes`, and follows packs as they register and unregister. External packs can't set a partition policy; their data goes to `primary`. `services.traceStore` reads `volatileBackup` directly.
+The policy is `appPartitionPolicy()` (`@abuddy/host/database`), a constant over the SDK's volatile types. No pack contributes to it, so every pack's data goes to `primary`. `services.traceStore` reads `volatileBackup` directly.
 
 ## Backups
 
@@ -334,7 +334,6 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 | EARS entities/relations | Yes | With collision detection |
 | Migrations | Yes | Targeted at the pack's own version, run at boot |
 | `features[].earlySystem` | No | Starts before external packs load |
-| `partitionPolicy` | No | Security: controls data routing |
 | `boot.seed.settings` | No | Feature defaults go in `features[].settings` |
 | `builtIn` | No | Reserved for the default pack |
 

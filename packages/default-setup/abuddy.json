@@ -25,9 +25,6 @@
     "HAS": "has",
     "RELATES_TO": "relates_to"
   },
-  "partitionPolicy": {
-    "excludedEntityTypes": []
-  },
   "features": [
     {
       "id": "threads",

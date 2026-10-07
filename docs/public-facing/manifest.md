@@ -28,7 +28,6 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
 | `boot` | `PackBootConfig` | no | Boot hooks and seeds; see [Boot configuration](#boot-configuration) |
 | `fe` | `object` | no | FE-only registrations; see [Frontend configuration](#frontend-configuration) |
-| `partitionPolicy` | `{ excludedEntityTypes?: string[] }` | no | Entity types kept in memory only, never persisted. Built-in packs only: the app ignores it for an external pack, with a warning |
 | `entityShapes` | `Record<string, { source, type }>` | no | Entity type -> TS interface mappings |
 | `seedFormats` | `Record<string, SeedFormatConfig>` | no | Named seed formats: how a source becomes records. `boot.seed` entries name them, dependents as `<pack id>:<name>`; see [Seeds](seeds.md#seeding-entities) |
 | `seedHooks` | `Record<string, string>` | no | Seed hooks for entity types this pack declares: the entity type's value in `entities` -> `path#exportName` of a `SeedHooks` object (`find`, `create`, `update`, `remove`, all optional). Every pack seeding that type goes through them; see [Seeds](seeds.md#seed-hooks) |

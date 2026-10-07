@@ -248,15 +248,6 @@ export function loadSingleExternalPack(
     // pack since `builtInSeedHashes`, so what is left is that nothing has made the two paths one
     delete registration.boot.seedManifest;
   }
-  const policy = registration.ears?.partitionPolicy;
-  if (policy) {
-    if ((policy.excludedEntityTypes?.length ?? 0) > 0) {
-      logger.warn(`Pack ${manifest.id}: partitionPolicy ignored for external packs (v1)`);
-    }
-    registration.ears = { ...registration.ears! };
-    delete registration.ears.partitionPolicy;
-  }
-
   return {
     registration,
     origin: { id: manifest.id, name: manifest.name, version: manifest.version, dir, builtIn: false, manifest },

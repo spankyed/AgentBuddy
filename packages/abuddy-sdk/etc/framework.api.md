@@ -124,10 +124,6 @@ export interface PackEARS {
     // (undocumented)
     entities: Record<string, string>;
     // (undocumented)
-    partitionPolicy?: {
-        excludedEntityTypes?: string[];
-    };
-    // (undocumented)
     relKinds: Record<string, string>;
 }
 

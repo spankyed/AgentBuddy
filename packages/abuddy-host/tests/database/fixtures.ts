@@ -27,7 +27,7 @@ function writeJSON(file: string, value: unknown): void {
   fs.writeFileSync(file, JSON.stringify(value));
 }
 
-/** A data dir with the built-in pack `core` published (Note, `mentions`, Trace volatile), and optionally external packs */
+/** A data dir with the built-in pack `core` published (Note, Trace, `mentions`), and optionally external packs */
 export function dataDirWithPacks({ external = [] as Array<{ id: string; entities: Record<string, string>; enabled?: boolean }> } = {}): string {
   const dir = tempDir('host-database-');
   writeJSON(path.join(_appDirOf(dir), 'host-packs', 'core', 'types', 'snapshot.json'), {
@@ -37,12 +37,11 @@ export function dataDirWithPacks({ external = [] as Array<{ id: string; entities
       id: 'core', name: 'Core', version: '1.0.0', builtIn: true,
       entities: { Note: 'Note', Trace: 'Trace' },
       relKinds: { MENTIONS: 'mentions' },
-      partitionPolicy: { excludedEntityTypes: ['Trace'] },
     },
   });
   for (const pack of external) {
     writeJSON(path.join(_appDirOf(dir), 'packs', pack.id, 'abuddy.json'), {
-      id: pack.id, name: pack.id, version: '1.0.0', entities: pack.entities, partitionPolicy: { excludedEntityTypes: Object.keys(pack.entities) },
+      id: pack.id, name: pack.id, version: '1.0.0', entities: pack.entities,
     });
   }
   const listed = external.filter((pack) => pack.enabled !== undefined);

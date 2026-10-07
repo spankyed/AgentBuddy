@@ -2,7 +2,7 @@
 
 The pack runtime the app runs: loading built-in and external packs, the SDK bridge, activation and teardown, reload, seeding, and the host `packs` system. It works on the registry it's given (`PackRegistry`, `createPackRegistry()` from `../pack-registration.ts`): every function that registers, unregisters or reads packs takes it as its first argument, and the host `packs` system is `createPacksSystem(registry)`. Discovery, the registered packs (`createPackRegistry()`, with the shutdown hooks), the install registry, the installer and the pack layout live one level up in `@abuddy/host/packs` (`packages/abuddy-host/src/packs/`). That barrel, which the CLI imports, never imports this folder, and neither does `@abuddy/host/bus` (`tests/boundaries.spec.ts`).
 
-The API calls this runtime (`packages/api/src/runtime/index.ts`, `setup/websocket.ts`, `transport/packs.ts`), and so do the db scripts. What only the API has, it reaches through the SDK's bound runtime: logging through `createLogger` (`@abuddy/sdk/logger`) and the app version through `getAppVersion()` (`@abuddy/sdk/env`). Unbound (the CLI), loggers write to the console. The partition policy the app's store routes by follows registration by itself (the registry's `partitionPolicy`), so nothing here invalidates it. Modules here import each other and the rest of host by relative `.ts` path.
+The API calls this runtime (`packages/api/src/runtime/index.ts`, `setup/websocket.ts`, `transport/packs.ts`), and so do the db scripts. What only the API has, it reaches through the SDK's bound runtime: logging through `createLogger` (`@abuddy/sdk/logger`) and the app version through `getAppVersion()` (`@abuddy/sdk/env`). Unbound (the CLI), loggers write to the console. The partition policy the app's store routes by is a constant (`appPartitionPolicy()`), so nothing here touches it. Modules here import each other and the rest of host by relative `.ts` path.
 
 ## Architecture
 
@@ -39,7 +39,7 @@ Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs ar
 3. Loads each enabled pack with `loadSingleExternalPack()`:
    - `hostVersion` check (`isHostCompatible`), pack layout format check, warning on an SDK major version mismatch
    - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `abuddy install` or `abuddy run`
-   - drops early systems, and strips `boot.seedManifest` (external seeds go through `importPackSeeds`) and `ears.partitionPolicy`
+   - drops early systems, and strips `boot.seedManifest` (external seeds go through `importPackSeeds`)
    - a pack it can't load comes back as `{ problem }`, which `loadExternalPacks` records in the registry it's given (`recordLoadProblem`), so the Packs view says why the pack isn't running
 
 `registerExternalPacks(registry, packs)` registers each pack (recording why as the pack's load problem when the registry refuses one), whose features the registry runs at `<packId>/<featureId>` (its seeders, commands and the rest of its registration with it), and returns the packs whose registration succeeded.
@@ -81,7 +81,7 @@ The API's `transport/packs.ts` serves `packs.loaded` from `getLoadedPackEntries(
 ```
 0. initializeLogCapture()          — console calls become log events, each printed once
    openAppStore()                  — (runtime/index.ts) createPackRegistry(), the app's registered packs; open the LMDB store
-                                     (@abuddy/ears/lmdb) with its partitionPolicy, createEarsEngine({ persistence: store.sink }),
+                                     (@abuddy/ears/lmdb) with appPartitionPolicy(), createEarsEngine({ persistence: store.sink }),
                                      bindHost(createHostRuntime({ ..., packs })), which installs the engine's query face
                                      and binds the registry for the SDK's lookups; every step below works on it
 1. registerPack(hostRegistration) — the app's own features as the pack `host`: the application and packs systems and plugins
@@ -115,7 +115,7 @@ export const registration: PackRegistration = {
   id: string;
   features?: Record<string, PackFeature>;  // by feature id: designation?, system?: { machine, receives, early? } (packSystem), plugin?: { receives }, services?, settings?
   services?: Record<string, unknown>;
-  ears?: PackEARS;           // entities + relKinds + partitionPolicy?
+  ears?: PackEARS;           // entities + relKinds
   repositories?: Record<string, unknown>;  // features[].repositories, registered with the app's engine
   boot?: PackBootHooks;      // onInit/onShutdown (boot.hooks), seedManifest (boot.seed)
   migrations?: PackMigration[];
@@ -162,7 +162,6 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 ## Blocked features for external packs
 
 - **Early systems** (`system.early`, from `features[].earlySystem`) — Start before hydration, and before external packs register, at their feature's address like the pack's other systems: they run outside the bus and hear client sends through `onIncoming`, which the bus checks against their `receives`. The manifest schema rejects `features[].earlySystem` in a pack without `builtIn`, and the loader drops such a system with a warning log.
-- **`partitionPolicy`** (`excludedEntityTypes`) — Controls which entities go to the volatile store vs primary LMDB. Letting external packs route data to alternative stores without sandboxing could corrupt persistence. Stripped (with a warning when it lists types); all external pack data routes to the primary partition.
 - **`seedManifest`** — The declarative boot seed is only for built-in packs (hashes recorded per pack in `AppState.builtInSeedHashes`); external packs seed through `importPackSeeds()`, hash-checked per pack and in dependency order.
 
 ## Runtime lifecycle

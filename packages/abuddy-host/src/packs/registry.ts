@@ -14,10 +14,10 @@ import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { HostServices } from '@abuddy/sdk/services';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
-import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
+import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
 import { HOST_SYSTEM_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 import { HOST_PACK_ID, resolveName, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
-import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
+import { registerRepository, unregisterRepository } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { discoverPacks, packSeedOrder } from './discovery.ts';
 import { addContributions, createDefinitionStore, createDesignationStore, createStepStore, definitions, type Contribution, type UndoLog } from './extensions.ts';
@@ -188,7 +188,6 @@ export interface PackRegistry extends PackRegistryView {
    * is opened with, and each call reads the policy of the packs registered then (cached until a pack
    * registers or unregisters).
    */
-  readonly partitionPolicy: PartitionPolicy;
   getBootHooks(): PackBootHooks[];
   /** A registered pack's registration, as it was registered */
   getPackRegistration(packId: string): PackRegistration | null;
@@ -222,14 +221,6 @@ export interface PackRegistry extends PackRegistryView {
   runShutdownHooksForKey(key: string): void;
   /** Removes a pack's shutdown hooks without running them */
   removeShutdownHooksForKey(key: string): void;
-}
-
-/**
- * The app's partition policy for the entity types packs exclude (`ears.partitionPolicy.excludedEntityTypes`, the
- * built-in packs'): those and the SDK's volatile types live in the volatile partition
- */
-export function appPartitionPolicy(packExcluded: Iterable<string>): PartitionPolicy {
-  return makePolicy({ excludedEntityTypes: new Set([...SDK_EXCLUDED_ENTITY_TYPES, ...packExcluded]) });
 }
 
 /** A new, empty registry */
@@ -489,14 +480,6 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     return map;
   }
 
-  function getRegisteredEARSPolicy(): { excludedEntityTypes: string[] } {
-    const excluded: string[] = [...SDK_EXCLUDED_ENTITY_TYPES];
-    for (const reg of registrations.values()) {
-      if (reg.ears?.partitionPolicy?.excludedEntityTypes) excluded.push(...reg.ears.partitionPolicy.excludedEntityTypes);
-    }
-    return { excludedEntityTypes: excluded };
-  }
-
   /** The refs of the registered features that can have settings: those declaring defaults, and those with a plugin */
   const registeredSettingsRefs = derived(() =>
     [...registrations.values()].flatMap((reg) => featuresOf(reg).filter(({ feature }) => feature.settings || feature.plugin).map(({ ref }) => ref)));
@@ -513,7 +496,6 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
   );
   /** Every installed feature that can have settings: a registered pack's, and one in the packs dir that isn't running */
   const featuresWithSettings = (): readonly FeatureRef[] => [...new Set([...registeredSettingsRefs(), ...installedSettingsRefs()])];
-  const policy = derived((): PartitionPolicy => appPartitionPolicy(getRegisteredEARSPolicy().excludedEntityTypes));
   const eventValidationMap = derived(buildEventValidationMap);
   const pluginEventValidationMap = derived(buildPluginEventValidationMap);
   const entityTypes = derived((): ReadonlySet<string> => new Set<string>([
@@ -590,12 +572,6 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
 
     getRegisteredEntityTypes: entityTypes,
     getRegisteredServices: services,
-
-    partitionPolicy: {
-      routeEntity: (...args) => policy().routeEntity(...args),
-      routeRelation: (...args) => policy().routeRelation(...args),
-      get hydrate() { return policy().hydrate; },
-    },
 
     getBootHooks: () => [...registrations.values()].flatMap((reg) => (reg.boot ? [reg.boot] : [])),
     getPackRegistration: (packId) => registrations.get(packId) ?? null,

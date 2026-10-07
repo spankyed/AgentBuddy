@@ -182,10 +182,6 @@ export const FeatureEntrySchema = z.object({
 
 export const PackPermissionSchema = z.enum(['ears', 'llm', 'filesystem', 'network', 'terminal']);
 
-const PartitionPolicySchema = z.object({
-  excludedEntityTypes: z.array(z.string()).describe('Entity types excluded from persistence (in-memory only).').optional(),
-}).strict().describe('Built-in packs only. Ignored for external packs.');
-
 const EntityShapeSchema = z.object({
   source: z.string().describe('Source file path relative to pack root.'),
   type: z.string().describe('Exported TypeScript type name for the entity attributes.'),
@@ -229,7 +225,6 @@ export const ManifestSchema = z.object({
   relKinds: z.record(z.string(), z.string())
     .superRefine(notSdkOwned(SDK_REL_KINDS))
     .describe(`EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines ${Object.keys(SDK_REL_KINDS).join(', ')}.`).optional(),
-  partitionPolicy: PartitionPolicySchema.optional(),
   entityShapes: z.record(z.string(), EntityShapeSchema)
     .describe('Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries.').optional(),
   features: z.array(FeatureEntrySchema)
