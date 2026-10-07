@@ -205,20 +205,6 @@ export const declaredShare = (seconds: number, className: TimeoutClass): number 
   (seconds * 1000 * TIMEOUT_MS[className].stretches) / TIMEOUT_MS[className].ms;
 
 /**
- * The largest cost a step on this rung can carry and still have a deadline that is a ceiling — the seconds
- * at which `declaredShare` reaches 1.
- *
- * **It is what bounds the drift band**, and the reason that matters is that the two numbers were chosen
- * independently. `declaredShare` refuses a *declaration* past this; `BAND` watches a declaration at twice
- * its value. Where twice the declaration is the larger of the two, a cost can grow out of its own bound
- * without a word — `suite` admits 75s, and a step declaring 60s was watched only from 120s.
- *
- * Derived rather than declared, so a rung's `ms` or `stretches` moving carries the band with it.
- */
-export const rungLimitSeconds = (className: TimeoutClass): number =>
-  TIMEOUT_MS[className].ms / (1000 * TIMEOUT_MS[className].stretches);
-
-/**
  * A class named as a string — from a command line, where no type checked it.
  *
  * Refused rather than defaulted, for `sizeOf`'s reason: a budget is a ceiling, so a confident wrong answer

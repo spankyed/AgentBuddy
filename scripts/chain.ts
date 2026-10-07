@@ -616,11 +616,7 @@ async function main(): Promise<void> {
     console.log('  table it is compared against describes another machine.');
   }
 
-  // `shared` is not printed: an overlapped step is out of this report's population, as a step that did not
-  // run or finished under a second is, and none of those is announced either. `step-timing.spec.ts` asserts
-  // the gate excluded something, which is where a gate that stopped working would show
-  const { drifted } = driftedSteps(steps, measuredMs, outcome.peers);
-  const report = driftReport(drifted, budget, MEASURED_ON, all);
+  const report = driftReport(driftedSteps(steps, measuredMs), budget, MEASURED_ON, all);
   if (report !== '') console.log(report);
 
   // **The bound asked of the measurement.** `declaredShare` gates on what a step declares, and the band above
@@ -637,12 +633,12 @@ async function main(): Promise<void> {
   // inside themselves and so cannot be measured by their npm script (`measureCommandFor`)
   // `all` goes in so the report can say the reading is an upper bound rather than a comparison; it is the
   // one `RECORDING_CONDITIONS` member this reader skips, and `outgrownRungs` has why
-  const outgrown = outgrownReport(outgrownRungs(steps, measuredMs, budget, MEASURED_ON, thisMachine(), all, outcome.peers)
+  const outgrown = outgrownReport(outgrownRungs(steps, measuredMs, budget, MEASURED_ON, thisMachine(), all)
     .map((row) => ({ ...row, measureWith: measureCommandFor(row.name) })));
   if (outgrown !== '') console.log(outgrown);
 
   if (args.flags.has('record')) {
-    recordTheCosts(steps, measuredMs, outcome.peers, budget, all, args.flags.has('force'), args.flags.has('adopt'),
+    recordTheCosts(steps, measuredMs, budget, all, args.flags.has('force'), args.flags.has('adopt'),
       args.flags.has('forget'), args.values.step);
   } else if (args.flags.has('forget') || args.values.step !== undefined) {
     // Both are modifiers on the write, so without `--record` there is no write to modify. Said rather than
@@ -681,7 +677,6 @@ async function main(): Promise<void> {
  * with a one-second floor. They differ on purpose, which is why this prints everything it wrote.
  */
 function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<string, number>,
-  peers: ReadonlyMap<string, ReadonlySet<string>>,
   budget: number, all: boolean, force: boolean, adopt: boolean, forget: boolean, step?: string): void {
   // **`--step` is what bounds a mistake, and it is the guard three detectors could not give.** `--forget`
   // writes every row from one run, so a run that measured the machine writes the machine everywhere — watched
@@ -756,19 +751,9 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   // `seconds`' own doc: `packages:ensure` returns in 0.3s with the packages fresh and takes 14s when it
   // builds, so recording the 0 gives a step that builds a budget sized for a step that does not. The
   // first run of this did exactly that. `driftedSteps` skips the same measurements for the same reason.
-  //
-  // **And a step that shared the box was not measured either, which is the worse of the two.** The chain
-  // admits steps in parallel, so an overlapped duration is the schedule's number rather than the step's:
-  // `test:integration` reads ~48-54s alone and 77-101s inside a run. Writing that reads as growth, and
-  // `declaredShare` then fails on a step that never moved and demands a longer rung for it. The reads skip
-  // these for the same reason (`driftedSteps`, `outgrownRungs`); this one *writes*, so skipping matters more
-  // here than there.
   const measured = new Map([...measuredMs]
     .map(([name, ms]) => [name, Math.round(ms / 1000)] as const)
-    .filter(([name, seconds]) => seconds >= 1 && (peers.get(name)?.size ?? 0) === 0));
-  // Named rather than dropped: a run that recorded nothing because every step overlapped should say so, or
-  // "nothing recorded" reads as a table that agrees with the run
-  const shared = [...measuredMs.keys()].filter((name) => (peers.get(name)?.size ?? 0) > 0);
+    .filter(([, seconds]) => seconds >= 1));
   const declared = new Map(steps.flatMap((step) => (step.seconds === undefined ? [] : [[step.name, step.seconds] as const])));
   // `SECONDS_FLOOR`, not a millisecond one: these are seconds, and the floor is what stops the fraction
   // chasing noise on a step that costs less than a second to begin with. Shared with `driftedSteps`, which
@@ -838,12 +823,6 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   }
   if (edits.length === 0) {
     console.log('\nevery step cost what the table says, within the band — nothing recorded');
-    // The one claim that sentence cannot make for a step whose duration was the schedule's
-    if (shared.length > 0) {
-      console.log(`  ${shared.length} step(s) shared the box and were not measured, so nothing was written for `
-        + `them: ${shared.join(', ')}.`);
-      console.log('  Their cost comes from `npm run measure` on a quiet box, not from a run of the chain.');
-    }
     return;
   }
   console.log(`\nrecorded ${edits.length} step cost${edits.length === 1 ? '' : 's'}:`);

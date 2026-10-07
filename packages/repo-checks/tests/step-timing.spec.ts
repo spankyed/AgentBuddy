@@ -38,25 +38,25 @@ describe('driftedSteps', () => {
   const steps = [step('slow', [], { seconds: 10 }), step('fast', [], { seconds: 10 }), step('right', [], { seconds: 10 })];
 
   it('reports a step that now costs more than twice what it claims', () => {
-    expect(driftedSteps(steps, new Map([['slow', 21_000]])).drifted).toEqual([{ name: 'slow', declared: 10, measured: 21 }]);
+    expect(driftedSteps(steps, new Map([['slow', 21_000]]))).toEqual([{ name: 'slow', declared: 10, measured: 21 }]);
   });
 
   it('reports one that claims far more than it costs, since that inflates the critical path', () => {
-    expect(driftedSteps(steps, new Map([['fast', 4_000]])).drifted).toEqual([{ name: 'fast', declared: 10, measured: 4 }]);
+    expect(driftedSteps(steps, new Map([['fast', 4_000]]))).toEqual([{ name: 'fast', declared: 10, measured: 4 }]);
   });
 
   // Wide on purpose: lanes, a warm cache and a loaded machine move a step a long way, and a warning that
   // fires on ordinary variance is one people learn to skip
   it('says nothing about ordinary variance inside the band', () => {
-    expect(driftedSteps(steps, new Map([['right', 19_000]])).drifted).toEqual([]);
-    expect(driftedSteps(steps, new Map([['right', 5_000]])).drifted).toEqual([]);
+    expect(driftedSteps(steps, new Map([['right', 19_000]]))).toEqual([]);
+    expect(driftedSteps(steps, new Map([['right', 5_000]]))).toEqual([]);
   });
 
   // `seconds` is what a step costs when it does its work, and a step can run having nothing to do:
   // packages:ensure returns in 0.4s with the packages already fresh. Reporting that told the first run of
   // this check to record `seconds: 14 -> 0`, the cached cost.
   it('says nothing about a step that finished in under a second, which may have had nothing to do', () => {
-    expect(driftedSteps([step('ensure', [], { seconds: 14 })], new Map([['ensure', 400]])).drifted).toEqual([]);
+    expect(driftedSteps([step('ensure', [], { seconds: 14 })], new Map([['ensure', 400]]))).toEqual([]);
   });
 
   /**
@@ -67,63 +67,13 @@ describe('driftedSteps', () => {
    * could not be done. Three steps declare under a second, so this was not one step's quirk.
    */
   it('says nothing about a drift the record would refuse to write', () => {
-    expect(driftedSteps([step('tiers', [], { seconds: 0.3 })], new Map([['tiers', 1_000]])).drifted).toEqual([]);
-  });
-
-  /**
-   * A step that shared the box was not measured, so the slow side says nothing about it.
-   *
-   * The chain admits steps in parallel — that is what makes it worth running — so an overlapped duration is
-   * the schedule's number rather than the step's. `test:integration` reads 47.7s alone (median of 5, 93%
-   * idle) against 77-101s inside a run, so a comparison against a budget sized for the step alone can only
-   * convict the schedule. Mutation: drop the `!alone` clause and this case fails.
-   */
-  it('says nothing about a slow reading from a step that shared the box', () => {
-    const measured = new Map([['slow', 21_000]]);
-
-    expect(driftedSteps(steps, measured, new Map([['slow', new Set(['fast'])]])).drifted).toEqual([]);
-    expect(driftedSteps(steps, measured, new Map([['slow', new Set(['fast'])]])).shared, 'counted, not lost').toBe(1);
-  });
-
-  /**
-   * And the *fast* side still answers, which is the asymmetry that makes the gate sound rather than a
-   * blanket silence: contention cannot make a step finish early, so a reading under the band proves the
-   * declaration is high wherever it was taken.
-   */
-  it('still reports a fast reading from a step that shared the box', () => {
-    const shared = new Map([['fast', new Set(['slow'])]]);
-
-    expect(driftedSteps(steps, new Map([['fast', 4_000]]), shared).drifted)
-      .toEqual([{ name: 'fast', declared: 10, measured: 4 }]);
-  });
-
-  /**
-   * The band stops at the point the declaration would fail its own bound.
-   *
-   * `BAND` and `declaredShare` were chosen independently, so where twice a declaration exceeds its rung's
-   * limit a cost could grow out of that bound in silence: `suite` admits 75s, and a step declaring 60s was
-   * watched only from 120s. Mutation: drop `rungLimitSeconds` from `driftBand` and this case fails.
-   */
-  it('reports a measurement past its rung even when it is inside twice the declaration', () => {
-    const integration = [step('pool', [], { seconds: 60, timeout: 'suite' })];
-
-    expect(driftedSteps(integration, new Map([['pool', 80_000]])).drifted)
-      .toEqual([{ name: 'pool', declared: 60, measured: 80 }]);
-  });
-
-  // The cap only bites where it is the tighter number; for most steps twice the declaration still is
-  it('leaves the band alone where twice the declaration is inside the rung', () => {
-    const quick = [step('lint', [], { seconds: 2, timeout: 'quick' })];
-
-    expect(driftedSteps(quick, new Map([['lint', 3_000]])).drifted, 'inside both').toEqual([]);
-    expect(driftedSteps(quick, new Map([['lint', 5_000]])).drifted, 'past twice, inside the rung')
-      .toEqual([{ name: 'lint', declared: 2, measured: 5 }]);
+    expect(driftedSteps([step('tiers', [], { seconds: 0.3 })], new Map([['tiers', 1_000]]))).toEqual([]);
   });
 
   it('still reports a sub-second declaration that moved further than the floor', () => {
     // Not over-broad: the guard is about the size of the movement, not about the size of the declaration,
     // and 0.3 -> 2 is a step that really has grown
-    expect(driftedSteps([step('tiers', [], { seconds: 0.3 })], new Map([['tiers', 2_000]])).drifted)
+    expect(driftedSteps([step('tiers', [], { seconds: 0.3 })], new Map([['tiers', 2_000]])))
       .toEqual([{ name: 'tiers', declared: 0.3, measured: 2 }]);
   });
 
@@ -143,20 +93,20 @@ describe('driftedSteps', () => {
      * `chain-output.spec.ts` holds it now.
      */
     it('is reported like any other step, the run being what decides whether to ask', () => {
-      expect(driftedSteps(pooled, new Map([['test:unit:host', 5_000]])).drifted)
+      expect(driftedSteps(pooled, new Map([['test:unit:host', 5_000]])))
         .toEqual([{ name: 'test:unit:host', declared: 20, measured: 5 }]);
     });
 
     // The direction the kill budget cares about: at four times the declared cost, budgetFor starts killing
     it('is reported when it overran, not only when it undershot', () => {
-      expect(driftedSteps(pooled, new Map([['test:unit:host', 50_000]])).drifted)
+      expect(driftedSteps(pooled, new Map([['test:unit:host', 50_000]])))
         .toEqual([{ name: 'test:unit:host', declared: 20, measured: 50 }]);
     });
   });
 
   it('says nothing about a step that did not run, or one that declares no measurement', () => {
-    expect(driftedSteps(steps, new Map()).drifted).toEqual([]);
-    expect(driftedSteps([step('undeclared')], new Map([['undeclared', 999_000]])).drifted).toEqual([]);
+    expect(driftedSteps(steps, new Map())).toEqual([]);
+    expect(driftedSteps([step('undeclared')], new Map([['undeclared', 999_000]]))).toEqual([]);
   });
 });
 
