@@ -145,6 +145,31 @@ describe('a pack that ships with the app', () => {
     }
   });
 
+  /**
+   * Disabling is the other half of what the Packs view hides for a shipped pack, and it has to be refused
+   * here too: every pack is an installed record now, so nothing in the handler turns one away on its own.
+   * Without this the event tears the pack down and persists `enabled: false`, and the switch that would put
+   * it back is the one the view doesn't draw — so the app boots with no packs and no way out of it.
+   */
+  it("can't be disabled, and is told so with its real state", async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    registry.registerPack({ id: PACK_ID }, shipped);
+    const system = runPacksSystem();
+    try {
+      takeSystemErrors();
+
+      system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
+
+      expect(takeSystemErrors().map(e => e.message)).toEqual([`"${PACK_ID}" is part of AgentBuddy, so it can't be disabled`]);
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
+      expect(emitted(system.sent).find(e => e.type === 'PACK_ENABLED_CHANGED')).toMatchObject({ packId: PACK_ID, enabled: true });
+      expect(readInstalledPacks().find(r => r.id === PACK_ID)?.enabled, 'the record is untouched').not.toBe(false);
+      expect(registry.packOrigin(PACK_ID)).toEqual(shipped);
+    } finally {
+      system.stop();
+    }
+  });
+
   // Its id is not reserved, which is the half of `shippedWithApp` that had nothing to do with shipping:
   // installing over an installed pack is how an update lands, and a shipped pack is installed like any
   // other. What makes the shipped copy authoritative is the next boot, which re-installs it when the

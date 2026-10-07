@@ -361,6 +361,23 @@ export function createPacksSystem(registry: PackRegistry) {
           return;
         }
         const entry = installed.record;
+
+        // Refused for the packs `canUninstall` refuses, and for its reason: the app needs what it ships to
+        // run. Every pack is an installed record now, so the lookup above no longer turns one of them away
+        // on its own — and the Packs view hides this switch for them (`PackDetail.vue`), so a disabled
+        // shipped pack could only be re-enabled by editing `installed-packs.json` by hand. The state it
+        // sends back is the record's own, not `true`: an answer that invented one would be the same bug.
+        if (!canUninstall(packId)) {
+          broadcastToPlugin('packs', { type: 'PACK_ENABLED_CHANGED' as const, packId, enabled: entry.enabled });
+          reportError({
+            source: 'packs',
+            operation: 'togglePackEnabled',
+            severity: 'error',
+            error: new Error(`"${packId}" is part of AgentBuddy, so it can't be disabled`),
+          });
+          return;
+        }
+
         const newEnabled = !entry.enabled;
 
         if (!newEnabled) {
