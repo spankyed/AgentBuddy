@@ -38,7 +38,7 @@ function snapshot(query: EarsQuery) {
 /** The API's boot up to hydration (setup/backend.ts), for the built-in packs and the installed external ones; the caller closes the store */
 async function bootApi() {
   const app = openAppStore();
-  const infos = await loadBuiltInPacks(app.packs, PACKAGES_DIR, { runtimeEntry: 'only' });
+  const infos = await loadBuiltInPacks(app.packs, PACKAGES_DIR);
   for (const info of infos) publishHostPackOutput(info.dir, path.join(resolveAppContext().hostPacksDir, info.id));
   registerExternalPacks(app.packs, loadExternalPacks());
   await app.store.hydrate();

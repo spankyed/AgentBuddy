@@ -20,7 +20,7 @@ vi.mock('@abuddy/sdk/env', async (importOriginal) => {
   return { ...actual, getAppVersion: () => version.current ?? actual.getAppVersion() };
 });
 
-import { loadBuiltInPacks, registerExternalPacks, type LoadedPack } from '../../src/packs/runtime/index.ts';
+import { registerExternalPacks, type LoadedPack } from '../../src/packs/runtime/index.ts';
 import type { PackMigrationTarget } from '../../src/migrations/index.ts';
 import { runAppMigrations, runPackMigrations } from '../../src/migrations/index.ts';
 import { appState } from '../../src/app-state/index.ts';
@@ -53,10 +53,8 @@ describe('boot migrations', () => {
       id: 'migrations-built-in',
       migrations: [{ target: TEST_APP_VERSION, description: 'built-in', up: () => { runs.builtIn++; } }],
     };
-    await loadBuiltInPacks(registry, builtInDir, {
-      runtimeEntry: 'never',
-      bundledLoaders: async () => ({ 'migrations-built-in': async () => ({ registration }) }),
-    });
+    // Registered straight into the registry: the subject is the runner, not how a pack's module is loaded
+    registry.registerPack(registration, { id: 'migrations-built-in', name: 'Built-in', version: TEST_APP_VERSION, dir: builtInDir, builtIn: true });
 
     const externalMigration: PackMigration = { target: TEST_APP_VERSION, description: 'external', up: () => { runs.external++; } };
     const manifest = { id: 'migrations-external', name: 'External', version: TEST_APP_VERSION };
@@ -131,10 +129,7 @@ describe('which migrations run', () => {
         },
       })),
     };
-    await loadBuiltInPacks(registry, builtInDir, {
-      runtimeEntry: 'never',
-      bundledLoaders: async () => ({ 'migrations-gate': async () => ({ registration }) }),
-    });
+    registry.registerPack(registration, { id: 'migrations-gate', name: 'Gate', version: TEST_APP_VERSION, dir: builtInDir, builtIn: true });
   });
 
   beforeEach(() => {

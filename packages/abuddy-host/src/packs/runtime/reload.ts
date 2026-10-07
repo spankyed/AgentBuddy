@@ -87,7 +87,31 @@ async function reloadPack(
   logger.info(`Pack reloaded: ${packId} (${fresh.newSystemIds.length} systems)`);
 }
 
-export async function reloadExternalPack(
+/**
+ * Reloads a pack after a rebuild: its built runtime is re-required from its own directory, its systems are
+ * stopped and respawned, and its data is brought up to date.
+ *
+ * **The caller says which pack, never what kind of pack it is.** The registry already knows which directory
+ * the pack was loaded from, and a caller that could claim otherwise could ask for a reload of a pack the app
+ * does not have in the place it says.
+ */
+export async function reloadPackById(
+  registry: PackRegistry,
+  packId: string,
+  backendActor: import('xstate').AnyActorRef,
+): Promise<void> {
+  // **The directory decides, not the registry.** A pack whose last load *failed* is installed and not
+  // registered, and reloading it is how an author fixes it — so asking the registry which kind it is would
+  // refuse exactly the case the reload is for. The packs dir is what makes a pack installed.
+  const { packsDir } = resolveAppContext();
+  if (fs.existsSync(path.join(packsDir, packId))) return reloadExternalPack(registry, packId, backendActor);
+  // The load itself is the same either way. What still differs is the data step after it — a pack the app
+  // ships seeds through the declarative boot seed and an installed one through `importPackSeeds` — which is
+  // the difference `docs/goals/goal-one-kind-of-pack.md`'s Phase 5 merges, and with it this branch
+  return reloadBuiltInPack(registry, packId, backendActor);
+}
+
+async function reloadExternalPack(
   registry: PackRegistry,
   packId: string,
   backendActor: import('xstate').AnyActorRef,
@@ -130,7 +154,7 @@ export async function reloadExternalPack(
   }, packDir);
 }
 
-export async function reloadBuiltInPack(
+async function reloadBuiltInPack(
   registry: PackRegistry,
   packId: string,
   backendActor: import('xstate').AnyActorRef,

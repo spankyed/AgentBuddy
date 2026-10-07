@@ -13,7 +13,7 @@ import { installPackFromLocal } from '../../../../src/packs/installer.ts';
 import { createPacksSystem, type PackInfo } from '../../../../src/features/packs/be/system.ts';
 import { activatePack } from '../../../../src/packs/runtime/lifecycle.ts';
 import { loadAppPacks } from '../../../../src/packs/runtime/loader.ts';
-import { reloadExternalPack } from '../../../../src/packs/runtime/reload.ts';
+import { reloadPackById } from '../../../../src/packs/runtime/reload.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { createPackArchive, stagePack } from '../../../../src/packs/layout.ts';
 import { PACK_LAYOUT } from '../../../../src/packs/layout.ts';
@@ -228,7 +228,7 @@ describe('an installed pack the app could not load', () => {
       });
 
       fs.writeFileSync(snapshotFile(), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
-      await reloadExternalPack(registry, PACK_ID, { send: () => {} } as never);
+      await reloadPackById(registry, PACK_ID, { send: () => {} } as never);
 
       expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();
       expect(listed(system)?.loadProblem).toBeUndefined();

@@ -622,7 +622,7 @@ export const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-se
  * `imports` map. Not `etc` or `tests`, which no build reads, and not `workspace('default-setup')`, which would
  * make a pack test edit cost an app build.
  *
- * **Hand-written, and not derived from `discoverBuiltInPacksForBuild`** as `FIXTURE_OUTPUTS` below is derived
+ * **Hand-written, and not derived from a scan of the packs** as `FIXTURE_OUTPUTS` below is derived
  * from the fixtures: `chain-inputs.spec.ts` derives its population from exactly that function, and a check
  * whose two sides come from one source cannot fail. The asymmetry is what makes a second built-in pack fail
  * that case rather than silently satisfy it.
@@ -1073,18 +1073,17 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // it declares as an input. It invalidated itself, and the five steps that read that tree, on every run:
   // measured, a warm chain cached 7 of 17 steps instead of 16. `npm run build` still builds everything, for
   // CI and `build/build.sh`; the chain does not need it to, because `compile` is a declared `need`.
-  // `PACK_SOURCES` because two of the four builds compile the pack itself, not only the entry `compile` wrote:
-  // the renderer's plugin and the api's tsup each trace a generated entry into the pack's `src`, and Tailwind
-  // reads every file under it for class names. Measured 2026-10-07, before this: a `.vue` edit under the pack
-  // left this step `cached` after `compile` ran, so the app the chain then tested never held the change —
-  // `PACK_OUTPUTS` carries the pack's `dist`, which has no frontend bundle for a built-in pack, and
-  // `src/__generated__`, whose only file that moves on such an edit is the dot-prefixed `.inputs-hash` that
-  // `inputFiles` skips. `chain-inputs.spec.ts` holds this declaration; `goal-one-kind-of-pack.md`'s Phase 3 is what
-  // removes the edge, and this comes back out with it
+  // **No pack's `src` here, and that is a property of the build rather than an omission.** Nothing compiles a
+  // pack into the app any more: a pack's backend is loaded at run time from its own `dist/runtime/index.cjs`
+  // and its frontend fetched over `pack://`, so what this reads of a pack is `PACK_OUTPUTS` — its `dist`,
+  // which now holds both bundles. A pack source edit reaches this step through `compile`, which is a declared
+  // `need`. It declared `PACK_SOURCES` while the renderer's plugin and the api's tsup each traced a generated
+  // entry into the pack's `src`; `check:tiers` and the app build's own header are what keep that from coming
+  // back quietly
   { name: 'build:app', timeout: 'suite', seconds: 39, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
       'packages/api/tsup.config.ts', ...APP_ENTRY,
-      ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS, ...PACK_SOURCES] },
+      ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   { name: 'test:external-pack:app', timeout: 'scenario', seconds: 33,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,

@@ -81,6 +81,11 @@ const LAYOUT_CHECKS: Record<string, string> = {
     + 'paths — a property of every tracked file, read from git, with no scripts/ module behind it. It is '
     + 'here because its subject is the repo: a suite whose project does not declare the repo is not re-run '
     + 'when the thing it checks moves, which is how it missed one for two chain runs',
+  'tests/dev-pack-hmr.integration.spec.ts': 'that the dev server serves **every** workspace pack\'s '
+    + 'frontend from source, so a component edit patches rather than reloads — a property quantified over '
+    + 'the packs in the tree, which no one workspace owns: it reads the renderer\'s config, @abuddy/host\'s '
+    + 'discovery and a pack under tests/packs, and would be a suite declaring none of the others wherever '
+    + 'else it sat',
   'tests/repo-files.spec.ts': 'what "the files this repo has" means for the checks above — the working tree '
     + 'rather than the index, which is a property of the repo read from git, and the one the six populations '
     + 'here are built from',

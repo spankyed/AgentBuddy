@@ -26,7 +26,7 @@ export function packFrontendLoader(client: ShellClient, packFrontends: ShellPack
     client.loadedPacks().then(async (loadedPacks) => {
       for (const pack of loadedPacks) {
         if (stopped) return;
-        if (pack.builtIn || input.loadedPackIds.includes(pack.id)) continue;
+        if (input.loadedPackIds.includes(pack.id)) continue;
         try {
           // null: the pack has no frontend code, so there's nothing to merge or ask startup data for
           const plugins = await packFrontends.load(pack);

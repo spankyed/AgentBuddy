@@ -14,7 +14,7 @@ export const { store, engine, packs } = openAppStore();
 
 /** Registers the built-in packs and hydrates the store, as the app's boot does */
 export async function openDatabase(): Promise<void> {
-  await loadBuiltInPacks(packs, packagesDir, { runtimeEntry: 'only' });
+  await loadBuiltInPacks(packs, packagesDir);
   await store.hydrate();
 }
 

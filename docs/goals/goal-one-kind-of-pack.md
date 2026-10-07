@@ -34,6 +34,10 @@ Finished when:
   shipped integrity differs from the installed one.
 - npm run chain passes; npm run build-prod produces an app that boots with its default pack, verified
   with DEBUG_E2E=1 npm test -- smoke.
+- **A thorough review of the whole change for bugs and completeness is the last step**, after Phase 6 and
+  before the archive: read the diff against master as a reviewer who did not write it, report the findings,
+  then fix all of them. A finding is a defect — not intended behaviour, not a decision already taken, and
+  not doc or process bookkeeping.
 - A final summary: phase -> done/deferred, evidence, and the conventional choices made.
 - The doc is in docs/archive/goals/, with its status blockquote and an Outcome section, committed.
 
@@ -653,6 +657,30 @@ has replaced `BUILT_IN_PACKS_DIR` at every reader; `publishHostPackOutput`, `pru
 Mutations, each firing one case: ship a pack directory with no `integrity.json` (the install refuses,
 naming it); leave the installed copy's integrity older than the shipped one (boot re-installs); set a
 shipped pack's uninstall property true (the Packs view offers the button).
+
+### Phase 7 — Review the whole change, then fix what it finds
+
+**Not a phase of work; a phase of reading.** Six phases of mechanical deletion across the loader, the two
+bundler configs, the shell, the seed paths and the installer leave the kind of defect no single phase's
+"Done when" is pointed at: a case that still passes because its fixture moved with the code, a branch whose
+last caller went, an error message naming a thing that no longer exists, a claim in a guide that the diff
+quietly falsified.
+
+So: read `git diff master...` as a reviewer who did not write it — the source first, then the specs, then
+the prose — and report the findings. **A finding is a defect.** Behaviour a Decision chose, a difference a
+later phase was always going to remove, and doc or process bookkeeping are not findings, and listing them
+buries the ones that are. Then fix all of them, with a case for any that a check would have caught.
+
+Two questions worth asking deliberately, because nothing else here asks them:
+
+- **Does any check still look at nothing?** Six phases deleted subjects. A spec whose premise went but whose
+  assertions still pass is the failure mode, and `population(...)` / the empty-subject rules are what the
+  repo has for it.
+- **Is every message still true?** A refusal, a warning or a log line naming `bundledLoaders`, a `builtIn`
+  distinction or a path that moved is a lie told at the worst moment.
+
+**Done when:** the findings are reported, each one is fixed or explicitly declined with a reason, and
+`npm run chain` is green afterwards.
 
 ## Risks
 

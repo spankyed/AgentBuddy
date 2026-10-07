@@ -2,20 +2,30 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import type { Config } from 'tailwindcss';
 import containerQueries from '@tailwindcss/container-queries';
-import { discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover';
 import { uiTailwindPreset } from '@abuddy/ui/tailwind-preset';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packagesDir = path.join(__dirname, '..');
 
-const builtInPacks = discoverBuiltInPacksForBuild(packagesDir);
+/**
+ * A pack's components are in this window's CSS only while the dev server serves them from source, and the
+ * dev server is what says so: `vite.config.ts`'s `devPackFrontendsPlugin` writes the directories into
+ * `ABUDDY_DEV_PACK_SOURCES`, and this reads them. **Nothing here infers an environment** — the variable is
+ * absent in a built app rather than being deduced from one.
+ *
+ * A built app renders each pack's own bundle, whose `abuddy build` ran Tailwind over that pack's sources and
+ * wrote `dist/runtime/fe.css`. Scanning them here as well would put a pack's classes in the app's
+ * stylesheet twice and make the app's build depend on every pack's source, which is the edge
+ * `goal-one-kind-of-pack` removed.
+ */
+const devPackDirs = (process.env.ABUDDY_DEV_PACK_SOURCES ?? '').split(path.delimiter).filter(Boolean);
 
 export default {
   content: [
     path.join(__dirname, './index.html'),
     path.join(__dirname, './src/**/*.{vue,js,ts,jsx,tsx}'),
     path.join(packagesDir, 'abuddy-ui/src/**/*.{vue,js,ts,jsx,tsx}'),
-    ...builtInPacks.map(p => path.join(p.srcDir, '**/*.{vue,js,ts,jsx,tsx}')),
+    ...devPackDirs.map((dir) => path.join(dir, 'src/**/*.{vue,js,ts,jsx,tsx}')),
   ],
   safelist: [
     'bg-red-500',

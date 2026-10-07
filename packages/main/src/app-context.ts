@@ -51,6 +51,16 @@ function initialise(): MainAppContext {
   return {...resolved, logsDir};
 }
 
+/**
+ * The directory the app's own packs ship in: `resources/app/packages` packaged, the checkout's `packages/`
+ * from source. One declaration, because two processes need the same answer — the API loads each pack's
+ * runtime from here (`BUILT_IN_PACKS_DIR`), and the `pack://` handler serves each pack's frontend from
+ * here — and a disagreement would be a pack whose backend runs and whose frontend 404s.
+ */
+export function shippedPacksDir(): string {
+  return app.isPackaged ? path.join(process.resourcesPath, 'app', 'packages') : path.join(app.getAppPath(), 'packages');
+}
+
 /** Decides the app context if it hasn't been decided yet. Idempotent; `getAppContext()` does the same. */
 export function initAppContext(): MainAppContext {
   return getAppContext();

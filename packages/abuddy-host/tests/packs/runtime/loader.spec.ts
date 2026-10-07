@@ -202,8 +202,8 @@ describe('pack-loader', () => {
 
 });
 
-describe('loadBuiltInPacks: the bundled loaders', () => {
-  /** A built-in pack dir, with a built runtime when `built` */
+describe('loadBuiltInPacks', () => {
+  /** A pack dir the app ships, with a built runtime when `built` */
   function writeBuiltIn(id: string, built: boolean): string {
     const packagesDir = path.join(tmpDir, 'packages');
     const packDir = path.join(packagesDir, id);
@@ -214,52 +214,45 @@ describe('loadBuiltInPacks: the bundled loaders', () => {
   }
 
   afterEach(async () => {
-    for (const id of ['bundled-only', 'built-pack']) if (registry.getPackExtensions(id)) registry.unregisterPack(id);
+    for (const id of ['unbuilt', 'built-pack']) if (registry.getPackExtensions(id)) registry.unregisterPack(id);
   });
 
-  it("throws without them when runtimeEntry is 'never', naming the option", async () => {
-    await expect(loadBuiltInPacks(registry, path.join(tmpDir, 'none'), { runtimeEntry: 'never' })).rejects.toThrow(/needs the bundledLoaders option/);
-  });
-
-  it("throws without them when 'prefer' falls back to them, naming the option", async () => {
-    await expect(loadBuiltInPacks(registry, writeBuiltIn('bundled-only', false), { runtimeEntry: 'prefer' })).rejects.toThrow(/needs the bundledLoaders option/);
-  });
-
-  it("loads built runtimes without them ('prefer' that doesn't fall back, and 'only')", async () => {
+  it("loads each pack's built runtime from the directory it ships in", async () => {
     const packagesDir = writeBuiltIn('built-pack', true);
-    expect((await loadBuiltInPacks(registry, packagesDir, { runtimeEntry: 'prefer' })).map(p => p.id)).toEqual(['built-pack']);
+    expect((await loadBuiltInPacks(registry, packagesDir)).map(p => p.id)).toEqual(['built-pack']);
   });
 
-  it('loads a pack through its bundled loader', async () => {
-    const packagesDir = writeBuiltIn('bundled-only', false);
-    const loaded = await loadBuiltInPacks(registry, packagesDir, {
-      runtimeEntry: 'never',
-      bundledLoaders: async () => ({ 'bundled-only': async () => ({ registration: { id: 'bundled-only' } }) }),
-    });
-    expect(loaded.map(p => p.id)).toEqual(['bundled-only']);
+  // There is nothing left to fall back to: the api bundle carries no pack's backend, so a pack that was
+  // never built is a pack the app does not have. It says so and loads the rest.
+  it('skips a pack with no built runtime, naming the command that writes one', async () => {
+    const packagesDir = writeBuiltIn('unbuilt', false);
+    const errors: string[] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation((...args) => { errors.push(args.join(' ')); });
+    try {
+      expect(await loadBuiltInPacks(registry, packagesDir)).toEqual([]);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(errors.join('\n')).toMatch(/unbuilt has no .*runtime.index\.cjs.*npm run build/s);
   });
 });
 
-// A packaged app's built-in packs load through the bundle's loaders, which are imported asynchronously: an
-// installed pack registering meanwhile took any role a built-in pack designates, and the built-in then failed
+// Every built-in pack registers before any external one, whatever a pack's own load costs: an installed
+// pack registering meanwhile would take any role a shipped pack designates, and the shipped one then failed
 describe('loadAppPacks', () => {
   afterEach(() => {
     for (const id of ['role-builtin', 'role-taker']) if (registry.getPackExtensions(id)) registry.unregisterPack(id);
   });
 
-  it('registers every built-in pack before any external one, however long the bundled loaders take', async () => {
+  it('registers every built-in pack before any external one', async () => {
     const builtInDir = path.join(tmpDir, 'packages');
-    fs.mkdirSync(path.join(builtInDir, 'role-builtin'), { recursive: true });
+    fs.mkdirSync(path.join(builtInDir, 'role-builtin', 'dist', 'runtime'), { recursive: true });
     fs.writeFileSync(path.join(builtInDir, 'role-builtin', 'abuddy.json'), JSON.stringify({ id: 'role-builtin', name: 'Built-in', version: '1.0.0', builtIn: true }));
+    fs.writeFileSync(path.join(builtInDir, 'role-builtin', 'dist', 'runtime', 'index.cjs'),
+      "module.exports = { registration: { id: 'role-builtin', features: { owner: { designation: 'loader-spec-role' } } } };");
     makePack(path.join(_appDirOf(tmpDir), 'packs'), 'role-taker', { id: 'role-taker', name: 'Taker', version: '1.0.0' }, "{ taker: { designation: 'loader-spec-role' } }");
 
-    const { builtIn, external } = await loadAppPacks(registry, {
-      builtInDir,
-      bundledLoaders: async () => {
-        await new Promise(resolve => setTimeout(resolve, 20));
-        return { 'role-builtin': async () => ({ registration: { id: 'role-builtin', features: { owner: { designation: 'loader-spec-role' } } } }) };
-      },
-    });
+    const { builtIn, external } = await loadAppPacks(registry, { builtInDir });
 
     expect(builtIn.map(p => p.id)).toEqual(['role-builtin']);
     expect(registry.designation('loader-spec-role')).toBe('role-builtin/owner');
@@ -835,22 +828,30 @@ describe('computePackSeedHash', () => {
 });
 
 describe('loaded packs: the packs.loaded entries', () => {
-  it('lists the built-in packs, then the loaded packs with frontend files', () => {
+  // Every pack is listed, with the files the renderer fetches its frontend from when it has them. A pack
+  // the app ships keeps its built files in `dist/`, which is the only thing that differs
+  it('lists every pack, with where to fetch each frontend from', () => {
     const withFrontend = path.join(tmpDir, 'with-fe');
     fs.mkdirSync(path.join(withFrontend, 'runtime'), { recursive: true });
     fs.writeFileSync(path.join(withFrontend, 'runtime', 'fe.js'), '');
     fs.writeFileSync(path.join(withFrontend, 'runtime', 'fe.css'), '');
     const backendOnly = path.join(tmpDir, 'be-only');
     fs.mkdirSync(backendOnly);
+    // The shipped pack's own frontend, under the `dist/` its build writes it to
+    const shipped = path.join(tmpDir, 'shipped');
+    fs.mkdirSync(path.join(shipped, 'dist', 'runtime'), { recursive: true });
+    fs.writeFileSync(path.join(shipped, 'dist', 'runtime', 'fe.js'), '');
     const external = (id: string, dir: string) => ({ id, name: id, version: '2.0.0', dir, builtIn: false });
     const loaded = {
-      builtInPacks: () => [{ id: 'built-in', name: 'Built-in', version: '1.0.0', dir: tmpDir, builtIn: true }],
+      builtInPacks: () => [{ id: 'built-in', name: 'Built-in', version: '1.0.0', dir: shipped, builtIn: true }],
       externalPacks: () => [external('with-fe', withFrontend), external('be-only', backendOnly)],
     };
 
     expect(getLoadedPackEntries(loaded)).toEqual([
-      { id: 'built-in', name: 'Built-in', version: '1.0.0', builtIn: true },
+      { id: 'built-in', name: 'Built-in', version: '1.0.0', builtIn: true, feEntry: 'runtime/fe.js', feStyles: undefined, feRevision: expect.stringMatching(/^[0-9a-f]{16}$/) },
       { id: 'with-fe', name: 'with-fe', version: '2.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css', feRevision: expect.stringMatching(/^[0-9a-f]{16}$/) },
+      // Listed with no frontend files: it has systems the renderer must know are running
+      { id: 'be-only', name: 'be-only', version: '2.0.0' },
     ]);
   });
 

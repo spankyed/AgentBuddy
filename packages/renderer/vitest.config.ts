@@ -3,7 +3,9 @@ import { mergeConfig, defineConfig, configDefaults } from 'vitest/config'
 import viteConfig from './vite.config'
 
 export default mergeConfig(
-  viteConfig,
+  // The vite config is a function of its env now, for the dev pack-frontend map. A spec run serves nothing,
+  // so it is asked for the build answer: an empty map and no pack source in the graph.
+  viteConfig({ command: 'build', mode: 'test' }),
   defineConfig({
     test: {
       // Small (`SIZE_MS`, scripts/lib/unit-suites.ts). Declared rather than left to vitest's 5s

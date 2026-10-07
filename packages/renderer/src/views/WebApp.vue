@@ -28,11 +28,11 @@
                 : { height: `${panelSizes.canvasHeight}%` }"
             :breadcrumbs="isOnboarding ? [] : breadcrumbs"
             :menu-items="isOnboarding ? [] : allMenuItems"
-            :label="`${toggles.canvas ? defaultPlugin.label : activePlugin.label} Canvas`"
-            :header-class="toggles.canvas ? defaultPlugin.options?.headerClass : activePlugin.options?.headerClass">
+            :label="`${canvasPlugin.label} Canvas`"
+            :header-class="canvasPlugin.options?.headerClass">
             <!-- Each plugin area renders as part of its plugin, which is what usePlugin() returns there -->
             <PluginScope :plugin="currentPluginId" :key="currentPluginId">
-              <Router :views="toggles.canvas ? defaultPlugin.canvas : activePlugin.canvas" :target="targetView" />
+              <Router :views="canvasPlugin.canvas" :target="targetView" />
             </PluginScope>
             </CanvasArea>
 
@@ -54,7 +54,8 @@
                     ? { flex: '1 1 0%', minHeight: 0 }
                     : { height: `calc(${100 - panelSizes.canvasHeight}% - 4px)` }"
             >
-                <PluginScope :plugin="defaultPlugin.id" :key="defaultPlugin.id">
+                <!-- The chat is the default pack's, so there is none until a pack has claimed the default -->
+                <PluginScope v-if="defaultPlugin" :plugin="defaultPlugin.id" :key="defaultPlugin.id">
                   <component :is="defaultPlugin.chat" />
                 </PluginScope>
             </ChatArea>
@@ -129,9 +130,13 @@ const fallbackActor = computed(() => fallbackPlugin.value && applicationState.sy
 const fallbackShown = useSelector(fallbackActor, (snapshot) =>
   !!snapshot && !!fallbackPlugin.value?.fallbackPanel?.isShown(snapshot))
 
-const currentPluginId = computed(() =>
-  toggles.value.canvas ? defaultPlugin.value.id : activePlugin.value.id
+// The default pack's canvas when the default toggle is on, and the open plugin's otherwise. `defaultPlugin`
+// is null until a pack claims it, which is every window's first moment, so the open plugin is the fallback
+const canvasPlugin = computed(() =>
+  (toggles.value.canvas ? defaultPlugin.value : null) ?? activePlugin.value
 )
+
+const currentPluginId = computed(() => canvasPlugin.value.id)
 
 const canShowPanel = computed(() => fallbackShown.value || !!activePlugin.value.panel)
 const isPanelOpen = computed(() => panelSizes.value.inspectionWidth > 0)
@@ -213,7 +218,7 @@ const handleMenuAction = (event: ContextMenuItem['event']) => {
     return
   }
 
-  const pluginId = toggles.value.canvas ? defaultPlugin.value.id : activePlugin.value.id
+  const pluginId = canvasPlugin.value.id
   // Through the funnel, so the plugin is named while it handles this and a send it makes can be answered.
   // A menu click is nobody's question, so it carries no asker.
   notifyPluginActor(applicationState.system.get(pluginId), pluginId, event)

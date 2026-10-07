@@ -42,9 +42,6 @@ function getHostSdkVersion(): string | undefined {
 
 // ── Built-in pack loading ────────────────────────────────────────────
 
-/** The app bundle's loaders for its built-in packs, by pack id (the API's virtual:built-in-pack-loaders) */
-export type BundledPackLoaders = Record<string, () => Promise<BuiltInRuntime>>;
-
 /** A built-in pack's built backend runtime (dist/runtime/index.cjs, the pack layout's runtime entry) */
 export function builtInRuntimeEntry(packDir: string): string {
   return path.join(packDir, 'dist', PACK_LAYOUT.runtimeEntry);
@@ -88,26 +85,15 @@ export function refreshBuiltInPackInfo(registry: PackRegistry, packId: string): 
   }
 }
 
-export interface LoadBuiltInPacksOptions {
-  /**
-   * `prefer` (default in development) loads each pack's built runtime (dist/runtime/index.cjs) when it
-   * exists and falls back to the bundled loaders; `never` (default otherwise) uses only the bundled
-   * loaders; `only` requires the built runtime (unbundled tools, which have no bundled loaders).
-   */
-  runtimeEntry?: 'prefer' | 'only' | 'never';
-  /** The app bundle's loaders, imported when first needed: required for `never`, and for `prefer` once it falls back */
-  bundledLoaders?: () => Promise<BundledPackLoaders>;
-}
-
-/** Loads the built-in packs in `packagesDir` and registers each in `registry` */
-export async function loadBuiltInPacks(
-  registry: PackRegistry,
-  packagesDir: string,
-  { runtimeEntry = process.env.NODE_ENV === 'development' ? 'prefer' : 'never', bundledLoaders }: LoadBuiltInPacksOptions = {},
-): Promise<BuiltInPackInfo[]> {
-  const missingLoaders = () => new Error(`loadBuiltInPacks: runtimeEntry '${runtimeEntry}' needs the bundledLoaders option to load ${runtimeEntry === 'never' ? 'packs' : 'a pack without a built runtime'}`);
-  if (runtimeEntry === 'never' && !bundledLoaders) throw missingLoaders();
-  let loaders: BundledPackLoaders | undefined;
+/**
+ * Loads the built-in packs in `packagesDir` and registers each in `registry`.
+ *
+ * Every pack is loaded the same way, from the `dist/runtime/index.cjs` its own `abuddy build` wrote, in
+ * the directory it lives in. A packaged app's api bundle carries no pack's backend, so there is nothing
+ * for this to prefer or fall back to, and a pack that is not built is a pack that cannot load — which is
+ * the same answer an installed external pack has always had.
+ */
+export async function loadBuiltInPacks(registry: PackRegistry, packagesDir: string): Promise<BuiltInPackInfo[]> {
   const discovered = discoverBuiltInPacks(packagesDir);
   if (discovered.length === 0) {
     logger.warn('No built-in packs found in ' + packagesDir);
@@ -115,38 +101,13 @@ export async function loadBuiltInPacks(
   }
   const loaded: BuiltInPackInfo[] = [];
   for (const pack of discovered) {
-    // Dev mode: load the built runtime from disk (enables hot reload)
-    if (runtimeEntry !== 'never') {
-      const runtimeEntryPath = builtInRuntimeEntry(pack.dir);
-      if (runtimeEntry === 'only' && !fs.existsSync(runtimeEntryPath)) {
-        throw new Error(`Built-in pack ${pack.id} has no ${path.relative(packagesDir, runtimeEntryPath)}. Run: npm run build -w @app/default-setup`);
-      }
-      if (fs.existsSync(runtimeEntryPath)) {
-        try {
-          const registration = loadBuiltInRuntime(pack.dir);
-          if (registration) {
-            registry.registerPack(registration, { ...pack, builtIn: true });
-            loaded.push(pack);
-            logger.info(`Loaded built-in pack (dev): ${pack.id}`);
-            continue;
-          }
-        } catch (err) {
-          if (runtimeEntry === 'only') throw err;
-          logger.warn(`Built runtime failed for ${pack.id}, falling back to the bundled loader:`, err as Error);
-        }
-      }
-    }
-
-    // The app bundle's loader: always when packaged, or when a built runtime is missing or failed
-    if (!bundledLoaders) throw missingLoaders();
-    loaders ??= await bundledLoaders();
-    const loader = loaders[pack.id];
-    if (!loader) {
-      logger.warn(`Built-in pack ${pack.id}: no bundled loader, skipping`);
+    const runtimeEntryPath = builtInRuntimeEntry(pack.dir);
+    if (!fs.existsSync(runtimeEntryPath)) {
+      logger.error(`Built-in pack ${pack.id} has no ${path.relative(packagesDir, runtimeEntryPath)}, skipping. Run: npm run build -w @app/default-setup`);
       continue;
     }
     try {
-      const registration = packRegistration(await loader(), pack.dir);
+      const registration = loadBuiltInRuntime(pack.dir);
       if (!registration) {
         logger.warn(`Built-in pack ${pack.id}: no 'registration' export, skipping`);
         continue;
@@ -349,9 +310,9 @@ export function registerExternalPacks(registry: PackRegistry, packs: LoadedPack[
  */
 export async function loadAppPacks(
   registry: PackRegistry,
-  { builtInDir, ...builtInOptions }: { builtInDir?: string } & LoadBuiltInPacksOptions,
+  { builtInDir }: { builtInDir?: string },
 ): Promise<{ builtIn: BuiltInPackInfo[]; external: LoadedPack[] }> {
-  const builtInPromise = builtInDir ? loadBuiltInPacks(registry, builtInDir, builtInOptions) : Promise.resolve([]);
+  const builtInPromise = builtInDir ? loadBuiltInPacks(registry, builtInDir) : Promise.resolve([]);
   const loaded = loadExternalPacks(registry);
   const builtIn = await builtInPromise;
   return { builtIn, external: loaded.length > 0 ? registerExternalPacks(registry, loaded) : [] };

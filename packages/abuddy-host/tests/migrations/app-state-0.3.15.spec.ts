@@ -24,7 +24,6 @@ vi.mock('@abuddy/sdk/env', async (importOriginal) => {
 import { appState } from '../../src/app-state/index.ts';
 import { appMigrations } from '../../src/migrations/app/index.ts';
 import { runAppMigrations, runPackMigrations } from '../../src/migrations/index.ts';
-import { loadBuiltInPacks } from '../../src/packs/runtime/index.ts';
 import type { PackMigrationTarget } from '../../src/migrations/index.ts';
 
 const move = () => {
@@ -92,10 +91,9 @@ beforeAll(async () => {
     boot: { seedManifest: { seedKeys: ['actions'], compiledDir: packDir } },
     migrations: ['0.3.14', '0.3.16'].map((target) => ({ target, description: target, up: () => { ran.push(target); } })),
   };
-  await loadBuiltInPacks(registry, builtInDir, {
-    runtimeEntry: 'never',
-    bundledLoaders: async () => ({ [BUILT_IN_ID]: async () => ({ registration }) }),
-  });
+  // Registered straight into the registry: what this file is about is the migration runner, and routing
+  // it through the loader would mean building a pack whose migrations close over this file's `ran`
+  registry.registerPack(registration, { id: BUILT_IN_ID, name: 'Built-in', version: TEST_APP_VERSION, dir: packDir, builtIn: true });
 });
 
 afterAll(() => {

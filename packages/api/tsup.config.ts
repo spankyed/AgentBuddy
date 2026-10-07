@@ -2,15 +2,9 @@ import { defineConfig } from 'tsup';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { builtInPackLoadersModule, discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const packagesRoot = path.resolve(__dirname, '..');
 const apiSrc = path.resolve(__dirname, 'src');
-
-const builtInPacks = discoverBuiltInPacksForBuild(packagesRoot);
-// The generated module's imports resolve from the module that imports it (runtime/index.ts)
-const packLoaderDir = path.resolve(__dirname, 'src', 'runtime');
 
 function tryResolve(base: string, subpath: string): string | null {
   const candidates = [
@@ -29,6 +23,12 @@ export default defineConfig((options) => {
   const isDev = options.env?.NODE_ENV === 'development';
   return {
     entry: isDev ? ['src/server.ts'] : ['src/types.ts', 'src/server.ts'],
+    // **The production build owns this directory; the dev build only adds to it.** Code splitting names
+    // chunks by content, so a bundle that stops importing one leaves it behind — and `electron-builder.mjs`
+    // ships `packages/**/*`, so what is left behind is shipped. 47 `pack-entry-*.js` chunks were, from when
+    // the api still bundled a pack's backend. The dev build must not clean: it emits no declarations, and
+    // `dist/types.d.ts` is what the renderer's typecheck resolves `@app/api` to.
+    clean: !isDev,
     format: isDev ? ['esm'] : ['esm', 'cjs'],
     dts: !isDev,
     shims: true,
@@ -49,29 +49,6 @@ export default defineConfig((options) => {
       name: 'externalize-vue',
       setup(build) {
         build.onResolve({ filter: /\.vue$/ }, () => ({ path: '__vue_stub__', external: true }));
-      },
-    },
-    {
-      // Generates a virtual module that exports a loader map for built-in packs.
-      // Each entry is a dynamic import() with a string-literal path so esbuild
-      // traces the dependency and bundles it. runtime/index.ts imports this module
-      // and passes the loaders to loadBuiltInPacks — new built-in packs are picked up
-      // automatically via the build-time scan (no manual registration needed).
-      name: 'built-in-pack-loaders',
-      setup(build) {
-        const VIRTUAL_ID = 'virtual:built-in-pack-loaders';
-        const NAMESPACE = 'built-in-pack-loaders';
-
-        build.onResolve({ filter: new RegExp(`^${VIRTUAL_ID}$`) }, () => ({
-          path: VIRTUAL_ID,
-          namespace: NAMESPACE,
-        }));
-
-        build.onLoad({ filter: /.*/, namespace: NAMESPACE }, () => ({
-          contents: builtInPackLoadersModule(builtInPacks, packLoaderDir),
-          loader: 'ts',
-          resolveDir: packLoaderDir,
-        }));
       },
     },
     {

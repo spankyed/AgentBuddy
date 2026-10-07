@@ -36,7 +36,7 @@ let fresh: { settings: unknown; flows: ReturnType<typeof flows> };
 
 beforeAll(async () => {
   // The API's boot (setup/backend.ts), for the built-in packs
-  await loadBuiltInPacks(packs, PACKAGES_DIR, { runtimeEntry: 'only' });
+  await loadBuiltInPacks(packs, PACKAGES_DIR);
   await store.hydrate();
   startPacks(packs);
   fresh = { settings: storedSettings(), flows: flows() };

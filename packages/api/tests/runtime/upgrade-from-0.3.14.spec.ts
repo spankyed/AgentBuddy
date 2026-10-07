@@ -67,7 +67,7 @@ const SETTINGS_0314 = {
 
 beforeAll(async () => {
   packs.registerPack(hostRegistration());
-  await loadBuiltInPacks(packs, PACKAGES_DIR, { runtimeEntry: 'only' });
+  await loadBuiltInPacks(packs, PACKAGES_DIR);
   await store.hydrate();
   // 0.3.14's data has no AppState row: its state is in the settings
   untypedTx(SETTINGS_ID, true).put('entityType', 'Settings').put('data', structuredClone(SETTINGS_0314));

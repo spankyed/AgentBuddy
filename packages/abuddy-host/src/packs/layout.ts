@@ -94,6 +94,16 @@ export interface LoadedPackEntry {
   feRevision?: string;
 }
 
+/**
+ * Where a pack's built files are, which differs by one segment: an installed pack *is* the pack layout,
+ * and a pack the app ships keeps its build output in `dist/` beside its sources. Everything that reads a
+ * built file of an arbitrary pack goes through this, so neither caller carries the distinction — and
+ * `goal-one-kind-of-pack`'s Phase 6, which installs the shipped pack too, deletes it here and nowhere else.
+ */
+export function packLayoutDir(pack: { dir: string; builtIn?: boolean }): string {
+  return pack.builtIn ? path.join(pack.dir, 'dist') : pack.dir;
+}
+
 /** A pack's frontend files, pack-relative: its FE entry and stylesheet when `abuddy build` wrote them */
 export function packFrontendFiles(layoutDir: string): { entry?: string; styles?: string } {
   const has = (file: string) => fs.existsSync(path.join(layoutDir, file));
@@ -103,27 +113,43 @@ export function packFrontendFiles(layoutDir: string): { entry?: string; styles?:
   };
 }
 
-/** The loaded packs the renderer is told about: the built-in packs, then the external packs with frontend files */
+/**
+ * The loaded packs the renderer is told about, and where to fetch each one's frontend from.
+ *
+ * **Every pack, by the same rule.** The app's own pack is here with its `feEntry` like any other, because
+ * nothing compiles a pack's frontend into the renderer any more: the shell fetches each one over `pack://`
+ * from the bundle that pack's own `abuddy build` wrote. A pack with neither file is still listed — it has
+ * systems the renderer must know are running — and the shell reads that as "no frontend code".
+ */
 export function getLoadedPackEntries(registry: Pick<PackRegistry, 'builtInPacks' | 'externalPacks'>): LoadedPackEntry[] {
-  return [
-    ...registry.builtInPacks().map(({ id, name, version }) => ({ id, name, version, builtIn: true })),
-    ...registry.externalPacks().flatMap(({ id, name, version, dir }) => {
-      const { entry, styles } = packFrontendFiles(dir);
-      if (!entry && !styles) return [];
-      const feRevision = crypto.createHash('sha256')
-        .update([entry, styles].flatMap((file) => (file ? [sha256File(path.join(dir, file))] : [])).join(':'))
-        .digest('hex').slice(0, 16);
-      return [{ id, name, version, feEntry: entry, feStyles: styles, feRevision }];
-    }),
+  const packs = [
+    ...registry.builtInPacks().map((pack) => ({ ...pack, builtIn: true })),
+    ...registry.externalPacks().map((pack) => ({ ...pack, builtIn: false })),
   ];
+  return packs.flatMap(({ id, name, version, dir, builtIn }) => {
+    const layoutDir = packLayoutDir({ dir, builtIn });
+    const { entry, styles } = packFrontendFiles(layoutDir);
+    // An external pack with no frontend files at all was left out of this list entirely, and its systems
+    // were told about the client by the bus instead. Listing it keeps one answer to "which packs are
+    // running" rather than two that can disagree
+    if (!entry && !styles) return [{ id, name, version, ...(builtIn && { builtIn }) }];
+    const feRevision = crypto.createHash('sha256')
+      .update([entry, styles].flatMap((file) => (file ? [sha256File(path.join(layoutDir, file))] : [])).join(':'))
+      .digest('hex').slice(0, 16);
+    return [{ id, name, version, ...(builtIn && { builtIn }), feEntry: entry, feStyles: styles, feRevision }];
+  });
 }
 
 /**
- * The loaded external packs with frontend code: the renderer loads it after connecting, from the entries
- * above, and their systems wait for that rather than for the client
+ * The loaded packs with frontend code: the renderer loads each after connecting, from the entries above,
+ * and their systems wait for that rather than for the client. The app's own pack is one of them now, its
+ * frontend being fetched over `pack://` like any other.
  */
-export function getPacksWithClientLoadedFrontends(registry: Pick<PackRegistry, 'externalPacks'>): string[] {
-  return registry.externalPacks().filter((p) => packFrontendFiles(p.dir).entry).map((p) => p.id);
+export function getPacksWithClientLoadedFrontends(registry: Pick<PackRegistry, 'builtInPacks' | 'externalPacks'>): string[] {
+  return [
+    ...registry.builtInPacks().map((pack) => ({ ...pack, builtIn: true })),
+    ...registry.externalPacks().map((pack) => ({ ...pack, builtIn: false })),
+  ].filter((pack) => packFrontendFiles(packLayoutDir(pack)).entry).map((pack) => pack.id);
 }
 
 /**

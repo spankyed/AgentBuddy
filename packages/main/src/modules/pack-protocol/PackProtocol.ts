@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import type { AppModule } from '../../AppModule.ts';
 import type { ModuleContext } from '../../ModuleContext.ts';
-import { getAppContext } from '../../app-context.ts';
+import { getAppContext, shippedPacksDir } from '../../app-context.ts';
 import { devServerUrl } from '@abuddy/host/packs/dev-server';
 
 /** A pack id, as the manifest schema defines it (`abuddy-sdk/src/build/manifest-schema.ts`) */
@@ -68,14 +68,19 @@ class PackProtocol implements AppModule {
           } catch {}
         }
 
-        const resolved = path.resolve(packsDir, packId, filePath.replace(/^\//, ''));
+        // Two roots, because a pack is either installed in the user's data dir or shipped with the app, and
+        // a pack's frontend is fetched the same way whichever it is. A shipped pack is served out of its
+        // `dist/`, which is where its own `abuddy build` wrote the bundle an installed pack carries at its
+        // root. Each candidate is checked against its own prefix, so neither widens what the other serves.
+        const roots = [path.join(packsDir, packId), path.join(shippedPacksDir(), packId, 'dist')];
+        const relative = filePath.replace(/^\//, '');
+        const resolved = roots
+          .map((root) => ({ root, file: path.resolve(root, relative) }))
+          .find(({ root, file }) => file.startsWith(root + path.sep) && fs.existsSync(file))
+          ?.file;
 
-        const allowedPrefix = path.join(packsDir, packId) + path.sep;
-        if (!resolved.startsWith(allowedPrefix)) {
-          return new Response('Forbidden', { status: 403 });
-        }
-
-        if (!fs.existsSync(resolved)) {
+        if (!resolved) {
+          // A traversal lands here too: it is outside every prefix, so no candidate matched
           return new Response('Not Found', { status: 404 });
         }
 

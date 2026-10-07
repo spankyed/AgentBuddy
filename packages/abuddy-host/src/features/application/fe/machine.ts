@@ -152,6 +152,16 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           enqueue.assign({ plugins: withHostLast([...context.plugins, ...newPlugins]), packFrontendsLoaded, packsWithFrontend });
           for (const plugin of newPlugins) spawnPluginActor(enqueue, plugin);
           const added = new Set<string>(newPlugins.map((p) => p.id));
+          // A pack claiming the app's default is how this window learns what it is. It opens it only while
+          // nothing else has decided what is shown, so a window the user has navigated, or one the host told
+          // which plugin was last open, is left alone
+          const claimed = packs.defaultPlugin();
+          if (claimed && added.has(claimed.id)) {
+            enqueue.assign({ defaultPlugin: claimed, wantsDefaultPlugin: false });
+            if (context.wantsDefaultPlugin && !context.pendingPluginId) {
+              enqueue.raise({ type: 'SELECT_PLUGIN', plugin: claimed.id });
+            }
+          }
           const pending = context.pendingPluginId;
           if (pending && added.has(pending)) enqueue.raise({ type: 'SELECT_PLUGIN', plugin: pending });
           // Plugins asked to open while their pack loaded open now, with their events
@@ -276,7 +286,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         for (const id of pluginIds) delete pluginVisibility[id];
 
         const needsNavigate = removeSet.has(context.activePlugin.id);
-        const activePlugin = needsNavigate ? (remaining[0] ?? context.defaultPlugin) : context.activePlugin;
+        const activePlugin = needsNavigate ? (remaining[0] ?? context.defaultPlugin ?? context.activePlugin) : context.activePlugin;
 
         // Plugin children are spawned by system id only, so stop them by reference
         for (const id of pluginIds) {
@@ -304,6 +314,8 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       applyShellState: enqueueActions(({ event, context, enqueue, self }) => {
         const { pluginVisibility, lastActivePlugin } = typeOf('CLIENT_CONNECTED', event);
         enqueue.assign({ pluginVisibility });
+        // The host naming a plugin is a decision about what this window shows, so the default no longer is
+        if (context.ownsLastActivePlugin && lastActivePlugin) enqueue.assign({ wantsDefaultPlugin: false });
         if (!context.ownsLastActivePlugin || !lastActivePlugin || lastActivePlugin === context.activePlugin.id) return;
         if (context.plugins.some((p) => p.id === lastActivePlugin)) {
           enqueue(() => self.send({ type: 'SELECT_PLUGIN', plugin: lastActivePlugin }));
@@ -415,7 +427,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       // Through the funnel rather than XState's `sendTo`, which names nobody: a plugin handling a route click
       // could make no answerable send of its own. Nobody asked for the click, so it carries no asker.
       sendRouteClick: ({ system, context, event }) => {
-        const ref = context.defaultToggles.canvas ? context.defaultPlugin.id : context.activePlugin.id;
+        const ref = context.defaultToggles.canvas ? (context.defaultPlugin?.id ?? context.activePlugin.id) : context.activePlugin.id;
         notifyPluginActor(system.get(ref), ref, event);
       },
       setBreadcrumbs: assign(({ event }) => ({
@@ -428,6 +440,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         const newPlugin = context.plugins.find(p => p.id === plugin) || context.activePlugin;
         // Opening a plugin settles which one this window shows
         if (context.pendingPluginId) enqueue.assign({ pendingPluginId: null });
+        if (context.wantsDefaultPlugin) enqueue.assign({ wantsDefaultPlugin: false });
 
         // Un-expand the chat when navigating to a plugin
         if (context.panelSizes.chatMaximized) {
@@ -455,7 +468,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       trailActivePlugin: spawnChild('pluginTrailer', { id: 'pluginTrailer', input: ({ context }) => context.activePlugin.id }),
       trailNewPlugin: enqueueActions(({ enqueue, context, event }) => {
         const pluginId = event.type === 'DEFAULT_TOGGLE'
-          ? (!context.defaultToggles.canvas ? context.defaultPlugin.id : context.activePlugin.id)
+          ? (!context.defaultToggles.canvas ? (context.defaultPlugin?.id ?? context.activePlugin.id) : context.activePlugin.id)
           : typeOf('SELECT_PLUGIN', event).plugin;
         enqueue.sendTo('pluginTrailer', { type: 'TRAIL_NEW_PLUGIN', id: pluginId });
         enqueue.assign(({ system }) => {
@@ -492,11 +505,14 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       // first, until the host says which was last open
       const initialPlugin = plugins.find((p) => p.id === input.initialPluginId);
       const initialActivePlugin = initialPlugin ?? plugins[0];
+      const claimedDefault = packs.defaultPlugin() ?? null;
       return {
         plugins,
         pluginVisibility: Object.fromEntries(plugins.map((plugin) => [plugin.id, true])),
         activePlugin: initialActivePlugin,
-        defaultPlugin: packs.getRegisteredDefaultPlugin(),
+        defaultPlugin: claimedDefault,
+        // Nothing specific was asked for and no pack has claimed a default yet, so open it when one does
+        wantsDefaultPlugin: claimedDefault === null && input.initialPluginId === undefined,
         pluginHistory: [initialActivePlugin.id],
         historyIndex: 0,
         breadcrumbs: [],

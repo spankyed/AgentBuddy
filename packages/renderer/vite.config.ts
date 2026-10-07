@@ -1,50 +1,46 @@
 import { fileURLToPath } from 'node:url'
-import { readFileSync, existsSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { delimiter, dirname, resolve } from 'node:path'
 import { defineConfig, defaultClientConditions, defaultServerConditions, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import { getSharedFeDeps, getSdkFeModules, getUiFeModules } from '@abuddy/host/build/shared-deps'
-import { discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover'
+import { devPackFrontendsModule, discoverDevPackFrontends } from '@abuddy/host/build/discover'
 
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
 const packagesRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 const rendererSrcDir = fileURLToPath(new URL('./src/', import.meta.url));
 
-const packs = discoverBuiltInPacksForBuild(packagesRoot);
-
 /**
- * Single plugin for all built-in pack resolution:
- * - virtual:built-in-packs — auto-imports each pack's FE entry
- * - @<pack-id>/* — namespace alias into each pack's src/
- * - @/ — the renderer's own src/ (tsconfig.app.json maps it; packs use # subpath imports)
+ * `virtual:dev-pack-frontends` — the packs whose frontend this window serves from source, and the
+ * renderer's own `@/`.
+ *
+ * **Serving a pack's frontend from source is the whole of what a dev server adds**, and it is what makes a
+ * `.vue` edit patch the component: the pack's modules are in the renderer's own graph, so Vite has an
+ * accepting importer to stop the update at. A built app has no source to serve, so the map is empty there
+ * and every pack's frontend is fetched over `pack://` from the bundle its own `abuddy build` wrote — which
+ * is the path a pack takes in production whatever directory it lives in.
+ *
+ * The map is keyed by pack id and says nothing about `builtIn`: a pack is in it because its source is on
+ * this disk.
  */
-function builtInPacksPlugin(): Plugin {
-  const VIRTUAL_ID = 'virtual:built-in-packs';
+function devPackFrontendsPlugin(serving: boolean): Plugin {
+  const VIRTUAL_ID = 'virtual:dev-pack-frontends';
   const RESOLVED_VIRTUAL = '\0' + VIRTUAL_ID;
-
-  const eligiblePacks = packs
-    .filter(p => p.entryPath && existsSync(resolve(p.srcDir, '__generated__/pack-entry-fe.ts')));
-  const staticImports = eligiblePacks
-    .map((p, i) => `import _pack${i} from '@${p.id}/__generated__/pack-entry-fe';`)
-    .join('\n');
-  const loaderEntries = eligiblePacks
-    .map((p, i) => `  '${p.id}': () => Promise.resolve({ default: _pack${i} }),`)
-    .join('\n');
-  const virtualContent = `${staticImports}\nexport default {\n${loaderEntries}\n};\n`;
+  const packs = serving ? discoverDevPackFrontends(packagesRoot, process.env.ABUDDY_DEV_PACK_DIRS, process.cwd()) : [];
+  const virtualContent = devPackFrontendsModule(packs);
+  // Those packs' components are in this window's CSS too, and `tailwind.config.ts` is loaded by PostCSS
+  // rather than from here, so this is how it is told. **A declaration, not an inference**: it must not read
+  // `NODE_ENV` to work out whether a dev server is running (`identity-guard.spec.ts`), and nothing but a
+  // serving config writes this.
+  process.env.ABUDDY_DEV_PACK_SOURCES = packs.map((pack) => dirname(dirname(dirname(pack.feEntry)))).join(delimiter);
+  if (serving) console.log(`[dev-pack-frontends] serving from source: ${packs.map((pack) => pack.id).join(', ') || 'none'}`);
 
   return {
-    name: 'built-in-packs',
+    name: 'dev-pack-frontends',
     enforce: 'pre',
     async resolveId(source, importer) {
       if (source === VIRTUAL_ID) return RESOLVED_VIRTUAL;
-
-      for (const pack of packs) {
-        const prefix = `@${pack.id}/`;
-        if (source.startsWith(prefix)) {
-          return this.resolve(resolve(pack.srcDir, source.slice(prefix.length)), importer, { skipSelf: true });
-        }
-      }
 
       // The renderer's own `@/`, and only the renderer's: `tsconfig.app.json` maps it to ./src/*. It used to
       // mean "the importer's pack, or the renderer" — a per-importer rule, which is why four bundler configs
@@ -92,7 +88,7 @@ function hostDepsPlugin(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   base: './',
   build: {
     modulePreload: false,
@@ -101,7 +97,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [
-    builtInPacksPlugin(),
+    devPackFrontendsPlugin(command === 'serve'),
     hostDepsPlugin(),
     vue({
       template: {
@@ -168,4 +164,4 @@ export default defineConfig({
       'vidstack/player/ui',
     ]
   },
-})
+}))

@@ -62,24 +62,28 @@ describe('loading pack frontends from the loaded packs', () => {
     expect(packClientReady).toHaveBeenCalledWith('ext');
   });
 
-  it("doesn't load a pack again once its frontend is loaded, and never loads a built-in pack", async () => {
+  // Every pack's frontend is loaded the same way, the one the app ships included: nothing here reads which
+  // kind of pack it is, and a reconnection does not load one again
+  it("loads every pack's frontend once, whoever ships it", async () => {
     loadedPacksQuery.mockResolvedValue([
-      { id: 'default-setup', builtIn: true },
+      { id: 'default-setup', builtIn: true, feEntry: 'runtime/fe.js' },
       { id: 'ext', feEntry: 'runtime/fe.js' },
     ]);
-    loadPackFrontend.mockResolvedValue([plugin('pack-own')]);
+    // A plugin's id is its feature's ref, so two packs cannot contribute the same one
+    loadPackFrontend.mockImplementation((pack: { id: string }) => Promise.resolve([plugin(`${pack.id}/own`)]));
 
     connect();
     await settle();
 
-    expect(loadPackFrontend.mock.calls.map(([pack]) => pack.id)).toEqual(['ext']);
+    expect(loadPackFrontend.mock.calls.map(([pack]) => pack.id)).toEqual(['default-setup', 'ext']);
 
     dropConnection();
     connect();
     await settle();
 
-    expect(loadPackFrontend).toHaveBeenCalledTimes(1);
-    expect(app.getSnapshot().context.plugins.map(p => p.id)).toContain('pack-own');
+    expect(loadPackFrontend).toHaveBeenCalledTimes(2);
+    expect(app.getSnapshot().context.plugins.map(p => p.id))
+      .toEqual(expect.arrayContaining(['default-setup/own', 'ext/own']));
   });
 
   it('loads a pack activated while a load is running, whose read predates it', async () => {

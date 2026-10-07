@@ -24,8 +24,6 @@ export interface FePackRegistry extends FePackRegistryView {
   unregisterPackFE(packId: string): Plugin[];
   /** Every registered plugin, in registration order */
   getRegisteredPlugins(): Plugin[];
-  /** The plugin to open when the app starts: the first registered pack's that claims it; throws when none does */
-  getRegisteredDefaultPlugin(): Plugin;
   getAppExtension(slot: string): ReturnType<FePackRegistryView['appExtension']>;
 }
 
@@ -139,12 +137,6 @@ export function createFePackRegistry(): FePackRegistry {
     registerPackFE,
     unregisterPackFE,
     getRegisteredPlugins: () => allPlugins,
-    getRegisteredDefaultPlugin() {
-      if (!defaultPlugin) {
-        throw new Error('No default plugin registered: no registered pack claims one (a feature with `default`)');
-      }
-      return defaultPlugin;
-    },
     getAppExtension: appExtensions.get,
 
     // The SDK's frontend lookups (FePackRegistryView)
@@ -156,6 +148,9 @@ export function createFePackRegistry(): FePackRegistry {
     block: blocks.get,
     blocks: blocks.all,
     plugins: () => allPlugins,
+    // **No throwing counterpart, because at startup the answer is legitimately "not yet".** Every pack's
+    // frontend loads after the window is up, so a caller that demanded a default plugin could not run at
+    // all — which is what the app shell used to do. Absent until a pack claims it
     defaultPlugin: () => defaultPlugin,
     tiptapPlugins: () => tiptapPlugins,
     appExtension: appExtensions.get,

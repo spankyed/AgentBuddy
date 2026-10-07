@@ -148,10 +148,7 @@ export async function setupBackend(): Promise<void> {
 
   // ── Load packs (every built-in pack registers before any external one) ────────────
   const builtInDir = process.env.BUILT_IN_PACKS_DIR;
-  const { builtIn: builtInInfos, external: externalPacks } = await loadAppPacks(packs, {
-    builtInDir,
-    bundledLoaders: () => import('virtual:built-in-pack-loaders').then(m => m.default),
-  });
+  const { builtIn: builtInInfos, external: externalPacks } = await loadAppPacks(packs, { builtInDir });
 
   if (builtInDir) {
     // Pack authors resolve built-in dependencies (types, step build code) from the installed app

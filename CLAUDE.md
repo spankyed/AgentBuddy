@@ -808,7 +808,7 @@ Custom entity-attribute-relation graph database (`@abuddy/ears`) backed by LMDB 
 
 ### Frontend plugin system
 
-Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas` (required), `panel` (optional). Plugins are spawned on demand by the application actor. State selectors use `useSelector` from `@xstate/vue`. Plugin code lives in `packages/default-setup/src/features/<name>/fe/`. Plugins come from `abuddy.json` `features[].plugin`: `generate-entries` writes them into `src/__generated__/pack-entry-fe.ts`, which the renderer imports through `virtual:built-in-packs` (external packs' load at runtime from `pack://<id>/runtime/fe.js`).
+Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas` (required), `panel` (optional). Plugins are spawned on demand by the application actor. State selectors use `useSelector` from `@xstate/vue`. Plugin code lives in `packages/default-setup/src/features/<name>/fe/`. Plugins come from `abuddy.json` `features[].plugin`: `generate-entries` writes them into `src/__generated__/pack-entry-fe.ts`, which `abuddy build` bundles into the pack's `dist/runtime/fe.js`. **Every** pack's frontend is loaded from `pack://<id>/runtime/fe.js` by the shell, the one the app ships included; a dev server serves it from that source file instead (`virtual:dev-pack-frontends`), which is what makes a `.vue` edit patch the component.
 
 ### Key patterns
 

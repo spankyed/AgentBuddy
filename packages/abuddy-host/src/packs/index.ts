@@ -45,6 +45,7 @@ export {
   PACK_LAYOUT_VERSION, PACK_LAYOUT,
   stagePack, verifyPack, readPackIntegrity, isPackLayout,
   packFrontendFiles,
+  packLayoutDir,
   createPackArchive, extractPackArchive, packArchiveName,
   publishHostPackOutput,
   pruneHostPackOutputs,
