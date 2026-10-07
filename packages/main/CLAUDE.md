@@ -102,7 +102,7 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
   - Refuses a host that isn't a pack id (`/^[a-z][a-z0-9-]*$/`, so `pack://../x` can't reach the data dir), and any resolved path outside `packsDir/<packId>/` (403).
   - While `abuddy run` runs, `devServerUrl(userDataDir, packId, path)` (`@abuddy/host/packs/dev-server`) names the pack's Vite server: a marker with an invalid port answers 502; a failed or non-OK fetch falls through to disk.
   - Serves from disk with a small MIME table.
-- **`media://<entityId>/<file>`** (`media-protocol/`) serves `getMediaBasePath()/<entityId>/<file>`, which `media:upload` writes to (PNG/JPEG/GIF/WebP, 10 MB max). That is the folder the SDK's `_getMediaPath()` gives the API (`media-protocol/paths.ts`): `<data dir>/abuddy/media`. It branched on `app.isPackaged` until 2026-10-01, which meant main and the API each held the layout rule and a mismatch served every image a 404.
+- **`media://<entityId>/<file>`** (`media-protocol/`) serves `getMediaBasePath()/<entityId>/<file>`, which `media:upload` writes to (PNG/JPEG/GIF/WebP, 10 MB max). That is the folder the SDK's `_getMediaPath()` gives the API (`media-protocol/paths.ts`): `<data dir>/abuddy/media`. Branching on `app.isPackaged` here would put the layout rule in both main and the API, where a mismatch serves every image a 404.
 - **`local-file://?path=<abs>`** serves any existing local file for video playback. It uses the deprecated `registerFileProtocol` and no `stream` privilege on purpose: `stream: true` breaks seeking (Electron #38749).
 
 ## Build and dev

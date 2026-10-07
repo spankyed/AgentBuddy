@@ -13,7 +13,7 @@ for what a rule cost to learn, [`reference/pipeline-commands.md`](docs/reference
 what a flag was measured against, [`reference/recorded-artifacts.md`](docs/reference/recorded-artifacts.md)
 for the two recorded artifacts that were built and deleted, and `docs/archive/goals/` for a goal that
 closed. This is the repo's own comment rule — *"a comment is for whoever opens the file cold, not for
-whoever reads the diff"* — applied to the guide that states it, which had been exempting itself.
+whoever reads the diff"* — applied to the guide that states it, which is the easiest place to exempt.
 
 There is deliberately **no line-count gate**: that would be a figure with no decision behind it, which the
 rule below on figures rejects. The guard is this paragraph, where the next person adding a lesson reads it.
@@ -59,8 +59,8 @@ so out loud so the claim can be checked.
 
 **`npm run chain` costs what you changed.** Each step declares what it reads
 (`scripts/lib/chain-steps.ts`), is fingerprinted over exactly that, and is skipped when nothing under it
-moved — so the table that used to live here, asking you to work out which suite covers your edit, is now the
-graph's job. Run the chain and it runs the subset; it does not need you to have guessed right.
+moved — so working out which suite covers your edit is the graph's job, not yours and not a table here. Run
+the chain and it runs the subset; it does not need you to have guessed right.
 
 Measured with `npm run measure`, 2026-10-04, each a median of three real runs rather than a sum of the
 parts — so each figure carries its conditions and the table can be re-derived rather than trusted:
@@ -72,13 +72,13 @@ parts — so each figure carries its conditions and the table can be re-derived 
 | one package's source (the renderer) | nine of twenty-eight steps: `test:unit:host` (only the renderer's project), `test:integration`, the typecheck legs whose scope reaches it, `lint:check`, `check:specifiers`, `check:tiers` and `build:app` | **38.6s** |
 | nothing is cached (a cold tree) | all 30 steps, on a ten-core budget (`--all`, 2026-10-06) | **182.4s** |
 
-**The one-package row is the one worth reading twice, and what it says changed.** It used to be 115.1s, on the
-reasoning that `build:app` rewrites `packages/*/dist` and so moves what every app-dependent step reads —
-so editing a package the app is built from cost four times editing one it is not. That is no longer true.
-`build:app` still runs, and `test:smoke`, `test:packaged-authoring` and `test:external-pack:app` stay
+**The one-package row is the one worth reading twice**, because the obvious reasoning about it is wrong.
+`build:app` rewrites `packages/*/dist`, which looks like it moves what every app-dependent step reads — and
+on that reasoning editing a package the app is built from would cost four times editing one it is not. It
+does not. `build:app` runs, and `test:smoke`, `test:packaged-authoring` and `test:external-pack:app` stay
 **cached** through it: their keys are over the built app's *content*, and a rebuild from unchanged input
-produces the same bytes, so nothing they read has moved. The reproducible-build work is what collapsed this
-row, which is worth knowing because it is the largest single saving in the table and nothing recorded it —
+produces the same bytes, so nothing they read has moved. That rests entirely on the build being
+reproducible, which is the largest single saving in this table and the one nothing else would notice losing —
 `npm run check:repro` is the instrument that keeps it true.
 
 So the shape to carry is that an edit costs the steps whose *inputs* moved, and a step that only consumes a
@@ -133,27 +133,22 @@ Three things the chain cannot work out for you, because they rewrite files you c
   Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`.
   `packages/default-setup/tests/seeds/CLAUDE.md` has the rule for what a golden records.
 
-**`api:check` is a chain step, and it used to have a proxy.** It regenerates the reviewed reports and
-compares, so it is a derivation and needs no staleness record of its own. `api:stamp` was that record —
-a hash of the declarations a report is a function of, run as a typecheck leg because this cost 55s and
-that cost 0.6s. It costs **6.9s** now — median of 5, 6.7-7.0s, measured 2026-10-05 — after two changes:
-one compiler state per package replaced one per entry (`31473b49d`: sdk's 28 entries 12.3s -> 1.1s, ui's
-68 30s -> 0.9s), and the three packages' extractions, which npm ran in series, now run at once. That is
-less than `typecheck:pack`, so the proxy's whole justification went with the speedup.
+**`api:check` is a chain step and needs no proxy.** It regenerates the reviewed reports and compares, so it is
+a derivation and has no staleness record of its own to go stale. It costs **6.9s** — median of 5, 6.7-7.0s,
+measured 2026-10-05 — which is less than `typecheck:pack`, so there is nothing a cheaper stand-in would buy.
+Two things keep it there: one API Extractor compiler state per package rather than one per entry, and the
+three packages' extractions running at once rather than in the series `npm -w a -w b -w c` gives.
 
-**What the proxy cost while it lived is the argument against reaching for one again.** A doc-comment
-edit reddened it though no report could move. A package's stamp fingerprinted its *dependencies'*
-declarations, so clearing sdk's left ui's red — two round trips for one comment. Every fix wrote a
-committed file, including runs that changed no report. It could not see a hand-edited `etc/*.api.md`
-whose declarations never moved, which is now simply an input. And it raced a rebuild in flight:
-observed failing under `npm run typecheck` with all three packages' declarations rewritten inside that
-run's window, then passing twice straight after with nothing rebuilt. Which process was writing is not
-established — a second agent was working in the tree, so it was that build or this run's own
-`packages:ensure` — and it does not matter, because **the remedy a proxy names is a write.** `api:update`
-run in that window would have recorded a hash of a half-written tree into a committed file, and looked
-like it worked. A derivation cannot: it compares and writes nothing, so a racing read fails and the next
-run passes. More than one process touching this tree is the ordinary case now, which is the reason to
-state this rather than file it as a flake.
+**Do not add a proxy for it, and these are the five reasons.** A hash of the declarations a report is a
+function of is the obvious cheap stand-in, and every one of its failure modes is worse than the 6.9s:
+a doc-comment edit reddens it though no report can move; a package's stamp fingerprints its *dependencies'*
+declarations, so clearing sdk's leaves ui's red and one comment costs two round trips; every fix writes a
+committed file, including runs that change no report; it cannot see a hand-edited `etc/*.api.md` whose
+declarations never moved, which a derivation simply reads as an input. And it races a rebuild in flight —
+more than one process touching this tree is the ordinary case — which matters because **the remedy a proxy
+names is a write.** `api:update` run inside that window records a hash of a half-written tree into a
+committed file and looks like it worked. A derivation cannot: it compares and writes nothing, so a racing
+read fails and the next run passes.
 
 **`packages:check` is a chain step, for the opposite reason**: publint and attw over the five published trees
 cost seconds together (its declared `seconds` is in `chain-steps.ts`, and the chain reports any run that
@@ -277,6 +272,11 @@ Six rules that pay for themselves:
 - **A comment is for whoever opens the file cold, not for whoever reads the diff.** What changed, how many
   copies there used to be, what you measured — that is commit-message material. The test: will this sentence
   still be true, and worth reading, a year from now, to someone who never saw the change?
+  **No comment reads as a changelog, and this governs a guide's prose as much as a `//` comment.** Write the
+  state of the thing, never its edit history: `it was X until <date>`, `renamed from`, `previously called`,
+  `this used to be` and `we changed this to` do not belong in the tree. Keep the lesson and drop the history
+  that carried it — a trap is stated as a trap (`two clauses keeping it equal to the inputs cannot fail`), not
+  as a story about when it was removed. The git log is where the edit lives, and it is one command away.
 - **A comment justifying something by a past failure must name what prevents that failure now.** If it is
   this code, say how it fails; if it is something else, name the file; if it is nothing, say nothing checks
   it. "X is the whole point" cannot be checked; "Y fails when Z" can.
@@ -288,9 +288,9 @@ learn — the measurements, what was tried first, and the commit that closed it.
 **A step says what it reads, and whether it needs the built app follows from that.** `needsApp`
 (`scripts/lib/chain-steps.ts`) is derived: a step needs the app when it declares one of `build:app`'s
 outputs among its inputs. So there is no second record to disagree with the graph, and the ordering comes
-from those same two fields whatever anyone writes. It was a declared field until 2026-10-02, and the two
-clauses `check:tiers` spent keeping it equal to the inputs could not fail — which is what redundancy looks
-like rather than what protection looks like.
+from those same two fields whatever anyone writes. Declaring it instead would need two `check:tiers` clauses
+to keep it equal to the inputs, and clauses like that cannot fail — which is what redundancy looks like
+rather than what protection looks like.
 
 The rule it holds: a step that does not need the app must not reach one, because the moment it does it has
 to run after `build:app`, its real inputs become the whole repo, and it can no longer be cached or
@@ -329,10 +329,11 @@ cheaper chain measured — written when the declaration was a tier.
 different failures: a figure that informs no decision is weight, and a copy of something `chain-steps.ts`
 already knows drifts with nothing to catch it. "One spec file is 1-3s against the 38.6s a
 one-package edit costs the chain" earns its place; a count the `--list` flag derives does not.
-**That example used to read "against the chain's 27s floor", and it is here as the warning as well as the
-rule**: the floor became 0.9s when the per-step caching landed, the sentence was copied to two other places,
-and all three went on arguing from a number thirty times too large — in the paragraph about copied figures
-drifting.
+**Name the floor, never quote it.** A sentence like that one, written against "the chain's 27s floor" and
+then copied to two other places, goes on arguing from a number thirty times too large the moment per-step
+caching moves the floor to 0.9s — and no check holds any of the three. The figure that earns its place is the
+one sizing the choice in front of you; the one a record owns gets named so there is a single thing to
+re-measure.
 
 **A third failure, which is neither of those: a measurement a decision cites.** `@app/publish-checks`' guide
 kept a spec in the fast half *"on the strength of its five `npm pack --dry-run` calls costing ~1.5s"*, and
@@ -348,8 +349,8 @@ declared `seconds`, and leaves the wall time beside them as a dated measurement 
 derived"*. There is no general check here and should not be: a scan cannot tell a derivable count from a
 measurement by looking at one, and holding a *measurement* against a record is the `spec-cost.json` disease
 the sample section above records. Three drifts were found by review on 2026-10-06 (a spec count 9 short, the
-~1.5s above, and a "closest left" that had been overtaken); review is what catches the third kind, because a
-causal claim is an argument and no check holds an argument.
+~1.5s above, and a "closest left" another step had overtaken); review is what catches the third kind, because
+a causal claim is an argument and no check holds an argument.
 
 **Script names say whether they write.** Three shapes, and the second word tells them apart:
 
@@ -467,8 +468,8 @@ npm run test:integration # The expensive half of every suite that has one (@abud
                          # so it runs only the projects whose inputs moved — a repo-checks edit is 6s of its
                          # 44s. A pool is a resolution and a half; this one shares the host resolution and
                          # differs in the half, which is why its stamps are keyed (dir, half). One key for
-                         # both would skip the expensive half on the fast half's record, and that hole is
-                         # the reason this half was not pooled until 2026-10-01
+                         # both would skip the expensive half on the fast half's record, which is the hole
+                         # that keying it this way exists to close
                          # It runs at half the cores, and that is faster than all of them — 48.2s capped
                          # against 52.4s uncapped, since nine workers each running ts.createProgram and
                          # abuddy build put the box at a load of 25-32.
@@ -541,8 +542,8 @@ npm run facade:check     # CI: fails if dist/types/pack-types.d.ts changed witho
 npm run facade:update    # Dev: regenerate etc/pack-types.api.md
                          # Both are `abuddy facade-report [--update]`: it reads one pack's dist and writes
                          # that pack's etc, so it is a CLI command like `validate` and `build`, not a repo
-                         # script. It was one until 2026-09-28, and the cost showed up as a util that had to
-                         # live in a third package to be reachable from both it and the bundler
+                         # script. As a repo script its normalisation had to live in a third package to be
+                         # reachable from both it and the bundler, which is what the wrong home costs
 
 # Manifest JSON schema (-w @abuddy/sdk)
 npm run schema:update    # Regenerate packages/abuddy-sdk/abuddy.schema.json from manifest-schema.ts
@@ -728,10 +729,10 @@ Layers, each importing only the ones above it (`check:specifiers`, `findUpwardIm
 shells — `@abuddy/ui` (which may reach `@abuddy/sdk` and nothing else), `@abuddy/testing`, `@abuddy/cli`,
 `@app/main`, `@app/preload` (the narrowest: a sandboxed bridge may not reach the app runtime),
 `@app/repo-checks` and `@app/publish-checks` — and what each may import is in `LAYERS`
-(`scripts/check-import-specifiers.ts`). The list covered five of the twelve until 2026-10-02, with nothing
-saying which seven were missing, so the rule now derives its own population: a workspace holding code has a
-layer or is a pack, whose imports the pack rules govern more narrowly. Closing that gap found four
-dependencies three packages imported and none declared.
+(`scripts/check-import-specifiers.ts`). A hand-written list says nothing about the workspaces it omits, so
+the rule derives its own population instead: a workspace holding code has a layer or is a pack, whose imports
+the pack rules govern more narrowly. Deriving it rather than listing it is what surfaces a workspace nobody
+added — it found four dependencies three packages imported and none declared.
 
 What crosses to the app follows one rule, **bind resources, derive behaviour**. A resource has identity per running app (the event bus, the engine and its data, the registered packs, services doing I/O on user data or keys) and is a `HostRuntime` member; behaviour over a resource is SDK code, written once for the app, tests and tooling. So event sends, logging and error reports are SDK code over the bound bus, not host implementations. `services` holds nine host services (`HostServices`, reserved names in host's `packs/registry.ts`): the SDK implements `logger` and `emitter` over the bound bus and `repository` from the bound engine, and the app implements six, `appData`, `traceStore`, `inference`, `secrets`, `filesystem` and `settings`: contract types in `@abuddy/sdk/services/<name>.ts`, implementation in `@abuddy/host/services/<name>.ts`, test doubles in `@abuddy/sdk/testing`'s in-memory runtime (`fakeInference`, `addTestSecret`). Host-only modules (`/app-state`, `/migrations`, `/packs/runtime`, `/bus`, `/secrets`) aren't reachable from the SDK.
 
@@ -761,7 +762,7 @@ Relative imports in `@abuddy/ears`, `@abuddy/sdk`, `@abuddy/host`, `@abuddy/ui` 
 
 When adding new utils, put pure functions in the appropriate file under `utils/` and re-export from `pure.ts`. Node-dependent code stays in the existing Node modules and is re-exported only from `index.ts`.
 
-`@abuddy/ears`, `@abuddy/sdk` and `@abuddy/ui` each declare an exports map whose every entry resolves source under the `@abuddy/source` condition and `dist/` otherwise. **What they publish is that manifest derived, not that manifest**: `stagePublishTree` (`@abuddy/host/build/published-manifest`) writes `packages/<pkg>/publish/` at build time — the manifest without its source branches, without an entry a source branch was the whole of, and without `scripts`, beside a copy of what `files` names. A tarball ships no `src/`, and Node picks a matching condition and *then* requires the file, so a published source branch is a resolution failure for anyone who enables the condition rather than a fallback to `dist`; measured 2026-09-27, before this existed, the three named 99 such files. `@app/publish-checks`' `published-manifest-paths` holds all five published trees to naming only files their tarball contains. **Two of the three maps are written, one is derived**, which is why only one has a staleness check: `@abuddy/ears` (3 entries) and `@abuddy/sdk` (31) list their exports by hand, so the map *is* the definition of public — a module nobody listed is private, and the first import of one fails at resolution with `ERR_PACKAGE_PATH_NOT_EXPORTED`, while `build-package`'s `assertExportTargetsBuilt` catches the other direction, an entry pointing at something that wasn't built. `@abuddy/ui` (69) computes its map from `src/` instead, since a component is public unless it is a spec or under `internal/`; that gives two things that can disagree, so `exports:check` compares them and `exports:update` rewrites the map. Adding a public module to `ui` means regenerating; adding one to `ears` or `sdk` means listing it. **A host config declares that condition outright; a pack's config declares none.** The host configs name it — tsconfig `customConditions`, Vite/Vitest `resolve.conditions`, esbuild/tsup `conditions`, `node --conditions` (the CLI bin's resolve hooks in source mode, the API process the app spawns from source) — and nothing infers it from an install. `npm run check:specifiers` fails a host config that omits it and a pack config that declares it. Two tables in `scripts/lib/import-source-conditions.ts` record the configs that do the opposite on purpose, each with its reason, and report an entry that has stopped applying: `RESOLVES_DIST_BY_DESIGN` (host configs resolving `dist`, such as the API Extractor tsconfigs) and `DECLARES_SOURCE_BY_DESIGN` (pack configs declaring the condition). The second is empty and meant to stay much the smaller of the two: it is for a host-side config that physically sits in a pack's tree, which is usually better moved out, and never for making a pack's own build work — that pack would then build unlike every pack author's, which is the failure the rule exists to prevent. Its doc comment has the full rule.
+`@abuddy/ears`, `@abuddy/sdk` and `@abuddy/ui` each declare an exports map whose every entry resolves source under the `@abuddy/source` condition and `dist/` otherwise. **What they publish is that manifest derived, not that manifest**: `stagePublishTree` (`@abuddy/host/build/published-manifest`) writes `packages/<pkg>/publish/` at build time — the manifest without its source branches, without an entry a source branch was the whole of, and without `scripts`, beside a copy of what `files` names. A tarball ships no `src/`, and Node picks a matching condition and *then* requires the file, so a published source branch is a resolution failure for anyone who enables the condition rather than a fallback to `dist` — without the staging step the three maps name 99 files no tarball holds. `@app/publish-checks`' `published-manifest-paths` holds all five published trees to naming only files their tarball contains. **Two of the three maps are written, one is derived**, which is why only one has a staleness check: `@abuddy/ears` (3 entries) and `@abuddy/sdk` (31) list their exports by hand, so the map *is* the definition of public — a module nobody listed is private, and the first import of one fails at resolution with `ERR_PACKAGE_PATH_NOT_EXPORTED`, while `build-package`'s `assertExportTargetsBuilt` catches the other direction, an entry pointing at something that wasn't built. `@abuddy/ui` (69) computes its map from `src/` instead, since a component is public unless it is a spec or under `internal/`; that gives two things that can disagree, so `exports:check` compares them and `exports:update` rewrites the map. Adding a public module to `ui` means regenerating; adding one to `ears` or `sdk` means listing it. **A host config declares that condition outright; a pack's config declares none.** The host configs name it — tsconfig `customConditions`, Vite/Vitest `resolve.conditions`, esbuild/tsup `conditions`, `node --conditions` (the CLI bin's resolve hooks in source mode, the API process the app spawns from source) — and nothing infers it from an install. `npm run check:specifiers` fails a host config that omits it and a pack config that declares it. Two tables in `scripts/lib/import-source-conditions.ts` record the configs that do the opposite on purpose, each with its reason, and report an entry that has stopped applying: `RESOLVES_DIST_BY_DESIGN` (host configs resolving `dist`, such as the API Extractor tsconfigs) and `DECLARES_SOURCE_BY_DESIGN` (pack configs declaring the condition). The second is empty and meant to stay much the smaller of the two: it is for a host-side config that physically sits in a pack's tree, which is usually better moved out, and never for making a pack's own build work — that pack would then build unlike every pack author's, which is the failure the rule exists to prevent. Its doc comment has the full rule.
 
 A pack — built-in (`packages/default-setup`), fixture (`tests/packs/*`) or external — is built and tested by `abuddy build` and `abuddy test`, which resolve the `@abuddy` packages' published `dist`: the one layout a pack author ever has. The app's own builds are host builds and compile that same pack's sources with the condition (`renderer/vite.config.ts`, `api/tsup.config.ts`), so in a checkout that `dist` has to exist and match the source beside it: `npm run packages:ensure` (`scripts/ensure-packages-built.ts` over `@abuddy/host/build/packages-built`) rebuilds it when `@abuddy/ears`, `@abuddy/sdk`, `@abuddy/ui`, `@abuddy/testing` or `@abuddy/cli` is stale, and `npm run typecheck`, `npm test`, `npm run build`, `npm run compile`, `npm run typecheck:pack` and `npm run test:external-pack` all run it first, as `abuddy test` and `abuddy run` do for a pack linked to a checkout. `@abuddy/testing` resolves its built bundle whoever loads it, the repo's own E2E included, so the fixture a pack runs is the one this repo runs. While `npm start` is running, the renderer and the API follow your `@abuddy` source edits live (both declare the condition), but everything `abuddy build` produced for the built-in pack — its compiled seeds, facade types, step build and seed runtime — was made against `dist` as it stood when the command ran, and default-setup's own tsconfig declares no condition, so your editor type-checks it against that `dist` until something rebuilds it. `packages/abuddy-testing/CLAUDE.md` lists every entry point that does. Node commands that load workspace source run through `node scripts/with-source.mjs <command>`, which appends the condition to `NODE_OPTIONS` (`npm test`, the api's `db:*` scripts); run Playwright through `npm test -- <args>`, which carries the condition. The CLI and the API's dev boot fail when they would resolve a checkout's `dist` instead of its source. `npm run packages:build` writes `dist/`; `npm run exports:update -w @abuddy/ui` regenerates the UI exports map after adding or removing a module. To publish a `@abuddy/ui` component, add a `.ts` entry module next to it (`design/button.ts`: `export { default } from './button.vue'; export * from './button.vue';`) and run `exports:update`. TypeScript can't resolve an exports target that is a `.vue` file, so the entry is what consumers import. SFCs without an entry are internal: other `@abuddy/ui` files import them by relative path, and `exports:update` fails if code outside `@abuddy/ui` imports one.
 

@@ -118,10 +118,10 @@ Loggers and error reports are SDK code (`@abuddy/sdk/logger`): a bound `createLo
 - Typecheck: root `npm run typecheck:be` runs three projects here — `tsc -p .` (`src`), `tsc -p tsconfig.test.json`
   (`src` and `tests`, with `vitest/globals` so `describe`/`it`/`expect` are ambient in specs and nowhere else) and
   `tsc -p tsconfig.scripts.json` (`scripts/`). `tsconfig.test.json` is also what `vitest.config.ts` reads for its
-  path aliases. The specs went unchecked until 2026-09-24, which had let seven of them drift — two called
-  `startPacks` with an argument it dropped long ago, three collected `Message`s into `Record<string, unknown>`
-  arrays, two cast through types that no longer overlap — none of which a run could catch, since extra arguments
-  and structural mismatches are invisible at runtime. A compile-time assertion about this package's own boundary
+  path aliases. Leaving the specs out of a project lets them drift unseen: a call carrying an argument the
+  callee dropped, a `Message` collected into a `Record<string, unknown>` array, a cast through types that no
+  longer overlap — none of which a run can catch, since extra arguments and structural mismatches are invisible
+  at runtime. A compile-time assertion about this package's own boundary
   can therefore live with it: the `Required<Omit<Message, 'client'>>` sample in `tests/transport/bus-send-sender.spec.ts` stops
   compiling when the message envelope grows a field.
 

@@ -30,8 +30,8 @@ boundary pays a full Electron launch for nothing.
 an agent debugs and develops against the app: open what you just built, click through it, read the state
 back, screenshot it, and find out whether the change worked instead of reasoning about it. A driving
 script asserts nothing and nothing gates on it, so `npm run drive` collects it and no test runner does.
-This used to be `tests/e2e/scratch.spec.ts`, gitignored but *inside* `testDir`, so the suite picked it up
-regardless of what it was called. A script graduates into a spec here only when it asserts something a
+A scratch file kept inside `testDir` does not work for this, however it is named and even gitignored: the
+suite picks it up anyway. A script graduates into a spec here only when it asserts something a
 future change could break **and** it needs the real app. Most driving is neither.
 
 **While working, run the affected spec, not the suite** — `npm test -- <spec>`. That was the guidance
