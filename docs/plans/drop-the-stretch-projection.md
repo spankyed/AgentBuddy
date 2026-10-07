@@ -49,6 +49,10 @@ session.
   their call site in `scripts/chain.ts`
 - the `stretches` arm of `timedOutBecause`, and `rungTerms` — a kill message then says what it was killed
   at and what it costs healthy, with no projection
+- `scripts/measure-stretch.ts` and its `measure:stretch` npm script, plus its entry in the root `CLAUDE.md`.
+  Its whole output is a number to paste onto a `stretches` field, so it has no subject once that field is
+  gone — and it is the wrong instrument for the one factor this plan leaves open, since it fakes a smaller
+  box with `--maxWorkers` where that residue asks for a reading from a real runner
 - `chain-graph.spec.ts`' `declaredShare < 1` bound, the `ASSUMED_RUNGS` header check in
   `chain-table.spec.ts`, and the `outgrownRungs` entries in `decision-mutations.spec.ts`
 
