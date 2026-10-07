@@ -507,13 +507,18 @@ describe('shouldClassify', () => {
  * The bound (`declaredShare`) reads the declaration, and the band watching declarations is half-to-double — so
  * a step can pass the bound while its real cost has outgrown it. `outgrownRungs` finds those; this words them.
  *
- * **It is a report, so what it must not do is read like a failure**, and what it must do is name the one thing
- * that would make it a false alarm: a crowded run inflates a measurement, and a serial re-run is the check.
- * `--all --cores 1`, not `howLong`'s plain `--cores 1` — that one is on the failure path, where the step is
- * unstamped. Here the step passed and is stamped, so a re-run without `--all` finds it cached.
+ * **It is a report, so what it must not do is read like a failure**, and what it must do is hand the reader
+ * something proportionate to the question. The thing that would make it a false alarm is a crowded run, and
+ * the instrument that settles that is the step's own command under `measure`, which refuses a busy box — so
+ * that is what it leads with. It led with `chain --all --cores 1` instead until 2026-10-07, which spent all
+ * thirty steps to answer about one and still produced a single ungated observation; both times it fired,
+ * the step turned out not to have grown.
  */
 describe('outgrownReport', () => {
-  const found = [{ name: 'test:integration', declared: 60, measured: 80, at: 80 * 4 / 300 }];
+  const found = [{
+    name: 'test:integration', declared: 60, measured: 80, at: 80 * 4 / 300,
+    measureWith: 'npx vitest run --config vitest.integration.config.ts',
+  }];
 
   it('says nothing when no step outgrew its rung', () => {
     expect(outgrownReport([])).toBe('');
@@ -527,9 +532,34 @@ describe('outgrownReport', () => {
     expect(said, 'and where that lands').toContain('107%');
   });
 
-  it('names the run that tells a crowded measurement from a real one', () => {
-    expect(outgrownReport(found), 'the one thing that would make this a false alarm')
-      .toContain('--all --cores 1');
+  /**
+   * The cheap check first, because it is the one a reader can act on at once and the one that ends the
+   * question most often. It carries the step's *own* command, so the advice measures the thing reported
+   * rather than the chain around it.
+   */
+  it("leads with measure over the step's own command", () => {
+    const said = outgrownReport(found);
+
+    expect(said).toContain('npm run measure -- "npx vitest run --config vitest.integration.config.ts"');
+    expect(said.indexOf('npm run measure'), 'before the serial chain, not after it')
+      .toBeLessThan(said.indexOf('--all --cores 1'));
+  });
+
+  // One command per step, or a reader with two reported steps measures whichever the report happened to name
+  it('names a command for each step it reports', () => {
+    const said = outgrownReport([
+      ...found,
+      { name: 'build:app', declared: 39, measured: 90, at: 90 * 4 / 300, measureWith: 'npm run build:app' },
+    ]);
+
+    expect(said).toContain('npm run measure -- "npx vitest run --config vitest.integration.config.ts"');
+    expect(said).toContain('npm run measure -- "npm run build:app"');
+  });
+
+  it('still names the serial run, for the question measure cannot answer', () => {
+    // Whether the *schedule* changed is a different question from whether the step did, and the serial chain
+    // is the only thing that answers it — so it stays, below the cheap check rather than instead of it
+    expect(outgrownReport(found)).toContain('--all --cores 1');
   });
 
   it('asks for --all with it, since a step it reported has passed and is stamped', () => {

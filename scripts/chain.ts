@@ -47,7 +47,7 @@ import { schedule } from './lib/chain-schedule.ts';
 import { driftedSteps, measurementsFrom, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
-import { CHAIN_RUN_ENV, DIAGNOSTIC_RUN_ENV, POOLS, poolDurationLines, type Pool } from './lib/unit-pool.ts';
+import { CHAIN_RUN_ENV, DIAGNOSTIC_RUN_ENV, measureCommandFor, POOLS, poolDurationLines, type Pool } from './lib/unit-pool.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
@@ -629,7 +629,10 @@ async function main(): Promise<void> {
   // twice and every number it produces is about a machine nothing sized a rung for. `outgrownRungs` has the
   // measurement. That is the difference from `driftReport` above, which prints its rows anywhere because a
   // cost is true wherever it was taken, and gates only the sentence telling a reader to record it.
-  const outgrown = outgrownReport(outgrownRungs(steps, measuredMs, budget, MEASURED_ON));
+  // The command comes from how the step is run rather than from its name, because the three pool steps cache
+  // inside themselves and so cannot be measured by their npm script (`measureCommandFor`)
+  const outgrown = outgrownReport(outgrownRungs(steps, measuredMs, budget, MEASURED_ON)
+    .map((row) => ({ ...row, measureWith: measureCommandFor(row.name) })));
   if (outgrown !== '') console.log(outgrown);
 
   if (args.flags.has('record')) {

@@ -35,6 +35,21 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # slower box counts the slowdown twice — 17 of 29 steps on a 4x-slower runner,
                          # every one of them inside its rung by declaration. A drift row is true wherever it
                          # was taken and only its advice is gated; this number is the projection.
+                         # **What it tells you to do about it changed on 2026-10-07, and the old advice is
+                         # why.** It prescribed `chain --all --cores 1` and nothing else: thirty steps run
+                         # serially to settle one, and the reading it produced was still a single
+                         # observation with no idleness gate on it. Measured that day, `test:integration`
+                         # read 83s and then 100s inside two crowded chain runs and 47.7s median of 5
+                         # (47.6s-48.1s) at 93% idle — against 60s declared. Two false alarms, each with a
+                         # ten-minute instruction. It now leads with the step's own command under
+                         # `npm run measure`, which refuses a box under 70% idle and reports a median with
+                         # its band, so it is the one instrument that cannot return the contended number the
+                         # report is warning about. The command is derived from how the step is actually run
+                         # (`measureCommandFor`, `scripts/lib/unit-pool.ts`), because the three pool steps
+                         # cache inside themselves: naming `npm run test:integration` would hand a reader a
+                         # warm cache, which is the same defect the old wording warned about for a plain
+                         # `--cores 1`, one level further in. The serial chain is still named, after it,
+                         # for the question `measure` cannot answer — whether the schedule changed.
                          #   --dry     the plan and why each step is or is not cached, running nothing —
                          #             and **what bounds it**: the critical path over the declared table,
                          #             which is the answer to "which step is worth making faster". A step

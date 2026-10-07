@@ -11,7 +11,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
 import { declaredPaths, diffableStamp } from '@abuddy/host/build/packages-built';
-import { DIAGNOSTIC_RUN_ENV, POOLS, livePoolStamps, poolStampFor, poolUnitFor, projectsThatDidNotRun, recordRun, recordsVerdict, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
+import { DIAGNOSTIC_RUN_ENV, POOLS, livePoolStamps, measureCommandFor, poolStampFor, poolUnitFor, projectsThatDidNotRun, recordRun, recordsVerdict, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
 import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
@@ -179,6 +179,73 @@ describe('poolStepName', () => {
   it('gives each pool its own step, so no two report from one', () => {
     const named = (Object.keys(POOLS) as Pool[]).map(poolStepName);
     expect(new Set(named).size, named.join(', ')).toBe(named.length);
+  });
+});
+
+/**
+ * The command a report hands a reader to measure one step on its own.
+ *
+ * **The defect it exists to prevent is advice that measures nothing.** All three pools cache inside
+ * themselves, so `npm run test:integration` a second time finds every project up to date and returns at
+ * once — and the report this feeds is only ever read *after* a run, when that cache is warm. So a pool has
+ * to name the invocation underneath, which is why this is derived from `POOLS[pool].run` rather than
+ * templated from the step's name.
+ */
+describe('measureCommandFor', () => {
+  const pools = (): Pool[] => Object.keys(POOLS) as Pool[];
+
+  it('never hands a pool step its own npm script, which would measure a warm cache', () => {
+    expect(pools().length, 'no pools derived, so this passes over nothing').toBeGreaterThan(2);
+    for (const pool of pools()) {
+      const step = poolStepName(pool);
+      expect(measureCommandFor(step), `${pool} pool`).not.toBe(`npm run ${step}`);
+    }
+  });
+
+  /**
+   * The whole pool, because `POOL_SECONDS` declares one cost for it: a command that ran the stale subset
+   * would answer a cheaper question and read as a step that had shrunk.
+   */
+  it('names every suite the pool has, not a subset', () => {
+    for (const pool of pools()) {
+      const said = measureCommandFor(poolStepName(pool));
+      const suites = POOLS[pool].suites();
+      expect(suites.length, `${pool} pool has no suites`).toBeGreaterThan(0);
+      for (const suite of suites) {
+        expect(said, `${pool} pool omits ${suite.workspace}`).toContain(suite.workspace);
+      }
+    }
+  });
+
+  // Derived rather than copied: it runs whatever the pool runs, so a change to a pool's command carries
+  it("runs what the pool runs, down to the executable", () => {
+    for (const pool of pools()) {
+      const [first] = POOLS[pool].run(POOLS[pool].suites());
+      expect(first, `${pool} builds no run`).toBeDefined();
+      expect(measureCommandFor(poolStepName(pool)).startsWith(`${first!.command} `), `${pool} pool`).toBe(true);
+    }
+  });
+
+  /**
+   * Two things a person has to be able to paste. The durations reporter is machinery rather than
+   * measurement — and it is an absolute path, in a line printed to a terminal — and npm's `--` forwards
+   * the flags after it, so with the reporter gone a trailing one forwards nothing and reads as a typo.
+   */
+  it('leaves out the durations reporter, and the separator that was only there for it', () => {
+    for (const pool of pools()) {
+      const said = measureCommandFor(poolStepName(pool));
+      expect(said, `${pool} pool`).not.toContain('spec-durations-reporter');
+      expect(said.endsWith(' --'), `${pool} pool: ${said}`).toBe(false);
+    }
+  });
+
+  it("gives every other step its npm script, since nothing else caches inside itself", () => {
+    const poolSteps = new Set(pools().map(poolStepName));
+    const others = CHAIN_STEPS.filter((step) => !poolSteps.has(step.name));
+    expect(others.length, 'no other steps, so this passes over nothing').toBeGreaterThan(0);
+    for (const step of others) {
+      expect(measureCommandFor(step.name), step.name).toBe(`npm run ${step.name}`);
+    }
   });
 });
 

@@ -460,10 +460,21 @@ export function shouldClassify(run: {
  * already shipped twice (`driftReport`'s doc, and the context paragraph in `chain.ts`).
  *
  * **It names what would make it a false alarm**, which a report has to do or it gets ignored: a crowded run
- * inflates a measurement, and re-running serially is how to tell. **`--all --cores 1`, not the plain
- * `--cores 1` `howLong` suggests** — that one is on the failure path, where the step is unstamped and so
- * runs again. A step that *passed* and then got reported here is stamped, and a second run finds it cached,
- * so without `--all` the diagnostic measures nothing at all.
+ * inflates a measurement. What it hands the reader to tell that is **the step's own command under
+ * `npm run measure`** (`measureCommandFor`, `unit-pool.ts`), for one reason that settles it — `measure`
+ * refuses a box under `IDLE_FLOOR` and reports a median over repetitions with its band, so it is the one
+ * instrument here that *cannot* hand back the contended number this report is warning about. A median near
+ * the declaration ends the question; the remedy below is for when it is not.
+ *
+ * **It used to prescribe `chain --all --cores 1` and nothing else, and that was the defect.** Settling one
+ * step's cost cost all thirty, serially — the sum of the table rather than its 182.4s critical path — and
+ * the reading it produced was still a single observation with no idleness gate on it. Measured 2026-10-07:
+ * the integration pool read 83s and then 100s in two crowded chain runs, and 47.7s median of 5 (47.6s-48.1s)
+ * at 93% idle, against 60s declared and the 48.2s the guide records. Two false alarms, and the instruction
+ * for each was ten minutes long. The serial chain is still named, below the cheap answer, because it is the
+ * right tool for the other question — whether the *schedule* is what changed — and `--all` stays on it for
+ * the original reason: a step that passed is stamped, so a re-run without it finds the step cached and
+ * measures nothing.
  *
  * **And it asks for the record, not the rung.** Moving a step to a longer class is the fix, but the
  * declaration moves first: `--all --record` writes what the step costs, `chain-graph.spec.ts` then fails the
@@ -471,19 +482,26 @@ export function shouldClassify(run: {
  * the step that proves it.
  */
 export const outgrownReport = (
-  found: readonly { name: string; declared: number; measured: number; at: number }[],
+  found: readonly { name: string; declared: number; measured: number; at: number; measureWith: string }[],
 ): string => {
   if (found.length === 0) return '';
   const count = `${found.length} step${found.length === 1 ? '' : 's'}`;
   const rows = found.map(({ name, declared, measured, at }) =>
     `  ${name.padEnd(STEP_NAME_WIDTH)} ${declared}s declared, ${measured}s here — ${Math.round(at * 100)}% of `
     + 'its rung on the smaller machine that rung is sized for').join('\n');
+  // One line per step, because the command is the step's: a report naming two steps and one command would
+  // have a reader measuring whichever it happened to name
+  const checks = found.map(({ measureWith }) => `    npm run measure -- "${measureWith}"`).join('\n');
   return `\n${count} cost more than the rung ${found.length === 1 ? 'it declares' : 'they declare'} leaves `
     + `room for:\n${rows}\n`
-    + '  A crowded run inflates this — `npm run chain -- --all --cores 1` tells that from a step that has\n'
-    + '  grown; without --all the step is cached and the re-run measures nothing.\n'
-    + '  If it has, `npm run chain -- --all --record` writes the new cost and chain-graph.spec.ts fails the\n'
-    + '  bound on it, which is what says the rung has to change.';
+    + '  A crowded run inflates this, and measure is what cannot be fooled by it — it refuses a busy box and\n'
+    + `  reports a median with its band:\n${checks}\n`
+    + `  ${found.length === 1 ? 'A median' : 'Medians'} near the declared cost means this run was contention, `
+    + 'not growth. If the schedule is the\n'
+    + '  suspect instead, `npm run chain -- --all --cores 1` re-runs the table serially; without --all the\n'
+    + '  step is cached and the re-run measures nothing.\n'
+    + '  If it has really grown, `npm run chain -- --all --record` writes the new cost and\n'
+    + '  chain-graph.spec.ts fails the bound on it, which is what says the rung has to change.';
 };
 
 /**

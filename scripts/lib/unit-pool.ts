@@ -181,6 +181,55 @@ export const POOLS = {
 
 export type Pool = keyof typeof POOLS;
 
+/** The three pools by the chain step each one is, so a step name can be asked which pool it is */
+const POOL_BY_STEP: ReadonlyMap<string, Pool> =
+  new Map((Object.keys(POOLS) as Pool[]).map((pool) => [poolStepName(pool), pool]));
+
+/**
+ * The one command that measures a step on its own, for a report telling a reader how to check a reading.
+ *
+ * **Derived from how the step is actually run, because the alternative is a remedy that measures something
+ * else.** That is not hypothetical: the advisory this feeds used to prescribe `chain --all --cores 1`, which
+ * re-runs all thirty steps serially to settle one — and it was the only instruction, so the cheap answer was
+ * never offered. Measured 2026-10-07, the integration pool read 83s and then 100s inside two crowded chain
+ * runs while costing **47.7s median of 5 (47.6s-48.1s) at 93% idle**, dead on the 48.2s the guide records.
+ * The chain is a poor instrument for one step's cost: it admits steps in parallel, so what a step reads there
+ * is a function of what ran beside it.
+ *
+ * **A pool step cannot be named by its npm script**, which is the reason this is a function and not a
+ * template. All three keep a cache of their own — the reason they declare `forceArgs: ['--all']` — so
+ * `npm run test:integration` a second time finds every project up to date and returns in under a second,
+ * which is advice that measures nothing. Exactly the defect the old wording warned about for a plain
+ * `--cores 1`, one level further in. So a pool names the vitest invocation underneath, from `POOLS[pool].run`
+ * — the same declaration the pool itself runs, so the two cannot drift.
+ *
+ * **Minus the durations reporter**, which is the one part of that invocation that is machinery rather than
+ * measurement: it is a long absolute path in a line a person has to read, and what it records is the chain's
+ * own duration history. What the command therefore measures is the step's run and not its stamp bookkeeping
+ * — the dominant term, which is the whole of what a reading near a rung is about.
+ *
+ * **The whole pool, not the suites this run found stale**, which is what makes the two numbers comparable:
+ * `POOL_SECONDS` declares one cost for the pool, so a remedy that ran the stale subset would answer a
+ * cheaper question and read as a step that had shrunk.
+ *
+ * Every other step runs its work unconditionally, so its npm script is the measurement.
+ */
+export function measureCommandFor(stepName: string): string {
+  const pool = POOL_BY_STEP.get(stepName);
+  if (pool === undefined) return `npm run ${stepName}`;
+  const reporters = new Set(reporterArgs());
+  return POOLS[pool].run(POOLS[pool].suites())
+    .map(({ command, args }) => {
+      const kept = args.filter((arg) => !reporters.has(arg));
+      // npm's `--` forwards the flags after it; with the reporters gone it forwards nothing and reads as a
+      // typo in a line someone is about to run
+      if (kept.at(-1) === '--') kept.pop();
+      return [command, ...kept].join(' ');
+    })
+    // A pool that runs one invocation per suite costs all of them, so the remedy has to as well
+    .join(' && ');
+}
+
 /**
  * Every stamp any pool would write, which is what makes the rest dead.
  *
