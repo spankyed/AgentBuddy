@@ -3,6 +3,11 @@ name: Publish packages
 # Versions @abuddy/ears, @abuddy/sdk, @abuddy/ui, @abuddy/cli and @abuddy/testing with Changesets and
 # publishes the built copies to npm with provenance. Until publishing is switched on, every run is a dry
 # run: it opens/updates the "Version packages" PR and runs `npm publish --dry-run`.
+#
+# **Do not rename this file once trusted publishing is configured.** npm matches a trusted publisher on
+# `owner/repo` plus this workflow's path, so a rename revokes publish rights for every package and the
+# failure is a 403 that names neither the file nor the reason. Renaming it means re-configuring each
+# package on npmjs.com first.
 on:
   workflow_dispatch:
     inputs:
@@ -43,16 +48,26 @@ jobs:
       # `packages:build` and `packages:check` and then fails inside Changesets, where the message is about
       # npm auth rather than about what to set up. The dry run needs nothing and is left alone.
       #
-      # **It names OIDC first because that is the end state.** `id-token: write` is already requested above,
-      # so trusted publishing needs no token at all — a standing npm credential is a thing to rotate and
-      # leak, for a registry these packages are not on yet. `docs/plans/npm-publishing.md` has the order.
+      # **OIDC first, a token as the fallback, which is what makes switching it on a switch.** `id-token:
+      # write` above is what npm exchanges for publish rights, so trusted publishing needs no standing
+      # credential to rotate or leak — and this step must not block the day it is configured. The probe is
+      # `ACTIONS_ID_TOKEN_REQUEST_URL`, which Actions sets only when that permission is granted.
+      #
+      # **That arm is unreachable until a package has a trusted publisher**, so nothing exercises it yet. The
+      # edit that does is configuring one on npmjs.com; until then the token arm is the live one and this
+      # ordering is what stops the step being the thing that has to change at the same time.
       - name: Refuse a publish with no credential
         if: inputs.publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ]; then
+            echo "Publishing over OIDC (trusted publishing); no npm token is needed or used."
+            exit 0
+          fi
           if [ -n "$NODE_AUTH_TOKEN" ]; then
             echo "Publishing with NODE_AUTH_TOKEN from secrets.NPM_TOKEN."
+            echo "::notice title=Standing npm credential::This used a token. Trusted publishing (OIDC) needs none — see this workflow's header."
             exit 0
           fi
           echo "::error title=No npm credential::A publish was asked for and nothing can authenticate it."
