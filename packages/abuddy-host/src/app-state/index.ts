@@ -42,8 +42,6 @@ export interface AppState {
   externalSeedDeps: Record<string, string>;
   /** Each built-in pack's boot seed last seeded, by pack id: the hash of its compiled data */
   builtInSeedHashes: Record<string, string>;
-  /** The file mtimes and sizes each built-in pack's seed hash was computed from (the fast path that skips re-hashing) */
-  builtInSeedFingerprints: Record<string, string>;
   /**
    * The plugins whose sidebar tab the user showed or hid, by ref. A plugin not here shows as its feature declares
    * (`features[].settings`' `visible`), so a pack's default reaches everyone who never touched its tab.
@@ -54,7 +52,7 @@ export interface AppState {
 }
 
 const FIELDS = [
-  'hasOnboarded', 'version', 'packVersions', 'externalSeedHashes', 'externalSeedDeps', 'builtInSeedHashes', 'builtInSeedFingerprints',
+  'hasOnboarded', 'version', 'packVersions', 'externalSeedHashes', 'externalSeedDeps', 'builtInSeedHashes',
   'pluginVisibility', 'lastActivePlugin',
 ] as const satisfies readonly (keyof AppState)[];
 
@@ -90,7 +88,6 @@ export const appState = {
       externalSeedHashes: row.externalSeedHashes ?? {},
       externalSeedDeps: row.externalSeedDeps ?? {},
       builtInSeedHashes: row.builtInSeedHashes ?? {},
-      builtInSeedFingerprints: row.builtInSeedFingerprints ?? {},
       pluginVisibility: row.pluginVisibility ?? {},
       ...(row.lastActivePlugin != null && { lastActivePlugin: row.lastActivePlugin }),
     };

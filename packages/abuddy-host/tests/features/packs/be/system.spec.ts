@@ -404,10 +404,17 @@ describe('what a reinstall does not redo', () => {
   });
 });
 
-// Installing is the remedy a user reaches for when a pack's data didn't seed, so what it reports has to be
-// about this attempt. It wasn't: recordInstalled replaces the record, which drops the lastError the earlier
-// failure left, and the seed underneath was skipped as unchanged — so reinstalling a pack whose data never
-// seeded reported that it had installed cleanly, and took away the only sign that it hadn't.
+// Installing is the remedy a user reaches for when a pack's data didn't seed, so what it reports has to be about
+// the pack they end up with. It wasn't: `recordInstalled` replaces the record, which dropped the `lastError` the
+// earlier failure left — so reinstalling a pack whose data never seeded reported that it had installed cleanly,
+// and took away the only sign that it hadn't.
+//
+// **What makes the report true changed on 2026-10-07, and this case did not.** A reinstall used to re-seed by
+// accident, through the file times that were once in the seed hash: the seed failed again and wrote the error
+// back. Seeds are keyed on content now, so the same pack installed again is the same bytes and nothing is
+// re-imported — and what keeps this honest is `recordInstalled` preserving `lastError`, which belongs to the
+// seed outcome (`recordSeedOutcomes`) and is not an install's to clear. `activationProblem` reads it, so the
+// install still says the pack's data failed to seed, which is what the user needs to know.
 describe('reinstalling a pack whose data did not seed', () => {
   const outcomes = (sent: AnyEventObject[]) =>
     emitted(sent).map(e => e.type).filter(t => t === 'PACK_INSTALL_COMPLETE' || t === 'PACK_INSTALL_FAILED');
@@ -425,14 +432,15 @@ describe('reinstalling a pack whose data did not seed', () => {
       first.stop();
     }
 
-    // The same pack again, byte for byte: nothing about its data has changed, and it still doesn't seed
+    // The same pack again, byte for byte: nothing about its data has changed, so nothing is seeded again
     const second = runPacksSystem();
     try {
       second.send({ type: 'INSTALL_PACK', packSlug: source, source: 'local' });
       await vi.waitFor(() => expect(outcomes(second.sent)).toHaveLength(1));
 
       expect(outcomes(second.sent)).toEqual(['PACK_INSTALL_FAILED']);
-      expect(readInstalledPacks().find(r => r.id === PACK_ID)?.lastError).toBeTruthy();
+      expect(readInstalledPacks().find(r => r.id === PACK_ID)?.lastError,
+        'the reinstall erased the earlier failure, which is the only sign the data never seeded').toBeTruthy();
     } finally {
       second.stop();
     }

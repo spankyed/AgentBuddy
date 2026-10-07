@@ -748,10 +748,26 @@ describe('computePackSeedHash', () => {
     expect(hash1).not.toBe('');
   });
 
-  // An install replaces the pack's files rather than editing them, and reinstalling the version already
-  // installed leaves the bytes identical. Only the files tell the two apart, and only an install makes new
-  // ones — which is how `abuddy install` gets a re-seed without reaching into the app's database.
-  it('returns a different hash when the same bytes are put back in new files', () => {
+  // The names as well as the bytes, which is the half a byte-only hash would miss: the same records moved from one
+  // seed file to another are a different seeding, and nothing else here tells those apart — adding or changing a
+  // file moves the bytes too, so only a rename isolates it.
+  it('changes when the same bytes move to a different file', () => {
+    const distDir = path.join(tmpDir, 'hash-renamed');
+    fs.mkdirSync(distDir, { recursive: true });
+    fs.writeFileSync(path.join(distDir, seedFile('actions')), '[{"label":"same"}]');
+    const before = computePackSeedHash(distDir);
+
+    fs.rmSync(path.join(distDir, seedFile('actions')));
+    fs.writeFileSync(path.join(distDir, seedFile('prompts')), '[{"label":"same"}]');
+
+    expect(computePackSeedHash(distDir)).not.toBe(before);
+  });
+
+  // **The hash is content, so a rewrite with the same bytes is not a change.** It used to be: file times were in
+  // here so that reinstalling a pack would re-seed it, since `placePack` replaces every file. That made a `touch`
+  // re-seed too, and made every `abuddy run` backend rebuild re-import every seed, because that loop reinstalls.
+  // Asking for a pack's data to be put back is `IMPORT_PACK_SEEDS` now, which says so.
+  it('returns the same hash when the same bytes are put back in new files', () => {
     const distDir = path.join(tmpDir, 'hash-replaced');
     fs.mkdirSync(distDir, { recursive: true });
     const file = path.join(distDir, seedFile('actions'));
@@ -763,12 +779,12 @@ describe('computePackSeedHash', () => {
     const replaced = new Date(Date.now() + 5_000);
     fs.utimesSync(file, replaced, replaced);
 
-    expect(computePackSeedHash(distDir)).not.toBe(before);
+    expect(computePackSeedHash(distDir)).toBe(before);
   });
 
-  // The claim the rest of this rests on: an install really does leave new files, so `abuddy install` gets a
-  // re-seed without the CLI reaching into the app's database the way the in-app install once did
-  it('changes after installing the same pack source over itself', async () => {
+  // The same property through a real install, which is the one that used to carry the old contract: `placePack`
+  // really does leave new files, and that is now not a reason to seed again
+  it('does not change after installing the same pack source over itself', async () => {
     const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
     const source = path.join(tmpDir, 'reinstall-source');
     fs.mkdirSync(path.join(source, 'dist', 'runtime', 'seeds'), { recursive: true });
@@ -785,7 +801,7 @@ describe('computePackSeedHash', () => {
 
     await installPackFromLocal(source, packsDir);
 
-    expect(computePackSeedHash(seeds), 'a reinstall left the seeds looking untouched').not.toBe(before);
+    expect(computePackSeedHash(seeds), 'a reinstall of identical bytes read as changed data').toBe(before);
   });
 
   it('returns different hash when content changes', () => {

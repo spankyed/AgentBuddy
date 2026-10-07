@@ -133,6 +133,12 @@ function changeRecord(id: string, change: (record: PackRecord) => PackRecord | u
  *
  * What an update check last offered goes with it — the pack on disk is now whatever was just installed,
  * so an offer made against the old one says nothing.
+ *
+ * **`lastError` is not an install's to drop.** It says what the pack's seed data came to, which only
+ * `recordSeedOutcomes` sets and clears, and a seed that was skipped as unchanged has nothing to say — so a
+ * reinstall that replaces this record without it erases the only sign that a pack's data never seeded. That
+ * stayed hidden while a reinstall re-seeded by accident, through the file times once in the seed hash: the
+ * seed failed again and wrote the error back. It does not re-seed now, so this has to keep it.
  */
 export function recordInstalled(id: string, installedFrom?: string): boolean {
   return changeRecord(id, previous => ({
@@ -140,6 +146,7 @@ export function recordInstalled(id: string, installedFrom?: string): boolean {
     enabled: true,
     installedAt: previous.installedAt ?? new Date().toISOString(),
     installedFrom,
+    ...(previous.lastError !== undefined && { lastError: previous.lastError }),
   }));
 }
 

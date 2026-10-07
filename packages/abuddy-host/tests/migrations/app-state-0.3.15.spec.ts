@@ -64,7 +64,6 @@ const MOVED = {
   // Only written for a pack whose seed failed, and the move doesn't produce one
   externalSeedDeps: {},
   builtInSeedHashes: { [BUILT_IN_ID]: 'boot-hash' },
-  builtInSeedFingerprints: { [BUILT_IN_ID]: 'actions.seed.json:1:2' },
   // The shell's state, which 0.3.14's settings here don't hold
   pluginVisibility: {},
 };
@@ -117,9 +116,12 @@ afterEach(() => {
 });
 
 describe('the 0.3.15 app migration', () => {
-  // The four per-pack seed records were told apart by the word `pack` — packSeedHashes/packSeedDeps for external
-  // packs against seedHashes/seedStatFingerprints for built-in ones — which cannot tell them apart, since built-in
-  // packs are packs. `appState` reads only the names it knows, so without this the app forgets every seed once.
+  // The per-pack seed records were told apart by the word `pack` — packSeedHashes/packSeedDeps for external packs
+  // against seedHashes/seedStatFingerprints for built-in ones — which cannot tell them apart, since built-in packs
+  // are packs. `appState` reads only the names it knows, so without this the app forgets every seed once.
+  //
+  // Three of the four move. `seedStatFingerprints` is dropped instead: it was mtimes and sizes standing in front of
+  // a content hash that costs 0.39ms, and nothing reads one since 2026-10-07.
   describe('the seed records renamed for built-in vs external', () => {
     const APP_STATE_ID = 'AppState-app' as EARS.EntityId;
     const OLD = {
@@ -142,8 +144,22 @@ describe('the 0.3.15 app migration', () => {
         externalSeedHashes: { 'memo-pack': 'e1' },
         externalSeedDeps: { 'memo-pack': 'd1' },
         builtInSeedHashes: { 'default-setup': 'b1' },
-        builtInSeedFingerprints: { 'default-setup': 'f1' },
       });
+    });
+
+    // Dropped rather than moved, and the row is what says so: a record carried onto a new name is one a later
+    // reader will find and wonder about, where this one's only reader is gone
+    it('drops the stat fingerprints rather than moving them, under either name', () => {
+      writeOld();
+      appState.update({ builtInSeedHashes: { 'default-setup': 'b0' } });
+      untypedTx(APP_STATE_ID).put('builtInSeedFingerprints', { 'default-setup': 'f0' });
+
+      move();
+
+      const left = untypedQx(APP_STATE_ID).pickOne(['seedStatFingerprints', 'builtInSeedFingerprints']) as Record<string, unknown>;
+      expect(left.seedStatFingerprints, 'the old name survived the move').toBeNull();
+      expect(left.builtInSeedFingerprints, 'the name an earlier run of this migration wrote survived it').toBeNull();
+      expect(appState.get()).not.toHaveProperty('builtInSeedFingerprints');
     });
 
     it('leaves the old names behind, so a second run finds nothing to move', () => {
@@ -158,7 +174,7 @@ describe('the 0.3.15 app migration', () => {
       expect(appState.get()).toEqual(moved);
       // `drop` clears the attribute rather than removing the key, which is what the migration reads as "moved"
       const left = untypedQx(APP_STATE_ID).pickOne(Object.keys(OLD)) as Record<string, unknown>;
-      expect(Object.keys(OLD).map((k) => left[k])).toEqual([null, null, null, null]);
+      expect(Object.keys(OLD).map((k) => left[k])).toEqual(Object.keys(OLD).map(() => null));
     });
 
     it('keeps what the new field already holds', () => {

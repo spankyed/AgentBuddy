@@ -12,27 +12,22 @@ import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('pack-seed');
 
-function statFingerprint(files: { path: string }[]): string {
-  const parts: string[] = [];
-  for (const f of files) {
-    try {
-      const s = fs.statSync(f.path);
-      parts.push(`${f.path}:${s.mtimeMs}:${s.size}`);
-    } catch {
-      parts.push(`${f.path}:missing`);
-    }
-  }
-  return parts.join('|');
-}
-
 /**
- * What a pack's compiled seeds are, as they sit on disk: their contents, and the files they are in.
+ * What a pack's compiled seeds are: their bytes, and the names of the files holding them. **Content only.**
  *
- * The files and not only the bytes, because installing a pack is a user asking for its data to be put in
- * place, and an install of the version already installed leaves the bytes identical. `placePack` copies
- * into a fresh directory and renames it over the old one, so every install — from the app or from
- * `abuddy install` — leaves new files whatever they contain. Hashing contents alone can't tell "nothing
- * changed" from "replaced with an identical copy", and only the second is a reason to seed again.
+ * The names as well as the bytes, so a seed moved between files, added or dropped counts — the same reason
+ * `fingerprintUnit` hashes a unit's declared paths beside its contents.
+ *
+ * **File times are deliberately not in here, and used to be.** `placePack` copies into a fresh directory and
+ * renames it over the old one, so every install leaves new files whatever they contain; hashing their mtimes
+ * made a reinstall of the identical pack look like changed data, which was the point — reinstalling was how
+ * you got a pack's data put back. It also made a `touch` re-seed, and made every `abuddy run` backend rebuild
+ * re-import every seed, since that loop reinstalls. Content is what "changed" means here, as it does
+ * everywhere else in this repo that compares a tree against a record.
+ *
+ * Putting a pack's data back on purpose is `IMPORT_PACK_SEEDS` (`features/packs/be/types.ts`), which Settings
+ * drives with a preview, a per-key selection and a collision mode — more than a reinstall ever gave, and it
+ * leaves this record alone, so asking for the data again does not change what counts as changed.
  */
 export function computePackSeedHash(distDir: string): string {
   const files = fs.readdirSync(distDir).filter(f => f.endsWith('.json')).sort();
@@ -42,7 +37,6 @@ export function computePackSeedHash(distDir: string): string {
     hash.update(file);
     hash.update(fs.readFileSync(path.join(distDir, file)));
   }
-  hash.update(statFingerprint(files.map(file => ({ path: path.join(distDir, file) }))));
   return hash.digest('hex').slice(0, 16);
 }
 
@@ -175,23 +169,14 @@ function evaluateSeedPolicy(policy?: PackSeedManifest['seedPolicy']): Record<str
  */
 export function orchestrateDeclarativeSeed(manifest: PackSeedManifest, packId: string): void {
   const { seedKeys, compiledDir, seedPolicy } = manifest;
-  const stored = appState.get();
-  const storedHash = stored.builtInSeedHashes[packId];
+  const storedHash = appState.get().builtInSeedHashes[packId];
 
-  // Fast path: if file mtimes/sizes haven't changed, the hash is the same
-  const seedFiles = seedKeys.map(name => ({ path: seedPath(compiledDir, name) }));
-  const fp = statFingerprint(seedFiles);
-  const storedFp = stored.builtInSeedFingerprints[packId];
-  if (storedHash && storedFp === fp) {
-    logger.info(`Boot seed skipped for ${packId}: files unchanged (mtime)`);
-    return;
-  }
-
-  const record = (field: 'builtInSeedHashes' | 'builtInSeedFingerprints', value: string) => appState.updatePackEntry(field, packId, value);
-
+  // Reading and hashing the compiled seeds is what decides this, with no cheaper check in front of it:
+  // measured 2026-10-07 over default-setup's seven files (490KB), 0.39ms to hash against 0.07ms to stat them,
+  // so the stat fingerprint this used to keep in `AppState` bought 0.32ms of a boot and a second record that
+  // could disagree with the first.
   const currentHash = computeManifestSeedHash(compiledDir, seedKeys);
   if (storedHash === currentHash) {
-    record('builtInSeedFingerprints', fp);
     logger.info(`Boot seed skipped for ${packId}: data unchanged`);
     return;
   }
@@ -203,8 +188,7 @@ export function orchestrateDeclarativeSeed(manifest: PackSeedManifest, packId: s
 
   // Stored even when records failed, as importPackSeeds does: the same failing data isn't re-imported on
   // every boot, and it's retried as soon as the compiled seeds change
-  record('builtInSeedHashes', currentHash);
-  record('builtInSeedFingerprints', fp);
+  appState.updatePackEntry('builtInSeedHashes', packId, currentHash);
 
   if (errors.length > 0) {
     logger.error(`Boot seed for ${packId} finished with errors; those records were not seeded and won't be retried until the compiled seeds change:\n  ${errors.join('\n  ')}`);

@@ -83,30 +83,42 @@ const RENAMED_SEED_RECORDS = {
   packSeedHashes: 'externalSeedHashes',
   packSeedDeps: 'externalSeedDeps',
   seedHashes: 'builtInSeedHashes',
-  seedStatFingerprints: 'builtInSeedFingerprints',
 } as const satisfies Record<string, keyof AppState>;
 
-/** Moves each old-named record onto its new field, keeping what the new one already holds. Idempotent: the old names
- *  are removed as they move, so a second run finds nothing. */
+/**
+ * Records the row stops carrying, under either name they have had.
+ *
+ * `seedStatFingerprints` held each built-in pack's seed files' mtimes and sizes, as a fast path in front of the
+ * content hash — which measures 0.39ms over default-setup's 490KB against 0.07ms to stat the same files, so it
+ * saved a third of a millisecond of a boot and cost a second record that could disagree with the first. An
+ * earlier run of this migration moved it to `builtInSeedFingerprints`, so both names are dropped.
+ */
+const DROPPED_SEED_RECORDS = ['seedStatFingerprints', 'builtInSeedFingerprints'] as const;
+
+/** Moves each old-named record onto its new field, keeping what the new one already holds, and drops the ones this
+ *  version no longer keeps. Idempotent: every name is removed as it is handled, so a second run finds nothing. */
 function renameSeedRecords(): void {
-  const old = Object.keys(RENAMED_SEED_RECORDS);
+  const old = [...Object.keys(RENAMED_SEED_RECORDS), ...DROPPED_SEED_RECORDS];
   const row = untypedQx(APP_STATE_ID).pickOne(old) as Record<string, Record<string, string> | null | undefined> | undefined;
   if (!row) return;
 
   const current = appState.get();
   const moved: Partial<AppState> = {};
   const tx = untypedTx(APP_STATE_ID);
-  let any = false;
   for (const [from, to] of Object.entries(RENAMED_SEED_RECORDS)) {
     const value = row[from];
     // `drop` leaves the attribute as null rather than removing the key, so null is "already moved"
     if (value == null) continue;
     moved[to] = withMissing(current[to], value);
     tx.drop(from);
-    any = true;
   }
-  if (!any) return;
-  appState.update(moved);
+  // Dropped rather than moved: nothing reads them, so carrying them forward would leave the row holding a record
+  // whose only reader was deleted
+  for (const gone of DROPPED_SEED_RECORDS) {
+    if (row[gone] == null) continue;
+    tx.drop(gone);
+  }
+  if (Object.keys(moved).length > 0) appState.update(moved);
 }
 
 function moveAppState(registry: MigrationRegistry): void {
@@ -115,19 +127,17 @@ function moveAppState(registry: MigrationRegistry): void {
   const current = appState.get();
 
   // What a single seed hash recorded belongs to the built-in packs with a boot seed; without it the app would
-  // forget it ever seeded and import the whole boot seed again
+  // forget it ever seeded and import the whole boot seed again. The stat fingerprint beside it is not carried
+  // over: nothing reads one since 2026-10-07 (see `DROPPED_SEED_RECORDS`)
   const seedHashes = { ...internal.seedHashes };
-  const seedStatFingerprints = { ...internal.seedStatFingerprints };
   for (const packId of bootSeedPacks(registry)) {
     if (internal.seedHash && !seedHashes[packId]) seedHashes[packId] = internal.seedHash;
-    if (internal.seedStatFingerprint && !seedStatFingerprints[packId]) seedStatFingerprints[packId] = internal.seedStatFingerprint;
   }
 
   const moved: Partial<AppState> = {
     packVersions: withMissing(current.packVersions, internal.packVersions),
     externalSeedHashes: withMissing(current.externalSeedHashes, internal.packSeedHashes),
     builtInSeedHashes: withMissing(current.builtInSeedHashes, seedHashes),
-    builtInSeedFingerprints: withMissing(current.builtInSeedFingerprints, seedStatFingerprints),
     // Onboarding, once finished, stays finished
     ...(internal.hasOnboarded && !current.hasOnboarded && { hasOnboarded: true }),
     // The version the data was migrated to decides which migrations still run: kept unless one is recorded
