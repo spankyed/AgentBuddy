@@ -110,10 +110,13 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
   });
 
   /**
-   * The facade round trip, on a pack scaffolded the way an author gets one. `abuddy facade-report` existed
-   * for a while before the scaffold gave anyone a reason to run it — the command was offered to every pack
-   * and used by one, since `abuddy init` wrote no `etc/` — so its external-pack path had never been
-   * exercised. Scaffolding the workflow is what makes this a test rather than a fiction.
+   * The facade round trip through the **scripts the scaffold writes**, on a pack scaffolded the way an author
+   * gets one: `abuddy init` writes no `etc/`, so a pack's report appears at its first `facade:update`, and
+   * what this holds is that the two scripts it ships work in that order on a pack nobody has edited.
+   *
+   * What the command decides — that it re-bundles the facade rather than reading `dist`, and so needs no
+   * build — is `tests/commands/facade-report.integration.spec.ts`. The build here is this file's subject
+   * rather than that one's precondition.
    */
   it('records the facade dependents compile against, and then reports it up to date', async () => {
     // No feature added: every pack has a facade, and the cases here share one pack in declaration order

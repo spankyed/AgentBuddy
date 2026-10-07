@@ -125,9 +125,11 @@ Three things the chain cannot work out for you, because they rewrite files you c
   `npm run facade:update -w @app/default-setup` and commit the report. **`typecheck` does not notice this
   one; `npm run compile` does**, which is the difference worth knowing: `exports:check` and
   `schema:check` are typecheck legs and `api:check` is a chain step, so it is easy to finish a typecheck and believe every recorded
-  artifact is current. The check cannot move to typecheck, because its subject is what the build produced —
-  run it anywhere but after that build and it compares the committed report against a stale bundle, which
-  passes over the wrong thing.
+  artifact is current.
+  The check needs no build: it re-bundles the facade from the pack's sources, as `api:check` re-extracts the
+  reports it compares, so what it holds the report to is what the pack describes now rather than whatever is
+  in `dist`. `abuddy build` warns when the report has fallen behind the bundle it just wrote, which is a
+  nudge at the moment the information exists and not the gate — the gate is `facade:check`.
 - **a pack's seed source (`src/seeds/`)** — when only `sourceHash`/`rowSha256` moved, re-record
   deliberately with `npm run seed-parity:update -w @app/default-setup`, and never edit a hash by hand.
   Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`.
@@ -162,7 +164,10 @@ is how 99 published paths named files no tarball held. `@app/publish-checks`' `p
 that one.
 **Three kinds of recorded artifact, and the question to ask of a new one is which it is.** A
 **derivation** re-takes its answer on every run and compares (`schema:check`, `exports:check`,
-`facade:check`, `seed-parity:check`, `api:check`) — a missing input cannot happen to one. A **proxy**
+`facade:check`, `seed-parity:check`, `api:check`) — a missing input cannot happen to one. **Re-taking it
+means running whatever produces it**, which is the half that is easy to skip: a check that compares against
+an artifact some earlier command left on disk is a derivation in name only, and goes stale exactly as a proxy
+does while reading like one that cannot. A **proxy**
 records a hash of what it *believes* the inputs are; **nothing here is one any more**, because a proxy can
 go stale from an input nobody listed and its remedy *writes*. A **sample** records a measurement, so
 neither check is available to it — **there are none, and do not add one.**
@@ -537,13 +542,19 @@ npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.c
                          # before one API Extractor compiler state was shared across a package's entries.
                          # A chain step, so a merge runs it and an unchanged tree pays nothing for it
 
-# Built-in pack facade types (after `abuddy build`; from packages/default-setup or with -w @app/default-setup)
-npm run facade:check     # CI: fails if dist/types/pack-types.d.ts changed without updating etc/pack-types.api.md
-npm run facade:update    # Dev: regenerate etc/pack-types.api.md
-                         # Both are `abuddy facade-report [--update]`: it reads one pack's dist and writes
+# Built-in pack facade types (from packages/default-setup or with -w @app/default-setup)
+npm run facade:check     # CI: fails if the facade the pack's sources describe isn't what etc/pack-types.api.md
+                         # records. **Needs no build**: it regenerates the pack's barrels and re-bundles the
+                         # facade itself (2.4s, median of 3, 86% idle, 2026-10-06), so `dist` is never its
+                         # subject and a build from older sources cannot be mistaken for one
+npm run facade:update    # Dev: regenerate etc/pack-types.api.md, off that same re-bundle
+                         # Both are `abuddy facade-report [--update]`: it reads one pack's sources and writes
                          # that pack's etc, so it is a CLI command like `validate` and `build`, not a repo
                          # script. As a repo script its normalisation had to live in a third package to be
-                         # reachable from both it and the bundler, which is what the wrong home costs
+                         # reachable from both it and the bundler, which is what the wrong home costs.
+                         # `abuddy build` warns when the report has fallen behind the bundle it just produced
+                         # — free there, and a nudge rather than the gate: failing would mean a pack author
+                         # could not start their app until they had rewritten a reviewed artifact mid-change
 
 # Manifest JSON schema (-w @abuddy/sdk)
 npm run schema:update    # Regenerate packages/abuddy-sdk/abuddy.schema.json from manifest-schema.ts
