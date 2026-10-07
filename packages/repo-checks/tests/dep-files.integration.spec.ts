@@ -385,30 +385,15 @@ describe('abuddy build says what it read', () => {
   /**
    * Which phases this can speak for, named rather than implied — the half that catches a dropped capture.
    *
-   * The union across the built packs, because no one pack has every phase: a built-in pack stops before the
-   * runtime and frontend bundles, and a pack with no `dsl` or `steps.build` skips those. A capture that
-   * stops reporting takes its phase out of this set, which is the only thing that can see it go; the gate
-   * below cannot, because fewer reads is never a finding there.
+   * The union across the built packs, because a pack with no `dsl` or `steps.build` records neither phase.
+   * A capture that stops reporting takes its phase out of this set, which is the only thing that can see it
+   * go; the gate below cannot, because fewer reads is never a finding there.
+   *
+   * Whether a record is here at all is the case above's question, and one record answers this one: every
+   * pack is built by `abuddy build`, so each records all nine phases its manifest asks for.
    */
   it('says which phases it can speak for, so a dropped capture is not a quiet one', () => {
-    // The nine come from two pack shapes, so the union is evidence only when both have been built: a
-    // built-in pack is compiled into the app and records no runtime or frontend bundle, and only an
-    // external one records those. Neither step that builds them is ordered before this one — the pool
-    // reading these records shares no edge with `test:external-pack:contract` — so a missing record is a
-    // command to run, said as one, rather than a phase that looks as though it went away.
-    //
-    // This loop is what `docs/goals/goal-one-kind-of-pack.md` takes away: with one kind of pack, `compile`
-    // builds default-setup's runtime and frontend bundles too, so that one record carries all nine and the
-    // evidence question becomes "is there a record at all", which the case above already asks. The gate
-    // gets stronger by the same move — the step on the critical path would then be observed across every
-    // phase rather than seven of them.
     const built = buildReads.packsWithReads();
-    for (const [kind, command] of [[true, 'npm run compile'], [false, 'npm run test:external-pack:contract']] as const) {
-      if (!built.some((packDir) => buildReads.isBuiltIn(packDir) === kind)) {
-        expect.fail(`no ${kind ? 'built-in' : 'external'} pack has been built in this checkout: run ${command}. `
-          + 'Without it the phases only that kind of pack records cannot be told from a capture that stopped reporting.');
-      }
-    }
     const phases = new Set(built.flatMap((packDir) => Object.keys(buildReads.readsOf(packDir)?.phases ?? {})));
     expect([...phases].sort(), 'a phase gone from here is a bundler that stopped reporting; a new one is a '
       + 'bundle that started').toEqual([

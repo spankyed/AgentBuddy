@@ -24,24 +24,20 @@ const list = (dir: string): string[] => fs.existsSync(dir)
   : [];
 
 describe('clearBuildOutput', () => {
-  it("clears a built-in pack's seeds, build/, defs/, types/ and snapshot, and keeps the runtime its own build writes", () => {
+  // One pack kind, so one answer: `dist/` is this command's output and goes whole. It used to spare
+  // `runtime/` for the pack that ships with the app, whose runtime another command wrote.
+  it("clears a pack's whole dist/, runtime and compiled seeds included", () => {
     previousBuild([
       'notes.seed.json', 'seeds.json', 'media/library/pic.png', 'build/seed-compilers.mjs', 'types/pack-types.d.ts',
-      'snapshot.json', 'runtime/index.cjs', 'runtime/index.cjs.map', 'runtime/seeds-index.sha256', 'defs/monaco/actions.d.ts',
+      PACK_LAYOUT.snapshot, 'runtime/index.cjs', 'runtime/index.cjs.map', 'defs/monaco/actions.d.ts',
     ]);
-    clearBuildOutput(dist, { builtIn: true });
-    expect(list(dist)).toEqual(['runtime/index.cjs', 'runtime/index.cjs.map', 'runtime/seeds-index.sha256']);
-  });
-
-  it("clears an external pack's whole dist/", () => {
-    previousBuild(['runtime/index.cjs', 'build/steps.build.mjs', PACK_LAYOUT.snapshot]);
-    clearBuildOutput(dist, { builtIn: false });
+    clearBuildOutput(dist);
     expect(fs.existsSync(dist)).toBe(false);
   });
 });
 
-describe('a built-in pack build that fails', () => {
-  it("leaves no seeds or defs from the previous build, and keeps the runtime it doesn't build", async () => {
+describe('a build that fails', () => {
+  it('leaves nothing of the previous build behind', async () => {
     const dir = previousBuild(['flows.seed.json', 'seeds.json', 'runtime/index.cjs', 'defs/monaco/actions.d.ts']);
     const root = path.dirname(dir);
     packFixture({ at: root, manifest: {
@@ -57,7 +53,7 @@ describe('a built-in pack build that fails', () => {
     } finally {
       process.chdir(cwd);
     }
-    expect(list(dir)).toEqual(['runtime/index.cjs']);
+    expect(list(dir)).toEqual([]);
   });
 });
 

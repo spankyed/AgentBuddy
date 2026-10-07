@@ -23,7 +23,7 @@ Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs ar
 `loadBuiltInPacks(registry, BUILT_IN_PACKS_DIR, { runtimeEntry, bundledLoaders })` in `loader.ts`:
 - **Discovery** (`discoverBuiltInPacks()`) — scans the directory for `abuddy.json` with `builtIn: true`. Returns `BuiltInPackInfo[]` (id, name, version, dir).
 - **Loading** — the `runtimeEntry` option picks the code:
-  - `prefer` (default when `NODE_ENV=development`): each pack's built runtime `dist/runtime/index.cjs` (written by the pack's `dev-build.mjs`) when it exists, loaded with `withHostResolution()`; if it's missing or fails, the bundled loader. Falling back without `bundledLoaders` throws, naming the option.
+  - `prefer` (default when `NODE_ENV=development`): each pack's built runtime `dist/runtime/index.cjs` (written by `abuddy build`) when it exists, loaded with `withHostResolution()`; if it's missing or fails, the bundled loader. Falling back without `bundledLoaders` throws, naming the option.
   - `never` (default otherwise): the bundled loader. Without `bundledLoaders` it throws, naming the option.
   - `only`: the built runtime, required. For unbundled tools (db scripts) that have no bundled loaders.
 - **Bundled loaders** — `bundledLoaders` imports the app bundle's loader map when first needed. The API passes `() => import('virtual:built-in-pack-loaders').then(m => m.default)` from `runtime/index.ts`.
@@ -177,7 +177,7 @@ Update tears down with `replacing`, installs the release the update check found,
 
 ### Reload (`reload.ts`)
 
-`POST /dev/reload { packId, builtIn? }` (from `abuddy run` and default-setup's `dev-build.mjs`; one reload per pack at a time) calls `reloadBuiltInPack(registry, …)` (requires `dist/runtime/index.cjs`) or `reloadExternalPack(registry, …)` on the app's registry. Both:
+`POST /dev/reload { packId, builtIn? }` (from `abuddy run` and `abuddy build --watch`; one reload per pack at a time) calls `reloadBuiltInPack(registry, …)` (requires `dist/runtime/index.cjs`) or `reloadExternalPack(registry, …)` on the app's registry. Both:
 1. clear the pack's require cache and load the fresh runtime (a load failure throws; the running pack is untouched, and a pack that wasn't running has the failure recorded as its load problem)
 2. unregister the running registration and register the fresh one; if that throws, re-register the previous one and rethrow (registering and unregistering drop the cached event validation map and partition policy)
 3. run the old shutdown hooks, register the new `onShutdown`, run `onInit`; external packs run their migrations (`runPackMigrations()`), re-seed and `updateLoadedPack()`. A reload can be the first this app has seen of a pack, since `abuddy run` installs into a running app — it needs no record entry, because the directory is what makes it installed
@@ -204,10 +204,9 @@ External pack FE modules cannot call `registerPackFE()` themselves: the renderer
 
 ## Publishing built-in pack build output
 
-At boot, `publishHostPackOutput(<pack dir>, host-packs/<id>)` copies a built-in pack's `dist/` into the pack layout so pack authors resolve it as a dependency from the installed app: `dist/snapshot.json` → `types/snapshot.json`, `dist/build/` → `build/`, and, when present, `dist/runtime/index.cjs` → `runtime/index.cjs` with the compiled seeds (`*.seed.json`, `seeds.json`, `media/`) → `runtime/seeds/`.
+At boot, `publishHostPackOutput(<pack dir>, host-packs/<id>)` copies a built-in pack's `dist/` into the pack layout so pack authors resolve it as a dependency from the installed app: `dist/types/snapshot.json` → `types/snapshot.json`, `dist/build/` → `build/`, and, when present, `dist/runtime/index.cjs` → `runtime/index.cjs` with the compiled seeds (`*.seed.json`, `seeds.json`, `media/`) → `runtime/seeds/`.
 
-- It does nothing without `dist/snapshot.json`, and returns `false` when the destination's `.fingerprint` (sha256 of every source) already matches.
-- The runtime and seeds must pair: `dev-build.mjs` writes `dist/runtime/seeds-index.sha256`, the sha256 of the `dist/seeds.json` it was built beside. If it doesn't match the current `seeds.json` (seeds recompiled without rebuilding the runtime), publishing throws and nothing is published; `backend.ts` logs a warning and boots on.
+- It does nothing without `dist/types/snapshot.json`, and returns `false` when the destination's `.fingerprint` (sha256 of every source) already matches.
 - It writes into a hidden `.<id>.publishing-*` staging dir and renames it into place.
 
 ## Tests

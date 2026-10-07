@@ -372,7 +372,10 @@ Put a new recorded artifact in the first shape and give it both halves, even whe
 an artifact with only an update is one nothing will notice has gone stale.
 
 ```bash
-npm start                # Dev mode (builds the built-in pack without its FE bundle)
+npm start                # Dev mode. The built-in pack's backend runtime alone is built, then watched
+                         # (`abuddy build --watch`, forked by dev-mode.js): an edit under its src/ rebuilds
+                         # that one bundle in ~40ms and asks the running app to reload the pack. Nothing
+                         # else of the pack is rebuilt, which is what `npm run compile` is for
 npm run start:gen        # Full built-in pack build (npm run compile), then dev mode
 npm run build:be         # Build backend only
 npm run build            # Build all workspaces. The chain runs build:app instead, which leaves the
@@ -528,7 +531,8 @@ npm run test:packaged-authoring  # Both halves, for running it by hand: author, 
                                  # outside the monorepo from the packed @abuddy/* tarballs (needs npm run build)
 npm run test:packaged-authoring:author  # The half that needs no app — eight of its nine phases
 npm run test:packaged-authoring:app     # The ninth, against the built app, from the author half's archive
-npm run compile          # Build packages/default-setup (abuddy build: compiled seeds, snapshot, types; DSL defs; dist/runtime/index.cjs)
+npm run compile          # Build packages/default-setup — `abuddy build`, the command every pack is built by:
+                         # compiled seeds, snapshot, facade types, DSL defs, dist/runtime/index.cjs and fe.js
 
 npm run db:query -- "<code>"   # abuddy db query on the dev app's data (also db:exec, db:repl, db:inspect,
                                # db:export, db:import, db:reset, db:clear-settings; the app closed for changes)

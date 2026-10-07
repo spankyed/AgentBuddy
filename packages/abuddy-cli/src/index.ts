@@ -12,6 +12,7 @@ Commands:
   generate-entries    Generate __generated__/ files from manifest
   fetch-deps          Fetch dependency type manifests
   build [--skip-generate]  Compile the pack to dist/
+  build --watch       Rebuild the backend runtime on every change, and reload a running app
   pack                Bundle dist/ into a verified .tgz + .sha256
   release [patch|minor|major] [--beta] [--dry-run] [--local]  Cut a release
   validate            Check manifest and types

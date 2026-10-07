@@ -18,7 +18,7 @@ import { PACK_DIR, resetDatabase, snapshot } from './harness.ts';
 const FIXTURE = path.join(PACK_DIR, 'tests/_support/fixtures/dependent-pack');
 const manifest = JSON.parse(fs.readFileSync(path.join(FIXTURE, 'abuddy.json'), 'utf-8')) as PackManifest;
 /** default-setup as a dependent's build sees it: its built snapshot and build dir */
-const depSnapshot = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'dist/snapshot.json'), 'utf-8')) as PackSnapshot;
+const depSnapshot = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'dist/types/snapshot.json'), 'utf-8')) as PackSnapshot;
 const dependencies = new Map<string, SeedDependency>([['default-setup', { manifest: depSnapshot.manifest, buildDir: path.join(PACK_DIR, 'dist/build') }]]);
 
 const dirs: string[] = [];

@@ -1,7 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
-  _clearCompiledSeeds,
   compilePack,
   buildPackConfigFromManifest,
   PACK_TYPES_DEF,
@@ -16,7 +15,7 @@ import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
 import { buildReads } from '../build/build-reads';
-import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
+import { bundleDslDefs } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
 import { compareFacadeReport, facadeReportFile, facadeReportText } from '../build/facade-report';
@@ -52,22 +51,16 @@ export async function featureSettingsProblems(root: string, features: ReadonlyAr
   return problems;
 }
 
-/** A built-in pack's snapshot, in its in-repo dist/ layout */
-const BUILT_IN_SNAPSHOT = 'snapshot.json';
-
 /**
- * Removes the previous build's output before anything can fail, so a failed build or a dropped
- * output never leaves an older file behind.
- * - External packs build into the pack layout (runtime/, build/, types/); dist/ is pure output,
- *   cleared whole, so `abuddy pack` and the test fixture never ship an older build.
- * - Built-in packs keep their in-repo layout, where the pack's runtime build writes runtime/ too. Only
- *   this build's output goes: the compiled seeds, build/, types/, defs/ and snapshot. The runtime records
- *   the compiled seeds it was built beside, and the app doesn't publish it with seeds compiled after it.
+ * Removes the previous build's output before anything can fail, so a failed build or a dropped output never
+ * leaves an older file behind.
+ *
+ * `dist/` is pure output for every pack, so it goes whole — which is what makes `abuddy pack` and the test
+ * fixtures unable to ship an older build. It used to spare a tree for the pack that ships with the app,
+ * whose `runtime/` another command wrote; one command writes all of it now.
  */
-export function clearBuildOutput(outputDir: string, { builtIn }: { builtIn: boolean }): void {
-  const owned = builtIn ? [PACK_LAYOUT.buildDir, PACK_LAYOUT.typesDir, DEFS_DIR, BUILT_IN_SNAPSHOT] : ['.'];
-  for (const entry of owned) fs.rmSync(path.join(outputDir, entry), { recursive: true, force: true });
-  if (builtIn) _clearCompiledSeeds(outputDir);
+export function clearBuildOutput(outputDir: string): void {
+  fs.rmSync(outputDir, { recursive: true, force: true });
 }
 
 /**
@@ -83,7 +76,15 @@ export function clearBuildOutput(outputDir: string, { builtIn }: { builtIn: bool
  * on that script is the fix if this ever stops ensuring.
  */
 export async function buildCommand(args: string[]): Promise<void> {
-  ensureCheckoutPackages(findPackRoot(process.cwd()));
+  const root = findPackRoot(process.cwd());
+  ensureCheckoutPackages(root);
+  if (args.includes('--watch')) {
+    const { watchPackRuntime } = await import('../build/watch.ts');
+    // `npm start` forks this and boots the API against the runtime it writes, so it waits to be told the
+    // first bundle landed. `process.send` is absent for anyone who ran the command themselves
+    await watchPackRuntime(root, readValidManifest(root).id, { onFirstBuild: () => process.send?.({ type: 'ready' }) });
+    return;
+  }
   await build(args);
 }
 
@@ -98,8 +99,7 @@ export async function build(args: string[]) {
   const reads = buildReads(root);
 
   const outputDir = path.join(root, 'dist');
-  const external = !manifest.builtIn;
-  clearBuildOutput(outputDir, { builtIn: !external });
+  clearBuildOutput(outputDir);
 
   if (!args.includes('--skip-generate')) {
     const { depTypes, depSnapshots } = await resolveDeps(root, manifest.dependencies);
@@ -143,8 +143,10 @@ export async function build(args: string[]) {
   }
 
   const packDir = root;
-  const seedsOutputDir = external ? path.join(outputDir, PACK_LAYOUT.seedsDir) : outputDir;
-  const snapshotPath = path.join(outputDir, external ? PACK_LAYOUT.snapshot : BUILT_IN_SNAPSHOT);
+  // Where the compiled seeds land still differs, and Phase 5 of `docs/goals/goal-one-kind-of-pack.md` is what
+  // takes that apart: the app reads a shipped pack's from `dist/` and an installed pack's from `runtime/seeds/`
+  const seedsOutputDir = manifest.builtIn ? outputDir : path.join(outputDir, PACK_LAYOUT.seedsDir);
+  const snapshotPath = path.join(outputDir, PACK_LAYOUT.snapshot);
 
   let result: { seeds: Record<string, number>; warnings: string[] } | null = null;
 
@@ -300,13 +302,6 @@ export async function build(args: string[]) {
     } else {
       fail(`DSL definitions bundle failed: ${defs.error}`);
     }
-  }
-
-  if (!external) {
-    // Built-in packs' FE is compiled into the renderer (virtual:built-in-packs) and their
-    // backend into the API bundle, never loaded from dist/
-    finish();
-    return;
   }
 
   // ── Backend runtime ──────────────────────────────────────────────────

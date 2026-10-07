@@ -75,11 +75,9 @@ afterAll(() => {
   if (parent) fs.rmSync(parent, { recursive: true, force: true });
 });
 
-/** A built-in pack writes dist/snapshot.json; an external one writes it into the pack's types dir */
 const snapshotOf = (id: string) => {
-  const file = [path.join(parent, id, 'dist', 'snapshot.json'), path.join(parent, id, 'dist', PACK_LAYOUT.snapshot)]
-    .find((candidate) => fs.existsSync(candidate));
-  if (!file) throw new Error(`no snapshot written for ${id}`);
+  const file = path.join(parent, id, 'dist', PACK_LAYOUT.snapshot);
+  if (!fs.existsSync(file)) throw new Error(`no snapshot written for ${id}`);
   return JSON.parse(fs.readFileSync(file, 'utf-8'));
 };
 

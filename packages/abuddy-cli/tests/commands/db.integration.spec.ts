@@ -29,7 +29,7 @@ vi.mock('../../src/app/app-target', async (importOriginal) => ({
   cliDirs: () => cliTree,
 }));
 
-const DEFAULT_SETUP_SNAPSHOT = path.resolve(import.meta.dirname, '..', '..', '..', 'default-setup', 'dist', 'snapshot.json');
+const DEFAULT_SETUP_SNAPSHOT = path.resolve(import.meta.dirname, '..', '..', '..', 'default-setup', 'dist', PACK_LAYOUT.snapshot);
 
 const dirs: string[] = [];
 afterEach(() => {

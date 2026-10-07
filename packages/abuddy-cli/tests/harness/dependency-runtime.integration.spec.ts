@@ -6,11 +6,12 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { ALLOW_UNBUILT } from '@abuddy/host/build/packages-built';
+import { PACK_LAYOUT } from '@abuddy/host/packs';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
 const DEFAULT_SETUP_DIST = path.join(REPO_ROOT, 'packages', 'default-setup', 'dist');
-const built = fs.existsSync(path.join(DEFAULT_SETUP_DIST, 'runtime', 'index.cjs')) && fs.existsSync(path.join(DEFAULT_SETUP_DIST, 'snapshot.json'));
-if (!built && process.env[ALLOW_UNBUILT] !== '1') throw new Error('default-setup must be built (abuddy build and dev-build.mjs) for the dependency runtime spec');
+const built = fs.existsSync(path.join(DEFAULT_SETUP_DIST, 'runtime', 'index.cjs')) && fs.existsSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.snapshot));
+if (!built && process.env[ALLOW_UNBUILT] !== '1') throw new Error('default-setup must be built (abuddy build) for the dependency runtime spec');
 
 const dirs: string[] = [];
 afterAll(() => {
@@ -31,7 +32,7 @@ function dependentPack(spec: string): string {
   write(root, 'abuddy.json', JSON.stringify({ id: 'dependent-pack', name: 'Dependent', version: '1.0.0', dependencies: { 'default-setup': '*' } }));
   const dep = path.join(root, '.abuddy', 'deps', 'default-setup');
   fs.mkdirSync(path.join(dep, 'runtime', 'seeds'), { recursive: true });
-  fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, 'snapshot.json'), path.join(dep, 'snapshot.json'));
+  fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.snapshot), path.join(dep, 'snapshot.json'));
   fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, 'runtime', 'index.cjs'), path.join(dep, 'runtime', 'index.cjs'));
   for (const file of fs.readdirSync(DEFAULT_SETUP_DIST)) {
     if (file.endsWith('.seed.json') || file === 'seeds.json') fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, file), path.join(dep, 'runtime', 'seeds', file));

@@ -353,20 +353,33 @@ deletes: `installedPacks()` answers it once a shipped pack is installed.
 uses. Unify the snapshot filename while here: `build.ts:147` writes `BUILT_IN_SNAPSHOT` where every other
 pack writes `PACK_LAYOUT.snapshot`.
 
-Then **delete `dev-build.mjs`'s own esbuild** — 164 lines reimplementing `bundlePackRuntime`.
+Then **delete `dev-build.mjs`** — 164 lines, of which the esbuild config is a *second* backend bundle
+rather than a copy of `bundlePackRuntime`: it leaves every package external where the CLI inlines them, and
+carries an alias plugin for `@/` specifiers that no default-setup source has used since
+[`goal-one-way-to-name-your-own-modules`](../archive/goals/goal-one-way-to-name-your-own-modules.md) and a
+`.vue` stub the CLI's `stubFrontendAssetsPlugin` already does.
 
 **This is not free for the dev loop, which an earlier version of this doc got wrong.** `dev-build.mjs` is
 also the backend watcher: `dev-mode.js:27` forks it with `--watch` and `:52` waits for its first compile
-before the API boots. Keep a thin `--watch` wrapper that calls `bundlePackRuntime` instead of its own
-bundler, so `npm start` behaves exactly as it does now. Switching the dev loop to `abuddy run`'s watcher is
-the alternative, and it costs the single-command start.
+before the API boots. The watch belongs in the CLI, as `abuddy build --watch`, so there is one home for it
+and a pack author gets the same loop — the shim this doc first proposed would have been a third place that
+knows how to bundle a pack's backend.
+
+**What `--watch` rebuilds is the runtime alone, and the numbers are why.** Measured 2026-10-07 on
+default-setup: a full `abuddy build` is **23.7s**, of which the Vite frontend bundle is 11.1s; the backend
+runtime bundle on its own is **40ms** (956KB, three runs, 30-50ms). A loop that re-ran the whole build per
+edit would cost 24s against today's ~1s, so `--watch` rebuilds the one output whose staleness the app can
+see and says so in its own help text. That is also exactly today's semantics: `npm start` never recompiled
+seeds or facade types on an edit either. It is what `abuddy run`'s BE watcher should adopt — it calls
+`build([])` per edit, which is that 23.7s for a pack this size.
 
 **And it retires three built-in-aware pieces of the build record**, since removing that gate is exactly what
 makes default-setup record the `runtime` and `fe` phases like any other pack. Each site names this document:
 
 - `isBuiltIn`, and one branch of `rebuildCommand`, in `scripts/lib/build-reads.ts` — they exist only to name
   the command that rebuilds a pack's record, and with one kind of pack the path answers that, as it already
-  does for a fixture pack.
+  does for a fixture pack. These two outlive Phase 1: the branch still picks `npm run compile` over `abuddy
+  build` for default-setup, and `manifest.builtIn` is not gone until Phase 6.
 - the two-kind evidence guard in `repo-checks/tests/dep-files.integration.spec.ts` — the nine bundling phases
   take a built-in pack *and* an external one to observe between them, precisely because a built-in pack
   records neither of those two. Afterwards one record carries all nine and the guard collapses into the case
@@ -389,6 +402,13 @@ commands* — its own comment says so, and the throw reads *"seeds compiled agai
 runtime"* — and one command doing both removes the cause. `BUILT_IN_RUNTIME_SEEDS_HASH`, the file and the throw
 are then a check that cannot fail, so they are deleted, or the throw stays as an assertion with a comment
 naming the edit that would fire it, which is this repo's rule for one.
+
+**A pack's backend bundle inlines its npm dependencies, and three of default-setup's cannot be inlined.**
+`node-pty` and `fsevents` (chokidar's optional macOS watcher) load a `.node`, which is compiled machine code
+esbuild has no loader for; `@vscode/ripgrep` computes its binary's path from its own `__dirname`, which in a
+bundle is the bundle's directory. They are named in `RESOLVED_AT_RUNTIME` (`abuddy-cli/src/build/be-bundler.ts`)
+and resolve from `node_modules` at run time. `dev-build.mjs` never met this, having left every package
+external. The failure names the file it could not find, so a fourth is diagnosed the same way.
 
 **The chain declaration moves too.** `compile` gains the Vite frontend bundle, so its declared `seconds` needs
 a deliberate `chain --all --record --forget --step compile`, on the machine the cost table was measured on.

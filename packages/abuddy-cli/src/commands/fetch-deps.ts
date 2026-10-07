@@ -55,15 +55,13 @@ function tryReadSnapshot(filePath: string): PackSnapshot | null {
 
 /**
  * Find artifacts in a pack directory in any layout: an installed or extracted bundle
- * (types/, build/), an external pack source built in the pack layout (dist/types,
- * dist/build), or a built-in pack's dist/ (dist/snapshot.json).
+ * (types/, build/), a pack source built in the pack layout (dist/types, dist/build), or the
+ * dependency cache, which holds the snapshot alone.
  */
 export function findDepFiles(dir: string): DepFiles | null {
   const candidates = [
     { root: dir, snapshot: path.join(dir, 'types', 'snapshot.json') },
     { root: path.join(dir, 'dist'), snapshot: path.join(dir, 'dist', 'types', 'snapshot.json') },
-    // A built-in pack's dist: its snapshot at the top, build/ and runtime/ in the pack layout
-    { root: path.join(dir, 'dist'), snapshot: path.join(dir, 'dist', 'snapshot.json') },
     // .abuddy/deps/<id>/ cache
     { root: dir, snapshot: path.join(dir, 'snapshot.json') },
   ];

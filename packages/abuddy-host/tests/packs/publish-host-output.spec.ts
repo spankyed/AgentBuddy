@@ -15,7 +15,7 @@ vi.mock('node:fs', async importOriginal => {
 });
 
 const fs = await import('node:fs');
-const { publishHostPackOutput } = await import('../../src/packs/layout.ts');
+const { publishHostPackOutput, PACK_LAYOUT } = await import('../../src/packs/layout.ts');
 
 let tmp: string;
 
@@ -25,11 +25,12 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-/** A built-in pack's dist as its build leaves it, with `steps` marking which build it is */
+/** A pack's dist as its build leaves it, with `steps` marking which build it is */
 function builtInPack(steps: string): string {
   const dir = path.join(tmp, `built-in-${steps.length}`);
   fs.mkdirSync(path.join(dir, 'dist', 'build'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'dist', 'snapshot.json'), JSON.stringify({ manifest: { id: 'base-pack', version: '1.0.0' } }));
+  fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ manifest: { id: 'base-pack', version: '1.0.0' } }));
   fs.writeFileSync(path.join(dir, 'dist', 'build', 'steps.build.mjs'), steps);
   return dir;
 }

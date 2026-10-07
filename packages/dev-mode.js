@@ -6,7 +6,7 @@ const mode = 'development';
 process.env.NODE_ENV = mode;
 process.env.MODE = mode;
 
-// ── 1. Start API build, dev-build, and renderer server concurrently ──
+// ── 1. Start the API build, the pack's backend watcher and the renderer server concurrently ──
 
 // API backend build (skips tsc, single ESM format, no DTS/minify)
 const apiBuild = spawn('npm', ['run', 'build:be:dev'], {
@@ -23,10 +23,10 @@ const apiBuildDone = new Promise((resolve) => {
   });
 });
 
-// Built-in pack dev watch (compiles default-setup to CJS for BE hot reload)
-const devBuild = fork(path.resolve('packages/default-setup/dev-build.mjs'), ['--watch'], {
-  // It imports @abuddy/sdk/env from source
-  execArgv: ['--import', 'tsx', '--conditions=@abuddy/source'],
+// The built-in pack's backend watcher: it keeps dist/runtime/index.cjs current and asks the API to
+// reload the pack in place. The CLI's own bundler, so there is one esbuild config for a pack's runtime
+const devBuild = fork(path.resolve('packages/abuddy-cli/bin/abuddy.mjs'), ['build', '--watch'], {
+  cwd: path.resolve('packages/default-setup'),
   stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
 });
 process.on('exit', () => devBuild.kill());
@@ -34,7 +34,7 @@ const devBuildReady = new Promise((resolve) => {
   devBuild.on('message', (msg) => { if (msg.type === 'ready') resolve(); });
   devBuild.on('exit', (code) => {
     if (code !== 0) {
-      console.error(`[dev-mode] default-setup dev-build failed with code ${code}`);
+      console.error(`[dev-mode] default-setup's backend watcher failed with code ${code}`);
       process.exit(1);
     }
     resolve();
@@ -49,7 +49,7 @@ const rendererWatchServer = await createServer({
 });
 await rendererWatchServer.listen();
 
-// Wait for dev-build initial compile (so dist/runtime/index.cjs exists before API boots)
+// Wait for the first bundle (so dist/runtime/index.cjs exists before the API boots)
 await devBuildReady;
 
 // ── 2. Renderer watch server provider plugin ──

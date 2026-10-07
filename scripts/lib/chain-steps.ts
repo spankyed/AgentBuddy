@@ -466,7 +466,6 @@ export const WORKSPACE_PARTS = [
   // The two vitest configs from `CONFIG_BY_HALF`, which is where that naming is declared
   ...Object.values(CONFIG_BY_HALF), 'vite.config.ts', 'vite.config.js',
   'eslint.config.ts', 'postcss.config.cjs', 'tailwind.config.ts', 'tsdown.config.ts', 'env.d.ts',
-  'dev-build.mjs',
 ];
 const workspace = (pkg: string): string[] => WORKSPACE_PARTS.map((part) => `packages/${pkg}/${part}`);
 
@@ -1031,7 +1030,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // invalidates this step, the one case nothing else here can see. It is the `api:check` precedent above,
     // and it was missing while the check was read as a step that only looked at what the build wrote
     inputs: [...ROOT, ...PACK_SOURCES, 'packages/default-setup/tsconfig.json',
-      'packages/default-setup/etc', 'packages/default-setup/dev-build.mjs', ...PACKAGE_BUILD_READS] },
+      'packages/default-setup/etc', ...PACKAGE_BUILD_READS] },
   // The fixture packs depend on default-setup, so they need its snapshot from compile
   //
   // The third place in this chain with a cache inside a cached step, and the one that is benign: `abuddy

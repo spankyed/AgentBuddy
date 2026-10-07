@@ -1,4 +1,3 @@
-import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -30,25 +29,19 @@ function builtInPack(snapshot: object = { types: { entities: {}, relKinds: {} },
   // Deliberately not a sibling/workspace path of the author pack, so only the installed-app source can find it
   const dir = path.join(tmp, 'app-bundle', 'resources', 'default-pack-source');
   fs.mkdirSync(path.join(dir, 'dist', 'build'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'dist', 'snapshot.json'), JSON.stringify(snapshot));
+  fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.typesDir), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify(snapshot));
   fs.writeFileSync(path.join(dir, 'dist', 'build', 'steps.build.mjs'), 'export const steps = [];');
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "base-pack" };');
   // Compiled seeds at the top of a built-in pack's dist, beside files that aren't seeds
   fs.writeFileSync(path.join(dir, 'dist', 'settings.seed.json'), '{"theme":"dark"}');
   fs.writeFileSync(path.join(dir, 'dist', 'seeds.json'), '{"version":1,"seeds":[]}');
-  builtBeside(dir);
   fs.mkdirSync(path.join(dir, 'dist', 'media', 'library'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'media', 'library', 'pic.png'), 'PNG');
   fs.mkdirSync(path.join(dir, 'dist', 'defs'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'defs', 'actions.d.ts'), '');
   return dir;
-}
-
-/** Records the compiled seeds index the runtime was built beside, as the pack's runtime build does */
-function builtBeside(dir: string) {
-  const hash = crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, 'dist', 'seeds.json'))).digest('hex');
-  fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'seeds-index.sha256'), hash);
 }
 
 describe('publishHostPackOutput', () => {
@@ -78,21 +71,17 @@ describe('publishHostPackOutput', () => {
     expect(fs.readFileSync(path.join(dest, 'runtime', 'index.cjs'), 'utf-8')).toContain('v: 2');
   });
 
-  it("refuses to publish a runtime with seeds compiled after it, and publishes once the runtime is rebuilt beside them", () => {
+  // The refusal this replaces compared a sha256 the pack's own runtime build wrote against `seeds.json`, so a
+  // re-compile of the seeds without a rebuild of the runtime published neither. One command writes both now,
+  // so there is no moment between them: recompiled seeds publish, and the runtime beside them is the one
+  // `abuddy build` just wrote.
+  it('publishes seeds compiled again, the runtime having been built with them', () => {
     const src = builtInPack();
     const dest = path.join(_appDirOf(tmp), 'host-packs', 'base-pack');
     publishHostPackOutput(src, dest);
 
-    // abuddy build compiled the seeds again; the runtime wasn't rebuilt
     fs.writeFileSync(path.join(src, 'dist', 'seeds.json'), '{"version":1,"seeds":[{"key":"notes"}]}');
-    expect(() => publishHostPackOutput(src, dest)).toThrow(/runtime\/index\.cjs wasn't built beside the compiled seeds .*rebuild the pack's runtime/);
-    expect(fs.readFileSync(path.join(dest, 'runtime', 'seeds', 'seeds.json'), 'utf-8')).not.toContain('notes');
 
-    // A runtime never recorded as built beside any seeds isn't published with them either
-    fs.rmSync(path.join(src, 'dist', 'runtime', 'seeds-index.sha256'));
-    expect(() => publishHostPackOutput(src, dest)).toThrow(/wasn't built beside the compiled seeds/);
-
-    builtBeside(src);
     expect(publishHostPackOutput(src, dest)).toBe(true);
     expect(fs.readFileSync(path.join(dest, 'runtime', 'seeds', 'seeds.json'), 'utf-8')).toContain('notes');
   });

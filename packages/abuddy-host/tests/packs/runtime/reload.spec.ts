@@ -1,6 +1,5 @@
 // Reloading a pack loads and registers its rebuilt runtime before the running one shuts down: a rebuild that
 // fails to load, or whose registration is refused, leaves the running pack as it was.
-import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -92,14 +91,12 @@ describe('reloading a built-in pack', () => {
     const packagesDir = path.join(tmpDir, 'packages');
     const packDir = path.join(packagesDir, BUILT_IN_ID);
     fs.mkdirSync(path.join(packDir, 'dist', 'runtime'), { recursive: true });
-    fs.mkdirSync(path.join(packDir, 'dist'), { recursive: true });
+    fs.mkdirSync(path.join(packDir, 'dist', 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: BUILT_IN_ID, name: BUILT_IN_ID, version: '1.0.0', builtIn: true, ...manifest }));
-    fs.writeFileSync(path.join(packDir, 'dist', 'snapshot.json'), '{"types":{}}');
+    fs.writeFileSync(path.join(packDir, 'dist', PACK_LAYOUT.snapshot), '{"types":{}}');
     writeSeeds('[{ "label": "first" }]');
     // The index naming the pack, and the runtime built beside it
-    const seedsIndex = JSON.stringify({ version: 1, packId: BUILT_IN_ID, seeds: [] });
-    fs.writeFileSync(path.join(packDir, 'dist', 'seeds.json'), seedsIndex);
-    fs.writeFileSync(path.join(packDir, 'dist', 'runtime', 'seeds-index.sha256'), createHash('sha256').update(seedsIndex).digest('hex'));
+    fs.writeFileSync(path.join(packDir, 'dist', 'seeds.json'), JSON.stringify({ version: 1, packId: BUILT_IN_ID, seeds: [] }));
     fs.writeFileSync(path.join(packDir, 'dist', 'runtime', 'index.cjs'), `
       let compiledDir = '';
       module.exports = {
@@ -272,7 +269,7 @@ describe('reloading a built-in pack', () => {
 
     // The rebuild changes the pack's version and its published types
     writeBuiltIn({ version: '2.0.0' });
-    fs.writeFileSync(path.join(packagesDir, BUILT_IN_ID, 'dist', 'snapshot.json'), '{"types":{"Widget":"Widget"}}');
+    fs.writeFileSync(path.join(packagesDir, BUILT_IN_ID, 'dist', PACK_LAYOUT.snapshot), '{"types":{"Widget":"Widget"}}');
 
     await reloadBuiltInPack(registry, BUILT_IN_ID, bus as never);
 

@@ -33,8 +33,8 @@ describe('checkDependencies', () => {
   it('publishes built-in packs through a hidden staging dir, which never counts as a pack', async () => {
     const { publishHostPackOutput } = await import('../../src/packs/layout.ts');
     const source = path.join(userData, 'app', 'default-setup');
-    fs.mkdirSync(path.join(source, 'dist'), { recursive: true });
-    fs.writeFileSync(path.join(source, 'dist', 'snapshot.json'), '{}');
+    fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
+    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), '{}');
     // An earlier publish that crashed between staging and rename
     fs.mkdirSync(path.join(userData, 'host-packs', '.default-setup.publishing-1'), { recursive: true });
 
