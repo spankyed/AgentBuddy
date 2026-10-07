@@ -97,6 +97,29 @@ describe('driftedSteps', () => {
       .toEqual([{ name: 'fast', declared: 10, measured: 4 }]);
   });
 
+  /**
+   * The band stops at the point the declaration would fail its own bound.
+   *
+   * `BAND` and `declaredShare` were chosen independently, so where twice a declaration exceeds its rung's
+   * limit a cost could grow out of that bound in silence: `suite` admits 75s, and a step declaring 60s was
+   * watched only from 120s. Mutation: drop `rungLimitSeconds` from `driftBand` and this case fails.
+   */
+  it('reports a measurement past its rung even when it is inside twice the declaration', () => {
+    const integration = [step('pool', [], { seconds: 60, timeout: 'suite' })];
+
+    expect(driftedSteps(integration, new Map([['pool', 80_000]])).drifted)
+      .toEqual([{ name: 'pool', declared: 60, measured: 80 }]);
+  });
+
+  // The cap only bites where it is the tighter number; for most steps twice the declaration still is
+  it('leaves the band alone where twice the declaration is inside the rung', () => {
+    const quick = [step('lint', [], { seconds: 2, timeout: 'quick' })];
+
+    expect(driftedSteps(quick, new Map([['lint', 3_000]])).drifted, 'inside both').toEqual([]);
+    expect(driftedSteps(quick, new Map([['lint', 5_000]])).drifted, 'past twice, inside the rung')
+      .toEqual([{ name: 'lint', declared: 2, measured: 5 }]);
+  });
+
   it('still reports a sub-second declaration that moved further than the floor', () => {
     // Not over-broad: the guard is about the size of the movement, not about the size of the declaration,
     // and 0.3 -> 2 is a step that really has grown
