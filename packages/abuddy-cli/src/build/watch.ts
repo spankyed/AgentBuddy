@@ -34,6 +34,48 @@ async function rebuild(root: string): Promise<boolean> {
 }
 
 /**
+ * One run at a time, and never a lost request.
+ *
+ * Two things a watcher has to get right, and they pull in opposite directions. Edits arrive in bursts — a
+ * formatter saving a file writes it more than once — so a request **debounces**, and the run happens once
+ * the edits stop. But a bundle takes time, and an edit landing while one is in flight is the most ordinary
+ * thing there is: a `return` on a busy flag loses it, and the author is then looking at an app built from
+ * the file before the one they just saved, with the loop reporting nothing wrong.
+ *
+ * So a request that arrives mid-run is remembered and taken when that run finishes, and several of them
+ * collapse into one further run rather than a queue of them. A failed run is no different: the request that
+ * came in while it was failing is the author fixing the error.
+ *
+ * `run` is awaited and must not throw — `rebuild` reports instead, so that a syntax error doesn't end the
+ * loop.
+ */
+export function coalescingRunner(run: () => Promise<void>, delayMs: number = DEBOUNCE_MS): { request: () => void } {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let running = false;
+  let pending = false;
+
+  async function drain(): Promise<void> {
+    running = true;
+    try {
+      // Cleared before the run, not after: a request that arrives during it is for the next one
+      do { pending = false; await run(); } while (pending);
+    } finally {
+      running = false;
+    }
+  }
+
+  return {
+    request() {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (running) { pending = true; return; }
+        void drain();
+      }, delayMs);
+    },
+  };
+}
+
+/**
  * Watch a pack's sources, rebuild its backend runtime, and ask a running app to reload it. Never returns.
  */
 export async function watchPackRuntime(root: string, packId: string, options: WatchOptions = {}): Promise<never> {
@@ -48,24 +90,22 @@ export async function watchPackRuntime(root: string, packId: string, options: Wa
   console.log('[watch] Runtime built');
   options.onFirstBuild?.();
 
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  let building = false;
+  // The edit the next run is for. A run reads it when it starts rather than closing over one filename,
+  // since a run can cover several edits
+  let lastChange = '';
+  const runs = coalescingRunner(async () => {
+    const changed = lastChange;
+    if (!(await rebuild(root))) return;
+    const reload = await reloadPack(packId, options.place);
+    if (reload.status === 'reloaded') console.log(`[watch] ${changed} — reloaded`);
+    else console.warn(`[watch] ${changed} — rebuilt, but the app did not reload (${reload.detail})`);
+  });
+
   fs.watch(srcDir, { recursive: true }, (_event, filename) => {
     // A `.vue` or `.css` edit is the frontend's, which the renderer serves from source under `npm start`
     if (!filename || !/\.tsx?$/.test(filename) || filename.endsWith('.d.ts')) return;
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(async () => {
-      if (building) return;
-      building = true;
-      try {
-        if (!(await rebuild(root))) return;
-        const reload = await reloadPack(packId, options.place);
-        if (reload.status === 'reloaded') console.log(`[watch] ${filename} — reloaded`);
-        else console.warn(`[watch] ${filename} — rebuilt, but the app did not reload (${reload.detail})`);
-      } finally {
-        building = false;
-      }
-    }, DEBOUNCE_MS);
+    lastChange = filename;
+    runs.request();
   });
 
   console.log(`[watch] Watching ${path.relative(root, srcDir) || srcDir} for backend changes`);
