@@ -85,7 +85,7 @@ export function sharedInstanceExports(pkg: string, fromFile: string): Record<str
  * a question about that pack rather than about this list. `fsevents` is the counter-example: chokidar
  * requires it in a try/catch and falls back to polling, so a pack runs without it either way.
  */
-export const HOST_RESOLVED_BINARIES = ['node-pty', 'fsevents', '@vscode/ripgrep'];
+export const HOST_RESOLVED_BINARIES = ['node-pty', 'fsevents', '@vscode/ripgrep'] as const;
 
 export interface SharedDep {
   globalKey?: string;
