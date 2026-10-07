@@ -318,7 +318,7 @@ Checks:
 | `untyped-sends` | `untypedBroadcastToPlugin`, `untypedSendToSystem`, `registerRepository` — use the typed facades from `#generated/events` | yes |
 | `raw-transport` | `_rootEvents`, `trpc.bus`, `@abuddy/sdk/rpc` | yes |
 | `backend-console` | `console.*` under `features/*/be/`, `migrations/` or `extensions/` — use `createLogger` from `@abuddy/sdk/logger` | yes |
-| `component-sends` | `sendToPlugin` from a feature's `.vue`. A component runs in no delivery, so the send carries no `Message.sender` and the plugin it reaches cannot answer it — emit to your own plugin with `usePlugin()` and let its machine send. An extension's component is exempt: it is rendered inside whichever plugin shows it and has no route to that actor | no |
+| `component-sends` | `sendToPlugin` from a feature's `.vue`. A component runs in no delivery, so the send carries no `Message.sender` and the plugin it reaches cannot answer it — emit to your own plugin with `usePlugin()` and let its machine send. An extension's component is exempt: it is rendered in no plugin scope and by no single plugin, so it addresses a plugin by ref and `sendToPlugin` is that route's send | no |
 | `cross-feature-imports` | a module of another feature's `fe/`, and a feature passing its own frontend on (`export … from './fe/state.ts'`). What a feature offers the rest is its plugin's contract, read through `#generated/fe` and `#generated/events` | yes |
 | `repository-casts` | `repository as unknown as …`, reading a repository through a type its owner never declared. `repository` from `#generated/repository` is already typed with your own repositories and your dependencies' | yes |
 

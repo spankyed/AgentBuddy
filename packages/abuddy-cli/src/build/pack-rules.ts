@@ -128,11 +128,12 @@ const EVENT_SENDS = ['untypedBroadcastToPlugin', 'untypedSendToSystem', '_sendTo
  * A feature's own component, which is where `usePlugin()` is available and so where a cross-plugin send has an
  * alternative.
  *
- * **Extensions are deliberately outside it.** A viewer, block or step form is rendered inside whichever
- * plugin shows it, and `#generated/fe` offers it `usePluginState`, `readPluginState` and `openPlugin` but no
- * actor type — while `cross-feature-imports` refuses it the feature's own. So an extension has no route to
- * its host plugin's actor and `sendToPlugin` is the only one it has; the rule would be unsatisfiable there.
- * That is a gap rather than a blessing, and closing it means giving `#generated/fe` a per-plugin actor type.
+ * **Extensions are outside it because they address a plugin differently.** A viewer, block or step form is
+ * rendered by the host wherever it belongs, in no `PluginScope` and by no single plugin — the same viewer can
+ * be shown by several — so `usePlugin()` has no answer for it and is not the verb it is missing. Such a
+ * component reaches a plugin by its ref, which is the sanctioned route (`abuddy-sdk/src/fe/plugin-state.ts`
+ * states it), and `sendToPlugin` is that route's send. What a by-ref send does lack is a return address, so
+ * the plugin it reaches cannot answer it — which costs nothing while every one of them is a notification.
  */
 const FEATURE_COMPONENT = /^features\/[^/]+\/fe\/.*\.vue$/;
 

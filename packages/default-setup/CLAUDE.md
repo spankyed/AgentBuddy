@@ -270,13 +270,14 @@ whole point of an artifact: a new type is a definition and a component, never a 
   any `eventType` to the brain and a flow listens for it, so the decision travels without threads knowing what
   a todo is.
 
-**Not `sendToPlugin`.** A component runs in no delivery, so the send carries no `Message.sender` and the plugin
-it reaches cannot answer it. The `component-sends` pack rule refuses exactly that from a *feature's* component
-(`docs/public-facing/cli.md`) — and **deliberately does not reach an extension**, because `#generated/fe` gives
-a viewer no actor type and `cross-feature-imports` refuses it the feature's own, so the rule would be
-unsatisfiable here. Which is why it is written down in this section instead: for a viewer it is a convention,
-and the fifth one picks at random unless somebody read this. Closing the gap means a per-plugin actor type in
-`#generated/fe`.
+**A viewer addresses a plugin by its ref, and that is the whole of its reach.** It is rendered by the host in
+no `PluginScope`, and by no single plugin — the same viewer can be shown by several — so `usePlugin()` has no
+answer for it. `usePluginState` reads by ref and `sendToPlugin` sends by ref; both are sanctioned here
+(`abuddy-sdk/src/fe/plugin-state.ts` states the rule). This is why the `component-sends` pack rule refuses
+`sendToPlugin` from a *feature's* component and not from a viewer: a feature's component has `usePlugin()` and
+somewhere better to send, and a viewer does not. What a by-ref send lacks is a return address, so the plugin it
+reaches cannot answer it — fine for the notification these are, and the thing to solve first if one ever needs
+an answer.
 
 ## Message blocks
 
