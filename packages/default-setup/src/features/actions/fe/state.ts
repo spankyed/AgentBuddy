@@ -11,7 +11,7 @@ import type { ActionsContext, ActionsInboxEvent } from './contract.ts'
 import type { OutgoingActionEvents } from '#features/actions/be/types.ts'
 import type { ActionParameter } from '@abuddy/sdk'
 import { sendToSystem } from '#generated/events.ts'
-import { callOf, newCall } from '@abuddy/sdk/events'
+import { answersCall, newCall } from '@abuddy/sdk/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import type { ActionEntity } from '@abuddy/sdk'
@@ -94,7 +94,7 @@ const actionsState = setup({
       const ev = typeOf('ACTION_SELECTED', event);
       return {
         // Settled: nothing is outstanding, so a later answer for an abandoned ask has no call to match
-        pendingActionCall: undefined,
+        pendingActionCall: null,
         selectedActionId: ev.actionId,
         selectedAction: ev.data,
         formData: {
@@ -444,8 +444,8 @@ const actionsState = setup({
   },
   guards: {
     targetIs,
-    /** Whether this answer is the one the outstanding ask is waiting for */
-    answersPendingAction: ({ context, event }) => callOf(event) === context.pendingActionCall,
+    /** Whether this answer is the one the outstanding ask is waiting for, and false when none is */
+    answersPendingAction: ({ context, event }) => answersCall(event, context.pendingActionCall),
     /**
      * Whether this page is the one just asked for.
      *
@@ -460,6 +460,7 @@ const actionsState = setup({
   initial: 'list',
   context: {
     selectedActionId: undefined,
+    pendingActionCall: null,
     actions: [],
     selectedAction: undefined,
     totalCount: 0,

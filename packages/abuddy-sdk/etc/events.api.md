@@ -4,6 +4,11 @@
 
 ```ts
 
+// @public
+export const answersCall: (event: {
+    [key: string]: unknown;
+}, outstanding: string | null | undefined) => boolean;
+
 // @internal
 export type _Asker =
 /** Over the backend bus, which is where a system is */
@@ -26,8 +31,8 @@ export type _Asker =
 // @internal
 export const _CALL_KEY = "_call";
 
-// @public
-export const callOf: (event: {
+// @internal
+export const _callOf: (event: {
     [key: string]: unknown;
 }) => string | undefined;
 
@@ -202,6 +207,9 @@ export type Qualified<PackId extends string, M> = {
 };
 
 // @public
+export const recordCall: <T>(pending: Record<string, T>, call: string, value: T) => Record<string, T>;
+
+// @public
 export type Reply<E extends {
     type: string;
 } = {
@@ -230,6 +238,14 @@ export function _sendToLocalPlugin(ref: string, event: {
     type: string;
     [key: string]: unknown;
 }): void;
+
+// @public
+export const settleCall: <T>(pending: Record<string, T>, event: {
+    [key: string]: unknown;
+}) => {
+    recorded?: T;
+    pending: Record<string, T>;
+};
 
 // @public
 export type SystemEventMap = {

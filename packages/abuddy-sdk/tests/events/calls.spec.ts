@@ -1,17 +1,17 @@
-// Every send names a call, and an answer names the call it answers.
+// Every send names a call, an answer names the call it answers, and the two verbs a pack reads it through.
 //
-// Correlation used to be a three-step obligation each feature discharged by hand — mint an id, store it,
-// settle it — and the failures distributed across the steps rather than clustering: one feature did all
-// three, one declared a `requestId` end to end and minted none, two stored one and never cleared it, and a
-// terminal's id did not exist until its answer. A call on the envelope is what none of those could get
-// wrong, because the send mints it and `reply` echoes it.
+// Correlation is a three-step obligation — mint, store, settle — and a per-feature implementation can fail
+// at any one of the three independently: mint and never store, declare a field and mint nothing, store and
+// never clear. The envelope is what removes the first and third from a feature's hands: the send mints and
+// `reply` echoes, so a feature only stores.
 //
-// What is asserted here is the half no feature can see: that a send stamps one at all, that an answer names
-// the request's rather than its own, and that the reserved key reaches the receiver's event.
+// What is asserted here is the half no feature can see: that a send stamps a call at all, that an answer
+// names the request's rather than its own, that the reserved key reaches the receiver's event, and that
+// `answersCall`/`settleCall` refuse what a hand-written comparison would accept.
 import { describe, expect, it } from 'vitest';
 import {
-  _CALL_KEY, callOf, newCall, untypedBroadcastToPlugin, untypedSendToSystem, _callOn, _replyTo,
-  type Message,
+  _CALL_KEY, _callOf, answersCall, newCall, recordCall, settleCall, untypedBroadcastToPlugin,
+  untypedSendToSystem, _callOn, _replyTo, type Message,
 } from '../../src/events/index.ts';
 import { startTestRuntime, testRootEvents } from '../../src/testing/index.ts';
 
@@ -97,8 +97,8 @@ describe('the reserved key a door injects', () => {
   });
 
   it('is what callOf reads back', () => {
-    expect(callOf({ type: 'DONE', ..._callOn({ answering: 'c-1' }) })).toBe('c-1');
-    expect(callOf({ type: 'NEWS' })).toBeUndefined();
+    expect(_callOf({ type: 'DONE', ..._callOn({ answering: 'c-1' }) })).toBe('c-1');
+    expect(_callOf({ type: 'NEWS' })).toBeUndefined();
   });
 
   /**
@@ -110,11 +110,93 @@ describe('the reserved key a door injects', () => {
   it('wins over a pack field of the same name', () => {
     const delivered = { type: 'DONE', [_CALL_KEY]: 'c-the-packs-own', ..._callOn({ answering: 'c-the-real-one' }) };
 
-    expect(callOf(delivered)).toBe('c-the-real-one');
+    expect(_callOf(delivered)).toBe('c-the-real-one');
   });
 
   // `string`, so a non-string arriving from anywhere reads as no call rather than as one
   it('reads a non-string as no call at all', () => {
-    expect(callOf({ type: 'DONE', [_CALL_KEY]: 7 })).toBeUndefined();
+    expect(_callOf({ type: 'DONE', [_CALL_KEY]: 7 })).toBeUndefined();
+  });
+});
+
+/**
+ * The question a pack asks instead of reading the call, and the case that is the reason it exists.
+ *
+ * **An empty slot answers nothing.** `_callOf(event) === context.pending` is `undefined === undefined` when
+ * nothing is outstanding, so the obvious comparison admits an answer nobody asked for — and nothing
+ * outstanding is the resting state, so that is the common path. Both spellings of an empty slot are
+ * refused, because a machine may use either and neither should decide correctness.
+ *
+ * Mutation: drop `outstanding != null` and the first three cases fail here, plus one per feature in
+ * `default-setup`.
+ */
+describe('answersCall', () => {
+  const answer = (call: string) => ({ type: 'DONE', ..._callOn({ answering: call }) });
+
+  it('refuses an uncorrelated answer when nothing is outstanding', () => {
+    expect(answersCall({ type: 'DONE' }, null)).toBe(false);
+    expect(answersCall({ type: 'DONE' }, undefined)).toBe(false);
+  });
+
+  it('refuses a correlated answer when nothing is outstanding either', () => {
+    expect(answersCall(answer('c-1'), null)).toBe(false);
+  });
+
+  it('refuses an answer carrying no call while an ask is outstanding', () => {
+    expect(answersCall({ type: 'DONE' }, 'c-1')).toBe(false);
+  });
+
+  it('takes the answer to the ask that is outstanding, and no other', () => {
+    expect(answersCall(answer('c-1'), 'c-1')).toBe(true);
+    expect(answersCall(answer('c-2'), 'c-1')).toBe(false);
+  });
+});
+
+/**
+ * The pair for a correlation holding several asks at once, where a single slot cannot say which.
+ *
+ * `settleCall` takes the event rather than a call, which is what keeps the raw value out of pack code —
+ * and it hands back both halves, so read-and-remove is one step and remove-only is that step with
+ * `recorded` dropped.
+ */
+describe('recordCall and settleCall', () => {
+  const asked = (call: string) => ({ type: 'DONE', ..._callOn({ answering: call }) });
+
+  it('settles the ask its answer names, leaving the others', () => {
+    const pending = recordCall(recordCall({}, 'c-1', 'first'), 'c-2', 'second');
+
+    const { recorded, pending: left } = settleCall(pending, asked('c-1'));
+
+    expect(recorded).toBe('first');
+    expect(left).toEqual({ 'c-2': 'second' });
+  });
+
+  it('settles nothing for an answer carrying no call, and leaves the record alone', () => {
+    const pending = recordCall({}, 'c-1', 'first');
+
+    const settled = settleCall(pending, { type: 'NEWS' });
+
+    expect(settled.recorded).toBeUndefined();
+    expect(settled.pending, 'the same record, not a copy missing something').toEqual(pending);
+  });
+
+  it('settles nothing twice for one ask', () => {
+    const pending = recordCall({}, 'c-1', 'first');
+
+    const once = settleCall(pending, asked('c-1'));
+    const twice = settleCall(once.pending, asked('c-1'));
+
+    expect(once.recorded).toBe('first');
+    expect(twice.recorded, 'already settled').toBeUndefined();
+  });
+
+  // Immutable, because these compose with an XState `assign` that replaces context rather than mutating it
+  it('leaves the record it was given untouched', () => {
+    const pending = recordCall({}, 'c-1', 'first');
+
+    recordCall(pending, 'c-2', 'second');
+    settleCall(pending, asked('c-1'));
+
+    expect(pending).toEqual({ 'c-1': 'first' });
   });
 });

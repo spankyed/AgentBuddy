@@ -179,11 +179,16 @@ export function findPackBackendConsole(dirs: readonly string[] = PACK_SOURCE_DIR
 /**
  * `file:line: _call:` for each write of the reserved key a delivery door puts a call under.
  *
- * The key is the app's: `_callOn` writes it and `callOf` reads it, so a property a pack writes under that
+ * The key is the app's: `_callOn` writes it and `_callOf` reads it, so a property a pack writes under that
  * name is overwritten on the way in and read as a correlation on the way out. The rule is the CLI's, so an
  * external pack is refused it too.
+ *
+ * **Over `PACK_CODE_DIRS`, tests included, because a test is where the key is reached for.** A pack's own
+ * code has the two verbs and no reason to name the key; a spec driving a machine with no delivery door in
+ * front of it has to synthesise what a door would write, and `answerTo` (`@abuddy/sdk/testing`) is that.
+ * `abuddy test` runs this rule over a pack's `tests` for the same reason, so the two entry points agree.
  */
-export function findReservedEventKeys(dirs: readonly string[] = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+export function findReservedEventKeys(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): string[] {
   return packRule('reserved-event-keys', dirs, root);
 }
 
@@ -731,7 +736,7 @@ const RULE_LIST = [
     rule: 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them',
   },
   backed('findRepositoryCasts', 'repository-casts', findRepositoryCasts, packageSourceDirs()),
-  backed('findReservedEventKeys', 'reserved-event-keys', findReservedEventKeys, PACK_SOURCE_DIRS),
+  backed('findReservedEventKeys', 'reserved-event-keys', findReservedEventKeys, PACK_CODE_DIRS),
   backed('findCrossFeatureImports', 'cross-feature-imports', findCrossFeatureImports, PACK_SRC_ROOTS),
   backed('findContractLeafImports', 'contract-leaves', findContractLeafImports, PACK_SRC_ROOTS),
   {

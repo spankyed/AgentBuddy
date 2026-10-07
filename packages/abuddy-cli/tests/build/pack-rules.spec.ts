@@ -115,7 +115,7 @@ const FIRES: Record<PackRuleKey, { onFile?: [code: string, problem: string][]; e
       ["export const answer = { type: 'DONE', _call: mine };\n", 'src/f.ts:1: _call:'],
       ["export const answer = { type: 'DONE', '_call': mine };\n", 'src/f.ts:1: _call:'],
     ],
-    elsewhere: 'reserved-event-keys leaves a pack\'s own fields and a read of the call alone',
+    elsewhere: 'reserved-event-keys leaves a pack\'s own fields and the call verbs alone',
   },
 };
 
@@ -175,17 +175,34 @@ describe('every rule', () => {
 
   /**
    * The acceptance half, which is the half a reservation needs: a key named `_call` is refused, and every
-   * neighbouring shape a pack legitimately writes is not — a field of its own whose name merely starts with an
-   * underscore, a read of the call through `callOf`, and the test helper that builds an answer.
+   * neighbouring shape a pack legitimately writes is not — a field of its own whose name merely starts with
+   * an underscore, the two verbs that ask about a call without reading it, and the test helper that builds
+   * an answer.
    */
-  it("reserved-event-keys leaves a pack's own fields and a read of the call alone", () => {
+  it("reserved-event-keys leaves a pack's own fields and the call verbs alone", () => {
     const dir = completePack({
       'src/writes-it.ts': "export const bad = { type: 'DONE', _call: mine };\n",
       'src/own-field.ts': "export const fine = { type: 'DONE', _callCount: 2, call: 'a-name' };\n",
-      'src/reads-it.ts': "export const of = (event: E) => callOf(event) === pending;\n",
+      'src/asks-it.ts': 'export const mine = (event: E) => answersCall(event, pending);\n',
+      'src/settles-it.ts': 'export const settle = (p: P, event: E) => settleCall(p, event);\n',
       'src/in-a-test.ts': "export const answer = answerTo(call, { type: 'DONE' });\n",
     });
     expect(problems(dir, 'reserved-event-keys')).toEqual(['src/writes-it.ts:1: _call:']);
+  });
+
+  /**
+   * And it reaches a pack's **tests**, which is where the key is reached for at all.
+   *
+   * A pack's own code has the verbs and no reason to name the key. A spec driving a machine directly has no
+   * delivery door in front of it, so it has to synthesise what a door would write — which is `answerTo`'s
+   * job, and this is what refuses the hand-rolled alternative. `abuddy test` passes `['tests']` for the
+   * same reason, so both entry points cover the same ground.
+   */
+  it('reserved-event-keys fires in a pack\'s tests as well as its src', () => {
+    const dir = completePack({ 'tests/drives-a-machine.spec.ts': "actor.send({ type: 'DONE', _call: mine });\n" });
+
+    expect(packRuleProblems(dir, ['src', 'tests']).get('reserved-event-keys'))
+      .toEqual(['tests/drives-a-machine.spec.ts:1: _call:']);
   });
 
   it('backend-console fires under a backend path and not under a frontend one', () => {

@@ -3,7 +3,7 @@ import breadcrumb from '@abuddy/sdk/fe'
 import { contextMenu } from '@abuddy/sdk/fe'
 import { safeEvents } from '@abuddy/sdk/fe'
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe'
-import { callOf, newCall } from '@abuddy/sdk/events'
+import { answersCall, newCall } from '@abuddy/sdk/events'
 import type { DatabaseSettings } from '#generated/types.ts'
 import type { DatabaseContext, DatabaseInboxEvent } from './contract.ts'
 import type { OutgoingDatabaseEvents } from '#features/database/be/types.ts'
@@ -84,12 +84,12 @@ const databaseState = setup({
      * to do nothing is one someone later edits into doing something, and `threads`' `SET_VIEW_DATA` does
      * it this way for the same reason. An answer to an ask nobody is waiting for is simply not taken.
      *
-     * **`callOf(event)` is why the call rides on the event rather than being handed to a handler.** A guard
-     * is given `{ context, event }` and nothing else, and context cannot be written before it runs — so the
-     * event is the only channel to one. The cast these two used to carry is gone with the declared field.
+     * `answersCall` is false when the slot is empty, which is what makes "an answer nobody asked for" a
+     * case this refuses rather than one it admits — see its doc for why the comparison cannot be written
+     * by hand.
      */
-    answersPendingQuery: ({ context, event }) => callOf(event) === context.pendingQueryCall,
-    answersPendingTransaction: ({ context, event }) => callOf(event) === context.pendingTransactionCall,
+    answersPendingQuery: ({ context, event }) => answersCall(event, context.pendingQueryCall),
+    answersPendingTransaction: ({ context, event }) => answersCall(event, context.pendingTransactionCall),
     /**
      * Whether these events are the page the viewer is waiting for: the right flow *and* the right offset.
      *

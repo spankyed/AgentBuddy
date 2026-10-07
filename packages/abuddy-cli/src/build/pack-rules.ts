@@ -385,10 +385,11 @@ const RULE_LIST = [
   {
     key: 'reserved-event-keys',
     switchable: false,
-    rule: "`_call` is the app's key on a delivered event: the delivery doors write it and callOf(event) reads "
-      + 'it, so a property a pack writes under that name is overwritten on the way in and read as a '
-      + "correlation on the way out — read a call with callOf from @abuddy/sdk/events, build an answer in a "
-      + 'test with answerTo from @abuddy/sdk/testing, and rename any field of your own that collides',
+    rule: "`_call` is the app's key on a delivered event: the delivery doors write the call an answer "
+      + 'answers under it, so a property a pack writes under that name is overwritten on the way in and read '
+      + 'as a correlation on the way out — ask answersCall or settleCall from @abuddy/sdk/events rather than '
+      + 'reading the key, build an answer in a test with answerTo from @abuddy/sdk/testing, and rename any '
+      + 'field of your own that collides',
     check(view, place) {
       // The generated facades never write the key, so there is nothing to exempt; a generated file that
       // started to would be as wrong as a hand-written one, and is told so

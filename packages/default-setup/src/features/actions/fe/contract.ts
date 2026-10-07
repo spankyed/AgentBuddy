@@ -22,7 +22,7 @@ export interface ActionsContext {
    * clear, so after the first selection it always named something. A call is per ask and per window, so
    * neither has anywhere to live.
    */
-  pendingActionCall?: string;
+  pendingActionCall: string | null;
   actions: ActionEntity[];
   selectedAction?: ActionEntity;
   totalCount: number;

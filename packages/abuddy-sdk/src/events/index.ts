@@ -137,25 +137,79 @@ export const newCall = (): string => randomId({ prefix: 'c-', counterSafe: true 
 /**
  * The call a delivered event belongs to, or nothing for one that belongs to none.
  *
- * **Why the event and not a handed member.** A correlation is read in a transition guard in three of the
- * four features that have one, and a guard is handed `{ context, event }` and nothing else — `defineHandlers`
- * wraps a machine's *actions*, not its guards. Context cannot be written before a guard runs, so the event is
- * the only channel to one, and a reserved key on it is how a call reaches a guard without every machine
- * declaring a field for it.
+ * **Why the event and not a handed member.** A correlation is read in a transition guard, and a guard is
+ * handed `{ context, event }` and nothing else — `defineHandlers` wraps a machine's *actions*, not its
+ * guards. Context cannot be written before a guard runs, so the event is the only channel to one, and a
+ * reserved key on it is how a call reaches a guard without every machine declaring a field for it.
  *
  * The key is `_call` and the delivery doors inject it. It holds the message's `answering`, so it is present
  * on an answer and absent on anything else — a request's own call is on the envelope for `reply` to echo and
  * has no reader on the event.
  *
  * **Reserved**: the injected value wins over a pack's own field of that name, which `outgoing-events.spec.ts`
- * pins beside its deliberate `pluginId` collision, and the `reserved-event-keys` pack rule refuses one written
- * in any pack's source — `abuddy validate` and `abuddy build` for every pack, `check:specifiers` for this
- * repo's. A test that needs to deliver an answer builds it with `answerTo` (`@abuddy/sdk/testing`) rather than
- * naming the key.
+ * pins beside its deliberate `pluginId` collision, and the `reserved-event-keys` pack rule refuses one
+ * written in any pack's source.
+ *
+ * @internal Host and SDK only, and the restriction is the point. A raw call invites `===` against a stored
+ * one, which answers *true* when both are absent — so a guard written the obvious way admits an
+ * uncorrelated answer whenever nothing is outstanding. Pack code asks `answersCall` or `settleCall`
+ * instead, which cannot be spelled that way; `check:specifiers` refuses this import in a pack.
  */
-export const callOf = (event: { [key: string]: unknown }): string | undefined => {
+export const _callOf = (event: { [key: string]: unknown }): string | undefined => {
   const call = event[_CALL_KEY];
   return typeof call === 'string' ? call : undefined;
+};
+
+/**
+ * Whether this event answers the one ask `outstanding` names — `false` when nothing is outstanding.
+ *
+ * **For a correlation that holds at most one ask at a time**, which is every command whose answer a view
+ * waits for: store what `sendToSystem` returned, clear it when the answer lands, and read it with this.
+ *
+ * **"Nothing outstanding answers nothing" is the half that has to be built in**, because the obvious
+ * spelling gets it wrong and no compiler objects: `_callOf(event) === context.pending` is `undefined ===
+ * undefined` with no ask in flight, so it admits an answer nobody asked for — and "no ask in flight" is the
+ * resting state. The nullish check is why this is a function rather than a convention, and why `_callOf` is
+ * not a pack's to call.
+ *
+ * Takes `string | null | undefined` so a machine may spell an empty slot either way.
+ */
+export const answersCall = (
+  event: { [key: string]: unknown },
+  outstanding: string | null | undefined,
+): boolean => outstanding != null && _callOf(event) === outstanding;
+
+/**
+ * `pending` with `value` recorded under `call`, for a correlation that holds several asks at once.
+ *
+ * The pair with `settleCall`: record what an ask meant when you make it, settle it when its answer arrives.
+ * Keyed by the call because a call is per ask and per window, so it identifies an ask where a domain id
+ * cannot — an answer naming a row says nothing about *which* ask for that row it answers, nor which window
+ * asked.
+ *
+ * Returns a new record rather than mutating, so it composes with an XState `assign`.
+ */
+export const recordCall = <T>(pending: Record<string, T>, call: string, value: T): Record<string, T> =>
+  ({ ...pending, [call]: value });
+
+/**
+ * What this event's ask recorded, and `pending` without it: read and remove in one step.
+ *
+ * `recorded` is `undefined` for an event answering no ask this record knows — an answer to an ask already
+ * settled, or one this machine never made — and `pending` then comes back unchanged. A caller that wants
+ * only the removal takes `pending` and drops `recorded`, which is what settling a *failed* ask looks like.
+ *
+ * It takes the **event**, not a call, which is the whole reason it exists: a pack never holds a call read
+ * off an event, so it cannot write the comparison `answersCall` exists to prevent.
+ */
+export const settleCall = <T>(
+  pending: Record<string, T>,
+  event: { [key: string]: unknown },
+): { recorded?: T; pending: Record<string, T> } => {
+  const call = _callOf(event);
+  if (call === undefined || !(call in pending)) return { pending };
+  const { [call]: recorded, ...rest } = pending;
+  return { recorded, pending: rest };
 };
 
 /**
@@ -166,20 +220,20 @@ export const callOf = (event: { [key: string]: unknown }): string | undefined =>
  * collision is possible. `Message.call` is un-prefixed for the opposite reason: a closed interface has
  * nothing to collide with, and a pack *does* supply a call through `sendToSystem`.
  *
- * @internal Host and SDK only. Pack code reads a call with `callOf` and never names the key.
+ * @internal Host and SDK only. Pack code asks `answersCall` or `settleCall` and never names the key.
  */
 export const _CALL_KEY = '_call';
 
 /**
  * What a door adds to the event it delivers, so the receiver's guards can read the call it answers.
  *
- * **Only an answer carries one, which is narrower than it first looked.** The first version injected
- * `answering ?? call`, so every delivered event named a call — and nothing needed a *request's* own call on
- * the event: whoever receives a request answers it with `reply`, which takes the call from the delivery. It
- * is the asker that needs one, and only on the answer. The pack suite is what found it: a system recording
- * what it heard recorded `_call` on every notification too, and a notification has no call to belong to.
+ * **Only an answer carries one, and a notification must not.** A request's own call has no reader on the
+ * event — whoever receives one answers it with `reply`, which takes the call from the delivery — so it is
+ * the asker that needs a call, and only on the answer. Injecting the message's `call` as well would put a
+ * `_call` on every notification, which belongs to no ask, and a system recording what it heard would record
+ * one too.
  *
- * @internal Called by the delivery doors. Pack code reads the result with `callOf`.
+ * @internal Called by the delivery doors. Pack code reads the result through `answersCall` or `settleCall`.
  */
 export const _callOn = (message: Pick<Message, 'answering'>): { [_CALL_KEY]?: string } =>
   message.answering === undefined ? {} : { [_CALL_KEY]: message.answering };

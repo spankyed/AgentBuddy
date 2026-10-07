@@ -11,7 +11,7 @@ import type { PromptsContext, PromptsInboxEvent } from './contract.ts'
 import type { OutgoingPromptEvents } from '#features/prompts/be/types.ts'
 import type { TemplateInput } from '@abuddy/sdk'
 import { sendToSystem } from '#generated/events.ts'
-import { callOf, newCall } from '@abuddy/sdk/events'
+import { answersCall, newCall } from '@abuddy/sdk/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import type { PromptEntity } from '@abuddy/sdk'
@@ -95,7 +95,7 @@ const promptsState = setup({
       const ev = typeOf('PROMPT_SELECTED', event);
       return {
         // Settled: nothing is outstanding, so a later answer for an abandoned ask has no call to match
-        pendingPromptCall: undefined,
+        pendingPromptCall: null,
         selectedPromptId: ev.promptId,
         selectedPrompt: ev.data,
         formData: {
@@ -445,8 +445,8 @@ const promptsState = setup({
   },
   guards: {
     targetIs,
-    /** Whether this answer is the one the outstanding ask is waiting for */
-    answersPendingPrompt: ({ context, event }) => callOf(event) === context.pendingPromptCall,
+    /** Whether this answer is the one the outstanding ask is waiting for, and false when none is */
+    answersPendingPrompt: ({ context, event }) => answersCall(event, context.pendingPromptCall),
     /** Whether this page is the one just asked for — two clicks ask for the same one */
     isNextPage: ({ context, event }) =>
       (event as { data?: { page?: number } }).data?.page === context.page + 1,
@@ -456,6 +456,7 @@ const promptsState = setup({
   initial: 'list',
   context: {
     selectedPromptId: undefined,
+    pendingPromptCall: null,
     prompts: [],
     selectedPrompt: undefined,
     totalCount: 0,

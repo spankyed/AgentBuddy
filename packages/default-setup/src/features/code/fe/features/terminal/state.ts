@@ -1,6 +1,6 @@
 import { setup, assign, enqueueActions, type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '#generated/events.ts';
-import { callOf, newCall } from '@abuddy/sdk/events';
+import { newCall, recordCall, settleCall } from '@abuddy/sdk/events';
 import { terminalEventBus } from '../../utils/terminal-events.ts';
 import { terminalPool } from '../../utils/terminal-pool.ts';
 import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication.ts';
@@ -74,13 +74,6 @@ export type Event =
   | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
   | { type: 'CODE_STARTUP'; data: { terminals?: TerminalInfo[] } };  // Broadcasted event
 
-/** `pending` without the entry for `call`, or unchanged for an answer that names none */
-const withoutCall = (pending: Record<string, PendingOpen>, call: string | undefined): Record<string, PendingOpen> => {
-  if (call === undefined || !(call in pending)) return pending
-  const { [call]: _settled, ...rest } = pending
-  return rest
-}
-
 export const terminalState = setup({
   types: {
     context: {} as Context,
@@ -99,7 +92,7 @@ export const terminalState = setup({
       const call = newCall()
 
       enqueue.assign(({ context }) => ({
-        pendingOpens: { ...context.pendingOpens, [call]: { target: ev.target ?? null, command: ev.command ?? null } },
+        pendingOpens: recordCall(context.pendingOpens, call, { target: ev.target ?? null, command: ev.command ?? null }),
       }))
       enqueue(() => {
         sendToSystem('code', {
@@ -288,9 +281,10 @@ export const terminalState = setup({
 
     assignTerminalError: assign(({ event, context }) => {
       const ev = event as { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
-      // A replied error settles the ask it answers, so its intent is dropped with it: without this, a create
-      // that failed would leave its target and command in the map for the life of the plugin
-      return { terminalError: ev.data.message, pendingOpens: withoutCall(context.pendingOpens, callOf(event)) }
+      // A replied error settles the ask it answers, so its intent goes with it: a create that failed would
+      // otherwise leave its target and command in the map for the life of the plugin. Only `pending` is
+      // wanted here — there is nothing to do with what the failed ask meant
+      return { terminalError: ev.data.message, pendingOpens: settleCall(context.pendingOpens, event).pending }
     }),
 
     cleanupTerminalOutput: ({ event }) => {
@@ -317,9 +311,9 @@ export const terminalState = setup({
      * is what a terminal this window did not ask for should do.
      */
     handleTerminalOpened: enqueueActions(({ enqueue, context, self, event }) => {
-      const call = callOf(event)
-      const { target, command } = (call === undefined ? undefined : context.pendingOpens[call]) ?? { target: null, command: null }
-      enqueue.assign(({ context: ctx }) => ({ pendingOpens: withoutCall(ctx.pendingOpens, call) }))
+      const { recorded, pending } = settleCall(context.pendingOpens, event)
+      const { target, command } = recorded ?? { target: null, command: null }
+      enqueue.assign({ pendingOpens: pending })
       enqueue(() => {
         const ev = event as { type: 'terminal.OPENED'; data: TerminalInfo }
         const terminalInfo = ev.data

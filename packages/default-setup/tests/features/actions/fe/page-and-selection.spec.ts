@@ -141,7 +141,7 @@ it('clears what it is waiting for once the answer lands', () => {
   const first = selectCall(0);
 
   actor.send(answerTo(first, { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
-  expect(actor.getSnapshot().context.pendingActionCall, 'nothing outstanding').toBeUndefined();
+  expect(actor.getSnapshot().context.pendingActionCall, 'nothing outstanding').toBeNull();
 
   actor.send({ type: 'ACTION.SELECT', actionId: 'Action-a2' });
   // The first answer again, which a cleared slot has nothing to match
@@ -149,4 +149,37 @@ it('clears what it is waiting for once the answer lands', () => {
 
   expect(actor.getSnapshot().context.selectedActionId, 'the older answer did not win').toBe('Action-a1');
   expect(actor.getSnapshot().context.pendingActionCall, "the second ask is still outstanding").toBe(selectCall(1));
+});
+
+/**
+ * An answer carrying no call at all, with nothing outstanding — refused.
+ *
+ * **The case a hand-written comparison gets wrong.** `_callOf(event) === context.pendingActionCall` reads
+ * `undefined === undefined` for an empty slot, so it admits an answer nobody asked for — and an empty slot
+ * is the resting state, which makes that the common path rather than an edge.
+ *
+ * **Protected twice over, and the case fires only on the combination.** `answersCall` refuses an empty
+ * slot, and the slot is spelled `null`, so even a raw `===` would refuse here — measured: dropping
+ * `answersCall`'s nullish check leaves this passing, and so does spelling the slot `undefined`; both
+ * together is what fails it, which is the state it was written against. The nullish check itself is held
+ * in `abuddy-sdk/tests/events/calls.spec.ts`; what this holds is the behaviour, whichever of the two
+ * delivers it.
+ */
+it('refuses an answer carrying no call when nothing is outstanding', () => {
+  const actor = listed();
+
+  actor.send({ type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') });
+
+  expect(actor.getSnapshot().context.selectedActionId, 'nobody asked, so nothing is selected').toBeUndefined();
+});
+
+/** And after an ask has settled, which leaves the slot empty again */
+it('refuses an uncorrelated answer once an ask has settled', () => {
+  const actor = listed();
+  actor.send({ type: 'ACTION.SELECT', actionId: 'Action-a1' });
+  actor.send(answerTo(selectCall(0), { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
+
+  actor.send({ type: 'ACTION_SELECTED', actionId: 'Action-stray', data: anAction('Action-stray') });
+
+  expect(actor.getSnapshot().context.selectedActionId, 'the settled answer still stands').toBe('Action-a1');
 });

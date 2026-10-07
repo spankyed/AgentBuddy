@@ -21,7 +21,7 @@ export interface PromptsContext {
    * clear, so after the first selection it always named something. A call is per ask and per window, so
    * neither has anywhere to live.
    */
-  pendingPromptCall?: string;
+  pendingPromptCall: string | null;
   prompts: PromptEntity[];
   selectedPrompt?: PromptEntity;
   totalCount: number;

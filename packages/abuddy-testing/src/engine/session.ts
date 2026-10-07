@@ -1,4 +1,4 @@
-import { callOf, newCall } from '@abuddy/sdk/events';
+import { _callOf, newCall } from '@abuddy/sdk/events';
 import { HOST } from '@abuddy/host/bus';
 import type { BusMessage } from './api-client.ts';
 
@@ -145,7 +145,7 @@ export interface SeenEvent {
    *
    * **Both channels supply it, from different places, which is why it is a field here rather than read at
    * the match.** The connection carries the envelope, so it is `Message.answering`; the in-page bridge sees
-   * the *delivered event*, where a door has put the same value under the reserved key `callOf` reads. One
+   * the *delivered event*, where a door has put the same value under the reserved key `_callOf` reads. One
    * field, so `nextReply` matches the same way whichever channel woke it.
    *
    * A broadcast answers nothing and so has none — which is what makes a broadcast uncorrelatable now, and
@@ -504,7 +504,7 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
         // The bridge reads the renderer's xstate inspector, which sees an event and not an envelope — so the
         // call comes off the delivered event, where the window's delivery door put it. Read here rather than
         // at the match, so `nextReply` has one field to compare whichever channel woke it
-        const answering = seen.answering ?? callOf(seen.event);
+        const answering = seen.answering ?? _callOf(seen.event);
         const event: SeenEvent = { ...seen, ...(answering === undefined ? {} : { answering }) };
         record(event);
         // A waiter is woken either way: an answer must not be lost because the buffer was full
