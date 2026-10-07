@@ -581,6 +581,16 @@ npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a nu
                          # at the knob, run the positive control first, and prefer the thing's own report
                          # (vitest names its worker count) to the cores-busy proxy.
 
+npm run measure:stretch -- <step>  # How much a pool step loses when the box gives it fewer workers — the
+                         # `stretches` a rung or a step declares (scripts/lib/step-timeouts.ts). Derives the
+                         # command (`measureCommandFor`), this box's width and the width on a box
+                         # `SLOWER_MACHINE` times smaller (`coresFor`), and runs them as one `measure
+                         # --against`; the ratio of the medians is the figure. **Refuses a step that declares
+                         # no `POOL_WIDTH`**: serial work stretches by CPU share, which no flag fakes, so the
+                         # answer there is a smaller machine — what each rung's `until` asks for.
+                         # Check the arms report the worker counts it names: an A/B whose knob did not turn
+                         # reports ~1.0x and reads as a step that does not stretch
+
 npm run measure:loop -- "<cmd>"  # Not how long a command took, but how long each process it started went
                          # without turning its event loop, against the 60s window birpc gives a call and
                          # vitest hardcodes. Per process, worst block first, with the headroom rather than
