@@ -14,7 +14,7 @@ import * as path from 'node:path';
 import { init as initLexer, parse } from 'es-module-lexer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
-import { packExternalsPlugin } from '../../src/build/fe-bundler';
+import { packDevServerConfig, packExternalsPlugin } from '../../src/build/fe-bundler';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /** Skips without built packages, and refuses rather than reading a stale `dist` */
@@ -88,5 +88,42 @@ describe.skipIf(!PACKAGES_BUILT)('host-shared @abuddy/ui proxies', () => {
   it.each(specifiers)('%s re-exports the names of its published build', (specifier) => {
     const target = uiExports[`.${specifier.slice('@abuddy/ui'.length)}`] as { default: string };
     expect(proxies.get(specifier)).toEqual(compiledExports(path.join(UI_DIR, target.default)));
+  });
+
+  /**
+   * **The two contexts must name the same exports**, which is a claim neither side makes alone.
+   *
+   * A build takes the names from Rollup's compiled module; a dev server cannot — `ModuleInfo` throws for `code`
+   * there — so it reads the file and strips types with esbuild (`compiledSource`, `fe-bundler.ts`). Two
+   * mechanisms for one answer is a divergence waiting to happen, and its symptom is the worst kind: a named
+   * import that is defined in a packaged app and `undefined` under `abuddy run`, or the reverse.
+   *
+   * So this asks them to agree, over every specifier the build half already covers. It is the guard on the
+   * esbuild path, and the reason to write it is that the path exists at all.
+   */
+  it('name the same exports under a dev server as they do in a build', async () => {
+    const vite = await import('vite');
+    const config = await packDevServerConfig(packDir, path.join(packDir, 'entry.ts'));
+    const server = await vite.createServer({
+      ...config,
+      logLevel: 'silent',
+      server: { ...config.server, middlewareMode: true, port: undefined },
+    });
+    try {
+      const { pluginContainer } = server.environments.client;
+      const importer = path.join(packDir, 'entry.ts');
+      const disagreed: string[] = [];
+      for (const specifier of specifiers) {
+        const resolved = await pluginContainer.resolveId(specifier, importer);
+        const loaded = resolved ? await pluginContainer.load(resolved.id) : null;
+        const code = typeof loaded === 'string' ? loaded : loaded?.code;
+        const names = code ? parse(code)[1].map((e) => e.n).filter((n) => n !== 'default').sort() : [];
+        const built = proxies.get(specifier) ?? [];
+        if (names.join() !== built.join()) disagreed.push(`${specifier}: dev [${names}] vs build [${built}]`);
+      }
+      expect(disagreed, 'a proxy names different exports in dev than in a build').toEqual([]);
+    } finally {
+      await server.close();
+    }
   });
 });

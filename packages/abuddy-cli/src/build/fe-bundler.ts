@@ -178,9 +178,21 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
   async function compiledSource(ctx: Rollup.PluginContext, id: string): Promise<string | null> {
     const dev = (ctx as { environment?: DevEnvironmentLike }).environment;
     if (dev?.mode !== 'dev') return (await ctx.load({ id })).code;
-    if (!fs.existsSync(id) || id.endsWith('.vue')) return null;
+
+    // Without the query: a dev resolve can hang `?v=<hash>` off an id, and a path with one is not a file.
+    // `resolveSdkFile` above strips it for the same reason.
+    const file = id.split('?')[0];
+    // An SFC's names live in its `<script>`, which a build reads through the Vue plugin and this cannot. Nothing
+    // needs it to: the `@abuddy/ui` entries that re-export a component export it as `default`, which every proxy
+    // has anyway. The two contexts are held to the same names by `fe-bundler-proxy-exports`, so an SFC that
+    // starts exporting one fails there rather than quietly dropping it here.
+    if (file.endsWith('.vue') || !fs.existsSync(file)) return null;
+    // Imported here, not at the top, for startup: loading Vite costs 232ms (measured 2026-10-07) and `abuddy`
+    // is one binary over many commands, most of which never serve a frontend. Not about the bundle —
+    // `bundle-package.ts` externalises everything but the shared-instance packages, so a static import would
+    // not inline Vite either way. `packDevServerConfig` imports the Vue plugin lazily for the same reason.
     const { transformWithEsbuild } = await import('vite');
-    return (await transformWithEsbuild(fs.readFileSync(id, 'utf-8'), id)).code;
+    return (await transformWithEsbuild(fs.readFileSync(file, 'utf-8'), file)).code;
   }
 
   /**
