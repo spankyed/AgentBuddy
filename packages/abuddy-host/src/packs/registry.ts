@@ -50,9 +50,9 @@ function systemsOf(reg: PackRegistration): Array<{ ref: FeatureRef; system: Pack
   return featuresOf(reg).flatMap(({ ref, feature }) => (feature.system ? [{ ref, system: feature.system }] : []));
 }
 
-/** The refs of the systems the bus runs for a registration (all but the early ones), before or after it registers */
+/** The refs of the systems the bus runs for a registration, before or after it registers */
 export function packSystemIds(reg: PackRegistration): FeatureRef[] {
-  return systemsOf(reg).filter(({ system }) => !system.early).map(({ ref }) => ref);
+  return systemsOf(reg).map(({ ref }) => ref);
 }
 
 /** Role → the ref of the feature playing it: its system and its plugin share it */
@@ -164,8 +164,6 @@ export interface PackRegistry extends PackRegistryView {
   clearLoadProblem(packId: string): void;
   /** Host systems and every registered pack's that the bus runs, by id: all but the early ones */
   getRegisteredSystems(): Map<string, AnyStateMachine>;
-  /** The registered packs' early systems (`system.early`), which the app starts before hydration and outside the bus */
-  getEarlySystems(): Array<{ id: FeatureRef; machine: AnyStateMachine }>;
   /** The refs of a registered pack's systems, `<packId>/<featureId>` */
   getRegisteredPackSystemIds(packId: string): string[];
   /**
@@ -534,13 +532,10 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     getRegisteredSystems() {
       const systems = new Map<string, AnyStateMachine>();
       for (const reg of registrations.values()) {
-        for (const { ref, system } of systemsOf(reg)) if (!system.early) systems.set(ref, system.machine);
+        for (const { ref, system } of systemsOf(reg)) systems.set(ref, system.machine);
       }
       return systems;
     },
-
-    getEarlySystems: () => [...registrations.values()].flatMap((reg) =>
-      systemsOf(reg).flatMap(({ ref, system }) => (system.early ? [{ id: ref, machine: system.machine }] : []))),
 
     getRegisteredPackSystemIds,
     packOrigin: (packId) => origins.get(packId) ?? null,

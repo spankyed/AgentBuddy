@@ -572,12 +572,12 @@ export function generatePackFiles(
       .map(f => `import ${systemBinding(f.id)} from '${toImportPath(root, f.system!.entry)}';`)
       .join('\n');
 
+    // `incoming` — the extra event types a manifest declares its system accepts — is the only option
+    // `packSystem` takes, so there is nothing here to combine
     const systemExpr = (f: PackFeatureEntry): string => {
-      const options = [
-        ...(f.system!.events?.incoming?.length ? [`incoming: ${JSON.stringify(f.system!.events.incoming)}`] : []),
-        ...(f.earlySystem ? ['early: true'] : []),
-      ];
-      return `packSystem(${systemBinding(f.id)}${options.length ? `, { ${options.join(', ')} }` : ''})`;
+      const incoming = f.system!.events?.incoming;
+      const options = incoming?.length ? `, { incoming: ${JSON.stringify(incoming)} }` : '';
+      return `packSystem(${systemBinding(f.id)}${options})`;
     };
 
     const featuresLiteral = features.map(f => {

@@ -72,7 +72,7 @@ Frontend components don't render untrusted text as markup: script injected into 
 
 ## Systems
 
-Backend systems wired via `__generated__/pack-entry.ts`, each feature's with `packSystem()` from the SDK. Each system file default-exports a `SystemEntry` (the manifest names only the path, not an export name). The logs system is special: `features[].earlySystem: true` makes it an early system (`system.early`), which the API starts before EARS hydration (for log capture during boot) and delivers its messages to like any system's.
+Backend systems wired via `__generated__/pack-entry.ts`, each feature's with `packSystem()` from the SDK. Each system file default-exports a `SystemEntry` (the manifest names only the path, not an export name). The logs system is the bus's like any other: what the in-app viewer shows is what `onLog` delivers from the moment the bus starts it, so the boot lines before that — hydration, each `onInit`, the migrations, the seeds — reach stdout and the log file only.
 
 Code names a system by feature id, and reaches another system with the typed `sendToSystem(name, event)` from `__generated__/events`, never its actor. Each system file defines its events with `defineSystem()`; its identity is its feature's, from `abuddy.json`. A feature's designation comes only from `abuddy.json` `features[].designation`. It is a role, not a name: it need not equal the feature id, and every one default-setup declares happens to.
 

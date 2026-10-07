@@ -308,7 +308,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     designation: z.ZodOptional<z.ZodString>;
     settings: z.ZodOptional<z.ZodString>;
     typesEntry: z.ZodOptional<z.ZodString>;
-    earlySystem: z.ZodOptional<z.ZodBoolean>;
     system: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
         contract: z.ZodOptional<z.ZodString>;
@@ -353,7 +352,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     designation?: string | undefined;
     settings?: string | undefined;
     typesEntry?: string | undefined;
-    earlySystem?: boolean | undefined;
     system?: {
         entry: string;
         contract?: string | undefined;
@@ -374,7 +372,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     designation?: string | undefined;
     settings?: string | undefined;
     typesEntry?: string | undefined;
-    earlySystem?: boolean | undefined;
     system?: {
         entry: string;
         contract?: string | undefined;
@@ -467,7 +464,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         designation: z.ZodOptional<z.ZodString>;
         settings: z.ZodOptional<z.ZodString>;
         typesEntry: z.ZodOptional<z.ZodString>;
-        earlySystem: z.ZodOptional<z.ZodBoolean>;
         system: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
             contract: z.ZodOptional<z.ZodString>;
@@ -512,7 +508,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -533,7 +528,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -848,7 +842,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -954,7 +947,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -1060,7 +1052,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -1166,7 +1157,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;

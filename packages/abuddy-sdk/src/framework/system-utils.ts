@@ -15,10 +15,9 @@ export interface SystemEntry {
  * A feature's system as its pack registers it: the entry the feature's `system.ts` default-exports, accepting its
  * machine's events and those abuddy.json adds (`incoming`).
  */
-export function packSystem(entry: SystemEntry, options: { incoming?: readonly string[]; early?: true } = {}): PackFeatureSystem {
+export function packSystem(entry: SystemEntry, options: { incoming?: readonly string[] } = {}): PackFeatureSystem {
   return {
     machine: entry.machine,
     receives: [...new Set([...entry.machine.events, ...(options.incoming ?? [])])],
-    ...(options.early ? { early: options.early } : {}),
   };
 }

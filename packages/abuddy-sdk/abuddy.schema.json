@@ -162,10 +162,6 @@
             "type": "string",
             "description": "Additional types to include in the generated type barrel."
           },
-          "earlySystem": {
-            "type": "boolean",
-            "description": "Start this feature's system before EARS hydration. Built-in packs only."
-          },
           "system": {
             "type": "object",
             "properties": {

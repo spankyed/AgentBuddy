@@ -13,7 +13,7 @@ import { loadAppPacks, startPacks } from '@abuddy/host/packs/runtime';
 import {
   APPLICATION_SYSTEM_EVENTS, createApplicationSystem, createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents,
 } from '@abuddy/host/features';
-import { createAppBus, createParticipantClaims, HOST, startEarlySystems } from '@abuddy/host/bus';
+import { createAppBus, createParticipantClaims, HOST } from '@abuddy/host/bus';
 import { createHostRuntime } from '@abuddy/host/services';
 import { forwardSecretsChanges } from '@abuddy/host/secrets';
 import { assertSourceResolution } from '@abuddy/host/build/source-resolution';
@@ -167,10 +167,6 @@ export async function setupBackend(): Promise<void> {
     if (stale.length > 0) console.log(`[packs] Removed build output of built-in pack(s) this app no longer has: ${stale.join(', ')}`);
   }
 
-  // Start the early systems (the logs system must start before anything else)
-  const early = startEarlySystems(packs);
-  for (const { id, actor } of early.actors) actor.subscribe(logErrors(id));
-
   console.log(`[app] AgentBuddy v${APP_VERSION} startupId=${process.env.AGENTBUDDY_STARTUP_ID ?? 'unknown'}`);
 
   // ── Wire shutdown hooks (keyed by pack ID for scoped reload teardown) ──
@@ -193,7 +189,7 @@ export async function setupBackend(): Promise<void> {
   startPacks(packs);
 
   // ── Start backend actor ──────────────────────────────────────────────
-  backendActor = createActor(createAppBus(packs, early, appClaims), {
+  backendActor = createActor(createAppBus(packs, appClaims), {
     systemId: HOST.bus,
   }).start();
 

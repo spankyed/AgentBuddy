@@ -89,14 +89,6 @@ describe('pack-loader', () => {
       expect(systemFeatures(result[0])).toEqual(['myFeature']);
     });
 
-    // The schema refuses an early system outside a built-in pack; the loader doesn't start one either way
-    it("drops an external pack's early system", () => {
-      makePack(path.join(_appDirOf(tmpDir), 'packs'), 'early-pack', { id: 'early-pack', name: 'Early', version: '1.0.0' },
-        "{ logs: { system: { machine: { id: 'logs' }, receives: [], early: true }, plugin: { receives: [] } } }");
-      const [pack] = loadExternalPacks();
-      expect(pack.registration.features).toEqual({ logs: { plugin: { receives: [] } } });
-    });
-
     it("skips a pack directory that isn't an installed pack, naming how to install it", () => {
       const packDir = makePack(path.join(_appDirOf(tmpDir), 'packs'), 'unbundled', { id: 'unbundled', name: 'Unbundled', version: '1.0.0' });
       fs.rmSync(path.join(packDir, PACK_LAYOUT.integrity));

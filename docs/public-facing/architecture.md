@@ -75,10 +75,9 @@ The source directory must be built first: installing a directory with neither a 
 3. `forwardSecretsChanges` (`@abuddy/host/secrets`): every system that takes `SECRETS_CHANGED` hears that API key changes, never their values.
 4. Loads packs. Built-in packs load asynchronously while external packs load and register:
    - **Built-in:** discovered from `BUILT_IN_PACKS_DIR` (`abuddy.json` with `builtIn: true`). Each pack's `dist/runtime/index.cjs` is loaded from its own directory, the same way an installed pack is — the API bundle carries no pack's backend. A pack with no built runtime is skipped with an error naming the build command.
-   - **External:** discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed). For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded through the module bridge, and `earlySystem` and `seedManifest` stripped. Each pack's systems register as `<packId>/<featureId>`.
+   - **External:** discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed). For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded through the module bridge, and `seedManifest` stripped. Each pack's systems register as `<packId>/<featureId>`.
    - The registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.
 5. Publishes each built-in pack's build output into `host-packs/<id>/`.
-6. Starts the early systems (`system.early`: default-setup's logs system), outside the bus; the host delivers them the messages sent to their refs and each client connection, as the bus does for the others.
 7. Wires each pack's `onShutdown` hook, keyed by pack id.
 8. Hydrates the app's engine from LMDB. Every pack's entity types are registered by now, so the partition policy sees them all.
 9. Runs every pack's `onInit`.
@@ -333,7 +332,6 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 | Services | Yes | Stateless modules |
 | EARS entities/relations | Yes | With collision detection |
 | Migrations | Yes | Targeted at the pack's own version, run at boot |
-| `features[].earlySystem` | No | Starts before external packs load |
 | `boot.seed.settings` | No | Feature defaults go in `features[].settings` |
 | `builtIn` | No | Reserved for the default pack |
 

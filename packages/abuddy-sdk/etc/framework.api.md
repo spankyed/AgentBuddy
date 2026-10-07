@@ -146,7 +146,6 @@ export interface PackFeaturePlugin {
 
 // @public
 export interface PackFeatureSystem {
-    early?: true;
     // (undocumented)
     machine: AnyStateMachine;
     receives: readonly string[];
@@ -216,7 +215,6 @@ export interface PackSettingsDefaults {
 // @public
 export function packSystem(entry: SystemEntry, options?: {
     incoming?: readonly string[];
-    early?: true;
 }): PackFeatureSystem;
 
 // @public

@@ -165,7 +165,7 @@ abuddy clean      # Remove dist/, .abuddy/, __generated__/
 
 ## Constraints
 
-- Some manifest fields are for built-in packs only: validation rejects `features[].earlySystem` and `boot.seed.settings` in an external pack, and the app ignores an external pack's `features[].references`.
+- Some manifest fields are for built-in packs only: validation rejects `boot.seed.settings` in an external pack, and the app ignores an external pack's `features[].references`.
 - Entity types, relation kinds and service keys must be unique across all installed packs, or the pack fails to load. Service keys also can't be the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`).
 - The app must be restarted after installing or uninstalling a pack.
 

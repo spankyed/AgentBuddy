@@ -145,10 +145,13 @@ describe('seedFormats and boot.seed entries', () => {
     expect(errorsFor({ settings: { path: 'src/seeds/settings.json', format: 'memos', seeder: 'src/seeds/settings.ts' } })).toEqual([]);
   });
 
-  it('accepts features[].earlySystem only in a built-in pack: early systems start before external packs load', () => {
+  // `earlySystem` was a built-in pack's privilege, policed by a refinement that named it. The capability is
+  // gone, so there is nothing left to permit and no bespoke message to write: an unknown key is an unknown
+  // key, which `.strict()` refuses for every pack alike
+  it('refuses features[].earlySystem as the unknown key it now is, in any pack', () => {
     const features = [{ id: 'logs', earlySystem: true, system: { entry: 'src/logs/system.ts' } }];
-    expect(parseManifest({ ...pack, features }).errors).toEqual([expect.stringMatching(/"features\.0\.earlySystem": An early system starts before EARS hydration/)]);
-    expect(parseManifest({ ...pack, builtIn: true, features }).errors).toEqual([]);
+    expect(parseManifest({ ...pack, features }).errors).toEqual([expect.stringMatching(/features\.0.*[Uu]nrecognized key/)]);
+    expect(parseManifest({ ...pack, builtIn: true, features }).errors).toEqual([expect.stringMatching(/features\.0.*[Uu]nrecognized key/)]);
   });
 
   // Which plugin opens first is an annotation on the plugin, not a feature id at the root: an id there

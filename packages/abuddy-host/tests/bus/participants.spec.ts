@@ -41,7 +41,7 @@ describe('a name a connection claimed', () => {
     stopOutgoing = testRootEvents.onOutgoing((message) => { outgoing.push(message); });
     stopLog = onLog((entry) => { logged.push(entry.message); });
     registry.registerPack(hostRegistration());
-    bus = createActor(createAppBus(registry, undefined, claims), { systemId: 'host/bus' }).start();
+    bus = createActor(createAppBus(registry, claims), { systemId: 'host/bus' }).start();
     testRootEvents.emitConnected();
     await flush();
   });

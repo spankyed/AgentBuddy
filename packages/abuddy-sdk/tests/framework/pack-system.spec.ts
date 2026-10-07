@@ -12,8 +12,4 @@ describe('packSystem', () => {
       .toEqual({ machine, receives: ['ADD_MEMO', 'SYNC'] });
   });
 
-  it('marks an early system', () => {
-    expect(packSystem({ spec, machine }, { early: true }).early).toBe(true);
-    expect(packSystem({ spec, machine })).not.toHaveProperty('early');
-  });
 });

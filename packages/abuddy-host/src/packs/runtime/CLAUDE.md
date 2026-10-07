@@ -34,7 +34,7 @@ Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs ar
 3. Loads each enabled pack with `loadSingleExternalPack()`:
    - `hostVersion` check (`isHostCompatible`), pack layout format check, warning on an SDK major version mismatch
    - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `abuddy install` or `abuddy run`
-   - drops early systems, and strips `boot.seedManifest` (external seeds go through `importPackSeeds`)
+   - strips `boot.seedManifest` (external seeds go through `importPackSeeds`)
    - a pack it can't load comes back as `{ problem }`, which `loadExternalPacks` records in the registry it's given (`recordLoadProblem`), so the Packs view says why the pack isn't running
 
 `registerExternalPacks(registry, packs)` registers each pack (recording why as the pack's load problem when the registry refuses one), whose features the registry runs at `<packId>/<featureId>` (its seeders, commands and the rest of its registration with it), and returns the packs whose registration succeeded.
@@ -82,21 +82,20 @@ The API's `transport/packs.ts` serves `packs.loaded` from `getLoadedPackEntries(
 1. registerPack(hostRegistration) — the app's own features as the pack `host`: the application and packs systems and plugins
 2. prepareHostDataDirs()           — record host version; recover staging in packs/ and host-packs/
 3. forwardSecretsChanges()         — settings system hears of API key changes (@abuddy/host/secrets)
-4. loadBuiltInPacks() (async)      — with the bundled loaders; started, runs while:
+4. loadBuiltInPacks() (async)      — each pack's built runtime from its own directory; started, runs while:
    loadExternalPacks()             — discover + reconcile installed packs + load enabled
    registerExternalPacks()         — registerPack() each
    await built-in                  — registerPack() each, with where it was found (PackOrigin)
 5. publishHostPackOutput()      — each built-in pack into host-packs/<id>
-6. startEarlySystems(registry)     — the logs system starts (@abuddy/host/bus)
-7. registry.registerShutdownHook() — each pack's onShutdown, keyed by pack id
-8. store.hydrate()                 — EARS policy now sees all entity types
-9. startPacks(registry)            — start.ts; services.appData.reset() runs it too, after the shutdown hooks:
+6. registry.registerShutdownHook() — each pack's onShutdown, keyed by pack id
+7. store.hydrate()                 — EARS policy now sees all entity types
+8. startPacks(registry)            — start.ts; services.appData.reset() runs it too, after the shutdown hooks:
    onInit hooks                    — all packs (built-in + external)
    runAppMigrations()              — the host's app migrations, then built-in packs', against the app version (@abuddy/host/migrations); if one fails, nothing below runs
    runPackMigrations()             — external packs' migrations, each against its pack version
    runRegisteredBootSeeds()        — built-in packs' boot.seedManifest (orchestrateDeclarativeSeed)
    importPackSeeds()                  — external pack compiled seeds (hash-checked, in dependency order)
-10. start the bus actor            — createAppBus(registry, early.refs) (@abuddy/host/bus) with systemId `HOST.bus`, leaving the early systems' messages to them
+9. start the bus actor             — createAppBus(registry) (@abuddy/host/bus) with systemId `HOST.bus`, which spawns every registered system
 ```
 
 Every pack registers before hydration, so its entity types are visible to the partition policy resolver.
@@ -152,11 +151,10 @@ EARS, designation, service and repository collisions throw before anything is st
 - `bridgedPackages: SHARED_INSTANCE_PACKAGES` — a pack requiring a shared-instance module the map lacks fails with "isn't provided by this AgentBuddy: rebuild the pack".
 - `appOnly: APP_ONLY_EXPORTS` — a pack requiring `@abuddy/ears/lmdb` fails saying only the app loads it (`abuddy build` already rejects the import).
 
-The resolver patch is restored in a `finally`; the bridged cache entries stay, so lazy requires get them too. A built-in pack whose built runtime fails to load falls back to the bundled loader; `tests/packs/runtime/sdk-bridge-drift.spec.ts` guards the list via `getBridgedSdkSpecifiers()` and fails when  `sdk-modules.ts` is stale. The pack test harness calls `withModuleBridge()` with the pack's own SDK.
+The resolver patch is restored in a `finally`; the bridged cache entries stay, so lazy requires get them too. `tests/packs/runtime/sdk-bridge-drift.spec.ts` guards the list via `getBridgedSdkSpecifiers()` and fails when  `sdk-modules.ts` is stale. The pack test harness calls `withModuleBridge()` with the pack's own SDK.
 
 ## Blocked features for external packs
 
-- **Early systems** (`system.early`, from `features[].earlySystem`) — Start before hydration, and before external packs register, at their feature's address like the pack's other systems: they run outside the bus and hear client sends through `onIncoming`, which the bus checks against their `receives`. The manifest schema rejects `features[].earlySystem` in a pack without `builtIn`, and the loader drops such a system with a warning log.
 - **`seedManifest`** — The declarative boot seed is only for built-in packs (hashes recorded per pack in `AppState.builtInSeedHashes`); external packs seed through `importPackSeeds()`, hash-checked per pack and in dependency order.
 
 ## Runtime lifecycle

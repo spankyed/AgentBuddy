@@ -36,11 +36,6 @@ export interface PackFeatureSystem {
   machine: AnyStateMachine;
   /** The event types it accepts: its machine's, and those abuddy.json `system.events.incoming` adds (`packSystem`) */
   receives: readonly string[];
-  /**
-   * Started before hydration and outside the bus (a built-in pack's logs): it hears the sends to it with
-   * `onIncoming`, which the app checks against `receives` like any other system's
-   */
-  early?: true;
 }
 
 /** What the backend knows of a feature's plugin: the event types it receives, which the app checks a send against */

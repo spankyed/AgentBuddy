@@ -190,18 +190,9 @@ export function loadSingleExternalPack(
     registration.ears = { entities: manifest.entities ?? {}, relKinds: manifest.relKinds ?? {} };
   }
 
-  // `features`, `boot` and `ears` are the pack module's own objects; what the app refuses an external pack is
-  // taken off a copy, so a reload that reuses the module sees what the pack exported rather than what the last
-  // load left of it
-  const early = Object.entries(registration.features ?? {}).filter(([, feature]) => feature.system?.early);
-  if (early.length > 0) {
-    logger.warn(`Pack ${manifest.id}: early systems blocked for external packs (${early.map(([featureId]) => featureId).join(', ')})`);
-    registration.features = Object.fromEntries(Object.entries(registration.features!).map(([featureId, feature]) => {
-      if (!feature.system?.early) return [featureId, feature];
-      const { system: _early, ...rest } = feature;
-      return [featureId, rest];
-    }));
-  }
+  // `boot` and `ears` are the pack module's own objects; what the app refuses an external pack is taken off a
+  // copy, so a reload that reuses the module sees what the pack exported rather than what the last load left
+  // of it
   if (registration.boot?.seedManifest) {
     registration.boot = { ...registration.boot };
     // External pack seeds are hash-checked per pack by importPackSeeds(); the declarative boot seed path is

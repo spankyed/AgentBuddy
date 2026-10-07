@@ -39,9 +39,10 @@ describe('logs system', () => {
     expect(actor.getSnapshot().context.logs).toEqual([expect.objectContaining({ source: 'notes', message: 'Note sync is slow' })]);
   });
 
-  // The app starts it before hydration, outside the bus, and checks the sends to it like any system's
-  it('is registered as the logs feature\'s early system', () => {
-    expect(registration.features?.logs?.system?.early).toBe(true);
+  // It is the logs feature's system like any other pack's: the bus runs it and checks the sends to it. It
+  // started before hydration while `earlySystem` existed, which is why the viewer no longer shows the data
+  // layer coming up — those lines reach stdout and the log file, as they always did
+  it('is registered as the logs feature\'s system, taking the sends its view makes', () => {
     expect(registration.features?.logs?.system?.receives).toContain('CLEAR_LOGS');
   });
 });

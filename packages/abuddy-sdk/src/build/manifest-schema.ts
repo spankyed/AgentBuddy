@@ -170,7 +170,6 @@ export const FeatureEntrySchema = z.object({
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: z.string().describe('Path to default settings file.').optional(),
   typesEntry: z.string().describe('Additional types to include in the generated type barrel.').optional(),
-  earlySystem: z.boolean().describe('Start this feature\'s system before EARS hydration. Built-in packs only.').optional(),
   system: SystemSchema.describe('Backend system module.').optional(),
   plugin: PluginSchema.describe('Frontend plugin definition.').optional(),
   services: ServicesSchema
@@ -249,11 +248,6 @@ export const ManifestSchema = z.object({
   seedHooks: z.record(z.string(), ExportTargetSchema)
     .describe('Seed hooks for entity types this pack declares: entity type → "path#exportName" of a SeedHooks object. Any pack seeding the type uses them.').optional(),
 }).strict().superRefine((manifest, ctx) => {
-  if (!manifest.builtIn) {
-    manifest.features?.forEach((feature, index) => {
-      if (feature.earlySystem) ctx.addIssue({ code: 'custom', path: ['features', index, 'earlySystem'], message: 'An early system starts before EARS hydration, before external packs load, so only built-in packs allowed to have one' });
-    });
-  }
   // Which plugin opens first is one plugin's annotation, so a pack naming two has said nothing
   const claimedDefault = (manifest.features ?? []).filter((feature) => feature.plugin?.default);
   if (claimedDefault.length > 1) {
