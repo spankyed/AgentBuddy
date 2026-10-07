@@ -35,6 +35,11 @@ import { z } from 'zod';
 export function addTestSecret(provider: SecretProvider, label: string): SecretInfo;
 
 // @public
+export function answerTo<E extends {
+    type: string;
+}>(call: string, event: E): E;
+
+// @public
 export function dropAttribute(id: EARS.EntityId, kind: string): void;
 
 // @public

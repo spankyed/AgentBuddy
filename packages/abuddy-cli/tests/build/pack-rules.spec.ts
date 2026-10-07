@@ -109,6 +109,14 @@ const FIRES: Record<PackRuleKey, { onFile?: [code: string, problem: string][]; e
     onFile: [['const memos = repository as unknown as Repositories;\n', 'src/f.ts:1: repository as unknown as Repositories']],
     elsewhere: 'repository-casts allows the generated facade, which is this cast by design',
   },
+  // Both spellings of the reserved key, since a property name is the same key written two ways
+  'reserved-event-keys': {
+    onFile: [
+      ["export const answer = { type: 'DONE', _call: mine };\n", 'src/f.ts:1: _call:'],
+      ["export const answer = { type: 'DONE', '_call': mine };\n", 'src/f.ts:1: _call:'],
+    ],
+    elsewhere: 'reserved-event-keys leaves a pack\'s own fields and a read of the call alone',
+  },
 };
 
 /** The `onFile` rows flattened for `it.each`, which wants one row per case rather than one per rule */
@@ -163,6 +171,21 @@ describe('every rule', () => {
     const cast = 'export const repository = repository as unknown as Repositories;\n';
     const dir = completePack({ 'src/__generated__/written-by-codegen.ts': cast, 'src/hand-written.ts': cast });
     expect(problems(dir, 'repository-casts')).toEqual(['src/hand-written.ts:1: repository as unknown as Repositories']);
+  });
+
+  /**
+   * The acceptance half, which is the half a reservation needs: a key named `_call` is refused, and every
+   * neighbouring shape a pack legitimately writes is not — a field of its own whose name merely starts with an
+   * underscore, a read of the call through `callOf`, and the test helper that builds an answer.
+   */
+  it("reserved-event-keys leaves a pack's own fields and a read of the call alone", () => {
+    const dir = completePack({
+      'src/writes-it.ts': "export const bad = { type: 'DONE', _call: mine };\n",
+      'src/own-field.ts': "export const fine = { type: 'DONE', _callCount: 2, call: 'a-name' };\n",
+      'src/reads-it.ts': "export const of = (event: E) => callOf(event) === pending;\n",
+      'src/in-a-test.ts': "export const answer = answerTo(call, { type: 'DONE' });\n",
+    });
+    expect(problems(dir, 'reserved-event-keys')).toEqual(['src/writes-it.ts:1: _call:']);
   });
 
   it('backend-console fires under a backend path and not under a frontend one', () => {
@@ -553,6 +576,9 @@ describe('when several rules are right about one site', () => {
       'internal-package-imports',
       // component-sends sits beside untyped-sends: both answer "which send, from where"
       'untyped-sends', 'component-sends', 'raw-transport', 'backend-console', 'repository-casts',
+      // reserved-event-keys is last and contests nothing: no other rule reads a property name, so where it
+      // sits is free, and a convention belongs after the rules about what a module imports
+      'reserved-event-keys',
     ]);
   });
 });

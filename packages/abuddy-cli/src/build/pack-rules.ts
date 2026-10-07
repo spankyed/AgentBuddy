@@ -15,6 +15,8 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { ownModuleFindings, type OwnModuleSpecifier } from '@abuddy/host/build/own-module-specifiers';
 import { readSubpathImports } from '@abuddy/host/build/subpath-imports';
+// The key itself, not a copy of it: one declaration, so a rename there renames what this refuses
+import { _CALL_KEY } from '@abuddy/sdk/events';
 import { moduleOf, readSource, sourceFiles, type SourceView } from './pack-sources.ts';
 import { contractLeafFindings, crossFeatureFindings } from './pack-features.ts';
 import { configsNamingSourceCondition, packResolvesSource } from './pack-resolution.ts';
@@ -173,6 +175,24 @@ const repositoryCast = (node: ts.Node): string[] | undefined => {
   const inner = ts.isParenthesizedExpression(node.expression) ? node.expression.expression : node.expression;
   if (!ts.isAsExpression(inner) || inner.type.kind !== ts.SyntaxKind.UnknownKeyword || !isRepository(inner.expression)) return;
   return [node.getText()];
+};
+
+/**
+ * A property named `_call` on anything a pack writes: the reserved key the delivery doors put a call under.
+ *
+ * **Any property of that name, not only one on an event literal**, because the narrower check cannot be made
+ * to hold: a pack builds events through variables, spreads and helpers, so "is this object an event" is not a
+ * question the syntax answers. The key is reserved repo-wide for one purpose, so writing it is wrong wherever
+ * it appears, and a pack with a legitimate `_call` of its own is told to rename it — which is the trade the
+ * reservation is.
+ *
+ * Both spellings a property name takes, since `{ _call: x }` and `{ '_call': x }` are the same key.
+ */
+const reservedEventKey = (node: ts.Node): string[] | undefined => {
+  if (!ts.isPropertyAssignment(node) && !ts.isShorthandPropertyAssignment(node)) return;
+  const name = node.name;
+  const written = ts.isIdentifier(name) || ts.isStringLiteral(name) ? name.text : undefined;
+  return written === _CALL_KEY ? [`${written}:`] : undefined;
 };
 
 /**
@@ -360,6 +380,20 @@ const RULE_LIST = [
       // renaming that local in codegen cannot fail every pack's build.
       if (place.generated) return [];
       return view.visit(repositoryCast);
+    },
+  },
+  {
+    key: 'reserved-event-keys',
+    switchable: false,
+    rule: "`_call` is the app's key on a delivered event: the delivery doors write it and callOf(event) reads "
+      + 'it, so a property a pack writes under that name is overwritten on the way in and read as a '
+      + "correlation on the way out — read a call with callOf from @abuddy/sdk/events, build an answer in a "
+      + 'test with answerTo from @abuddy/sdk/testing, and rename any field of your own that collides',
+    check(view, place) {
+      // The generated facades never write the key, so there is nothing to exempt; a generated file that
+      // started to would be as wrong as a hand-written one, and is told so
+      void place;
+      return view.visit(reservedEventKey);
     },
   },
 ] as const satisfies readonly PackRule[];

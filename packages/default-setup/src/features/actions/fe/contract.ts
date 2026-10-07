@@ -11,13 +11,18 @@ import type { Category } from '#generated/types.ts'
 export interface ActionsContext {
   selectedActionId?: EARS.EntityId;
   /**
-   * The action a selection is waiting on, which is what makes `ACTION_SELECTED` identifiable.
+   * The call the outstanding `ACTION_SELECT` was asked under, or absent when nothing is outstanding.
    *
-   * `selectedActionId` cannot do it: that is written *from* the reply, so until one lands there is
-   * nothing to compare an arriving one against — and two quick selections are then decided by which
-   * answer happens to arrive last.
+   * `selectedActionId` cannot do this job: it is written *from* the answer, so until one lands there is
+   * nothing to compare an arriving one against, and two quick selections are decided by whichever answer
+   * arrives last.
+   *
+   * **It held the action's own id, and that was not enough twice over.** The answer was broadcast to every
+   * window, so another window's answer for the same action matched too; and the field had one setter and no
+   * clear, so after the first selection it always named something. A call is per ask and per window, so
+   * neither has anywhere to live.
    */
-  pendingActionId?: EARS.EntityId;
+  pendingActionCall?: string;
   actions: ActionEntity[];
   selectedAction?: ActionEntity;
   totalCount: number;

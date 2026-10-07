@@ -18,6 +18,8 @@ export { fakeInference, type FakeInference, type FakeInferenceCall, type FakeInf
 // bound once at boot, and its unbind is host-only
 export { startFeTestRuntime, stopFeTestRuntime, type FeTestRuntimeOptions } from './fe-runtime.ts';
 export { fakeSettings, type FakeSettings, type FakeSettingsUpdate } from './fake-settings.ts';
+// What a delivery door puts on an answer, for a spec that drives a machine with no door in front of it
+export { answerTo } from './answers.ts';
 
 /**
  * What a pack's seeding needs outside the app: its entity types and relation kinds, its repositories

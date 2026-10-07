@@ -11,12 +11,17 @@ import type { Category } from '#generated/types.ts'
 export interface PromptsContext {
   selectedPromptId?: EARS.EntityId;
   /**
-   * The prompt a selection is waiting on, which is what makes `PROMPT_SELECTED` identifiable.
+   * The call the outstanding `PROMPT_SELECT` was asked under, or absent when nothing is outstanding.
    *
-   * `selectedPromptId` cannot do it: that is written *from* the reply, so two quick selections are
+   * `selectedPromptId` cannot do this job: it is written *from* the answer, so two quick selections are
    * otherwise decided by whichever answer arrives last.
+   *
+   * **It held the prompt's own id, and that was not enough twice over.** The answer was broadcast to every
+   * window, so another window's answer for the same prompt matched too; and the field had one setter and no
+   * clear, so after the first selection it always named something. A call is per ask and per window, so
+   * neither has anywhere to live.
    */
-  pendingPromptId?: EARS.EntityId;
+  pendingPromptCall?: string;
   prompts: PromptEntity[];
   selectedPrompt?: PromptEntity;
   totalCount: number;

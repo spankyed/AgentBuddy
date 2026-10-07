@@ -87,7 +87,7 @@ absent when the message named none. Three jobs ride those two channels:
 |---|---|---|
 | a **notification** — a mutation happened | broadcast | none; guarding one is a category error |
 | a **view fetching data** | broadcast | a slot keyed by what was asked |
-| a **command's outcome** | **reply** | an id only where one window can have two in flight |
+| a **command's outcome** | **reply** | the envelope's call, which every ask already carries |
 
 **Ask which job it is, then pick the channel.** Everything below is the second question — what shape the
 payload wants — and it only arises once the first is answered. For a long time there was no reply channel
@@ -130,21 +130,39 @@ host does the same with
 `FEATURE_SETTINGS_UPDATED`: all eleven feature contracts carry a `settings` field and `GET_SETTINGS`
 appears nowhere under `features/`.
 
-**A command with a result is the only job that genuinely needs a request id**, because the answer is not
-app state and no natural key identifies it. `EXECUTE_QUERY` → `QUERY_RESULT` is the worked example: the
-requester mints the id (`randomId`, not a counter stamped when the reply is built, or an abandoned
-request's late answer carries the newest id and wins) and every reply echoes it. `terminal.CREATE_TERMINAL`
-is the other shape of this — its id is minted *by the reply*, so nothing the requester knows can identify
-it.
+**A command with a result is the only job that needs an id, and nobody declares one any more.** The answer
+is not app state and no natural key identifies it, so a per-ask id is the only thing that works — and it is
+on the envelope. Every send mints `Message.call`, `reply` stamps `Message.answering` with the call it was
+entered under, and the delivery door puts that on the event where a guard can read it with `callOf(event)`
+(`@abuddy/sdk/events`). So the asker stores what `sendToSystem` returned and compares; **no event type
+declares a correlation field, and none should.**
+
+**What that replaced is worth knowing, because the failures were not where anyone was looking.** Correlation
+was a three-step obligation — mint, store, settle — discharged by hand per feature with nothing checking any
+step, and the four features that had one failed at four different steps. The database did all three
+correctly. The host's settings system declared a `requestId` on five events end to end and **minted none**,
+so its specs were its only producer. `actions` and `prompts` stored the domain id and **never cleared** it,
+and answered with a broadcast, so another window's answer for the same row matched. And
+`terminal.CREATE_TERMINAL`'s id did not exist until its answer — the backend mints the terminal — so nothing
+the asker sent could identify it, and the single slot holding its intent meant two creates in flight swapped
+places (`docs/issues/ISSUE-terminal-integration-review.md`, T4). A per-send id on the envelope serves all
+four, because it is the one thing that works with no natural key, no domain id that distinguishes windows,
+and nothing to key on yet.
 
 **The rule this leaves**, in order: *which job is this?* decides the channel, and only then does the shape
 follow. A notification broadcasts and needs nothing. A fetch broadcasts and wants a keyed slot. **A
-command's outcome is replied** — and once it is, it needs an id only where one window can have two of the
-same command in flight, which is rarer than it looks: the database's two query kinds do, a settings save
-does not.
+command's outcome is replied**, and the call that correlates it is already there — the question is no longer
+whether to add an id but whether to *read* one, which is "yes" wherever a window can have two of the same
+command in flight.
 
-A guard is where a slot would have made the correlation structural, and six in this pack still are. None
-is wrong now; the two that were failed in opposite ways, which is what makes them worth knowing.
+**A spec that drives a machine directly builds the answer with `answerTo(call, event)`**
+(`@abuddy/sdk/testing`), which is what a delivery door would put on it; one driving a whole system through
+`startApp` passes `nextEmit`'s `answering`. Pack code never names the key itself — the `reserved-event-keys`
+pack rule refuses it.
+
+**The guards that remain, and what each one got wrong first.** Every correlating guard in this pack has been
+through this, and they failed in four different ways — which is the argument for reading the list rather
+than copying whichever one you land on.
 
 **A guard needs an invariant every asker holds, and a slot does not.** `answersSelectedNode` admits a
 reply only for the node in `selectedStepNode`, so every asker must select before it asks — stated over two
@@ -158,11 +176,17 @@ while `FLOW_EVENTS_RESULT` echoed no `offset`, so re-selecting a flow while a la
 that page replace the whole list. The answer carries its offset now; `loadMoreEvents` keeps one page in
 flight, which the correlation requires rather than prefers.
 
-The other four are correct, and the check that says so is the one to reuse: `pendingActionId` and
-`pendingPromptId` have exactly one setter each, so their invariant holds by construction, and the page
-guards in `features/{actions,prompts}` admit `page + 1` where `page` advances only on a reply — two clicks
-ask for the same page and the dedupe is the intent. Converting any of them to a slot would be churn with
-no failure behind it.
+**And a guard's invariant is not "who writes this": two were wrong while this file called them correct.** It read `pendingActionId` and
+`pendingPromptId` as holding "by construction" because each had exactly one setter — true, and the wrong
+property to check. One setter and **no clear** means the field names the last ask for the life of the
+plugin; and what they guarded was a *broadcast*, so another window's answer for the same row matched the
+guard exactly. Both are `pendingActionCall`/`pendingPromptCall` now, set before the ask and cleared on the
+answer, and the answer is replied. The lesson is the one the sentence got wrong: a guard's invariant is not
+"who writes this" but **"what else could satisfy it"**, and for a domain id under a broadcast the answer was
+every other window.
+
+The page guards in `features/{actions,prompts}` are correct and stay: they admit `page + 1` where `page`
+advances only on an answer, so two clicks ask for the same page and the dedupe is the intent.
 
 And one that was worse than a guard: `code/be/features/pull-request.ts` stamped a module-scoped counter on
 every `pr.PR_DETAILS_RECEIVED`, justified as "monotonic within this process" — true, and beside the point,

@@ -40,12 +40,11 @@ const logger = createLogger('settings');
  * It builds the answer rather than sending it, so the handlers can answer exactly once and from outside their
  * `try` — see `updateSettings`.
  */
-function refusal(error: unknown, what: string, requestId?: string): Extract<SettingsAnswer, { type: 'SETTINGS_REFUSED' }> {
+function refusal(error: unknown, what: string): Extract<SettingsAnswer, { type: 'SETTINGS_REFUSED' }> {
   if (!(error instanceof SettingsRefusedError)) reportError({ error: new Error(`${what}: ${(error as Error).message}`), source: 'settings' });
   return {
     type: 'SETTINGS_REFUSED',
     problems: error instanceof SettingsRefusedError ? error.problems : [(error as Error).message],
-    ...(requestId === undefined ? {} : { requestId }),
   };
 }
 
@@ -156,7 +155,14 @@ export const settingsSystem = setup({
       error: 'A backup is being imported. Reset the app once it has finished.',
     }),
 
-    // A change the store can't take now (`whileBusy`), with the reason the state gives
+    /**
+     * A change the store can't take now (`whileBusy`), with the reason the state gives.
+     *
+     * **This one used to drop the asker's id**, and it was the only answer here that could: the other three
+     * threaded `ev.requestId` by hand and this guard-level refusal had no `ev` to thread. With the call on
+     * the envelope there is nothing to thread — `reply` stamps the call it was entered under — so the
+     * asymmetry went with the field rather than being fixed.
+     */
     refuseChange: ({ reply }, { reason }: { reason: string }) =>
       answerSettings(reply, { type: 'SETTINGS_REFUSED', problems: [reason] }),
 
@@ -179,10 +185,10 @@ export const settingsSystem = setup({
           if (ev.entityType === 'plugin') services.settings.setForFeature(ev.label as `${string}/${string}`, ev.path, ev.value);
           else services.settings.setInSection(ev.label, ev.path, ev.value);
         } catch (error) {
-          return refusal(error, `Settings for ${ev.entityType} "${ev.label}" weren't saved`, ev.requestId);
+          return refusal(error, `Settings for ${ev.entityType} "${ev.label}" weren't saved`);
         }
         broadcastSettings('SETTINGS_UPDATED');
-        return { type: 'SETTINGS_SAVED', ...(ev.requestId === undefined ? {} : { requestId: ev.requestId }) };
+        return { type: 'SETTINGS_SAVED' };
       })();
 
       answerSettings(reply, outcome);
@@ -194,10 +200,10 @@ export const settingsSystem = setup({
         try {
           services.settings.replaceAll(ev.data);
         } catch (error) {
-          return refusal(error, "The settings weren't replaced", ev.requestId);
+          return refusal(error, "The settings weren't replaced");
         }
         broadcastSettings('SETTINGS_UPDATED');
-        return { type: 'SETTINGS_SAVED', ...(ev.requestId === undefined ? {} : { requestId: ev.requestId }) };
+        return { type: 'SETTINGS_SAVED' };
       })();
 
       answerSettings(reply, outcome);
@@ -205,16 +211,15 @@ export const settingsSystem = setup({
 
     // Answered like the other two writes: it was the one that said nothing at all on success, so a caller
     // could not tell a reset that worked from one that never arrived
-    resetSettings: ({ event, reply }) => {
-      const ev = settingsSpec.typeOf('RESET_SETTINGS', event);
+    resetSettings: ({ reply }) => {
       const outcome = ((): SettingsAnswer => {
         try {
           services.settings.reset();
         } catch (error) {
-          return refusal(error, "The settings weren't reset", ev.requestId);
+          return refusal(error, "The settings weren't reset");
         }
         broadcastSettings('SETTINGS_RESET');
-        return { type: 'SETTINGS_SAVED', ...(ev.requestId === undefined ? {} : { requestId: ev.requestId }) };
+        return { type: 'SETTINGS_SAVED' };
       })();
 
       answerSettings(reply, outcome);

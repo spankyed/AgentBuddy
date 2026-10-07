@@ -9,12 +9,14 @@ import type { SettingsDocument } from './store.ts';
 
 export type IncomingSettingsEvents =
   | { type: 'GET_SETTINGS' }
-  // `requestId` is how a sender tells its own answer from someone else's: addressing says which connection an
-  // answer came back on, never which request it answers. The Settings view sends none and needs none, having
-  // one write in flight at a time; a drive session may have several.
-  | { type: 'UPDATE_SETTINGS'; entityType: 'section' | 'plugin'; label: string; path: string[]; value: any; requestId?: string }
-  | { type: 'RESET_SETTINGS'; requestId?: string }
-  | { type: 'REPLACE_SETTINGS'; data: unknown; requestId?: string }
+  // No correlation field on any of the three writes: addressing says which connection an answer came back on,
+  // and the envelope's `call` says which request it answers — `reply` stamps it, so a sender with several
+  // writes in flight (a drive session) tells its own answer from another's without either side declaring a
+  // field. These carried an optional `requestId` end to end and **nothing ever minted one**, which is the
+  // shape the envelope's call was built for: three declarations, five readers, and no producer.
+  | { type: 'UPDATE_SETTINGS'; entityType: 'section' | 'plugin'; label: string; path: string[]; value: any }
+  | { type: 'RESET_SETTINGS' }
+  | { type: 'REPLACE_SETTINGS'; data: unknown }
   | { type: 'RESET_APP' }
 
 // The host's secrets store sends this over the bus (`secrets/index.ts`, `forwardSecretsChanges`), so it arrives
@@ -37,9 +39,9 @@ export type OutgoingSettingsEvents =
   | { type: 'HELP_UPDATED'; help: HelpEntry[] }
   | { type: 'SETTINGS_UPDATED'; data: SettingsDocument }
   /** A change (`UPDATE_SETTINGS`, `REPLACE_SETTINGS`, `RESET_SETTINGS`) was stored */
-  | { type: 'SETTINGS_SAVED'; requestId?: string }
+  | { type: 'SETTINGS_SAVED' }
   /** A change was refused, and stored nothing */
-  | { type: 'SETTINGS_REFUSED'; problems: string[]; requestId?: string }
+  | { type: 'SETTINGS_REFUSED'; problems: string[] }
   | { type: 'SETTINGS_RESET'; data: SettingsDocument }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
   // The four seed events are sent by the `packs` system, not this one: the work is pack-level and lives

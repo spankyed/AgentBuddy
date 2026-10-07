@@ -321,6 +321,7 @@ Checks:
 | `component-sends` | `sendToPlugin` from a feature's `.vue`. A component runs in no delivery, so the send carries no `Message.sender` and the plugin it reaches cannot answer it — emit to your own plugin with `usePlugin()` and let its machine send. An extension's component is exempt: it is rendered in no plugin scope and by no single plugin, so it addresses a plugin by ref and `sendToPlugin` is that route's send | no |
 | `cross-feature-imports` | a module of another feature's `fe/`, and a feature passing its own frontend on (`export … from './fe/state.ts'`). What a feature offers the rest is its plugin's contract, read through `#generated/fe` and `#generated/events` | yes |
 | `repository-casts` | `repository as unknown as …`, reading a repository through a type its owner never declared. `repository` from `#generated/repository` is already typed with your own repositories and your dependencies' | yes |
+| `reserved-event-keys` | a property named `_call`. That key is the app's: a delivery door writes the call a message answers under it, so a field of yours by that name is overwritten on the way in and read as a correlation on the way out. Read a call with `callOf(event)` from `@abuddy/sdk/events`, build one in a test with `answerTo` from `@abuddy/sdk/testing`, and rename a field of your own that collides | no |
 
 A rule marked switchable has no effect at run time, so a pack may switch it off in **`abuddy.checks.json`**
 at its root:

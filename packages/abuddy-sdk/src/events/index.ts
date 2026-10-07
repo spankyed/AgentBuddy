@@ -148,7 +148,10 @@ export const newCall = (): string => randomId({ prefix: 'c-', counterSafe: true 
  * has no reader on the event.
  *
  * **Reserved**: the injected value wins over a pack's own field of that name, which `outgoing-events.spec.ts`
- * pins beside its deliberate `pluginId` collision, and a pack rule refuses one written in pack source.
+ * pins beside its deliberate `pluginId` collision, and the `reserved-event-keys` pack rule refuses one written
+ * in any pack's source — `abuddy validate` and `abuddy build` for every pack, `check:specifiers` for this
+ * repo's. A test that needs to deliver an answer builds it with `answerTo` (`@abuddy/sdk/testing`) rather than
+ * naming the key.
  */
 export const callOf = (event: { [key: string]: unknown }): string | undefined => {
   const call = event[_CALL_KEY];

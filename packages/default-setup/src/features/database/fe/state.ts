@@ -3,8 +3,7 @@ import breadcrumb from '@abuddy/sdk/fe'
 import { contextMenu } from '@abuddy/sdk/fe'
 import { safeEvents } from '@abuddy/sdk/fe'
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe'
-// `/pure`, not `/utils`: frontend code must not reach the Node-dependent half
-import { randomId } from '@abuddy/sdk/utils/pure'
+import { callOf, newCall } from '@abuddy/sdk/events'
 import type { DatabaseSettings } from '#generated/types.ts'
 import type { DatabaseContext, DatabaseInboxEvent } from './contract.ts'
 import type { OutgoingDatabaseEvents } from '#features/database/be/types.ts'
@@ -23,8 +22,8 @@ export type DatabaseState = ActorRefFrom<typeof databaseState>
  *
  * It used to re-declare five of those members here as well. A union of a member with its own copy
  * narrows to *both*, so a field added to the canonical declaration read as optional with no type error
- * anywhere — which is how a `requestId` could have been threaded through the backend and quietly never
- * checked here.
+ * anywhere — which is how the `requestId` these events used to carry could have been threaded through the
+ * backend and quietly never checked here.
  */
 type SystemEvent = OutgoingDatabaseEvents |
   { type: 'FEATURE_SETTINGS_UPDATED'; settings: DatabaseSettings } |
@@ -79,16 +78,18 @@ const databaseState = setup({
   guards: {
     targetIs,
     /**
-     * Whether a reply answers the request still outstanding.
+     * Whether an answer answers the ask still outstanding.
      *
      * A transition guard rather than a check inside each handler: an action that has to decide whether
      * to do nothing is one someone later edits into doing something, and `threads`' `SET_VIEW_DATA` does
-     * it this way for the same reason. A reply for a request nobody is waiting for is simply not taken.
+     * it this way for the same reason. An answer to an ask nobody is waiting for is simply not taken.
+     *
+     * **`callOf(event)` is why the call rides on the event rather than being handed to a handler.** A guard
+     * is given `{ context, event }` and nothing else, and context cannot be written before it runs — so the
+     * event is the only channel to one. The cast these two used to carry is gone with the declared field.
      */
-    answersPendingQuery: ({ context, event }) =>
-      (event as { requestId?: string }).requestId === context.pendingQueryId,
-    answersPendingTransaction: ({ context, event }) =>
-      (event as { requestId?: string }).requestId === context.pendingTransactionId,
+    answersPendingQuery: ({ context, event }) => callOf(event) === context.pendingQueryCall,
+    answersPendingTransaction: ({ context, event }) => callOf(event) === context.pendingTransactionCall,
     /**
      * Whether these events are the page the viewer is waiting for: the right flow *and* the right offset.
      *
@@ -121,44 +122,49 @@ const databaseState = setup({
 
     /* ── query interactions ────────────────────────────── */
     /**
-     * The four senders mint the id, which is what makes a reply identifiable.
+     * The four asks mint the call, which is what makes an answer identifiable.
      *
-     * Minted by the requester rather than stamped by the replier: the case this exists for is a request
-     * someone stopped waiting for, and an id assigned when the reply is built would give that abandoned
-     * request's late answer the newest id. `randomId` because `broadcastToPlugin` reaches every window,
-     * so a counter local to one of them would collide with another's.
+     * **`newCall()` rather than the one `sendToSystem` returns, because of the shape these are written in.**
+     * An `enqueueActions` body defers its sends past the `assign` that stores the id, so the id has to exist
+     * before the send does; `sendToSystem`'s own return would arrive a turn too late. Given one it uses it,
+     * so the stored value and the sent value are the same by construction rather than by ordering.
+     *
+     * Minted by the asker rather than stamped by the answerer, which the envelope's `newCall` keeps: the
+     * case this exists for is an ask someone stopped waiting for, and an id assigned when the answer is
+     * built would give that abandoned ask's late answer the newest id. Random, not a counter, because an
+     * answer can reach every window and a counter local to one would collide with another's.
      */
     executeQuery: enqueueActions(({ event, enqueue }) => {
       const ev = typeOf('QUERY.EXECUTE', event);
-      const requestId = randomId({ prefix: 'q-' });
-      enqueue.assign({ pendingQueryId: requestId });
-      enqueue(() => sendToSystem(id, { type: 'EXECUTE_QUERY', code: ev.code, requestId }));
+      const call = newCall();
+      enqueue.assign({ pendingQueryCall: call });
+      enqueue(() => sendToSystem(id, { type: 'EXECUTE_QUERY', code: ev.code }, { call }));
     }),
 
     executeTransaction: enqueueActions(({ event, enqueue }) => {
       const ev = typeOf('TRANSACTION.EXECUTE', event);
-      const requestId = randomId({ prefix: 't-' });
-      enqueue.assign({ pendingTransactionId: requestId });
-      enqueue(() => sendToSystem(id, { type: 'EXECUTE_TRANSACTION', code: ev.code, requestId }));
+      const call = newCall();
+      enqueue.assign({ pendingTransactionCall: call });
+      enqueue(() => sendToSystem(id, { type: 'EXECUTE_TRANSACTION', code: ev.code }, { call }));
     }),
 
     deleteEntity: enqueueActions(({ event, enqueue }) => {
       const ev = typeOf('ENTITY.DELETE', event);
       // Use tx() to delete the entity
       const deleteCode = `tx('${ev.entityId}').destroy(); return { deleted: '${ev.entityId}' };`;
-      const requestId = randomId({ prefix: 't-' });
-      enqueue.assign({ pendingTransactionId: requestId });
-      enqueue(() => sendToSystem(id, { type: 'EXECUTE_TRANSACTION', code: deleteCode, requestId }));
+      const call = newCall();
+      enqueue.assign({ pendingTransactionCall: call });
+      enqueue(() => sendToSystem(id, { type: 'EXECUTE_TRANSACTION', code: deleteCode }, { call }));
     }),
 
-    /** Sent from inside a reply handler, so there is no incoming event to take an id from */
+    /** Sent from inside an answer's handler, so there is no incoming event to take a call from */
     refreshAfterDelete: enqueueActions(({ context, enqueue }) => {
       // Re-run the current query after successful deletion
       if (!context.currentQuery) return;
       const code = context.currentQuery;
-      const requestId = randomId({ prefix: 'q-' });
-      enqueue.assign({ pendingQueryId: requestId });
-      enqueue(() => sendToSystem(id, { type: 'EXECUTE_QUERY', code, requestId }));
+      const call = newCall();
+      enqueue.assign({ pendingQueryCall: call });
+      enqueue(() => sendToSystem(id, { type: 'EXECUTE_QUERY', code }, { call }));
     }),
 
     updateQuery: assign(({ event }) => {
@@ -174,7 +180,7 @@ const databaseState = setup({
         isLoading: false,
         error: null,
         // Cleared, so a second reply carrying the same id is not accepted twice
-        pendingQueryId: null,
+        pendingQueryCall: null,
       };
     }),
 
@@ -183,7 +189,7 @@ const databaseState = setup({
       return {
         error: ev.error,
         isLoading: false,
-        pendingQueryId: null,
+        pendingQueryCall: null,
       };
     }),
 
@@ -194,7 +200,7 @@ const databaseState = setup({
         executionTime: ev.executionTime,
         isLoading: false,
         error: null,
-        pendingTransactionId: null,
+        pendingTransactionCall: null,
       } as const;
 
       // Check if this was a delete operation
@@ -227,7 +233,7 @@ const databaseState = setup({
       return {
         error: ev.error,
         isLoading: false,
-        pendingTransactionId: null,
+        pendingTransactionCall: null,
       };
     }),
 
@@ -515,8 +521,8 @@ const databaseState = setup({
     isLoading: false,
     error: null,
     executionTime: null,
-    pendingQueryId: null,
-    pendingTransactionId: null,
+    pendingQueryCall: null,
+    pendingTransactionCall: null,
     selectedSchemaItem: null,
     mode: 'query',
     isAiQueryLoading: false,

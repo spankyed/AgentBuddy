@@ -1,7 +1,12 @@
 // The protocol a live drive session speaks, against a fake page. What is checked here is that every verb
 // answers rather than throws, and that the two things the real app would make expensive to discover —
-// a result that cannot cross the process boundary, and two bus round-trips sharing a reply with no
-// request id — are handled before anything launches Electron.
+// a result that cannot cross the process boundary, and two bus round-trips sharing an answer that names
+// neither — are handled before anything launches Electron.
+//
+// The correlation is the envelope's call: an ask carries `Message.call` and its answer `Message.answering`,
+// so `answer` names the call it answers and the bridge path builds the same thing with `answerTo`, which is
+// what a window's delivery door puts on the event. This file minted its own `requestId` and spread it into
+// the event before that existed, which worked only for a system that declared such a field.
 import { describe, expect, it, vi } from 'vitest';
 import {
   BRIDGE_FLAG, BRIDGE_FUNCTION, createSession, DATABASE_SYSTEM, DRIVE_REF, evalSource, MAX_SEEN_EVENTS,
@@ -11,6 +16,7 @@ import type { BusMessage } from '../../src/engine/api-client.ts';
 import type { EngineSession, SettingsTarget } from '../../src/engine/session.ts';
 import { asSessionPage, checkedViewport } from '../../src/engine/index.ts';
 import type { Page } from '@playwright/test';
+import { answerTo } from '@abuddy/sdk/testing';
 
 /** A page that records what it was asked and lets a test answer for it, plus the bridge's own callback */
 function fakePage() {
@@ -88,9 +94,17 @@ function fakeApi() {
     },
     /** Only the state, for the case about a round-trip armed after the channel had already gone */
     fail: (reason: string) => { failure = reason; },
-    /** What the app answered on the session's own connection */
-    answer: (event: Record<string, unknown> & { type: string }, to = DRIVE_REF) =>
-      deliver?.({ to, event, sender: DATABASE_SYSTEM }),
+    /**
+     * What the app answered on the session's own connection.
+     *
+     * `answering` is the call it answers, which is what `reply` stamps and what the session matches on — so a
+     * case that wants its answer taken passes the call its ask was sent under, and one that wants an orphan
+     * passes another or none. It is on the envelope, never in the event.
+     */
+    answer: (
+      event: Record<string, unknown> & { type: string },
+      { answering, to = DRIVE_REF }: { answering?: string; to?: string } = {},
+    ) => deliver?.({ to, event, sender: DATABASE_SYSTEM, ...(answering === undefined ? {} : { answering }) }),
   };
 }
 
@@ -118,10 +132,17 @@ const sessionWith = (overrides: Partial<SessionPage> = {}) => {
  * Reading straight off `calls.at(-1)?.[0]` throws an opaque `TypeError` when no send happened, which is the
  * likeliest thing to go wrong in a test about sends — so it is named here instead.
  */
-const lastSend = (calls: { mock: { calls: unknown[][] } }): { to: string; event: Record<string, unknown>; sender?: string } => {
-  const call = calls.mock.calls.at(-1);
-  if (call === undefined) throw new Error('nothing was sent over the connection');
-  return call[0] as { to: string; event: Record<string, unknown>; sender?: string };
+const lastSend = (calls: { mock: { calls: unknown[][] } }): { to: string; event: Record<string, unknown>; sender?: string; call?: string } => {
+  const sent = calls.mock.calls.at(-1);
+  if (sent === undefined) throw new Error('nothing was sent over the connection');
+  return sent[0] as { to: string; event: Record<string, unknown>; sender?: string; call?: string };
+};
+
+/** The call the last send was made under, which an answer to it has to name */
+const sentCall = (calls: { mock: { calls: unknown[][] } }): string => {
+  const { call } = lastSend(calls);
+  if (call === undefined) throw new Error('the last send carried no call, so nothing could answer it');
+  return call;
 };
 
 /** Lets the microtasks a verb queues run, without waiting on any real timer */
@@ -247,9 +268,9 @@ describe('the in-page bridge', () => {
     for (let n = 0; n < MAX_SEEN_EVENTS; n += 1) emit({ type: `E${n}`, event: {} });
     const pending = session.qx('return 1');
     await settle();
-    const requestId = String(lastSend(send).event.requestId);
-    // A reply arriving into a full buffer must still resolve the request waiting for it
-    emit({ type: 'QUERY_RESULT', event: { result: 'through a full buffer', requestId } });
+    // Through the bridge, so the call is on the delivered event where a window's door put it — `answerTo`
+    // builds exactly that, which is why the session reads both places into one field
+    emit({ type: 'QUERY_RESULT', event: answerTo(sentCall(send), { type: 'QUERY_RESULT', result: 'through a full buffer' }) });
 
     await expect(pending).resolves.toEqual({ ok: true, value: 'through a full buffer' });
   });
@@ -351,7 +372,7 @@ describe('settings', () => {
     const reading = session.settings();
     await settle();
     expect(lastSend(send).event).toMatchObject({ type: 'EXECUTE_QUERY' });
-    answer({ type: 'QUERY_RESULT', result: { general: { personal: { name: 'Ada' } } }, requestId: String(lastSend(send).event.requestId) });
+    answer({ type: 'QUERY_RESULT', result: { general: { personal: { name: 'Ada' } } } }, { answering: sentCall(send) });
 
     await expect(reading).resolves.toEqual({ ok: true, value: { general: { personal: { name: 'Ada' } } } });
   });
@@ -360,14 +381,14 @@ describe('settings', () => {
   const write = async (
     session: EngineSession,
     send: { mock: { calls: unknown[][] } },
-    answer: (event: Record<string, unknown> & { type: string }) => void,
+    answer: (event: Record<string, unknown> & { type: string }, options?: { answering?: string }) => void,
     target: SettingsTarget,
     reply: Record<string, unknown> & { type: string },
   ) => {
     const writing = session.setSetting(target, 'personal.name', 'Ada');
     await settle();
     const sent = lastSend(send);
-    answer({ ...reply, requestId: String(sent.event.requestId) });
+    answer(reply, { answering: sentCall(send) });
     return { sent, result: await writing };
   };
 
@@ -550,9 +571,6 @@ describe('the app log', () => {
 
 describe('a bus round-trip', () => {
   /** The id the engine minted, read back off the send so a test can answer as the app would */
-  const sentId = (calls: { mock: { calls: unknown[][] } }): string =>
-    String(lastSend(calls).event.requestId);
-
   it('sends to the database system with an id, and resolves on the reply that carries it', async () => {
     const { session, send, answer } = sessionWith();
     await session.ready();
@@ -562,11 +580,14 @@ describe('a bus round-trip', () => {
     const sent = lastSend(send);
     expect(sent.to).toBe(DATABASE_SYSTEM);
     expect(sent.event).toMatchObject({ type: 'EXECUTE_QUERY', code: 'return 42' });
-    expect(sent.event.requestId, 'minted by the requester, not the replier').toEqual(expect.any(String));
+    expect(sent.call, 'minted by the asker, not the answerer, and on the envelope rather than in the event')
+      .toEqual(expect.any(String));
+    expect(sent.event, 'nothing correlating in the event the system receives')
+      .toEqual({ type: 'EXECUTE_QUERY', code: 'return 42' });
     // The field the system turns into a reply address: without it `reply` has nobody to answer
     expect(sent.sender, 'so the system can answer this session').toBe(DRIVE_REF);
 
-    answer({ type: 'QUERY_RESULT', result: 42, requestId: sentId(send) });
+    answer({ type: 'QUERY_RESULT', result: 42 }, { answering: sentCall(send) });
     await expect(pending).resolves.toEqual({ ok: true, value: 42 });
   });
 
@@ -576,7 +597,7 @@ describe('a bus round-trip', () => {
 
     const pending = session.qx('return boom');
     await settle();
-    answer({ type: 'QUERY_ERROR', error: 'boom is not defined', requestId: sentId(send) });
+    answer({ type: 'QUERY_ERROR', error: 'boom is not defined' }, { answering: sentCall(send) });
 
     await expect(pending).resolves.toEqual({ ok: false, error: 'qx: boom is not defined' });
   });
@@ -589,11 +610,11 @@ describe('a bus round-trip', () => {
     await settle();
     expect(lastSend(send).event).toMatchObject({ type: 'EXECUTE_TRANSACTION', code: 'return tx(...)' });
 
-    const requestId = sentId(send);
+    const call = sentCall(send);
     // A QUERY_RESULT carrying the same id must not satisfy a transaction either: the type and the id
     // are both part of the answer, and only one of them is enough to be wrong
-    answer({ type: 'QUERY_RESULT', result: 'wrong', requestId });
-    answer({ type: 'TRANSACTION_RESULT', result: 'right', requestId });
+    answer({ type: 'QUERY_RESULT', result: 'wrong' }, { answering: call });
+    answer({ type: 'TRANSACTION_RESULT', result: 'right' }, { answering: call });
     await expect(pending).resolves.toEqual({ ok: true, value: 'right' });
   });
 
@@ -610,7 +631,7 @@ describe('a bus round-trip', () => {
 
     const pending = session.qx('return 1');
     await settle();
-    emit({ type: 'QUERY_RESULT', event: { result: 'through the bridge', requestId: sentId(send) } });
+    emit({ type: 'QUERY_RESULT', event: answerTo(sentCall(send), { type: 'QUERY_RESULT', result: 'through the bridge' }) });
 
     await expect(pending).resolves.toEqual({ ok: true, value: 'through the bridge' });
   });
@@ -656,10 +677,10 @@ describe('a bus round-trip', () => {
 
     const pending = session.qx('return mine');
     await settle();
-    answer({ type: 'QUERY_RESULT', result: 'someone else', requestId: 'q-elsewhere' });
+    answer({ type: 'QUERY_RESULT', result: 'someone else' }, { answering: 'c-elsewhere' });
     await settle();
 
-    answer({ type: 'QUERY_RESULT', result: 'mine', requestId: sentId(send) });
+    answer({ type: 'QUERY_RESULT', result: 'mine' }, { answering: sentCall(send) });
     await expect(pending).resolves.toEqual({ ok: true, value: 'mine' });
   });
 
@@ -678,17 +699,17 @@ describe('a bus round-trip', () => {
 
       const abandoned = session.qx('return slow');
       await vi.advanceTimersByTimeAsync(0);
-      const orphanId = sentId(send);
+      const orphan = sentCall(send);
       await vi.advanceTimersByTimeAsync(REPLY_TIMEOUT_MS + 10);
       await expect(abandoned).resolves.toMatchObject({ ok: false });
 
       const next = session.qx('return quick');
       await vi.advanceTimersByTimeAsync(0);
       // The slow query finishes at last, with nobody waiting for it
-      answer({ type: 'QUERY_RESULT', result: 'the abandoned one', requestId: orphanId });
+      answer({ type: 'QUERY_RESULT', result: 'the abandoned one' }, { answering: orphan });
       await vi.advanceTimersByTimeAsync(0);
 
-      answer({ type: 'QUERY_RESULT', result: 'its own', requestId: sentId(send) });
+      answer({ type: 'QUERY_RESULT', result: 'its own' }, { answering: sentCall(send) });
       await expect(next).resolves.toEqual({ ok: true, value: 'its own' });
     } finally {
       vi.useRealTimers();
@@ -705,14 +726,20 @@ describe('a bus round-trip', () => {
   it('names what is left to go wrong when no reply comes', async () => {
     vi.useFakeTimers();
     try {
-      const { session } = sessionWith();
+      const { session, send } = sessionWith();
       await session.ready();
       const pending = session.qx('return 1');
+      // Advanced rather than `settle()`, which is `setImmediate` and so is itself faked here
+      await vi.advanceTimersByTimeAsync(1);
+      // The ask's own call, so the message is held to naming *that* one rather than to looking like an id
+      const call = sentCall(send);
       await vi.advanceTimersByTimeAsync(REPLY_TIMEOUT_MS + 10);
       const result = await pending;
 
       expect(result.ok).toBe(false);
-      expect(result, 'which request went unanswered').toMatchObject({ error: expect.stringContaining('qx-') });
+      expect(result, 'which ask went unanswered').toMatchObject({ error: expect.stringContaining(call) });
+      expect(result, 'and that a broadcast cannot be matched at all, whichever channel brings it')
+        .toMatchObject({ error: expect.stringContaining('answers no call at all') });
       expect(result, 'no pack providing it is still a cause').toMatchObject({
         error: expect.stringContaining(DATABASE_SYSTEM),
       });
@@ -754,12 +781,12 @@ describe('a bus round-trip', () => {
 
     const bad = session.qx('return boom');
     await settle();
-    answer({ type: 'QUERY_ERROR', error: 'nope', requestId: sentId(send) });
+    answer({ type: 'QUERY_ERROR', error: 'nope' }, { answering: sentCall(send) });
     await expect(bad).resolves.toMatchObject({ ok: false });
 
     const good = session.qx('return 1');
     await settle();
-    answer({ type: 'QUERY_RESULT', result: 'still here', requestId: sentId(send) });
+    answer({ type: 'QUERY_RESULT', result: 'still here' }, { answering: sentCall(send) });
     await expect(good).resolves.toEqual({ ok: true, value: 'still here' });
   });
 });

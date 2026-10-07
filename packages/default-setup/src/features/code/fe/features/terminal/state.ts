@@ -1,5 +1,6 @@
 import { setup, assign, enqueueActions, type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '#generated/events.ts';
+import { callOf, newCall } from '@abuddy/sdk/events';
 import { terminalEventBus } from '../../utils/terminal-events.ts';
 import { terminalPool } from '../../utils/terminal-pool.ts';
 import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication.ts';
@@ -25,11 +26,32 @@ const createTerminalTab = (info: TerminalInfo) => ({
   terminalInfo: info
 })
 
+/** What this window meant by one `terminal.CREATE`, held until that ask is answered */
+interface PendingOpen {
+  /** `'tab'` routes the created terminal to a canvas tab; otherwise it goes to the panel */
+  target: 'tab' | null
+  /** A command to run in it once it exists */
+  command: string | null
+}
+
 export interface Context {
   terminals: TerminalInfo[]
   terminalError: string | null
-  pendingTarget: 'tab' | null  // When 'tab', next created terminal routes to canvas tab instead of panel
-  pendingCommand: string | null  // Command to run in terminal after creation
+  /**
+   * What each outstanding `terminal.CREATE_TERMINAL` meant, by the call it was asked under.
+   *
+   * **Keyed, because this was one slot and a terminal's id does not exist until the answer.** A fetch keys
+   * its answers by what it asked for, and nothing a terminal ask carries identifies it — the backend mints
+   * the id. So two creates in flight shared the slot: the second overwrote it, the first answer read the
+   * second's intent, and the second answer found it cleared. `docs/issues/ISSUE-terminal-integration-review.md`
+   * records the repro — run "build" then "test" before the first answer, and `test` runs in the build
+   * terminal, which is both wrong and invisible.
+   *
+   * The call is what the asker has and the answer echoes, so it is the key. An entry is removed by whichever
+   * answer settles the ask (`terminal.OPENED` or `terminal.ERROR`, both replied), so the map holds only what
+   * is genuinely in flight.
+   */
+  pendingOpens: Record<string, PendingOpen>
 }
 
 export type Event =
@@ -52,24 +74,40 @@ export type Event =
   | { type: 'terminal.TERMINAL_TAB_OPENED'; data: TerminalInfo }
   | { type: 'CODE_STARTUP'; data: { terminals?: TerminalInfo[] } };  // Broadcasted event
 
+/** `pending` without the entry for `call`, or unchanged for an answer that names none */
+const withoutCall = (pending: Record<string, PendingOpen>, call: string | undefined): Record<string, PendingOpen> => {
+  if (call === undefined || !(call in pending)) return pending
+  const { [call]: _settled, ...rest } = pending
+  return rest
+}
+
 export const terminalState = setup({
   types: {
     context: {} as Context,
     events: {} as Event
   },
   actions: {
-    createTerminal: assign(({ event, self }) => {
+    /**
+     * **`enqueueActions`, so the intent is recorded under its call before the ask is sent.** It was an
+     * `assign` that sent from inside its producer, which left the store happening after the send — and the
+     * answer to a synchronous backend can arrive before an assign is applied.
+     */
+    createTerminal: enqueueActions(({ event, self, enqueue }) => {
       const ev = event as { type: 'terminal.CREATE'; title?: string; cwd?: string; target?: 'tab'; command?: string }
       const parentContext = getParentContext(self)
       const baseDir = parentContext?.baseDirectory
+      const call = newCall()
 
-      sendToSystem('code', {
-        type: 'terminal.CREATE_TERMINAL',
-        title: ev.title,
-        cwd: ev.cwd || (baseDir && baseDir.trim() ? baseDir : undefined),
+      enqueue.assign(({ context }) => ({
+        pendingOpens: { ...context.pendingOpens, [call]: { target: ev.target ?? null, command: ev.command ?? null } },
+      }))
+      enqueue(() => {
+        sendToSystem('code', {
+          type: 'terminal.CREATE_TERMINAL',
+          title: ev.title,
+          cwd: ev.cwd || (baseDir && baseDir.trim() ? baseDir : undefined),
+        }, { call })
       })
-
-      return { pendingTarget: ev.target ?? null, pendingCommand: ev.command ?? null }
     }),
 
     closeTerminal: ({ event }) => {
@@ -248,11 +286,11 @@ export const terminalState = setup({
       terminalError: null
     }),
 
-    assignTerminalError: assign({
-      terminalError: ({ event }) => {
-        const ev = event as { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
-        return ev.data.message
-      }
+    assignTerminalError: assign(({ event, context }) => {
+      const ev = event as { type: 'terminal.ERROR'; data: { message: string; terminalId?: string } }
+      // A replied error settles the ask it answers, so its intent is dropped with it: without this, a create
+      // that failed would leave its target and command in the map for the life of the plugin
+      return { terminalError: ev.data.message, pendingOpens: withoutCall(context.pendingOpens, callOf(event)) }
     }),
 
     cleanupTerminalOutput: ({ event }) => {
@@ -267,17 +305,21 @@ export const terminalState = setup({
     },
 
     /**
-     * Opens the terminal *this* window asked for.
+     * Opens the terminal *this* window asked for, the way *that* ask asked for it.
      *
-     * Only the asker is sent `terminal.OPENED`, so `pendingTarget` and `pendingCommand` — which are this
-     * window's own intent and could never have been another's — are read by the window that set them. While
-     * this work hung off the broadcast `terminal.CREATED`, every open window routed a terminal it had not
-     * asked for into its own panel and ran a command it had not typed.
+     * Two correlations, and they answer different questions. Only the asker is sent `terminal.OPENED`, so the
+     * intent read here is this window's and could never have been another's — while this work hung off the
+     * broadcast `terminal.CREATED`, every open window routed a terminal it had not asked for into its own
+     * panel and ran a command it had not typed. The call then says *which* of this window's asks it answers,
+     * which addressing cannot: a window can have two creates in flight and they are not interchangeable.
+     *
+     * An answer whose call names no outstanding ask opens with the defaults — the panel, no command — which
+     * is what a terminal this window did not ask for should do.
      */
     handleTerminalOpened: enqueueActions(({ enqueue, context, self, event }) => {
-      const target = context.pendingTarget
-      const command = context.pendingCommand
-      enqueue(assign({ pendingTarget: null, pendingCommand: null }))
+      const call = callOf(event)
+      const { target, command } = (call === undefined ? undefined : context.pendingOpens[call]) ?? { target: null, command: null }
+      enqueue.assign(({ context: ctx }) => ({ pendingOpens: withoutCall(ctx.pendingOpens, call) }))
       enqueue(() => {
         const ev = event as { type: 'terminal.OPENED'; data: TerminalInfo }
         const terminalInfo = ev.data
@@ -399,8 +441,7 @@ export const terminalState = setup({
   context: {
     terminals: [],
     terminalError: null,
-    pendingTarget: null,
-    pendingCommand: null
+    pendingOpens: {}
   },
   on: {
     'terminal.CREATE': {

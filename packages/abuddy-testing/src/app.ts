@@ -3,7 +3,7 @@ import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 
 import { createBusMachine, HOST } from '@abuddy/host/bus';
 import { resolveRegistered } from '@abuddy/sdk/ids';
 import type { PackBootHooks } from '@abuddy/sdk/framework';
-import type { Message } from '@abuddy/sdk/events';
+import { newCall, type Message } from '@abuddy/sdk/events';
 import { testRootEvents } from '@abuddy/sdk/testing';
 import { untypedQx } from '@abuddy/ears';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
@@ -71,20 +71,33 @@ export interface TestApp {
    * is given — so a spec standing in for a window or a driver passes one, and a spec standing in for a system
    * does not. Any non-empty string: nothing here routes on its value, only on whether there is one, and `''`
    * is refused because it would claim a connection while naming none.
+   *
+   * `call` is the call to ask under, and **the returned value is the call this ask was sent under** — given
+   * one it is that, given none it is the one minted here, exactly as `sendToSystem` behaves. Pass it to
+   * `nextEmit`'s `answering` to wait for the answer to *this* ask, which is what a correlation spec asserts;
+   * a test with one ask in flight can ignore both and read the answer by type alone.
    */
   send(
     systemId: string,
     event: { type: string; [key: string]: unknown },
-    options?: { sender?: string; client?: string },
-  ): Promise<void>;
+    options?: { sender?: string; client?: string; call?: string },
+  ): Promise<string>;
   /**
    * The events delivered to one frontend plugin (by `broadcastToPlugin`, once connected), in order, exactly as
    * sent; the plugin named as the pack names it (its own by feature id, any other as `<packId>/<featureId>`).
    * Readable after `stop`
    */
   emitted(plugin: string): PluginEvent[];
-  /** The next event of `type` sent to `plugin` (named as in `emitted`) that no earlier `nextEmit` returned, waiting for it if needed */
-  nextEmit(plugin: string, type: string, options?: { timeoutMs?: number }): Promise<PluginEvent>;
+  /**
+   * The next event of `type` sent to `plugin` (named as in `emitted`) that no earlier `nextEmit` returned,
+   * waiting for it if needed.
+   *
+   * With `answering`, only an answer to that call counts — `Message.answering`, which `reply` stamps and
+   * which is on the envelope rather than the event, so this is the only way a pack test can see it. Use it
+   * wherever a spec has two asks in flight, or asserts that an answer named the right one; the timeout
+   * message names what each candidate answered, so a mismatch reads as a mismatch rather than as silence.
+   */
+  nextEmit(plugin: string, type: string, options?: { timeoutMs?: number; answering?: string }): Promise<PluginEvent>;
   /** Resolves once the actors have no queued work left (zero-delay raises and settled promises included) */
   settle(): Promise<void>;
   /**
@@ -409,21 +422,30 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       const sender = options?.sender === undefined ? {} : { sender: resolveSystemId(options.sender, systems) };
       // Unresolved: a connection id is not a ref
       const client = options?.client === undefined ? {} : { client: options.client };
-      testRootEvents.emitIncoming({ to: resolveSystemId(systemId, systems), event, ...sender, ...client });
+      // Minted here when the caller gave none, so every ask a test makes carries one as every real send does —
+      // a handler's `reply` then has a call to echo whether or not the spec cares which
+      const call = options?.call ?? newCall();
+      testRootEvents.emitIncoming({ to: resolveSystemId(systemId, systems), event, call, ...sender, ...client });
       await settle();
+      return call;
     }),
     emitted(plugin) {
       const id = resolvePluginId(plugin);
       return emitted.filter((message) => message.to === id).map((message) => message.event);
     },
-    nextEmit: (plugin, type, { timeoutMs = 5000 } = {}) => call(async () => {
+    nextEmit: (plugin, type, { timeoutMs = 5000, answering } = {}) => call(async () => {
       const id = resolvePluginId(plugin);
+      const wanted = answering === undefined ? '' : ` answering ${answering}`;
+      // Named per send, since "a QUERY_RESULT arrived but answered something else" is the failure this option
+      // exists to tell apart from "no QUERY_RESULT arrived", and only the envelope says which
+      const describeSend = (m: Message) => `${m.to}:${m.event.type}${m.answering === undefined ? '' : ` answering ${m.answering}`}`;
       return waitForEmitted(() => {
-        const index = emitted.findIndex((message, i) => !taken.has(i) && message.to === id && message.event.type === type);
+        const index = emitted.findIndex((message, i) => !taken.has(i) && message.to === id && message.event.type === type
+          && (answering === undefined || message.answering === answering));
         if (index === -1) return undefined;
         taken.add(index);
         return emitted[index].event;
-      }, timeoutMs, () => `No ${type} sent to ${id} within ${timeoutMs}ms. Sent: ${emitted.map((m) => `${m.to}:${m.event.type}`).join(', ') || 'nothing'}.${heldForAClient()}`);
+      }, timeoutMs, () => `No ${type}${wanted} sent to ${id} within ${timeoutMs}ms. Sent: ${emitted.map(describeSend).join(', ') || 'nothing'}.${heldForAClient()}`);
     }),
     settle: () => call(() => settle()),
     runFlow: (label, { event, data, timeoutMs = 10_000 } = {}) => call(async () => {

@@ -56,13 +56,18 @@ interface ActionTab {
 interface ActionsContext {
     selectedActionId?: EARS.EntityId;
     /**
-     * The action a selection is waiting on, which is what makes `ACTION_SELECTED` identifiable.
+     * The call the outstanding `ACTION_SELECT` was asked under, or absent when nothing is outstanding.
      *
-     * `selectedActionId` cannot do it: that is written *from* the reply, so until one lands there is
-     * nothing to compare an arriving one against — and two quick selections are then decided by which
-     * answer happens to arrive last.
+     * `selectedActionId` cannot do this job: it is written *from* the answer, so until one lands there is
+     * nothing to compare an arriving one against, and two quick selections are decided by whichever answer
+     * arrives last.
+     *
+     * **It held the action's own id, and that was not enough twice over.** The answer was broadcast to every
+     * window, so another window's answer for the same action matched too; and the field had one setter and no
+     * clear, so after the first selection it always named something. A call is per ask and per window, so
+     * neither has anywhere to live.
      */
-    pendingActionId?: EARS.EntityId;
+    pendingActionCall?: string;
     actions: ActionEntity[];
     selectedAction?: ActionEntity;
     totalCount: number;
@@ -1191,13 +1196,16 @@ interface DatabaseContext {
     error: string | null;
     executionTime: number | null;
     /**
-     * The request each reply has to name to be accepted, or `null` when nothing is outstanding.
+     * The call each answer has to name to be accepted, or `null` when nothing is outstanding.
      *
      * Two fields rather than one: the verbs are independent, and deleting a row chains a transaction into
      * a follow-up query, so a single slot would have the query overwrite the transaction it came from.
+     *
+     * What goes in them is what `sendToSystem` returned for the ask, and what comes back is `callOf(event)`
+     * off the answer — so neither the request nor the reply declares a field for it.
      */
-    pendingQueryId: string | null;
-    pendingTransactionId: string | null;
+    pendingQueryCall: string | null;
+    pendingTransactionCall: string | null;
     selectedSchemaItem: {
         type: 'attribute' | 'entity' | 'relation';
         value: string;
@@ -2075,11 +2083,9 @@ type IncomingCommitEvents = {
 type IncomingDatabaseEvents = {
     type: 'EXECUTE_QUERY';
     code: string;
-    requestId: string;
 } | {
     type: 'EXECUTE_TRANSACTION';
     code: string;
-    requestId: string;
 } | {
     type: 'GENERATE_AI_QUERY';
     prompt: string;
@@ -3377,34 +3383,33 @@ type OutgoingDatabaseEvents = {
     data: DatabaseStartupData;
 }
 /**
- * The four replies to `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`, each naming the request it answers.
+ * The four replies to `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`.
  *
- * **The id is the requester's, not a sequence number.** Whoever sends the request mints it, so a reply
- * identifies *that* request rather than saying which emit was most recent — the difference matters for
- * the case this exists for: a requester that gave up waiting and asked again. A counter stamped at emit
- * time gives the abandoned request's late reply the highest id, so it wins.
+ * **None of them names the request, because the envelope does.** `reply` stamps `Message.answering` with
+ * the call the request was sent under, and the delivery door puts that on the delivered event under a
+ * reserved key — so a requester tells its own answer from someone else's by reading `callOf(event)`
+ * (`@abuddy/sdk/events`), and neither side declares a field for it.
  *
- * It also has to be unique across windows, because `broadcastToPlugin` reaches every one of them, so a
- * per-window counter would collide. `randomId` (`@abuddy/sdk/utils/pure`) is what the senders use.
+ * These carried a `requestId` until the envelope carried a call, and what the field had to be is what the
+ * call is: minted by the *requester*, so a reply identifies that request rather than saying which emit was
+ * most recent — the case it exists for is a requester that gave up waiting and asked again, and an id
+ * stamped when the answer is built gives the abandoned request's late answer the newest id, so it wins.
+ * Unique across windows too, since `broadcastToPlugin` reaches every one of them.
  */
  | {
     type: 'QUERY_RESULT';
     result: any;
     executionTime: number;
-    requestId: string;
 } | {
     type: 'QUERY_ERROR';
     error: string;
-    requestId: string;
 } | {
     type: 'TRANSACTION_RESULT';
     result: any;
     executionTime: number;
-    requestId: string;
 } | {
     type: 'TRANSACTION_ERROR';
     error: string;
-    requestId: string;
 } | {
     type: 'AI_QUERY_LOADING';
 } | {
@@ -3414,10 +3419,12 @@ type OutgoingDatabaseEvents = {
 /**
  * Generating a query from a prompt failed, which is not a query failing.
  *
- * Its own event because it answers no `EXECUTE_QUERY` and so can carry no `requestId`. It used to be a
- * `QUERY_ERROR`, which made that event mean two things — and once a consumer ignores a `QUERY_ERROR`
- * whose id is not the one it is waiting for, an AI failure sent as one is silently swallowed and the
- * plugin's loading flag never clears.
+ * **Its own event because it answers nothing.** It is broadcast, not replied, so it carries no call — and
+ * the guard on `QUERY_ERROR` takes only an answer whose call is the one outstanding. Sent as a
+ * `QUERY_ERROR` it would be dropped by that guard every time and the plugin's loading flag would never
+ * clear, which is the failure this split prevents. The carve-out predates the envelope's call and the
+ * reason it gave then was that the event could carry no `requestId`; the field is gone and the reason is
+ * the same one stated properly — an answer and an announcement are different things.
  */
  | {
     type: 'AI_QUERY_ERROR';
@@ -4463,12 +4470,17 @@ interface PromptsConnectedData {
 interface PromptsContext {
     selectedPromptId?: EARS.EntityId;
     /**
-     * The prompt a selection is waiting on, which is what makes `PROMPT_SELECTED` identifiable.
+     * The call the outstanding `PROMPT_SELECT` was asked under, or absent when nothing is outstanding.
      *
-     * `selectedPromptId` cannot do it: that is written *from* the reply, so two quick selections are
+     * `selectedPromptId` cannot do this job: it is written *from* the answer, so two quick selections are
      * otherwise decided by whichever answer arrives last.
+     *
+     * **It held the prompt's own id, and that was not enough twice over.** The answer was broadcast to every
+     * window, so another window's answer for the same prompt matched too; and the field had one setter and no
+     * clear, so after the first selection it always named something. A call is per ask and per window, so
+     * neither has anywhere to live.
      */
-    pendingPromptId?: EARS.EntityId;
+    pendingPromptCall?: string;
     prompts: PromptEntity[];
     selectedPrompt?: PromptEntity;
     totalCount: number;

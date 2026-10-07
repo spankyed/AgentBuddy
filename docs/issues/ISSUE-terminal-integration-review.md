@@ -87,7 +87,7 @@ orchestration, `L` = lifecycle and persisted data, `G` = agent sessions.
 | **G1** | **High** | Agent streaming rewrites the whole message to EARS every 80 ms and re-broadcasts it | `seeds/actions/claude-code/_helpers/stream-writer.ts:54,64` |
 | **L1** | Medium | `restoreTerminalsActor` has no `onError`: a rejection stops the terminal system for the session, silently | `be/features/terminal.ts:302-310` |
 | **T1** | Medium | `handleTerminalClosed` can pick the just-closed terminal as the next panel terminal | `fe/features/terminal/state.ts:321` |
-| **T4** | Medium | `pendingTarget`/`pendingCommand` are single uncorrelated slots for N in-flight creates | `fe/features/terminal/state.ts:71,270` |
+| ~~**T4**~~ | ~~Medium~~ | **Fixed.** `pendingTarget`/`pendingCommand` were single uncorrelated slots for N in-flight creates; the intent is keyed by the envelope's call now (`pendingOpens`) | `fe/features/terminal/state.ts` |
 | **T3** | Medium | The 2,500 ms restore settle drops terminal tabs *and* rewrites the persisted list without them | `fe/state.ts:560-564,1208-1218` |
 | **T2** | Medium | A pinned terminal tab becomes a permanent ghost when its terminal dies | `fe/utils/tab-management.ts:29` |
 | **T5** | Medium | "Open Terminal Here" spawns a terminal without expanding the panel | `fe/features/CodePanelHeader.vue:22` |
@@ -229,6 +229,24 @@ reaches every window for every creation.
 - Two windows: window B asks for a tab; window A clicks New Terminal first → B opens a canvas tab onto **A's**
   terminal, and B's own falls through to the panel. M3's other direction silently detaches a popout's panel
   from the long-running process the user was watching.
+
+**Both are fixed, and they needed two different mechanisms — which is the part worth carrying.** The two
+bullets look like one bug and are not: one is *which window*, the other is *which ask*.
+
+- **M3, the cross-window half, was addressed by addressing.** `terminal.CREATED` stayed a broadcast — every
+  window's list should grow — and the opening moved to `terminal.OPENED`, which the backend `reply`s to the
+  asker on the connection it asked from (`be/features/terminal.ts`). `tests/features/code/fe/terminal-opens-for-the-asker.spec.ts`
+  holds the split.
+- **T4, the one-window half, needed a correlation, and addressing cannot supply one.** A window can have two
+  creates in flight and they are not interchangeable. The envelope's call is what names them: `terminal.CREATE`
+  mints one, the intent is recorded under it (`pendingOpens`, keyed, replacing the two single slots), and the
+  answer carries it back as `Message.answering` — which `callOf(event)` reads. A terminal's id is minted by
+  the backend, so nothing *about the terminal* could have been the key; the call is about the ask instead.
+  The "build then test" repro above is a case in that spec, asserted in the awkward order — the first ask
+  answered second — since that is what a single slot gets wrong in both directions at once. An entry is
+  removed by whichever answer settles it, `terminal.ERROR` included, so a failed create leaks nothing.
+
+`packages/default-setup/CLAUDE.md`'s correlation section is where the general rule lives now.
 
 ### M — the multi-window amplifier
 

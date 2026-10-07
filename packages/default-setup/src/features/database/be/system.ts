@@ -26,26 +26,26 @@ const logger = createLogger('database');
  * `try`, a `reply` that threw — which it does when the message named no sender — would land in the `catch`,
  * which would reply again and throw out of an async action as an unhandled rejection.
  */
-async function queryAnswer(code: string, requestId: string) {
+async function queryAnswer(code: string) {
   try {
     const startTime = performance.now();
     const result = await executeQuery(code);
-    return { type: 'QUERY_RESULT' as const, result, executionTime: performance.now() - startTime, requestId };
+    return { type: 'QUERY_RESULT' as const, result, executionTime: performance.now() - startTime };
   } catch (error: unknown) {
     logger.error('Query execution failed:', { error: errorMessage(error) });
-    return { type: 'QUERY_ERROR' as const, error: errorMessage(error), requestId };
+    return { type: 'QUERY_ERROR' as const, error: errorMessage(error) };
   }
 }
 
 /** The same for a transaction; its caller broadcasts the schema change separately on success */
-async function transactionAnswer(code: string, requestId: string) {
+async function transactionAnswer(code: string) {
   try {
     const startTime = performance.now();
     const result = await executeTransaction(code);
-    return { type: 'TRANSACTION_RESULT' as const, result, executionTime: performance.now() - startTime, requestId };
+    return { type: 'TRANSACTION_RESULT' as const, result, executionTime: performance.now() - startTime };
   } catch (error: unknown) {
     logger.error('Transaction execution failed:', { error: errorMessage(error) });
-    return { type: 'TRANSACTION_ERROR' as const, error: errorMessage(error), requestId };
+    return { type: 'TRANSACTION_ERROR' as const, error: errorMessage(error) };
   }
 }
 
@@ -62,23 +62,24 @@ export const databaseSystem = setup({
       });
     },
     /**
-     * The id is read once, here, and closed over — as `reply` itself now is.
+     * **Nothing here names the request, and nothing has to.** `reply` is bound to the delivery this handler
+     * was entered in, which carries the call the request was sent under, so the answer names it whether it
+     * is built in one turn or ten.
      *
-     * Not stashed in context: this action is `async` on a state with no guard against re-entry, so a
-     * second `EXECUTE_QUERY` is accepted while this one is awaiting, and a single context field would be
-     * the newer request's by the time this reply is built. The closure is what makes each reply name its
-     * own request even when two are in flight. `reply` is bound to this delivery for the same reason, so
-     * the pair travels together whether the answer is built in one turn or ten.
+     * That is what two handlers used to read an id out of the event and close over it for: this action is
+     * `async` on a state with no guard against re-entry, so a second `EXECUTE_QUERY` is accepted while this
+     * one is awaiting, and a single context field would be the newer request's by the time the reply is
+     * built. The binding is still a closure — it is `reply`'s now rather than each handler's.
      */
     executeQuery: async ({ event, reply }) => {
-      const { code, requestId } = databaseSpec.typeOf('EXECUTE_QUERY', event);
+      const { code } = databaseSpec.typeOf('EXECUTE_QUERY', event);
       // Nobody asked: a result with no asker has nowhere to go, and the console that ran it is the asker
-      reply?.(await queryAnswer(code, requestId));
+      reply?.(await queryAnswer(code));
     },
-    /** The id is closed over, for `executeQuery`'s reason above */
+    /** Answered through the same bound `reply`, for `executeQuery`'s reason above */
     executeTransaction: async ({ event, reply }) => {
-      const { code, requestId } = databaseSpec.typeOf('EXECUTE_TRANSACTION', event);
-      const answer = await transactionAnswer(code, requestId);
+      const { code } = databaseSpec.typeOf('EXECUTE_TRANSACTION', event);
+      const answer = await transactionAnswer(code);
       reply?.(answer);
 
       // Still a broadcast, and deliberately: a changed schema is news for every window's schema view, not an

@@ -1,4 +1,4 @@
-import { assign, setup, type ActorRefFrom } from 'xstate'
+import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
 import { safeEvents } from '@abuddy/sdk/fe'
 import {
@@ -11,6 +11,7 @@ import type { ActionsContext, ActionsInboxEvent } from './contract.ts'
 import type { OutgoingActionEvents } from '#features/actions/be/types.ts'
 import type { ActionParameter } from '@abuddy/sdk'
 import { sendToSystem } from '#generated/events.ts'
+import { callOf, newCall } from '@abuddy/sdk/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import type { ActionEntity } from '@abuddy/sdk'
@@ -74,23 +75,26 @@ const actionsState = setup({
     }),
 
     /* ── action interactions ────────────────────────────── */
-    selectAction: assign(({ event, context }) => {
+    /**
+     * **`enqueueActions`, so the call is stored before the ask is sent.** It was an `assign` whose producer
+     * sent as a side effect, which left the store happening after the send returned — fine against a real
+     * backend in another process, and not against one that answers synchronously, where the answer can
+     * arrive before the assign it would be matched against has been applied.
+     */
+    selectAction: enqueueActions(({ event, context, enqueue }) => {
       const ev = typeOf('ACTION.SELECT', event);
-      if (context.selectedActionId === ev.actionId) {
-        return {}
-      }
-      // Send event to backend to get action data
-      sendToSystem(id, {
-        type: 'ACTION_SELECT',
-        actionId: ev.actionId,
-      });
-      // Recorded here so the reply can be told from one for a selection since replaced
-      return { pendingActionId: ev.actionId };
+      if (context.selectedActionId === ev.actionId) return;
+      const call = newCall();
+      // Recorded before the ask, so the answer can be told from one for a selection since replaced
+      enqueue.assign({ pendingActionCall: call });
+      enqueue(() => sendToSystem(id, { type: 'ACTION_SELECT', actionId: ev.actionId }, { call }));
     }),
 
     loadActionData: assign(({ event }) => {
       const ev = typeOf('ACTION_SELECTED', event);
       return {
+        // Settled: nothing is outstanding, so a later answer for an abandoned ask has no call to match
+        pendingActionCall: undefined,
         selectedActionId: ev.actionId,
         selectedAction: ev.data,
         formData: {
@@ -440,9 +444,8 @@ const actionsState = setup({
   },
   guards: {
     targetIs,
-    /** Whether this reply describes the action still being waited on */
-    answersPendingAction: ({ context, event }) =>
-      (event as { actionId?: string }).actionId === context.pendingActionId,
+    /** Whether this answer is the one the outstanding ask is waiting for */
+    answersPendingAction: ({ context, event }) => callOf(event) === context.pendingActionCall,
     /**
      * Whether this page is the one just asked for.
      *

@@ -1,10 +1,11 @@
-// Two replies that already name what they answer, and what happens when a second request is in flight.
+// Two answers and what happens when a second ask is in flight.
 //
 // `ACTIONS_PAGE_LOADED` carries the page it holds and `ACTION_SELECTED` the action it describes, so
 // neither needs a new field to be identifiable — only a reader that looks. Without one, a double-click
 // on "load more" appends the same page twice, and two quick selections are decided by arrival order.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
+import { answerTo } from '@abuddy/sdk/testing';
 import type { ActionEntity } from '@abuddy/sdk';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
@@ -28,6 +29,21 @@ function listed() {
 }
 
 const sentTypes = () => sendToSystem.mock.calls.map(([, event]) => (event as { type: string }).type);
+
+/**
+ * The call the nth `ACTION_SELECT` was asked under, read off the mocked send's third argument.
+ *
+ * The machine mints it and hands it to `sendToSystem`, so this is how a spec learns what the real backend's
+ * `reply` would echo — there is no field on the event to read it from, which is the design.
+ */
+const selectCall = (nth: number): string => {
+  const selects = sendToSystem.mock.calls.filter(([, event]) => (event as { type: string }).type === 'ACTION_SELECT');
+  const options = selects[nth]?.[2] as { call?: string } | undefined;
+  // Named rather than asserted through: a missing call means the machine did not ask, which is a different
+  // failure from taking the wrong answer and should not read as `undefined` reaching an assertion
+  if (options?.call === undefined) throw new Error(`no ACTION_SELECT #${nth} carrying a call; sent ${selects.length}`);
+  return options.call;
+};
 
 beforeEach(() => {
   sendToSystem.mockReset();
@@ -76,9 +92,11 @@ it('takes the page it is waiting for', () => {
 /**
  * Two selections in flight, the older answer arriving second.
  *
- * `ACTION_SELECTED` names its action, so the reply for the one no longer wanted is identifiable — but
- * `selectedActionId` is written *from the reply*, so there is nothing to compare it against until the
- * request records what it asked for.
+ * **It correlates on the call, not on the action id.** It used to compare `actionId` against a
+ * `pendingActionId` the ask recorded, which worked for *this* case and left two it could not reach: the answer
+ * was broadcast to every window, so another window's answer for the same action matched too, and
+ * `pendingActionId` was never cleared, so after the first selection it always named something. A call is per
+ * ask and per window, so neither has anywhere to live. `answerTo` builds the answer as a delivery door would.
  */
 it('shows the action last asked for, not the answer that arrived last', () => {
   const actor = listed();
@@ -88,8 +106,47 @@ it('shows the action last asked for, not the answer that arrived last', () => {
   expect(sentTypes().filter((type) => type === 'ACTION_SELECT')).toHaveLength(2);
 
   // a2 answers first, then a1's older answer turns up
-  actor.send({ type: 'ACTION_SELECTED', actionId: 'Action-a2', data: anAction('Action-a2') });
-  actor.send({ type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') });
+  actor.send(answerTo(selectCall(1), { type: 'ACTION_SELECTED', actionId: 'Action-a2', data: anAction('Action-a2') }));
+  actor.send(answerTo(selectCall(0), { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
 
   expect(actor.getSnapshot().context.selectedActionId).toBe('Action-a2');
+});
+
+/**
+ * The answer another window got, which the action id could not tell from this window's.
+ *
+ * `ACTION_SELECTED` was broadcast, so every window showing the actions plugin received it and each one's guard
+ * admitted it on the action id alone — two people looking at the same action each took the other's answer. It
+ * is replied now, and a call from an ask this window did not make matches nothing.
+ */
+it('ignores an answer for an ask it did not make', () => {
+  const actor = listed();
+  actor.send({ type: 'ACTION.SELECT', actionId: 'Action-a1' });
+
+  actor.send(answerTo('c-another-window', { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
+
+  expect(actor.getSnapshot().context.selectedActionId, 'still nothing selected').toBeUndefined();
+});
+
+/**
+ * Settled, so the answer just taken cannot be taken again.
+ *
+ * The pending field had one setter and no clear, so it named the last ask for the life of the plugin. Cleared
+ * on the answer, the same answer arriving twice — a reconnect replaying it, a double delivery — matches
+ * nothing the second time, and an ask made since is still outstanding.
+ */
+it('clears what it is waiting for once the answer lands', () => {
+  const actor = listed();
+  actor.send({ type: 'ACTION.SELECT', actionId: 'Action-a1' });
+  const first = selectCall(0);
+
+  actor.send(answerTo(first, { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
+  expect(actor.getSnapshot().context.pendingActionCall, 'nothing outstanding').toBeUndefined();
+
+  actor.send({ type: 'ACTION.SELECT', actionId: 'Action-a2' });
+  // The first answer again, which a cleared slot has nothing to match
+  actor.send(answerTo(first, { type: 'ACTION_SELECTED', actionId: 'Action-a1', data: anAction('Action-a1') }));
+
+  expect(actor.getSnapshot().context.selectedActionId, 'the older answer did not win').toBe('Action-a1');
+  expect(actor.getSnapshot().context.pendingActionCall, "the second ask is still outstanding").toBe(selectCall(1));
 });

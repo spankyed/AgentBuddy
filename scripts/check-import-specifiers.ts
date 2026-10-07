@@ -177,6 +177,17 @@ export function findPackBackendConsole(dirs: readonly string[] = PACK_SOURCE_DIR
 }
 
 /**
+ * `file:line: _call:` for each write of the reserved key a delivery door puts a call under.
+ *
+ * The key is the app's: `_callOn` writes it and `callOf` reads it, so a property a pack writes under that
+ * name is overwritten on the way in and read as a correlation on the way out. The rule is the CLI's, so an
+ * external pack is refused it too.
+ */
+export function findReservedEventKeys(dirs: readonly string[] = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+  return packRule('reserved-event-keys', dirs, root);
+}
+
+/**
  * `file:line: specifier` for each `@/…` a pack names one of its own modules with.
  *
  * A pack names its own modules with `#` subpath imports from its own `package.json` `imports`, which Node,
@@ -720,6 +731,7 @@ const RULE_LIST = [
     rule: 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them',
   },
   backed('findRepositoryCasts', 'repository-casts', findRepositoryCasts, packageSourceDirs()),
+  backed('findReservedEventKeys', 'reserved-event-keys', findReservedEventKeys, PACK_SOURCE_DIRS),
   backed('findCrossFeatureImports', 'cross-feature-imports', findCrossFeatureImports, PACK_SRC_ROOTS),
   backed('findContractLeafImports', 'contract-leaves', findContractLeafImports, PACK_SRC_ROOTS),
   {
