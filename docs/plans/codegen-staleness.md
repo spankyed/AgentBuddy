@@ -76,8 +76,20 @@ Generation    the on-disk barrels those two import from
 
 Both plugins scan `packages/` for `abuddy.json` at build time and generate a map of `import()` expressions;
 `packages/api/src/runtime/index.ts` and `packages/renderer/src/main.ts` are what consume them.
-[`one-kind-of-pack.md`](one-kind-of-pack.md) is the plan that reworks that layer, and it is about *how* packs
-are loaded rather than how the files they import are produced.
+
+**That top layer is what [`one-kind-of-pack.md`](one-kind-of-pack.md) takes apart, and the generation layer
+below it is untouched by that plan** — worth knowing before doing either, because the two live in the same two
+config files. Its step 3 deletes `virtual:built-in-pack-loaders` outright (production requires
+`dist/runtime/index.cjs` from the pack's own directory, as development already does) and re-keys
+`virtual:built-in-packs` into a dev-only `virtual:dev-pack-frontends`, with production frontends arriving over
+`pack://`. What it does not change is any of this document: the barrels stay on disk, written by the same
+command on the same triggers, under the same stamp. Its step 1 only adds a context — default-setup's build
+stops returning early, so it records the `runtime` and `fe` phases like any pack — and it reaches codegen
+through `abuddy build`, which already regenerates.
+
+**It makes the refusal below stronger rather than weaker.** After step 3 no production bundler is positioned to
+synthesise a barrel at all: the renderer's plugin is dev-only and each pack's own `abuddy build` produces its
+bundles, so the number of tools that need a file on disk goes up.
 
 ## Virtualising the barrels: won't do
 
@@ -92,7 +104,9 @@ necessity, in `package.json` `imports` for the runtimes and `tsconfig.json` `pat
 has no plugin to ask, so a virtual barrel is `TS2307` to it, and the declarations would have to be written to
 disk anyway — which is the file the plan wanted to remove. The same reasoning retired the `@/` path aliases
 ([`goal-one-way-to-name-your-own-modules.md`](../archive/goals/goal-one-way-to-name-your-own-modules.md)):
-four bundler configs each re-implementing a mapping no runtime reads.
+four bundler configs each re-implementing a mapping no runtime reads. `one-kind-of-pack.md` reaches the same
+fact from the other side — the `@<pack-id>/` alias half of `builtInPacksPlugin` has no remaining user, because
+nothing imports `@default-setup/…` once a pack names its own modules with `#` subpaths.
 
 What the plan was reaching for is already had by other means: the stamp makes regeneration cheap enough to run
 on every build, the missing-output check makes a deleted barrel loud instead of silent, and the lock makes two
