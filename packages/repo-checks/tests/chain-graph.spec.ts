@@ -365,7 +365,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
    */
   it('leaves every step room inside the class it declares, on the smaller machine that rung is sized for', () => {
     const tight = CHAIN_STEPS
-      .map((step) => ({ step, at: declaredShare(step.seconds ?? 0, step.timeout) }))
+      .map((step) => ({ step, at: declaredShare(step.seconds ?? 0, step.timeout, step.stretches) }))
       .filter(({ at }) => at > 1)
       .map(({ step, at }) => `${step.name} declares ${step.seconds}s, which is `
         + `${Math.round(at * 100)}% of ${step.timeout} (${TIMEOUT_MS[step.timeout].ms / 1000}s) on a machine `

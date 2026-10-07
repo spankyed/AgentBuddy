@@ -155,6 +155,13 @@ export const TIMEOUT_MS = {
     // member's `declaredShare` is pessimistic rather than a fact about that member, and the number that
     // would settle one that fails the bound is that member on a hosted runner, not a second factor here.
     //
+    // **A member that has measured its own loss declares it** (`ChainStep.stretches`), and that is not the
+    // second factor this paragraph refuses: the *deadline* stays the class's, so nothing re-couples the
+    // killer to a measurement. What the member's figure corrects is `declaredShare`, which is a bound and a
+    // report — and pessimism that is safe in a ceiling is noise in a report. Charging `test:integration` 4x
+    // put its *measured* cost at 1.03 of the rung on every run, which is a true sentence about a factor it
+    // does not have.
+    //
     // The subject only. The figure is `stretches` beside it and the citation is in this table's doc, so a
     // message that quotes this does not say the number twice and does not carry a doc path to a terminal
     measured: 'a vitest pool dropping from nine workers to about two on a hosted runner',
@@ -201,8 +208,8 @@ export const ASSUMED_RUNGS: readonly TimeoutClass[] =
  * derived rather than picked: a step at `1 / stretches` of its class here lands exactly on its deadline there,
  * so that is the loosest useful bound and anything past it has a deadline that has stopped being a ceiling.
  */
-export const declaredShare = (seconds: number, className: TimeoutClass): number =>
-  (seconds * 1000 * TIMEOUT_MS[className].stretches) / TIMEOUT_MS[className].ms;
+export const declaredShare = (seconds: number, className: TimeoutClass, stretches?: number): number =>
+  (seconds * 1000 * (stretches ?? TIMEOUT_MS[className].stretches)) / TIMEOUT_MS[className].ms;
 
 /**
  * A class named as a string — from a command line, where no type checked it.

@@ -178,7 +178,7 @@ export const measurementsFrom = (
  * below and the `decision-mutations` entry cover this function, while only a command covers the line that
  * hands it a budget and a machine.
  */
-export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: TimeoutClass }>(
+export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: TimeoutClass; readonly stretches?: number }>(
   steps: readonly S[],
   measuredMs: ReadonlyMap<string, number>,
   /** The run's core budget, which with the two machines is what says this is the schedule the table describes */
@@ -208,9 +208,9 @@ export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: T
     const ms = measuredMs.get(step.name);
     // A cached step cost no time, so it is evidence of nothing — `criticalPath` skips it for the same reason
     if (ms === undefined || step.timeout === undefined || step.seconds === undefined) continue;
-    if (declaredShare(step.seconds, step.timeout) > 1) continue;
+    if (declaredShare(step.seconds, step.timeout, step.stretches) > 1) continue;
     const measured = Math.round(ms / 1000);
-    const at = declaredShare(measured, step.timeout);
+    const at = declaredShare(measured, step.timeout, step.stretches);
     if (at > 1) found.push({ name: step.name, declared: step.seconds, measured, at, wholeTable });
   }
   return found;

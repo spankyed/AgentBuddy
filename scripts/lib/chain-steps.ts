@@ -124,6 +124,20 @@ export interface ChainStep {
    */
   readonly timeout: TimeoutClass;
   /**
+   * What this step loses on a machine a fraction the size of this one, where it has been measured — the
+   * rung's own `stretches` otherwise.
+   *
+   * **Only for a step that caps its own width.** A rung's figure is measured end to end on a pool that takes
+   * the whole box, so a member that holds back workers loses fewer of them and stretches less. Charging it
+   * the class figure is pessimism, which is safe in a *ceiling* and noise in a *report*: `declaredShare` is
+   * both, so a capped member read past its rung on every run while costing what its row says.
+   *
+   * **It does not reach the deadline.** `TIMEOUT_MS[timeout].ms` is what `boundedSpawn` is given, untouched,
+   * so nothing here re-couples when a step is killed to what it was measured at — the trap `step-timeouts.ts`
+   * opens with. This corrects the bound and the report, and leaves the kill alone.
+   */
+  readonly stretches?: number;
+  /**
    * What this step costs **when it does its work**, in seconds, measured under the chain's own default
    * admission. Not what it costs when it is cached: `packages:ensure` returns in 0.3s with nothing
    * stale and takes 14s when it builds, and recording the 0.3 gave a step that builds a budget sized for a
@@ -1049,7 +1063,9 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // in this table, which `orderedSteps` never promised.
   // `POOL_SECONDS`, not a literal: `--record` rewrites that key, and two records of one cost drift the
   // moment it rewrites whichever one it can find
-  { name: 'test:integration', timeout: 'suite', seconds: POOL_SECONDS.integration,
+  // 1.94x, measured 2026-10-04: five workers to two is 42.5s -> 82.5s, median of 3 (`suite`'s own note).
+  // It caps itself at half the cores, so it loses far fewer workers than the pool the rung's 4x was taken on
+  { name: 'test:integration', timeout: 'suite', stretches: 1.94, seconds: POOL_SECONDS.integration,
     // It keeps a cache of its own now, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES, 'integration') },

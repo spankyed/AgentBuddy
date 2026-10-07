@@ -249,7 +249,7 @@ const MUTATIONS: readonly Mutation[] = [
     // every step in the table would pass a bound that had stopped asking the question
     why: 'declaredShare weighs a cost by its rung\'s stretch factor, not against the deadline alone',
     in: 'step-timeouts',
-    from: '  (seconds * 1000 * TIMEOUT_MS[className].stretches) / TIMEOUT_MS[className].ms;',
+    from: '  (seconds * 1000 * (stretches ?? TIMEOUT_MS[className].stretches)) / TIMEOUT_MS[className].ms;',
     to: '  (seconds * 1000) / TIMEOUT_MS[className].ms;',
     call: (lib) => lib.declaredShare(60, 'suite'),
   },
@@ -320,7 +320,7 @@ const MUTATIONS: readonly Mutation[] = [
   {
     why: 'outgrownRungs leaves a declaration that is already over to the spec that gates on it',
     in: 'step-timing',
-    from: '    if (declaredShare(step.seconds, step.timeout) > 1) continue;',
+    from: '    if (declaredShare(step.seconds, step.timeout, step.stretches) > 1) continue;',
     to: '',
     call: (lib) => lib.outgrownRungs(
       [{ name: 'greedy', dependsOn: [], seconds: 20, timeout: 'quick' }],

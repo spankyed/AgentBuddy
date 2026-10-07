@@ -7,7 +7,7 @@ import type { Machine } from '../../../scripts/lib/core-budget.ts';
 import type { SchedulableStep } from '../../../scripts/lib/chain-schedule.ts';
 
 /** A pooled step, which `driftedSteps` treats like any other — the run decides what may be reported, not the step */
-type TimedStep = SchedulableStep & { readonly forceArgs?: readonly string[]; readonly timeout?: TimeoutClass };
+type TimedStep = SchedulableStep & { readonly forceArgs?: readonly string[]; readonly timeout?: TimeoutClass; readonly stretches?: number };
 
 const step = (name: string, dependsOn: string[] = [], extra: Partial<TimedStep> = {}): TimedStep =>
   ({ name, dependsOn, ...extra });
@@ -172,6 +172,29 @@ describe('outgrownRungs', () => {
   const asked = (steps: readonly TimedStep[], measured: ReadonlyMap<string, number>,
     machine: Machine = TABLE, budget = TABLE.cores, wholeTable = true) =>
     outgrownRungs(steps, measured, budget, TABLE, machine, wholeTable);
+
+  /**
+   * A member that caps its own width is charged what it actually loses, not the rung's figure.
+   *
+   * `suite`'s 4x is measured end to end on `test:unit:host`, whose pool takes the whole box.
+   * `test:integration` holds back half the cores and loses five workers to two — 1.94x, measured 2026-10-04.
+   * Charged 4x, every reading of it this repo has taken lands past the rung: 77s reads 103%, 101s reads 135%,
+   * against a step costing what its row says. At its own factor those are 50% and 65%, and it still fires at
+   * 155s, where it genuinely would reach the deadline on a box 1.94x slower.
+   *
+   * Pessimism is safe in a ceiling and noise in a report, and `declaredShare` is both — which is why the
+   * override reaches it and never `TIMEOUT_MS[...].ms`, the number a step is actually killed at.
+   *
+   * Mutation: drop `step.stretches` from either `declaredShare` call in `outgrownRungs` and this fails.
+   */
+  it("charges a width-capped member its own stretch rather than its rung's", () => {
+    const capped = [step('test:integration', [], { seconds: 60, timeout: 'suite', stretches: 1.94 })];
+
+    expect(asked(capped, new Map([['test:integration', 101_000]])), 'the worst reading taken of it')
+      .toEqual([]);
+    expect(asked(capped, new Map([['test:integration', 160_000]])).map((row) => row.name), 'and still fires')
+      .toEqual(['test:integration']);
+  });
 
   /** The case this exists for: the declaration passes the bound and the measurement does not */
   it('reports a step whose measured cost passes the rung its declared cost fits in', () => {
