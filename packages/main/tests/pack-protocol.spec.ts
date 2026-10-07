@@ -1,6 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect } from 'vitest';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
-import { MIME_TYPES } from '../src/modules/pack-protocol/PackProtocol.ts';
+import { MIME_TYPES, resolvePackFile } from '../src/modules/pack-protocol/PackProtocol.ts';
 
 describe('PackProtocol MIME types', () => {
 
@@ -41,25 +43,78 @@ describe('PackProtocol MIME types', () => {
  * than to where a spec lives: deferred by `goal-test-cleanup.md`'s Decision 7 and left deferred here. The
  * MIME describe above was the half that could be fixed by an export, and was.
  */
-describe('PackProtocol path traversal prevention', () => {
-  it('trailing separator prevents pack prefix collision', () => {
-    const packsDir = '/home/user/.agentbuddy/packs';
-    const packId = 'fo';
+describe('the file a pack:// request serves', () => {
+  // Over real directories and through `resolvePackFile` itself. The two cases here before re-derived the
+  // handler's own `path.join(packsDir, packId) + path.sep` inside the test and asserted `startsWith` on it,
+  // so they held whatever the handler did — including, after a second root was added, the arithmetic it had
+  // stopped using.
+  let tmp: string;
+  let packsDir: string;
+  let shippedDir: string;
+  const write = (file: string, body = 'x') => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, body);
+  };
+  const serve = (packId: string, filePath: string) => resolvePackFile({ packsDir, shippedDir, packId, filePath });
 
-    const allowedPrefix = path.join(packsDir, packId) + path.sep;
-    const legitimate = path.resolve(packsDir, packId, 'dist/plugin.js');
-    const attack = path.resolve(packsDir, 'foobar', 'dist/plugin.js');
+  beforeEach(() => {
+    tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'pack-protocol-')));
+    packsDir = path.join(tmp, 'data', 'packs');
+    shippedDir = path.join(tmp, 'app', 'packages');
+  });
+  afterEach(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
-    expect(legitimate.startsWith(allowedPrefix)).toBe(true);
-    expect(attack.startsWith(allowedPrefix)).toBe(false);
+  it('serves an installed pack from its own directory', () => {
+    const file = path.join(packsDir, 'my-pack', 'runtime', 'fe.js');
+    write(file);
+
+    expect(serve('my-pack', '/runtime/fe.js')).toBe(file);
   });
 
-  it('rejects directory traversal in file path', () => {
-    const packsDir = '/home/user/.agentbuddy/packs';
-    const packId = 'my-pack';
-    const allowedPrefix = path.join(packsDir, packId) + path.sep;
+  // A pack the app ships has not been staged, so its layout is still under dist/. The id is synthetic on
+  // purpose: naming the real shipped pack beside a `dist` segment is how `chain-inputs`' scan recognises a
+  // suite that reads that pack's build output, and this suite builds its own under a temp root
+  it("serves a pack the app ships from its dist, before it is installed", () => {
+    const file = path.join(shippedDir, 'shipped-pack', 'dist', 'runtime', 'fe.js');
+    write(file);
 
-    const traversal = path.resolve(packsDir, packId, '../../etc/passwd');
-    expect(traversal.startsWith(allowedPrefix)).toBe(false);
+    expect(serve('shipped-pack', '/runtime/fe.js')).toBe(file);
+  });
+
+  it('prefers the installed copy when both roots hold the file', () => {
+    const installed = path.join(packsDir, 'shipped-pack', 'runtime', 'fe.js');
+    write(installed, 'installed');
+    write(path.join(shippedDir, 'shipped-pack', 'dist', 'runtime', 'fe.js'), 'shipped');
+
+    expect(serve('shipped-pack', '/runtime/fe.js')).toBe(installed);
+  });
+
+  it('serves nothing for a file neither root holds', () => {
+    write(path.join(packsDir, 'my-pack', 'runtime', 'fe.js'));
+
+    expect(serve('my-pack', '/runtime/missing.js')).toBeNull();
+  });
+
+  it('serves nothing for a path that climbs out of the pack', () => {
+    const outside = path.join(tmp, 'data', 'secrets.json');
+    write(outside, 'secret');
+    write(path.join(packsDir, 'my-pack', 'runtime', 'fe.js'));
+
+    expect(serve('my-pack', '/../../secrets.json')).toBeNull();
+    expect(serve('my-pack', '/runtime/../../../secrets.json')).toBeNull();
+  });
+
+  // `fo` must not reach `foobar`'s files: the prefix each candidate is checked against ends in a separator
+  it('serves nothing from a pack whose id merely starts with the one asked for', () => {
+    write(path.join(packsDir, 'foobar', 'runtime', 'fe.js'));
+
+    expect(serve('fo', '/runtime/fe.js')).toBeNull();
+    expect(serve('fo', '../foobar/runtime/fe.js')).toBeNull();
+  });
+
+  it('serves nothing for the pack root itself', () => {
+    write(path.join(packsDir, 'my-pack', 'runtime', 'fe.js'));
+
+    expect(serve('my-pack', '/')).toBeNull();
   });
 });

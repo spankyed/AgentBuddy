@@ -97,9 +97,10 @@ export interface PackDependents {
 /**
  * `packs`, ordered so each one follows the packs in the list it depends on.
  *
- * Only edges between the packs given. A dependency on a built-in pack is already satisfied — the built-in
- * packs' boot seeds run before any external pack's — and one that isn't installed is reported when the
- * pack is installed, so neither is an edge here.
+ * Only edges between the packs given, so a dependency on a pack that is not in the list is not an edge:
+ * either the caller is not acting on it, or it is not installed, which is reported when the pack that
+ * declares it is installed. Callers that want every edge honoured pass every pack — `packSeedTargets`
+ * does, which is how a pack depending on one the app ships seeds after it.
  *
  * A cycle has no order that satisfies it, and a pack-authoring mistake must not stop an app booting, so
  * the packs in one are still returned, in an order that is arbitrary but deterministic, and the cycle is

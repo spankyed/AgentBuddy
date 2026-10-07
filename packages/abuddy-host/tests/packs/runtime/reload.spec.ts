@@ -78,24 +78,24 @@ afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-describe('reloading a built-in pack', () => {
-  const BUILT_IN_ID = 'built-in-pack';
+describe('reloading a pack the app ships', () => {
+  const SHIPPED_ID = 'shipped-pack';
   const seeded: string[] = [];
 
   /**
    * A pack the app ships, installed as every pack is: its built runtime records the compiled dir it was
    * pointed at, reads it in its onInit, and it declares a seed over one compiled artifact
    */
-  function writeBuiltIn(manifest: Record<string, unknown> = {}): string {
-    const packDir = path.join(_appDirOf(tmpDir), 'packs', BUILT_IN_ID);
+  function writeShipped(manifest: Record<string, unknown> = {}): string {
+    const packDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID);
     fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: BUILT_IN_ID, name: BUILT_IN_ID, version: '1.0.0', ...manifest }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 1, id: BUILT_IN_ID, version: '1.0.0', files: {} }));
+    fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: SHIPPED_ID, name: SHIPPED_ID, version: '1.0.0', ...manifest }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 1, id: SHIPPED_ID, version: '1.0.0', files: {} }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, types: {} }));
     writeSeeds('[{ "label": "first" }]');
     // The index naming the pack, and the runtime built beside it
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.seedsDir, 'seeds.json'), JSON.stringify({ version: 1, packId: BUILT_IN_ID, seeds: [] }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.seedsDir, 'seeds.json'), JSON.stringify({ version: 1, packId: SHIPPED_ID, seeds: [] }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `
       let compiledDir = '';
       module.exports = {
@@ -106,7 +106,7 @@ describe('reloading a built-in pack', () => {
           return compiledDir;
         },
         registration: {
-          id: '${BUILT_IN_ID}',
+          id: '${SHIPPED_ID}',
           features: { widget: { system: { machine: { id: 'widget', config: {} }, receives: ['PING'] } } },
           boot: {
             onInit() { module.exports.compiledDirAtInit = module.exports.getCompiledDir(); },
@@ -120,14 +120,14 @@ describe('reloading a built-in pack', () => {
 
   /** A pack's compiled seeds, where an installed pack holds them */
   function writeSeeds(content: string): void {
-    const seedsDir = path.join(_appDirOf(tmpDir), 'packs', BUILT_IN_ID, PACK_LAYOUT.seedsDir);
+    const seedsDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir);
     fs.mkdirSync(seedsDir, { recursive: true });
     fs.writeFileSync(path.join(seedsDir, 'actions.seed.json'), content);
   }
 
   /** The pack as `seedPacks` takes it: a pack the app ships, with the policy its registration declares */
-  const seedTarget = (packId: string = BUILT_IN_ID) =>
-    ({ manifest: { id: packId }, dir: path.join(_appDirOf(tmpDir), 'packs', BUILT_IN_ID) });
+  const seedTarget = (packId: string = SHIPPED_ID) =>
+    ({ manifest: { id: packId }, dir: path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID) });
 
   /** Records a seeder reports for the next seed instead of importing them (an invalid flow, say) */
   let recordsThatFail: string[] = [];
@@ -151,7 +151,7 @@ describe('reloading a built-in pack', () => {
     // AppState, where the boot seed records what it last seeded, starts empty
     resetTestData();
     // The seeders the built-in pack's registration carries
-    testPacks.seeders.set(BUILT_IN_ID, [{
+    testPacks.seeders.set(SHIPPED_ID, [{
       key: 'actions',
       // A seeder reports the records it couldn't seed in its counts; it doesn't throw
       apply: ({ compiledDir }) => {
@@ -163,56 +163,56 @@ describe('reloading a built-in pack', () => {
   });
 
   it('points the rebuilt runtime at its compiled seeds, so onInit can read them', async () => {
-    writeBuiltIn();
-    loadAppPacks(registry, new Set([BUILT_IN_ID]));
+    writeShipped();
+    loadAppPacks(registry, new Set([SHIPPED_ID]));
 
-    await reloadPackById(registry, BUILT_IN_ID, bus as never);
+    await reloadPackById(registry, SHIPPED_ID, bus as never);
 
-    const packDir = path.join(_appDirOf(tmpDir), 'packs', BUILT_IN_ID);
+    const packDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID);
     const reloaded = require(path.join(packDir, 'runtime', 'index.cjs'));
     expect(reloaded.compiledDirAtInit).toBe(path.join(packDir, PACK_LAYOUT.seedsDir));
-    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: BUILT_IN_ID, systemIds: [`${BUILT_IN_ID}/widget`] });
+    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: SHIPPED_ID, systemIds: [`${SHIPPED_ID}/widget`] });
   });
 
   // Only the reloaded pack's own systems restart; other packs' systems read what it registers and seeds
   it('tells the running systems the pack changed, after restarting its own', async () => {
-    writeBuiltIn();
-    loadAppPacks(registry, new Set([BUILT_IN_ID]));
+    writeShipped();
+    loadAppPacks(registry, new Set([SHIPPED_ID]));
 
-    await reloadPackById(registry, BUILT_IN_ID, bus as never);
+    await reloadPackById(registry, SHIPPED_ID, bus as never);
 
     expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['RELOAD_PACK', 'PACK_CHANGED']);
-    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: BUILT_IN_ID });
+    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: SHIPPED_ID });
   });
 
   it('seeds the compiled data a rebuild changed, and leaves unchanged data alone', async () => {
-    writeBuiltIn();
-    loadAppPacks(registry, new Set([BUILT_IN_ID]));
+    writeShipped();
+    loadAppPacks(registry, new Set([SHIPPED_ID]));
     // Boot's own seeding, which the reload picks up from
     seedPacks([seedTarget()]);
-    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', BUILT_IN_ID, PACK_LAYOUT.seedsDir)]);
+    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir)]);
 
     // A reload after a code-only rebuild leaves the data alone
     seeded.length = 0;
-    await reloadPackById(registry, BUILT_IN_ID, bus as never);
+    await reloadPackById(registry, SHIPPED_ID, bus as never);
     expect(seeded).toEqual([]);
 
     // A reload carrying recompiled seeds imports them
     writeSeeds('[{ "label": "second" }]');
-    await reloadPackById(registry, BUILT_IN_ID, bus as never);
-    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', BUILT_IN_ID, PACK_LAYOUT.seedsDir)]);
+    await reloadPackById(registry, SHIPPED_ID, bus as never);
+    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir)]);
   });
 
-  it("records what it seeded per pack, so a second built-in pack's boot seed doesn't re-run this one", async () => {
-    writeBuiltIn();
-    loadAppPacks(registry, new Set([BUILT_IN_ID]));
+  it("records what it seeded per pack, so a second shipped pack's boot seed doesn't re-run this one", async () => {
+    writeShipped();
+    loadAppPacks(registry, new Set([SHIPPED_ID]));
     seedPacks([seedTarget()]);
-    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', BUILT_IN_ID, PACK_LAYOUT.seedsDir)]);
+    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir)]);
 
-    // Another built-in pack seeds its own data, recorded in the same AppState row
+    // Another pack the app ships seeds its own data, recorded in the same AppState row
     seeded.length = 0;
     seedPacks([seedTarget('other-pack')]);
-    expect(Object.keys(appState.get().packSeedHashes).sort()).toEqual([BUILT_IN_ID, 'other-pack']);
+    expect(Object.keys(appState.get().packSeedHashes).sort()).toEqual([SHIPPED_ID, 'other-pack'].sort());
 
     // ...and this pack's own seed is still recorded, so it isn't seeded again
     seeded.length = 0;
@@ -221,15 +221,15 @@ describe('reloading a built-in pack', () => {
   });
 
   it('reports the records a seeder could not seed, and still records the hash so they are retried on the next change', async () => {
-    writeBuiltIn();
-    loadAppPacks(registry, new Set([BUILT_IN_ID]));
+    writeShipped();
+    loadAppPacks(registry, new Set([SHIPPED_ID]));
     recordsThatFail = ['Flow "Broken": step 2 names no action'];
     seedPacks([seedTarget()]);
 
     // The failure is reported, not swallowed behind "Boot seed completed"
     expect(loggedErrors.join('\n')).toContain('Flow "Broken": step 2 names no action');
     // The hash is stored anyway, as importPackSeeds does: the same failing data isn't re-imported every boot
-    expect(appState.get().packSeedHashes[BUILT_IN_ID]).toBeTruthy();
+    expect(appState.get().packSeedHashes[SHIPPED_ID]).toBeTruthy();
 
     // ...and the next seed of unchanged data doesn't retry it
     seeded.length = 0;
@@ -241,40 +241,40 @@ describe('reloading a built-in pack', () => {
     recordsThatFail = [];
     loggedErrors.length = 0;
     seedPacks([seedTarget()]);
-    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', BUILT_IN_ID, PACK_LAYOUT.seedsDir)]);
+    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir)]);
     expect(loggedErrors).toEqual([]);
   });
 
   it('still restarts the systems when the seed after registering throws, and says why', async () => {
-    writeBuiltIn();
-    loadAppPacks(registry, new Set([BUILT_IN_ID]));
+    writeShipped();
+    loadAppPacks(registry, new Set([SHIPPED_ID]));
     bus.send.mockClear();
 
     // A rebuild running again mid-reload takes the compiled seeds out from under the seeder
     seedFailure = new Error("ENOENT: no such file or directory, open 'actions.seed.json'");
-    await reloadPackById(registry, BUILT_IN_ID, bus as never);
+    await reloadPackById(registry, SHIPPED_ID, bus as never);
 
     // The swap already happened, so the systems have to be restarted whatever the seed did
-    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: BUILT_IN_ID, systemIds: [`${BUILT_IN_ID}/widget`] });
+    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: SHIPPED_ID, systemIds: [`${SHIPPED_ID}/widget`] });
     expect(loggedErrors.join('\n')).toContain('ENOENT');
   });
 
   // A rebuild can change the pack's version, and the list the Packs view shows reads the origin
   it("re-reads the pack's manifest, so a version a rebuild changed is the one listed", async () => {
-    writeBuiltIn();
-    loadAppPacks(registry, new Set([BUILT_IN_ID]));
-    expect(registry.packOrigin(BUILT_IN_ID)?.version).toBe('1.0.0');
+    writeShipped();
+    loadAppPacks(registry, new Set([SHIPPED_ID]));
+    expect(registry.packOrigin(SHIPPED_ID)?.version).toBe('1.0.0');
 
-    writeBuiltIn({ version: '2.0.0' });
-    await reloadPackById(registry, BUILT_IN_ID, bus as never);
+    writeShipped({ version: '2.0.0' });
+    await reloadPackById(registry, SHIPPED_ID, bus as never);
 
-    expect(registry.packOrigin(BUILT_IN_ID)?.version).toBe('2.0.0');
+    expect(registry.packOrigin(SHIPPED_ID)?.version).toBe('2.0.0');
   });
 
   afterEach(() => {
     stopLogging?.();
     stopLogging = undefined;
-    try { unregisterPack(BUILT_IN_ID); } catch { /* not registered */ }
+    try { unregisterPack(SHIPPED_ID); } catch { /* not registered */ }
   });
 });
 

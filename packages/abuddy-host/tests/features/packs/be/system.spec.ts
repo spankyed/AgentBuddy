@@ -130,7 +130,7 @@ describe('installing over a pack that is already running', () => {
 describe('a pack that ships with the app', () => {
   const shipped = { id: PACK_ID, name: 'Shipped', version: '1.0.0', dir: 'packs/shipped', shipped: true };
 
-  it.each([['a built-in pack', PACK_ID], ['the host', 'host']])("can't be uninstalled: %s", async (_what, packId) => {
+  it.each([['a pack the app ships', PACK_ID], ['the host', 'host']])("can't be uninstalled: %s", async (_what, packId) => {
     registry.registerPack({ id: PACK_ID }, shipped);
     const system = runPacksSystem();
     try {

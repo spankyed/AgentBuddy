@@ -71,8 +71,8 @@ export function clearBuildOutput(outputDir: string): void {
  * It sits here rather than in `build()` because `abuddy run` calls that on every file change, and the
  * check reads every source of all five packages: once per command is right, once per keystroke is not.
  *
- * `npm start` depends on this one. Its `prebuild:be:dev` builds the built-in pack with `abuddy build
- * --skip-fe` and declares no `packages:ensure` of its own, because this is it. Putting the check back
+ * `npm start` depends on this one. The root `prebuild:be:dev` builds the pack the app ships with `abuddy
+ * build --skip-fe` and declares no `packages:ensure` of its own, because this is it. Putting the check back
  * on that script is the fix if this ever stops ensuring.
  */
 export async function buildCommand(args: string[]): Promise<void> {

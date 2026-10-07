@@ -48,9 +48,9 @@ function mergeExtensions(base: Omit<PackInfo, keyof PackExtensions>, contrib: Pa
 }
 
 /**
- * The packs the view lists: every installed pack, which since the app installs its own is all of them.
- * There were two of these, one reading the installed packs and one the registry's built-in list, which is
- * why a pack the app ships showed no version from its manifest and no install date.
+ * The packs the view lists, read from one place: the installed packs, which is all of them, since the app
+ * installs the packs it ships. So every pack's version comes from its own manifest and every one has an
+ * install date — a second list built from the registry could give neither.
  */
 function toPackInfoList(registry: PackRegistry, packs: InstalledPack[], canUninstall: (packId: string) => boolean): PackInfo[] {
   return packs.map(({ manifest, dir, record }) => {

@@ -53,9 +53,11 @@ function initialise(): MainAppContext {
 
 /**
  * The directory the app's own packs ship in: `resources/app/packages` packaged, the checkout's `packages/`
- * from source. One declaration, because two processes need the same answer — the API loads each pack's
- * packs it ships from here at first boot (`SHIPPED_PACKS_DIR`), and the `pack://` handler serves a pack's
- * frontend from here until it is installed — and a disagreement would be a pack whose backend runs and whose frontend 404s.
+ * from source.
+ *
+ * One declaration, because two processes need the same answer: the API installs the packs it finds here at
+ * first boot (`SHIPPED_PACKS_DIR`), and the `pack://` handler serves a pack's frontend from here until it
+ * is installed. A disagreement would be a pack whose backend runs and whose frontend 404s.
  */
 export function shippedPacksDir(): string {
   return app.isPackaged ? path.join(process.resourcesPath, 'app', 'packages') : path.join(app.getAppPath(), 'packages');

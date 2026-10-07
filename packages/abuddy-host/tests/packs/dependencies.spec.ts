@@ -1,6 +1,6 @@
 // Which of a pack's declared dependencies are not there. Every pack is installed, the ones the app ships
-// included, so the packs directory is the whole answer — this used to consult the shipped directory inside
-// the app and a published-output directory beside the packs one, and so had three ways to say "present".
+// included, so the packs directory is the whole answer: one place can say "present", and a pack the app
+// ships is present there on the same terms as any other.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';

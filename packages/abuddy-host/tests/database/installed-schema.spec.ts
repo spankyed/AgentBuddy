@@ -13,8 +13,8 @@ const write = (file: string, content: unknown) =>
   fs.writeFileSync(file, typeof content === 'string' ? content : JSON.stringify(content));
 
 describe('a file readInstalledSchema cannot use', () => {
-  // One kind of file to report on, since every pack is read from its own installed manifest — this named a
-  // published snapshot as well, which was the data dir's second account of itself
+  // One kind of file to report on, since every pack is read from its own installed manifest: whichever pack
+  // is wrong, what the error names is an `abuddy.json` under `packs/`
   it("names the pack's manifest, whichever pack it is", () => {
     const dir = dataDirWithPacks({ external: [{ id: 'bookmarks', entities: { Bookmark: 'Bookmark' } }] });
     write(manifestFile(dir, 'bookmarks'), { id: 'bookmarks', name: 'Bookmarks', version: '1.0.0', relKinds: 'nonsense' });

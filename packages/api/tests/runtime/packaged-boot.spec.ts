@@ -1,7 +1,13 @@
-// The app's boot, over the real built-in packs: each one's built runtime, loaded from the directory it ships in
-// (npm run compile writes it). A packaged app's api bundle carries no pack's backend, so this is the path in a
-// packaged build and from source alike, and the one place default-setup's actual runtime is loaded by the app's
-// own boot rather than by a fixture.
+// The app's boot, over the real packs it ships: each one installed into the data dir and then loaded from
+// there, which is the one path for every pack (`npm run compile` writes the build it is installed from). A
+// packaged app's api bundle carries no pack's backend, so this is the path in a packaged build and from
+// source alike, and the one place default-setup's actual runtime is loaded by the app's own boot rather than
+// by a fixture.
+//
+// `bootPacks` composes the same two calls `api/src/runtime/index.ts` does, rather than running it: that
+// module opens a server. So what it does *not* cover is that composition's own branches — an unset
+// `SHIPPED_PACKS_DIR`, which only warns — and it passes no `hostVersion`, because this process's version is
+// `0.0.0-test` and default-setup's manifest asks for more than that.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';

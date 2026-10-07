@@ -151,8 +151,14 @@ export async function setupBackend(): Promise<void> {
   // integrity matches this build's is left alone, so only a first boot and a version bump write anything
   const shippedDir = process.env.SHIPPED_PACKS_DIR;
   const shippedIds = new Set<string>();
-  if (shippedDir) {
-    for (const result of await installShippedPacks(shippedDir, appContext.packsDir, { hostVersion: APP_VERSION, packFormat: PACK_SNAPSHOT_FORMAT })) {
+  if (!shippedDir) {
+    // "This app ships no packs" and "nobody told me where they are" are different answers, and installing
+    // nothing looks the same either way: on a fresh data dir both give an app with no plugins
+    console.warn('[packs] SHIPPED_PACKS_DIR is not set, so no pack the app ships is installed');
+  } else {
+    const results = await installShippedPacks(shippedDir, appContext.packsDir, { hostVersion: APP_VERSION, packFormat: PACK_SNAPSHOT_FORMAT });
+    if (results.length === 0) console.warn(`[packs] ${shippedDir} holds no pack to install`);
+    for (const result of results) {
       // Shipped whatever the install came to: the app refuses to uninstall it either way, and a pack whose
       // install failed is one the Packs view reports rather than one it offers to remove
       shippedIds.add(result.id);

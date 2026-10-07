@@ -13,7 +13,7 @@ export function startPacks(registry: PackRegistry): void {
   const loadedPacks = registry.packTargets();
   if (loadedPacks.length > 0) runPackMigrations(loadedPacks);
 
-  // One call for every pack, in dependency order. It was two — the shipped pack's boot seed, then the
-  // installed packs' — which is why only the second half retried a failure or saw a dependency seed
+  // One call for every pack, in dependency order, so every pack gets the same treatment: a failed seed is
+  // retried on the next boot, and a pack sees what the packs it depends on seeded in this same run
   seedPacks(registry.packSeedTargets());
 }

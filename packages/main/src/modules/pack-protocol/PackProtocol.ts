@@ -10,6 +10,30 @@ import { devServerUrl } from '@abuddy/host/packs/dev-server';
 const PACK_ID = /^[a-z][a-z0-9-]*$/;
 
 /** What the pack:// handler serves each extension as. Exported so its spec asserts this map, not a copy. */
+/**
+ * The file a `pack://` request serves, or `null`.
+ *
+ * **Two roots, because a pack is either installed in the user's data dir or shipped with the app**, and a
+ * pack's frontend is fetched the same way whichever it is. A shipped pack is served out of its `dist/`,
+ * which is where its own `abuddy build` wrote the bundle an installed pack carries at its root. The
+ * installed copy comes first, so a pack the user replaced serves its own files.
+ *
+ * Each candidate is checked against *its own* prefix, so neither root widens what the other serves, and
+ * anything resolving outside both — a `..` in the path — matches nothing and is a 404 rather than a read.
+ * `packId` is already known to be a single plain segment (`PACK_ID`), which is what keeps a root from being
+ * moved by the request: it is part of every prefix this compares against.
+ */
+export function resolvePackFile(
+  { packsDir, shippedDir, packId, filePath }: { packsDir: string; shippedDir: string; packId: string; filePath: string },
+): string | null {
+  const roots = [path.join(packsDir, packId), path.join(shippedDir, packId, 'dist')];
+  const relative = filePath.replace(/^\//, '');
+  return roots
+    .map((root) => ({ root, file: path.resolve(root, relative) }))
+    .find(({ root, file }) => file.startsWith(root + path.sep) && fs.existsSync(file))
+    ?.file ?? null;
+}
+
 export const MIME_TYPES: Record<string, string> = {
   '.js': 'application/javascript',
   '.mjs': 'application/javascript',
@@ -68,17 +92,7 @@ class PackProtocol implements AppModule {
           } catch {}
         }
 
-        // Two roots, because a pack is either installed in the user's data dir or shipped with the app, and
-        // a pack's frontend is fetched the same way whichever it is. A shipped pack is served out of its
-        // `dist/`, which is where its own `abuddy build` wrote the bundle an installed pack carries at its
-        // root. Each candidate is checked against its own prefix, so neither widens what the other serves.
-        const roots = [path.join(packsDir, packId), path.join(shippedPacksDir(), packId, 'dist')];
-        const relative = filePath.replace(/^\//, '');
-        const resolved = roots
-          .map((root) => ({ root, file: path.resolve(root, relative) }))
-          .find(({ root, file }) => file.startsWith(root + path.sep) && fs.existsSync(file))
-          ?.file;
-
+        const resolved = resolvePackFile({ packsDir, shippedDir: shippedPacksDir(), packId, filePath });
         if (!resolved) {
           // A traversal lands here too: it is outside every prefix, so no candidate matched
           return new Response('Not Found', { status: 404 });

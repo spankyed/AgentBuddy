@@ -73,9 +73,9 @@ function bundleError(err: unknown): { success: false; error: string } {
 /**
  * Bundle the pack's generated backend entry (src/__generated__/pack-entry.ts) into
  * dist/runtime/index.cjs. It exports `registration` (systems, services, steps,
- * artifacts, blocks, EARS, boot hooks, migrations) and `setCompiledDir`, the same
- * contract built-in packs use. Host-provided and shared-instance packages stay external:
- * the host loader resolves them to its own singletons.
+ * artifacts, blocks, EARS, boot hooks, migrations) and `setCompiledDir`. Host-provided and
+ * shared-instance packages stay external: the host loader resolves them to its own singletons,
+ * whichever pack the bundle is for.
  */
 export async function bundlePackRuntime(
   packDir: string,

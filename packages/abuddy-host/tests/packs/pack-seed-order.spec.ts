@@ -37,7 +37,8 @@ describe('the order external packs seed in', () => {
     expect(order.indexOf('c')).toBeLessThan(order.indexOf('d'));
   });
 
-  // A built-in pack has already seeded by then, and one that isn't installed was reported at install
+  // A pack not in the list is either one the caller isn't acting on, or one that isn't installed — which
+  // was reported when the pack declaring it was installed. Neither can be ordered against
   it('ignores a dependency that is not one of the packs given', () => {
     expect(ids(packSeedOrder([pack('b', 'default-setup', 'never-installed'), pack('a')]))).toEqual(['b', 'a']);
   });

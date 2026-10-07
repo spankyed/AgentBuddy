@@ -1,5 +1,5 @@
 // The app shell: the host `application` feature's plugin, which runs every plugin's actor, holds which one is open,
-// lays out the panels and loads external packs' frontends. Its I/O arrives as options (types.ts); the renderer
+// lays out the panels and loads every pack's frontend. Its I/O arrives as options (types.ts); the renderer
 // composes it with the API client and the window, a pack's tests with fakes.
 import { assign, enqueueActions, setup, spawnChild } from 'xstate';
 import { getDesignated, processHotkeys, safeEvents } from '@abuddy/sdk/fe';
@@ -31,7 +31,7 @@ satisfiesHostShell<[
   ShellContext extends HostShellState ? true : false,
 ]>();
 
-/** Whether external packs' frontends may still add plugins: the loaded packs not read yet, or a load running or queued */
+/** Whether a pack frontend may still add plugins: the loaded packs not read yet, or a load running or queued */
 function packFrontendsPending(context: ShellContext): boolean {
   return !context.loadedPacksRead || context.packLoadRunning || context.packLoadQueued;
 }
@@ -501,7 +501,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
     id: 'application',
     context: ({ input }) => {
       const plugins = withHostLast(packs.getRegisteredPlugins());
-      // A popout opens on its plugin (once its pack's frontend adds it, if an external pack's); a main window on the
+      // A popout opens on its plugin (once its pack's frontend adds it); a main window on the
       // first, until the host says which was last open
       const initialPlugin = plugins.find((p) => p.id === input.initialPluginId);
       const initialActivePlugin = initialPlugin ?? plugins[0];

@@ -195,8 +195,9 @@ describe('pack-loader', () => {
 });
 
 // A pack this app shipped registers before one the user installed, whatever order the packs directory is
-// read in: registration order decides who wins a designation, so a pack that claimed `brain` would take it
-// from the pack the app needs to run. It was two load calls, which made the ordering structural.
+// read in: registration order decides who wins a designation, so a pack claiming `brain` would otherwise
+// take it from the pack the app needs to run. The order is an argument now (`shippedIds`), not a
+// consequence of loading in two calls, so it is something to assert rather than something structural.
 describe('loadAppPacks', () => {
   afterEach(() => {
     for (const id of ['role-shipped', 'role-taker']) if (registry.getPackExtensions(id)) registry.unregisterPack(id);

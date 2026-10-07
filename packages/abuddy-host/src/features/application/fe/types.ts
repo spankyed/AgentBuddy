@@ -36,7 +36,7 @@ export interface ShellOptions {
 
 /** What a window's shell starts with */
 export interface ShellParams {
-  /** The plugin a popout opens on; opened once its pack's frontend adds it, if an external pack's */
+  /** The plugin a popout opens on; opened once its pack's frontend has added it */
   initialPluginId?: string;
   /** Whether this is a main window, which opens on the plugin last open and records the one it opens; a popout does neither */
   ownsLastActivePlugin?: boolean;
@@ -189,7 +189,7 @@ export type ShellEvent =
   | { type: 'BACKEND_ERROR'; error: ShellFailure }
   | { type: 'BUS_SUBSCRIBED' }
   | { type: 'BUS_CONNECTION_LOST' }
-  /** Load the frontends of the external packs this window hasn't loaded: on connecting, and when a pack activates */
+  /** Load the frontends of the packs this window hasn't loaded: on connecting, and when a pack activates */
   | { type: 'LOAD_PACK_FRONTENDS' }
   /**
    * The loader finished: `loadedPacksError` is why the loaded packs couldn't be read, when they couldn't,

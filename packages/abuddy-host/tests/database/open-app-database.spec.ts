@@ -17,7 +17,7 @@ const id = (name: string) => name as EARS.EntityId;
 const quiet = { log: () => {} };
 
 describe('readInstalledSchema', () => {
-  it("takes entity types from the built-in snapshots and the enabled external packs' manifests", () => {
+  it("takes entity types from every enabled pack's own manifest, the app's own packs included", () => {
     const dir = dataDirWithPacks({
       external: [
         { id: 'bookmarks', entities: { Bookmark: 'Bookmark' } },

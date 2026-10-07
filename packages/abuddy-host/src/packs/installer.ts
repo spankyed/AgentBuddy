@@ -156,8 +156,8 @@ export function checkDependencies(
 ): string[] {
   const deps = manifest.dependencies ?? {};
   if (Object.keys(deps).length === 0) return [];
-  // Every pack is installed, the ones the app ships included, so the packs directory is the whole answer —
-  // it used to consult the shipped directory and a published-output directory beside this one as well
+  // Every pack is installed, the ones the app ships included, so the packs directory is the whole answer:
+  // one lookup, and a dependency is there or it is not
   return Object.keys(deps).filter((depId) => !fs.existsSync(path.join(packsDir, depId, PACK_LAYOUT.manifest)));
 }
 

@@ -45,7 +45,7 @@ afterAll(() => {
 });
 
 describe('boot migrations', () => {
-  it("runs a built-in pack's migration and an external pack's migration once each", async () => {
+  it("runs a shipped pack's migration and an installed pack's migration once each", async () => {
     resetTestData();
     appState.update({ version: '0.0.0' });
 

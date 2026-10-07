@@ -288,8 +288,8 @@ describe('packSeedTargets', () => {
     ({ id, name: id, version: '1.0.0', dir: `/packs/${id}`, shipped, manifest: { id, name: id, version: '1.0.0', dependencies } } as unknown as Parameters<typeof registerPack>[1]);
 
   // **A pack is seedable because it is somewhere.** Its compiled seeds are files in its directory, which the
-  // origin knows and a registration does not — which is why a pack no longer has to tell the host where its
-  // compiled data is.
+  // origin knows and a registration does not, so a pack never has to tell the host where its compiled data
+  // is: a registration claiming a `compiledDir` is not enough to be seeded from.
   it('leaves out a pack with no origin, having nowhere to read seeds from', () => {
     registerPack({ id: 'nowhere-pack', boot: { seedManifest: { seedKeys: ['actions'], compiledDir: '/compiled' } } } as unknown as PackRegistration);
     registered.push('nowhere-pack');

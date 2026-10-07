@@ -29,8 +29,8 @@ function writeJSON(file: string, value: unknown): void {
 
 /**
  * A data dir with packs installed: `core`, which the app ships (Note, Trace, `mentions`), and any others
- * given. Every pack is installed, so they are all written the same way — `core` used to be a published
- * snapshot under `host-packs/`, which was the data dir's second account of itself.
+ * given. Every pack is installed, so they are all written the same way: one manifest per pack under
+ * `packs/<id>/`, which is the data dir's one account of itself.
  */
 export function dataDirWithPacks({ external = [] as Array<{ id: string; entities: Record<string, string>; enabled?: boolean }> } = {}): string {
   const dir = tempDir('host-database-');

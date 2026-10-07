@@ -64,10 +64,9 @@ function disabledPacks(installedPacksFile: string): Set<string> {
 }
 
 /**
- * The external packs the app loads from `packsDir`: those the registry doesn't list as disabled (the app registers a
- * pack it hasn't listed yet as enabled)
+ * Every enabled pack installed in the data dir, read from its own `abuddy.json`: everything in `packsDir`
+ * that the registry doesn't list as disabled, since the app registers a pack it hasn't listed yet as enabled.
  */
-/** Every enabled pack installed in the data dir, from its own `abuddy.json` */
 function installedManifests({ packsDir, installedPacksFile }: SchemaContext): PackManifest[] {
   return enabledExternalPacks(discoverPacks(packsDir), disabledPacks(installedPacksFile))
     .map(({ manifest, dir }) => packEARS(manifest, path.join(dir, 'abuddy.json')));

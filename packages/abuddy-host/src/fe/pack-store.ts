@@ -149,8 +149,8 @@ export function createFePackRegistry(): FePackRegistry {
     blocks: blocks.all,
     plugins: () => allPlugins,
     // **No throwing counterpart, because at startup the answer is legitimately "not yet".** Every pack's
-    // frontend loads after the window is up, so a caller that demanded a default plugin could not run at
-    // all — which is what the app shell used to do. Absent until a pack claims it
+    // frontend loads after the window is up, so a caller demanding a default plugin could not run at all:
+    // the shell waits for one instead (`wantsDefaultPlugin`). Absent until a pack claims it
     defaultPlugin: () => defaultPlugin,
     tiptapPlugins: () => tiptapPlugins,
     appExtension: appExtensions.get,

@@ -1,5 +1,5 @@
 /**
- * Pack layout: the one layout an external pack has everywhere — build output
+ * Pack layout: the one layout every pack has everywhere — build output
  * (dist/), the release archive, and the installed pack directory.
  *
  *   <id>/abuddy.json            the pack's manifest
