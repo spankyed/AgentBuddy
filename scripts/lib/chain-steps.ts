@@ -631,6 +631,18 @@ const PACK_SOURCES = ['packages/default-setup/src', 'packages/default-setup/abud
   'packages/default-setup/package.json'];
 
 /**
+ * What a step reads to derive something from the pack's sources, which `compile` and `facade:check` both do:
+ * those sources, the tsconfig the declaration bundler compiles them with, the committed facade report, and
+ * the `@abuddy/cli` bundle that does the deriving.
+ *
+ * Named once because the two lists are identical and nothing would notice them drifting apart — the failure
+ * `packages:ensure`' inputs are derived to avoid, a few hundred lines up. The two steps differ in what they
+ * *write*, not in what they read: `compile` declares `PACK_OUTPUTS`, and the check declares nothing.
+ */
+const PACK_DERIVED_READS = [...ROOT, ...PACK_SOURCES, 'packages/default-setup/tsconfig.json',
+  'packages/default-setup/etc', ...PACKAGE_BUILD_READS];
+
+/**
  * What building the fixture packs writes, derived from the fixtures themselves. These sit *inside*
  * `tests/packs`, which the same step declares as an input, for the same reason as above.
  */
@@ -1018,19 +1030,46 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS] },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
   // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
-  { name: 'compile', timeout: 'suite', seconds: 13, outputs: PACK_OUTPUTS,
+  { name: 'compile', timeout: 'suite', seconds: 28, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `abuddy build` never reads those
     //
-    // This step runs `facade:check`, so how the report is normalised is part of what it accepts — edit that
-    // and a cached step would never re-run. The CLI's sources reach here through `PACKAGE_BUILD_OUTPUTS`,
-    // since an edit to them makes the `@abuddy/cli` build unit stale and `packages:ensure` rewrites the
-    // bundle this declares.
+    // The CLI's sources reach here through `PACKAGE_BUILD_OUTPUTS`, since an edit to them makes the
+    // `@abuddy/cli` build unit stale and `packages:ensure` rewrites the bundle this declares — and what the
+    // bundle does decides what this step writes.
     //
-    // `etc` is the committed facade report, which that check compares against — so a hand-edited report
-    // invalidates this step, the one case nothing else here can see. It is the `api:check` precedent above,
-    // and it was missing while the check was read as a step that only looked at what the build wrote
-    inputs: [...ROOT, ...PACK_SOURCES, 'packages/default-setup/tsconfig.json',
-      'packages/default-setup/etc', ...PACKAGE_BUILD_READS] },
+    // `etc` is the committed facade report, which the build reads to warn when the bundle it has just
+    // produced has outgrown it. A read is a read, so a hand-edited report invalidates this step, even though
+    // what it buys here is a warning rather than a verdict — `facade:check` below is the step that fails
+    inputs: PACK_DERIVED_READS },
+  /**
+   * The committed facade report against the facade the pack's sources describe, re-bundled here rather than
+   * read from `dist` — the `api:check` shape, a derivation with no staleness record of its own.
+   *
+   * **Its own step rather than a `typecheck` leg, though `exports:check` and `schema:check` are and this is
+   * their shape.** Those two are the `--check` halves of generators and write nothing, which is the claim
+   * `typecheck-legs.ts` makes by running its legs at once — *"nothing here writes what another leg reads"*.
+   * This one runs `generateEntries`, which rewrites `src/__generated__` whenever anything under the pack's
+   * `src` has moved, and `typecheck:pack` compiles out of that tree. As a leg it would race it in exactly
+   * the state `npm run typecheck` is run in.
+   *
+   * **Here the write cannot be observed, and that is derived rather than hoped for.** Declaring
+   * `packages/default-setup/src` reads what `compile` writes (`PACK_OUTPUTS` holds `src/__generated__`), so
+   * `dependsOn` puts this after it; `compile` runs the same codegen, so the `.inputs-hash` matches by the
+   * time this runs and the regenerate is a no-op. One declaration gives both the edge and the quiet.
+   * Declaring that write instead does not work in either available shape: as an `outputs` it reverses the
+   * edge into a cycle, and as an `alsoWrites` it is a mutex against twelve steps.
+   *
+   * `PACKAGE_BUILD_READS` is the entry to keep: the report's normalisation is the CLI's
+   * (`build/facade-report.ts`, `build/declaration-text.ts`), so without it an edit there leaves this cached
+   * green over a report it would now word differently.
+   *
+   * **No `forceArgs`, though `generateEntries` keeps a cache of its own** (`.inputs-hash`) that `--all`
+   * cannot reach: a skip there cannot make this step a no-op, because the re-bundle and the comparison run
+   * either way. The same reasoning `test:external-pack:contract` carries below, and it has to be written
+   * down — that cache lives in `@abuddy/cli` rather than under `scripts/`, which is where `chain-table`'s
+   * stamp-reading derivation looks, so nothing would report its absence.
+   */
+  { name: 'facade:check', timeout: 'quick', seconds: 7, inputs: PACK_DERIVED_READS },
   // The fixture packs depend on default-setup, so they need its snapshot from compile
   //
   // The third place in this chain with a cache inside a cached step, and the one that is benign: `abuddy

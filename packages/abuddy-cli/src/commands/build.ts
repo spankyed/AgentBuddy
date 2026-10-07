@@ -208,7 +208,7 @@ export async function build(args: string[]) {
     // about it. A **warning**, not a `fail`: the collected failures below are for output dependents cannot
     // use, and a report that has not caught up is not that. It would also mean a pack author could not start
     // the app until they had rewritten a reviewed artifact mid-change, where `facade:check` is the gate that
-    // says so once, in `npm run compile` and in CI. A pack with no report has nothing to be stale against
+    // says so once — its own chain step, and CI. A pack with no report has nothing to be stale against
     if (fs.existsSync(facadeReportFile(root))) {
       const report = compareFacadeReport(root, facadeReportText(packTypes.content, root, manifest.id));
       if (report.problem) console.warn(`\nWarning: ${report.problem}`);

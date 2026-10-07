@@ -69,8 +69,8 @@ parts — so each figure carries its conditions and the table can be re-derived 
 |---|---|---|
 | nothing tracked | nothing | **0.9s** |
 | a doc, a comment, a CLAUDE.md | nothing but that — no step declares `docs/`, and a fingerprint skips every `CLAUDE.md` | **0.9s** |
-| one package's source (the renderer) | nine of twenty-eight steps: `test:unit:host` (only the renderer's project), `test:integration`, the typecheck legs whose scope reaches it, `lint:check`, `check:specifiers`, `check:tiers` and `build:app` | **38.6s** |
-| nothing is cached (a cold tree) | all 30 steps, on a ten-core budget (`--all`, 2026-10-06) | **182.4s** |
+| one package's source (the renderer) | nine of thirty-one steps: `test:unit:host` (only the renderer's project), `test:integration`, the typecheck legs whose scope reaches it, `lint:check`, `check:specifiers`, `check:tiers` and `build:app` | **38.6s** |
+| nothing is cached (a cold tree) | every gated step — 30 of the 31, `test` being opt-in — on a ten-core budget (`--all`, 2026-10-07) | **185.8s** |
 
 **The one-package row is the one worth reading twice**, because the obvious reasoning about it is wrong.
 `build:app` rewrites `packages/*/dist`, which looks like it moves what every app-dependent step reads — and
@@ -123,13 +123,16 @@ Three things the chain cannot work out for you, because they rewrite files you c
 - **default-setup's facade** — the types a dependent pack compiles against, bundled by `abuddy build` into
   `dist/types/pack-types.d.ts` and recorded in `etc/pack-types.api.md`. Run
   `npm run facade:update -w @app/default-setup` and commit the report. **`typecheck` does not notice this
-  one; `npm run compile` does**, which is the difference worth knowing: `exports:check` and
-  `schema:check` are typecheck legs and `api:check` is a chain step, so it is easy to finish a typecheck and believe every recorded
-  artifact is current.
+  one**, which is the difference worth knowing: `exports:check` and `schema:check` are typecheck legs and
+  `api:check` and `facade:check` are chain steps, so it is easy to finish a typecheck and believe every
+  recorded artifact is current.
   The check needs no build: it re-bundles the facade from the pack's sources, as `api:check` re-extracts the
   reports it compares, so what it holds the report to is what the pack describes now rather than whatever is
-  in `dist`. `abuddy build` warns when the report has fallen behind the bundle it just wrote, which is a
-  nudge at the moment the information exists and not the gate — the gate is `facade:check`.
+  in `dist`. **That is why it is a step of its own rather than appended to `compile`**, which is where it sat
+  while it still read what the build wrote. `abuddy build` warns when the report has fallen behind the bundle
+  it just wrote, which is a nudge at the moment the information exists and not the gate — the gate is
+  `facade:check`, and it is not a typecheck leg because it regenerates the pack's barrel, which a leg may
+  not do (`scripts/lib/typecheck-legs.ts`'s header says why).
 - **a pack's seed source (`src/seeds/`)** — when only `sourceHash`/`rowSha256` moved, re-record
   deliberately with `npm run seed-parity:update -w @app/default-setup`, and never edit a hash by hand.
   Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`.
@@ -546,11 +549,14 @@ npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.c
                          # before one API Extractor compiler state was shared across a package's entries.
                          # A chain step, so a merge runs it and an unchanged tree pays nothing for it
 
-# Built-in pack facade types (from packages/default-setup or with -w @app/default-setup)
-npm run facade:check     # CI: fails if the facade the pack's sources describe isn't what etc/pack-types.api.md
-                         # records. **Needs no build**: it regenerates the pack's barrels and re-bundles the
-                         # facade itself (2.4s, median of 3, 86% idle, 2026-10-06), so `dist` is never its
-                         # subject and a build from older sources cannot be mistaken for one
+# Built-in pack facade types (a root script; or from packages/default-setup, or -w @app/default-setup)
+npm run facade:check     # A chain step: fails if the facade the pack's sources describe isn't what
+                         # etc/pack-types.api.md records. **Needs no build**: it regenerates the pack's
+                         # barrels and re-bundles the facade itself (2.7s, median of 3, 2.7-2.8s, 86% idle,
+                         # 2026-10-07), so `dist` is never its subject and a build from older sources cannot
+                         # be mistaken for one. That is what makes it a step rather than a line appended to
+                         # `compile`, where it cost that step 2.7s in series for an ordering it stopped
+                         # needing. Not a typecheck leg either, for the one reason a leg may not: it writes
 npm run facade:update    # Dev: regenerate etc/pack-types.api.md, off that same re-bundle
                          # Both are `abuddy facade-report [--update]`: it reads one pack's sources and writes
                          # that pack's etc, so it is a CLI command like `validate` and `build`, not a repo
@@ -558,7 +564,9 @@ npm run facade:update    # Dev: regenerate etc/pack-types.api.md, off that same 
                          # reachable from both it and the bundler, which is what the wrong home costs.
                          # `abuddy build` warns when the report has fallen behind the bundle it just produced
                          # — free there, and a nudge rather than the gate: failing would mean a pack author
-                         # could not start their app until they had rewritten a reviewed artifact mid-change
+                         # could not start their app until they had rewritten a reviewed artifact mid-change.
+                         # `compile` declares etc/ because of that read, so the warning is keyed; what fails
+                         # on it is the facade:check step
 
 # Manifest JSON schema (-w @abuddy/sdk)
 npm run schema:update    # Regenerate packages/abuddy-sdk/abuddy.schema.json from manifest-schema.ts

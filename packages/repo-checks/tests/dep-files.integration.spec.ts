@@ -576,11 +576,13 @@ describe('what has looked at a step at all', () => {
    *
    * **Both steps stay on this list, and that is why the distinction is written down rather than inferred
    * from a column.** What is observed is the bundling. Codegen, the tsx-loaded seed compilation, the
-   * feature settings load and the static pack rules have no bundler to ask. `compile`'s `facade:check` leg
-   * runs one — it re-bundles the facade rather than reading what the build wrote — and records nothing,
-   * because a check is not a build and a dep file is written where output is committed. So moving either
-   * step out of this list would make it read as verified over part of its work, which is the same judgement
-   * the paragraph below makes about the cheap route.
+   * feature settings load and the static pack rules have no bundler to ask. So moving either step out of
+   * this list would make it read as verified over part of its work, which is the same judgement the
+   * paragraph below makes about the cheap route.
+   *
+   * `facade:check` is here for the neighbouring reason: it re-bundles the facade through rollup and
+   * compares, and records nothing, because a dep file is written where output is committed and a check
+   * commits none. Its inputs are declared by hand rather than derived, which is what stands in its place.
    *
    * **The cheap version of that route is a trap**, which is why it is named rather than left to be found:
    * those fixture packs also run `tsc --noEmit`, so giving *their* tsconfigs a `tsBuildInfoFile` would put
@@ -598,6 +600,7 @@ describe('what has looked at a step at all', () => {
       'api:check',
       'build:app',
       'compile',
+      'facade:check',
       'packages:check',
       'test',
       'test:external-pack:app',
