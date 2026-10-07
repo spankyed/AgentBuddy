@@ -5,8 +5,8 @@
 ```
 # Goal: every pack is the same kind of pack, and every one of them hot-reloads
 
-Implement docs/goals/goal-one-kind-of-pack.md on master, at or after 02688f256 — the base its Background
-was surveyed at.
+Implement docs/goals/goal-one-kind-of-pack.md on AS/one-kind-of-pack, at or after 02688f256 — the base
+its Background was surveyed at. The branch was cut from master at b8c1a34f5, which contains it.
 Before Phase 1, confirm the base: `bundledLoaders` in abuddy-host/src/packs/runtime/loader.ts, the
 `if (!external)` early return in abuddy-cli/src/commands/build.ts, `builtInPacksPlugin` in
 renderer/vite.config.ts, `builtInPackLoadersModule` in api/tsup.config.ts, `partitionPolicy` in
