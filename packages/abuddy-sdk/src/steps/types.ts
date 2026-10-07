@@ -274,7 +274,7 @@ export interface TriggerRuntimeNode {
 export interface TriggerRuntimeContext {
   flowTNodeId: EARS.EntityId;
   /** Fires a flow event at the brain: `sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType, … })` */
-  sendToSystem: (target: { role: string }, event: { type: string; [key: string]: unknown }, options?: { call?: string }) => string;
+  sendToSystem: (target: { role: string }, event: { type: string; [key: string]: unknown }, options?: CallOptions) => string;
 }
 
 /*─────────────────────────────────────────────────────────────────
@@ -283,6 +283,7 @@ export interface TriggerRuntimeContext {
 
 export type { StepDSLMeta } from '../build/manifest.ts';
 import type { StepDSLMeta } from '../build/manifest.ts';
+import type { CallOptions } from '../events/index.ts';
 
 export interface StepDefinition {
   type: string;

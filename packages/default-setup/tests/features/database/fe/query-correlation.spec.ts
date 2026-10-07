@@ -13,19 +13,15 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
 import { answerTo } from '@abuddy/sdk/testing';
+import { sentCall } from '../../../_support/calls.ts';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
 vi.mock('#generated/events.ts', () => ({ sendToSystem }));
 
 const { default: databaseState } = await import('#features/database/fe/state.ts');
 
-/** The call the nth send of `type` was asked under, which the machine minted and handed to `sendToSystem` */
-const callFor = (type: string, nth = 0): string => {
-  const sends = sendToSystem.mock.calls.filter(([, event]) => (event as { type: string }).type === type);
-  const options = sends[nth]?.[2] as { call?: string } | undefined;
-  if (options?.call === undefined) throw new Error(`no ${type} #${nth} carrying a call; sent ${sends.length}`);
-  return options.call;
-};
+/** The call the nth send of `type` was asked under */
+const callFor = (type: string, nth = 0) => sentCall(sendToSystem, type, nth);
 
 const console_ = () => createActor(databaseState).start();
 
@@ -76,12 +72,8 @@ it('does not let one verb take the other verb\'s answer', () => {
 /**
  * An answer carrying no call at all, with nothing outstanding — refused.
  *
- * **Protected twice over, and the case fires only on the combination.** `answersCall` refuses an empty
- * slot, and the slot is spelled `null`, so even a raw `===` would refuse here — measured: dropping
- * `answersCall`'s nullish check leaves this passing, and so does spelling the slot `undefined`; both
- * together is what fails it, which is the state it was written against. The nullish check itself is held
- * in `abuddy-sdk/tests/events/calls.spec.ts`; what this holds is the behaviour, whichever of the two
- * delivers it.
+ * Held by two things independently — `answersCall` refuses an empty slot, and the slot is `null` — so this
+ * fires only on losing both. `abuddy-sdk/tests/events/calls.spec.ts` holds the check itself.
  */
 it('refuses a result carrying no call when no query is outstanding', () => {
   const actor = console_();

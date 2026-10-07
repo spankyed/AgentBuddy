@@ -121,6 +121,17 @@ export interface Message {
 }
 
 /**
+ * What a send takes beside the event, for the one send that can be asked under a call the caller already has.
+ *
+ * Written out at every `sendToSystem` overload before this existed, which is seven copies of one shape for
+ * the compiler to keep agreeing by hand.
+ */
+export interface CallOptions {
+  /** The call to ask under. Given none, the send mints one and returns it. */
+  call?: string;
+}
+
+/**
  * Tags this process once, so a call is one increment.
  *
  * **Every send mints a call, and two of those sends are hot** — a log line per log line, a `terminal.OUTPUT`
@@ -180,16 +191,14 @@ export const _callOf = (event: { [key: string]: unknown }): string | undefined =
 /**
  * Whether this event answers the one ask `outstanding` names — `false` when nothing is outstanding.
  *
- * **For a correlation that holds at most one ask at a time**, which is every command whose answer a view
- * waits for: store what `sendToSystem` returned, clear it when the answer lands, and read it with this.
+ * For a correlation holding at most one ask at a time: store what `sendToSystem` returned, clear it when
+ * the answer lands, read it with this. Either spelling of an empty slot is accepted, so a machine's choice
+ * of `null` or `undefined` decides nothing.
  *
- * **"Nothing outstanding answers nothing" is the half that has to be built in**, because the obvious
- * spelling gets it wrong and no compiler objects: `_callOf(event) === context.pending` is `undefined ===
- * undefined` with no ask in flight, so it admits an answer nobody asked for — and "no ask in flight" is the
- * resting state. The nullish check is why this is a function rather than a convention, and why `_callOf` is
- * not a pack's to call.
- *
- * Takes `string | null | undefined` so a machine may spell an empty slot either way.
+ * **"Nothing outstanding answers nothing" has to be built in**, which is why this is a function and why
+ * `_callOf` is not a pack's to call: `_callOf(event) === context.pending` is `undefined === undefined` with
+ * no ask in flight, so the obvious spelling admits an answer nobody asked for — and no ask in flight is the
+ * resting state.
  */
 export const answersCall = (
   event: { [key: string]: unknown },
@@ -197,14 +206,11 @@ export const answersCall = (
 ): boolean => outstanding != null && _callOf(event) === outstanding;
 
 /**
- * `pending` with `value` recorded under `call`, for a correlation that holds several asks at once.
+ * `pending` with `value` recorded under `call`, for a correlation holding several asks at once.
  *
- * The pair with `settleCall`: record what an ask meant when you make it, settle it when its answer arrives.
- * Keyed by the call because a call is per ask and per window, so it identifies an ask where a domain id
- * cannot — an answer naming a row says nothing about *which* ask for that row it answers, nor which window
- * asked.
- *
- * Returns a new record rather than mutating, so it composes with an XState `assign`.
+ * The pair with `settleCall` — record what an ask meant when you make it, settle it when its answer
+ * arrives. Keyed by the call, because a domain id identifies the row and not the ask: an answer naming a
+ * row says nothing about which ask for it, nor which window asked. Immutable, so it composes with `assign`.
  */
 export const recordCall = <T>(pending: Record<string, T>, call: string, value: T): Record<string, T> =>
   ({ ...pending, [call]: value });
@@ -212,9 +218,9 @@ export const recordCall = <T>(pending: Record<string, T>, call: string, value: T
 /**
  * What this event's ask recorded, and `pending` without it: read and remove in one step.
  *
- * `recorded` is `undefined` for an event answering no ask this record knows — an answer to an ask already
- * settled, or one this machine never made — and `pending` then comes back unchanged. A caller that wants
- * only the removal takes `pending` and drops `recorded`, which is what settling a *failed* ask looks like.
+ * `recorded` is `undefined` for an event answering no ask this record knows — already settled, or never
+ * made here — and `pending` then comes back unchanged. Taking `pending` and dropping `recorded` is how a
+ * *failed* ask settles.
  *
  * It takes the **event**, not a call, which is the whole reason it exists: a pack never holds a call read
  * off an event, so it cannot write the comparison `answersCall` exists to prevent.
@@ -539,7 +545,7 @@ export function createSends({ resolve = (name: string) => name, from, via }: Sen
      * and the two addressed plugin sends are answers or news. One of them gains the parameter the day
      * something asks with it, and not before.
      */
-    sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }, options?: { call?: string }): string {
+    sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }, options?: CallOptions): string {
       const call = options?.call ?? newCall();
       sendIncoming({ to: typeof to === 'string' ? resolve(to) : getDesignated(to.role), event, call, ...labels, ...answerAddress() });
       return call;
@@ -696,7 +702,7 @@ export function _clientOf(delivery: _Delivery | undefined): string | undefined {
  * Sends an event to a backend system, by ref or by the role it plays. Untyped: packs use the `sendToSystem` from
  * their `#generated/events`, which takes names and checks the event against what the system declares.
  */
-export function untypedSendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }, options?: { call?: string }): string {
+export function untypedSendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }, options?: CallOptions): string {
   return unboundSends.sendToSystem(to, event, options);
 }
 
@@ -740,8 +746,8 @@ export type TypedSendToWindow<M extends PluginEvents> = (<P extends keyof M & st
 export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(
   system: Id,
   event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, { type: Type } & WithoutType<EventsOfType<S[Id], Type>>>,
-  options?: { call?: string },
-) => string) & ((target: { role: string }, event: { type: string; [key: string]: unknown }, options?: { call?: string }) => string) & ((system: FeatureRef, event: SystemEvents, options?: { call?: string }) => string);
+  options?: CallOptions,
+) => string) & ((target: { role: string }, event: { type: string; [key: string]: unknown }, options?: CallOptions) => string) & ((system: FeatureRef, event: SystemEvents, options?: CallOptions) => string);
 
 /** A pack's typed sends */
 export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {

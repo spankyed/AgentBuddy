@@ -41,6 +41,11 @@ export const _callOn: (message: Pick<Message, "answering">) => {
     [_CALL_KEY]?: string;
 };
 
+// @public
+export interface CallOptions {
+    call?: string;
+}
+
 // @internal
 export function _clientOf(delivery: _Delivery | undefined): string | undefined;
 
@@ -61,9 +66,7 @@ export function createSends(input?: SendBinding): {
     sendToSystem(to: SystemTarget, event: {
         type: string;
         [key: string]: unknown;
-    }, options?: {
-        call?: string;
-    }): string;
+    }, options?: CallOptions): string;
 };
 
 // @internal
@@ -274,18 +277,12 @@ export type TypedSendToPlugin<M extends PluginEvents> = (<P extends keyof M & st
 // @public
 export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(system: Id, event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, {
     type: Type;
-} & WithoutType<EventsOfType<S[Id], Type>>>, options?: {
-    call?: string;
-}) => string) & ((target: {
+} & WithoutType<EventsOfType<S[Id], Type>>>, options?: CallOptions) => string) & ((target: {
     role: string;
 }, event: {
     type: string;
     [key: string]: unknown;
-}, options?: {
-    call?: string;
-}) => string) & ((system: FeatureRef, event: SystemEvents, options?: {
-    call?: string;
-}) => string);
+}, options?: CallOptions) => string) & ((system: FeatureRef, event: SystemEvents, options?: CallOptions) => string);
 
 // @public
 export type TypedSendToWindow<M extends PluginEvents> = (<P extends keyof M & string>(client: string, plugin: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void) & ((client: string, plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
@@ -305,9 +302,7 @@ export function untypedBroadcastToPlugin(to: string, event: {
 export function untypedSendToSystem(to: SystemTarget, event: {
     type: string;
     [key: string]: unknown;
-}, options?: {
-    call?: string;
-}): string;
+}, options?: CallOptions): string;
 
 // @public
 export function untypedSendToWindow(client: string, to: string, event: {

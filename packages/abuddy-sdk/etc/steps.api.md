@@ -398,9 +398,7 @@ export interface TriggerRuntimeContext {
     }, event: {
         type: string;
         [key: string]: unknown;
-    }, options?: {
-        call?: string;
-    }) => string;
+    }, options?: CallOptions) => string;
 }
 
 // @public (undocumented)

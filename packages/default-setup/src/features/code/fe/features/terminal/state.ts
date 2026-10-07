@@ -302,14 +302,12 @@ export const terminalState = setup({
     /**
      * Opens the terminal *this* window asked for, the way *that* ask asked for it.
      *
-     * Two correlations, and they answer different questions. Only the asker is sent `terminal.OPENED`, so
-     * the intent read here is this window's and could never have been another's — hang this work off the
-     * broadcast `terminal.CREATED` instead and every open window routes a terminal it never asked for into
-     * its own panel and runs a command nobody typed there. The call then says *which* of this window's asks
-     * it answers, which addressing cannot: a window can have two creates in flight and they are not
-     * interchangeable.
+     * **Two correlations, answering different questions.** Addressing says *which window*: only the asker is
+     * sent `terminal.OPENED`, so hang this off the broadcast `terminal.CREATED` instead and every open
+     * window routes a terminal it never asked for into its own panel and runs a command nobody typed there.
+     * The call says *which of that window's asks*, which addressing cannot — see `pendingOpens`.
      *
-     * An answer whose call names no outstanding ask opens with the defaults — the panel, no command — which
+     * An answer whose call names no outstanding ask opens with the defaults, the panel and no command, which
      * is what a terminal this window did not ask for should do.
      */
     handleTerminalOpened: enqueueActions(({ enqueue, context, self, event }) => {

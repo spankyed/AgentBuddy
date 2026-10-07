@@ -1,0 +1,25 @@
+// Reading the call a plugin's machine asked under, for a spec that drives one with `sendToSystem` mocked.
+//
+// A machine mints its own call and hands it to `sendToSystem` as the third argument, so this is the only
+// place a spec can learn what the real backend's `reply` would echo — there is no field on the event to read
+// it from, which is the design. Pair it with `answerTo` (`@abuddy/sdk/testing`) to build the answer.
+import type { CallOptions } from '@abuddy/sdk/events';
+
+/** A mocked `sendToSystem`, read structurally so this needs no vitest types */
+interface SendMock {
+  mock: { calls: unknown[][] };
+}
+
+/**
+ * The call the nth send of `type` carried.
+ *
+ * **It throws rather than returning `undefined`**, because a missing call means the machine never asked —
+ * a different failure from taking the wrong answer, and one that would otherwise surface as `undefined`
+ * reaching an assertion several lines later.
+ */
+export function sentCall(sendToSystem: SendMock, type: string, nth = 0): string {
+  const sends = sendToSystem.mock.calls.filter(([, event]) => (event as { type: string }).type === type);
+  const { call } = (sends[nth]?.[2] ?? {}) as CallOptions;
+  if (call === undefined) throw new Error(`no ${type} #${nth} carrying a call; sent ${sends.length}`);
+  return call;
+}

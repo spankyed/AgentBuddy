@@ -7,6 +7,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
 import { answerTo } from '@abuddy/sdk/testing';
+import { sentCall } from '../../../_support/calls.ts';
 import type { PromptEntity } from '@abuddy/sdk';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
@@ -29,20 +30,8 @@ function connected() {
 
 const sentTypes = () => sendToSystem.mock.calls.map(([, event]) => (event as { type: string }).type);
 
-/**
- * The call the nth `PROMPT_SELECT` was asked under, read off the mocked send's third argument.
- *
- * The machine mints it and hands it to `sendToSystem`, so this is how a spec learns what the real backend's
- * `reply` would echo — there is no field on the event to read it from, which is the design.
- */
-const selectCall = (nth: number): string => {
-  const selects = sendToSystem.mock.calls.filter(([, event]) => (event as { type: string }).type === 'PROMPT_SELECT');
-  const options = selects[nth]?.[2] as { call?: string } | undefined;
-  // Named rather than asserted through: a missing call means the machine did not ask, which is a different
-  // failure from taking the wrong answer and should not read as `undefined` reaching an assertion
-  if (options?.call === undefined) throw new Error(`no PROMPT_SELECT #${nth} carrying a call; sent ${selects.length}`);
-  return options.call;
-};
+/** The call the nth `PROMPT_SELECT` was asked under, which the machine minted and the send carries */
+const selectCall = (nth: number) => sentCall(sendToSystem, 'PROMPT_SELECT', nth);
 
 beforeEach(() => {
   sendToSystem.mockReset();
@@ -146,16 +135,12 @@ it('clears what it is waiting for once the answer lands', () => {
 /**
  * An answer carrying no call at all, with nothing outstanding — refused.
  *
- * **The case a hand-written comparison gets wrong.** `_callOf(event) === context.pendingPromptCall` reads
- * `undefined === undefined` for an empty slot, so it admits an answer nobody asked for — and an empty slot
- * is the resting state, which makes that the common path rather than an edge.
+ * **The case a hand-written comparison gets wrong**: `_callOf(event) === context.pendingPromptCall` reads
+ * `undefined === undefined` for an empty slot, which is the resting state — so it admits an answer nobody
+ * asked for, on the common path rather than an edge.
  *
- * **Protected twice over, and the case fires only on the combination.** `answersCall` refuses an empty
- * slot, and the slot is spelled `null`, so even a raw `===` would refuse here — measured: dropping
- * `answersCall`'s nullish check leaves this passing, and so does spelling the slot `undefined`; both
- * together is what fails it, which is the state it was written against. The nullish check itself is held
- * in `abuddy-sdk/tests/events/calls.spec.ts`; what this holds is the behaviour, whichever of the two
- * delivers it.
+ * Held by two things independently — `answersCall` refuses an empty slot, and the slot is `null` — so this
+ * fires only on losing both. `abuddy-sdk/tests/events/calls.spec.ts` holds the check itself.
  */
 it('refuses an answer carrying no call when nothing is outstanding', () => {
   const actor = connected();

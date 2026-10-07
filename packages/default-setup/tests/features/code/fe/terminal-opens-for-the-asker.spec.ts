@@ -17,6 +17,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
 import { answerTo } from '@abuddy/sdk/testing';
+import { sentCall } from '../../../_support/calls.ts';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
 vi.mock('#generated/events.ts', () => ({ sendToSystem }));
@@ -40,15 +41,8 @@ const terminals = (actor: ReturnType<typeof createActor>) =>
 const pendingOpens = (actor: ReturnType<typeof createActor>) =>
   Object.keys((actor.getSnapshot().context as { pendingOpens: Record<string, unknown> }).pendingOpens);
 
-/** The call the nth `terminal.CREATE_TERMINAL` was asked under, which the machine minted and the send carries */
-const createCall = (nth: number): string => {
-  const creates = sendToSystem.mock.calls.filter(([, event]) => (event as { type: string }).type === 'terminal.CREATE_TERMINAL');
-  const options = creates[nth]?.[2] as { call?: string } | undefined;
-  // Named rather than asserted through: a missing call means the machine did not ask, which is a different
-  // failure from taking the wrong answer and should not read as `undefined` reaching an assertion
-  if (options?.call === undefined) throw new Error(`no terminal.CREATE_TERMINAL #${nth} carrying a call; sent ${creates.length}`);
-  return options.call;
-};
+/** The call the nth `terminal.CREATE_TERMINAL` was asked under */
+const createCall = (nth: number) => sentCall(sendToSystem, 'terminal.CREATE_TERMINAL', nth);
 
 beforeEach(() => {
   sendToSystem.mockReset();
