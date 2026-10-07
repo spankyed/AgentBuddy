@@ -99,8 +99,11 @@ Beside those: `publishHostPackOutput` and `pruneHostPackOutputs`; `builtIn: bool
 `toBuiltInPackInfoList` (`features/packs/be/system.ts:109-116`); and the manifest schema's `builtIn` field
 plus its refinement.
 
-**Roughly 500 lines of source** plus `dev-build.mjs`'s 164, and the branch appears in about a dozen more
-places. On the test side `abuddy-cli/tests/packs/host-output.spec.ts` (356 lines) is mostly about the
+**Roughly 500 lines of source** plus `dev-build.mjs`'s 164. **Nineteen files read the flag**, and about
+eleven are named by no step below, because most are axis 1 and stay: `BUILT_IN_PACKS_DIR` in
+`main/src/modules/api-server/config.ts`, `pack.ts` refusing to pack a built-in, `installer.ts` skipping
+built-in ids while resolving dependencies, `discovery.ts` filtering manifests. One must not be touched at all —
+`abuddy-host/src/migrations/app/0.3.15.ts`, which is history and describes the tree as it was. On the test side `abuddy-cli/tests/packs/host-output.spec.ts` (356 lines) is mostly about the
 built-in-only publish, `loader.spec.ts` (857) and `reload.spec.ts` (381) each carry a near-duplicate half,
 `discovery.spec.ts` (128) shrinks, and `api/tests/runtime/packaged-boot.spec.ts` (102) changes shape.
 
@@ -239,9 +242,24 @@ makes default-setup record the `runtime` and `fe` phases like any other pack. Ea
 through the fixture packs, whose step shares no edge with the pool that reads their records. Build
 default-setup like any pack and the step on the chain's critical path is observed across all nine.
 
+**Two more pieces come out with `dev-build.mjs`, and one bites before the other.** It writes *two* files:
+`dist/runtime/index.cjs` and `dist/runtime/seeds-index.sha256`, the sha256 of the compiled seeds index its
+runtime was built beside. `publishHostPackOutput` (`abuddy-host/src/packs/layout.ts:307-310`) **throws** when
+those two disagree, so a `--watch` wrapper that drops the hash leaves a packaged app unable to publish its own
+build output. Then the guard itself goes: it exists only because seeds and runtime are built by *different
+commands* — its own comment says so, and the throw reads *"seeds compiled again without rebuilding the
+runtime"* — and one command doing both removes the cause. `BUILT_IN_RUNTIME_SEEDS_HASH`, the file and the throw
+are then a check that cannot fail, so they are deleted, or the throw stays as an assertion with a comment
+naming the edit that would fire it, which is this repo's rule for one.
+
+**The chain declaration moves too.** `compile` gains the Vite frontend bundle, so its declared `seconds` needs
+a deliberate `chain --all --record --forget --step compile`, on the machine the cost table was measured on.
+`PACK_OUTPUTS` needs nothing: it declares `packages/default-setup/dist` whole.
+
 **Files:** `abuddy-cli/src/commands/build.ts`, `packages/default-setup/dev-build.mjs`,
 `packages/dev-mode.js`, `packages/default-setup/package.json`, `scripts/lib/build-reads.ts`,
-`abuddy-cli/src/build/build-reads.ts`, `repo-checks/tests/dep-files.integration.spec.ts`.
+`abuddy-cli/src/build/build-reads.ts`, `abuddy-host/src/packs/layout.ts`, `scripts/lib/chain-steps.ts`,
+`repo-checks/tests/dep-files.integration.spec.ts`.
 
 **Why first:** it is what makes a shipped pack a *complete* pack on disk, which every later step assumes, and
 it is the only step that deletes a mechanism no other pack has.
@@ -278,16 +296,40 @@ does, and the frontend loads over `pack://` for every pack.
 **What this step does not touch, and the two config files are why it is worth saying:** the generated entries
 those virtual modules import. `pack-entry.ts` and `pack-entry-fe.ts` stay on disk, written by `abuddy
 generate-entries` on the triggers and under the stamp
-[`codegen-staleness.md`](codegen-staleness.md) records — a pack's own typecheck reads them through
+[`codegen-staleness.md`](../archive/plans/codegen-staleness.md) records — a pack's own typecheck reads them through
 `#generated/*`, so they could not be synthesised by a plugin even if this step wanted them to be. What changes
 is only who imports them: after this, each pack's own `abuddy build` rather than the renderer's and the api's.
 
 After this, `manifest.builtIn` decides **nothing about behaviour**: one load path, one reload path, one build
 path, one frontend path, no privileges. What survives is axis 1 — the directory a pack lives in.
 
+**Four more things go with those two virtual modules.**
+
+- **Their type declarations.** `api/src/env.d.ts` declares `virtual:built-in-pack-loaders` and
+  `renderer/env.d.ts` declares `virtual:built-in-packs`. Delete the plugins without them and the typecheck
+  fails on a module nothing provides.
+- **The dev-reload wire.** `api/src/transport/websocket.ts:59,72` takes `{ packId, builtIn }` out of the
+  `POST /dev/reload` body and branches to the two reload functions this step merges, so the body shape changes
+  and `abuddy run`, which posts it, changes with it. Narrowing it is available on its own: the server can
+  derive the kind from its registry rather than trust the caller, which is the better shape either way and
+  shrinks this step.
+- **`build:app` stops reading the pack's sources, which closes a defect that exists today.** The renderer
+  bundle carries default-setup's frontend compiled from `src/` — a notes field, `hideCompletedChildren`, is in
+  `packages/renderer/dist/assets/index-*.js` — and `build:app` declares neither that tree nor anything that
+  moves with it: `PACK_OUTPUTS` is the pack's `dist`, which holds no frontend bundle for a built-in pack, plus
+  `src/__generated__`, whose only file that moves on a `.vue` edit is the dot-prefixed `.inputs-hash`, which
+  `inputFiles` skips (`abuddy-host/src/build/packages-built.ts:286`). Measured 2026-10-07: edit a `.vue`, run
+  `compile`, and `chain --dry` reports `build:app` **cached**, and `test:smoke` with it — a green chain over an
+  app that never held the change. **It is fixable today** by declaring `packages/default-setup/src` on that
+  step, and waits on nothing here; after this step the edge is gone and that declaration comes back out.
+- **What stays, and has to be said because this step claims `manifest.builtIn` decides nothing about
+  behaviour:** the Packs plugin reports it (`abuddy-host/src/features/packs/be/system.ts:70,88,97`). That is
+  axis 1 — which directory a pack lives in — and it is the one behaviour the claim excepts.
+
 **Files:** `abuddy-host/src/packs/runtime/{loader,reload}.ts`, `api/tsup.config.ts`,
-`api/src/runtime/index.ts`, `renderer/vite.config.ts`, `main/src/modules/pack-protocol/PackProtocol.ts`,
-`abuddy-host/src/fe/pack-frontends.ts`.
+`api/src/runtime/index.ts`, `api/src/env.d.ts`, `api/src/transport/websocket.ts`, `renderer/vite.config.ts`,
+`renderer/env.d.ts`, `main/src/modules/pack-protocol/PackProtocol.ts`,
+`abuddy-host/src/fe/pack-frontends.ts`, `abuddy-cli/src/commands/run.ts`, `scripts/lib/chain-steps.ts`.
 
 **Verify before starting:** that a packaged API process can `esmRequire` the pack's `dist/runtime/index.cjs`
 out of `resources/`. Development already does precisely this through `runtimeEntry: 'prefer'`; the packaged

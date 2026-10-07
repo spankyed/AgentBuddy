@@ -1,3 +1,14 @@
+> **Done.** The staleness this was written against is closed: generation runs in every build path, so a branch
+> switch or a template edit is fixed by the next command, and `.inputs-hash` makes that nearly free while
+> reporting *why* a tree is stale. The third phase — virtualising the generated barrels — is **refused**, with
+> the blocker and the condition that would revive it at the end.
+>
+> **Every claim below was checked against the tree on 2026-10-07, and nothing re-checks it.** What is held to
+> the code is elsewhere: the command's behaviour in `packages/abuddy-cli/CLAUDE.md`'s `generate-entries` row,
+> what each generated file holds in `packages/default-setup/CLAUDE.md`, and the mechanism itself in
+> `commands/generate-entries.ts`, whose comments carry the measurements. Read this for the shape and the
+> decision; read those for what is true now.
+
 # Codegen staleness
 
 `src/__generated__/` is written by `abuddy generate-entries` (`@abuddy/cli`'s `commands/generate-entries.ts`,
@@ -5,10 +16,8 @@ over `generatePackFiles` in `@abuddy/sdk/build`) from inputs that reach it throu
 anyone imports connects `abuddy.json` to the barrels generated from it, so the files can describe a pack that
 is no longer there.
 
-**Nothing here is open work.** This records what keeps them current, what that mechanism cannot see, and the
-one thing that was planned for it and will not be built. The rule-level description lives with the command
-(`packages/abuddy-cli/CLAUDE.md`, the `generate-entries` row); the annotated list of what each generated file
-holds is `packages/default-setup/CLAUDE.md`.
+What follows is what keeps them current, what that mechanism cannot see, and the one thing that was planned
+for it and will not be built.
 
 ## What generation reads
 
@@ -77,7 +86,7 @@ Generation    the on-disk barrels those two import from
 Both plugins scan `packages/` for `abuddy.json` at build time and generate a map of `import()` expressions;
 `packages/api/src/runtime/index.ts` and `packages/renderer/src/main.ts` are what consume them.
 
-**That top layer is what [`one-kind-of-pack.md`](one-kind-of-pack.md) takes apart, and the generation layer
+**That top layer is what [`one-kind-of-pack.md`](../../plans/one-kind-of-pack.md) takes apart, and the generation layer
 below it is untouched by that plan** — worth knowing before doing either, because the two live in the same two
 config files. Its step 3 deletes `virtual:built-in-pack-loaders` outright (production requires
 `dist/runtime/index.cjs` from the pack's own directory, as development already does) and re-keys
@@ -103,7 +112,7 @@ pack's own typecheck is one of those tools. `vue-tsc --noEmit` compiles `src/**`
 necessity, in `package.json` `imports` for the runtimes and `tsconfig.json` `paths` for the compiler. `tsc`
 has no plugin to ask, so a virtual barrel is `TS2307` to it, and the declarations would have to be written to
 disk anyway — which is the file the plan wanted to remove. The same reasoning retired the `@/` path aliases
-([`goal-one-way-to-name-your-own-modules.md`](../archive/goals/goal-one-way-to-name-your-own-modules.md)):
+([`goal-one-way-to-name-your-own-modules.md`](../goals/goal-one-way-to-name-your-own-modules.md)):
 four bundler configs each re-implementing a mapping no runtime reads. `one-kind-of-pack.md` reaches the same
 fact from the other side — the `@<pack-id>/` alias half of `builtInPacksPlugin` has no remaining user, because
 nothing imports `@default-setup/…` once a pack names its own modules with `#` subpaths.
