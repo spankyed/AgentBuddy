@@ -92,6 +92,59 @@ a name list and is available where it is needed: the host's build is always a bu
 There is precedent for the shape: `@abuddy/ui`'s own public entries are already generated shims that read
 `export { default } from './x.vue'; export * from './x.vue';` (`exports:update`).
 
+## Security
+
+**There is no runtime boundary today, and this does not remove one.** `window.__abuddy`
+(`renderer/vite.config.ts:85`) is a plain enumerable global: any code in the renderer, a pack's frontend
+included, can read it and ignore the proxies. The proxies are module resolution, not containment. What
+actually holds the line is **build time** — `check:specifiers` for this repo's packs and `abuddy build` for
+external ones, refusing `@abuddy/host`, `_`-prefixed internals and `APP_ONLY_EXPORTS`
+(`@abuddy/ears/lmdb`, *"the app's LMDB store"*).
+
+An import map leaves that boundary where it was: the pack's source still names the specifier, so the same
+build-time checks see the same thing. In one respect it is tighter — a bare specifier absent from the map
+does not resolve at all, where today the global is open to whatever the host put on it.
+
+### The shim route is an allow-list, and that is a requirement
+
+**`/@host/<specifier>` must serve only the specifiers the map contains, and 404 everything else.** A route
+that builds a shim from whatever specifier was requested is an arbitrary-module re-export endpoint: a pack
+could ask for `/@host/@abuddy/host/secrets` or `/@host/@abuddy/ears/lmdb` at runtime and be handed a module
+the build-time rules exist to forbid. Those rules never run at runtime, so nothing else would stop it.
+
+Two things bound the exposure, and they are the reason this is a requirement rather than a reason not to
+proceed:
+
+- **Production has no such route.** The shims are emitted at build time from a fixed list, so the on-demand
+  case is dev-only — which means `abuddy run` and `npm start`.
+- **The modules worth protecting are not in the renderer.** `secretsStore`, the LMDB store and the
+  migrations run in the API process; a shim re-exporting them into a browser context would mostly fail to
+  resolve. The renderer's sensitive surface is the preload bridge and the API token, and any renderer code
+  reaches those today either way.
+
+**It needs a firing case**, because its subject is input: ask the route for a host-only specifier — one from
+`APP_ONLY_EXPORTS` and one under `@abuddy/host` — and assert it is refused rather than served. A gate with
+no case is a gate nothing has watched fail, and this one is the only runtime check in the design.
+
+### Three smaller points
+
+- **Do not serve the shims from a CORS-open server.** `abuddy run`'s pack dev server sets `cors: true`
+  (`run.ts`). The host's shims belong to the renderer's dev server, not that one, and should not inherit it
+   — otherwise any page in a browser can fetch the host's modules. Not an escalation, since it is shipped
+  code, but no reason to widen the surface.
+- **A future CSP gets slightly harder.** There is no CSP in the renderer today; an inline
+  `<script type="importmap">` would need a nonce or a hash once there is one. Worth knowing before someone
+  adds a CSP and finds the map blocked.
+- **One door opens:** an import map can carry `integrity` for its targets, so shared modules could be
+  subresource-integrity checked. A global has no equivalent. Not a reason to migrate, but it is a capability
+  this design has and the current one cannot.
+
+### What this is still not
+
+Containment. If packs should be *restricted at runtime* rather than *checked at build time*, neither design
+does that, and the renderer is the wrong place to attempt it — that is process isolation or a sandboxed
+frame, and a far larger piece of work than this plan.
+
 ## Steps
 
 ### 0. The spike, before anything else
@@ -103,7 +156,9 @@ import map, and externalise that specifier in `packExternalsPlugin` instead of p
 1. the pack's import resolves to the host's module;
 2. the binding is **live** — reassign a host export and the pack sees it;
 3. it works under `file://`, which is how production loads the renderer
-   (`WindowManager.ts:481`, `loadFile`).
+   (`WindowManager.ts:481`, `loadFile`);
+4. the route refuses a specifier outside the map — try one from `APP_ONLY_EXPORTS`. Worth doing in the spike
+   rather than after it: if the allow-list is awkward to place, that shapes where the route lives.
 
 **If any of those fails, stop and record why.** Point 3 is the one that cannot be assumed: a packaged app
 has no server, so the map's targets are relative `file://` URLs.
