@@ -25,7 +25,7 @@
  * and `--skip-generate` skip others. A flat list would answer "nothing was recorded" and "nothing was
  * read" with the same silence, which is the ambiguity `readsOf` was tightened to remove.
  *
- * `docs/plans/one-kind-of-pack.md` removes the first of those two reasons: with no built-in packs, every
+ * `docs/goals/goal-one-kind-of-pack.md` removes the first of those two reasons: with no built-in packs, every
  * pack is built the same way and records the runtime and frontend bundles too. The keying stays, on the
  * second reason alone — the flags still skip phases — and what changes is that one pack's record then
  * exercises all nine, where today it takes a built-in pack and an external one between them.

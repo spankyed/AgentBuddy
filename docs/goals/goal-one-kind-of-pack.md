@@ -1,44 +1,85 @@
 # One kind of pack: retire "built-in"
 
-Compiled 2026-10-02 on `AS/one-action-cache`, from reading the pack load, reload, seed, build and packaging
-paths end to end. Every location, count and privilege below was checked against the tree on that date.
-Restructured the same day, after the first version was found to be a proposal wearing a decision's clothes —
-what changed and why is in **How this plan was wrong** at the end.
+> **Written in session** `d364117f-5480-4324-a724-c63f04694b9f` (Claude Code, 2026-10-07). Resume it with `claude -r d364117f-5480-4324-a724-c63f04694b9f`.
 
-> **Every citation here was last checked against the tree on 2026-10-07**, and each of steps 1-3
-> is still undone — `bundledLoaders`, `builtInPackLoadersModule` and `partitionPolicy` are all present.
-> Ten citations had drifted in five days and are corrected in place, which is the rate to expect: six line
-> numbers moved under edits to the files they name, and four of the five test sizes gained a line to one
-> refactor (`bdfa88299`, reading the installed layout from `PACK_LAYOUT`). Nothing a step rests on had moved.
-> A count or a line number below is as good as that date; what is held to the code is named in the step that
-> needs it.
->
-> **The branch also gave item 1 three more things to delete.** `abuddy build` now records what each bundling
-> phase read, and that record is built-in-aware in three places — listed under item 1, each carrying a
-> comment naming this document, so the work is findable from the code and not only from here.
+```
+# Goal: every pack is the same kind of pack, and every one of them hot-reloads
 
-**Six steps in one sequence.** There is no open question left and no second category: the order is forced by
-two facts in the code, and the only thing the plan must not trade away is the developer experience, which
-step 3 is held to by an acceptance test rather than an argument.
+Implement docs/goals/goal-one-kind-of-pack.md on master, at or after 02688f256 — the base its Background
+was surveyed at.
+Before Phase 1, confirm the base: `bundledLoaders` in abuddy-host/src/packs/runtime/loader.ts, the
+`if (!external)` early return in abuddy-cli/src/commands/build.ts, `builtInPacksPlugin` in
+renderer/vite.config.ts, `builtInPackLoadersModule` in api/tsup.config.ts, `partitionPolicy` in
+abuddy-sdk/src/build/manifest-schema.ts and `packages/default-setup/dev-build.mjs` all exist at HEAD. If
+they don't, stop and say so — the Background was surveyed somewhere else.
+Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
+reopen them or stop to ask.
+Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
+going. Standing rules apply as written in Constraints and root CLAUDE.md — no backward compatibility in
+code, stored user data excepted.
 
-## The requirement, and what sorts the rest
+The requirement that outranks the rest: after Phase 3, `npm run start` alone gives full frontend and
+backend hot reload for every pack in the workspace, with no `abuddy run` process. Phase 3 is not done
+until `tests/packs/external-pack` behaves like `packages/default-setup`.
 
-**Full frontend and backend hot reload for every pack in the workspace, from `npm run start`, with no
-separate `abuddy run` process.** That is the one requirement; everything else here is negotiable against it.
-It is not a tightening — it is what *one* pack has today, and the work is to stop that depending on which
-pack it is. Step 3 carries it as a test.
+Finished when:
+- Phases 1-6 are implemented and each meets its "Done when"; every new guard is mutation-checked.
+- `manifest.builtIn` decides nothing: no load, reload, build, frontend or seed path reads it, and
+  `grep -rn "builtIn" packages/*/src` finds only a pack's own manifest field and its uninstall property.
+- `grep -rn goal-one-kind-of-pack packages scripts` returns one hit, the dev-server spec's — see
+  Background's "The comments that name this goal" for the other four and which phase takes each.
+- `bundledLoaders`, `builtInPackLoadersModule`, `dev-build.mjs`'s esbuild, `partitionPolicy`,
+  `earlySystem`, `publishHostPackOutput`, `pruneHostPackOutputs` and `hostPacksDir` are gone.
+- default-setup is installed at first boot from the directory the app ships, and re-installed when the
+  shipped integrity differs from the installed one.
+- npm run chain passes; npm run build-prod produces an app that boots with its default pack, verified
+  with DEBUG_E2E=1 npm test -- smoke.
+- A final summary: phase -> done/deferred, evidence, and the conventional choices made.
+- The doc is in docs/archive/goals/, with its status blockquote and an Outcome section, committed.
 
-**What used to sort this plan was a criterion that does not hold: "collapse a duplication where it needs no
-stored-data migration".** It split the work in two and deferred half of it, on the premise that a migration
-is a one-way door. There is one user of this app and he is its author, so both migrations below are
-conveniences — skip them and every pack re-seeds once (seeds are upsert, so nothing is lost) and the `logs`
-plugin's settings and tab-visibility choice revert to defaults. `CLAUDE.md`'s carve-out for stored data is
-written for users this repo does not have, and a criterion resting on it was dividing the work on a fiction.
+Commit as you go:
+- Commit each phase when its "Done when" holds and the checks are green, not once at the end.
+  Conventional message, no Co-Authored-By or session lines, `git commit -- <paths>` naming only that
+  phase's files.
+- Check `git diff --cached` first: something outside the session stages files, and a pathspec commit
+  leaves the rest of the index alone.
+- Don't push, tag or open a PR unless the user asks.
 
-So what orders the steps is the code: `abuddy build`'s gate blocks the generic backend watcher (step 1 before
-step 3), and `loadSingleExternalPack` strips `boot.seedManifest` (step 5 before step 6).
+Never:
+- The standing list in Constraints: git remotes, publishing, real data dirs, broad process kills, bare
+  tsc in preload, the example pack, release metadata, typed EARS, compat shims, loosened assertions.
+- Add a read-only fallback that loads a shipped pack straight from resources/ when its install fails
+  (Decision 7) — that is the built-in load path returning in disguise.
+- Put file times back into a seed hash, or add a second record beside a seed hash (Decision 6).
+- Generalise `earlySystem` to any pack instead of moving `logs` to the host pack (Decision 4).
+```
 
-## Three axes, not one question
+## Background (2026-10-07, at 02688f256 on master)
+
+Every citation below was checked against the tree on that date, and Phases 1-6 are all undone. A count or
+a line number here is as good as that date; what is held to the code is named in the phase that needs it.
+
+### The comments that name this goal
+
+Five places in the code point at this document, so the work is findable from the code and not only from
+here. They are also the checklist: **after the work, `grep -rn goal-one-kind-of-pack packages scripts`
+should return the last row and nothing else.** Four of them name something this goal deletes, and the
+difference matters — a reader who finds a surviving comment has either found unfinished work or the one
+that was always meant to stay.
+
+| site | what it says | becomes |
+|---|---|---|
+| `scripts/lib/build-reads.ts:134` | `isBuiltIn` is "the one thing here whose subject this goal deletes" | **gone**, Phase 1 |
+| `abuddy-cli/src/build/build-reads.ts:28` | the first of two reasons the read record is keyed by phase | **the sentence goes**, Phase 1; the keying stays on the second reason |
+| `repo-checks/tests/dep-files.integration.spec.ts:400` | the two-kind evidence loop, needing a built-in pack *and* an external one | **gone**, Phase 1 — one record then carries all nine phases and the loop collapses into the case above it |
+| `scripts/lib/chain-steps.ts:1083` | `build:app` declares `PACK_SOURCES` because the renderer compiles the pack's frontend | **gone**, Phase 3 — the comment says so itself: *"this comes back out with it"* |
+| `abuddy-cli/tests/build/fe-bundler-dev-server.integration.spec.ts:19` | why the `pack://` page-reload ceiling is the reason a dev-only source import exists | **stays** — it explains Phase 3's design, and is still true afterwards |
+
+The three `build-reads` and `dep-files` rows are the same fact in three places: `abuddy build` records what
+each bundling phase read, and that record is built-in-aware because a built-in pack never runs the runtime
+and frontend phases. Phase 1 is what makes it run them.
+
+### Three axes, not one question
 
 "Built-in" conflates three things, and only the first is a real distinction:
 
@@ -55,7 +96,7 @@ rather than a devex regression.
 
 ---
 
-## What the distinction buys
+### What the distinction buys
 
 Exactly three privileges. `loadSingleExternalPack` strips each one from an external pack
 (`abuddy-host/src/packs/runtime/loader.ts:235-257`), with a warning:
@@ -68,11 +109,11 @@ Exactly three privileges. `loadSingleExternalPack` strips each one from an exter
 
 So one privilege is vacuous today, one is used by a single feature, and one is real.
 
-## What it costs
+### What it costs
 
 Five mechanisms that exist twice, once per pack kind.
 
-**Four build paths for one pack's code.** The largest of them, and the first version of this plan
+**Four build paths for one pack's code.** The largest of them, and an earlier version of this doc
 undercounted it:
 
 1. the renderer's `builtInPacksPlugin` (`renderer/vite.config.ts`) — the frontend, dev and production;
@@ -125,7 +166,7 @@ built-in-only publish, `loader.spec.ts` (858) and `reload.spec.ts` (382) each ca
 
 ---
 
-## Developer experience
+### Developer experience
 
 **`npm start` keeps working, default-setup's frontend HMR does not change, and every other workspace pack
 gains it.** Those are the three sentences that matter; the rest is why.
@@ -195,7 +236,7 @@ comes from the built runtime, so a feature added to `abuddy.json` without a rebu
 system is not registered. That is true today for the same reason, and `abuddy run`'s `abuddy.json` watcher
 regenerating entries (`run.ts:377`) is the mitigation to keep.
 
-## "Runs first" is already derived
+### "Runs first" is already derived
 
 `packSeedOrder` (`abuddy-host/src/packs/discovery.ts:147`) is a cycle-tolerant topological sort over
 declared `dependencies`, already covered by `tests/packs/dependencies.spec.ts`. Its own doc names the
@@ -210,14 +251,14 @@ nothing about ordering changes under them.
 
 ---
 
-## How default-setup ships today
+### How default-setup ships today
 
 The entry point, in five steps:
 
 1. **`electron-builder.mjs:119-171`** — `files` takes `packages/**/*`, minus `!packages/*/src/**`, plus
    `packages/*/dist/**`, with `asar: false` (`:176`). Since 2026-10-02 it also drops
    `!packages/*/.abuddy/**`: a pack's working directory, which that recursive include had been carrying into
-   the installer. Worth knowing here because this plan makes a shipped directory authoritative — it holds the
+   the installer. Worth knowing here because this goal makes a shipped directory authoritative — it holds the
    pack, not the build's leftovers, and nothing in the steps below has to arrange that. default-setup lands
    as a real directory at
    `<resourcesPath>/app/packages/default-setup/`: `abuddy.json` and `dist/` (the seven `*.seed.json`,
@@ -238,12 +279,68 @@ renderer bundle; `dist/runtime/fe.js` is not built for a built-in pack at all.
 
 ---
 
-## The work, in order
+### What an earlier version got wrong
 
-Six steps. Steps 1-3 are what the requirement needs and touch no stored data; 4-6 remove the last axis and
-move two records, each with an optional migration. The order is the code's, not a risk ranking.
+Recorded so the same shape is recognisable next time, and because the corrections are why the structure
+changed.
 
-### 1. Delete the `if (!external)` gate in `abuddy build`
+| the claim | what was wrong |
+|---|---|
+| "four pieces of work that remove it", sequenced 1-4 | `boot.seedManifest` is stripped from external packs, so installing default-setup before merging the seed paths ships a pack that seeds nothing. The order was wrong, and the migration was a prerequisite rather than the revertible tail |
+| "three build paths" | Four. `abuddy build` returns early for a built-in pack, so `dev-build.mjs` exists — 164 lines no other pack has |
+| "item 1 is free" | Deleting `dev-build.mjs` removes the backend watcher `npm start` depends on |
+| "worth doing" | A measurement with a verdict attached. No criterion was stated, so nothing could have failed it |
+| "the one real loss is frontend HMR" | HMR is keyed on a static import, not on being built-in. Re-keying keeps it, and extends it to any pack author in a checkout |
+| **the criterion itself**: "collapse a duplication where it needs no stored-data migration" | It split the work in two and deferred half on the premise that a migration is a one-way door. There is one user and he wrote the app, so both migrations are conveniences — `CLAUDE.md`'s carve-out for stored data is written for users this repo does not have. The order the steps actually have is the code's: one gate, one strip |
+| three reasons step 6 was "a question" | A migration that costs nothing is not a reason; "it renames back to what 0.3.15 renamed away from" was an observation, not an objection; and the seed record's uninstall lifetime is answered by letting shipped packs be uninstallable, with a property deciding whether the button shows — which is on the roadmap anyway |
+
+## Decisions
+
+Final.
+
+**1. The requirement is the developer experience, and it is the one thing that cannot be traded.** After
+Phase 3, `npm run start` alone gives full frontend and backend hot reload for **every** pack in the
+workspace, with no `abuddy run` process. This is not a tightening: it is what one pack has today, and the
+work is to stop that depending on which pack it is. Phase 3 carries it as a test rather than an argument.
+
+**2. What orders the phases is the code, not risk.** `abuddy build`'s `if (!external)` gate blocks the
+generic backend watcher, so Phase 1 precedes Phase 3; `loadSingleExternalPack` strips `boot.seedManifest`
+and `evaluateSeedPolicy` runs only on the declarative path, so Phase 5 precedes Phase 6.
+
+**3. A migration is a convenience here, not a gate.** There is one user of this app and he wrote it, so
+the two records Phases 4 and 5 move can be migrated or not: skipping them costs one re-seed of every pack
+(seeds are upsert) and the `logs` plugin's settings and tab-visibility choice. `CLAUDE.md`'s carve-out for
+stored data is written for users this repo does not have. An earlier version of this doc sorted its work
+by "needs no stored-data migration" and deferred half of it on that premise; see *What an earlier version
+got wrong*.
+
+**4. `logs` moves into the host pack, and `earlySystem` leaves the pack contract.** Generalising it
+instead is circular — the refinement's own reason is *"before external packs load"*, which cannot hold for
+a pack that is external — and it would let an arbitrary pack's system run before the data layer exists.
+
+**5. `partitionPolicy` is deleted, not generalised.** Nothing uses it: the only pack allowed one declares
+`{"excludedEntityTypes": []}`.
+
+**6. A seed hash is content, and there is one record per pack.** Settled already by `0a25ff990`: both
+hashes are over bytes and file names, `builtInSeedFingerprints` is gone, and asking for a pack's data back
+is `IMPORT_PACK_SEEDS`. Phase 5 is therefore a field rename plus porting `seedPolicy`, with no semantics
+left to decide.
+
+**7. First boot may fail, loudly.** Phase 6 makes the app able to start with no packs if the install
+fails, which it cannot today. The install is idempotent and verified at every boot and a failure is fatal
+with a message naming the pack and the path. A read-only fallback that loads straight from `resources/` is
+the built-in load path in disguise and is rejected.
+
+**8. `shippedWithApp` splits into two questions, and shipped packs become uninstallable.** `system.ts:116`
+feeds three refusals: two that an installed pack may not take a shipped pack's id, one that a shipped pack
+cannot be uninstalled. *May this be uninstalled* becomes a pack property, `false` by default for a shipped
+pack, which the Packs view reads to hide the button — uninstallable and replaceable built-ins are on the
+roadmap, so this moves toward it. *May an install take this id* is not about shipping at all and mostly
+deletes: `installedPacks()` answers it once a shipped pack is installed.
+
+## Phases
+
+### Phase 1 — Delete the `if (!external)` gate in `abuddy build`
 
 `build.ts:305-310` returns early for a built-in pack. Remove it and `abuddy build` produces
 `dist/runtime/index.cjs` and `dist/runtime/fe.js` for default-setup with the same bundlers every other pack
@@ -252,7 +349,7 @@ pack writes `PACK_LAYOUT.snapshot`.
 
 Then **delete `dev-build.mjs`'s own esbuild** — 164 lines reimplementing `bundlePackRuntime`.
 
-**This is not free for the dev loop, which the first version of this plan got wrong.** `dev-build.mjs` is
+**This is not free for the dev loop, which an earlier version of this doc got wrong.** `dev-build.mjs` is
 also the backend watcher: `dev-mode.js:27` forks it with `--watch` and `:52` waits for its first compile
 before the API boots. Keep a thin `--watch` wrapper that calls `bundlePackRuntime` instead of its own
 bundler, so `npm start` behaves exactly as it does now. Switching the dev loop to `abuddy run`'s watcher is
@@ -299,7 +396,14 @@ a deliberate `chain --all --record --forget --step compile`, on the machine the 
 **Why first:** it is what makes a shipped pack a *complete* pack on disk, which every later step assumes, and
 it is the only step that deletes a mechanism no other pack has.
 
-### 2. Delete `partitionPolicy`
+**Done when:** `npm run compile` leaves `packages/default-setup/dist/runtime/index.cjs` **and**
+`runtime/fe.js`; `dev-build.mjs` holds no esbuild call; `npm start` still hot-reloads a backend edit, with
+the first compile still gating the API boot; `abuddy-cli/tests/build/*` and
+`repo-checks/tests/dep-files.integration.spec.ts` pass with the two-kind evidence guard collapsed into the
+case above it. Mutation: put the gate back and the `compile` observation count drops from nine phases to
+seven.
+
+### Phase 2 — Delete `partitionPolicy`
 
 Nothing uses it — the only pack allowed one declares `{"excludedEntityTypes": []}`, so deleting the field
 changes no partition behaviour. Remove it from the manifest schema, `PackRegistration`,
@@ -311,7 +415,12 @@ A field with no user, no fixture and a restriction that has never bound anything
 **Files:** `manifest-schema.ts`, `pack-registration.ts`, `loader.ts`, `registry.ts`,
 `database/schema.ts`; `npm run schema:update` and `npm run api:update` after.
 
-### 3. Collapse loading
+**Done when:** `grep -rn partitionPolicy packages/*/src` finds nothing; `npm run schema:update` and
+`npm run api:update` leave no diff beyond the field's removal; `database/schema.ts`'s `excluded` reads
+`SDK_EXCLUDED_ENTITY_TYPES` alone. Mutation: none available and none needed — this is a deletion whose
+subject has no user, which is why it is a phase of its own and two lines long.
+
+### Phase 3 — Collapse loading
 
 Production loads `dist/runtime/index.cjs` from the pack's own directory, exactly as development already
 does, and the frontend loads over `pack://` for every pack.
@@ -396,7 +505,20 @@ external packs (`loader.ts:244-249`), and `evaluateSeedPolicy` is called only fr
 its settings would be reset at every boot and its notes would come back after onboarding. Step 5 before step
 6 is not a preference.
 
-### 4. Move `logs` into the host pack
+**Done when — and this is Decision 1's test, not a checklist item.** From `npm run start` alone, with no
+`abuddy run` process:
+
+- editing a `.vue` in `tests/packs/external-pack` patches the component and keeps the app's state;
+- editing a `.vue` in `packages/default-setup` does the same, as it does today;
+- editing either one's backend rebuilds that pack and hot-reloads it in place;
+- `grep -rn "builtIn" packages/renderer/src packages/api/src` finds nothing.
+
+If the first bullet fails, this phase is not done whatever else passes. Then: `npm run chain` green, and
+`npm run build-prod` boots with the api bundle no longer carrying a pack's backend, checked with
+`DEBUG_E2E=1 npm test -- smoke`. Mutation: drop the dev source map and the first two bullets fail together,
+which is what says the path is shared.
+
+### Phase 4 — Move `logs` into the host pack
 
 `earlySystem` exists for one feature, and a system that must run
 before the data layer is up is app infrastructure — which is what `@abuddy/host/features/` already holds.
@@ -409,7 +531,14 @@ A migration moves them (`0.3.15.ts` is the precedent, `tests/migrations/plugin-s
 test to copy); skipping it costs the one user his logs settings and tab-visibility choice, which is why this
 is a convenience rather than a gate.
 
-### 5. Merge the two seed paths
+**Done when:** `earlySystem` is absent from `manifest-schema.ts`, `PackFeatureSystem` and
+`abuddy.json`; `@abuddy/host/features/logs/` holds the feature and `packages/default-setup/src/features/logs/`
+is gone; `startEarlySystems` starts the host's logs system and the app's boot logs still reach the Logs
+plugin. With the migration: a data dir carrying `default-setup/logs` settings shows them under `host/logs`
+after one boot, asserted the way `tests/migrations/plugin-settings-0.3.15.spec.ts` asserts its own.
+Mutation: skip the ref rename in the migration and that case fails.
+
+### Phase 5 — Merge the two seed paths
 
 Keep the external path's per-pack hashing and dependency tracking, port
 `seedPolicy` onto it, and fold `builtInSeedHashes` into `externalSeedHashes` — renamed, since "external" stops
@@ -423,7 +552,14 @@ re-seeded and a reinstall of identical bytes did too, while the built-in one cou
 cache at 0.38ms over default-setup's 490KB (0.07ms to stat the same files) — so there is no shortcut left to
 decide about, and the fields differ only in name. Asking for a pack's data back is `IMPORT_PACK_SEEDS`.
 
-### 6. Install on first boot
+**Done when:** one pair of fields (`packSeedHashes`, `packSeedDeps`) carries every pack;
+`orchestrateDeclarativeSeed` and `importPackSeeds` are one function or share their freshness check;
+`evaluateSeedPolicy` runs for any pack with a `seedPolicy`. Mutation: give a fixture pack
+`skipAtBoot: ['settings']`, boot twice, and assert its settings keys are absent both times — then remove
+the `seedPolicy` call and watch it fail. The dependency-state retry keeps its cases in
+`loader.spec.ts` (`externalSeedDeps`' four).
+
+### Phase 6 — Install on first boot
 
 `installPackFromLocal(source, targetPacksDir, options)` →
 `installFromDirectory` (`installer.ts:216,252`) already verifies, stages and writes `integrity.json` from a
@@ -452,36 +588,13 @@ about shipping:
 
 ---
 
-## Verification
-
-**Per step:** `npm run chain`, which routes the suites each change touches. Read the specs whose subject is
-the distinction first — `abuddy-host/tests/packs/runtime/{loader,reload}.spec.ts`,
-`tests/packs/discovery.spec.ts`, `abuddy-cli/tests/packs/host-output.spec.ts`,
-`api/tests/runtime/packaged-boot.spec.ts`. A case deleted because its subject is gone is correct; a case
-deleted because it became awkward is the failure mode, so each deletion says which it was in the commit
-message.
-
-**Step 1:** `npm start`, edit a backend file, confirm the API hot-reloads as it does today; edit a Vue file,
-confirm HMR is unchanged. Then `npm run compile` and confirm `dist/runtime/{index.cjs,fe.js}` both exist.
-
-**Step 3, and the thing that proves it:** a packaged build (`npm run build-prod`) that boots with the api
-bundle no longer containing default-setup's backend. `DEBUG_E2E=1 npm test -- smoke` covers the four things
-every other check assumes.
-
-**Step 3 is held to the requirement, and this is the test.** From `npm run start` alone, with no
-`abuddy run` process: edit a `.vue` in `tests/packs/external-pack` and in `packages/default-setup`, and both
-patch the component with the app's state intact; edit each one's backend and both rebuild and reload in
-place. The fixture pack behaving differently from default-setup is the failure, whatever else passes.
-
-**The `pack://` ceiling is measured and needs no re-taking**: `page reload`, 2026-10-07, with `DEBUG=vite:hmr`
-naming it. That is the fallback for an author working against a packaged or beta app, where there is no
-renderer Vite to own the modules — which is what a dev server is rather than a divergence anyone chose.
-
-**Mutation checks for steps 4-6:** ship a pack directory with no `integrity.json` (the install refuses,
-naming it); leave the installed copy older than the shipped one (boot re-installs); give a pack a
-`seedPolicy` and boot twice (the second seeds nothing, and `skipAtBoot` keys are absent both times); drop a
-`packSeedOrder` edge (the dependent seeds before its dependency); set a shipped pack's uninstall property
-true and watch the Packs view offer the button.
+**Done when:** a fresh data dir boots with default-setup installed under `<userData>/abuddy/packs/`;
+a second boot installs nothing; a shipped copy whose integrity differs re-installs; `SHIPPED_PACKS_DIR`
+has replaced `BUILT_IN_PACKS_DIR` at every reader; `publishHostPackOutput`, `pruneHostPackOutputs`,
+`hostPacksDir` and `database/schema.ts`'s `degraded` branch are gone; `fetch-deps.ts:157` reads `packsDir`.
+Mutations, each firing one case: ship a pack directory with no `integrity.json` (the install refuses,
+naming it); leave the installed copy's integrity older than the shipped one (boot re-installs); set a
+shipped pack's uninstall property true (the Packs view offers the button).
 
 ## Risks
 
@@ -500,7 +613,7 @@ makes `npm start` slower or stops the API hot-reloading, which is the most-used 
 
 **Step 3 changes what a release loads.** The api bundle stops carrying a pack's backend, so a packaging
 mistake becomes "the app boots with no default pack" rather than a build error. The pre-flight above was
-taken and passed, so what stands between the plan and that outcome is a `build-prod` smoke run per release
+taken and passed, so what stands between this and that outcome is a `build-prod` smoke run per release
 rather than an argument.
 
 **Step 6 makes first boot able to fail, which is the one real behaviour change here.** Today the app cannot
@@ -520,24 +633,37 @@ fails to build currently costs an external pack its UI; afterwards it costs the 
 `compile` runs in the chain, so it is caught before a release, but it is a new way for a green typecheck to
 ship a broken app.
 
-## What this is not
+## Deferred
 
 - Not making packs installable from a registry: `resolveFromRemoteRegistry` still throws for every name.
 - Not a performance change. The win is four build paths becoming one and two load paths becoming one.
 - Not a change to `@abuddy/sdk`'s published surface, except that `partitionPolicy` leaves the manifest schema
   in step 2 (and `earlySystem` would in open-question step A), which needs `schema:update` and `api:update`.
 
-## How this plan was wrong
+## Constraints
 
-Recorded so the same shape is recognisable next time, and because the corrections are why the structure
-changed.
+The standing rules, plus this goal's own:
 
-| the claim | what was wrong |
-|---|---|
-| "four pieces of work that remove it", sequenced 1-4 | `boot.seedManifest` is stripped from external packs, so installing default-setup before merging the seed paths ships a pack that seeds nothing. The order was wrong, and the migration was a prerequisite rather than the revertible tail |
-| "three build paths" | Four. `abuddy build` returns early for a built-in pack, so `dev-build.mjs` exists — 164 lines no other pack has |
-| "item 1 is free" | Deleting `dev-build.mjs` removes the backend watcher `npm start` depends on |
-| "worth doing" | A measurement with a verdict attached. No criterion was stated, so nothing could have failed it |
-| "the one real loss is frontend HMR" | HMR is keyed on a static import, not on being built-in. Re-keying keeps it, and extends it to any pack author in a checkout |
-| **the criterion itself**: "collapse a duplication where it needs no stored-data migration" | It split the work in two and deferred half on the premise that a migration is a one-way door. There is one user and he wrote the app, so both migrations are conveniences — `CLAUDE.md`'s carve-out for stored data is written for users this repo does not have. The order the steps actually have is the code's: one gate, one strip |
-| three reasons step 6 was "a question" | A migration that costs nothing is not a reason; "it renames back to what 0.3.15 renamed away from" was an observation, not an objection; and the seed record's uninstall lifetime is answered by letting shipped packs be uninstallable, with a property deciding whether the button shows — which is on the roadmap anyway |
+- commit each phase as it finishes, no attribution lines, `git commit -- <paths>`, and `git diff --cached`
+  first — something outside the session stages files in this repo;
+- pushing, tagging and PRs are on request; no publishing, releases or triggered workflows;
+- no real data dirs (`~/Library/Application Support/abuddy*`), no broad `pkill`; an app launched outside
+  the test environment gets an isolated `ABUDDY_USER_DATA_DIR`, and `abuddy run --ephemeral` is the
+  cheapest way to get one;
+- no bare `tsc` in `packages/preload`, no `npm install` in the example pack, no version or release metadata;
+- typed EARS types are change-controlled (`packages/abuddy-sdk/TYPED-EARS.md`);
+- published packages expose no `any`, keep the TypeScript floor, and need `api:update` after an export
+  change;
+- `packages:ensure` once before any fan-out; a stale build looks like a bug, so check what a failing run
+  loads before reading the code;
+- migrations follow `packages/abuddy-host/src/migrations/CLAUDE.md`, and go in the latest unreleased target
+  rather than a new version file;
+- investigate a failing test rather than loosening it; mutation-check every new guard;
+- external packs are first-class: `tests/packs/*`, the example pack and `test:packaged-authoring` keep
+  passing, and Phase 3's test is a fixture pack rather than default-setup for exactly that reason.
+
+**The loop to keep fast.** The narrow checks cost seconds and the chain costs about three minutes, so each
+phase's "Done when" names the narrow commands and the chain runs once at the end of a phase, in the
+background while the diff is read. Phases 1 and 3 are the two that genuinely need a slow check every time —
+`npm run compile` for the first, a packaged build for the second — and that is a decision rather than a
+habit.

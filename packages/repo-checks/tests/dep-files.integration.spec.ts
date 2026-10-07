@@ -397,7 +397,7 @@ describe('abuddy build says what it read', () => {
     // reading these records shares no edge with `test:external-pack:contract` — so a missing record is a
     // command to run, said as one, rather than a phase that looks as though it went away.
     //
-    // This loop is what `docs/plans/one-kind-of-pack.md` takes away: with one kind of pack, `compile`
+    // This loop is what `docs/goals/goal-one-kind-of-pack.md` takes away: with one kind of pack, `compile`
     // builds default-setup's runtime and frontend bundles too, so that one record carries all nine and the
     // evidence question becomes "is there a record at all", which the case above already asks. The gate
     // gets stronger by the same move — the step on the critical path would then be observed across every

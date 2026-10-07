@@ -16,7 +16,7 @@
 //
 // A reload and not a component update, because the app imports the pack's entry through `pack://`, outside
 // Vite's graph, so no importer is there to accept one. That is the ceiling of this path, and why
-// `docs/plans/one-kind-of-pack.md` keeps a dev-only source import for a pack whose source is on disk.
+// `docs/goals/goal-one-kind-of-pack.md` keeps a dev-only source import for a pack whose source is on disk.
 //
 // In the expensive half for the reason the sibling proxy-exports spec is: it runs a real Vite.
 import * as fs from 'node:fs';

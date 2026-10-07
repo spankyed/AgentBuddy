@@ -1080,7 +1080,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // left this step `cached` after `compile` ran, so the app the chain then tested never held the change —
   // `PACK_OUTPUTS` carries the pack's `dist`, which has no frontend bundle for a built-in pack, and
   // `src/__generated__`, whose only file that moves on such an edit is the dot-prefixed `.inputs-hash` that
-  // `inputFiles` skips. `chain-inputs.spec.ts` holds this declaration; `one-kind-of-pack.md`'s step 3 is what
+  // `inputFiles` skips. `chain-inputs.spec.ts` holds this declaration; `goal-one-kind-of-pack.md`'s Phase 3 is what
   // removes the edge, and this comes back out with it
   { name: 'build:app', timeout: 'suite', seconds: 39, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),

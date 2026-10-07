@@ -86,7 +86,7 @@ Generation    the on-disk barrels those two import from
 Both plugins scan `packages/` for `abuddy.json` at build time and generate a map of `import()` expressions;
 `packages/api/src/runtime/index.ts` and `packages/renderer/src/main.ts` are what consume them.
 
-**That top layer is what [`one-kind-of-pack.md`](../../plans/one-kind-of-pack.md) takes apart, and the generation layer
+**That top layer is what [`goal-one-kind-of-pack.md`](../../goals/goal-one-kind-of-pack.md) takes apart, and the generation layer
 below it is untouched by that plan** — worth knowing before doing either, because the two live in the same two
 config files. Its step 3 deletes `virtual:built-in-pack-loaders` outright (production requires
 `dist/runtime/index.cjs` from the pack's own directory, as development already does) and re-keys
@@ -113,7 +113,7 @@ necessity, in `package.json` `imports` for the runtimes and `tsconfig.json` `pat
 has no plugin to ask, so a virtual barrel is `TS2307` to it, and the declarations would have to be written to
 disk anyway — which is the file the plan wanted to remove. The same reasoning retired the `@/` path aliases
 ([`goal-one-way-to-name-your-own-modules.md`](../goals/goal-one-way-to-name-your-own-modules.md)):
-four bundler configs each re-implementing a mapping no runtime reads. `one-kind-of-pack.md` reaches the same
+four bundler configs each re-implementing a mapping no runtime reads. `goal-one-kind-of-pack.md` reaches the same
 fact from the other side — the `@<pack-id>/` alias half of `builtInPacksPlugin` has no remaining user, because
 nothing imports `@default-setup/…` once a pack names its own modules with `#` subpaths.
 

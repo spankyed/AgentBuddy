@@ -131,7 +131,7 @@ export function rebuildCommand(packDir: string): string {
  * built-in pack's frontend and backend go into the app's own bundles, so it never runs those two.
  * `undefined` where there is no manifest to read, which is not a pack rather than a pack of either kind.
  *
- * **This is the one thing here whose subject `docs/plans/one-kind-of-pack.md` deletes.** When there is one
+ * **This is the one thing here whose subject `docs/goals/goal-one-kind-of-pack.md` deletes.** When there is one
  * kind of pack this function goes, and `rebuildCommand` decides on the path alone, as it already does for a
  * fixture. Nothing else in this module or in the producer asks what kind a pack is.
  */
