@@ -205,11 +205,14 @@ The condition is the machine, which is a fact a run can check.
 
 Things that waste the most time, in order:
 
-- **Running anything at all after a comment, a doc or a CLAUDE.md edit.** Nothing means nothing: not
+- **Running anything at all after a doc or a CLAUDE.md edit.** Nothing means nothing: not
   `typecheck`, not the package's suite, not "just to be safe". No step declares `docs/` and `fingerprintUnit`
   skips every `CLAUDE.md`, so `npm run chain -- --dry` reports every step cached. A full `typecheck` is 11s
   against a doc edit's 0s, and repo-checks' *"prose costs nothing"* holds this claim. The two exceptions are
   a spec that asserts the text and a code fence someone will copy.
+  **A comment inside a source file is not one of these.** A fingerprint is over the file's content, so a
+  comment moves it like any other edit and every step that reads that file runs. The spec above is about
+  markdown and does not reach this half, so `npm run chain -- --dry` is what answers it.
 - **Sizing an optimisation from a duration.** Three errors, and `npm run chain -- --dry --all` prints the
   answer to the first two. A step **off** the critical path contributes nothing, because the chain admits
   steps in parallel: `test:unit:pack` is the worked warning — **89% setup overhead**, the most alarming
