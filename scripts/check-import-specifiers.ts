@@ -144,6 +144,11 @@ export function findRawPackHelpers(dirs: readonly string[] = PACK_SOURCE_DIRS, r
   return packRule('untyped-sends', dirs, root);
 }
 
+/** `file:line: sendToPlugin(…)` for each cross-plugin send a feature's component makes. Extensions are exempt. */
+export function findComponentSends(dirs: readonly string[] = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+  return packRule('component-sends', dirs, root);
+}
+
 /** `file:line: name from module` for each host-only export a pack's sources or tests import. Generated files are exempt. */
 export function findInternalPackageImports(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): string[] {
   return packRule('internal-package-imports', dirs, root);
@@ -668,6 +673,7 @@ const RULE_LIST = [
   },
   backed('findRawPackHelpers', 'untyped-sends', findRawPackHelpers, PACK_SOURCE_DIRS),
   backed('findInternalPackageImports', 'internal-package-imports', findInternalPackageImports, PACK_CODE_DIRS),
+  backed('findComponentSends', 'component-sends', findComponentSends, PACK_SOURCE_DIRS),
   backed('findRawTransport', 'raw-transport', findRawTransport, PACK_SOURCE_DIRS),
   backed('findPackBackendConsole', 'backend-console', findPackBackendConsole, PACK_SOURCE_DIRS),
   backed('findHostImports', 'host-imports', findHostImports, PACK_CODE_DIRS),

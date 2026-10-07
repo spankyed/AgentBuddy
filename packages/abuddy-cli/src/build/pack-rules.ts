@@ -124,6 +124,18 @@ export interface PackRule {
 /** Ref-taking sends a pack gets as name-taking ones from `#generated/events`, whichever module exports them */
 const EVENT_SENDS = ['untypedBroadcastToPlugin', 'untypedSendToSystem', '_sendToLocalPlugin'];
 
+/**
+ * A feature's own component, which is where `usePlugin()` is available and so where a cross-plugin send has an
+ * alternative.
+ *
+ * **Extensions are deliberately outside it.** A viewer, block or step form is rendered inside whichever
+ * plugin shows it, and `#generated/fe` offers it `usePluginState`, `readPluginState` and `openPlugin` but no
+ * actor type — while `cross-feature-imports` refuses it the feature's own. So an extension has no route to
+ * its host plugin's actor and `sendToPlugin` is the only one it has; the rule would be unsatisfiable there.
+ * That is a gap rather than a blessing, and closing it means giving `#generated/fe` a per-plugin actor type.
+ */
+const FEATURE_COMPONENT = /^features\/[^/]+\/fe\/.*\.vue$/;
+
 /** A pack's backend: where `createLogger` replaces `console`, by the layout every pack has */
 const BACKEND_PATH = /^(features\/[^/]+\/be\/|features\/hooks\.ts$|migrations\/|extensions\/)/;
 const FRONTEND_OR_TEST_PATH = /\.vue$|(^|\/)(fe|register-fe)\.ts$|^extensions\/(tiptap|artifacts\/viewers|blocks\/[^/]+)\/|(^|\/)__tests__\/|\.(spec|test)\.ts$/;
@@ -291,6 +303,18 @@ const RULE_LIST = [
           ? [...EVENT_SENDS, 'registerRepository', 'unregisterRepository'] : EVENT_SENDS;
         return imported.names.filter((name) => raw.includes(name)).map((name) => `${name} from ${imported.module}`);
       });
+    },
+  },
+  {
+    key: 'component-sends',
+    switchable: false,
+    rule: "A feature's component emits to its own plugin with usePlugin() rather than sending to another "
+      + 'plugin: a component runs in no delivery, so sendToPlugin from one carries no Message.sender and the '
+      + 'plugin it reaches cannot answer it',
+    check(view, place) {
+      if (!FEATURE_COMPONENT.test(place.inRoot)) return [];
+      return view.visit((node) => (ts.isCallExpression(node) && ts.isIdentifier(node.expression)
+        && node.expression.text === 'sendToPlugin' ? ['sendToPlugin(…)'] : undefined));
     },
   },
   {

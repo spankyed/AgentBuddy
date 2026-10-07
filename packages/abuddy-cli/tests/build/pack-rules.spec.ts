@@ -98,6 +98,9 @@ const FIRES: Record<PackRuleKey, { onFile?: [code: string, problem: string][]; e
   // Not a file's text but the pack's own module resolution, so its case needs a whole installed package to
   // resolve against
   'source-resolution': { elsewhere: 'source-resolution' },
+  // Where the file is, which one `src/f.ts` cannot express: a feature's component offends and an extension's
+  // does not, and the second half is the one worth pinning
+  'component-sends': { elsewhere: "component-sends flags a feature's component and allows an extension's" },
   // A feature layout, which one `src/f.ts` cannot express: the offence is which feature the file is in
   'cross-feature-imports': { elsewhere: "cross-feature-imports flags another feature's frontend and allows a feature its own" },
   // The pack as a whole: which module is a contract comes from the manifest, so its case needs one
@@ -168,6 +171,25 @@ describe('every rule', () => {
       'src/features/memos/fe/state.ts': "console.log('x');\n",
     });
     expect(problems(dir, 'backend-console')).toEqual(['src/features/memos/be/system.ts:1: console.log']);
+  });
+
+  /**
+   * The exclusion is half the rule, so it is half the case.
+   *
+   * A feature's component has `usePlugin()` and so has somewhere else to send; an extension's does not —
+   * `#generated/fe` gives it no actor type and `cross-feature-imports` refuses it the feature's own — so
+   * `sendToPlugin` is the only route it has. Flagging it would leave an author told to do something the
+   * pack contract does not let them do.
+   */
+  it("component-sends flags a feature's component and allows an extension's", () => {
+    const send = "import { sendToPlugin } from '#generated/events.ts';\nsendToPlugin('notes', { type: 'X' });\n";
+    const dir = completePack({
+      'src/features/memos/fe/panel.vue': `<script setup lang="ts">\n${send}</script>\n`,
+      'src/extensions/blocks/display/card.vue': `<script setup lang="ts">\n${send}</script>\n`,
+      // A feature's own machine is where the send belongs, and it is not a component
+      'src/features/memos/fe/state.ts': send,
+    });
+    expect(problems(dir, 'component-sends')).toEqual(['src/features/memos/fe/panel.vue:3: sendToPlugin(…)']);
   });
 
   it("cross-feature-imports flags another feature's frontend and allows a feature its own", () => {
@@ -529,7 +551,8 @@ describe('when several rules are right about one site', () => {
       // cross-feature-imports is out of its cause group on purpose: its fix subsumes own-modules'
       'cross-feature-imports', 'own-modules', 'pack-own-aliases',
       'internal-package-imports',
-      'untyped-sends', 'raw-transport', 'backend-console', 'repository-casts',
+      // component-sends sits beside untyped-sends: both answer "which send, from where"
+      'untyped-sends', 'component-sends', 'raw-transport', 'backend-console', 'repository-casts',
     ]);
   });
 });
