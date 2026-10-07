@@ -616,7 +616,7 @@ async function main(): Promise<void> {
     console.log('  table it is compared against describes another machine.');
   }
 
-  const report = driftReport(driftedSteps(steps, measuredMs), budget, MEASURED_ON, all);
+  const report = driftReport(driftedSteps(steps, measuredMs, outcome.peers), budget, MEASURED_ON, all);
   if (report !== '') console.log(report);
 
   // **The bound asked of the measurement.** `declaredShare` gates on what a step declares, and the band above
@@ -633,7 +633,7 @@ async function main(): Promise<void> {
   // inside themselves and so cannot be measured by their npm script (`measureCommandFor`)
   // `all` goes in so the report can say the reading is an upper bound rather than a comparison; it is the
   // one `RECORDING_CONDITIONS` member this reader skips, and `outgrownRungs` has why
-  const outgrown = outgrownReport(outgrownRungs(steps, measuredMs, budget, MEASURED_ON, thisMachine(), all)
+  const outgrown = outgrownReport(outgrownRungs(steps, measuredMs, budget, MEASURED_ON, thisMachine(), all, outcome.peers)
     .map((row) => ({ ...row, measureWith: measureCommandFor(row.name) })));
   if (outgrown !== '') console.log(outgrown);
 

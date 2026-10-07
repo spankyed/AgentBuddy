@@ -366,8 +366,20 @@ export function howLong(
  * not, because `--record` refuses there. A chain on a second developer's machine used to print that
  * instruction on every run and the command it named refused on every run.
  */
+/**
+ * How contended a reading was, as a suffix — empty for a step that had the box to itself.
+ *
+ * **It is why one unchanged step reads four different numbers.** `seconds` is the cost under the chain's own
+ * admission, so a contended reading is the right quantity rather than a spoiled one; what the number cannot
+ * say on its own is which admission it got. `test:integration` read 77s, 88s, 96s and 101s across four runs
+ * while costing what its row says, and a spread nothing explains is how a true row comes to be ignored.
+ *
+ * Both reports take it, because both compare a measurement against the table.
+ */
+const peerSuffix = (peers: number): string => (peers === 0 ? '  (alone)' : `  (${peers} peers)`);
+
 export function driftReport(
-  drifted: readonly { name: string; declared: number; measured: number }[],
+  drifted: readonly { name: string; declared: number; measured: number; peers: number }[],
   budget: number,
   /** The machine and budget the table was measured on (`MEASURED_ON`), which is what a run is comparable to */
   measuredOn: Machine,
@@ -390,7 +402,7 @@ export function driftReport(
   if (shown.length === 0) return '';
   const count = `${shown.length} step${shown.length === 1 ? '' : 's'}`;
   const rows = (line: (d: { name: string; declared: number; measured: number }) => string): string =>
-    shown.map((d) => `  ${d.name.padEnd(STEP_NAME_WIDTH)} ${line(d)}`).join('\n');
+    shown.map((d) => `  ${d.name.padEnd(STEP_NAME_WIDTH)} ${line(d)}${peerSuffix(d.peers)}`).join('\n');
 
   if (!forced) {
     // No `(killed at Ns)` any more, and its absence is the point: a deadline is a declared class now
@@ -484,6 +496,7 @@ export function shouldClassify(run: {
 export const outgrownReport = (
   found: readonly {
     name: string; declared: number; measured: number; at: number; measureWith: string; wholeTable: boolean;
+    peers: number;
   }[],
 ): string => {
   if (found.length === 0) return '';
@@ -496,8 +509,8 @@ export const outgrownReport = (
     ? '\n  This run was not --all, which is the only schedule the table describes, so each reading above is\n'
       + '  an upper bound: a crowded run can clear a step and cannot convict one.'
     : '';
-  const rows = found.map(({ name, declared, measured, at }) =>
-    `  ${name.padEnd(STEP_NAME_WIDTH)} ${declared}s declared, ${measured}s here — ${Math.round(at * 100)}% of `
+  const rows = found.map(({ name, declared, measured, at, peers }) =>
+    `  ${name.padEnd(STEP_NAME_WIDTH)} ${declared}s declared, ${measured}s here${peerSuffix(peers)} — ${Math.round(at * 100)}% of `
     + 'its rung on the smaller machine that rung is sized for').join('\n');
   // One line per step, because the command is the step's: a report naming two steps and one command would
   // have a reader measuring whichever it happened to name

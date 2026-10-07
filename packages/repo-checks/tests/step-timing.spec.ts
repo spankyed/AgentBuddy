@@ -38,11 +38,11 @@ describe('driftedSteps', () => {
   const steps = [step('slow', [], { seconds: 10 }), step('fast', [], { seconds: 10 }), step('right', [], { seconds: 10 })];
 
   it('reports a step that now costs more than twice what it claims', () => {
-    expect(driftedSteps(steps, new Map([['slow', 21_000]]))).toEqual([{ name: 'slow', declared: 10, measured: 21 }]);
+    expect(driftedSteps(steps, new Map([['slow', 21_000]]))).toEqual([{ name: 'slow', declared: 10, measured: 21, peers: 0 }]);
   });
 
   it('reports one that claims far more than it costs, since that inflates the critical path', () => {
-    expect(driftedSteps(steps, new Map([['fast', 4_000]]))).toEqual([{ name: 'fast', declared: 10, measured: 4 }]);
+    expect(driftedSteps(steps, new Map([['fast', 4_000]]))).toEqual([{ name: 'fast', declared: 10, measured: 4, peers: 0 }]);
   });
 
   // Wide on purpose: lanes, a warm cache and a loaded machine move a step a long way, and a warning that
@@ -74,7 +74,7 @@ describe('driftedSteps', () => {
     // Not over-broad: the guard is about the size of the movement, not about the size of the declaration,
     // and 0.3 -> 2 is a step that really has grown
     expect(driftedSteps([step('tiers', [], { seconds: 0.3 })], new Map([['tiers', 2_000]])))
-      .toEqual([{ name: 'tiers', declared: 0.3, measured: 2 }]);
+      .toEqual([{ name: 'tiers', declared: 0.3, measured: 2, peers: 0 }]);
   });
 
   /**
@@ -94,13 +94,13 @@ describe('driftedSteps', () => {
      */
     it('is reported like any other step, the run being what decides whether to ask', () => {
       expect(driftedSteps(pooled, new Map([['test:unit:host', 5_000]])))
-        .toEqual([{ name: 'test:unit:host', declared: 20, measured: 5 }]);
+        .toEqual([{ name: 'test:unit:host', declared: 20, measured: 5, peers: 0 }]);
     });
 
     // The direction the kill budget cares about: at four times the declared cost, budgetFor starts killing
     it('is reported when it overran, not only when it undershot', () => {
       expect(driftedSteps(pooled, new Map([['test:unit:host', 50_000]])))
-        .toEqual([{ name: 'test:unit:host', declared: 20, measured: 50 }]);
+        .toEqual([{ name: 'test:unit:host', declared: 20, measured: 50, peers: 0 }]);
     });
   });
 

@@ -366,9 +366,16 @@ const OTHER_CPU = { cpu: 'Apple M4 Pro', cores: 10 } as const;
 
 describe('driftReport', () => {
   const drifted = [
-    { name: 'test:external-pack:contract', declared: 57, measured: 18 },
-    { name: 'typecheck', declared: 27, measured: 11 },
+    { name: 'test:external-pack:contract', declared: 57, measured: 18, peers: 0 },
+    { name: 'typecheck', declared: 27, measured: 11, peers: 0 },
   ];
+
+  // The same label on the drift rows, for the same reason: both reports put a measurement beside the table
+  it('says how contended each drift reading was', () => {
+    const report = driftReport(drifted.map((row) => ({ ...row, peers: 4 })), 10, MEASURED, true, SAME);
+
+    expect(report).toContain('(4 peers)');
+  });
 
   it('prints the value to record, when the run is comparable to the table', () => {
     const report = driftReport(drifted, 10, MEASURED, true, SAME);
@@ -430,7 +437,7 @@ describe('driftReport', () => {
   });
 
   it('says slower when a bigger budget made a step slower, not faster', () => {
-    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 54 }], 16, MEASURED, true, SAME)).toContain('(2.0x slower)');
+    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 54, peers: 0 }], 16, MEASURED, true, SAME)).toContain('(2.0x slower)');
   });
 
   /**
@@ -456,7 +463,7 @@ describe('driftReport', () => {
    * without first giving the row something the timeout message does not already say.
    */
   it('names a step that ran past double, on any run', () => {
-    const grew = [{ name: 'typecheck', declared: 27, measured: 61 }];
+    const grew = [{ name: 'typecheck', declared: 27, measured: 61, peers: 0 }];
 
     const report = driftReport(grew, 10, MEASURED, false, SAME);
 
@@ -467,7 +474,7 @@ describe('driftReport', () => {
 
   it('keeps an overrun out of the count when the run could answer for both directions', () => {
     // forced: the run did all the work, so both directions are reportable and the record form is right
-    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 61 }], 10, MEASURED, true, SAME))
+    expect(driftReport([{ name: 'typecheck', declared: 27, measured: 61, peers: 0 }], 10, MEASURED, true, SAME))
       .toContain('re-measure, or record');
   });
 
@@ -517,8 +524,28 @@ describe('shouldClassify', () => {
 describe('outgrownReport', () => {
   const found = [{
     name: 'test:integration', declared: 60, measured: 80, at: 80 * 4 / 300,
-    measureWith: 'npx vitest run --config vitest.integration.config.ts', wholeTable: true,
+    measureWith: 'npx vitest run --config vitest.integration.config.ts', wholeTable: true, peers: 0,
   }];
+
+  /**
+   * How contended the reading was, which is the one thing the two numbers cannot say.
+   *
+   * `seconds` is the cost under the chain's own admission, so a reading taken beside peers is the right
+   * quantity — what a reader cannot tell from `60s -> 101s` is which admission produced it.
+   * `test:integration` read 77s, 88s, 96s and 101s across four runs of an unchanged step, and the spread is
+   * this number. A spread nothing explains is how a true row comes to be ignored, which is what happened.
+   */
+  it('says how many peers the reading was taken beside', () => {
+    const contended = found.map((row) => ({ ...row, peers: 9 }));
+
+    expect(outgrownReport(contended)).toContain('(9 peers)');
+  });
+
+  // Said rather than left blank: "alone" is the reading a budget can be compared against, so it is the
+  // case worth naming, and an empty suffix would read as a report that forgot to say
+  it('says a step had the box to itself, rather than saying nothing', () => {
+    expect(outgrownReport(found)).toContain('(alone)');
+  });
 
   it('says nothing when no step outgrew its rung', () => {
     expect(outgrownReport([])).toBe('');
@@ -551,7 +578,7 @@ describe('outgrownReport', () => {
       ...found,
       {
         name: 'build:app', declared: 39, measured: 90, at: 90 * 4 / 300,
-        measureWith: 'npm run build:app', wholeTable: true,
+        measureWith: 'npm run build:app', wholeTable: true, peers: 0,
       },
     ]);
 
@@ -598,7 +625,7 @@ describe('outgrownReport', () => {
       ...found.map((row) => ({ ...row, wholeTable: false })),
       {
         name: 'build:app', declared: 39, measured: 90, at: 90 * 4 / 300,
-        measureWith: 'npm run build:app', wholeTable: false,
+        measureWith: 'npm run build:app', wholeTable: false, peers: 0,
       },
     ]);
 

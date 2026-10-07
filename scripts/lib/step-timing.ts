@@ -197,13 +197,15 @@ export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: T
    * carried on each row so the report can say which kind of run produced it.
    */
   wholeTable = true,
-): Array<{ name: string; declared: number; measured: number; at: number; wholeTable: boolean }> {
+  /** Which steps ran beside each one, for the row to report — see `driftedSteps` */
+  peers: ReadonlyMap<string, ReadonlySet<string>> = new Map(),
+): Array<{ name: string; declared: number; measured: number; at: number; wholeTable: boolean; peers: number }> {
   // Two of the three conditions, naming the one left out rather than leaving it absent: a partial run is
   // reported with that caveat, where another machine or another budget makes the number meaningless
   const blocking = unmetRecordingConditions({ budget, measuredOn, machine, wholeTable })
     .filter((condition) => condition !== 'wholeTable');
   if (blocking.length > 0) return [];
-  const found: Array<{ name: string; declared: number; measured: number; at: number; wholeTable: boolean }> = [];
+  const found: Array<{ name: string; declared: number; measured: number; at: number; wholeTable: boolean; peers: number }> = [];
   for (const step of steps) {
     const ms = measuredMs.get(step.name);
     // A cached step cost no time, so it is evidence of nothing — `criticalPath` skips it for the same reason
@@ -211,7 +213,7 @@ export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: T
     if (declaredShare(step.seconds, step.timeout, step.stretches) > 1) continue;
     const measured = Math.round(ms / 1000);
     const at = declaredShare(measured, step.timeout, step.stretches);
-    if (at > 1) found.push({ name: step.name, declared: step.seconds, measured, at, wholeTable });
+    if (at > 1) found.push({ name: step.name, declared: step.seconds, measured, at, wholeTable, peers: peers.get(step.name)?.size ?? 0 });
   }
   return found;
 }
@@ -238,8 +240,19 @@ export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: T
 export function driftedSteps<S extends SchedulableStep>(
   steps: readonly S[],
   measuredMs: ReadonlyMap<string, number>,
-): Array<{ name: string; declared: number; measured: number }> {
-  const drifted: Array<{ name: string; declared: number; measured: number }> = [];
+  /**
+   * Which steps ran beside each one (`ScheduleResult.peers`), carried onto the row so the report can say how
+   * contended the reading was.
+   *
+   * **It labels and never filters**, which is the distinction worth keeping: `seconds` is what a step costs
+   * *under the chain's own admission* (`ChainStep.seconds`), so a reading taken beside peers is the right
+   * quantity and dropping it would be dropping the measurement. What a reader cannot see without this is how
+   * *much* contention produced it — `test:integration` read 77s, 88s, 96s and 101s across four runs of one
+   * unchanged step, and the spread is the peer count. An unexplained spread is what gets a true row ignored.
+   */
+  peers: ReadonlyMap<string, ReadonlySet<string>> = new Map(),
+): Array<{ name: string; declared: number; measured: number; peers: number }> {
+  const drifted: Array<{ name: string; declared: number; measured: number; peers: number }> = [];
   for (const step of steps) {
     const ms = measuredMs.get(step.name);
     if (ms === undefined || step.seconds === undefined) continue;
@@ -251,7 +264,7 @@ export function driftedSteps<S extends SchedulableStep>(
     // could not be done. Advice that cannot be taken teaches a reader to skip the report.
     if (Math.abs(measured - step.seconds) <= SECONDS_FLOOR) continue;
     if (overBand(step.seconds, measured) || measured < step.seconds / BAND) {
-      drifted.push({ name: step.name, declared: step.seconds, measured });
+      drifted.push({ name: step.name, declared: step.seconds, measured, peers: peers.get(step.name)?.size ?? 0 });
     }
   }
   return drifted;
