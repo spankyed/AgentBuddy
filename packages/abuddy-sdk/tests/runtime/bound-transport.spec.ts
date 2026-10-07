@@ -48,8 +48,8 @@ describe('on the bound bus', () => {
       services.emitter.broadcastToPlugin('memo-pack/memos', { type: 'MEMO_REMOVED' });
     });
     expect(sent.toPlugins).toEqual([
-      { to: 'memo-pack/memos', event: { type: 'MEMO_ADDED' } },
-      { to: 'memo-pack/memos', event: { type: 'MEMO_REMOVED' } },
+      { to: 'memo-pack/memos', call: expect.any(String), event: { type: 'MEMO_ADDED' } },
+      { to: 'memo-pack/memos', call: expect.any(String), event: { type: 'MEMO_REMOVED' } },
     ]);
     expect(sent.outgoing).toEqual([]);
   });
@@ -60,8 +60,8 @@ describe('on the bound bus', () => {
       untypedBroadcastToPlugin('memo-pack/memos', { type: 'PLUGIN_PICKED', pluginId: 'default-setup/notes' });
       untypedSendToSystem('memo-pack/memos', { type: 'OPEN', systemId: 'kept', pluginId: 'also-kept' });
     });
-    expect(sent.toPlugins).toEqual([{ to: 'memo-pack/memos', event: { type: 'PLUGIN_PICKED', pluginId: 'default-setup/notes' } }]);
-    expect(sent.incoming).toEqual([{ to: 'memo-pack/memos', event: { type: 'OPEN', systemId: 'kept', pluginId: 'also-kept' } }]);
+    expect(sent.toPlugins).toEqual([{ to: 'memo-pack/memos', call: expect.any(String), event: { type: 'PLUGIN_PICKED', pluginId: 'default-setup/notes' } }]);
+    expect(sent.incoming).toEqual([{ to: 'memo-pack/memos', call: expect.any(String), event: { type: 'OPEN', systemId: 'kept', pluginId: 'also-kept' } }]);
   });
 
   it('onIncoming and onLog hear the bus until unsubscribed', () => {
@@ -134,8 +134,8 @@ describe('with a frontend bound too', () => {
       });
       expect(sent.incoming).toEqual([]);
       expect(sentByFrontend).toEqual([
-        { to: 'memos', event: { type: 'ADD_MEMO' } },
-        { to: 'brain-plugin', event: { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' } },
+        { to: 'memos', call: expect.any(String), event: { type: 'ADD_MEMO' } },
+        { to: 'brain-plugin', call: expect.any(String), event: { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' } },
       ]);
     } finally {
       unbindFeHost();

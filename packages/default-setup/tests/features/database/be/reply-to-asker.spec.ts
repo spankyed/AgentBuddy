@@ -27,26 +27,53 @@ const DATABASE = 'default-setup/database'
 const WINDOW = 'c-window'
 
 describe('a query run by a plugin', () => {
-  it('is answered to the asker, carrying the id it asked with', async () => {
+  /**
+   * **The call is the ask's, and the answer names it on the envelope rather than in the payload.**
+   *
+   * `app.send` returns what it sent under, `reply` stamps it as `Message.answering`, and `nextEmit`'s
+   * `answering` is what reads it. The event itself says nothing about which ask it belongs to, which is the
+   * point: no event type declares a correlation field, so none can declare one and mint nothing.
+   */
+  it('is answered to the asker, naming the call it asked under', async () => {
     const app = await startApp({ systems: ['database'] })
     await app.connect()
 
-    await app.send('database', { type: 'EXECUTE_QUERY', code: 'return 1 + 1', requestId: 'q-1' }, { sender: DATABASE, client: WINDOW })
-    const answer = await app.nextEmit('database', 'QUERY_RESULT')
+    const call = await app.send('database', { type: 'EXECUTE_QUERY', code: 'return 1 + 1' }, { sender: DATABASE, client: WINDOW })
+    const answer = await app.nextEmit('database', 'QUERY_RESULT', { answering: call })
 
-    expect(answer).toMatchObject({ type: 'QUERY_RESULT', result: 2, requestId: 'q-1' })
+    expect(answer).toMatchObject({ type: 'QUERY_RESULT', result: 2 })
   })
 
   // The failing path answers too, and answers once: the reply sits outside the try so a throw cannot send twice
-  it('answers a failing query with the error and the same id', async () => {
+  it('answers a failing query with the error, naming the same call', async () => {
     const app = await startApp({ systems: ['database'] })
     await app.connect()
 
-    await app.send('database', { type: 'EXECUTE_QUERY', code: 'return nope', requestId: 'q-2' }, { sender: DATABASE, client: WINDOW })
-    const answer = await app.nextEmit('database', 'QUERY_ERROR')
+    const call = await app.send('database', { type: 'EXECUTE_QUERY', code: 'return nope' }, { sender: DATABASE, client: WINDOW })
+    const answer = await app.nextEmit('database', 'QUERY_ERROR', { answering: call })
 
-    expect(answer).toMatchObject({ type: 'QUERY_ERROR', requestId: 'q-2' })
+    expect(answer).toMatchObject({ type: 'QUERY_ERROR' })
     expect(app.emitted('database').filter((event) => event.type === 'QUERY_RESULT'), 'and not also a result').toEqual([])
+  })
+
+  /**
+   * Two queries in flight, each answered under its own call — the case the correlation exists for.
+   *
+   * The handler is `async` on a state with no re-entry guard, so the second ask is accepted while the first
+   * is still awaiting. Nothing in the system stores the call: `reply` is bound to the delivery each handler
+   * was entered in, so two answers carry two calls without the machine holding either. Written rather than
+   * found, and it is what fails if `reply` is ever rebound to the latest delivery instead of its own.
+   */
+  it('answers two overlapping queries each under its own call', async () => {
+    const app = await startApp({ systems: ['database'] })
+    await app.connect()
+
+    const first = await app.send('database', { type: 'EXECUTE_QUERY', code: 'return "first"' }, { sender: DATABASE, client: WINDOW })
+    const second = await app.send('database', { type: 'EXECUTE_QUERY', code: 'return "second"' }, { sender: DATABASE, client: WINDOW })
+
+    expect(first, 'two asks, two calls').not.toEqual(second)
+    expect(await app.nextEmit('database', 'QUERY_RESULT', { answering: first })).toMatchObject({ result: 'first' })
+    expect(await app.nextEmit('database', 'QUERY_RESULT', { answering: second })).toMatchObject({ result: 'second' })
   })
 
   /**
@@ -60,7 +87,7 @@ describe('a query run by a plugin', () => {
   it('says why nothing arrived when no client has connected', async () => {
     const app = await startApp({ systems: ['database'] })
 
-    await app.send('database', { type: 'EXECUTE_QUERY', code: 'return 1', requestId: 'q-3' }, { sender: DATABASE, client: WINDOW })
+    await app.send('database', { type: 'EXECUTE_QUERY', code: 'return 1' }, { sender: DATABASE, client: WINDOW })
 
     await expect(app.nextEmit('database', 'QUERY_RESULT', { timeoutMs: 200 }))
       .rejects.toThrow(/No client has connected/)
@@ -79,7 +106,7 @@ describe('a query run by a plugin', () => {
 
     await app.send(
       'database',
-      { type: 'EXECUTE_TRANSACTION', code: 'return 1', requestId: 't-1' },
+      { type: 'EXECUTE_TRANSACTION', code: 'return 1' },
       { sender: DATABASE, client: WINDOW },
     )
     await app.nextEmit('database', 'TRANSACTION_RESULT')

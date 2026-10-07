@@ -105,7 +105,7 @@ Steps:
 4. Checks each feature's `settings` file exists and sets only `plugins.<id>` and `visible`
 5. Resolves every dependency (fails if one can't be), and warns when `src/__generated__` holds a dependency's types from a different version than the one the build resolved
 6. Compiles `boot.seed` into `runtime/seeds/`, validating flows against the dependencies' step build code
-7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@abuddy/*` packages, `@abuddy/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`
+7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@abuddy/*` packages, `@abuddy/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`. Warns, without failing, when a committed `etc/pack-types.api.md` no longer matches what it bundled (`abuddy facade-report`)
 8. Writes `types/snapshot.json`, and notes entity types with no `entityShapes` entry
 9. Bundles `steps.build`, the seed runtime and any seed compilers into `build/`. The seed runtime is then loaded in a fresh Node process with only `@abuddy/sdk`, as a dependent's tests load it; it fails if repositories or seed hooks need native modules or `@abuddy/sdk`'s optional peers
 10. Bundles the backend runtime into `runtime/index.cjs`
@@ -321,6 +321,7 @@ Checks:
 | `component-sends` | `sendToPlugin` from a feature's `.vue`. A component runs in no delivery, so the send carries no `Message.sender` and the plugin it reaches cannot answer it — emit to your own plugin with `usePlugin()` and let its machine send. An extension's component is exempt: it is rendered in no plugin scope and by no single plugin, so it addresses a plugin by ref and `sendToPlugin` is that route's send | no |
 | `cross-feature-imports` | a module of another feature's `fe/`, and a feature passing its own frontend on (`export … from './fe/state.ts'`). What a feature offers the rest is its plugin's contract, read through `#generated/fe` and `#generated/events` | yes |
 | `repository-casts` | `repository as unknown as …`, reading a repository through a type its owner never declared. `repository` from `#generated/repository` is already typed with your own repositories and your dependencies' | yes |
+| `reserved-event-keys` | a property named `_call`, in `src` or `tests`. That key is the app's: a delivery door writes the call a message answers under it, so a field of yours by that name is overwritten on the way in and read as a correlation on the way out. Ask `answersCall(event, outstanding)` or `settleCall(pending, event)` from `@abuddy/sdk/events` instead of reading it, build an answer in a test with `answerTo` from `@abuddy/sdk/testing`, and rename a field of your own that collides | no |
 
 A rule marked switchable has no effect at run time, so a pack may switch it off in **`abuddy.checks.json`**
 at its root:
@@ -345,12 +346,17 @@ Health checks with pass/warn/fail output:
 
 #### `abuddy facade-report [--update]`
 
-Reports your pack's **facade types** — `dist/types/pack-types.d.ts`, what packs depending on yours compile
-against — as a reviewed file at `etc/pack-types.api.md`.
+Reports your pack's **facade types** — what packs depending on yours compile against, the same bundle
+`abuddy build` writes to `dist/types/pack-types.d.ts` — as a reviewed file at `etc/pack-types.api.md`.
 
-Run it after `abuddy build`. Without `--update` it fails, printing a diff, when the committed report differs
-from the built facade; with `--update` it rewrites the report. Commit the result: the point is that a change
-to what dependents can see is visible in review rather than buried in a generated bundle.
+**It needs no build.** It regenerates `src/__generated__/` and bundles the facade itself, so the report is
+held against the facade your sources describe now; a `dist` left by an older build is never its subject.
+Without `--update` it fails, printing a diff, when the committed report differs; with `--update` it rewrites
+the report. Commit the result: the point is that a change to what dependents can see is visible in review
+rather than buried in a generated bundle.
+
+`abuddy build` warns when your committed report has fallen behind the bundle it just produced. The command
+above is what fails, which is why a pack's own CI runs it.
 
 The report is normalised so it moves only when the facade does — imports first and sorted, declarations in
 name order, literal unions sorted, and the pack's own path shortened to `.`. That last normalisation matters

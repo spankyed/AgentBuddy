@@ -4,6 +4,11 @@
 
 ```ts
 
+// @public
+export const answersCall: (event: {
+    [key: string]: unknown;
+}, outstanding: string | null | undefined) => boolean;
+
 // @internal
 export type _Asker =
 /** Over the backend bus, which is where a system is */
@@ -22,6 +27,24 @@ export type _Asker =
     kind: 'window';
     ref: string;
 };
+
+// @internal
+export const _CALL_KEY = "_call";
+
+// @internal
+export const _callOf: (event: {
+    [key: string]: unknown;
+}) => string | undefined;
+
+// @internal
+export const _callOn: (message: Pick<Message, "answering">) => {
+    [_CALL_KEY]?: string;
+};
+
+// @public
+export interface CallOptions {
+    call?: string;
+}
 
 // @internal
 export function _clientOf(delivery: _Delivery | undefined): string | undefined;
@@ -43,7 +66,7 @@ export function createSends(input?: SendBinding): {
     sendToSystem(to: SystemTarget, event: {
         type: string;
         [key: string]: unknown;
-    }): void;
+    }, options?: CallOptions): string;
 };
 
 // @internal
@@ -55,6 +78,7 @@ export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(p
 // @internal
 export interface _Delivery {
     asker?: _Asker;
+    call?: string;
     receiver: string;
 }
 
@@ -127,7 +151,8 @@ export type IncomingEventsOf<C> = ContractIncoming<C>;
 
 // @public
 export interface Message {
-    answering?: true;
+    answering?: string;
+    call?: string;
     client?: string;
     // (undocumented)
     event: {
@@ -140,6 +165,9 @@ export interface Message {
     to: string;
     via?: string;
 }
+
+// @public
+export const newCall: () => string;
 
 // @public
 export function onConnected(callback: () => void): () => void;
@@ -182,6 +210,9 @@ export type Qualified<PackId extends string, M> = {
 };
 
 // @public
+export const recordCall: <T>(pending: Record<string, T>, call: string, value: T) => Record<string, T>;
+
+// @public
 export type Reply<E extends {
     type: string;
 } = {
@@ -212,6 +243,14 @@ export function _sendToLocalPlugin(ref: string, event: {
 }): void;
 
 // @public
+export const settleCall: <T>(pending: Record<string, T>, event: {
+    [key: string]: unknown;
+}) => {
+    recorded?: T;
+    pending: Record<string, T>;
+};
+
+// @public
 export type SystemEventMap = {
     [system: string]: {
         type: string;
@@ -238,12 +277,12 @@ export type TypedSendToPlugin<M extends PluginEvents> = (<P extends keyof M & st
 // @public
 export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(system: Id, event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, {
     type: Type;
-} & WithoutType<EventsOfType<S[Id], Type>>>) => void) & ((target: {
+} & WithoutType<EventsOfType<S[Id], Type>>>, options?: CallOptions) => string) & ((target: {
     role: string;
 }, event: {
     type: string;
     [key: string]: unknown;
-}) => void) & ((system: FeatureRef, event: SystemEvents) => void);
+}, options?: CallOptions) => string) & ((system: FeatureRef, event: SystemEvents, options?: CallOptions) => string);
 
 // @public
 export type TypedSendToWindow<M extends PluginEvents> = (<P extends keyof M & string>(client: string, plugin: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void) & ((client: string, plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
@@ -263,7 +302,7 @@ export function untypedBroadcastToPlugin(to: string, event: {
 export function untypedSendToSystem(to: SystemTarget, event: {
     type: string;
     [key: string]: unknown;
-}): void;
+}, options?: CallOptions): string;
 
 // @public
 export function untypedSendToWindow(client: string, to: string, event: {

@@ -77,12 +77,22 @@ export const actionsSystem = setup({
         data: { actions: allActions }
       });
     },
-    sendActionData: ({ event }) => {
+    /**
+     * **Answered, not broadcast**, because a broadcast cannot be correlated by anything this event carries.
+     * Sent to every window's actions plugin it would be admitted on the action id alone, so two windows
+     * looking at the same action would each accept the other's answer, and a window that had moved on since
+     * asking would take an answer it was no longer waiting for. `reply` sends to the asker on the connection
+     * they asked from, and the call names the ask within it.
+     *
+     * `actionId` stays on the event because the view needs it — it is the row's identity, not the
+     * correlation. What tells one answer from another is `Message.answering`.
+     */
+    sendActionData: ({ event, reply }) => {
       const ev = actionsSpec.typeOf('ACTION_SELECT', event);
       const action = repository.actionQueries.byId(ev.actionId as EARS.EntityId);
-      
+
       if (action) {
-        broadcastToPlugin('actions', {
+        reply?.({
           type: 'ACTION_SELECTED',
           actionId: ev.actionId as EARS.EntityId,
           data: action

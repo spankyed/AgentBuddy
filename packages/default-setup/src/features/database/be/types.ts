@@ -42,8 +42,8 @@ export interface DatabaseSettings {
 }
 
 export type IncomingDatabaseEvents =
-  | { type: 'EXECUTE_QUERY'; code: string; requestId: string }
-  | { type: 'EXECUTE_TRANSACTION'; code: string; requestId: string }
+  | { type: 'EXECUTE_QUERY'; code: string }
+  | { type: 'EXECUTE_TRANSACTION'; code: string }
   | { type: 'GENERATE_AI_QUERY'; prompt: string; mode?: 'query' | 'transaction' }
   | { type: 'REFRESH_SCHEMA' }
   | { type: 'GET_TRACE_FLOWS' }
@@ -57,29 +57,32 @@ export type IncomingDatabaseEvents =
 export type OutgoingDatabaseEvents = 
   | { type: 'DATABASE_REFRESH'; data: DatabaseStartupData }
   /**
-   * The four replies to `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`, each naming the request it answers.
+   * The four replies to `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`.
    *
-   * **The id is the requester's, not a sequence number.** Whoever sends the request mints it, so a reply
-   * identifies *that* request rather than saying which emit was most recent — the difference matters for
-   * the case this exists for: a requester that gave up waiting and asked again. A counter stamped at emit
-   * time gives the abandoned request's late reply the highest id, so it wins.
+   * **None of them names the request, because the envelope does.** `reply` stamps `Message.answering` with
+   * the call the request was sent under, and the delivery door puts that on the delivered event under a
+   * reserved key — so a requester tells its own answer from someone else's by asking `answersCall`
+   * (`@abuddy/sdk/events`), and neither side declares a field for it.
    *
-   * It also has to be unique across windows, because `broadcastToPlugin` reaches every one of them, so a
-   * per-window counter would collide. `randomId` (`@abuddy/sdk/utils/pure`) is what the senders use.
+   * **The call is the requester's, which is what makes it identify a request rather than an emit.** The case
+   * it exists for is a requester that gave up waiting and asked again: an id stamped when the *answer* is
+   * built gives the abandoned request's late answer the newest id, so that answer wins. It has to be unique
+   * across windows for the same reason — an answer can reach every one of them.
    */
-  | { type: 'QUERY_RESULT'; result: any; executionTime: number; requestId: string }
-  | { type: 'QUERY_ERROR'; error: string; requestId: string }
-  | { type: 'TRANSACTION_RESULT'; result: any; executionTime: number; requestId: string }
-  | { type: 'TRANSACTION_ERROR'; error: string; requestId: string }
+  | { type: 'QUERY_RESULT'; result: any; executionTime: number }
+  | { type: 'QUERY_ERROR'; error: string }
+  | { type: 'TRANSACTION_RESULT'; result: any; executionTime: number }
+  | { type: 'TRANSACTION_ERROR'; error: string }
   |{ type: 'AI_QUERY_LOADING' }
   | { type: 'AI_QUERY_GENERATED'; query: string }
   /**
    * Generating a query from a prompt failed, which is not a query failing.
    *
-   * Its own event because it answers no `EXECUTE_QUERY` and so can carry no `requestId`. It used to be a
-   * `QUERY_ERROR`, which made that event mean two things — and once a consumer ignores a `QUERY_ERROR`
-   * whose id is not the one it is waiting for, an AI failure sent as one is silently swallowed and the
-   * plugin's loading flag never clears.
+   * **Its own event because it answers nothing.** It is broadcast, not replied, so it carries no call — and
+   * the guard on `QUERY_ERROR` takes only an answer whose call is the one outstanding. Sent as a
+   * `QUERY_ERROR` it would be dropped by that guard every time and the plugin's loading flag would never
+   * clear, which is the failure this split prevents. An answer and an announcement are different things,
+   * and one event cannot be both.
    */
   | { type: 'AI_QUERY_ERROR'; error: string }
   | { type: 'TRACE_FLOWS_RESULT'; flows: TNodeEntity[] }

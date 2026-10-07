@@ -164,7 +164,7 @@ describe('reply', () => {
     await untilBus(() => answers().length === 1, 'the answer to the ask');
 
     expect(answers()).toEqual([
-      { to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', tag: undefined }, sender: 'memo-pack/memos', client: 'c-main', answering: true },
+      { to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', tag: undefined }, sender: 'memo-pack/memos', client: 'c-main', call: expect.any(String), answering: undefined },
     ]);
   });
 
@@ -195,7 +195,7 @@ describe('reply', () => {
     await untilBus(() => answers().length === 1, 'the answer from the invoked actor');
 
     expect(answers()).toEqual([
-      { to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', tag: 'invoked' }, sender: 'memo-pack/invoker', client: 'c-main', answering: true },
+      { to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', tag: 'invoked' }, sender: 'memo-pack/invoker', client: 'c-main', call: expect.any(String), answering: undefined },
     ]);
   });
 
@@ -248,30 +248,47 @@ describe('reply', () => {
  * toast for one of these, and the bus's two drop diagnostics name `reply` as the verb. A send that acquired the
  * flag some other way would silence a toast somebody is waiting for.
  */
-describe('an answer says it is one', () => {
-  it('stamps the answer that goes out to a connection', async () => {
-    ask({ to: 'memo-pack/memos', event: { type: 'PING', tag: 'to-a-window' }, sender: 'memo-pack/memos', client: 'c-main' });
+describe('an answer names the call it answers', () => {
+  /**
+   * **The whole of what the envelope buys.** `answering` was `true` — "a reply built this" — and is the call
+   * now, so the asker can tell this answer from one for a request it stopped waiting for. Nothing is declared
+   * on either contract for it: the ask carries its call on the envelope and `reply` echoes it from the
+   * delivery, which is why a handler that answers after an `await` still names the right request.
+   */
+  it('stamps the call the request was sent under, outward to a connection', async () => {
+    ask({ to: 'memo-pack/memos', event: { type: 'PING', tag: 'to-a-window' }, sender: 'memo-pack/memos', client: 'c-main', call: 'c-the-ask' });
     await untilBus(() => answers().length === 1, 'the answer to go out');
 
-    expect(answers().map(({ answering }) => answering)).toEqual([true]);
+    expect(answers().map(({ answering }) => answering)).toEqual(['c-the-ask']);
   });
 
   /**
    * The same for the inward branch, which is a different line of `_replyTo` — it is stamped once at construction
    * so all four branches carry it, and these two cases are the pair that would catch stamping per branch instead.
    */
-  it('stamps the answer that goes back to a system', async () => {
+  it('stamps it on the answer that goes back to a system', async () => {
     const incoming: Message[] = [];
     const stop = testRootEvents.onIncoming((message) => { incoming.push(message); });
     try {
-      bus.send({ type: 'INCOMING', message: { to: 'memo-pack/asker', event: { type: 'GO' } } });
+      bus.send({ type: 'INCOMING', message: { to: 'memo-pack/asker', event: { type: 'GO' }, call: 'c-the-go' } });
       await untilBus(() => answered.length === 1, 'the asking system to be answered');
 
+      // `GO` makes the asker send its own `PING`, so the answer to *that* names that send's call rather than
+      // `c-the-go` — which is the point: a call identifies one send, not a chain of them
       const answer = incoming.find(({ event }) => event.type === 'MEMO_ADDED');
-      expect(answer?.answering, 'the inward branch stamps it too').toBe(true);
+      expect(answer?.answering, 'the inward branch stamps it too').toEqual(expect.any(String));
+      expect(answer?.answering, "and it is the PING's call, not the GO's").not.toBe('c-the-go');
     } finally {
       stop();
     }
+  });
+
+  // An ask that carried no call cannot be answered by name, and `reply` says so rather than inventing one
+  it('leaves it absent when the request carried no call', async () => {
+    ask({ to: 'memo-pack/memos', event: { type: 'PING', tag: 'uncorrelated' }, sender: 'memo-pack/memos', client: 'c-main' });
+    await untilBus(() => answers().length === 1, 'the answer to go out');
+
+    expect(answers().map(({ answering }) => answering)).toEqual([undefined]);
   });
 
   /**

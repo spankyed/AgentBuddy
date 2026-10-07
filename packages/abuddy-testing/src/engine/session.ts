@@ -1,4 +1,4 @@
-import { randomId } from '@abuddy/sdk/utils/pure';
+import { _callOf, newCall } from '@abuddy/sdk/events';
 import { HOST } from '@abuddy/host/bus';
 import type { BusMessage } from './api-client.ts';
 
@@ -140,6 +140,18 @@ export interface SeenEvent {
    * not enough to answer one.
    */
   readonly sender?: string;
+  /**
+   * The call this message answers, for an answer; absent for everything else.
+   *
+   * **Both channels supply it, from different places, which is why it is a field here rather than read at
+   * the match.** The connection carries the envelope, so it is `Message.answering`; the in-page bridge sees
+   * the *delivered event*, where a door has put the same value under the reserved key `_callOf` reads. One
+   * field, so `nextReply` matches the same way whichever channel woke it.
+   *
+   * A broadcast answers nothing and so has none — which is what makes a broadcast uncorrelatable now, and
+   * is said in the timeout message rather than left to be discovered.
+   */
+  readonly answering?: string;
 }
 
 /**
@@ -325,23 +337,27 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
     }, message);
 
   /**
-   * Waits for the reply to *this* request, matched by the id the request minted.
+   * Waits for the answer to *this* ask, matched by the call the ask was sent under.
    *
-   * Addressing says which connection an answer came to; only the id says which request it answers, so three
-   * concurrent `/qx` calls can be told apart. An orphan matches nobody — a request that timed out and then
-   * finished, or a reply to someone querying in the Database plugin while a session drives.
+   * Addressing says which connection an answer came to; only the call says which ask it answers, so three
+   * concurrent `/qx` calls can be told apart. An orphan matches nobody — an ask that timed out and then
+   * finished, or an answer to someone querying in the Database plugin while a session drives.
+   *
+   * The call is the envelope's, so this session asks and matches the way the app's own features do: nothing
+   * in the app declares a correlation field, because every send mints a call and `reply` names the one it
+   * answers.
    */
-  const nextReply = (to: string, requestId: string, ok: string, bad: string): Promise<unknown> =>
+  const nextReply = (to: string, call: string, ok: string, bad: string): Promise<unknown> =>
     new Promise((resolve, reject) => {
       // Already gone, so there is nothing to wait for and no reason to make the caller wait for the timeout
       if (api.failure !== null) {
-        reject(channelGone(requestId, api.failure));
+        reject(channelGone(call, api.failure));
         return;
       }
       const waiter = {
         receive: (event: SeenEvent): void => {
           if (event.type !== ok && event.type !== bad) return;
-          if (event.event.requestId !== requestId) return;
+          if (event.answering !== call) return;
           clearTimeout(timer);
           waiting.delete(waiter);
           if (event.type === bad) reject(new Error(refusalText(event.event)));
@@ -351,7 +367,7 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
         fail: (reason: string): void => {
           clearTimeout(timer);
           waiting.delete(waiter);
-          reject(channelGone(requestId, reason));
+          reject(channelGone(call, reason));
         },
       };
       const timer = setTimeout(() => {
@@ -360,13 +376,14 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
         // server awaits `ready` before it serves a verb, so this is reachable only from a test driving the
         // session directly — remove `ready`'s `onFinished` subscription and every dead-channel case comes here
         if (api.failure !== null) {
-          reject(channelGone(requestId, api.failure));
+          reject(channelGone(call, api.failure));
           return;
         }
-        reject(new Error(`no ${ok} or ${bad} for ${requestId} within ${REPLY_TIMEOUT_MS}ms. `
+        reject(new Error(`no ${ok} or ${bad} answering ${call} within ${REPLY_TIMEOUT_MS}ms. `
           + `Either it is still running, or nothing provides ${to}, or that system answered with a `
-          + `broadcast rather than a reply — which an app built before ${DRIVE_REF} existed does, and `
-          + 'GET /events would then show the answer arriving unaddressed.'));
+          + `broadcast rather than a reply — which an app built before ${DRIVE_REF} existed does. A broadcast `
+          + 'answers no call at all, so it cannot be matched here however it is delivered, and GET /events '
+          + 'would show the answer arriving unaddressed.'));
       }, REPLY_TIMEOUT_MS);
       waiting.add(waiter);
     });
@@ -379,39 +396,42 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
    * to an unknown system comes back as a refusal rather than being dropped silently in the renderer, and why
    * `/qx` works while the window's own subscription is broken.
    */
-  const sendToSystem = (to: string, event: Record<string, unknown>): Promise<unknown> =>
-    api.send({ to, event, sender: DRIVE_REF }).then(() => null);
+  const sendToSystem = (to: string, event: Record<string, unknown>, call?: string): Promise<unknown> =>
+    api.send({ to, event, sender: DRIVE_REF, ...(call === undefined ? {} : { call }) }).then(() => null);
 
   /**
-   * Asks a system something and waits for the answer it addresses back, matched by the id the request minted.
+   * Asks a system something and waits for the answer it addresses back, matched by the call it asked under.
    *
    * Taking the system and the event rather than a kind, because the database is no longer the only thing that
    * answers: the settings system replies to whoever asked for a write, and `/set-setting` reporting success for
    * a refused write was the whole reason it had to.
+   *
+   * **The call goes on the envelope, not into the event**, which is what lets this ask *any* system rather
+   * than only one that declares a correlation field: the envelope's call needs nothing of the receiver,
+   * because `reply` echoes whatever it was entered under.
    */
   const roundTrip = async (
     to: string,
-    prefix: string,
     event: Record<string, unknown>,
     ok: string,
     bad: string,
   ): Promise<unknown> => {
-    // Minted here, by the requester: a reply can only name a request if the request named itself first
-    const requestId = randomId({ prefix: `${prefix}-` });
-    // Armed before the send, so a reply that arrives immediately is not missed
-    const answer = nextReply(to, requestId, ok, bad);
+    // Minted here, by the asker: an answer can only name an ask if the ask named itself first
+    const call = newCall();
+    // Armed before the send, so an answer that arrives immediately is not missed
+    const answer = nextReply(to, call, ok, bad);
     // A send that never left means no answer is coming, and the armed waiter is abandoned — handled here so
     // its rejection is not an unhandled one when the timer finally fires
     answer.catch(() => {});
-    await sendToSystem(to, { ...event, requestId });
+    await sendToSystem(to, event, call);
     return answer;
   };
 
   /** What the database answers with, which is the one round-trip shape used twice */
-  const runCode = (prefix: 'qx' | 'tx', type: string, code: string): Promise<unknown> =>
-    roundTrip(DATABASE_SYSTEM, prefix, { type, code },
-      prefix === 'qx' ? 'QUERY_RESULT' : 'TRANSACTION_RESULT',
-      prefix === 'qx' ? 'QUERY_ERROR' : 'TRANSACTION_ERROR');
+  const runCode = (kind: 'qx' | 'tx', type: string, code: string): Promise<unknown> =>
+    roundTrip(DATABASE_SYSTEM, { type, code },
+      kind === 'qx' ? 'QUERY_RESULT' : 'TRANSACTION_RESULT',
+      kind === 'qx' ? 'QUERY_ERROR' : 'TRANSACTION_ERROR');
 
   /**
    * Hooks the app's actor inspection up to `BRIDGE_FUNCTION`, which is a callback into this process rather
@@ -444,10 +464,10 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
       /**
        * The session's own connection, where an addressed answer arrives.
        *
-       * **Waiters hear both channels on purpose.** A reply reaches `DRIVE_REF` only from an app whose database
-       * system answers with `reply`, and an older packaged build still broadcasts — the page bridge is the only
-       * path to that one. The `requestId` check makes the double delivery harmless: the first match removes the
-       * receiver and the second matches nobody.
+       * **Waiters hear both channels on purpose.** An answer reaches `DRIVE_REF` from an app whose system
+       * answers with `reply`; the page bridge is the only path to one delivered to a plugin in the window.
+       * The call check makes the double delivery harmless: the first match removes the receiver and the
+       * second matches nobody.
        *
        * Only what the inspector cannot see is recorded, so `/events` keeps its meaning — a message addressed to
        * `DRIVE_REF` never reaches the renderer, while a broadcast reaches both and would be counted twice.
@@ -470,15 +490,22 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
           type: message.event.type,
           event: message.event,
           ...(message.sender === undefined ? {} : { sender: message.sender }),
+          // Off the envelope: this channel has it, where the bridge has to read the delivered event
+          ...(message.answering === undefined ? {} : { answering: message.answering }),
         };
         wake(event);
         if (message.to === DRIVE_REF) record(event);
       });
 
       await page.exposeFunction(BRIDGE_FUNCTION, (payload) => {
-        const event = payload as SeenEvent;
+        const seen = payload as SeenEvent;
+        // The bridge reads the renderer's xstate inspector, which sees an event and not an envelope — so the
+        // call comes off the delivered event, where the window's delivery door put it. Read here rather than
+        // at the match, so `nextReply` has one field to compare whichever channel woke it
+        const answering = seen.answering ?? _callOf(seen.event);
+        const event: SeenEvent = { ...seen, ...(answering === undefined ? {} : { answering }) };
         record(event);
-        // A waiter is woken either way: a reply must not be lost because the buffer was full
+        // A waiter is woken either way: an answer must not be lost because the buffer was full
         wake(event);
       });
       /**
@@ -510,6 +537,8 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
 
     send: (event) => attempt('send', () => sendToApp(event)),
 
+    // No call: this is the fire-and-forget verb, so nothing here waits for an answer and there is nothing to
+    // match one against. A system that replies to it answers a call nobody is holding, which the bus drops
     system: (to, event) => attempt('system', () => sendToSystem(to, event)),
 
     qx: (code) => attempt('qx', () => runCode('qx', 'EXECUTE_QUERY', code)),
@@ -608,7 +637,6 @@ export function createSession({ page, api, takeErrors, readLog }: SessionDeps): 
      */
     setSetting: (target, at, value) => attempt('setSetting', () => roundTrip(
       SETTINGS_SYSTEM,
-      'set-setting',
       {
         type: 'UPDATE_SETTINGS',
         entityType: 'plugin' in target ? 'plugin' : 'section',

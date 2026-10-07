@@ -1,4 +1,4 @@
-import { assign, setup, type ActorRefFrom } from 'xstate'
+import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
 import { safeEvents } from '@abuddy/sdk/fe'
 import {
@@ -11,6 +11,7 @@ import type { PromptsContext, PromptsInboxEvent } from './contract.ts'
 import type { OutgoingPromptEvents } from '#features/prompts/be/types.ts'
 import type { TemplateInput } from '@abuddy/sdk'
 import { sendToSystem } from '#generated/events.ts'
+import { answersCall, newCall } from '@abuddy/sdk/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import type { PromptEntity } from '@abuddy/sdk'
@@ -75,23 +76,26 @@ const promptsState = setup({
     }),
 
     /* ── prompt interactions ────────────────────────────── */
-    selectPrompt: assign(({ event, context }) => {
+    /**
+     * **`enqueueActions`, so the call is stored before the ask is sent.** A send made from inside an
+     * `assign` producer runs before the assign is applied, so an answer that arrives synchronously is
+     * matched against a slot the ask has not written yet. Against a backend in another process the race
+     * never shows; against one that answers in the same turn it always does.
+     */
+    selectPrompt: enqueueActions(({ event, context, enqueue }) => {
       const ev = typeOf('PROMPT.SELECT', event);
-      if (context.selectedPromptId === ev.promptId) {
-        return {}
-      }
-      // Send event to backend to get prompt data
-      sendToSystem(id, {
-        type: 'PROMPT_SELECT',
-        promptId: ev.promptId,
-      });
-      // Recorded here so the reply can be told from one for a selection since replaced
-      return { pendingPromptId: ev.promptId };
+      if (context.selectedPromptId === ev.promptId) return;
+      const call = newCall();
+      // Recorded before the ask, so the answer can be told from one for a selection since replaced
+      enqueue.assign({ pendingPromptCall: call });
+      enqueue(() => sendToSystem(id, { type: 'PROMPT_SELECT', promptId: ev.promptId }, { call }));
     }),
 
     loadPromptData: assign(({ event }) => {
       const ev = typeOf('PROMPT_SELECTED', event);
       return {
+        // Settled: nothing is outstanding, so a later answer for an abandoned ask has no call to match
+        pendingPromptCall: null,
         selectedPromptId: ev.promptId,
         selectedPrompt: ev.data,
         formData: {
@@ -441,9 +445,8 @@ const promptsState = setup({
   },
   guards: {
     targetIs,
-    /** Whether this reply describes the prompt still being waited on */
-    answersPendingPrompt: ({ context, event }) =>
-      (event as { promptId?: string }).promptId === context.pendingPromptId,
+    /** Whether this answer is the one the outstanding ask is waiting for, and false when none is */
+    answersPendingPrompt: ({ context, event }) => answersCall(event, context.pendingPromptCall),
     /** Whether this page is the one just asked for — two clicks ask for the same one */
     isNextPage: ({ context, event }) =>
       (event as { data?: { page?: number } }).data?.page === context.page + 1,
@@ -453,6 +456,7 @@ const promptsState = setup({
   initial: 'list',
   context: {
     selectedPromptId: undefined,
+    pendingPromptCall: null,
     prompts: [],
     selectedPrompt: undefined,
     totalCount: 0,

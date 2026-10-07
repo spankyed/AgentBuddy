@@ -985,14 +985,17 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'compile', timeout: 'suite', seconds: 13, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `abuddy build` never reads those
     //
-    // This step runs `facade:check` after the build that produces its subject, so how the report is
-    // normalised is part of what it accepts — edit that and a cached step would never re-run. It named
-    // `scripts/facade-report.ts` for that reason until the report became `abuddy facade-report`; the CLI's
-    // sources reach here through `PACKAGE_BUILD_OUTPUTS` instead, since an edit to them makes the
-    // `@abuddy/cli` build unit stale and `packages:ensure` rewrites the bundle this declares
+    // This step runs `facade:check`, so how the report is normalised is part of what it accepts — edit that
+    // and a cached step would never re-run. The CLI's sources reach here through `PACKAGE_BUILD_OUTPUTS`,
+    // since an edit to them makes the `@abuddy/cli` build unit stale and `packages:ensure` rewrites the
+    // bundle this declares.
+    //
+    // `etc` is the committed facade report, which that check compares against — so a hand-edited report
+    // invalidates this step, the one case nothing else here can see. It is the `api:check` precedent above,
+    // and it was missing while the check was read as a step that only looked at what the build wrote
     inputs: [...ROOT, 'packages/default-setup/src', 'packages/default-setup/abuddy.json',
       'packages/default-setup/package.json', 'packages/default-setup/tsconfig.json',
-      'packages/default-setup/dev-build.mjs', ...PACKAGE_BUILD_READS] },
+      'packages/default-setup/etc', 'packages/default-setup/dev-build.mjs', ...PACKAGE_BUILD_READS] },
   // The fixture packs depend on default-setup, so they need its snapshot from compile
   //
   // The third place in this chain with a cache inside a cached step, and the one that is benign: `abuddy

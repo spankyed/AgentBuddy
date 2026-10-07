@@ -32,7 +32,7 @@ describe('services.emitter', () => {
     expect(sent(() => {
       services.emitter.sendToSystem('default-setup/notes', { type: 'GET_NOTES' });
       services.emitter.sendToSystem('ext/notes', { type: 'GET_NOTES' });
-    })).toEqual([{ to: 'default-setup/notes', event: { type: 'GET_NOTES' } }, { to: 'ext/notes', event: { type: 'GET_NOTES' } }]);
+    })).toEqual([{ to: 'default-setup/notes', call: expect.any(String), event: { type: 'GET_NOTES' } }, { to: 'ext/notes', call: expect.any(String), event: { type: 'GET_NOTES' } }]);
   });
 
   it("sends to the plugin a <packId>/<featureId> name is, the host's included", () => {
@@ -40,8 +40,8 @@ describe('services.emitter', () => {
       services.emitter.broadcastToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
       services.emitter.broadcastToPlugin('host/application', { type: 'APPLICATION_HOTKEYS', hotkeys: {} });
     })).toEqual([
-      { to: 'default-setup/threads', event: { type: 'SET_PHASE', phase: 'Edit' } },
-      { to: 'host/application', event: { type: 'APPLICATION_HOTKEYS', hotkeys: {} } },
+      { to: 'default-setup/threads', call: expect.any(String), event: { type: 'SET_PHASE', phase: 'Edit' } },
+      { to: 'host/application', call: expect.any(String), event: { type: 'APPLICATION_HOTKEYS', hotkeys: {} } },
     ]);
   });
 
@@ -91,8 +91,8 @@ describe('createActionEmitter', () => {
       emitter.broadcastToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
       emitter.sendToSystem('ext/notes', { type: 'GET_NOTES' });
     })).toEqual([
-      { to: 'default-setup/threads', event: { type: 'SET_PHASE', phase: 'Edit' }, from: 'default-setup', via: 'action:Summarise Thread' },
-      { to: 'ext/notes', event: { type: 'GET_NOTES' }, from: 'default-setup', via: 'action:Summarise Thread' },
+      { to: 'default-setup/threads', call: expect.any(String), event: { type: 'SET_PHASE', phase: 'Edit' }, from: 'default-setup', via: 'action:Summarise Thread' },
+      { to: 'ext/notes', call: expect.any(String), event: { type: 'GET_NOTES' }, from: 'default-setup', via: 'action:Summarise Thread' },
     ]);
   });
 

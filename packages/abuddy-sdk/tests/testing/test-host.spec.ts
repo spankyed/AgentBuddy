@@ -31,10 +31,10 @@ describe('the test host', () => {
       stop.forEach((unsubscribe) => unsubscribe());
       testPacks.designations.delete('brain');
     }
-    expect(toPlugins).toEqual([{ to: 'memos', event: { type: 'MEMO_ADDED' } }]);
+    expect(toPlugins).toEqual([{ to: 'memos', call: expect.any(String), event: { type: 'MEMO_ADDED' } }]);
     expect(incoming).toEqual([
-      { to: 'memos', event: { type: 'ADD_MEMO' } },
-      { to: 'brain-system', event: { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' } },
+      { to: 'memos', call: expect.any(String), event: { type: 'ADD_MEMO' } },
+      { to: 'brain-system', call: expect.any(String), event: { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' } },
       { to: 'memos', event: { type: 'PING' } },
     ]);
   });

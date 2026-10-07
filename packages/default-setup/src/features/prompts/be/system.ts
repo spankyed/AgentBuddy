@@ -44,12 +44,22 @@ export const promptsSystem = setup({
         }
       });
     },
-    sendPromptData: ({ event }) => {
+    /**
+     * **Answered, not broadcast**, because a broadcast cannot be correlated by anything this event carries.
+     * Sent to every window's prompts plugin it would be admitted on the prompt id alone, so two windows
+     * looking at the same prompt would each accept the other's answer, and a window that had moved on since
+     * asking would take an answer it was no longer waiting for. `reply` sends to the asker on the connection
+     * they asked from, and the call names the ask within it.
+     *
+     * `promptId` stays on the event because the view needs it — it is the row's identity, not the
+     * correlation. What tells one answer from another is `Message.answering`.
+     */
+    sendPromptData: ({ event, reply }) => {
       const ev = promptsSpec.typeOf('PROMPT_SELECT', event);
       const prompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId);
-      
+
       if (prompt) {
-        broadcastToPlugin('prompts', {
+        reply?.({
           type: 'PROMPT_SELECTED',
           promptId: ev.promptId as EARS.EntityId,
           data: prompt

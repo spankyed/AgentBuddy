@@ -103,7 +103,7 @@ export function createActionEmitter(sender?: ActionSender): HostServices['emitte
   return {
     broadcastToPlugin: (name, event) => sends.broadcastToPlugin(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
     sendToWindow: (client, name, event) => sends.sendToWindow(client, actionRef('plugin', name, boundHost().packs.pluginIds()), event),
-    sendToSystem: (to, event) => sends.sendToSystem(typeof to === 'string' ? actionRef('system', to, boundHost().packs.systemIds()) : to, event),
+    sendToSystem: (to, event, options) => sends.sendToSystem(typeof to === 'string' ? actionRef('system', to, boundHost().packs.systemIds()) : to, event, options),
   };
 }
 

@@ -108,9 +108,9 @@ describe('the chain reads every source file', () => {
   // be derived: a path the step *reaches* is a path that step reads, so it must be an input.
   //
   // Reaches, not names. This used to scan the step's own script text for a `tests/` or `scripts/` path, which
-  // sees nothing through a delegation: `compile` runs `npm run facade:check -w @app/default-setup`, whose
-  // script named a repo file — `scripts/facade-report.ts`, until the report became a CLI command — and that
-  // went undeclared for a commit. `reachableText` follows
+  // sees nothing through a delegation: `compile` runs `npm run facade:check -w @app/default-setup`, and while
+  // that script named a repo file rather than a CLI command, the file went undeclared for a commit.
+  // `reachableText` follows
   // `npm run`, `-w` and the files a script names, and is the same walk `check:tiers` uses for its own
   // question.
   /**

@@ -285,18 +285,25 @@ Things worth knowing before changing it:
     bus asks every system to publish (`SEND_STATE`) and each answers with its startup data. `/reload` is that
     connection. It must not be `window.location.reload()`: the app blocks renderer-initiated navigation
     (`BlockNotAllowdOrigins`, `packages/main`), so that call returns having done nothing.
-- **A reply arrives addressed, and is still matched by the `requestId` the request minted.** Those are two
+- **An answer arrives addressed, and is still matched by the call its ask was sent under.** Those are two
   different jobs and both are needed. The session claims `host/drive` and stamps `sender` on every bus
   send, so a system's `reply` comes back on this connection rather than to every window — which is what
   stops a person querying in the Database plugin from being mistaken for the session. But addressing
-  answers *which connection*, never *which request*: three concurrent `/query` calls produce three replies
-  with identical envelopes, so the id is what tells them apart. Two cases cover the pair: a reply for a
-  request the engine did not make, and an abandoned request's late answer.
-- **Waiters hear both the connection and the page bridge, and that is not redundancy.** An app built
-  before `host/drive` existed answers with a broadcast that never reaches this connection, and
-  `abuddy drive --app beta` can be that app — so the bridge stays a reply path and the `requestId` makes
-  the double delivery harmless. Measured: cutting the connection's wake fails the six round-trip cases
-  and leaves the bridge case passing, which is what says the fallback is real rather than dead weight.
+  answers *which connection*, never *which ask*: three concurrent `/query` calls produce three answers
+  with the same `to` and `sender`, so the call is what tells them apart. It rides on the envelope
+  (`Message.call` out, `Message.answering` back) and never in the event, so this matches the way the app's
+  own features do. Two cases cover the pair: an answer for an ask the engine did not make, and an
+  abandoned ask's late answer.
+- **Waiters hear both the connection and the page bridge, and the two carry the call differently.** The
+  connection carries the envelope, so `Message.answering` is read off it; the bridge reads the renderer's
+  xstate inspector, which sees a *delivered event*, so the call comes off the reserved key a window's
+  delivery door wrote. `SeenEvent.answering` is where both land, so `nextReply` compares one field
+  whichever channel woke it, and a double delivery is harmless because the first match removes the waiter.
+  **What the bridge cannot carry is an uncorrelated answer.** A broadcast answers no call, so an app that
+  answers by broadcasting rather than replying cannot be matched here however it is delivered — the
+  round-trip timeout says so in its message rather than leaving it to be discovered. Measured: cutting the
+  connection's wake fails the six round-trip cases and leaves the bridge case passing, which is what says
+  the bridge path is real rather than dead weight.
 - **`/wait` is the fixture's own wait**, so a state is awaited rather than re-requested. Without it the
   only way to wait is to ask `/state` repeatedly, which is the polling this repo avoids where something
   event-driven exists.

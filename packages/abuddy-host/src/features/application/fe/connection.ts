@@ -16,7 +16,7 @@ export function connectionListener(client: ShellClient) {
     onFailed: (error) => sendBack({ type: 'BACKEND_ERROR', error }),
     // The event arrives exactly as the system sent it
     onMessage: (message) => {
-      const { to, event, sender } = message;
+      const { to, event, sender, call, answering } = message;
       if (to === HOST.application) {
         // Every window hears it; the shell tells a backend's request to open a plugin from its own window's
         sendBack((event.type === 'OPEN_PLUGIN' ? { ...event, type: 'OPEN_PLUGIN_FROM_APP' } : event) as ShellEvent);
@@ -32,8 +32,11 @@ export function connectionListener(client: ShellClient) {
       // Whether the backend asked or only told is the wire's to say, and it is a branch rather than a value: a
       // `sender` arriving means the plugin's handler is handed a `reply` that goes back out over this connection,
       // to that system alone rather than to its own copy in every window that shows it. A broadcast names none.
-      if (sender === undefined) notifyPluginActor(plugin, to, event);
-      else sendToPluginActor(plugin, to, event, { kind: 'bus', ref: sender });
+      // The call rides along so the plugin's own guards can tell this answer from one for a request it has
+      // since abandoned — `callOf(event)`, injected by the door rather than declared on any contract
+      const correlation = { ...(call === undefined ? {} : { call }), ...(answering === undefined ? {} : { answering }) };
+      if (sender === undefined) notifyPluginActor(plugin, to, event, correlation);
+      else sendToPluginActor(plugin, to, event, { kind: 'bus', ref: sender }, correlation);
     },
   }));
 }

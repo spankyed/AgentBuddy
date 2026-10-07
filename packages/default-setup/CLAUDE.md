@@ -87,7 +87,7 @@ absent when the message named none. Three jobs ride those two channels:
 |---|---|---|
 | a **notification** — a mutation happened | broadcast | none; guarding one is a category error |
 | a **view fetching data** | broadcast | a slot keyed by what was asked |
-| a **command's outcome** | **reply** | an id only where one window can have two in flight |
+| a **command's outcome** | **reply** | the envelope's call, which every ask already carries |
 
 **Ask which job it is, then pick the channel.** Everything below is the second question — what shape the
 payload wants — and it only arises once the first is answered. For a long time there was no reply channel
@@ -130,21 +130,42 @@ host does the same with
 `FEATURE_SETTINGS_UPDATED`: all eleven feature contracts carry a `settings` field and `GET_SETTINGS`
 appears nowhere under `features/`.
 
-**A command with a result is the only job that genuinely needs a request id**, because the answer is not
-app state and no natural key identifies it. `EXECUTE_QUERY` → `QUERY_RESULT` is the worked example: the
-requester mints the id (`randomId`, not a counter stamped when the reply is built, or an abandoned
-request's late answer carries the newest id and wins) and every reply echoes it. `terminal.CREATE_TERMINAL`
-is the other shape of this — its id is minted *by the reply*, so nothing the requester knows can identify
-it.
+**A command with a result is the only job that needs an id, and no event declares one.** The answer is not
+app state and no natural key identifies it, so a per-ask id is the only thing that works — and it is on the
+envelope. Every send mints `Message.call`, `reply` stamps `Message.answering` with the call it was entered
+under, and the delivery door puts that on the delivered event, which is the only channel to a transition
+guard. **No event type declares a correlation field, and none should.**
+
+**A pack asks about the call and never reads it** (`@abuddy/sdk/events`): `answersCall(event, outstanding)`
+where it holds one outstanding ask, `recordCall`/`settleCall` where it holds several, and `newCall()` to
+mint one before a send an `enqueueActions` body defers. `_callOf` is host-only, and the restriction is the
+point: a raw call invites `===` against a stored one, which answers *true* when both are absent — so the
+obvious comparison admits an answer nobody asked for, and nothing outstanding is the resting state.
+
+**Why the envelope rather than a field per feature.** Correlation is a three-step obligation — mint, store,
+settle — and a feature doing all three by hand can fail at any one of them independently: declare a field
+and mint nothing, so only its specs ever produce one; store a domain id and never clear it, so it names the
+last ask for the life of the plugin; answer by broadcast, so another window's answer for the same row
+matches. And some asks have nothing to key on at all — `terminal.CREATE_TERMINAL`'s id is minted by the
+backend, so nothing the asker sent could identify it (`docs/issues/ISSUE-terminal-integration-review.md`,
+T4, is what one slot for all of them costs). A per-send id on the envelope takes the mint and the settle out
+of a feature's hands, leaving it only the store.
 
 **The rule this leaves**, in order: *which job is this?* decides the channel, and only then does the shape
 follow. A notification broadcasts and needs nothing. A fetch broadcasts and wants a keyed slot. **A
-command's outcome is replied** — and once it is, it needs an id only where one window can have two of the
-same command in flight, which is rarer than it looks: the database's two query kinds do, a settings save
-does not.
+command's outcome is replied**, and the call that correlates it is already there — the question is no longer
+whether to add an id but whether to *read* one, which is "yes" wherever a window can have two of the same
+command in flight.
 
-A guard is where a slot would have made the correlation structural, and six in this pack still are. None
-is wrong now; the two that were failed in opposite ways, which is what makes them worth knowing.
+**A spec that drives a machine directly builds the answer with `answerTo(call, event)`**
+(`@abuddy/sdk/testing`), which is what a delivery door would put on it; one driving a whole system through
+`startApp` passes `nextEmit`'s `answering`. A spec never names the reserved key itself — the
+`reserved-event-keys` pack rule refuses it in `tests` as well as `src`, which is where it would be reached
+for.
+
+**The guards that remain, and what each one got wrong first.** Every correlating guard in this pack has been
+through this, and they failed in four different ways — which is the argument for reading the list rather
+than copying whichever one you land on.
 
 **A guard needs an invariant every asker holds, and a slot does not.** `answersSelectedNode` admits a
 reply only for the node in `selectedStepNode`, so every asker must select before it asks — stated over two
@@ -158,11 +179,15 @@ while `FLOW_EVENTS_RESULT` echoed no `offset`, so re-selecting a flow while a la
 that page replace the whole list. The answer carries its offset now; `loadMoreEvents` keeps one page in
 flight, which the correlation requires rather than prefers.
 
-The other four are correct, and the check that says so is the one to reuse: `pendingActionId` and
-`pendingPromptId` have exactly one setter each, so their invariant holds by construction, and the page
-guards in `features/{actions,prompts}` admit `page + 1` where `page` advances only on a reply — two clicks
-ask for the same page and the dedupe is the intent. Converting any of them to a slot would be churn with
-no failure behind it.
+**And a guard's invariant is not "who writes this" but "what else could satisfy it".** Counting setters is
+the wrong check: `pendingActionCall` and `pendingPromptCall` have exactly one each, which says nothing about
+whether anything other than their own answer matches. Two things do, for a slot holding a domain id under a
+broadcast — every other window's answer for the same row, and, with no clear, every later answer at all.
+Both are set before the ask and cleared on the answer now, the answer is replied, and `answersCall` refuses
+an empty slot, so "nothing outstanding" cannot match either.
+
+The page guards in `features/{actions,prompts}` are correct and stay: they admit `page + 1` where `page`
+advances only on an answer, so two clicks ask for the same page and the dedupe is the intent.
 
 And one that was worse than a guard: `code/be/features/pull-request.ts` stamped a module-scoped counter on
 every `pr.PR_DETAILS_RECEIVED`, justified as "monotonic within this process" — true, and beside the point,
@@ -348,5 +373,5 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
 - `npm run typecheck` runs `vue-tsc` over the `.ts`, `.vue` and `src/defs/` files
 - Vitest config at `vitest.config.ts`, which resolves the path aliases from `tsconfig.json`: the one tsconfig, whose `include` covers the tests, so `npm run typecheck` checks them with the source. Unit tests run on `@abuddy/testing/harness` (`tests/setup.ts`: `setupPackTests({ seedRuntime, registration })`), in memory, with no `@abuddy/host` or API imports (`check:specifiers` rejects them). Systems run with `startApp`, flows with `importFlows` (a root flow, `root: true`, or default-setup's own through `tests/_support/flows.ts`) and `runFlow`, as the app runs them, and services the code under test reaches outside the process (CLIs, Codex, `inference`) are mocked with `mockService` (`inference` with `mockInference`). The registered packs are the harness's registry for the test file: a test that needs another pack registers one with the harness's `registerPack`/`unregisterPack`, and one that needs a lookup filled without a pack (a step type) uses `testPacks` from `@abuddy/sdk/testing` (`features/flows/fe/canvas/layout-utils.spec.ts`)
 - `prepare` script runs `abuddy generate-entries` after `npm install`
-- `abuddy build` gates the facade types it bundles into `dist/types/pack-types.d.ts` (`packages/abuddy-cli/src/build/facade-gate.ts`): the bundle must type-check on its own and import only `@abuddy/*` modules the published packages export, `@abuddy/sdk`'s peers and Node built-ins. `etc/pack-types.api.md` is the reviewed report of that bundle: after a build that changes it, run `npm run facade:update` and commit the report; CI runs `npm run facade:check` after `abuddy build`
+- `abuddy build` gates the facade types it bundles into `dist/types/pack-types.d.ts` (`packages/abuddy-cli/src/build/facade-gate.ts`): the bundle must type-check on its own and import only `@abuddy/*` modules the published packages export, `@abuddy/sdk`'s peers and Node built-ins. `etc/pack-types.api.md` is the reviewed report of that facade: when a change moves it, run `npm run facade:update` and commit the report. That command needs no build — it regenerates the barrels and re-bundles the facade itself, so what the report is held to is what `src/` describes now — and `npm run compile` and CI run `npm run facade:check`, the same thing without the write. A build that notices the report has fallen behind says so and carries on
 - `npm run build` runs `abuddy build` and then `node dev-build.mjs`, which rebuilds `dist/runtime/index.cjs`: the pack's backend runtime, which the API loads in development and the app publishes, with the snapshot and `build/`, for packs depending on default-setup

@@ -10,7 +10,7 @@
 // and the asked one takes an address that cannot be absent — so a caller holding a maybe-asker has to say what
 // it does when there is nobody, in the branch rather than in a sentinel the type could not check.
 import type { AnyActorRef, AnyEventObject } from 'xstate';
-import { _runDelivery, type _Asker } from '@abuddy/sdk/events';
+import { _callOn, _runDelivery, type _Asker, type Message } from '@abuddy/sdk/events';
 
 /**
  * Hands an actor an event nobody asked for: a lifecycle event, a hotkey, a navigation, a pack coming or going.
@@ -18,8 +18,9 @@ import { _runDelivery, type _Asker } from '@abuddy/sdk/events';
  *
  * The common case, and so the short one — twelve call sites against the two that carry an address.
  */
-export function notifyPluginActor(actor: AnyActorRef, ref: string, event: AnyEventObject): void {
-  _runDelivery({ receiver: ref }, () => actor.send(event));
+export function notifyPluginActor(actor: AnyActorRef, ref: string, event: AnyEventObject, call?: Pick<Message, 'call' | 'answering'>): void {
+  _runDelivery({ receiver: ref, ...(call?.call === undefined ? {} : { call: call.call }) }, () =>
+    actor.send(call === undefined ? event : { ...event, ..._callOn(call) }));
 }
 
 /**
@@ -46,6 +47,7 @@ export function notifyPluginActor(actor: AnyActorRef, ref: string, event: AnyEve
  * invariant broken and worth a crash, while a send arriving for a plugin whose pack has unloaded is neither. A
  * `?.` here would have levelled those two to the quieter one, which it briefly did.
  */
-export function sendToPluginActor(actor: AnyActorRef, ref: string, event: AnyEventObject, asker: _Asker): void {
-  _runDelivery({ receiver: ref, asker }, () => actor.send(event));
+export function sendToPluginActor(actor: AnyActorRef, ref: string, event: AnyEventObject, asker: _Asker, call?: Pick<Message, 'call' | 'answering'>): void {
+  _runDelivery({ receiver: ref, asker, ...(call?.call === undefined ? {} : { call: call.call }) }, () =>
+    actor.send(call === undefined ? event : { ...event, ..._callOn(call) }));
 }

@@ -126,6 +126,14 @@ export interface _Delivery {
   receiver: string;
   /** Where an answer goes, when the message said. Absent for a send that named no sender. */
   asker?: _Asker;
+  /**
+   * The call being handled, so `reply` can name it as the one its answer answers.
+   *
+   * Read here rather than from the event, for `reply`'s own reason: it is bound as the handler is entered, so
+   * an answer sent after an `await` still names the request it is for. `Message.call` is where it comes from,
+   * and `answering ?? call` is what a door injects into the delivered event for the receiver's guards.
+   */
+  call?: string;
 }
 
 /** The holder, and the whole mechanism — in a window and on the backend alike */

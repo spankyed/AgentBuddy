@@ -16,6 +16,14 @@ A **derivation** re-takes its answer on every run and compares — `schema:check
 `facade:check`, `seed-parity:check`. A missing input is not a thing that can happen to one, so a case
 perturbing the recorded file would only prove that `!==` works.
 
+**Re-taking the answer means running whatever produces it, and that is the half a derivation loses
+quietly.** `facade:check` compared the committed report against `dist/types/pack-types.d.ts` — a file some
+earlier `abuddy build` wrote, from whatever the sources were then — so `npm run compile` was right by
+ordering alone and the same command run by hand could pass over a bundle an hour old, while `--update` wrote
+a committed file off it. What it costs not to do that is one bundle: re-bundling default-setup's facade is
+2.4s (median of 3, 86% idle, 2026-10-06) and reproduces the build's output byte for byte, against `api:check`
+at 6.9s for the same shape. A check whose subject is a file it did not produce is a derivation in name only.
+
 A **proxy** records a hash of what it *believes* the inputs are. **Nothing here is one any more**, and the
 one that was is why: a proxy's key is a list of someone else's inputs, so it can go stale from an input
 nobody listed, and its remedy *writes*. `api:stamp` was a proxy for `api:check` purely because that cost

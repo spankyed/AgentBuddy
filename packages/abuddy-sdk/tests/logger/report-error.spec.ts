@@ -65,7 +65,7 @@ describe('reportError', () => {
     expect(printed).toHaveBeenCalledTimes(1);
     // The plugin's ref: a bare name is no plugin's, and the bus would drop it. `via` is the step that reported it,
     // so a drop names the step rather than nothing; there is no pack here to put in `from`.
-    expect(toPlugins).toEqual([{ to: 'default-setup/brain', event: { type: 'BRAIN_RUNTIME_ERROR', error: returned! }, via: 'brain-llm' }]);
+    expect(toPlugins).toEqual([{ to: 'default-setup/brain', call: expect.any(String), event: { type: 'BRAIN_RUNTIME_ERROR', error: returned! }, via: 'brain-llm' }]);
     expect(outgoing).toEqual([]);
     expect(untypedQx(tNodeId).pickOne(['nodeAttributes'])?.nodeAttributes).toEqual({
       input: 'hello',

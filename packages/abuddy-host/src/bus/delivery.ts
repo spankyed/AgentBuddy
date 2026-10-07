@@ -48,6 +48,6 @@ function askerOf({ sender, client }: Pick<Message, 'sender' | 'client'>): _Asker
  * Synchronous by design — see the header. A send a handler makes after an `await` carries no sender, which
  * `tests/bus/delivery-is-synchronous.spec.ts` pins, so the limit is a decision rather than a surprise.
  */
-export function deliverAs<T>(message: Pick<Message, 'to' | 'sender' | 'client'>, body: () => T): T {
-  return _runDelivery({ receiver: message.to, asker: askerOf(message) }, body);
+export function deliverAs<T>(message: Pick<Message, 'to' | 'sender' | 'client' | 'call'>, body: () => T): T {
+  return _runDelivery({ receiver: message.to, asker: askerOf(message), ...(message.call === undefined ? {} : { call: message.call }) }, body);
 }

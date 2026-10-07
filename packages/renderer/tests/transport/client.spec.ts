@@ -44,7 +44,7 @@ it('does not toast an answer that fails, but still logs it', async () => {
   (window as unknown as { electronAPI: unknown }).electronAPI = { rendererLog: { write } };
   mutate.mockRejectedValue(new Error('Unknown event "ANSWER" for system "pack/asker"'));
 
-  feClient.send({ to: 'pack/asker', event: { type: 'ANSWER' }, answering: true });
+  feClient.send({ to: 'pack/asker', event: { type: 'ANSWER' }, answering: 'c-asked' });
   await vi.waitFor(() => expect(write).toHaveBeenCalled());
 
   expect(globalToast.error, 'nobody is waiting on an answer to be told').not.toHaveBeenCalled();

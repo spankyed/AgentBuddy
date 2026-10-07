@@ -275,7 +275,8 @@ export type HostShellEvent =
     from?: string;
     via?: string;
     asker?: _Asker;
-    answering?: true;
+    answering?: string;
+    call?: string;
 } | {
     type: 'RESIZE_PANEL';
     panel: 'canvas' | 'inspection';

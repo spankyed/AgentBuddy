@@ -32,7 +32,7 @@ function incoming(send: () => void): unknown[] {
 describe('a send made outside a pack', () => {
   it('carries no sender', () => {
     expect(incoming(() => untypedSendToSystem('memo-pack/memos', { type: 'ADD_MEMO', text: 'x' })))
-      .toEqual([{ to: 'memo-pack/memos', event: { type: 'ADD_MEMO', text: 'x' } }]);
+      .toEqual([{ to: 'memo-pack/memos', call: expect.any(String), event: { type: 'ADD_MEMO', text: 'x' } }]);
   });
 });
 
@@ -41,12 +41,12 @@ describe('defineEvents', () => {
 
   it("sends to the pack's own system at its address", () => {
     expect(incoming(() => events.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' })))
-      .toEqual([{ to: 'memo-pack/memos', event: { type: 'ADD_MEMO', text: 'x' }, from: 'memo-pack' }]);
+      .toEqual([{ to: 'memo-pack/memos', call: expect.any(String), event: { type: 'ADD_MEMO', text: 'x' }, from: 'memo-pack' }]);
   });
 
   it("sends to another pack's system, named <pack>/<feature>, at its address", () => {
     expect(incoming(() => events.sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' })))
-      .toEqual([{ to: 'default-setup/settings', event: { type: 'GET_SETTINGS' }, from: 'memo-pack' }]);
+      .toEqual([{ to: 'default-setup/settings', call: expect.any(String), event: { type: 'GET_SETTINGS' }, from: 'memo-pack' }]);
   });
 
   it('broadcasts to a plugin at its ref', () => {
@@ -57,7 +57,7 @@ describe('defineEvents', () => {
     } finally {
       stop();
     }
-    expect(outgoing).toEqual([{ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED' }, from: 'memo-pack' }]);
+    expect(outgoing).toEqual([{ to: 'memo-pack/memos', call: expect.any(String), event: { type: 'MEMO_ADDED' }, from: 'memo-pack' }]);
   });
 
   // The host is a pack: its plugins are named by ref, and a bare name is always this pack's own feature

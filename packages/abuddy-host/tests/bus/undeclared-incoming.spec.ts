@@ -196,7 +196,7 @@ describe('what it leaves alone', () => {
  * and — outside the specs — left `@abuddy/testing`'s fixture collecting one value while the bus sent two.
  */
 describe('an answer to a system that declares no such event', () => {
-  const answer = (type: string) => { send({ to: MEMOS, event: { type }, answering: true }); };
+  const answer = (type: string) => { send({ to: MEMOS, event: { type }, answering: 'c-asked' }); };
   const answers = () => reported();
 
   it('is marked as an answer, and still reported as this function\'s own', async () => {

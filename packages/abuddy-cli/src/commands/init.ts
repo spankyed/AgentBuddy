@@ -97,8 +97,8 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
     dev: 'abuddy run',
     test: 'vitest run',
     typecheck: 'tsc --noEmit',
-    // The facade dependents compile against, recorded for review. Nothing to report before the first
-    // build, so `etc/pack-types.api.md` appears at the first `facade:update` rather than at init
+    // The facade dependents compile against, recorded for review. Either half bundles the facade itself, so
+    // neither needs a build; `etc/pack-types.api.md` appears at the first `facade:update` rather than at init
     'facade:check': 'abuddy facade-report',
     'facade:update': 'abuddy facade-report --update',
   },

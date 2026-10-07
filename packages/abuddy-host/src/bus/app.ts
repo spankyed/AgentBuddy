@@ -11,6 +11,7 @@ import { createBusMachine } from './machine.ts';
 import { pluginVisibility } from '../features/application/be/system.ts';
 import { HOST } from '../refs.ts';
 import { deliverAs } from './delivery.ts';
+import { _callOn } from '@abuddy/sdk/events';
 import type { ParticipantClaims } from './participants.ts';
 
 /** Sent to the application plugin after each client connection: the app shell's state, which the window opens with */
@@ -81,7 +82,7 @@ export function startEarlySystems(registry: Pick<PackRegistry, 'getEarlySystems'
     _rootEvents.onIncoming((message) => {
       const found = actors.find(({ id }) => id === message.to);
       if (!found) return;
-      deliverAs(message, () => found.actor.send(message.event));
+      deliverAs(message, () => found.actor.send({ ...message.event, ..._callOn(message) }));
     }),
   ];
   return {

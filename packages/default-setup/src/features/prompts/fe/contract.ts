@@ -11,12 +11,17 @@ import type { Category } from '#generated/types.ts'
 export interface PromptsContext {
   selectedPromptId?: EARS.EntityId;
   /**
-   * The prompt a selection is waiting on, which is what makes `PROMPT_SELECTED` identifiable.
+   * The call the outstanding `PROMPT_SELECT` was asked under, or absent when nothing is outstanding.
    *
-   * `selectedPromptId` cannot do it: that is written *from* the reply, so two quick selections are
+   * `selectedPromptId` cannot do this job: it is written *from* the answer, so two quick selections are
    * otherwise decided by whichever answer arrives last.
+   *
+   * **A domain id cannot do this job, for two independent reasons.** It does not distinguish windows, so
+   * another window's answer for the same prompt satisfies it; and it does not distinguish asks, so a slot
+   * holding one is only ever overwritten, never emptied — which names the last ask for the life of the
+   * plugin. A call is per ask and per window, and the slot is cleared when its answer lands.
    */
-  pendingPromptId?: EARS.EntityId;
+  pendingPromptCall: string | null;
   prompts: PromptEntity[];
   selectedPrompt?: PromptEntity;
   totalCount: number;

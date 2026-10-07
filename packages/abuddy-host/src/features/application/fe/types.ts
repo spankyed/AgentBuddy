@@ -81,7 +81,12 @@ export interface PluginRequest {
    * Set only by `reply` (`deliverInWindow`, `@abuddy/sdk/events`). Not a property of the asker: a send *to* an
    * asker is an answer, a send *from* one is not, and both carry the same `sender`.
    */
-  answering?: true;
+  answering?: string;
+  /**
+   * The call the send itself is, so the plugin's own guards can read `callOf(event)` for a request as well as
+   * for an answer. Forwarded from the envelope by `deliverInWindow`.
+   */
+  call?: string;
 }
 
 export interface ShellContext {
@@ -145,9 +150,9 @@ export interface ShellContext {
 export type ShellEvent =
   | { type: 'SELECT_PLUGIN'; plugin: string; historyIndex?: number }
   | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[] }
-  | ({ type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; answering?: true } & RequestSender)
+  | ({ type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[]; answering?: string; call?: string } & RequestSender)
   /** Hands an opened plugin its events, once the shell has selected it */
-  | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[]; asker?: RequestSender['asker'] }
+  | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[]; asker?: RequestSender['asker']; answering?: string; call?: string }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }
   | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target?: string; menuItems: ContextMenuItem[] }
   | { type: 'TRAIL_CLICK'; target: string; info?: unknown }

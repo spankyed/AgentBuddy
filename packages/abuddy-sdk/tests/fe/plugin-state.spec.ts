@@ -203,7 +203,7 @@ describe('_sendToLocalPlugin', () => {
 
     _sendToLocalPlugin('default-setup/threads', { type: 'SELECT_ARTIFACT', artifactId: 'a1' });
 
-    expect(sent).toEqual([{ type: 'SEND_TO_PLUGIN', plugin: 'default-setup/threads', events: [{ type: 'SELECT_ARTIFACT', artifactId: 'a1' }] }]);
+    expect(sent).toEqual([{ type: 'SEND_TO_PLUGIN', plugin: 'default-setup/threads', call: expect.any(String), events: [{ type: 'SELECT_ARTIFACT', artifactId: 'a1' }] }]);
   });
 
   // The two sends share a signature, so picking the wrong one compiles. Worse, a pack test that starts both an
@@ -251,6 +251,7 @@ describe('_sendToLocalPlugin', () => {
     expect(sent).toEqual([{
       type: 'SEND_TO_PLUGIN',
       plugin: 'default-setup/notes',
+      call: expect.any(String), 
       events: [{ type: 'ASK' }],
       asker: { kind: 'window', ref: 'default-setup/threads' },
     }]);
@@ -273,24 +274,28 @@ describe('_sendToLocalPlugin', () => {
       secrets: {} as never, settings: {} as never, client: { send() {} }, packs: {} as never,
     });
 
-    const reply = _replyTo({ receiver: 'default-setup/notes', asker: { kind: 'window', ref: 'default-setup/threads' } });
+    // The call the asker sent under, which `reply` reads off the delivery rather than off the event — so an
+    // answer built after an `await` still names the request it is for
+    const reply = _replyTo({ receiver: 'default-setup/notes', asker: { kind: 'window', ref: 'default-setup/threads' }, call: 'c-the-ask' });
     reply?.({ type: 'ANSWER' });
 
     expect(sent).toEqual([{
       type: 'SEND_TO_PLUGIN',
       plugin: 'default-setup/threads',
+      // Its own, because a reply is a send and may itself be answered
+      call: expect.any(String),
       events: [{ type: 'ANSWER' }],
       asker: { kind: 'window', ref: 'default-setup/notes' },
-      answering: true,
+      answering: 'c-the-ask',
     }]);
   });
 
   // And an ordinary send is not marked, which is what makes the flag mean anything
   it('leaves an ordinary in-window send unmarked', () => {
-    const sent: Array<{ answering?: boolean }> = [];
+    const sent: Array<{ answering?: string }> = [];
     unbindFeHost();
     bindFeHost({
-      application: { send: (event: unknown) => sent.push(event as { answering?: boolean }), system: { get: () => undefined } } as never,
+      application: { send: (event: unknown) => sent.push(event as { answering?: string }), system: { get: () => undefined } } as never,
       secrets: {} as never, settings: {} as never, client: { send() {} }, packs: {} as never,
     });
 
@@ -312,6 +317,6 @@ describe('_sendToLocalPlugin', () => {
 
     _sendToLocalPlugin('default-setup/memos', { type: 'X' });
 
-    expect(sent).toEqual([{ type: 'SEND_TO_PLUGIN', plugin: 'default-setup/memos', events: [{ type: 'X' }] }]);
+    expect(sent).toEqual([{ type: 'SEND_TO_PLUGIN', plugin: 'default-setup/memos', call: expect.any(String), events: [{ type: 'X' }] }]);
   });
 });

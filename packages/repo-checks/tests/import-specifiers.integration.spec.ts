@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findComponentSends, findPackOwnAliases, findRawGitListings, findRawPackHelpers, findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, jsSpecifierFixes, LAYERS, UNLAYERED_BY_DESIGN, repoRootDir, findUnimportedDependencies, LMDB_RULES, MANIFEST_FIELDS, packOwnModuleFixes, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
+import { CHECKS, findAppImportsInPackTests, findContractLeafImports, findCrossCheckoutResolution, findCrossFeatureImports, findExtensionlessOwnModules, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackageScriptImports, findPackBackendConsole, findComponentSends, findPackOwnAliases, findRawGitListings, findRawPackHelpers, findRawTransport, findReservedEventKeys, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, jsSpecifierFixes, LAYERS, UNLAYERED_BY_DESIGN, repoRootDir, findUnimportedDependencies, LMDB_RULES, MANIFEST_FIELDS, packOwnModuleFixes, packageSourceDirs, CHECK_IDS, type CoveredRuleId, DECLARES_SOURCE_BY_DESIGN, type ImportRuleId, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION, checkedDirs, type ImportRule, packCodeDirs, packDirs, packRule, packRuleProblems, ruleRows, ruleTable } from '../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { packFixture as buildPackFixture } from '@abuddy/sdk/testing/pack-fixture';
 import { population } from '@abuddy/sdk/testing';
@@ -628,6 +628,11 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
   findRawTransport: () => {
     packFixture({ 'src/f.ts': '_rootEvents.emitOutgoing(event);' });
     return findRawTransport(PACK_SRC, root);
+  },
+  findReservedEventKeys: () => {
+    // The key a delivery door writes, written by the pack instead — where it is overwritten on the way in
+    packFixture({ 'src/f.ts': "export const answer = { type: 'DONE', _call: mine };" });
+    return findReservedEventKeys(PACK_SRC, root);
   },
   findPackBackendConsole: () => {
     packFixture({ 'src/features/memos/be/system.ts': "console.log('seeded');" });

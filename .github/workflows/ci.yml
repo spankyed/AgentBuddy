@@ -68,7 +68,8 @@ jobs:
         working-directory: packages/default-setup
         run: npx abuddy build
 
-      # The facade types dependents compile against (dist/types/pack-types.d.ts) match the reviewed report
+      # The facade types dependents compile against match the reviewed report. It bundles the facade itself
+      # rather than reading what the build above wrote, so the order here is convenience and not a dependency
       - name: Facade types report (default-setup)
         run: npm run facade:check --workspace @app/default-setup
 

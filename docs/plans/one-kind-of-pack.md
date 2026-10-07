@@ -66,7 +66,7 @@ undercounted it:
 1. the renderer's `builtInPacksPlugin` (`renderer/vite.config.ts`) — the frontend, dev and production;
 2. the api's tsup generating a loaders module and bundling the backend into the api bundle
    (`api/tsup.config.ts:5,11`);
-3. `abuddy build`, which **returns early for a built-in pack** (`abuddy-cli/src/commands/build.ts:295-300`,
+3. `abuddy build`, which **returns early for a built-in pack** (`abuddy-cli/src/commands/build.ts:305-310`,
    *"Built-in packs' FE is compiled into the renderer … and their backend into the API bundle, never loaded
    from dist/"*) — so it produces seeds, types, defs and a snapshot and then stops, skipping
    `bundlePackRuntime` and `bundlePackFE`;
@@ -188,10 +188,10 @@ The entry point, in five steps:
 2. **`main/src/modules/api-server/config.ts:103`** — Electron main passes
    `BUILT_IN_PACKS_DIR = <resourcesPath>/app/packages` when packaged, `<appPath>/packages` otherwise, and
    `NODE_ENV: app.isPackaged ? 'production' : 'development'` in the same object.
-3. **`api/src/runtime/index.ts:143`** — the API process reads it and calls `loadAppPacks(packs, {
+3. **`api/src/runtime/index.ts:151`** — the API process reads it and calls `loadAppPacks(packs, {
    builtInDir, bundledLoaders: () => import('virtual:built-in-pack-loaders') })`.
 4. **The renderer** gets the frontend separately, statically imported from source by `builtInPacksPlugin`.
-5. **`publishHostPackOutput`** (`api/src/runtime/index.ts:152-165`) copies the pack's types and build output
+5. **`publishHostPackOutput`** (`api/src/runtime/index.ts:156-170`) copies the pack's types and build output
    to `<userData>/host-packs/<id>` for dependents, and prunes outputs this release no longer ships.
 
 **The backend ships twice.** `runtimeEntry` defaults to `'never'` when `NODE_ENV !== 'development'`
@@ -207,9 +207,9 @@ Three steps, each revertible by reverting its commit. None touches stored user d
 
 ### 1. Delete the `if (!external)` gate in `abuddy build`
 
-`build.ts:295-300` returns early for a built-in pack. Remove it and `abuddy build` produces
+`build.ts:305-310` returns early for a built-in pack. Remove it and `abuddy build` produces
 `dist/runtime/index.cjs` and `dist/runtime/fe.js` for default-setup with the same bundlers every other pack
-uses. Unify the snapshot filename while here: `build.ts:146` writes `BUILT_IN_SNAPSHOT` where every other
+uses. Unify the snapshot filename while here: `build.ts:147` writes `BUILT_IN_SNAPSHOT` where every other
 pack writes `PACK_LAYOUT.snapshot`.
 
 Then **delete `dev-build.mjs`'s own esbuild** — 164 lines reimplementing `bundlePackRuntime`.
@@ -274,6 +274,13 @@ does, and the frontend loads over `pack://` for every pack.
   is in it, else `pack://`. Its alias half goes, having no user.
 - `reloadBuiltInPack` and `reloadExternalPack` become one function, both now being "re-require the built
   runtime from the pack's directory".
+
+**What this step does not touch, and the two config files are why it is worth saying:** the generated entries
+those virtual modules import. `pack-entry.ts` and `pack-entry-fe.ts` stay on disk, written by `abuddy
+generate-entries` on the triggers and under the stamp
+[`codegen-staleness.md`](codegen-staleness.md) records — a pack's own typecheck reads them through
+`#generated/*`, so they could not be synthesised by a plugin even if this step wanted them to be. What changes
+is only who imports them: after this, each pack's own `abuddy build` rather than the renderer's and the api's.
 
 After this, `manifest.builtIn` decides **nothing about behaviour**: one load path, one reload path, one build
 path, one frontend path, no privileges. What survives is axis 1 — the directory a pack lives in.

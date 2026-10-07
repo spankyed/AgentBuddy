@@ -16,13 +16,16 @@ export interface DatabaseContext {
   error: string | null;
   executionTime: number | null;
   /**
-   * The request each reply has to name to be accepted, or `null` when nothing is outstanding.
+   * The call each answer has to name to be accepted, or `null` when nothing is outstanding.
    *
    * Two fields rather than one: the verbs are independent, and deleting a row chains a transaction into
    * a follow-up query, so a single slot would have the query overwrite the transaction it came from.
+   *
+   * What goes in them is what `sendToSystem` returned for the ask; what reads them is `answersCall`, which
+   * refuses an empty slot — so neither the request nor the answer declares a field for it.
    */
-  pendingQueryId: string | null;
-  pendingTransactionId: string | null;
+  pendingQueryCall: string | null;
+  pendingTransactionCall: string | null;
   selectedSchemaItem: {
     type: 'entity' | 'attribute' | 'relation';
     value: string;

@@ -82,6 +82,7 @@ describe('the action sandbox', () => {
 
     expect(sent).toEqual([{
       to: 'default-setup/threads',
+      call: expect.any(String),
       event: { type: 'SET_PHASE', phase: 'Edit' },
       from: packId,
       via: 'action:Summarise Thread',

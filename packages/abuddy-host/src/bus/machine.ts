@@ -6,7 +6,7 @@ import { reportError } from '@abuddy/sdk/logger';
 import { HOST } from '../refs.ts';
 import { deliverAs } from './delivery.ts';
 import { SYSTEM_EVENT_TYPES } from '@abuddy/sdk/framework';
-import { PLUGIN_EVENT_TYPES, senderSuffix, type Message } from '@abuddy/sdk/events';
+import { PLUGIN_EVENT_TYPES, _callOn, senderSuffix, type Message } from '@abuddy/sdk/events';
 import type { PackRegistry } from '../packs/registry.ts';
 
 
@@ -188,7 +188,7 @@ export function createBusMachine(options: BusOptions) {
         // test on a dropped send. Making it `answering ? 'reply' : 'broadcastToPlugin'` left that fixture
         // filtering for one value while this sent two, so a dropped answer stopped failing any Playwright
         // test — silently, there being no case over the fixture. Two facts, two fields.
-        const answering = event.message.answering === true;
+        const answering = event.message.answering !== undefined;
         const accepted = options.registry.getPluginEventValidationMap().get(pluginId);
         const reportDrop = (message: string) => {
           // A pack mid-replacement has no systems running and no plugins registered until its
@@ -262,7 +262,7 @@ export function createBusMachine(options: BusOptions) {
           // the reason the outgoing side records — the helper in `undeclared-incoming.spec.ts` filters on
           // `operation` to mean "the reports this function made", and a second value there takes that away. In
           // the key because the wording varies by it, so the dedupe must too.
-          const answering = message.answering === true;
+          const answering = message.answering !== undefined;
           const pair = `${to}/${type}/${sender}/${answering}`;
           if (reportedDrops.has(pair)) return;
           reportedDrops.add(pair);
@@ -278,14 +278,20 @@ export function createBusMachine(options: BusOptions) {
         };
 
         if (event.type !== 'INCOMING') return;
-        const { to, event: incoming, sender, client } = event.message;
+        const { to, event: incoming, sender, client, call } = event.message;
         const actor = system.get(to);
         // Delivered inside a scope naming the message, so the system can answer its sender with `reply` and a
-        // send it makes while handling carries its own ref. The event itself is untouched: a return address on it
-        // would be a field of the event deciding where things go, which the envelope exists to prevent.
+        // send it makes while handling carries its own ref.
+        //
+        // **The event gains one reserved key and nothing else**: the call it belongs to, which a guard reads
+        // through `answersCall` or `settleCall`. The distinction that allows it is between an address and a
+        // call — an *address* on the event would decide where things go, which is forbidden, while a call
+        // decides nothing, routes nothing, and has the receiver as its only reader. It is on the event because
+        // a transition guard is handed `{ context, event }` and nothing else, and context cannot be written
+        // before a guard runs, so the event is the only channel to one.
         if (actor) {
           reportUndeclared(to, incoming.type, event.message);
-          deliverAs({ to, sender, client }, () => actor.send(incoming));
+          deliverAs({ to, sender, client, call }, () => actor.send({ ...incoming, ..._callOn(event.message) }));
         }
         // An event every system accepts (a feature's settings changing) is the feature's system's if it runs one
         else if (!(SYSTEM_EVENT_TYPES as readonly string[]).includes(incoming.type)) {

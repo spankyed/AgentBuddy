@@ -11,13 +11,18 @@ import type { Category } from '#generated/types.ts'
 export interface ActionsContext {
   selectedActionId?: EARS.EntityId;
   /**
-   * The action a selection is waiting on, which is what makes `ACTION_SELECTED` identifiable.
+   * The call the outstanding `ACTION_SELECT` was asked under, or absent when nothing is outstanding.
    *
-   * `selectedActionId` cannot do it: that is written *from* the reply, so until one lands there is
-   * nothing to compare an arriving one against — and two quick selections are then decided by which
-   * answer happens to arrive last.
+   * `selectedActionId` cannot do this job: it is written *from* the answer, so until one lands there is
+   * nothing to compare an arriving one against, and two quick selections are decided by whichever answer
+   * arrives last.
+   *
+   * **A domain id cannot do this job, for two independent reasons.** It does not distinguish windows, so
+   * another window's answer for the same action satisfies it; and it does not distinguish asks, so a slot
+   * holding one is only ever overwritten, never emptied — which names the last ask for the life of the
+   * plugin. A call is per ask and per window, and the slot is cleared when its answer lands.
    */
-  pendingActionId?: EARS.EntityId;
+  pendingActionCall: string | null;
   actions: ActionEntity[];
   selectedAction?: ActionEntity;
   totalCount: number;

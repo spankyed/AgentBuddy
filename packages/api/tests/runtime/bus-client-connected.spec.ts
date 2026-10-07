@@ -203,7 +203,7 @@ describe('untypedBroadcastToPlugin on the bus', () => {
       await flush();
       untypedBroadcastToPlugin('notes-pack/notes', { type: 'AFTER_CONNECT' });
       await flush();
-      expect(outgoing.filter(({ event }) => event.type !== 'CLIENT_CONNECTED')).toEqual([{ to: 'notes-pack/notes', event: { type: 'AFTER_CONNECT' } }]);
+      expect(outgoing.filter(({ event }) => event.type !== 'CLIENT_CONNECTED')).toEqual([{ to: 'notes-pack/notes', call: expect.any(String), event: { type: 'AFTER_CONNECT' } }]);
     } finally {
       stop();
     }

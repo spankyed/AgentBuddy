@@ -198,7 +198,7 @@ it('logs rather than toasts when an answer reaches no plugin', async () => {
   await settle();
 
   // What `reply` builds for a `window` asker whose plugin has gone
-  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'ANSWER' }], asker: { kind: 'window', ref: 'default-setup/notes' }, answering: true, from: 'memo-pack' });
+  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'ANSWER' }], asker: { kind: 'window', ref: 'default-setup/notes' }, answering: 'c-asked', from: 'memo-pack' });
   await settle();
 
   expect(shell.notify.error, 'no toast for a machine-to-machine loss').not.toHaveBeenCalled();
@@ -220,7 +220,7 @@ it('logs rather than toasts for an answer refused after waiting', async () => {
   const release = new Promise<void>((resolve) => { loaded = resolve; });
   await connectLoading([{ id: 'memo-pack', plugins: [recording('memo-pack/memos')] }], release);
 
-  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'ANSWER' }], asker: { kind: 'window', ref: 'default-setup/notes' }, answering: true, from: 'memo-pack' });
+  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'ANSWER' }], asker: { kind: 'window', ref: 'default-setup/notes' }, answering: 'c-asked', from: 'memo-pack' });
   expect(app.getSnapshot().context.awaitingPlugin, 'it waited like any other send').toHaveLength(1);
 
   loaded();
