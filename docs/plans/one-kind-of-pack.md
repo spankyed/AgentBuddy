@@ -5,10 +5,13 @@ paths end to end. Every location, count and privilege below was checked against 
 Restructured the same day, after the first version was found to be a proposal wearing a decision's clothes —
 what changed and why is in **How this plan was wrong** at the end.
 
-> **Re-verified 2026-10-02, later the same day, against the rest of that branch.** Every citation still
-> holds — the five test sizes exactly — bar two the branch itself moved and one that was off by a line:
-> `electron-builder.mjs`'s `files` now ends at `:171` with `asar: false` at `:176`, because shipping gained
-> one exclusion (recorded where it matters, below), and `runtimeEntry`'s default is `loader.ts:106`.
+> **Every citation here was last checked against the tree on 2026-10-07**, and each of the three committed
+> steps is still undone — `bundledLoaders`, `builtInPackLoadersModule` and `partitionPolicy` are all present.
+> Ten citations had drifted in five days and are corrected in place, which is the rate to expect: six line
+> numbers moved under edits to the files they name, and four of the five test sizes gained a line to one
+> refactor (`bdfa88299`, reading the installed layout from `PACK_LAYOUT`). Nothing a step rests on had moved.
+> A count or a line number below is as good as that date; what is held to the code is named in the step that
+> needs it.
 >
 > **The branch also gave item 1 three more things to delete.** `abuddy build` now records what each bundling
 > phase read, and that record is built-in-aware in three places — listed under item 1, each carrying a
@@ -103,9 +106,9 @@ plus its refinement.
 eleven are named by no step below, because most are axis 1 and stay: `BUILT_IN_PACKS_DIR` in
 `main/src/modules/api-server/config.ts`, `pack.ts` refusing to pack a built-in, `installer.ts` skipping
 built-in ids while resolving dependencies, `discovery.ts` filtering manifests. One must not be touched at all —
-`abuddy-host/src/migrations/app/0.3.15.ts`, which is history and describes the tree as it was. On the test side `abuddy-cli/tests/packs/host-output.spec.ts` (356 lines) is mostly about the
-built-in-only publish, `loader.spec.ts` (857) and `reload.spec.ts` (381) each carry a near-duplicate half,
-`discovery.spec.ts` (128) shrinks, and `api/tests/runtime/packaged-boot.spec.ts` (102) changes shape.
+`abuddy-host/src/migrations/app/0.3.15.ts`, which is history and describes the tree as it was. On the test side `abuddy-cli/tests/packs/host-output.spec.ts` (357 lines) is mostly about the
+built-in-only publish, `loader.spec.ts` (858) and `reload.spec.ts` (382) each carry a near-duplicate half,
+`discovery.spec.ts` (128) shrinks, and `api/tests/runtime/packaged-boot.spec.ts` (103) changes shape.
 
 ---
 
@@ -142,9 +145,9 @@ uses (`abuddy-cli/src/commands/run.ts:325-360`):
 - `packExternalsPlugin(root)` with `optimizeDeps.exclude: getSharedFeDeps(root)` — Vue, `@abuddy/sdk` and
   `@abuddy/ui` resolve to the host's copies, so **one Vue instance**.
 - `hmr: { protocol: 'ws', host: 'localhost' }`, `cors: true`.
-- The backend watcher **skips `.vue` and `.css`** (`run.ts:393`), which is the author saying Vite owns them.
+- The backend watcher **skips `.vue` and `.css`** (`run.ts:394`), which is the author saying Vite owns them.
 - The proxy is a full mirror, not a whitelist: `devServerUrl` returns `http://localhost:${port}${filePath}`
-  for any path (`dev-server.ts:76`), so `pack://<id>/@vite/client` resolves and Vite's root-relative update
+  for any path (`dev-server.ts:77`), so `pack://<id>/@vite/client` resolves and Vite's root-relative update
   imports resolve back through the same origin.
 - **No CSP is set anywhere** in main or the renderer, so the client's `ws://localhost:<port>` socket is not
   blocked.
