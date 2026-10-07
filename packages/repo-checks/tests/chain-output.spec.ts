@@ -517,7 +517,7 @@ describe('shouldClassify', () => {
 describe('outgrownReport', () => {
   const found = [{
     name: 'test:integration', declared: 60, measured: 80, at: 80 * 4 / 300,
-    measureWith: 'npx vitest run --config vitest.integration.config.ts',
+    measureWith: 'npx vitest run --config vitest.integration.config.ts', wholeTable: true,
   }];
 
   it('says nothing when no step outgrew its rung', () => {
@@ -549,7 +549,10 @@ describe('outgrownReport', () => {
   it('names a command for each step it reports', () => {
     const said = outgrownReport([
       ...found,
-      { name: 'build:app', declared: 39, measured: 90, at: 90 * 4 / 300, measureWith: 'npm run build:app' },
+      {
+        name: 'build:app', declared: 39, measured: 90, at: 90 * 4 / 300,
+        measureWith: 'npm run build:app', wholeTable: true,
+      },
     ]);
 
     expect(said).toContain('npm run measure -- "npx vitest run --config vitest.integration.config.ts"');
@@ -573,6 +576,33 @@ describe('outgrownReport', () => {
     // The pipeline: report, then `--all --record`, then `chain-graph` fails on the new declaration, then the
     // step moves. Telling a reader to move the rung first skips the step that proves it needs moving
     expect(outgrownReport(found)).toContain('--record');
+  });
+
+  /**
+   * **The one `RECORDING_CONDITIONS` member this report skips, said rather than left out.** The table is
+   * written only under `--all`, so a partial run's reading is an upper bound and not a comparison — worth
+   * printing with that caveat, which is the difference between a report and a finding.
+   */
+  it('says a partial run is an upper bound, and says nothing of the sort for --all', () => {
+    const partial = outgrownReport(found.map((row) => ({ ...row, wholeTable: false })));
+
+    expect(partial).toContain('upper bound');
+    expect(partial, 'and what that buys the reader').toContain('cannot convict');
+    expect(outgrownReport(found), 'an --all run is the schedule the table describes')
+      .not.toContain('upper bound');
+  });
+
+  // Once for the run, not once per row: every row of one run shares the condition
+  it('says it once however many steps it names', () => {
+    const said = outgrownReport([
+      ...found.map((row) => ({ ...row, wholeTable: false })),
+      {
+        name: 'build:app', declared: 39, measured: 90, at: 90 * 4 / 300,
+        measureWith: 'npm run build:app', wholeTable: false,
+      },
+    ]);
+
+    expect(said.split('upper bound').length - 1).toBe(1);
   });
 });
 

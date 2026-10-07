@@ -34,9 +34,17 @@ const canPrint = idle >= IDLE_FLOOR;
 const canRecord = idle >= RECORD_IDLE_FLOOR;
 
 process.stdout.write(`${asPercent(idle)} idle — `
-  + `${canRecord ? 'quiet enough to record on' : canPrint ? 'quiet enough to print a timing, not to record one' : 'too busy to measure on'}\n`);
+  + `${canRecord ? 'quiet enough to start recording on' : canPrint ? 'quiet enough to start printing a timing, not recording one' : 'too busy to measure on'}\n`);
 process.stdout.write(`  recording needs ${asPercent(RECORD_IDLE_FLOOR)} (chain --record), `
   + `printing needs ${asPercent(IDLE_FLOOR)} (measure, measure:loop)\n`);
+// **The caveat belongs in the output, not only in the doc above.** It said "quiet enough to record on", which
+// reads as a guarantee about the command you are about to start; a reading is of this instant and the command
+// may run for minutes. Observed 2026-10-07: this printed 84% moments after a chain run, and the `--record` it
+// blesses would have written a contended cost — the `measure` floor exists for exactly that, and a verdict
+// shaped like a promise is what talks a reader past it.
+process.stdout.write('  A reading of this instant, and a long command is its own load: this says whether to '
+  + 'start,\n  not whether the run will be clean. The late refusals are what catch a run disturbed while it '
+  + 'ran.\n');
 if (!canRecord) {
   process.stdout.write(`  What you would record now is the machine${canPrint ? ' — a printed timing is fine' : ''}.\n`);
 }

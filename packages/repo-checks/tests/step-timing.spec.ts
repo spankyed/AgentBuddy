@@ -170,7 +170,8 @@ describe('outgrownRungs', () => {
   // The schedule the table describes: this machine *is* the measured one, spending all of it
   const TABLE: Machine = { cpu: 'Apple M1 Pro', cores: 10 };
   const asked = (steps: readonly TimedStep[], measured: ReadonlyMap<string, number>,
-    machine: Machine = TABLE, budget = TABLE.cores) => outgrownRungs(steps, measured, budget, TABLE, machine);
+    machine: Machine = TABLE, budget = TABLE.cores, wholeTable = true) =>
+    outgrownRungs(steps, measured, budget, TABLE, machine, wholeTable);
 
   /** The case this exists for: the declaration passes the bound and the measurement does not */
   it('reports a step whose measured cost passes the rung its declared cost fits in', () => {
@@ -252,6 +253,46 @@ describe('outgrownRungs', () => {
       expect(asked(steps, fourTimesSlower).map((row) => row.name))
         .toEqual(['test:integration', 'typecheck:fe']);
     });
+  });
+});
+
+/**
+ * Which of the three `RECORDING_CONDITIONS` this report gates on, and which it reports through.
+ *
+ * **Two of three, and the third is a decision rather than an omission.** The table is written only under
+ * `--all`, so a partial run's timings are not the quantity it holds. Reporting them anyway rests on an
+ * inequality: contention can only make a step slower, so a reading is an upper bound — it can clear a step
+ * and cannot convict one. Gating on it instead would reopen the gap this report exists to close, over the
+ * band between a step's rung and `driftedSteps`' 2x.
+ */
+describe('outgrownRungs over a partial run', () => {
+  const ran = (name: string, timeout: TimeoutClass, declared: number): TimedStep =>
+    step(name, [], { seconds: declared, timeout });
+  const TABLE: Machine = { cpu: 'Apple M1 Pro', cores: 10 };
+  const steps = [ran('test:integration', 'suite', 60)];
+  const measured = new Map([['test:integration', 80_000]]);
+
+  it('still reports, because a crowded reading can clear a step and not convict one', () => {
+    const found = outgrownRungs(steps, measured, TABLE.cores, TABLE, TABLE, false);
+
+    expect(found.map(({ name }) => name)).toEqual(['test:integration']);
+  });
+
+  // The row carries which kind of run produced it, so the report can say the reading is an upper bound
+  it('marks the row as a partial run', () => {
+    expect(outgrownRungs(steps, measured, TABLE.cores, TABLE, TABLE, false)[0]?.wholeTable).toBe(false);
+    expect(outgrownRungs(steps, measured, TABLE.cores, TABLE, TABLE, true)[0]?.wholeTable).toBe(true);
+  });
+
+  /**
+   * And the other two conditions still silence it, which is the half that must not change: a reading from
+   * another machine or another budget is not an upper bound on anything — `declaredShare` projects it onto a
+   * slower box, so the slowdown is counted twice.
+   */
+  it('says nothing off the machine or the budget, partial or not', () => {
+    const elsewhere: Machine = { cpu: 'Other', cores: 10 };
+    expect(outgrownRungs(steps, measured, TABLE.cores, TABLE, elsewhere, false)).toEqual([]);
+    expect(outgrownRungs(steps, measured, 5, TABLE, TABLE, false)).toEqual([]);
   });
 });
 

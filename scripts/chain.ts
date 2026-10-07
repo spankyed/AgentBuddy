@@ -39,7 +39,7 @@ import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, poolSt
 import { stampFor, STAMP_DIR } from './lib/chain-stamps.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
-import { box, isMeasuredMachine, machineText, MEASURED_ON, scheduleMismatch, thisMachine } from './lib/core-budget.ts';
+import { box, isMeasuredMachine, machineText, MEASURED_ON, thisMachine, unmetRecordingConditions } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { asCount, driftVerdict, idleNow, movedBeyondBand, parseFlags, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { machineLine, recordMachine, recordSeconds } from './lib/record-seconds.ts';
@@ -631,7 +631,9 @@ async function main(): Promise<void> {
   // cost is true wherever it was taken, and gates only the sentence telling a reader to record it.
   // The command comes from how the step is run rather than from its name, because the three pool steps cache
   // inside themselves and so cannot be measured by their npm script (`measureCommandFor`)
-  const outgrown = outgrownReport(outgrownRungs(steps, measuredMs, budget, MEASURED_ON)
+  // `all` goes in so the report can say the reading is an upper bound rather than a comparison; it is the
+  // one `RECORDING_CONDITIONS` member this reader skips, and `outgrownRungs` has why
+  const outgrown = outgrownReport(outgrownRungs(steps, measuredMs, budget, MEASURED_ON, thisMachine(), all)
     .map((row) => ({ ...row, measureWith: measureCommandFor(row.name) })));
   if (outgrown !== '') console.log(outgrown);
 
@@ -694,14 +696,6 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
       return;
     }
   }
-  if (!all) {
-    console.log('\n--record needs --all: a cached step reports no time, and recording that would size a budget from it.');
-    return;
-  }
-  // The one schedule these numbers are about, which takes the budget **and** the box — `scheduleMismatch`
-  // has why. Recording any other hands every step a kill deadline sized from a schedule it will not run
-  // under, and a gate comparing only the budget passed `--cores 10` on a twenty-core machine.
-  //
   // **One question, two subjects.** `--adopt` is how another machine takes the table over, writing
   // `MEASURED_ON` in the same operation — without it the costs move and the constant does not, which is the
   // state that makes every check scoped on it skip the box whose numbers are in the file. So a plain record
@@ -709,9 +703,22 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
   // schedule *this machine* can claim. The second used to be a hand-written `budget !== box()` three lines
   // from a comparison against `measuredOn.cores`; it is the same predicate with the other subject.
   const want = adopt ? thisMachine() : MEASURED_ON;
-  // The reason, not a boolean. Taking the conjunction apart at this call site is what put an instruction
-  // under a budget mismatch that only a machine mismatch can act on.
-  const mismatch = scheduleMismatch(budget, want);
+  // **Every condition at once, from the one list that names them** (`RECORDING_CONDITIONS`). These were a
+  // bare `if (!all)` here and a `scheduleMismatch` three lines below, so what a recordable run *is* existed
+  // in two places and nowhere as a whole — and the two readers of this same table were each skipping a
+  // condition without saying so. `--record` needs all three, because it writes: recording any other
+  // schedule hands every step a kill deadline sized from a schedule it will not run under, and a gate
+  // comparing only the budget passed `--cores 10` on a twenty-core machine.
+  //
+  // Reported one at a time and in the list's order, which is the reason this is an ordered list rather than
+  // a boolean: taking the conjunction apart at this call site is what once put an instruction under a budget
+  // mismatch that only a machine mismatch can act on.
+  const unmet = unmetRecordingConditions({ budget, measuredOn: want, wholeTable: all });
+  if (unmet.includes('wholeTable')) {
+    console.log('\n--record needs --all: a cached step reports no time, and recording that would size a budget from it.');
+    return;
+  }
+  const mismatch = unmet[0];
   if (mismatch === 'machine') {
     console.log(`\n--record refused: these costs are the chain's on ${machineText(MEASURED_ON)}; `
       + `this is ${machineText(thisMachine())}.`);

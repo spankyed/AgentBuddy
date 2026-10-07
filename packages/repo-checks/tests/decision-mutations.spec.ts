@@ -339,7 +339,11 @@ const MUTATIONS: readonly Mutation[] = [
      */
     why: 'outgrownRungs answers only on the schedule the table was measured on',
     in: 'step-timing',
-    from: '  if (!isMeasuredSchedule(budget, measuredOn, machine)) return [];',
+    // Two of the three `RECORDING_CONDITIONS`: the gate is the machine and the budget, and `wholeTable` is
+    // filtered out deliberately — a partial run is reported with a caveat, since contention can only make a
+    // step slower and so its reading is an upper bound (`outgrownRungs`' doc, and `step-timing.spec.ts`'s
+    // partial-run cases). This entry is about the half that still gates
+    from: '  if (blocking.length > 0) return [];',
     to: '',
     // 60s declared is 0.80 of `suite`; the reading is that same cost on a box four times slower, so the only
     // thing that could report it is the double count

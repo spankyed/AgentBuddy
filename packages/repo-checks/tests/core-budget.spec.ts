@@ -9,7 +9,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { asPercent, box, coresFor, isMeasuredSchedule, POOL_WIDTH, scheduleMismatch, shareOf, thisMachine } from '../../../scripts/lib/core-budget.ts';
+import { asPercent, box, coresFor, isMeasuredSchedule, POOL_WIDTH, RECORDING_CONDITIONS, scheduleMismatch, shareOf, thisMachine, unmetRecordingConditions } from '../../../scripts/lib/core-budget.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
 
@@ -160,6 +160,58 @@ const configs = (): string[] => [
 const CAP = /\bmax(?:Threads|Forks|Workers)\s*:\s*'?([^,}'\s]+)'?/g;
 const capsInText = (text: string): string[] => [...text.matchAll(CAP)].map((hit) => hit[1]!);
 const capsIn = (rel: string): string[] => capsInText(fs.readFileSync(path.join(REPO_ROOT, rel), 'utf-8'));
+
+/**
+ * What a run has to be for its step timings to describe the cost table.
+ *
+ * **Three conditions, one declaration.** They were a bare `if (!all)` in `recordTheCosts` and two inside
+ * `scheduleMismatch`, so the table was written under three and read under two with nothing saying that was a
+ * choice. The point of gathering them is that a reader taking a subset now has to name what it leaves out.
+ */
+describe('unmetRecordingConditions', () => {
+  const TABLE = { cpu: 'Apple M1 Pro', cores: 10 };
+  const ask = (over: Partial<Parameters<typeof unmetRecordingConditions>[0]> = {}) =>
+    unmetRecordingConditions({ budget: TABLE.cores, measuredOn: TABLE, machine: TABLE, wholeTable: true, ...over });
+
+  it('is empty for the run the table describes', () => {
+    expect(ask()).toEqual([]);
+  });
+
+  it('names each condition on its own', () => {
+    expect(ask({ wholeTable: false })).toEqual(['wholeTable']);
+    expect(ask({ machine: { cpu: 'Other', cores: 10 } })).toEqual(['machine']);
+    expect(ask({ budget: 5 })).toEqual(['budget']);
+  });
+
+  /**
+   * Ordered rather than a set, and the order is what a caller reports first: `wholeTable` is the reader's own
+   * argument, the machine is what `--adopt` can change, and the budget is the caller's argument again. A
+   * boolean here is what once put an instruction under a budget mismatch that only a machine mismatch could
+   * act on.
+   */
+  it('reports several in the declared order', () => {
+    const unmet = ask({ wholeTable: false, budget: 5 });
+
+    expect(unmet).toEqual(['wholeTable', 'budget']);
+    const order = RECORDING_CONDITIONS.indexOf(unmet[0]!);
+    expect(order, 'the first reported is the first declared').toBeLessThan(RECORDING_CONDITIONS.indexOf(unmet[1]!));
+  });
+
+  // A machine mismatch hides the budget, since the budget is only meaningful against the machine it is a
+  // share of — the same reason `scheduleMismatch` answers one at a time
+  it('never names a budget against a machine that is already wrong', () => {
+    expect(ask({ machine: { cpu: 'Other', cores: 4 }, budget: 4 })).toEqual(['machine']);
+  });
+
+  it('agrees with the two-condition predicate the readers use', () => {
+    // The subset is the thing a reader skips, so the two have to come apart exactly there and nowhere else
+    for (const wholeTable of [true, false]) {
+      const unmet = ask({ wholeTable });
+      const blocking = unmet.filter((condition) => condition !== 'wholeTable');
+      expect(blocking.length === 0).toBe(isMeasuredSchedule(TABLE.cores, TABLE, TABLE));
+    }
+  });
+});
 
 describe('a config that caps its workers has told the budget', () => {
   /**

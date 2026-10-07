@@ -192,6 +192,55 @@ export const isMeasuredSchedule = (
  * `budget === box()`, which `chain.ts` had spelled out by hand three lines from a comparison against
  * `measuredOn.cores`. Two budget comparisons against two core counts is the near-duplicate that drifts.
  */
+/**
+ * **Every condition a run has to meet for its step timings to describe the cost table — one declaration.**
+ *
+ * There are three, and before this they lived in three places: two inside `scheduleMismatch` below, and the
+ * third as a bare `if (!all)` in `recordTheCosts`. So the table was *written* under three conditions and
+ * *read* under two, and nothing said that was a choice — `isMeasuredSchedule` is named for a schedule and
+ * checks two thirds of one. A reader comparing a run's numbers to the table had no way to see which
+ * condition they were skipping.
+ *
+ * **`wholeTable` is a schedule fact, not a flag's name.** The chain admits steps in parallel, so what a step
+ * costs there is a function of what ran beside it; a run of nine stale steps and a run of all thirty are two
+ * different schedules, and only the second is the one `--record` writes. That it is spelled `--all` is
+ * incidental.
+ *
+ * **The two readers take different subsets, on purpose, and each says which.** `--record` needs all three,
+ * because it writes. `outgrownRungs` takes the first two and skips `wholeTable` deliberately, for a reason
+ * given there: contention can only make a step slower, so a partial run's reading is an *upper bound* on the
+ * step's cost — it can exonerate a step and cannot convict one, which is worth printing with that caveat
+ * rather than not printing. `driftReport` takes the first two as well and gates only its advice.
+ */
+export const RECORDING_CONDITIONS = ['wholeTable', 'machine', 'budget'] as const;
+
+/** One of the three, in the order a caller reports them */
+export type RecordingCondition = (typeof RECORDING_CONDITIONS)[number];
+
+/**
+ * Which of `RECORDING_CONDITIONS` this run fails, in that order — empty for a run whose timings describe
+ * the table.
+ *
+ * Ordered rather than a set, because a caller with several to report says the most actionable first:
+ * `wholeTable` is the reader's own argument, the machine is what a flag can change, and a budget mismatch is
+ * the caller's argument again. That is `scheduleMismatch`'s ordering with the third condition in front of it.
+ */
+export const unmetRecordingConditions = (run: {
+  budget: number;
+  /** The machine the table's costs were taken on (`MEASURED_ON`), or the one claiming it under `--adopt` */
+  measuredOn: Machine;
+  /** The box this is running on */
+  machine?: Machine;
+  /** Whether every step ran, so the schedule is the one the table describes */
+  wholeTable: boolean;
+}): readonly RecordingCondition[] => {
+  const unmet: RecordingCondition[] = [];
+  if (!run.wholeTable) unmet.push('wholeTable');
+  const mismatch = scheduleMismatch(run.budget, run.measuredOn, run.machine);
+  if (mismatch !== undefined) unmet.push(mismatch);
+  return unmet;
+};
+
 export const scheduleMismatch = (
   budget: number,
   measuredOn: Machine,

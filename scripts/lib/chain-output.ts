@@ -482,10 +482,20 @@ export function shouldClassify(run: {
  * the step that proves it.
  */
 export const outgrownReport = (
-  found: readonly { name: string; declared: number; measured: number; at: number; measureWith: string }[],
+  found: readonly {
+    name: string; declared: number; measured: number; at: number; measureWith: string; wholeTable: boolean;
+  }[],
 ): string => {
   if (found.length === 0) return '';
   const count = `${found.length} step${found.length === 1 ? '' : 's'}`;
+  // **The one condition this report skips, said rather than left out.** `outgrownRungs` takes two of the
+  // three `RECORDING_CONDITIONS` and reports a partial run anyway, because contention can only make a step
+  // slower and so the reading is an upper bound — worth printing with the caveat, not worth printing as a
+  // comparison with the table. Said once for the run rather than per row, since every row shares it.
+  const partial = found.some(({ wholeTable }) => !wholeTable)
+    ? '\n  This run was not --all, which is the only schedule the table describes, so each reading above is\n'
+      + '  an upper bound: a crowded run can clear a step and cannot convict one.'
+    : '';
   const rows = found.map(({ name, declared, measured, at }) =>
     `  ${name.padEnd(STEP_NAME_WIDTH)} ${declared}s declared, ${measured}s here — ${Math.round(at * 100)}% of `
     + 'its rung on the smaller machine that rung is sized for').join('\n');
@@ -501,7 +511,8 @@ export const outgrownReport = (
     + '  suspect instead, `npm run chain -- --all --cores 1` re-runs the table serially; without --all the\n'
     + '  step is cached and the re-run measures nothing.\n'
     + '  If it has really grown, `npm run chain -- --all --record` writes the new cost and\n'
-    + '  chain-graph.spec.ts fails the bound on it, which is what says the rung has to change.';
+    + '  chain-graph.spec.ts fails the bound on it, which is what says the rung has to change.'
+    + partial;
 };
 
 /**

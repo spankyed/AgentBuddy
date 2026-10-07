@@ -4,7 +4,7 @@
  * and separate from `scripts/chain.ts` because that module runs the chain when imported.
  */
 import type { SchedulableStep } from './chain-schedule.ts';
-import { isMeasuredSchedule, type Machine, thisMachine } from './core-budget.ts';
+import { type Machine, thisMachine, unmetRecordingConditions } from './core-budget.ts';
 import { declaredShare, type TimeoutClass } from './step-timeouts.ts';
 
 /**
@@ -137,11 +137,30 @@ export const measurementsFrom = (
  * its rung with room to spare. The percentage would be its share of a machine 16x the reference, which no
  * rung is sized for and nothing measured.
  *
- * So the predicate is `isMeasuredSchedule`, the same one `--record` refuses on, and that is what keeps this
- * report's advice followable: it says to re-measure and record, and it only speaks where recording is
- * accepted. `driftReport` splits the two — its rows are true wherever they ran, so it prints them anywhere
- * and gates only the sentence. Nothing here survives that split, because the number itself is the
- * projection.
+ * So the gate is the machine and the budget — two of the three `RECORDING_CONDITIONS` that `--record`
+ * refuses on — and that is what keeps this report's advice followable: it says to re-measure and record, and
+ * it only speaks where recording is accepted. `driftReport` splits the two — its rows are true wherever
+ * they ran, so it prints them anywhere and gates only the sentence. Neither of these two survives that
+ * split, because the number itself is the projection.
+ *
+ * **It takes two of the three `RECORDING_CONDITIONS`, and skipping `wholeTable` is a decision.** The table
+ * is written only under `--all`, so a partial run's timings are not the quantity the table holds — the
+ * chain admits steps in parallel, and nine stale steps are a different schedule from thirty. The reason to
+ * report anyway is an inequality: **contention can only make a step slower**, so a measurement is an upper
+ * bound on the step's true cost. Read it off that:
+ *
+ * - `measured < threshold` proves `true < threshold` — a crowded run can **exonerate** a step.
+ * - `measured > threshold` proves nothing on its own — a crowded run cannot **convict** one.
+ *
+ * Which means this report fires exactly where its evidence is one-sided, and no gate fixes that: silencing
+ * it on partial runs would reopen the gap it exists to close, and for a narrow band that matters —
+ * `test:integration` passes its rung at 75s (300s / 4) while `driftedSteps` says nothing until 120s, so
+ * growth in between would surface only on the rare `--all` run. What the one-sidedness does constrain is
+ * the *claim*: the row is this run's reading, the report leads with a quiet re-measurement that settles it
+ * (`outgrownReport`), and a partial run says so in the row rather than being dropped or trusted.
+ *
+ * It was none of that until 2026-10-07, when it fired twice in one session against a step that had not
+ * moved — 83s and then 100s in two crowded runs, against 47.7s median of 5 at 93% idle and 60s declared.
  *
  * **How to watch it fire, since no case can reach the composition.** Put a sleep in the npm script of a
  * step that declares a fraction of a second, long enough to pass its rung's `ms / stretches` — that keeps the
@@ -150,8 +169,8 @@ export const measurementsFrom = (
  * `--cores` the table was not measured at. The first prints a row here beside `driftReport`'s; the second
  * prints `driftReport`'s alone.
  *
- * That second run is the gate, and it is what stops being true if the `isMeasuredSchedule` line goes: the
- * same measurement that printed nothing starts naming a step, and no case below can say so. Restore the
+ * That second run is the gate, and it is what stops being true if the `blocking` line goes: the same
+ * measurement that printed nothing starts naming a step, and no case below can say so. Restore the
  * script afterwards and check `git status` rather than remembering — and rebuild the published packages,
  * which a run stamps against whatever `package.json` held at the time.
  *
@@ -172,9 +191,19 @@ export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: T
   measuredOn: Machine,
   /** The box this is running on; `thisMachine()` where a caller has no reason to say */
   machine: Machine = thisMachine(),
-): Array<{ name: string; declared: number; measured: number; at: number }> {
-  if (!isMeasuredSchedule(budget, measuredOn, machine)) return [];
-  const found: Array<{ name: string; declared: number; measured: number; at: number }> = [];
+  /**
+   * Whether every step ran (`--all`), so the schedule is the one the table describes. Reported rather than
+   * gated on — the doc above has the inequality that makes a partial run's reading worth printing — and
+   * carried on each row so the report can say which kind of run produced it.
+   */
+  wholeTable = true,
+): Array<{ name: string; declared: number; measured: number; at: number; wholeTable: boolean }> {
+  // Two of the three conditions, naming the one left out rather than leaving it absent: a partial run is
+  // reported with that caveat, where another machine or another budget makes the number meaningless
+  const blocking = unmetRecordingConditions({ budget, measuredOn, machine, wholeTable })
+    .filter((condition) => condition !== 'wholeTable');
+  if (blocking.length > 0) return [];
+  const found: Array<{ name: string; declared: number; measured: number; at: number; wholeTable: boolean }> = [];
   for (const step of steps) {
     const ms = measuredMs.get(step.name);
     // A cached step cost no time, so it is evidence of nothing — `criticalPath` skips it for the same reason
@@ -182,7 +211,7 @@ export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: T
     if (declaredShare(step.seconds, step.timeout) > 1) continue;
     const measured = Math.round(ms / 1000);
     const at = declaredShare(measured, step.timeout);
-    if (at > 1) found.push({ name: step.name, declared: step.seconds, measured, at });
+    if (at > 1) found.push({ name: step.name, declared: step.seconds, measured, at, wholeTable });
   }
   return found;
 }
