@@ -252,6 +252,32 @@ text, code, review, image, slack, todo, project, json, graph, table, markdown, c
 
 FE registration: `src/extensions/artifacts/register-fe.ts` (eagerly loads all viewer components for the renderer).
 
+**An interactive viewer is self-contained, and does it in three moves.** Most viewers only render, but one that
+the user can act on — `todo-artifact.vue`, `claude-session-artifact.vue`, `codex-session-artifact.vue` — holds
+its own state and logic over generic mechanisms, so **no feature carries artifact-specific code**. That is the
+whole point of an artifact: a new type is a definition and a component, never a case in somebody's system.
+
+- **Derive the backend's answer from `props.artifact`; mirror only what the user edits.** `status` is a
+  `computed` over `props.artifact.content?.status`, so the row is the single source of what was decided — a
+  `ref` seeded once from the prop shows the user an approval the backend never recorded. What the user types or
+  ticks does need local state (`todo-artifact.vue`'s `tasks`), and then it needs a `watch` on the prop to
+  resync, or it goes stale the first time anything else writes that row. The test is who owns the value: the
+  backend's is read, the user's in-progress edit is held.
+- **Read another plugin's state with `usePluginState`** (`#generated/fe`), which is a value and not an actor, so
+  it follows that plugin arriving and reloading.
+- **Raise what the user did as an event, with `sendToSystem` to the feature hosting you** —
+  `sendToSystem('threads', { type: 'FORWARD_BRAIN_EVENT', eventType, payload })`. The threads system forwards
+  any `eventType` to the brain and a flow listens for it, so the decision travels without threads knowing what
+  a todo is.
+
+**Not `sendToPlugin`.** A component runs in no delivery, so the send carries no `Message.sender` and the plugin
+it reaches cannot answer it. The `component-sends` pack rule refuses exactly that from a *feature's* component
+(`docs/public-facing/cli.md`) — and **deliberately does not reach an extension**, because `#generated/fe` gives
+a viewer no actor type and `cross-feature-imports` refuses it the feature's own, so the rule would be
+unsatisfiable here. Which is why it is written down in this section instead: for a viewer it is a convention,
+and the fifth one picks at random unless somebody read this. Closing the gap means a per-plugin actor type in
+`#generated/fe`.
+
 ## Message blocks
 
 Block definitions in `src/extensions/blocks/register.ts`. Two kinds:
