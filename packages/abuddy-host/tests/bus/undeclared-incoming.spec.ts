@@ -187,6 +187,51 @@ describe('what it leaves alone', () => {
 });
 
 /** The hatch this exists for, reaching the same check as a client's send does through `receiveClientEvent` */
+/**
+ * The same split the outgoing side makes: `reply` and `sendToSystem` both land in this check, and naming the one
+ * the caller did not call sends the next reader to a call site with no target in it.
+ *
+ * Note the helper above filters on `operation === 'sendToSystem'`, so these need their own — which is itself the
+ * point being asserted.
+ */
+describe('an answer to a system that declares no such event', () => {
+  const answers = () => takeSystemErrors()
+    .filter((error) => error.operation === 'reply')
+    .map((error) => error.message);
+  const answer = (type: string) => { send({ to: MEMOS, event: { type }, answering: true }); };
+
+  it('names reply as the operation', async () => {
+    answer('NOT_DECLARED');
+    await flush();
+
+    expect(answers()).toHaveLength(1);
+  });
+
+  it('says why an answer can be undeclared, rather than pointing at the contract alone', async () => {
+    answer('NOT_DECLARED');
+    await flush();
+
+    const [message] = answers();
+    expect(message).toContain('Answered "NOT_DECLARED"');
+    expect(message, "the asking side's incoming is what reply cannot be checked against")
+      .toContain("cannot be checked against the asking system's incoming");
+  });
+
+  /**
+   * Keyed on `answering` for the same reason as the outgoing side: the wording varies by it, so a key that
+   * ignored it would report whichever arrived first and suppress a different sentence.
+   */
+  it('reports a send and an answer of the same type separately', async () => {
+    send({ to: MEMOS, event: { type: 'NOT_DECLARED' } });
+    answer('NOT_DECLARED');
+    await flush();
+
+    const all = takeSystemErrors();
+    expect(all).toHaveLength(2);
+    expect(all.map((error) => error.operation)).toEqual(['sendToSystem', 'reply']);
+  });
+});
+
 describe('through the untyped send', () => {
   it('reports what untypedSendToSystem could not have been typed out of', async () => {
     untypedSendToSystem(MEMOS, { type: 'BUILT_FROM_DATA' });

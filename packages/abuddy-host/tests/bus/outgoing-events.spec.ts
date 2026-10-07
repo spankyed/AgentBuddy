@@ -55,6 +55,67 @@ afterEach(() => {
   takeSystemErrors();
 });
 
+/**
+ * What a dropped *answer* says, which is a different sentence from a dropped command.
+ *
+ * One path serves four senders — `untypedBroadcastToPlugin`, the generated `broadcastToPlugin`, `sendToWindow`
+ * and `reply` — and `operation` is the verb the caller called everywhere else in this repo. A `reply` caller
+ * named no id, so address advice sends the next reader to a call site that has none.
+ */
+describe('a dropped answer', () => {
+  const answer = (type: string) => send({ to: 'memo-pack/memos', event: { type }, answering: true });
+
+  // Drop `answering` from the message `_replyTo` builds and this is the case that goes back to 'broadcastToPlugin'
+  it("names reply as the operation, not the verb the caller didn't call", async () => {
+    await answer('NOT_DECLARED');
+    expect(takeSystemErrors()[0]?.operation).toBe('reply');
+  });
+
+  it('says why a reply can be undeclared at all, rather than giving address advice', async () => {
+    await answer('NOT_DECLARED');
+    const [error] = takeSystemErrors();
+    expect(error?.message).toContain('Dropped the answer "NOT_DECLARED"');
+    expect(error?.message, 'the asker cannot type-check an answer, which is the actionable part')
+      .toContain('cannot be checked against the asking plugin\'s inbox');
+    expect(error?.message, 'a reply names no id, so there is none to check').not.toContain('Check the id');
+  });
+
+  // A plugin nothing declares at all is a race rather than a mistake: nothing holds an asker open
+  it('calls an answer to an unregistered plugin a race', async () => {
+    await send({ to: 'ghost-pack/ghost', event: { type: 'ANYTHING' }, answering: true });
+    expect(takeSystemErrors()[0]?.message).toContain('most likely a race');
+  });
+
+  // An ordinary broadcast is untouched, which is what makes this a split rather than a reworded diagnostic
+  it('leaves a dropped broadcast saying what it always said', async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'NOT_DECLARED' } });
+    const [error] = takeSystemErrors();
+    expect(error?.operation).toBe('broadcastToPlugin');
+    expect(error?.message).toContain('add it to that system\'s outgoing events');
+  });
+
+  /**
+   * The dedupe is keyed on what the report *says*, so a key that ignored `answering` would report whichever
+   * arrived first and suppress the other — two different sentences collapsed into one.
+   *
+   * Drop `answering` from the key and this is the case that fails.
+   */
+  it('reports a broadcast and an answer of the same type separately', async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'NOT_DECLARED' } });
+    await answer('NOT_DECLARED');
+    const reported = takeSystemErrors();
+    expect(reported).toHaveLength(2);
+    expect(reported.map((e) => e.operation)).toEqual(['broadcastToPlugin', 'reply']);
+  });
+
+  // And the dedupe still works within each kind, so the key gained a field rather than losing its job
+  it('still reports one answer once, however many times it is sent', async () => {
+    await answer('NOT_DECLARED');
+    await answer('NOT_DECLARED');
+    expect(takeSystemErrors()).toHaveLength(1);
+  });
+});
+
 describe('an event a system sends to a plugin', () => {
   // Where it goes travels beside the event, so a field of the event's own is never taken for it
   it('reaches the client exactly as sent, a pluginId field of its own included', async () => {

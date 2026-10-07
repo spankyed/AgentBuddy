@@ -177,6 +177,11 @@ export function createBusMachine(options: BusOptions) {
         // `action:<label>`). `reportError` sends for a caller that is neither, so a drop that names no sender is
         // not thereby suspicious — it just has one fewer clue in it.
         const sender = senderSuffix(event.message);
+        // Four senders reach this one path — `untypedBroadcastToPlugin`, the generated `broadcastToPlugin`,
+        // `sendToWindow` and `reply` — and `operation` is the verb the caller called everywhere else in this repo.
+        // A `reply` caller named no id: the address came off the envelope, which is the point of the verb, so
+        // telling it to "check the id" sends the next reader to look at a call site that has none.
+        const answering = event.message.answering === true;
         const accepted = options.registry.getPluginEventValidationMap().get(pluginId);
         const reportDrop = (message: string) => {
           // A pack mid-replacement has no systems running and no plugins registered until its
@@ -184,14 +189,14 @@ export function createBusMachine(options: BusOptions) {
           if (options.registry.isPluginReplacing(pluginId)) return;
           // Keyed on what the report says rather than on a second reading of the envelope, so whatever the
           // message distinguishes the dedupe distinguishes, and a suppressed drop is never one the report names
-          // differently
-          const pair = `${pluginId}/${type}/${sender}`;
+          // differently — which is why `answering` is in the key now that it changes the wording
+          const pair = `${pluginId}/${type}/${sender}/${answering}`;
           if (reportedDrops.has(pair)) return;
           reportedDrops.add(pair);
           // `diagnostic`: logged, recorded, and failing any pack test that leaves one — but no toast.
           // Whoever is using the app can do nothing about a send to a plugin nobody declares, and the
           // message already reaches the Logs plugin, where the person who can is looking.
-          reportError({ source: 'bus', operation: 'broadcastToPlugin', severity: 'diagnostic', error: new Error(message) });
+          reportError({ source: 'bus', operation: answering ? 'reply' : 'broadcastToPlugin', severity: 'diagnostic', error: new Error(message) });
         };
         if (accepted === undefined) {
           // A name a connection claimed rather than a pack registering it (`host/drive`). No pack describes it, so
@@ -205,11 +210,15 @@ export function createBusMachine(options: BusOptions) {
           }
           // An event every plugin takes (a feature's settings changing) is the feature's plugin's if it has one
           if ((PLUGIN_EVENT_TYPES as readonly string[]).includes(type)) return;
-          reportDrop(`Dropped "${type}" sent${sender} to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`);
+          reportDrop(answering
+            ? `Dropped the answer "${type}"${sender} to "${pluginId}", which no registered pack declares as a plugin that receives events. Nothing holds an asker open, so this is most likely a race: the asking pack unloaded before the answer landed.`
+            : `Dropped "${type}" sent${sender} to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`);
           return;
         }
         if (!accepted.has(type)) {
-          reportDrop(`Dropped "${type}" sent${sender} to the "${pluginId}" plugin, which declares no such event. A plugin receives what its own pack's systems declare they emit: add it to that system's outgoing events, or send an event the plugin handles.`);
+          reportDrop(answering
+            ? `Dropped the answer "${type}"${sender} to the "${pluginId}" plugin, which declares no such event. \`reply\` is typed against the answering system's outgoing events and cannot be checked against the asking plugin's inbox, so this compiles: either the asking plugin must declare "${type}" among what its pack's systems emit to it, or the answer has to be an event it already declares.`
+            : `Dropped "${type}" sent${sender} to the "${pluginId}" plugin, which declares no such event. A plugin receives what its own pack's systems declare they emit: add it to that system's outgoing events, or send an event the plugin handles.`);
           return;
         }
         options.onOutgoing(event.message);
@@ -241,14 +250,20 @@ export function createBusMachine(options: BusOptions) {
           if (accepted === undefined || accepted.has('*') || accepted.has(type)) return;
           if ((SYSTEM_EVENT_TYPES as readonly string[]).includes(type)) return;
           const sender = senderSuffix(message);
-          const pair = `${to}/${type}/${sender}`;
+          // As on the outgoing side: `reply` and `sendToSystem` both land here, and naming the one the caller did
+          // not call sends the next reader to a call site with no target in it. In the key for the same reason the
+          // outgoing one has it — the wording varies by this, so the dedupe must too.
+          const answering = message.answering === true;
+          const pair = `${to}/${type}/${sender}/${answering}`;
           if (reportedDrops.has(pair)) return;
           reportedDrops.add(pair);
           reportError({
             source: 'bus',
-            operation: 'sendToSystem',
+            operation: answering ? 'reply' : 'sendToSystem',
             severity: 'diagnostic',
-            error: new Error(`Sent "${type}"${sender} to the "${to}" system, which declares no such event — it will be ignored. A system receives what its contract's incoming events declare: add it there, or send an event the system handles.`),
+            error: new Error(answering
+              ? `Answered "${type}"${sender} to the "${to}" system, which declares no such event — it will be ignored. \`reply\` is typed against the answering side's outgoing events and cannot be checked against the asking system's incoming, so this compiles: either "${to}" must declare "${type}" among its contract's incoming events, or the answer has to be an event it already declares.`
+              : `Sent "${type}"${sender} to the "${to}" system, which declares no such event — it will be ignored. A system receives what its contract's incoming events declare: add it there, or send an event the system handles.`),
           });
         };
 
