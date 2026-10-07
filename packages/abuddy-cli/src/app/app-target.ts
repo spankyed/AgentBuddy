@@ -219,6 +219,13 @@ export interface AppFlags {
   /** Build the pack as a release before testing it, so the tests run what a release ships */
   release?: boolean;
   args: string[];
+  /**
+   * The pack is already built and must not be rebuilt. For a caller that built it in an earlier step — the
+   * repo's `test:external-pack:contract` before its `:app` half — because a rebuild here destroys the
+   * pack's `dist` for the length of the build, and anything else reading that tree meanwhile sees a pack
+   * that is not built. The freshness the rebuild bought is checked instead, not dropped.
+   */
+  prebuilt?: boolean;
 }
 
 /** Pulls `--app-root <path>`, `--app <beta>` and `--release` out of the args forwarded to Playwright. */
@@ -234,6 +241,8 @@ export function parseAppFlags(argv: string[]): AppFlags {
       else flags.app = value;
     } else if (name === '--release') {
       flags.release = true;
+    } else if (name === '--prebuilt') {
+      flags.prebuilt = true;
     } else {
       flags.args.push(arg);
     }

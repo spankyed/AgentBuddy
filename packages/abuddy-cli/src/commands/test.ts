@@ -9,12 +9,16 @@ import { withoutSourceCondition } from '@abuddy/host/build/source-resolution';
 import { cliBin, readManifest, resolveVitestCli } from '../utils';
 import { VITEST_CONFIG_FILES } from './init.ts';
 
-export const TEST_USAGE = `Usage: abuddy test [--app-root <path> | --app beta] [--release] [playwright args...]
+export const TEST_USAGE = `Usage: abuddy test [--app-root <path> | --app beta] [--release] [--prebuilt] [playwright args...]
        abuddy test --contract [vitest args...]
 
 Runs the pack's Playwright tests in AgentBuddy. The app is, in order: --app-root (a local
 AgentBuddy checkout), --app beta (the newest AgentBuddy Beta build satisfying the pack's
 hostVersion, downloaded and cached), ABUDDY_ROOT, or the app you chose on first run.
+
+--prebuilt installs the build already in dist/ instead of making a new one, for a caller that built the
+pack in an earlier step. The build is still held to being no older than the sources, so a stale one fails
+rather than being tested quietly.
 
 --release builds the pack the way a release does, so the tests run the artifact that ships.
 \`abuddy release\` passes it; on its own the default build is the faster one to debug.
@@ -30,7 +34,7 @@ export function fixtureEnv(
   app: AppTarget,
   packDir: string | undefined,
   base: NodeJS.ProcessEnv,
-  options: { release?: boolean } = {},
+  options: { release?: boolean; prebuilt?: boolean } = {},
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...base };
   // A pack resolves the packages' published dist, whoever runs it: the condition never reaches this run,
@@ -64,6 +68,8 @@ export function fixtureEnv(
   else delete env.PACK_DIR;
   if (options.release) env.ABUDDY_PACK_RELEASE = '1';
   else delete env.ABUDDY_PACK_RELEASE;
+  if (options.prebuilt) env.ABUDDY_PACK_PREBUILT = '1';
+  else delete env.ABUDDY_PACK_PREBUILT;
   // The fixture builds the pack with this same CLI
   env.ABUDDY_CLI = cliBin();
   return env;
@@ -138,7 +144,7 @@ export async function test(args: string[], run?: ContractRunner): Promise<void> 
   console.log(app.kind === 'source' ? `Testing in AgentBuddy from ${app.root}` : `Testing in AgentBuddy Beta ${app.version}`);
   const result = spawnSync(process.execPath, [playwrightCli, 'test', ...flags.args], {
     cwd,
-    env: fixtureEnv(app, manifest ? cwd : undefined, process.env, { release: flags.release }),
+    env: fixtureEnv(app, manifest ? cwd : undefined, process.env, { release: flags.release, prebuilt: flags.prebuilt }),
     stdio: 'inherit',
   });
   // Thrown, not exited: `abuddy release` calls this, and an exit here skipped the message telling the

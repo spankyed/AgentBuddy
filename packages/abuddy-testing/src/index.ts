@@ -30,6 +30,49 @@ export interface CreateTestOptions {
   screenshotDir?: string;
 }
 
+
+/**
+ * The newest source file a pack's build should have seen, when that file is newer than the build — or
+ * nothing when the build is current. For `--prebuilt`, which trusts a build it did not make.
+ *
+ * Sources are the pack's `src/` and its `abuddy.json`; the build is the oldest of the two files the
+ * installer requires, since a build is only as current as its least finished part. mtimes are what a build
+ * leaves behind, so this is the same question `packages-built.ts` asks of the workspace packages and the
+ * same answer: it can only be wrong in the safe direction, reporting stale for a file touched without being
+ * changed.
+ */
+function staleBuildOutput(packDir: string): string | undefined {
+  const built = [
+    path.join(packDir, 'dist', 'runtime', 'index.cjs'),
+    path.join(packDir, 'dist', 'types', 'snapshot.json'),
+  ];
+  const builtAt = built.map((file) => (fs.existsSync(file) ? fs.statSync(file).mtimeMs : 0));
+  // Absent rather than stale: the installer says "not built", which names the files and the command
+  if (builtAt.some((at) => at === 0)) return undefined;
+  const oldestBuilt = Math.min(...builtAt);
+
+  let newest: { file: string; at: number } | undefined;
+  const walk = (dir: string): void => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      // `__generated__` is written by the build itself, so it is output wearing a source file's path
+      if (entry.name === '__generated__' || entry.name === 'node_modules') continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else {
+        const at = fs.statSync(full).mtimeMs;
+        if (!newest || at > newest.at) newest = { file: path.relative(packDir, full), at };
+      }
+    }
+  };
+  const src = path.join(packDir, 'src');
+  if (fs.existsSync(src)) walk(src);
+  const manifest = path.join(packDir, 'abuddy.json');
+  const manifestAt = fs.existsSync(manifest) ? fs.statSync(manifest).mtimeMs : 0;
+  if (manifestAt > (newest?.at ?? 0)) newest = { file: 'abuddy.json', at: manifestAt };
+
+  return newest && newest.at > oldestBuilt ? newest.file : undefined;
+}
+
 /** How the fixture launches AgentBuddy: from a checkout's sources, or a packaged build. */
 type AppLaunch = { kind: 'source'; root: string } | { kind: 'packaged'; executable: string };
 
@@ -339,7 +382,19 @@ export function createTest(options: CreateTestOptions = {}) {
           // the fixture waits for, the screenshot directory — still comes from PACK_DIR.
           const archive = process.env.PACK_ARCHIVE ? path.resolve(process.env.PACK_ARCHIVE) : undefined;
           if (archive) assertArchiveIsCurrent(archive, packDir);
-          if (!archive) {
+          if (!archive && process.env.ABUDDY_PACK_PREBUILT) {
+            // The caller built it in an earlier step (`abuddy test --prebuilt`), so this installs that build.
+            // **Because a rebuild here would destroy it for the length of the build**: `abuddy build` clears
+            // `dist` before its first phase and the tree is absent until the last one, so a second builder of
+            // the same pack wipes the one mid-write, and any reader of that tree meanwhile sees a pack that
+            // is not built. With two fixture packs rebuilt in place by a step that declares `tests/packs` as
+            // an input, that is a race this suite lost under load rather than a hypothetical.
+            //
+            // What the rebuild bought is checked instead of dropped: a build older than the sources it came
+            // from fails here, which is the whole of "a stale build tested silently is worse than no test".
+            const stale = staleBuildOutput(packDir);
+            if (stale) throw new Error(`Pack ${manifest.id} was built before ${stale} changed. Build it (abuddy build) or drop --prebuilt.`);
+          } else if (!archive) {
             // Always rebuild: installing an existing dist would silently test stale code
             const abuddyBin = resolveAbuddyBin(appLaunch, packDir);
             // A release run tests what it ships: without this the rebuild below replaces the release

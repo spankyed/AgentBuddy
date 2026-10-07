@@ -373,7 +373,7 @@ Print a summary of the current pack: id, version, host version, feature count, s
 
 Scaffold Playwright E2E tests in the pack root: `playwright.config.ts` (tests in `tests/e2e`), `tests/e2e/smoke.spec.ts` (using the first feature with a plugin), `.gitignore` entries for `tests/screenshots/` and `tests/results/`, and `@abuddy/testing` and `@playwright/test` devDependencies. Existing files are kept.
 
-#### `abuddy test [--app-root <path> | --app beta] [playwright args...]`
+#### `abuddy test [--app-root <path> | --app beta] [--prebuilt] [playwright args...]`
 
 Run the pack's Playwright tests in AgentBuddy. Other arguments go to `playwright test`. The app is, in order:
 
@@ -388,6 +388,13 @@ none of them fits. `abuddy clean --apps` lists what has been downloaded, with si
 newest; `--all` removes that one too, which is how you move to a newer Beta.
 
 **`abuddy test` never reads the app you saved and never asks**, so a test run means the same thing on a fresh machine as on one you have been developing on. Holding that preference is `abuddy run`'s job. The fixture builds the pack with the same CLI and installs it into a fresh data dir for each worker, so a run leaves nothing behind either.
+
+`--prebuilt` installs the build already in `dist/` instead of making a new one, for a pipeline that built the
+pack in an earlier step. The build is still held to being no older than the pack's sources and `abuddy.json`,
+naming the file that moved if it is not — so a stale build fails rather than being tested quietly, which is
+what the rebuild was there for. Reach for it when something else owns the build: a rebuild empties `dist`
+before its first phase and does not refill it until the last, so a second build of the same pack, or anything
+reading that directory meanwhile, sees a pack that is not built.
 
 ### Distribution
 
