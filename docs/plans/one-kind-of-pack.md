@@ -5,8 +5,8 @@ paths end to end. Every location, count and privilege below was checked against 
 Restructured the same day, after the first version was found to be a proposal wearing a decision's clothes —
 what changed and why is in **How this plan was wrong** at the end.
 
-> **Every citation here was last checked against the tree on 2026-10-07**, and each of the three committed
-> steps is still undone — `bundledLoaders`, `builtInPackLoadersModule` and `partitionPolicy` are all present.
+> **Every citation here was last checked against the tree on 2026-10-07**, and each of steps 1-3
+> is still undone — `bundledLoaders`, `builtInPackLoadersModule` and `partitionPolicy` are all present.
 > Ten citations had drifted in five days and are corrected in place, which is the rate to expect: six line
 > numbers moved under edits to the files they name, and four of the five test sizes gained a line to one
 > refactor (`bdfa88299`, reading the installed layout from `PACK_LAYOUT`). Nothing a step rests on had moved.
@@ -17,19 +17,26 @@ what changed and why is in **How this plan was wrong** at the end.
 > phase read, and that record is built-in-aware in three places — listed under item 1, each carrying a
 > comment naming this document, so the work is findable from the code and not only from here.
 
-**Three steps are committed; one question is left open on purpose.** The committed steps need no migration
-and no packaging change. The open question is whether default-setup stops living in the app's resources and
-becomes an installed pack like any other — which needs two stored-data migrations, and should be decided
-with the committed steps already landed.
+**Six steps in one sequence.** There is no open question left and no second category: the order is forced by
+two facts in the code, and the only thing the plan must not trade away is the developer experience, which
+step 3 is held to by an acceptance test rather than an argument.
 
-## The criterion
+## The requirement, and what sorts the rest
 
-**Collapse a duplication where it needs no stored-data migration. Leave the rest to a separate decision.**
+**Full frontend and backend hot reload for every pack in the workspace, from `npm run start`, with no
+separate `abuddy run` process.** That is the one requirement; everything else here is negotiable against it.
+It is not a tightening — it is what *one* pack has today, and the work is to stop that depending on which
+pack it is. Step 3 carries it as a test.
 
-That line is what sorts the work below, and it is falsifiable: every committed step can be undone by
-reverting its commit, and every deferred step cannot, because stored user data has moved. It is also what
-the first version of this plan lacked — it measured the cost, announced a verdict, and had no test anything
-could fail.
+**What used to sort this plan was a criterion that does not hold: "collapse a duplication where it needs no
+stored-data migration".** It split the work in two and deferred half of it, on the premise that a migration
+is a one-way door. There is one user of this app and he is its author, so both migrations below are
+conveniences — skip them and every pack re-seeds once (seeds are upsert, so nothing is lost) and the `logs`
+plugin's settings and tab-visibility choice revert to defaults. `CLAUDE.md`'s carve-out for stored data is
+written for users this repo does not have, and a criterion resting on it was dividing the work on a fiction.
+
+So what orders the steps is the code: `abuddy build`'s gate blocks the generic backend watcher (step 1 before
+step 3), and `loadSingleExternalPack` strips `boot.seedManifest` (step 5 before step 6).
 
 ## Three axes, not one question
 
@@ -41,8 +48,10 @@ could fail.
 | **how the code is loaded** — bundled into the app vs required from the pack's own directory | no | one load path or two |
 | **what the pack may do** — `earlySystem`, declarative seeds, partition policy | no | whether the privileged pack is the one that proves the author-facing path works |
 
-Axes 2 and 3 are accidental and come out cheaply. Axis 1 is legitimate, and eliminating it is what forces
-install-on-first-boot, two migrations and a packaging change. The committed work is axes 2 and 3.
+Axes 2 and 3 are accidental and come out cheaply, in steps 1-3. Axis 1 is legitimate and comes out in steps
+4-6, which is where install-on-first-boot and the two migrations are. Nothing about that order is a hedge:
+steps 1-3 are what the requirement needs, and doing them first is what makes step 6 a packaging change
+rather than a devex regression.
 
 ---
 
@@ -118,8 +127,20 @@ built-in-only publish, `loader.spec.ts` (858) and `reload.spec.ts` (382) each ca
 
 ## Developer experience
 
-**`npm start` keeps working, and default-setup's frontend HMR does not change.** Those two sentences are the
-point of this section; the rest is why.
+**`npm start` keeps working, default-setup's frontend HMR does not change, and every other workspace pack
+gains it.** Those are the three sentences that matter; the rest is why.
+
+**Two dev loops exist and only one of them is good**, which is the whole of the problem:
+
+| | frontend | backend |
+|---|---|---|
+| a pack that ships with the app, under `npm start` | **component-level HMR** — the renderer's Vite imports its entry from source, so the pack's modules are in the renderer's own graph | watch → esbuild → `POST /dev/reload` (`default-setup/dev-build.mjs`, forked by `dev-mode.js`) |
+| any other pack, under `abuddy run` | **a window reload** — measured 2026-10-07, and nothing at all before `0a25ff990` fixed `compiledSource` | watch → `abuddy build` → install → `POST /dev/reload` |
+
+Neither row is about shipping with the app. The frontend row is about whose Vite owns the modules; the
+backend row is about a watcher that lives *inside* one pack because `abuddy build` refuses to build its
+runtime. Steps 1 and 3 remove both reasons, and the second column is then one watcher for every pack —
+which is what retires `abuddy run` for a pack in this workspace.
 
 **Frontend HMR has nothing to do with being built-in.** `builtInPacksPlugin` generates a module of **static**
 imports:
@@ -157,7 +178,12 @@ uses (`abuddy-cli/src/commands/run.ts:325-360`):
   blocked.
 
 Complete on paper; whether component-level HMR lands through it is the measurement in *Verification*, and it
-is needed only for the open question, not for the committed steps.
+was taken on 2026-10-07, against the `external-pack` fixture with `DEBUG=vite:hmr`: an edit to a `.vue`
+produces `page reload`, not a component update, because the app imports the pack's entry through `pack://` —
+outside Vite's graph — so no importer is there to accept one. **That is this path's ceiling**, and the reason
+step 3's dev source import is load-bearing rather than a convenience. Getting that far also took a fix:
+`compiledSource` read `ctx.load().code`, which throws in a dev server, so the loop did nothing at all while
+`abuddy run` printed that it was hot-reloading.
 
 **Type resolution improves.** `packages/default-setup/tsconfig.json` declares no `@abuddy/source` condition,
 so the editor already type-checks it against `dist` — the pack-author layout. The fork today is that the
@@ -178,8 +204,9 @@ special case it is bypassed by:
 > *"A dependency on a built-in pack is already satisfied — the built-in packs' boot seeds run before any
 > external pack's"*
 
-A hard-coded phase standing in for an edge the sort would compute. This matters only for the open question:
-the committed steps keep the phase, so nothing about ordering changes under them.
+A hard-coded phase standing in for an edge the sort would compute. It matters only from step 6, when a
+shipped pack becomes an installed one and the phase has nothing left to stand for: steps 1-5 keep it, so
+nothing about ordering changes under them.
 
 ---
 
@@ -211,9 +238,10 @@ renderer bundle; `dist/runtime/fe.js` is not built for a built-in pack at all.
 
 ---
 
-## The committed work
+## The work, in order
 
-Three steps, each revertible by reverting its commit. None touches stored user data.
+Six steps. Steps 1-3 are what the requirement needs and touch no stored data; 4-6 remove the last axis and
+move two records, each with an optional migration. The order is the code's, not a risk ranking.
 
 ### 1. Delete the `if (!external)` gate in `abuddy build`
 
@@ -338,37 +366,52 @@ path, one frontend path, no privileges. What survives is axis 1 — the director
 `renderer/env.d.ts`, `main/src/modules/pack-protocol/PackProtocol.ts`,
 `abuddy-host/src/fe/pack-frontends.ts`, `abuddy-cli/src/commands/run.ts`, `scripts/lib/chain-steps.ts`.
 
-**Verify before starting:** that a packaged API process can `esmRequire` the pack's `dist/runtime/index.cjs`
-out of `resources/`. Development already does precisely this through `runtimeEntry: 'prefer'`; the packaged
-difference is the path and `NODE_ENV`, and `asar: false` means the file is really there. If it fails, this
-step is off and the duplication stays.
+**The pre-flight is done.** A packaged API process can `esmRequire` the pack's `dist/runtime/index.cjs` out
+of `resources/` — measured 2026-10-07 by building the api bundle with `runtimeEntry` defaulted to `'only'`,
+so no bundled loader existed to fall back to, and booting it: *"Loaded built-in pack (dev): default-setup"*,
+then the server up. The other half cannot be tested in a checkout at all — `source-resolution.ts:73` refuses
+any process that resolves `@abuddy/*` to `dist` while a `src/` sits beside it, which is every checkout and no
+packaged build — and needs no test, being what every installed external pack already does in production
+through the same `withHostResolution`.
+
+**The acceptance test, which is the requirement and not a nicety.** After this step, from `npm run start`
+alone, with no `abuddy run` process:
+
+- editing a `.vue` in **any** workspace pack patches the component and keeps the app's state;
+- editing that pack's backend rebuilds it and hot-reloads it in place;
+- `tests/packs/external-pack` behaves the same as `packages/default-setup`, because nothing in the path reads
+  which pack it is.
+
+If the first bullet fails for a pack that is not default-setup, this step is not done, whatever else passes.
 
 ---
 
-## The open question: should default-setup be installed?
+Steps 1-3 leave one difference: default-setup's directory ships read-only in `resources/` and is loaded in
+place, where every other pack is installed into the user's data dir. These three remove it.
 
-Everything above leaves one difference: default-setup's directory ships read-only in `resources/` and is
-loaded in place, where every other pack is installed into the user's data dir. Removing *that* costs three
-further steps, each needing a migration, and they have a dependency order the first version of this plan got
-backwards.
+**The ordering is forced by one line.** `loadSingleExternalPack` deletes `registration.boot.seedManifest` for
+external packs (`loader.ts:244-249`), and `evaluateSeedPolicy` is called only from the declarative path
+(`seed.ts:184`). So installing default-setup before step 5 gives it `importPackSeeds`, which evaluates no
+`seedPolicy` — and default-setup declares `skipAtBoot: ['settings']` and `skipAfterOnboarding: ['notes']`, so
+its settings would be reset at every boot and its notes would come back after onboarding. Step 5 before step
+6 is not a preference.
 
-**The ordering, and the defect that fixes it.** `loadSingleExternalPack` deletes
-`registration.boot.seedManifest` for external packs (`loader.ts:244-249`). So installing default-setup
-*before* the seed paths are merged ships a default pack that seeds nothing at all. The seed merge is a
-prerequisite for the install, not a revertible tail — which inverts the risk the first version described.
+### 4. Move `logs` into the host pack
 
-In order:
-
-**A. Move `logs` into the host pack.** `earlySystem` exists for one feature, and a system that must run
+`earlySystem` exists for one feature, and a system that must run
 before the data layer is up is app infrastructure — which is what `@abuddy/host/features/` already holds.
 Moving it deletes `earlySystem` from the pack contract rather than generalising it, which matters: an
 arbitrary pack's system running before hydration is a footgun, and the refinement's own reason
 (*"before external packs load"*) is circular once the pack declaring it is external.
-**Cost:** 11 files, 1407 lines, and the ref `default-setup/logs` → `host/logs` renames stored plugin
-settings, so it needs an app migration. `0.3.15.ts` is the precedent and
-`tests/migrations/plugin-settings-0.3.15.spec.ts` the test to copy.
+**Cost:** 11 files, 1407 lines, and the ref `default-setup/logs` → `host/logs` is a key in three stored
+places — the settings row's `plugins` section, `AppState.pluginVisibility` and `AppState.lastActivePlugin`.
+A migration moves them (`0.3.15.ts` is the precedent, `tests/migrations/plugin-settings-0.3.15.spec.ts` the
+test to copy); skipping it costs the one user his logs settings and tab-visibility choice, which is why this
+is a convenience rather than a gate.
 
-**B. Merge the two seed paths.** Keep the external path's per-pack hashing and dependency tracking, port
+### 5. Merge the two seed paths
+
+Keep the external path's per-pack hashing and dependency tracking, port
 `seedPolicy` onto it, and fold `builtInSeedHashes` into `externalSeedHashes` — renamed, since "external" stops
 meaning anything. `0.3.15.ts` renamed *away from* `packSeedHashes` and `packSeedDeps`, so that migration is the
 map for renaming back.
@@ -380,7 +423,9 @@ re-seeded and a reinstall of identical bytes did too, while the built-in one cou
 cache at 0.38ms over default-setup's 490KB (0.07ms to stat the same files) — so there is no shortcut left to
 decide about, and the fields differ only in name. Asking for a pack's data back is `IMPORT_PACK_SEEDS`.
 
-**C. Install on first boot.** `installPackFromLocal(source, targetPacksDir, options)` →
+### 6. Install on first boot
+
+`installPackFromLocal(source, targetPacksDir, options)` →
 `installFromDirectory` (`installer.ts:216,252`) already verifies, stages and writes `integrity.json` from a
 directory on disk, so the new code is a call site. `BUILT_IN_PACKS_DIR` becomes `SHIPPED_PACKS_DIR` — rename
 it, so every reader is revisited. `publishHostPackOutput`/`pruneHostPackOutputs` and `hostPacksDir` go, and
@@ -388,11 +433,22 @@ it, so every reader is revisited. `publishHostPackOutput`/`pruneHostPackOutputs`
 shipped copy is newer than the installed one, so boot compares integrity hashes and re-installs when they
 differ — which also covers a user-modified install, a state that cannot exist today.
 
-**What decides it.** With steps 1-3 landed you will know how uniform the paths really are, and the HMR
-measurement will have been taken. The questions to answer then: is `publishHostPackOutput` still earning its
-keep for external tools, and is `database/schema.ts`'s second source worth a migration to remove? If the
-answer to both is no, this stays undone and the remaining "built-in" is one read-only directory — an honest
-distinction rather than a privilege.
+**`shippedWithApp` is what this step replaces, and it is two questions wearing one predicate.**
+`system.ts:116` feeds three refusals: two that an installed pack may not take a shipped pack's id (`:184`,
+`:315`) and one that a shipped pack cannot be uninstalled (`:240`). Split them, because only the second is
+about shipping:
+
+- **may this be uninstalled?** — a pack property, `false` for whatever the app cannot run without, which the
+  Packs view reads to hide the button. Defaulting a shipped pack to `false` keeps today's behaviour exactly,
+  and flipping it later is a product decision rather than a refactor. Uninstallable and replaceable built-ins
+  are on the roadmap, so this step moves toward that rather than against it.
+- **may an install take this id?** — not about shipping at all, but about an id already being in use, which
+  `installedPacks()` answers. A shipped pack is in that list once it is installed, so this half mostly
+  **deletes**: it existed because nothing else knew about packs that were not installed.
+
+**What this buys, which is the whole reason for steps 4-6:** `publishHostPackOutput` and
+`pruneHostPackOutputs` go, `hostPacksDir` with them, `fetch-deps.ts:157`'s special case becomes an ordinary
+`packsDir` lookup, and `database/schema.ts` loses its second discovery source and its `degraded` branch.
 
 ---
 
@@ -412,27 +468,28 @@ confirm HMR is unchanged. Then `npm run compile` and confirm `dist/runtime/{inde
 bundle no longer containing default-setup's backend. `DEBUG_E2E=1 npm test -- smoke` covers the four things
 every other check assumes.
 
-**The HMR measurement, needed only for the open question.** Run `abuddy run` against a fixture pack with a
-Vue component, edit the component:
+**Step 3 is held to the requirement, and this is the test.** From `npm run start` alone, with no
+`abuddy run` process: edit a `.vue` in `tests/packs/external-pack` and in `packages/default-setup`, and both
+patch the component with the app's state intact; edit each one's backend and both rebuild and reload in
+place. The fixture pack behaving differently from default-setup is the failure, whatever else passes.
 
-| outcome | what it means |
-|---|---|
-| component-level update, state preserved | the `pack://` path is a real fallback; the dev source import is a convenience |
-| full page reload | usable, but the dev source import earns its place |
-| nothing | the dev source import is **required** — and check the `res.ok` fallback in `PackProtocol.ts` first, the likeliest cause |
+**The `pack://` ceiling is measured and needs no re-taking**: `page reload`, 2026-10-07, with `DEBUG=vite:hmr`
+naming it. That is the fallback for an author working against a packaged or beta app, where there is no
+renderer Vite to own the modules — which is what a dev server is rather than a divergence anyone chose.
 
-**Mutation checks** for the open question, if it is taken: ship a pack directory with no `integrity.json`
-(the install refuses, naming it); leave the installed copy older than the shipped one (boot re-installs);
-give a pack a `seedPolicy` and boot twice (the second seeds nothing, and `skipAtBoot` keys are absent both
-times); drop a `packSeedOrder` edge (the dependent seeds before its dependency).
+**Mutation checks for steps 4-6:** ship a pack directory with no `integrity.json` (the install refuses,
+naming it); leave the installed copy older than the shipped one (boot re-installs); give a pack a
+`seedPolicy` and boot twice (the second seeds nothing, and `skipAtBoot` keys are absent both times); drop a
+`packSeedOrder` edge (the dependent seeds before its dependency); set a shipped pack's uninstall property
+true and watch the Packs view offer the button.
 
 ## Risks
 
 **The `pack://` proxy masks a dev-server miss.** `PackProtocol.ts:60-69` does `if (res.ok)` and otherwise
 falls through to reading the installed pack directory, so a 404 from a running dev server silently serves the
 **stale built** `fe.js`. You edit, nothing changes, and nothing says why. Once a marker says a dev server is
-running for a pack, a miss belongs as an error naming the path. Worth fixing regardless, and a candidate
-cause if the HMR measurement finds nothing happening today.
+running for a pack, a miss belongs as an error naming the path. Worth fixing regardless; it was not the cause
+of the dead loop (`ctx.load().code` was), which is why it is still here to find.
 
 **A pack's `feStyles` arrives as a separate `<link>`** (`packFrontendIO.styles.add`), where in dev Vite
 serves CSS through the JS graph. Stale or absent for a pack being developed. Harmless today because the packs
@@ -442,8 +499,21 @@ using that path are not the ones with HMR; it stops being harmless under step 3.
 makes `npm start` slower or stops the API hot-reloading, which is the most-used path in the repo.
 
 **Step 3 changes what a release loads.** The api bundle stops carrying a pack's backend, so a packaging
-mistake becomes "the app boots with no default pack" rather than a build error. The pre-flight check above is
-what stands between the plan and that outcome.
+mistake becomes "the app boots with no default pack" rather than a build error. The pre-flight above was
+taken and passed, so what stands between the plan and that outcome is a `build-prod` smoke run per release
+rather than an argument.
+
+**Step 6 makes first boot able to fail, which is the one real behaviour change here.** Today the app cannot
+fail to find its default pack; afterwards a disk-full or permissions error at first launch means no packs.
+Decided rather than mitigated away: the install is idempotent and verified at every boot, and a failure is
+loud — fatal with a message naming the pack and the path — rather than a silently packless app. The
+alternative, a read-only fallback that loads straight from `resources/`, is the built-in load path returning
+in disguise and should be rejected unless the install proves unreliable in practice.
+
+**What the install costs the backend edit loop: ~10ms**, which is the objection that did not survive
+measurement. default-setup's `dist` is 4.2MB over 20 files; `placePack`'s copy is 7ms (median of 5, 6-9ms)
+and the sha256 of every file that `stagePack` does for `integrity.json` is 3ms — both 2026-10-07, against an
+esbuild rebuild of hundreds of milliseconds. Installing a pack per backend edit is not a devex cost.
 
 **`dist/runtime/fe.js` becomes load-bearing for the app's own frontend** under step 3. A pack FE bundle that
 fails to build currently costs an external pack its UI; afterwards it costs the app its UI in production.
@@ -469,3 +539,5 @@ changed.
 | "item 1 is free" | Deleting `dev-build.mjs` removes the backend watcher `npm start` depends on |
 | "worth doing" | A measurement with a verdict attached. No criterion was stated, so nothing could have failed it |
 | "the one real loss is frontend HMR" | HMR is keyed on a static import, not on being built-in. Re-keying keeps it, and extends it to any pack author in a checkout |
+| **the criterion itself**: "collapse a duplication where it needs no stored-data migration" | It split the work in two and deferred half on the premise that a migration is a one-way door. There is one user and he wrote the app, so both migrations are conveniences — `CLAUDE.md`'s carve-out for stored data is written for users this repo does not have. The order the steps actually have is the code's: one gate, one strip |
+| three reasons step 6 was "a question" | A migration that costs nothing is not a reason; "it renames back to what 0.3.15 renamed away from" was an observation, not an objection; and the seed record's uninstall lifetime is answered by letting shipped packs be uninstallable, with a property deciding whether the button shows — which is on the roadmap anyway |
