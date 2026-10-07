@@ -52,6 +52,29 @@ function stampFor(f: Fixture): string {
   return stamp;
 }
 
+describe('what a walk of a declared input leaves out', () => {
+  /**
+   * A bundler's compiled config. `bundle-require` (through `tsup`) writes `<name>.bundled_<id>.mjs` beside the
+   * config it is loading and removes it when the build ends, so for the length of a build one sits in
+   * `packages/api` — a directory several steps declare.
+   *
+   * A fingerprint taken while one exists records a file the next walk cannot find, so the step is stale
+   * forever after and the reason never surfaces. Its id is random, which is why no `excludes` entry can name
+   * it and the walk has to.
+   */
+  it('leaves out a config a bundler compiled to load it, and nothing else ending in .mjs', () => {
+    const dir = tempDir();
+    fs.writeFileSync(path.join(dir, 'tsup.config.ts'), '');
+    fs.writeFileSync(path.join(dir, 'tsup.config.bundled_vu940slpzx.mjs'), '');
+    fs.writeFileSync(path.join(dir, 'vite.config.bundled_abc123.cjs'), '');
+    fs.writeFileSync(path.join(dir, 'electron-builder.mjs'), '');
+
+    const found = inputFiles(dir).map((file) => path.basename(file)).sort();
+
+    expect(found).toEqual(['electron-builder.mjs', 'tsup.config.ts']);
+  });
+});
+
 describe('the watched input set', () => {
   it('is exactly the workspaces npm run packages:build builds', () => {
     const script: string = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8')).scripts['packages:build'];

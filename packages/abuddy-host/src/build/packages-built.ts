@@ -272,6 +272,17 @@ export const covers = (outer: string, inner: string): boolean => outer === inner
  */
 export const repoRelative = (absolute: string): string => path.relative(REPO_ROOT, absolute).split(path.sep).join('/');
 
+/**
+ * A config a bundler compiled in order to load it: `bundle-require` writes `<name>.bundled_<id>.mjs` beside
+ * the config and removes it again, which is what `tsup` leaves in `packages/api` for the length of a build.
+ *
+ * Skipped because it is there for part of a build and gone at rest, so a fingerprint taken while one exists
+ * records a file the next walk cannot find — the step then never caches and nothing says why. Its id is
+ * random, so no `excludes` entry could name it. `.gitignore` carries the same pattern for the tools that
+ * honour one; this walk does not, which is why both exist.
+ */
+const COMPILED_CONFIG = /\.bundled_[^.]+\.[mc]js$/;
+
 export function inputFiles(target: string, out: string[] = []): string[] {
   let stat: fs.Stats;
   try {
@@ -282,8 +293,11 @@ export function inputFiles(target: string, out: string[] = []): string[] {
   }
   if (stat.isFile()) return (out.push(repoRelative(target)), out);
   for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
-    // Dot files (editor and OS droppings) and installed modules are not sources of this build
-    if (!entry.name.startsWith('.') && entry.name !== 'node_modules') inputFiles(path.join(target, entry.name), out);
+    // Dot files (editor and OS droppings), installed modules and a bundler's compiled config are not sources
+    // of this build
+    if (!entry.name.startsWith('.') && entry.name !== 'node_modules' && !COMPILED_CONFIG.test(entry.name)) {
+      inputFiles(path.join(target, entry.name), out);
+    }
   }
   return out;
 }
