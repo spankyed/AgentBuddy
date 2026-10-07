@@ -105,7 +105,7 @@ produces. `tests/utils/import-is-the-verb.spec.ts` holds the line: nothing retur
 `seed*`.
 
 Three functions import, in a caller relationship, and each name says its scope: `importCompiledSeeds({ compiledDir })`
-here runs the registered seeders over one already-compiled directory; `@abuddy/host`'s `importPackSeeds(packs)`
+here runs the registered seeders over one already-compiled directory; `@abuddy/host`'s `seedPacks(packs)`
 orchestrates that across packs at boot; and `@abuddy/testing`'s `importSeeds({ keys, mode })` compiles the pack's
 entries first, which is why it is the one pack authors call. The code:
 

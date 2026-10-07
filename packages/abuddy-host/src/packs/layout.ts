@@ -297,20 +297,14 @@ export async function extractPackArchive(archive: string, destDir: string, expec
   return path.join(destDir, dirs[0].name);
 }
 
-/** A built-in pack's compiled seed files in its dist/ (`*.seed.json`, `seeds.json`, `media/`), relative to it */
-function builtInSeedFiles(distDir: string): string[] {
-  if (!fs.existsSync(distDir)) return [];
-  const top = fs.readdirSync(distDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && (entry.name.endsWith('.seed.json') || entry.name === 'seeds.json'))
-    .map((entry) => entry.name);
-  const mediaDir = path.join(distDir, 'media');
-  const media = fs.existsSync(mediaDir) ? listFiles(mediaDir).map((file) => `media/${file}`) : [];
-  return [...top, ...media].sort();
+/** A pack's compiled seed files, relative to the seeds directory holding them */
+export function packSeedFiles(seedsDir: string): string[] {
+  return fs.existsSync(seedsDir) ? listFiles(seedsDir).sort() : [];
 }
 
 /**
  * Publish a built-in pack's build output in the pack layout (dist/build/ → build/,
- * dist/runtime/index.cjs → runtime/index.cjs, compiled seeds → runtime/seeds/) so
+ * dist/runtime/index.cjs → runtime/index.cjs, dist/runtime/seeds/ → runtime/seeds/) so
  * pack authors resolve it as a dependency from the installed app: builds use its types and build
  * code, tests its runtime with the seed data it reads (settings defaults). Returns false when the
  * destination was already current.
@@ -326,13 +320,14 @@ export function publishHostPackOutput(builtInPackDir: string, destDir: string): 
   if (!fs.existsSync(snapshot)) return false;
   const buildDir = path.join(distDir, 'build');
   const runtimeEntry = path.join(distDir, PACK_LAYOUT.runtimeEntry);
-  const seedFiles = fs.existsSync(runtimeEntry) ? builtInSeedFiles(distDir) : [];
+  const seedsDir = path.join(distDir, PACK_LAYOUT.seedsDir);
+  const seedFiles = fs.existsSync(runtimeEntry) ? packSeedFiles(seedsDir) : [];
 
   const sources = [
     snapshot,
     ...(fs.existsSync(buildDir) ? listFiles(buildDir).map(f => path.join(buildDir, f)) : []),
     ...(fs.existsSync(runtimeEntry) ? [runtimeEntry] : []),
-    ...seedFiles.map((file) => path.join(distDir, file)),
+    ...seedFiles.map((file) => path.join(seedsDir, file)),
   ];
   const fingerprint = sources.map(f => `${path.relative(builtInPackDir, f)}:${sha256File(f)}`).join('\n');
   const fingerprintFile = path.join(destDir, '.fingerprint');
@@ -350,7 +345,7 @@ export function publishHostPackOutput(builtInPackDir: string, destDir: string): 
     for (const file of seedFiles) {
       const target = path.join(staging, PACK_LAYOUT.seedsDir, file);
       fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.copyFileSync(path.join(distDir, file), target);
+      fs.copyFileSync(path.join(seedsDir, file), target);
     }
   }
   fs.writeFileSync(path.join(staging, '.fingerprint'), fingerprint);

@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it, vi } from 'vitest';
+import { PACK_LAYOUT } from '@abuddy/host/packs';
 import { startTestRuntime } from '@abuddy/sdk/testing';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { createPackRegistry } from '@abuddy/host/packs';
@@ -47,7 +48,7 @@ describe('a build', () => {
       vi.restoreAllMocks();
     }
 
-    expect(Object.keys(JSON.parse(fs.readFileSync(path.join(root, 'dist', 'flows.seed.json'), 'utf-8')))).toEqual(['Main']);
+    expect(Object.keys(JSON.parse(fs.readFileSync(path.join(root, 'dist', PACK_LAYOUT.seedsDir, 'flows.seed.json'), 'utf-8')))).toEqual(['Main']);
     expect(bound.steps()).toEqual([]);
     expect(stepRegistry.all()).toEqual([]);
   });

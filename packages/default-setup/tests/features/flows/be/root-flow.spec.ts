@@ -9,7 +9,8 @@ import { startApp } from '@abuddy/testing/harness'
 import { repository } from '#generated/repository.ts'
 import { ref } from '#generated/ref.ts'
 
-const DIST = path.resolve(import.meta.dirname, '../../../../dist')
+/** Where `abuddy build` writes this pack's compiled seeds */
+const DIST = path.resolve(import.meta.dirname, '../../../../dist', 'runtime', 'seeds')
 const importRoot = (label: string) =>
   repository.flowsCommands.importFromDSL(compileFlowDSL({ [label]: { root: true, tracks: [{ event: 'flow.entry', exits: [[]] }] } })).flowIds[0]
 const reportedRoot = (event: unknown) => (event as { data: { rootFlow?: { id: string } } }).data.rootFlow?.id

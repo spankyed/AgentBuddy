@@ -15,8 +15,8 @@ const packagesDir = path.join(__dirname, '..');
  *
  * A built app renders each pack's own bundle, whose `abuddy build` ran Tailwind over that pack's sources and
  * wrote `dist/runtime/fe.css`. Scanning them here as well would put a pack's classes in the app's
- * stylesheet twice and make the app's build depend on every pack's source, which is the edge
- * `goal-one-kind-of-pack` removed.
+ * stylesheet twice, and — the reason it matters more than the duplication — it would make the app's build
+ * read every pack's source, so `build:app` could no longer be cached on its own inputs.
  */
 const devPackDirs = (process.env.ABUDDY_DEV_PACK_SOURCES ?? '').split(path.delimiter).filter(Boolean);
 

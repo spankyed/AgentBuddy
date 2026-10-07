@@ -6,7 +6,7 @@ import type { PackRegistry } from '../registry.ts';
 import type { PackManifest } from '../discovery.ts';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
-import { importPackSeeds } from './seed.ts';
+import { seedPacks } from './seed.ts';
 
 const logger = createLogger('pack-lifecycle');
 
@@ -109,9 +109,8 @@ export function activatePack(
   }
   boot?.onInit?.();
   // The pack is registered by now, so its migrations and seeds are read from the registry like a boot's
-  const targets = registry.externalPackTargets([packId]);
-  runPackMigrations(targets);
-  importPackSeeds(targets);
+  runPackMigrations(registry.externalPackTargets([packId]));
+  seedPacks(registry.packSeedTargets([packId]));
 
   // The running systems read what the pack registered and seeded (the chat's slash commands, say). Sent
   // before its own systems start: they send their startup data when they do

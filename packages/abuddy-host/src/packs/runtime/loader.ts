@@ -8,7 +8,7 @@ import type { PackRegistration } from '@abuddy/sdk/framework';
 import { packSystemIds, type PackRegistry, type PackOrigin } from '../registry.ts';
 import { discoverBuiltInPacks, discoverPacks, discoveredPackIds, enabledExternalPacks, type BuiltInPackInfo, type PackManifest } from '../discovery.ts';
 import { disabledPackIds, forgetPacksExcept } from '../installed.ts';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION, buildFormatProblem, isPackLayout, readPackIntegrity } from '../layout.ts';
+import { PACK_LAYOUT, PACK_LAYOUT_VERSION, buildFormatProblem, isPackLayout, packLayoutDir, readPackIntegrity } from '../layout.ts';
 import { isHostCompatible } from '../installer.ts';
 import { packLoadFailed, packRegistered } from '../load-messages.ts';
 import { findSdkVersion } from '../../build/shared-deps.ts';
@@ -60,7 +60,7 @@ export interface BuiltInRuntime {
  * and the new module starts without the directory.
  */
 function packRegistration(mod: BuiltInRuntime, packDir: string): PackRegistration | undefined {
-  mod.setCompiledDir?.(path.join(packDir, 'dist'));
+  mod.setCompiledDir?.(path.join(packLayoutDir({ dir: packDir, builtIn: true }), PACK_LAYOUT.seedsDir));
   return mod.registration;
 }
 
@@ -186,20 +186,13 @@ export function loadSingleExternalPack(
   const registration = loadBundledRuntime(manifest, dir, runtimeEntry);
   if ('problem' in registration) return registration;
 
+  // The one thing the app adds to what a pack registered: the entity types its manifest declares, for a
+  // pack whose registration names none. Written onto the pack module's own object, which is safe only
+  // because it is the same value every load — nothing is *taken off* a registration any more
   if (!registration.ears && (manifest.entities || manifest.relKinds)) {
     registration.ears = { entities: manifest.entities ?? {}, relKinds: manifest.relKinds ?? {} };
   }
 
-  // `boot` and `ears` are the pack module's own objects; what the app refuses an external pack is taken off a
-  // copy, so a reload that reuses the module sees what the pack exported rather than what the last load left
-  // of it
-  if (registration.boot?.seedManifest) {
-    registration.boot = { ...registration.boot };
-    // External pack seeds are hash-checked per pack by importPackSeeds(); the declarative boot seed path is
-    // reserved for built-in packs. It tracked a single global hash when that was the reason; it has been per
-    // pack since `builtInSeedHashes`, so what is left is that nothing has made the two paths one
-    delete registration.boot.seedManifest;
-  }
   return {
     registration,
     origin: { id: manifest.id, name: manifest.name, version: manifest.version, dir, builtIn: false, manifest },

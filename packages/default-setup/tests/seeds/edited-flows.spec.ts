@@ -39,8 +39,9 @@ function compiled(changed: string[] = [], version = 'changed', { only, packId = 
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-seed-'));
   dirs.push(dir);
   fs.writeFileSync(path.join(dir, SEED_INDEX_FILE), JSON.stringify({ version: 1, packId, seeds: [] }));
-  for (const key of ['actions', 'prompts']) fs.copyFileSync(path.join(PACK_DIR, 'dist', seedFile(key)), path.join(dir, seedFile(key)));
-  const all = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'dist', seedFile('flows')), 'utf-8')) as Record<string, { sourceHash?: string }>;
+  const seedsDir = path.join(PACK_DIR, 'dist', 'runtime', 'seeds');
+  for (const key of ['actions', 'prompts']) fs.copyFileSync(path.join(seedsDir, seedFile(key)), path.join(dir, seedFile(key)));
+  const all = JSON.parse(fs.readFileSync(path.join(seedsDir, seedFile('flows')), 'utf-8')) as Record<string, { sourceHash?: string }>;
   const flows = only ? Object.fromEntries(only.map((name) => [name, all[name]])) : all;
   for (const name of changed) flows[name] = { ...flows[name], sourceHash: `${version}-${flows[name].sourceHash}` };
   fs.writeFileSync(path.join(dir, seedFile('flows')), JSON.stringify(flows));

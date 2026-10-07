@@ -8,7 +8,7 @@
 
 import * as fs from 'node:fs';
 import type { AnyStateMachine } from 'xstate';
-import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem, PackSeedManifest } from '@abuddy/sdk/framework';
+import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@abuddy/sdk/framework';
 import type { PackManifest } from '@abuddy/sdk/build';
 import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { HostServices } from '@abuddy/sdk/services';
@@ -20,6 +20,7 @@ import { HOST_PACK_ID, resolveName, splitRef, type FeatureRef } from '@abuddy/sd
 import { registerRepository, unregisterRepository } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { discoverPacks, packSeedOrder } from './discovery.ts';
+import type { PackSeedTarget } from './runtime/seed.ts';
 import { addContributions, createDefinitionStore, createDesignationStore, createStepStore, definitions, type Contribution, type UndoLog } from './extensions.ts';
 import { createCommandStore, createHelpStore, createSeedHookStore, createSeederStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
@@ -206,10 +207,14 @@ export interface PackRegistry extends PackRegistryView {
    */
   externalPackTargets(packIds?: Iterable<string>): Array<{ manifest: PackManifest; dir: string; migrations?: PackMigration[] }>;
   /**
-   * Seeds each registered pack's declarative boot seed (`boot.seedManifest`, built-in packs only: the
-   * loader strips it from external packs, which seed through `importPackSeeds`)
+   * Every registered pack as `seedPacks` takes it, in dependency order: where its seeds are, what it
+   * depends on, and the `seedPolicy` its registration declares. With `packIds`, only those — activation and
+   * reload seed the one pack they handled.
+   *
+   * A pack the app ships is in here beside an installed one: one seed path, one freshness record, one
+   * policy mechanism.
    */
-  runRegisteredBootSeeds(orchestrateSeed: (manifest: PackSeedManifest, packId: string) => void): void;
+  packSeedTargets(packIds?: Iterable<string>): PackSeedTarget[];
   getPackExtensions(packId: string): PackExtensions | null;
   /** Registers a hook run when the pack `key` stops, or, without a key, when the app exits */
   registerShutdownHook(hook: () => void, key?: string): void;
@@ -571,10 +576,21 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     getBootHooks: () => [...registrations.values()].flatMap((reg) => (reg.boot ? [reg.boot] : [])),
     getPackRegistration: (packId) => registrations.get(packId) ?? null,
 
-    runRegisteredBootSeeds(orchestrateSeed) {
-      for (const reg of registrations.values()) {
-        if (reg.boot?.seedManifest) orchestrateSeed(reg.boot.seedManifest, reg.id);
-      }
+    packSeedTargets(packIds) {
+      const wanted = packIds && new Set(packIds);
+      // Dependency order over every pack. A pack the app ships declares no dependencies — it is what others
+      // depend on — so it sorts ahead of them, which is the order the two separate paths used to produce by
+      // running one after the other
+      const ordered = packSeedOrder([...origins.values()]
+        .filter((origin) => !wanted || wanted.has(origin.id))
+        .map((origin) => ({ id: origin.id, dependencies: origin.manifest?.dependencies, origin })));
+      return ordered.map(({ origin }) => ({
+        manifest: { id: origin.id, dependencies: origin.manifest?.dependencies },
+        dir: origin.dir,
+        ...(origin.builtIn && { builtIn: true as const }),
+        ...(registrations.get(origin.id)?.boot?.seedManifest?.seedPolicy
+          && { seedPolicy: registrations.get(origin.id)!.boot!.seedManifest!.seedPolicy }),
+      }));
     },
 
     getPackExtensions(packId) {

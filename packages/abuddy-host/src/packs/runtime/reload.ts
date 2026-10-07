@@ -14,7 +14,7 @@ import {
   refreshBuiltInPackInfo,
 } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
-import { orchestrateDeclarativeSeed, importPackSeeds } from './seed.ts';
+import { seedPacks } from './seed.ts';
 
 const logger = createLogger('pack-reload');
 
@@ -105,9 +105,9 @@ export async function reloadPackById(
   // refuse exactly the case the reload is for. The packs dir is what makes a pack installed.
   const { packsDir } = resolveAppContext();
   if (fs.existsSync(path.join(packsDir, packId))) return reloadExternalPack(registry, packId, backendActor);
-  // The load itself is the same either way. What still differs is the data step after it — a pack the app
-  // ships seeds through the declarative boot seed and an installed one through `importPackSeeds` — which is
-  // the difference `docs/goals/goal-one-kind-of-pack.md`'s Phase 5 merges, and with it this branch
+  // The load and the seeding are the same either way now. What still differs is what follows: a pack the
+  // app ships has its build output published for pack authors to resolve, which Phase 6 of
+  // `docs/goals/goal-one-kind-of-pack.md` removes along with this branch
   return reloadBuiltInPack(registry, packId, backendActor);
 }
 
@@ -146,9 +146,8 @@ async function reloadExternalPack(
       onShutdown: pack.registration.boot?.onShutdown,
       onInit: pack.registration.boot?.onInit,
       afterRegister: () => {
-        const targets = registry.externalPackTargets([packId]);
-        runPackMigrations(targets);
-        importPackSeeds(targets);
+        runPackMigrations(registry.externalPackTargets([packId]));
+        seedPacks(registry.packSeedTargets([packId]));
       },
     };
   }, packDir);
@@ -180,11 +179,11 @@ async function reloadBuiltInPack(
       onInit: registration.boot?.onInit,
       afterRegister: () => {
         refreshBuiltInPackInfo(registry, packId);
-        // A rebuild can carry new compiled seeds; the boot seed is hash-checked, so unchanged data isn't re-imported.
-        // A rebuild running again mid-reload can take those files out from under it, so it doesn't stop the rest.
-        const seedManifest = registry.getPackRegistration(packId)?.boot?.seedManifest;
+        // A rebuild can carry new compiled seeds; the seed is hash-checked, so unchanged data isn't
+        // re-imported. A rebuild running again mid-reload can take those files out from under it, so it
+        // doesn't stop the rest.
         try {
-          if (seedManifest) orchestrateDeclarativeSeed(seedManifest, packId);
+          seedPacks(registry.packSeedTargets([packId]));
         } catch (err) {
           logger.error(`Could not seed ${packId}'s compiled data on reload:`, err as Error);
         }

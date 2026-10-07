@@ -22,26 +22,27 @@ export interface AppState {
   /**
    * Each external pack's version its migrations last ran to, by pack id.
    *
-   * Kept when the pack is uninstalled, along with `externalSeedHashes`: these say what has been done to the
+   * Kept when the pack is uninstalled, along with `packSeedHashes`: these say what has been done to the
    * data, and uninstalling a pack deletes its directory, not its rows. Forgetting them would run a
    * reinstalled pack's migrations again over data they have already moved. A pack reinstalled at the
    * version it was therefore neither migrates nor re-seeds — `services.appData` re-imports its seeds if
    * the rows really are gone.
    */
   packVersions: Record<string, string>;
-  /** Each external pack's compiled seed data last seeded, by pack id. Kept on uninstall; see above */
-  externalSeedHashes: Record<string, string>;
   /**
-   * For each external pack whose last seed failed, the seed state of the packs it depends on at that
-   * moment. A pack that seeded cleanly has no entry.
+   * Each pack's compiled seed data last seeded, by pack id — every pack, whoever ships it. Kept on
+   * uninstall; see above.
+   */
+  packSeedHashes: Record<string, string>;
+  /**
+   * For each pack whose last seed failed, the seed state of the packs it depends on at that moment. A pack
+   * that seeded cleanly has no entry.
    *
    * It is what makes a failed seed retryable without re-importing it on every boot: the pack's own hash
    * says its data hasn't changed, and this says whether anything it depends on has seeded since — the
    * other thing that could change the outcome.
    */
-  externalSeedDeps: Record<string, string>;
-  /** Each built-in pack's boot seed last seeded, by pack id: the hash of its compiled data */
-  builtInSeedHashes: Record<string, string>;
+  packSeedDeps: Record<string, string>;
   /**
    * The plugins whose sidebar tab the user showed or hid, by ref. A plugin not here shows as its feature declares
    * (`features[].settings`' `visible`), so a pack's default reaches everyone who never touched its tab.
@@ -52,7 +53,7 @@ export interface AppState {
 }
 
 const FIELDS = [
-  'hasOnboarded', 'version', 'packVersions', 'externalSeedHashes', 'externalSeedDeps', 'builtInSeedHashes',
+  'hasOnboarded', 'version', 'packVersions', 'packSeedHashes', 'packSeedDeps',
   'pluginVisibility', 'lastActivePlugin',
 ] as const satisfies readonly (keyof AppState)[];
 
@@ -85,9 +86,8 @@ export const appState = {
       hasOnboarded: row.hasOnboarded ?? false,
       ...(row.version !== undefined && { version: row.version }),
       packVersions: row.packVersions ?? {},
-      externalSeedHashes: row.externalSeedHashes ?? {},
-      externalSeedDeps: row.externalSeedDeps ?? {},
-      builtInSeedHashes: row.builtInSeedHashes ?? {},
+      packSeedHashes: row.packSeedHashes ?? {},
+      packSeedDeps: row.packSeedDeps ?? {},
       pluginVisibility: row.pluginVisibility ?? {},
       ...(row.lastActivePlugin != null && { lastActivePlugin: row.lastActivePlugin }),
     };

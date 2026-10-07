@@ -13,7 +13,8 @@ import compileSettings from '../../../src/seeds/_compilers/settings.ts';
 import { ref } from '#generated/ref.ts';
 
 const PACK_DIR = path.resolve(import.meta.dirname, '../../..');
-const DIST = path.join(PACK_DIR, 'dist');
+/** Where `abuddy build` writes this pack's compiled seeds */
+const DIST = path.join(PACK_DIR, 'dist', 'runtime', 'seeds');
 
 const dirs: string[] = [];
 afterEach(() => {

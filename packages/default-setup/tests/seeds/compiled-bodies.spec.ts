@@ -10,7 +10,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const DIST = path.join(path.resolve(import.meta.dirname, '../..'), 'dist');
+/** Where `abuddy build` writes this pack's compiled seeds */
+const DIST = path.join(path.resolve(import.meta.dirname, '../..'), 'dist', 'runtime', 'seeds');
 
 /** Parses a body without running it; `AsyncFunction` so `await` inside one is allowed */
 const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor as new (...args: string[]) => unknown;

@@ -76,14 +76,15 @@ export function findDepFiles(dir: string): DepFiles | null {
 function withBuildAndRuntime(snapshot: PackSnapshot, root: string): DepFiles {
   const buildDir = path.join(root, PACK_LAYOUT.buildDir);
   const runtimeEntry = path.join(root, PACK_LAYOUT.runtimeEntry);
-  // An installed pack's seeds are under runtime/; a built-in pack's dist keeps them at its top
-  const seedsDir = [path.join(root, PACK_LAYOUT.seedsDir), root].find((dir) => fs.existsSync(path.join(dir, SEED_INDEX_FILE)));
+  // One place for every pack's compiled seeds, named by its index
+  const seedsDir = path.join(root, PACK_LAYOUT.seedsDir);
+  const hasSeeds = fs.existsSync(path.join(seedsDir, SEED_INDEX_FILE));
   const hasRuntime = fs.existsSync(runtimeEntry);
   return {
     snapshot,
     ...(fs.existsSync(buildDir) && { buildDir }),
     ...(hasRuntime && { runtimeEntry }),
-    ...(hasRuntime && seedsDir && { seedsDir }),
+    ...(hasRuntime && hasSeeds && { seedsDir }),
   };
 }
 
@@ -349,16 +350,14 @@ function cacheDep(root: string, depId: string, artifacts: DepFiles): void {
   }
 }
 
-/** Copies compiled seeds (`*.seed.json`, `seeds.json`, `media/`) without the rest of a built-in pack's dist */
+/**
+ * Copies a pack's compiled seeds. The whole directory, because that is all it holds — it used to pick
+ * `*.seed.json`, `seeds.json` and `media/` out of a built-in pack's entire `dist/`, which is not where any
+ * pack's seeds are written any more.
+ */
 function copySeeds(from: string, to: string): void {
-  fs.mkdirSync(to, { recursive: true });
-  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
-    if (entry.isFile() && (entry.name.endsWith('.seed.json') || entry.name === SEED_INDEX_FILE)) {
-      fs.copyFileSync(path.join(from, entry.name), path.join(to, entry.name));
-    } else if (entry.isDirectory() && entry.name === 'media') {
-      fs.cpSync(path.join(from, entry.name), path.join(to, entry.name), { recursive: true });
-    }
-  }
+  fs.rmSync(to, { recursive: true, force: true });
+  fs.cpSync(from, to, { recursive: true });
 }
 
 // ── Resolution chain ──

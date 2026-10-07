@@ -143,9 +143,9 @@ export async function build(args: string[]) {
   }
 
   const packDir = root;
-  // Where the compiled seeds land still differs, and Phase 5 of `docs/goals/goal-one-kind-of-pack.md` is what
-  // takes that apart: the app reads a shipped pack's from `dist/` and an installed pack's from `runtime/seeds/`
-  const seedsOutputDir = manifest.builtIn ? outputDir : path.join(outputDir, PACK_LAYOUT.seedsDir);
+  // One place for a pack's compiled seeds, whoever ships it: `dist/runtime/seeds/`, which staging and
+  // publishing carry to `runtime/seeds/` in the installed layout. The app's seeding reads that one path
+  const seedsOutputDir = path.join(outputDir, PACK_LAYOUT.seedsDir);
   const snapshotPath = path.join(outputDir, PACK_LAYOUT.snapshot);
 
   let result: { seeds: Record<string, number>; warnings: string[] } | null = null;

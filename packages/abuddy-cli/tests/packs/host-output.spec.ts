@@ -35,10 +35,12 @@ function builtInPack(snapshot: object = { types: { entities: {}, relKinds: {} },
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "base-pack" };');
   // Compiled seeds at the top of a built-in pack's dist, beside files that aren't seeds
-  fs.writeFileSync(path.join(dir, 'dist', 'settings.seed.json'), '{"theme":"dark"}');
-  fs.writeFileSync(path.join(dir, 'dist', 'seeds.json'), '{"version":1,"seeds":[]}');
-  fs.mkdirSync(path.join(dir, 'dist', 'media', 'library'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'dist', 'media', 'library', 'pic.png'), 'PNG');
+  // Compiled seeds, where `abuddy build` writes them for every pack
+  fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir, 'settings.seed.json'), '{"theme":"dark"}');
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir, 'seeds.json'), '{"version":1,"seeds":[]}');
+  fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir, 'media', 'library'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir, 'media', 'library', 'pic.png'), 'PNG');
   fs.mkdirSync(path.join(dir, 'dist', 'defs'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'defs', 'actions.d.ts'), '');
   return dir;
@@ -58,7 +60,7 @@ describe('publishHostPackOutput', () => {
     expect(fs.existsSync(path.join(dest, 'runtime', 'seeds', 'media', 'library', 'pic.png'))).toBe(true);
     expect(publishHostPackOutput(src, dest)).toBe(false);
 
-    fs.writeFileSync(path.join(src, 'dist', 'settings.seed.json'), '{"theme":"light"}');
+    fs.writeFileSync(path.join(src, 'dist', PACK_LAYOUT.seedsDir, 'settings.seed.json'), '{"theme":"light"}');
     expect(publishHostPackOutput(src, dest)).toBe(true);
     expect(fs.readFileSync(path.join(dest, 'runtime', 'seeds', 'settings.seed.json'), 'utf-8')).toContain('light');
 
@@ -80,7 +82,7 @@ describe('publishHostPackOutput', () => {
     const dest = path.join(_appDirOf(tmp), 'host-packs', 'base-pack');
     publishHostPackOutput(src, dest);
 
-    fs.writeFileSync(path.join(src, 'dist', 'seeds.json'), '{"version":1,"seeds":[{"key":"notes"}]}');
+    fs.writeFileSync(path.join(src, 'dist', PACK_LAYOUT.seedsDir, 'seeds.json'), '{"version":1,"seeds":[{"key":"notes"}]}');
 
     expect(publishHostPackOutput(src, dest)).toBe(true);
     expect(fs.readFileSync(path.join(dest, 'runtime', 'seeds', 'seeds.json'), 'utf-8')).toContain('notes');

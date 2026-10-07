@@ -31,12 +31,12 @@ function dependentPack(spec: string): string {
   write(root, 'package.json', JSON.stringify({ name: 'dependent-pack', type: 'module' }));
   write(root, 'abuddy.json', JSON.stringify({ id: 'dependent-pack', name: 'Dependent', version: '1.0.0', dependencies: { 'default-setup': '*' } }));
   const dep = path.join(root, '.abuddy', 'deps', 'default-setup');
-  fs.mkdirSync(path.join(dep, 'runtime', 'seeds'), { recursive: true });
+  fs.mkdirSync(path.join(dep, 'runtime'), { recursive: true });
   fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.snapshot), path.join(dep, 'snapshot.json'));
   fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, 'runtime', 'index.cjs'), path.join(dep, 'runtime', 'index.cjs'));
-  for (const file of fs.readdirSync(DEFAULT_SETUP_DIST)) {
-    if (file.endsWith('.seed.json') || file === 'seeds.json') fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, file), path.join(dep, 'runtime', 'seeds', file));
-  }
+  // Its compiled seeds, from the one place every pack's build writes them, into the one place the harness
+  // reads a dependency's from
+  fs.cpSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.seedsDir), path.join(dep, PACK_LAYOUT.seedsDir), { recursive: true });
   // As `abuddy init` scaffolds it: one call, so this fixture stays what a real pack has
   write(root, 'vitest.config.ts', `
 import { definePackTestConfig } from '@abuddy/testing/vitest';
