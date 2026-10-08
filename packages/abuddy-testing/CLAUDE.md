@@ -116,9 +116,14 @@ Three things follow.
   rebuilds the pack through `build()` on every file change, and the check reads every source of all five
   packages, so `abuddy build` refreshes in `buildCommand` while `build()` stays clean. Both placements
   are pinned by `abuddy-cli/tests/build/checkout-packages.spec.ts`.
-- **A checker must not try to repair.** Its process has already resolved and loaded modules; a rebuild
-  underneath it would leave half of two builds in memory. `assertCheckoutPackagesFresh` reports a build
-  running beside it separately for that reason, and says to wait rather than to start another.
+- **A checker must not try to repair, but waiting is not repairing.** Its process has already resolved and
+  loaded modules; a rebuild underneath it would leave half of two builds in memory. So doors 5 and 6 both
+  **wait** for a build in flight and then re-read (`waitForPackageBuild`), and neither starts one: a build
+  removes each stamp before rewriting it, so one running beside a check makes its packages read as unbuilt,
+  and a check that runs as a spec file loads runs whenever the scheduler happened to start it. Door 5
+  reported that instead of waiting until 2026-10-08, which failed a chain run about the race rather than
+  the code — two pool steps each ensure the packages, so one can build while the other's first spec loads.
+  What is still named is a holder that outlasted the bound, which is a wedge rather than a queue.
 
 One path is deliberately not in the table twice. `npm start` reaches door 3, because its
 `prebuild:be:dev` builds the built-in pack with `abuddy build --skip-fe`, and that command ensures —

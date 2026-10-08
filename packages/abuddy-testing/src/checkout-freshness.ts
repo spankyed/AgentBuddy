@@ -5,7 +5,7 @@
 // @abuddy/host, since the bundle inlines it — so the harness says so instead of passing quietly.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { CHECKOUT_MARKER, REPO_ROOT, runningPackageBuild, stalePackageUnits, staleMessage, type StaleUnit } from '@abuddy/host/build/packages-built';
+import { CHECKOUT_MARKER, REPO_ROOT, runningPackageBuild, stalePackageUnits, staleMessage, waitForPackageBuild, type StaleUnit } from '@abuddy/host/build/packages-built';
 
 /** What the check reads. The defaults are this checkout's; a test passes its own. */
 export interface CheckoutFreshnessOptions {
@@ -15,6 +15,8 @@ export interface CheckoutFreshnessOptions {
   stalePackages?: () => StaleUnit[];
   /** The package build running right now, if one is */
   runningBuild?: () => { pid: number; label: string } | undefined;
+  /** Waits for a build in flight, bounded. Injected so a test reaches the refusal without waiting one out */
+  waitForBuild?: () => unknown;
 }
 
 /**
@@ -25,19 +27,33 @@ export interface CheckoutFreshnessOptions {
  * anything that does throw here is a bug in the check and should be seen, not swallowed into a pass.
  */
 export function assertCheckoutPackagesFresh(
-  { root = REPO_ROOT, stalePackages = stalePackageUnits, runningBuild = runningPackageBuild }: CheckoutFreshnessOptions = {},
+  { root = REPO_ROOT, stalePackages = stalePackageUnits, runningBuild = runningPackageBuild,
+    waitForBuild = waitForPackageBuild }: CheckoutFreshnessOptions = {},
 ): void {
   if (!fs.existsSync(path.join(root, CHECKOUT_MARKER))) return;
+  if (stalePackages().length === 0) return;
+  /**
+   * **A build in flight is waited for, not reported.** A build removes each stamp before rewriting it, so one
+   * running beside this makes its packages read as unbuilt — and this check runs as a spec file loads, which
+   * is whenever the scheduler happened to start it. Refusing there fails about the race rather than the code:
+   * two of the chain's pool steps each ensure the packages, so one can be building while the other's first
+   * spec loads, and that run died on a message telling the reader to try again.
+   *
+   * Waiting is not repairing, which is the rule a checker is held to (`abuddy-testing/CLAUDE.md`'s doors):
+   * nothing is built here, the bound belongs to the lock, and `packagesBuiltOrRefuse` — door 6, the same
+   * question asked at the other door — has waited for exactly this since it existed.
+   */
+  waitForBuild();
   const stale = stalePackages();
   if (stale.length === 0) return;
-  // A build removes each stamp before rewriting it, so one running beside this run makes its packages
-  // read as unbuilt. Still a failure — what is on disk right now is half of two builds — but the fix is
-  // to wait for it, not to start another.
+  // Still stale after the wait: either the holder outlasted the bound, or the build that just finished was of
+  // sources older than these. The first is worth naming, since it is a wedge rather than a queue.
   const building = runningBuild();
   if (building) {
     throw new Error(
-      `A package build is running in this checkout (pid ${building.pid}, ${building.label}), so its packages are `
-      + 'part-written and this run would test a mixture of two builds. Wait for that build to finish, then run this again.',
+      `A package build has been running in this checkout longer than the wait allows (pid ${building.pid}, `
+      + `${building.label}), so its packages are part-written and this run would test a mixture of two builds. `
+      + 'Wait for that build to finish, then run this again.',
     );
   }
   throw new Error(

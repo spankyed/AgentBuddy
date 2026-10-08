@@ -52,13 +52,32 @@ describe('the packages a pack test run loads', () => {
     expect(() => assertCheckoutPackagesFresh({ root: root('installed'), stalePackages: threw })).not.toThrow();
   });
 
-  // A build removes each stamp before rewriting it, so a run beside one sees packages that look unbuilt
-  it('names the build running beside it, rather than asking for the build that is already running', () => {
+  /**
+   * A build removes each stamp before rewriting it, so a run beside one sees packages that look unbuilt — and
+   * this check runs as a spec file loads, whenever the scheduler happened to start it. So it waits first, as
+   * door 6 does, rather than failing about the race.
+   */
+  it('waits for a build in flight and passes once it has finished', () => {
+    let waited = 0;
+    let built = false;
+    expect(() => assertCheckoutPackagesFresh({
+      root: root('checkout'),
+      // Stale until the build this waits for finishes, which is what makes the wait the thing under test
+      stalePackages: () => (built ? [] : STALE),
+      runningBuild: () => ({ pid: 4321, label: '@abuddy/ui' }),
+      waitForBuild: () => { waited += 1; built = true; },
+    })).not.toThrow();
+    expect(waited, 'it judged without waiting for the build it could see').toBe(1);
+  });
+
+  /** The wedge, which is the one worth naming: a holder that outlasted the bound rather than a queue */
+  it('names a build still running after the wait', () => {
     expect(() => assertCheckoutPackagesFresh({
       root: root('checkout'),
       stalePackages: () => STALE,
       runningBuild: () => ({ pid: 4321, label: '@abuddy/ui' }),
-    })).toThrow(/A package build is running in this checkout \(pid 4321, @abuddy\/ui\)[\s\S]*Wait for that build/);
+      waitForBuild: () => undefined,
+    })).toThrow(/longer than the wait allows \(pid 4321, @abuddy\/ui\)[\s\S]*Wait for that build/);
   });
 
   it('asks for the build when none is running, so a stale checkout still names the fix', () => {
