@@ -12,15 +12,14 @@ import baseSettings from '../seeds/default-settings.ts';
 /**
  * The base settings this pack contributes: its `general` and `assistant` sections, with no plugin's slice.
  *
- * **An import, because this is this pack's own source.** It used to be a `boot.seed` entry: compiled to
- * `settings.seed.json`, written to disk, and read back here with `readFileSync` — a round trip whose only
- * consumer was the pack that wrote it, and whose cost was a "run `npm run compile` first" error for anyone
- * who had not paid it. `boot.seed` is for entries that import rows into the database, and this never did:
- * the settings row holds only what the user changed, and the store composes these defaults underneath it
- * from the registration.
+ * **An import, because this is this pack's own source, and not a seed entry.** `boot.seed` is for entries
+ * that import rows into the database, and these are never written to one: the settings row holds only what
+ * the user changed, and the store composes these defaults underneath it from this pack's registration. A
+ * pack compiling its own content to disk only to read it back needs the build to have run before the app
+ * can start, which is the cost an import avoids.
  *
- * The compiler's one check comes with it, since that is a claim about this file rather than about compiling:
- * a feature declares its own settings, and whether its tab shows, in `features[].settings`.
+ * `assertNoPluginSlice` travels with it, being a claim about this file rather than about compiling: a
+ * feature declares its own settings, and whether its tab shows, in `features[].settings`.
  */
 export function getBaseSettings(): SettingsData {
   assertNoPluginSlice(baseSettings, 'src/seeds/default-settings.ts');

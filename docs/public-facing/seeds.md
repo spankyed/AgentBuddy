@@ -444,14 +444,6 @@ Point your manifest at the seed directories:
 
 A specialty key takes its path as a string or `{ "path": … }`; any other key is a [seed entry](#seeding-entities). `abuddy build` compiles each key into `<key>.seed.json` (media into `media/<key>/`) and writes `seeds.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Seeds. Seeding runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. The hash covers every seeded key's compiled file, so changing one key's source re-runs the pack's boot seed, its other rows still being skipped by their own hashes. At boot, packs seed in dependency order, so a pack's seeds can reference what a pack it declares a dependency on seeded. A seed that reports errors fails: an external pack's error is recorded on its installed-packs entry, and the same output isn't retried until it changes — or until one of the packs it depends on seeds, since that is the other thing that can change the outcome. Installing the pack again is also a fresh attempt, even at the version already installed: an install replaces the compiled files, and what was last seeded is remembered as the files and not only their contents.
 
-### Seed policy
-
-
-| Field | Effect |
-|---|---|
-| `skipAtBoot: string[]` | These keys are never seeded at boot (default-setup: `settings`) |
-| `skipAfterOnboarding: string[]` | These keys are seeded at boot only until the user has onboarded (default-setup: `notes`) |
-
 ### Include sets
 
 Seeders take an include set per key (`SeedIncludeSet = true | ReadonlySet<string>`, from `@abuddy/sdk/utils`). `true` or no entry seeds every item; a set seeds only the top-level items it names, and an empty set skips the key. Boot seeding includes every key; Import Pack Seeds builds them from the items the user picks. Items are named as `seeds.json` lists them:
@@ -552,7 +544,7 @@ The build loads TypeScript compiler modules itself, and bundles every compiler m
 
 An entry `{ "seeder": "src/seeds/custom.ts" }` (no `path` or `format`) replaces the format and generic seeder with the module's named export `seed`, which the generated `seeders.ts` puts in the pack's registration under the entry key. The build compiles nothing for it, so the module brings its own data.
 
-An entry with all three, `{ "path", "format", "seeder" }`, is compiled with the format, and the module's `seed` seeds the compiled `<key>.seed.json` instead of the generic seeder, even when the format names no entity. default-setup's `settings` entry works this way: its format merges the default settings into one record, and its seeder resets the user's settings when the seed is imported.
+An entry with all three, `{ "path", "format", "seeder" }`, is compiled with the format, and the module's `seed` seeds the compiled `<key>.seed.json` instead of the generic seeder, even when the format names no entity — for content whose rows the generic seeder cannot place, where the compiler still does the reading.
 
 ```typescript
 // src/seeds/custom.ts
@@ -666,7 +658,9 @@ Re-seeding follows the same rules for every entry:
 
 Rows without a stored `sourceHash` (rows users created) stay user-owned. A seeded row without `seededFields` (flows: `seededGraph`) can't be checked for edits, so it's left alone like an edited one.
 
-**A seeded row the user deleted is not seeded again, and nor are its children.** A seed finds its own row by `seedKey` whether or not the row is deleted, so a soft-deleted row is one the user threw away: it is left alone, and its children are not visited — they would be created under a deleted parent. This is the same rule as the ones above (leave what the user has taken ownership of), and it means a pack needs no policy to say "seed this only on a first run". `wipe-and-replace` is the exception by definition: it removes every row of the entry's types first, deleted ones included, and creates them all again.
+**A seeded row the user threw away is not seeded again, and nor are its children** — where throwing it away is *recorded*. A seed finds its own row by `seedKey` whether or not the row is marked deleted, so a trashed row (`trash.move`, `deleted: true`) is one the user has taken ownership of: it is left alone, and its children are not visited — they would be created under a deleted parent. This is the same rule as the ones above, and it means a pack needs no policy to say "seed this only on a first run".
+
+**A row deleted outright leaves nothing to find, so it is seeded again.** Nothing records that it existed, and a seed cannot tell it from a row that was never created — which is the thing to know when deciding what your feature's delete does: trash a row the user should be able to be rid of for good, destroy one they should get back on the next boot. Of the content the app ships, notes, actions and prompts trash; flows and library documents and collections are destroyed, and come back. `wipe-and-replace` makes the question moot by definition: it removes every row of the entry's types first, trashed ones included, and creates them all again.
 
 ## Slash commands
 

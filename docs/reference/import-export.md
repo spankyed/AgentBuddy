@@ -160,8 +160,8 @@ At boot, the host seeds every pack's compiled seeds (`seedPacks`, `@abuddy/host/
 seeded. A SHA-256 hash of those files is stored per pack in the app's state (`AppState.packSeedHashes`). If
 it matches on the next startup, seeding is skipped; changed data triggers a re-seed. A pack whose last seed
 failed is retried when a pack it depends on has seeded since (`AppState.packSeedDeps` holds what that attempt
-faced). A pack may keep keys out of a run with `boot.seed`'s `seedPolicy` — `skipAtBoot` always,
-`skipAfterOnboarding` once the user has onboarded.
+faced). Every key a pack declares is imported: there is no policy saying otherwise, because `boot.seed`
+holds only entries that import rows, and the seeder itself leaves a row the user trashed alone.
 
 **The hash is over content alone** — the bytes and the file names holding them. File times are not in them: a pack's files are replaced wholesale by every install (`placePack` renames a fresh directory into place), so hashing their mtimes made a reinstall of the identical pack read as changed data, and a `touch` re-seed. Putting a pack's data back on purpose is `IMPORT_PACK_SEEDS`, which the Settings view drives with a preview, a per-key selection and a collision mode.
 

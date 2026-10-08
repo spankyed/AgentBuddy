@@ -612,6 +612,11 @@ mirrors entities exactly: a feature-level home, and a pack-level one for what no
 **10. Every seed concern moves under `seed`**: `formats` (was `seedFormats`), `hooks` (was `seedHooks`),
 `sources` (was `boot.seed`), `policy` (was `boot.seedPolicy`).
 
+> **`boot.seedPolicy` no longer exists** (removed 2026-10-08,
+> [`goal-boot-seed-imports-rows.md`](../archive/goals/goal-boot-seed-imports-rows.md)): every key a pack
+> declares is imported, and the seeder itself leaves a row the user trashed alone. So there is no `policy`
+> to move, here or in Phase 3, and `boot` holds `hooks` and `seed` rather than three things.
+
 `boot.seed` becomes `sources`, not `data`, for two reasons. It is what the entries are: every value is
 a path or a `{ path, format, seeder }` over source files a compiler reads, and both the current schema
 description ("Seed data sources") and `resolve.ts`'s `sourcePath` already use the word. And it keeps
@@ -922,9 +927,9 @@ fails schema validation with a message naming `extensions`.
 
 ### Phase 3 — `seed`: one section for seeding
 
-- Move `seedFormats` → `seed.formats`, `seedHooks` → `seed.hooks`, `boot.seed` → `seed.sources`,
-  `boot.seedPolicy` → `seed.policy`; what remains of `boot` becomes the flat `lifecycle: "<path>"`, and
-  `migrations` stays a root key (Decision 10).
+- Move `seedFormats` → `seed.formats`, `seedHooks` → `seed.hooks`, `boot.seed` → `seed.sources`
+  (there is no `boot.seedPolicy` to move — see Decision 10); what remains of `boot` becomes the flat
+  `lifecycle: "<path>"`, and `migrations` stays a root key (Decision 10).
 - Update `generate-entries.ts` (seeders, seed runtime), `build.ts` (compilers), the host's seed runtime.
 - Update `tests/scripts/test-packaged-authoring.sh`, which edits `m.seedFormats` and `m.boot.seed`
   in **three** separate node snippets (around lines 137-142 and 194-196). Phase 1 names the script for

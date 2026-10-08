@@ -141,6 +141,10 @@ export function createSeeder(options: SeederOptions): Seeder {
          * row keeps the `seedKey` this is searching for. With it hidden, `findByIdentity` missed too (same
          * filter) and the record was created again: a fresh copy beside the one in the trash, every time the
          * pack's compiled seeds changed.
+         *
+         * **It reaches only as far as the feature's delete does.** A row destroyed rather than trashed leaves
+         * nothing carrying a seed key, so the record is created again and nothing here can tell that it ever
+         * existed — the entity's own delete is what decides which it is (`trash.move` against `destroy()`).
          */
         const keyed = record.entity
           ? qx(record.entity as EARS.Entity).where(SEED_KEY as string, seedKey)

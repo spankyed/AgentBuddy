@@ -264,8 +264,9 @@ After Phases 1 and 2.
 1. **A retired-seed-key ledger for hard deletes.** Decision 1 covers soft delete, which is what notes and
    the other trashed entity types use. An entity type with no trash is deleted outright, its `seedKey`
    going with the row, so the seeder cannot know. Covering that needs a per-pack list of retired seed keys
-   — a record that only grows — and it has no live subject: nothing in this repo seeds a hard-deleted
-   type today. Do not build it; revisit when a hard-deleted seed key is observed coming back.
+   — a record that only grows. Do not build it; revisit when a user asks why a deleted flow or library
+   document came back. (**The premise written here was false**: this said nothing in the repo seeds a
+   hard-deleted type, and two of the five shipped seed keys do — see the correction below.)
 2. **Validating `seedPolicy`'s key names** against `boot.seed` in `manifest-schema.ts`'s `superRefine`.
    The field is gone after Phase 2, so the check has no subject. Named here because it is the obvious fix
    to reach for and would be dead code.
@@ -317,6 +318,26 @@ manifest and had one in its generated registration. So the filter never removed 
 manifest would have *narrowed* which data the 0.3.15 migration touches. The filter is dropped rather than
 reinterpreted, and the comment there now warns off the improvement that looks obvious.
 
+**One entry still fails the rule, and it is not the one this goal removed.** `faqs` is a `boot.seed` entry
+whose format declares no `entity`: nothing is imported, and `default-setup/src/app-settings/index.ts` reads
+back the `faqs.seed.json` the build wrote — the same shape as the `settings` entry, found only while
+reviewing. It stays because the way out that `settings` took is closed to it: `default-settings.ts` is a `.ts`
+module a pack can import, and FAQ sources are markdown that needs a compiler, which `boot.seed` is the only
+manifest key that runs. So the invariant below is stated with that exception named rather than as a clean
+sweep, and closing it means a manifest key for compiled artifacts nothing imports — a decision, which
+[`goal-manifest-redesign.md`](../../goals/goal-manifest-redesign.md) is the place for.
+
+**The rule holds for three of the five shipped seed keys, not all of them, and the claim as first written
+— here, in `seeds.md` and in Phase 1's commit message — was an overclaim.** The seeder's half is general:
+it finds its row whether or not the row is marked deleted. But there has to *be* a row, and only a feature
+that soft-deletes leaves one. Notes (`trash.move`), actions and prompts do. Flows do not
+(`flowRepository.deleteFlow` → `untypedTx(flowId).destroy()`), nor do library documents and collections
+(`features/library/be/repository/commands.ts` → `tx(id).destroy()`), so a user who deletes the seeded demo
+flow or a library document still gets it back — exactly the complaint Phase 1 was written to fix, for two
+of the keys it did not reach. What this changes is a sentence rather than the code: the fix for those two is
+either to trash them like the rest or the ledger in Deferred 1, and neither is a thing to decide while
+writing an outcome.
+
 **Decision 5 was implemented more narrowly than it was written.** It called for `services.settings` to "gain a
 reset narrower than today's". No new service method was needed: `removeStored(path)` already existed and was
 reached only by migrations, so what the change added was an address — an optional `target` on the existing
@@ -331,12 +352,16 @@ reached only by migrations, so what the change added was an address — an optio
   resetting it and reading the default back. The path is type-checked end to end (the view's event union types
   the send) and covered at the system level, but the Vue button → `actor.send` wiring has not been exercised in
   a running app.
-- Deferred 1-3 as written: no retired-seed-key ledger (no hard-deleted seed key has been observed coming
-  back), no `seedPolicy` key validation (the field is gone), no general `when:` lifecycle on a seed entry.
+- Deferred 1-3 as written: no retired-seed-key ledger (the two hard-deleted seed keys are named in the
+  correction above and nobody has reported a row coming back), no `seedPolicy` key validation (the field is
+  gone), no general `when:` lifecycle on a seed entry.
 
 ### Invariants this leaves
 
-- **`boot.seed` holds only entries that import rows into the database.** An entry needing a policy that says
-  "do not import this" is not one, and content a pack reads back itself is an import of its own source.
+- **`boot.seed` holds only entries that import rows into the database** — with `faqs` named as the one
+  standing exception, above. An entry needing a policy that says "do not import this" is not one, and a `.ts`
+  source a pack reads back itself is an import of its own source.
 - **A registration carries code; the manifest and the compiled artifacts carry facts.**
-- **A seeded row the user deleted is not seeded again, and nor are its children.**
+- **A seeded row the user *trashed* is not seeded again, and nor are its children.** Where deletion is
+  recorded, which is what the qualifier is doing: a row destroyed outright leaves nothing to find and is
+  created again on the next boot.
