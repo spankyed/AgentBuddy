@@ -21,7 +21,6 @@
  * The map's own contents — which packs are in it, and why a directory is not — are `@abuddy/host`'s
  * `tests/build/dev-pack-frontends.spec.ts`, where they cost nothing.
  */
-// @slow: it starts the renderer's Vite dev server and walks ~1300 modules, which is the subject
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
