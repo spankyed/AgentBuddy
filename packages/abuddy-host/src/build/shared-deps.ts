@@ -89,6 +89,15 @@ export const HOST_RESOLVED_BINARIES = ['node-pty', 'fsevents', '@vscode/ripgrep'
 
 export interface SharedDep {
   globalKey?: string;
+  /**
+   * The module the host actually loads for this specifier, where that is a different module.
+   *
+   * `@tiptap/pm/<x>` is `export * from 'prosemirror-<x>'`, so the two specifiers name one module and both
+   * have to reach it. Loaded separately they are two copies of ProseMirror — bundled twice in a pack, or
+   * pre-bundled into two files by a dev server — which is the duplicate instance this list exists to
+   * prevent, and the reason the canonical is the prosemirror package rather than the re-export.
+   */
+  canonical?: string;
   target: 'fe' | 'be' | 'both';
 }
 
@@ -149,13 +158,35 @@ export function getSharedFeDeps(...fromDirs: string[]): Record<string, SharedDep
     Object.entries(SHARED_DEPS).filter(([, d]) => d.target !== 'be' && d.globalKey),
   ) as Record<string, SharedDep & { globalKey: string }>;
   for (const specifier of SHARED_SUBPATH_PACKAGES.flatMap((name) => exportedSubpaths(name, fromDirs))) {
-    deps[specifier] ??= { globalKey: specifier, target: 'fe' };
-    // @tiptap/pm/<name> is `export * from 'prosemirror-<name>'`: libraries importing ProseMirror
-    // directly (tiptap-markdown → prosemirror-markdown) get the same module
+    // Libraries importing ProseMirror directly (tiptap-markdown → prosemirror-markdown) get the same
+    // module as the pack that imports it through tiptap, which is what `canonical` says above
     const pmModule = specifier.match(/^@tiptap\/pm\/(.+)$/)?.[1];
-    if (pmModule) deps[`prosemirror-${pmModule}`] ??= { globalKey: specifier, target: 'fe' };
+    const canonical = pmModule === undefined ? undefined : `prosemirror-${pmModule}`;
+    deps[specifier] ??= { globalKey: specifier, target: 'fe', ...(canonical !== undefined && { canonical }) };
+    if (canonical !== undefined) deps[canonical] ??= { globalKey: specifier, canonical, target: 'fe' };
   }
   return deps;
+}
+
+/**
+ * Every specifier a pack's frontend may leave to the host, each naming the module the host loads for it.
+ *
+ * **One declaration with two readers**, which is what keeps them from disagreeing: the renderer serves each
+ * distinct module (the values) and publishes the whole map to the document, and the pack bundler leaves
+ * each key external. A specifier the host does not serve is one a pack's bundle cannot link against.
+ *
+ * `fromDirs` are the directories whose installs own these packages, as `getSharedFeDeps` takes them; the
+ * first also decides which `@abuddy/ui` is read, since that is the one whose exports a pack compiles
+ * against.
+ */
+export function sharedFeModules(...fromDirs: string[]): Readonly<Record<string, string>> {
+  const modules: Record<string, string> = {};
+  for (const [specifier, dep] of Object.entries(getSharedFeDeps(...fromDirs))) {
+    modules[specifier] = dep.canonical ?? specifier;
+  }
+  for (const specifier of Object.keys(getSdkFeModules())) modules[specifier] = specifier;
+  for (const specifier of Object.keys(getUiFeModules(fromDirs[0] ?? '.'))) modules[specifier] = specifier;
+  return modules;
 }
 
 export interface SdkFeModule {
