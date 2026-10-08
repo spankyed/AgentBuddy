@@ -464,6 +464,7 @@ The fixture launches, in priority order: `createTest({ appExecutable })`, `creat
 | `getState()` | Returns `snapshot.value` (e.g. `{ running: 'connected' }`) |
 | `getContext()` | Returns `{ activePluginId, pluginIds }` |
 | `sendEvent(event)` | Send any event object to `applicationState` |
+| `report(name, value)` | Write `drive/results/{name}.json` and print one `[drive:report] {name} {json}` line, for a driving run whose answer is meant to be read by a program rather than watched. Returns the path |
 | `waitForState(check, ms?)` | Wait for dot-separated state path (e.g. `'running.connected'`), default 10s |
 | `waitForPlugin(pluginId, ms?)` | Wait for a plugin to appear in the plugin list, default 30s |
 
@@ -504,6 +505,7 @@ Screenshot output location depends on context:
 | `E2E_KEEP_DATA` | Set to `1` to keep each worker's temp data dir for debugging. |
 | `E2E_DATA_DIR` | A data dir the caller owns and keeps, used instead of the per-worker temp one and never cleaned up. Set by `abuddy drive` for an instance. **`abuddy test` strips it** (`fixtureEnv`), so a pinned run cannot be aimed at a directory by the shell it was started from. |
 | `E2E_SCREENSHOT_DIR` | Where `app.screenshot()` writes, ahead of the `PACK_DIR` and cwd fallbacks. Set by `abuddy drive` to `drive/screenshots/`, and stripped by `abuddy test` for the same reason. |
+| `E2E_REPORT_DIR` | Where `app.report()` writes, ahead of the same two fallbacks (`drive/results/`). Set by this repo's `drive` scripts and stripped by `abuddy test`, for the reason the two above are: the run decides where its output lands, not the shell that started it. |
 | `PLAYWRIGHT_TEST` | Set automatically to `'true'` by the fixture. The app resolves the `test` environment (`abuddy-test` name, lock and data dir), crashes on uncaught errors, and runs headless (suppresses window display and splash screen). |
 | `ABUDDY_USER_DATA_DIR` | Optional. Overrides the app's data dir (e.g. an isolated temp dir); read through `@abuddy/sdk/env`. |
 | `DEBUG_E2E` | Set to `1` to pipe Electron stdout/stderr to the test terminal. |

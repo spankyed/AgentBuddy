@@ -17,6 +17,16 @@ export interface AppHelper {
   getState: () => Promise<unknown>;
   getContext: () => Promise<{ activePluginId: string; pluginIds: string[] }>;
   screenshot: (name: string) => Promise<Buffer>;
+  /**
+   * An answer a driving run is meant to be *read* for, rather than watched: written to
+   * `drive/results/<name>.json` and printed as one `[drive:report] <name> <json>` line.
+   *
+   * **A driving script's output is otherwise `console.log` inside Playwright's reporter**, so whoever runs
+   * it — usually an agent — invents a prefix and greps for it. Standardising the prefix and the file is the
+   * whole of this: the line is for a human watching, the file is for a program, and neither has to be
+   * agreed on per script.
+   */
+  report: (name: string, value: unknown) => Promise<string>;
   navigate: (pluginId: string) => Promise<void>;
   waitForState: (check: string, timeout?: number) => Promise<void>;
   waitForPlugin: (pluginId: string, timeout?: number) => Promise<void>;
@@ -96,6 +106,17 @@ function resolveScreenshotDir(override?: string): string {
   if (process.env.E2E_SCREENSHOT_DIR) return path.resolve(process.env.E2E_SCREENSHOT_DIR);
   if (process.env.PACK_DIR) return path.join(path.resolve(process.env.PACK_DIR), 'tests', 'screenshots');
   return path.join(process.cwd(), 'tests', 'screenshots');
+}
+
+/**
+ * Where `app.report` writes. `resolveScreenshotDir`'s shape and reasoning, for the same reason: the option
+ * cannot reach the `test` a driving script imports, so the environment is how a driving run says where its
+ * output goes.
+ */
+function resolveReportDir(): string {
+  if (process.env.E2E_REPORT_DIR) return path.resolve(process.env.E2E_REPORT_DIR);
+  if (process.env.PACK_DIR) return path.join(path.resolve(process.env.PACK_DIR), 'drive', 'results');
+  return path.join(process.cwd(), 'drive', 'results');
 }
 
 /** The abuddy CLI bin that builds the pack under test. */
@@ -573,6 +594,16 @@ export function createTest(options: CreateTestOptions = {}) {
           fs.mkdirSync(screenshotDir, { recursive: true });
           const filePath = path.join(screenshotDir, `${name}.png`);
           return page.screenshot({ path: filePath });
+        },
+
+        report: async (name, value) => {
+          // Made on first use, as the screenshot dir is: a run that reports nothing leaves nothing behind
+          const reportDir = resolveReportDir();
+          fs.mkdirSync(reportDir, { recursive: true });
+          const filePath = path.join(reportDir, `${name}.json`);
+          fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+          console.log(`[drive:report] ${name} ${JSON.stringify(value)}`);
+          return filePath;
         },
 
         navigate: async (pluginId) => {

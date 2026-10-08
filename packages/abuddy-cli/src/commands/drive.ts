@@ -58,6 +58,9 @@ With no script, every file in ${DRIVE_DIR}/ runs. The app's windows are shown, s
 session many times rather than editing and re-launching for each question. It prints the address and a
 curl line; ${DRIVE_DIR}/results/engine.json has the address and the token, and POST /close ends it.
 
+It drives a built app, not a dev server: \`abuddy run\` serves your pack's frontend with HMR, and this
+launches an app of its own, so a question about one is not answerable with the other.
+
 By default the app gets a fresh data dir that is thrown away afterwards, so each session starts clean.
 Name an instance to keep its state between sessions.
 
@@ -94,8 +97,14 @@ drive('open notes and look at it', async ({ app, appPage }) => {
 
 Run everything with \`abuddy drive\`, or one script with \`abuddy drive drive/notes.ts\`.
 
+This drives a built app, not a dev server — \`abuddy run\` is the one that serves your frontend with HMR.
+
+\`app.report(name, value)\` is for an answer you want to read rather than watch: it writes
+\`drive/results/<name>.json\` and prints one \`[drive:report] <name> <json>\` line.
+
 Add \`--instance <name>\` to keep the app's data between sessions, or \`--ephemeral\` to start clean and
-leave nothing behind. Everything but this file and \`playwright.config.ts\` is gitignored.
+leave nothing behind. With neither, the app gets a fresh data dir that is thrown away afterwards, so a
+script cannot reach your real data. Everything but this file and \`playwright.config.ts\` is gitignored.
 `;
 
 const GITIGNORE = `*

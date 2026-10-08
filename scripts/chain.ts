@@ -34,15 +34,14 @@
 // the way to a shorter chain is a cheaper step.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
+import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, poolStepName, STEP_TABLES } from './lib/chain-steps.ts';
-import { stampFor, STAMP_DIR } from './lib/chain-stamps.ts';
+import { stampFor, STAMP_DIR, unitFor } from './lib/chain-stamps.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { CHAIN_WAIT_MS, ChainLockHeld, chainInvocation, holdChainLock } from './lib/chain-lock.ts';
 import type { ExclusiveLock } from '@abuddy/host/exclusive-lock';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredMachine, machineText, MEASURED_ON, thisMachine } from './lib/core-budget.ts';
-import { commandText, rootScripts } from './lib/npm-scripts.ts';
 import { asCount, idleNow, parseFlags } from './lib/measure.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { driftedSteps, measurementsFrom, outgrownRungs, willNotCache } from './lib/step-timing.ts';
@@ -130,19 +129,9 @@ function pruneStamps(): void {
   }
 }
 
-/** A step as a build unit: the same shape, so it goes through the same freshness check */
 /** What a finished step may have changed: its products */
 const wrote = (step: ChainStep): string[] =>
   (step.outputs ?? []).map((target) => path.join(REPO_ROOT, target));
-
-const unitFor = (step: ChainStep): BuildUnit => ({
-  inputs: step.inputs.map((input) => path.join(REPO_ROOT, input)),
-  outputs: (step.outputs ?? []).map((output) => path.join(REPO_ROOT, output)),
-  excludes: (step.excludes ?? []).map((excluded) => path.join(REPO_ROOT, excluded)),
-  ...(step.excludeSuffixes === undefined ? {} : { excludeSuffixes: step.excludeSuffixes }),
-  // What `npm run <name>` resolves to, which is what `package.json` used to be in every step's inputs for
-  command: commandText(step.name, rootScripts()),
-});
 
 type Result = { step: string; ms: number; code: number; output: string; timedOut?: true };
 

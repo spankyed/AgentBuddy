@@ -8,7 +8,9 @@
  * transformation below, which is a second copy of a cache key — the thing most worth not having two of.
  */
 import * as path from 'node:path';
-import { REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
+import type { ChainStep } from './chain-steps.ts';
+import { commandText, rootScripts } from './npm-scripts.ts';
 
 /**
  * Beside the package builds' and the pools' stamps, in the same cache directory and the same format, so one
@@ -33,3 +35,21 @@ export const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-
  * the three without the check.
  */
 export const stampFor = (step: string): string => path.join(STAMP_DIR, `${step.replace(/[:/]/g, '-')}.json`);
+
+/**
+ * A chain step as a build unit: the same shape, so it goes through the same freshness check.
+ *
+ * Here rather than in `chain.ts` because the chain is not the only thing that wants to know whether a
+ * step's output is current. `scripts/drive-preflight.ts` asks it of `build:app` and `compile` before
+ * launching the app, and asking it any other way would be a second account of what those steps read.
+ */
+export function unitFor(step: ChainStep): BuildUnit {
+  return {
+    inputs: step.inputs.map((input) => path.join(REPO_ROOT, input)),
+    outputs: (step.outputs ?? []).map((output) => path.join(REPO_ROOT, output)),
+    excludes: (step.excludes ?? []).map((excluded) => path.join(REPO_ROOT, excluded)),
+    ...(step.excludeSuffixes === undefined ? {} : { excludeSuffixes: step.excludeSuffixes }),
+    // What `npm run <name>` resolves to, which is what `package.json` used to be in every step's inputs for
+    command: commandText(step.name, rootScripts()),
+  };
+}
