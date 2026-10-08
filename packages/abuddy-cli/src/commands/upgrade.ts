@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { replaceDir, stagingDirName } from '@abuddy/host/replace-dir';
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import semver from 'semver';
@@ -160,16 +161,21 @@ export async function upgrade(args: string[]) {
 
     await quitApp(product, env, console.log);
 
-    // Moved aside rather than deleted first, so a failed install still has something to put back
-    const previous = fs.existsSync(appPath) ? `${appPath}.upgrading-${process.pid}` : null;
-    if (previous) fs.renameSync(appPath, previous);
-    try {
-      await execFileAsync('ditto', [incoming, appPath]);
-    } catch (error) {
-      if (previous) fs.renameSync(previous, appPath);
-      throw error;
-    }
-    if (previous) fs.rmSync(previous, { recursive: true, force: true });
+    /**
+     * Copied in beside the installed app, then renamed over it — `replaceDir`, the same swap `placePack` and
+     * every derived-tree build take, so the restore on a failed install is one implementation rather than
+     * this one's own.
+     *
+     * The copy is first because `ditto` is how a `.app` crosses from the download staging directory, which is
+     * on whatever filesystem the temp dir is: a rename out of there fails with `EXDEV`. `stagingDirName` names
+     * the destination, which is what makes the pid in it safe — a recycled pid matching a leftover from a
+     * crashed upgrade had this renaming the app onto a directory that already existed, and a rename onto an
+     * existing directory "either throws or replaces depending on the platform and whether it is empty, and
+     * neither is an answer to 'rename this'" (`src/app/instances.ts`).
+     */
+    const staged = path.join(path.dirname(appPath), stagingDirName(path.basename(appPath), 'installing'));
+    await execFileAsync('ditto', [incoming, staged]);
+    replaceDir(staged, appPath);
   } finally {
     fs.rmSync(staging, { recursive: true, force: true });
   }
