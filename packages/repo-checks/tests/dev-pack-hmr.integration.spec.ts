@@ -38,7 +38,11 @@ let walked = 0;
 
 beforeAll(async () => {
   // How a pack outside `packages/` joins the loop. The workspace packs need no naming.
-  process.env.ABUDDY_DEV_PACK_DIRS = 'tests/packs/external-pack';
+  // **Absolute**, because the variable is resolved against `process.cwd()` and this suite has two runners:
+  // the pooled config from the repo root, and `npm run spec`, which runs it with the package as cwd. A
+  // relative path is the repo's from one and names nothing from the other, so the pack went undiscovered
+  // and the case read as "its pack is fetched over pack://" — a true sentence about the wrong cause.
+  process.env.ABUDDY_DEV_PACK_DIRS = path.join(REPO_ROOT, 'tests', 'packs', 'external-pack');
   server = await createServer({ mode: 'development', root: path.join(REPO_ROOT, 'packages', 'renderer'), logLevel: 'error' });
   await server.listen();
 
