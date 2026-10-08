@@ -1,3 +1,8 @@
+> **Done** (`7b57dcf7d`, `4ce82972c`, `242e9597c` on master). The text below is the plan as written; Decision 7
+> turned out to be wrong and the Outcome says why. For the rule this established, see
+> [`docs/public-facing/seeds.md`](../../public-facing/seeds.md) and
+> [`packages/default-setup/src/seeds/CLAUDE.md`](../../../packages/default-setup/src/seeds/CLAUDE.md).
+
 # Goal: `boot.seed` holds only entries that import rows, and a registration carries no seed facts
 
 > **Written in session** `6471efed-3887-41dc-ba56-22d06ceb22bc` (Claude Code, 2026-10-08). Resume it with `claude -r 6471efed-3887-41dc-ba56-22d06ceb22bc`.
@@ -290,3 +295,48 @@ After Phases 1 and 2.
 - External packs are first-class: `test:external-pack` and `test:packaged-authoring` keep passing, and a
   dependent pack's seeds keep working (Phase 2 removes a format — confirm nothing names it).
 - `npm run spec` and `chain --dry` are the loop; the full chain runs once per phase, at the end.
+
+
+## Outcome
+
+All three phases landed, one commit each, each with the full chain green.
+
+| Phase | Commit | Evidence |
+|---|---|---|
+| 1 — the seeder learns deletion | `7b57dcf7d` | two cases in `notes-change-tracking.spec.ts`; mutation: restoring the `findWhere` lookup fails both and leaves the other nine passing; `seed-parity` goldens unmoved (144 pass); chain 160.2s |
+| 2 — settings stop being seed data | `4ce82972c` | `settings-reset-one-target.spec.ts` (3) and `app-settings/index.spec.ts` (6); mutation: the handler ignoring its target fails both targeted cases and passes the untargeted one; chain 50.8s |
+| 3 — `seedManifest` removed | `242e9597c` | the Done-when grep returns nothing in source; `etc/framework.api.md` records only the removal; `test:external-pack` passes; chain 171.3s |
+
+### Corrections to the Decisions
+
+**Decision 7 was wrong, and acting on it would have changed a migration's behaviour.** It said `bootSeedPacks`
+should read each shipped pack's manifest `boot.seed`, on the grounds that "does this pack ship seed data" is the
+fact the registration was a proxy for. It is not: **codegen emitted `boot.seedManifest` for every pack**,
+whether or not it declared a `boot.seed` at all — `tests/packs/bundled-ui-pack` has no `boot` key in its
+manifest and had one in its generated registration. So the filter never removed a pack, and reading the
+manifest would have *narrowed* which data the 0.3.15 migration touches. The filter is dropped rather than
+reinterpreted, and the comment there now warns off the improvement that looks obvious.
+
+**Decision 5 was implemented more narrowly than it was written.** It called for `services.settings` to "gain a
+reset narrower than today's". No new service method was needed: `removeStored(path)` already existed and was
+reached only by migrations, so what the change added was an address — an optional `target` on the existing
+`RESET_SETTINGS` — and one new frontend surface, `SettingsPort.reset(target?)`.
+
+### Deferred, with what each is waiting for
+
+- **The General tab has no reset.** Its nav items (`personal`, `projects`, `application`) are keys *inside*
+  the `general` section rather than sections, so a section reset there would drop all three at once. The
+  granularity that tab wants needs the target to carry a path, which is a decision rather than a detail.
+- **The drive run was not made.** Phase 2's "Done when" asked for a `drive/` script changing a setting,
+  resetting it and reading the default back. The path is type-checked end to end (the view's event union types
+  the send) and covered at the system level, but the Vue button → `actor.send` wiring has not been exercised in
+  a running app.
+- Deferred 1-3 as written: no retired-seed-key ledger (no hard-deleted seed key has been observed coming
+  back), no `seedPolicy` key validation (the field is gone), no general `when:` lifecycle on a seed entry.
+
+### Invariants this leaves
+
+- **`boot.seed` holds only entries that import rows into the database.** An entry needing a policy that says
+  "do not import this" is not one, and content a pack reads back itself is an import of its own source.
+- **A registration carries code; the manifest and the compiled artifacts carry facts.**
+- **A seeded row the user deleted is not seeded again, and nor are its children.**
