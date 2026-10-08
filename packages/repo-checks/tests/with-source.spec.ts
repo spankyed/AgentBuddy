@@ -21,9 +21,6 @@ describe('with-source', () => {
     expect(run(PRINT_NODE_OPTIONS).stdout.trim()).toBe('--conditions=@abuddy/source');
   });
 
-  it('leaves it off for a run that declared it resolves the published packages', () => {
-  });
-
   /**
    * The usage line in that script is `node scripts/with-source.mjs playwright test …`, which is also how
    * every drive and test script in `package.json` reads. Copied out of one and into a terminal it died with
