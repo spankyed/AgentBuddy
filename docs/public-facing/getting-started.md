@@ -159,7 +159,7 @@ abuddy clean      # Remove dist/, .abuddy/, __generated__/
 
 - **Manifest (`abuddy.json`)** — declares everything: features, steps, services, seeds, entities. See [Manifest Reference](manifest.md).
 - **Generated files (`__generated__/`)** — auto-generated from the manifest. Never edit these. They are regenerated on every build. The generated `pack-entry.ts` and `pack-entry-fe.ts` are your pack's registrations: everything it contributes (systems, services, repositories, steps, seeders, DSL types, …) reaches the app through them, never by writing to a registry when a module is imported.
-- **Host dependencies** — packs share `vue`, `xstate`, tiptap, `lucide-vue-next` and other libraries, the SDK modules and `@abuddy/ui` with the host app via `window.__abuddy` globals. The build pipeline externalizes these automatically.
+- **Host dependencies** — packs share `vue`, `xstate`, tiptap, `lucide-vue-next` and other libraries, the SDK modules and `@abuddy/ui` with the host app. The build pipeline leaves those imports external and the app's document carries an import map naming its own copy of each, so your pack gets the app's instance.
 - **Seeds** — actions, prompts, flows and entity rows are compiled at build time and seeded when the pack loads. See [Seeds](seeds.md) for what action code may import.
 - **`pack://` protocol** — the host loads your pack's FE bundle at runtime via `pack://<id>/runtime/fe.js`. This is handled automatically.
 

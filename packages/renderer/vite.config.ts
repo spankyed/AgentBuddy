@@ -4,7 +4,7 @@ import { delimiter, dirname, resolve } from 'node:path'
 import { defineConfig, defaultClientConditions, defaultServerConditions, type Plugin, type Rollup, type ViteDevServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import { getSharedFeDeps, getSdkFeModules, getUiFeModules, sharedFeModules } from '@abuddy/host/build/shared-deps'
+import { sharedFeModules } from '@abuddy/host/build/shared-deps'
 import { devPackFrontendsModule, discoverDevPackFrontends } from '@abuddy/host/build/discover'
 
 const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
@@ -97,24 +97,24 @@ if (new Set(SHARED_ENTRIES.map(entryName)).size !== SHARED_ENTRIES.length) {
 }
 
 function hostSharedModulesPlugin(): Plugin {
-  const VIRTUAL_ID = 'virtual:host-deps';
+  /**
+   * The module that puts every shared module in *this window's* graph, which is its whole job — it has no
+   * runtime effect and the app imports it for two side effects of being in the graph.
+   *
+   * In **dev** it is what the map is read from: transforming it gives back the URLs Vite serves each module
+   * at, and it is also how the dep optimizer learns of them. Most are in `optimizeDeps.include`, but the
+   * ProseMirror subpaths reach the scan through nothing else, and a dep discovered later costs a re-optimise
+   * and a full reload the first time a pack asks for it.
+   *
+   * In **build** each is an entry in its own right, so this adds nothing there.
+   */
+  const VIRTUAL_ID = 'virtual:host-shared-modules';
   const RESOLVED_VIRTUAL = '\0' + VIRTUAL_ID;
-  const varOf = new Map(SHARED_ENTRIES.map((specifier, i) => [specifier, `__m${i}`]));
   const indexOf = new Map(SHARED_ENTRIES.map((specifier, i) => [specifier, i]));
-  const moduleVar = (specifier: string) => varOf.get(SHARED_MODULES[specifier])!;
 
-  // `window.__abuddy`, which the proxies a pack's bundle still carries read. Keyed by `globalKey` for the
-  // deps and the SDK and by specifier for the UI kit, as those proxies spell it; aliases share one key.
-  const globals = new Map<string, string>();
-  for (const [specifier, { globalKey }] of Object.entries(getSharedFeDeps(import.meta.dirname))) globals.set(globalKey!, moduleVar(specifier));
-  for (const [specifier, { globalKey }] of Object.entries(getSdkFeModules())) globals.set(globalKey, moduleVar(specifier));
-  for (const specifier of Object.keys(getUiFeModules(import.meta.dirname))) globals.set(specifier, moduleVar(specifier));
-
-  const virtualContent = [
-    ...SHARED_ENTRIES.map((specifier) => `import * as ${varOf.get(specifier)} from ${JSON.stringify(specifier)};`),
-    `window.__abuddy = { ${[...globals].map(([key, name]) => `${JSON.stringify(key)}: ${name}`).join(', ')} };`,
-    '',
-  ].join('\n');
+  const virtualContent = SHARED_ENTRIES
+    .map((specifier, i) => `import * as __m${i} from ${JSON.stringify(specifier)};\nvoid __m${i};`)
+    .join('\n') + '\n';
 
   function mapFromBundle(bundle: Rollup.OutputBundle): Record<string, string> {
     const emitted = new Map<string, string>();

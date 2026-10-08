@@ -185,29 +185,32 @@ pack://<packId>/<filePath>
 
 ## Host dependency sharing
 
-### Frontend: `window.__abuddy`
+### Frontend: an import map
 
-Packs share runtime dependencies with the host via `window.__abuddy` globals. This is critical for correctness — modules with internal state (Vue's reactivity system, XState's actor registry, the SDK's bound frontend host, which its lookups read) must be singletons.
+Packs share runtime dependencies with the host, which is critical for correctness — modules with internal state (Vue's reactivity system, XState's actor registry, the SDK's bound frontend host, which its lookups read) must be singletons. The sharing is done by **resolution**: a pack's bundle keeps the bare specifier, and the document's import map resolves it to the host's module.
 
-**Host side (Vite):** A Vite plugin generates a virtual module that star-imports all shared deps and SDK modules, assigning them to `window.__abuddy`:
+**Host side (Vite):** each shared module is an entry of the renderer's build, and the plugin injects an import map naming them ahead of the app's own script:
 
-```javascript
-// Generated at host build time
-import * as vue from 'vue';
-import * as xstate from 'xstate';
-import * as sdkFe from '@abuddy/sdk/fe';
-// ...
-window.__abuddy = { vue, xstate, sdkFe, /* ... */ };
+```html
+<script type="importmap">
+{ "imports": {
+  "vue": "./assets/shared-vue-CwIGn1C6.js",
+  "@abuddy/sdk/fe": "./assets/shared-abuddy-sdk-fe-DY7mM_D0.js",
+  "@tiptap/pm/model": "./assets/shared-prosemirror-model-YOzlPTVh.js"
+} }
+</script>
 ```
 
-**Pack side (Vite):** A single Vite plugin (`packExternalsPlugin`) intercepts imports of shared deps and SDK barrels, replacing them with virtual modules that proxy from the globals:
+In a dev server the targets are the URLs Vite serves those modules at instead (`/node_modules/.vite/deps/vue.js?v=…`, or `/@fs/…` for a workspace package), so the same mechanism covers both.
+
+**Pack side (Vite):** `packExternalsPlugin` leaves every shared specifier **external**, so the pack's bundle emits it untouched:
 
 ```javascript
-// import { ref } from 'vue'  becomes:
-const __m = window.__abuddy.vue;
-export const ref = __m.ref;
-export default __m;
+// import { ref } from 'vue'  stays exactly that in dist/runtime/fe.js
+import { ref } from 'vue';
 ```
+
+Because the pack imports the real module rather than a copy of its names, what it gets is a live binding, and an import of a name this AgentBuddy does not have fails when the module links — naming the export — instead of arriving as `undefined`.
 
 #### Shared third-party deps
 

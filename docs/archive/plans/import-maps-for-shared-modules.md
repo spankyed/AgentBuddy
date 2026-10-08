@@ -1,3 +1,37 @@
+> **Done and closed.** Packs share the host's frontend modules by resolution: each is an entry of the
+> renderer's build, the document carries an import map naming all 122 specifiers, and a pack's bundle leaves
+> them external. `window.__abuddy`, `generateGlobalProxy` and the whole export-name discovery around it are
+> gone — 134 lines from `fe-bundler.ts` and 69 spec cases whose subject was one mechanism policing the other.
+>
+> **Four corrections the work found**, each one the plan had wrong:
+>
+> - **The dev map cannot be computed, only read back.** The plan's `/@host/<specifier>` alias route would
+>   have produced *two* instances of every module: a module's identity in the browser is its URL, so serving
+>   the same file at a second URL is a second copy. Deriving the real URLs fails too — measured 2026-10-08,
+>   this app's deps carried four different `?v=` hashes at once while `depsOptimizer.metadata.optimized` was
+>   empty and every URL was live. What works is transforming `virtual:host-shared-modules` through the dev
+>   server and reading the specifiers Vite wrote, which answers for a pre-bundled dep and a workspace
+>   package's `/@fs/…` source alike. With no route, the plan's security section has no subject: there is no
+>   allow-list to get wrong because there is nothing to serve.
+> - **`abuddy run` needed a fix the plan did not foresee.** Vite appends `importAnalysisPlugin` *after* the
+>   user's `post` plugins and rewrites an external to `/@id/<specifier>`, which the browser resolves against
+>   the module's own `pack://` URL and asks the pack's dev server for — and that server left the specifier
+>   external and has nothing to answer with. `keepExternalsBarePlugin` undoes it in the response, the only
+>   hook that runs after, and the only path that matters since `pack://` proxies HTTP.
+> - **Finding 4 was already handled.** `resolveId`'s external branch runs before the `sharedInstancePackage`
+>   branch, so no `rollupOptions.external` and no reordering was needed.
+> - **The pack:// scheme change (step 0) bought nothing this needed.** Its claimed benefit — relative
+>   resolution inside a `pack://` module — was false, and the spike written to depend on it passed without
+>   the privilege. It stays for the one thing it does buy, a real origin per pack, which is latent until a
+>   pack's UI runs in its own document (`pack-fault-isolation.md`). `f85c279a1` records that.
+>
+> Verified: 122/122 map targets resolvable in both halves, the dev map's `vue` byte-identical to the URL the
+> renderer's own entry imports, smoke 4/4 and app-integration 11/11 against a built app, and both fixture
+> packs' suites — including the host's `@abuddy/ui` editor rendering inside a pack, a pack writing through
+> `@abuddy/ears` onto the app's engine, and `fe.bundleUi` still carrying its own UI kit.
+>
+> The text below is the plan as written.
+
 # Share the host's modules through resolution, not through a side channel
 
 Compiled 2026-10-07 on `AS/one-action-cache`, after fixing `abuddy run`'s frontend loop

@@ -2,46 +2,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import type { InlineConfig, Plugin as VitePlugin, Rollup } from 'vite';
-import { init as initModuleLexer, parse as parseModule } from 'es-module-lexer';
-import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeModules, sharedInstancePackage } from '@abuddy/host/build/shared-deps';
+import type { InlineConfig, Plugin as VitePlugin } from 'vite';
+import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeModules, sharedFeModules, sharedInstancePackage } from '@abuddy/host/build/shared-deps';
 import type { RecordReads } from './build-reads';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
-
-const EXTERNAL_PREFIX = '\0pack-external:';
-
-/**
- * What a plugin hook sees of a Vite dev environment: enough to tell it from a build, and to ask it for a
- * module's compiled source. Structural rather than imported, so this module keeps its one `vite` type import.
- */
-interface DevEnvironmentLike {
-  readonly mode: string;
-}
-
-/**
- * A module that re-exports a host global. The host may be older than the pack's @abuddy/* packages:
- * a missing module fails with a message naming the fix, and a missing @abuddy/* export warns once.
- * (Third-party globals are discovered from their Node build, whose names can differ.)
- */
-function generateGlobalProxy(specifier: string, globalKey: string, namedExports: string[], { warnMissing = true } = {}): string {
-  const hint = "update AgentBuddy or check the pack's hostVersion";
-  const lines = [
-    `const __m = window.__abuddy?.[${JSON.stringify(globalKey)}];`,
-    `if (!__m) throw new Error(${JSON.stringify(`${specifier} isn't provided by this AgentBuddy; ${hint}`)});`,
-  ];
-  if (warnMissing && namedExports.length > 0) {
-    lines.push(
-      `for (const __name of ${JSON.stringify(namedExports)}) {`,
-      `  if (!(__name in __m)) console.warn(\`${specifier} in this AgentBuddy has no export "\${__name}"; ${hint}\`);`,
-      '}',
-    );
-  }
-  for (const name of namedExports) {
-    lines.push(`export const ${name} = __m.${name};`);
-  }
-  lines.push(`export default __m.default;`);
-  return lines.join('\n');
-}
 
 /**
  * The package names the pack declares opaque to the bundler (`build.opaqueDeps`). Unreadable is an error
@@ -166,23 +130,6 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
   // @abuddy/ui comes from the host like the SDK modules, unless the pack bundles all of it
   const uiModules = bundlesUi(packDir) ? {} : getUiFeModules(packDir);
 
-  function discoverRuntimeExports(specifier: string): string[] {
-    for (const base of [path.join(packDir, 'package.json'), import.meta.url]) {
-      try {
-        const req = createRequire(base);
-        const mod = req(specifier);
-        return Object.keys(mod).filter(
-          k => k !== 'default' && k !== '__esModule' && /^[a-zA-Z_$]/.test(k),
-        );
-      } catch {
-        // Absent is fine: the host shares more FE deps than any one pack installs, and the next
-        // base may have it. Coming up empty is fine too — the proxy still re-exports `default`, and
-        // a named import the pack actually uses fails the build at that import, naming the module.
-      }
-    }
-    return [];
-  }
-
   // SDK modules resolve through Vite (this.resolve), so the build's conditions apply: a pack
   // linked to a checkout's workspace SDK gets its source, an installed SDK its dist.
   const packImporter = path.join(packDir, 'package.json');
@@ -193,81 +140,9 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
     return file && fs.existsSync(file) ? fs.realpathSync(file) : undefined;
   }
 
-  /**
-   * A module's source as this pipeline compiles it — SFCs through the Vue plugin, TypeScript through esbuild.
-   * The proxy's names have to come from the compiled form: an SFC's exports are not in its text.
-   *
-   * **The plugin runs in two contexts and they answer differently.** A build gives Rollup's `ModuleInfo`, where
-   * `ctx.load({ id }).code` is the compiled module. A dev server — which is `abuddy run` — gives a `ModuleInfo`
-   * **Proxy carrying only `id` and `meta`, which throws for every other property**, so reading `.code` there
-   * threw `[vite] The "code" property of ModuleInfo is not supported` for every host-shared module a pack
-   * imports. The pack's frontend then never transformed, and `abuddy run` printed "FE changes hot-reload via
-   * Vite HMR" over a loop that hot-reloaded nothing. Nothing caught it because every spec for this plugin drove
-   * it through `vite.build`; `fe-bundler-dev-server` drives the other context now.
-   *
-   * In dev it reads the file and strips types with esbuild, which is all the names need. Three things it is
-   * deliberately not, each tried first:
-   *
-   * - **not `transformRequest`**, which takes a URL and so answers to the dev server's file-serving rules —
-   *   these modules sit outside the pack root, where `/@fs` needs `server.fs.allow` to name the checkout;
-   * - **not the plugin container's `load`**, which routes through the dep optimizer and answers anything it
-   *   pre-bundles with "there is a new version of the pre-bundle";
-   * - **not the container's `transform`** either, which runs `vite:import-analysis` — and that throws the same
-   *   way for a module absent from the dev module graph. Nothing *serves* these modules in dev: the pack imports
-   *   the proxy, so the real module is never fetched and never enters the graph.
-   *
-   * What is left is the one thing a name needs, which is syntax. The gap to know: an SFC reached through
-   * `export * from './x.vue'` contributes nothing here, where a build compiles it through the Vue plugin. The
-   * `@abuddy/ui` entries that do that re-export a component as `default`, which a proxy always has.
-   */
-  async function compiledSource(ctx: Rollup.PluginContext, id: string): Promise<string | null> {
-    const dev = (ctx as { environment?: DevEnvironmentLike }).environment;
-    if (dev?.mode !== 'dev') return (await ctx.load({ id })).code;
-
-    // Without the query: a dev resolve can hang `?v=<hash>` off an id, and a path with one is not a file.
-    // `resolveSdkFile` above strips it for the same reason.
-    const file = id.split('?')[0];
-    // An SFC's names live in its `<script>`, which a build reads through the Vue plugin and this cannot. Nothing
-    // needs it to: the `@abuddy/ui` entries that re-export a component export it as `default`, which every proxy
-    // has anyway. The two contexts are held to the same names by `fe-bundler-proxy-exports`, so an SFC that
-    // starts exporting one fails there rather than quietly dropping it here.
-    if (file.endsWith('.vue') || !fs.existsSync(file)) return null;
-    // Imported here, not at the top, for startup: loading Vite costs 232ms (measured 2026-10-07) and `abuddy`
-    // is one binary over many commands, most of which never serve a frontend. Not about the bundle —
-    // `bundle-package.ts` externalises everything but the shared-instance packages, so a static import would
-    // not inline Vite either way. `packDevServerConfig` imports the Vue plugin lazily for the same reason.
-    const { transformWithEsbuild } = await import('vite');
-    return (await transformWithEsbuild(fs.readFileSync(file, 'utf-8'), file)).code;
-  }
-
-  /**
-   * Named exports of a module as the build compiles it (SFCs through the Vue plugin, TypeScript
-   * through esbuild), following `export * from` re-exports.
-   */
-  async function discoverModuleExports(ctx: Rollup.PluginContext, id: string, seen = new Set<string>()): Promise<string[]> {
-    if (seen.has(id)) return [];
-    seen.add(id);
-    const code = await compiledSource(ctx, id);
-    if (code === null) return [];
-    await initModuleLexer;
-    const [imports, exports] = parseModule(code, id);
-    const names = exports.map((e) => e.n).filter((n) => n !== 'default');
-    for (const imp of imports) {
-      if (!imp.n || !/^export\s*\*\s*from\b/.test(code.slice(imp.ss, imp.se))) continue;
-      const resolved = await ctx.resolve(imp.n, id, { skipSelf: true });
-      if (resolved && !resolved.external) names.push(...await discoverModuleExports(ctx, resolved.id, seen));
-    }
-    return [...new Set(names)];
-  }
-
-  async function discoverSharedExports(ctx: Rollup.PluginContext, specifier: string): Promise<string[]> {
-    const resolved = await ctx.resolve(specifier, packImporter, { skipSelf: true });
-    return resolved && !resolved.external ? discoverModuleExports(ctx, resolved.id) : [];
-  }
-
-  // The SDK's host bindings (bindHost, bindFeHost). Proxied SDK modules share the host's copy via
-  // window.__abuddy; an inlined copy has nothing bound, so any inlined module reaching the app
-  // throws "No host is bound".
+  // The SDK's host bindings (bindHost, bindFeHost). A shared SDK module is left external and so is the
+  // host's own copy, which has an app bound; an inlined copy has nothing bound, so any inlined module
+  // reaching the app throws "No host is bound".
   async function resolveHostBindingPaths(ctx: ResolveContext): Promise<string[]> {
     const runtimeIndex = await resolveSdkFile(ctx, '@abuddy/sdk/runtime');
     if (!runtimeIndex) return [];
@@ -334,6 +209,9 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
     },
 
     async resolveId(source, importer, options) {
+      // A bundled SDK module can reach a shared barrel by relative path ('../designations/index.js'). That
+      // import is the shared module under another name, so it leaves the bundle under the name the host
+      // publishes rather than being inlined beside it.
       const shared = source.startsWith('.') && importer ? await getSharedModuleFiles(this) : null;
       if (shared) {
         const importerPath = importer!.split('?')[0];
@@ -342,14 +220,15 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
           const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
           const file = resolved && !resolved.external ? resolved.id.split('?')[0] : undefined;
           const specifier = file && fs.existsSync(file) ? shared.bySpecifier.get(fs.realpathSync(file)) : undefined;
-          if (specifier) return EXTERNAL_PREFIX + specifier;
+          if (specifier) return { id: specifier, external: true };
         }
       }
-      if (feDeps[source]) {
-        return EXTERNAL_PREFIX + source;
-      }
-      if (sdkModules[source] || uiModules[source]) {
-        return EXTERNAL_PREFIX + source;
+      // **Left for the host to resolve.** The bundle keeps the bare specifier and the document's import map
+      // names the host's module (`hostSharedModulesPlugin`, the renderer's Vite config). Leaving it alone is
+      // the whole mechanism: the pack gets live bindings, and an import of a name this AgentBuddy does not
+      // have fails when the module links, naming the export, rather than arriving as `undefined`.
+      if (feDeps[source] || sdkModules[source] || uiModules[source]) {
+        return { id: source, external: true };
       }
       // A pack without @abuddy/ui installed gets an empty proxy list, which is right until it imports
       // one: the import would be bundled instead of taken from the host, and every component in it
@@ -359,26 +238,65 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
           `This pack imports ${source}, but @abuddy/ui can't be resolved from ${packDir}, so there is nothing to take from the host. Install @abuddy/ui in the pack, or set fe.bundleUi to carry your own copy.`,
         );
       }
+      // Reached only by what the host does *not* share: `@abuddy/ears`, which a pack frontend inlines
+      // because the renderer keeps no EARS data, and an `@abuddy/sdk` subpath outside SDK_FE_MODULES. From
+      // the pack rather than the importing module, so those land on the pack's own copies.
       if (sharedInstancePackage(source)) {
-        // From the pack, not the importing module: shared-instance modules (@abuddy/sdk, @abuddy/ears)
-        // must resolve to the pack's copies
         return this.resolve(source, packImporter, { ...options, skipSelf: true });
       }
     },
+  };
+}
 
-    async load(id) {
-      if (!id.startsWith(EXTERNAL_PREFIX)) return;
-      const specifier = id.slice(EXTERNAL_PREFIX.length);
+/**
+ * **Keeps an external specifier bare in what a dev server sends.**
+ *
+ * `vite:import-analysis` rewrites the imports of every module it serves, and an import the resolvers left
+ * external it rewrites to `/@id/<specifier>` — its own convention for "ask this server for it". Here that is
+ * the wrong answer twice over: the browser resolves it against the module's own `pack://` URL, so the
+ * request comes back to *this* server, which left the specifier external and has nothing to serve for it. The
+ * pack's frontend then fails to load, where leaving the name alone resolves it through the document's import
+ * map to the host's module. A build has no such rewrite and emits the bare name already, so this is what
+ * makes `abuddy run` agree with `abuddy build`.
+ *
+ * **It has to be a middleware, not a `transform`.** Vite appends `importAnalysisPlugin` after the user's
+ * `post` plugins, so no hook runs after the rewrite; the only place left is the response. That is also the
+ * path that matters — the `pack://` handler proxies an HTTP request here
+ * (`packages/main/src/modules/pack-protocol/PackProtocol.ts`), so what the browser links against is this
+ * body, not a `transformRequest` result.
+ *
+ * `normalizeResolvedIdToUrl` is the code it undoes: an id that is not already `.`- or `/`-prefixed and is
+ * not an `isExternalUrl` is wrapped, and a bare specifier can be neither.
+ */
+function keepExternalsBarePlugin(packDir: string): VitePlugin {
+  const bare = Object.keys(sharedFeModules(packDir)).filter(
+    (specifier) => !(bundlesUi(packDir) && /^@abuddy\/ui(\/|$)/.test(specifier)),
+  );
+  // Longest first, so `@abuddy/ui/design/button` is unwrapped before a prefix of it could be
+  const wrapped = bare.map((specifier) => [`"/@id/${specifier}"`, `"${specifier}"`] as const)
+    .sort((a, b) => b[0].length - a[0].length);
 
-      const hostDep = feDeps[specifier];
-      if (hostDep) {
-        return generateGlobalProxy(specifier, hostDep.globalKey, discoverRuntimeExports(specifier), { warnMissing: false });
-      }
-
-      const sharedMod = sdkModules[specifier] ?? uiModules[specifier];
-      if (sharedMod) {
-        return generateGlobalProxy(specifier, sharedMod.globalKey, await discoverSharedExports(this, specifier));
-      }
+  return {
+    name: 'pack-externals-stay-bare',
+    configureServer(server) {
+      server.middlewares.use((_req, res, next) => {
+        const end = res.end.bind(res);
+        // Patched per request rather than once, because `res` is a new object each time
+        res.end = function patched(this: unknown, chunk?: unknown, ...rest: unknown[]) {
+          const type = String(res.getHeader('Content-Type') ?? '');
+          if (typeof chunk === 'string' && type.includes('javascript')) {
+            let body = chunk;
+            for (const [from, to] of wrapped) body = body.split(from).join(to);
+            if (body !== chunk) {
+              // The length moved, and a stale Content-Length truncates the module
+              if (res.getHeader('Content-Length') !== undefined) res.setHeader('Content-Length', Buffer.byteLength(body));
+              return (end as (c: unknown, ...r: unknown[]) => unknown)(body, ...rest);
+            }
+          }
+          return (end as (c: unknown, ...r: unknown[]) => unknown)(chunk, ...rest);
+        } as typeof res.end;
+        next();
+      });
     },
   };
 }
@@ -390,9 +308,10 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
  * declaration with two readers for a reason: the first spec to stand a dev server up wrote its own config, left
  * out `optimizeDeps.exclude`, and spent its evidence on a dep optimizer the real server never reaches.
  *
- * `optimizeDeps.exclude` is what keeps the host-shared packages out of the pre-bundle: they are served as
- * proxies over `window.__abuddy`, so pre-bundling them would both waste the work and hand the pack a second
- * copy. No `resolve.conditions`, deliberately — a pack resolves the `@abuddy` packages the way its own author's
+ * `optimizeDeps.exclude` is what keeps the host-shared packages out of the pre-bundle: this server leaves
+ * them external for the document's import map, so the pack never loads one from here — pre-bundling them
+ * would spend the work and, if anything did reach the pre-bundle, hand the pack a second copy. No
+ * `resolve.conditions`, deliberately — a pack resolves the `@abuddy` packages the way its own author's
  * install does, which is `dist` for an installed SDK and source for one linked to a checkout.
  */
 export async function packDevServerConfig(root: string, feEntry: string): Promise<InlineConfig> {
@@ -403,6 +322,7 @@ export async function packDevServerConfig(root: string, feEntry: string): Promis
     configFile: false,
     plugins: [
       packExternalsPlugin(root),
+      keepExternalsBarePlugin(root),
       vue(),
       {
         name: 'pack-entry-redirect',
@@ -418,7 +338,7 @@ export async function packDevServerConfig(root: string, feEntry: string): Promis
     ],
     server: { port: 5199, strictPort: false, cors: true, hmr: { protocol: 'ws', host: 'localhost' } },
     logLevel: 'info',
-    optimizeDeps: { exclude: Object.keys(getSharedFeDeps(root)) },
+    optimizeDeps: { exclude: Object.keys(sharedFeModules(root)) },
   };
 }
 

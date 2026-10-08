@@ -8,7 +8,9 @@ import { SOURCE_CONDITION } from './source-resolution.ts';
  * instance of each (the SDK's registries, the EARS engine's data). Every bundler external list, the
  * host pack loader's bridge, the pack test harness's bridge and bundle-package derive from this list.
  * The frontend shares only the SDK modules below (SDK_FE_MODULES): it keeps no EARS data, so a pack
- * frontend inlines what it imports from @abuddy/ears (constants and pure helpers).
+ * frontend inlines what it imports from @abuddy/ears (constants and pure helpers). What a pack's
+ * frontend may leave to the host is `sharedFeModules` below, which is those plus the shared deps and
+ * @abuddy/ui's exports.
  */
 export const SHARED_INSTANCE_PACKAGES = ['@abuddy/sdk', '@abuddy/ears'] as const;
 
@@ -209,8 +211,8 @@ export function getSdkFeModules(): Record<string, SdkFeModule> {
 }
 
 /**
- * Every @abuddy/ui export, shared with pack FE code like the SDK modules: the host exposes each
- * module on window.__abuddy under its specifier. Read from the exports map of the @abuddy/ui that
+ * Every @abuddy/ui export, shared with pack FE code like the SDK modules: the host serves each and names
+ * it in the document's import map under its specifier. Read from the exports map of the @abuddy/ui that
  * `fromDir` resolves (the host's own, or a pack's).
  */
 export function getUiFeModules(fromDir: string): Record<string, SdkFeModule> {

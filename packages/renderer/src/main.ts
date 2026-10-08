@@ -10,10 +10,11 @@ import 'highlight.js/styles/github-dark.css'
 import { hostFrontend } from '@/views/packs/plugin';
 import { createAppShell } from '@/runtime/shell';
 import { HOST, installFromProtocol, runFrontendMigrations } from '@abuddy/host/fe';
-import 'virtual:host-deps';
+import 'virtual:host-shared-modules';
 import { bindRendererHost } from '@/runtime';
 import { fePacks } from '@/runtime/packs';
 import { installGlobalErrorHandling, reportRendererError } from '@/boot/errors';
+import { untypedSendToSystem } from '@abuddy/sdk/events';
 
 declare const __APP_VERSION__: string;
 
@@ -21,6 +22,16 @@ declare global {
   interface Window {
     applicationState: Actor<ReturnType<typeof createAppShell>>;
     __disableOnboardingUI?: () => void;
+    /**
+     * Sends a backend system an event the way a plugin does, for the E2E suite.
+     *
+     * A door of its own, because the suite has no other: a send to a system goes through the API's
+     * `bus.send`, which is tRPC over a WebSocket — a client to stand up rather than a call to make — and
+     * nothing else in the page exposes one. Borrowing a door that production code needs is what this
+     * avoids: such a door is then load-bearing for a test, and removing it breaks the suite for reasons
+     * that have nothing to do with it.
+     */
+    __sendToSystem?: (systemId: string, event: { type: string } & Record<string, unknown>) => void;
     appVersion: string;
   }
 }
@@ -70,6 +81,8 @@ window.__disableOnboardingUI = () => {
   applicationState.send({ type: 'ONBOARDING_COMPLETE' });
   console.log('Onboarding UI hiding disabled');
 };
+
+window.__sendToSystem = untypedSendToSystem;
 
 applicationState.subscribe({
   error: (error: unknown) => {

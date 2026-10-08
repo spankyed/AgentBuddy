@@ -43,7 +43,7 @@ Never:
 **How external pack frontends run today.**
 - The renderer loads an installed pack's frontend with a dynamic `import()` of `pack://<packId>/runtime/fe.js` (`packages/abuddy-host/src/features/packs/fe/frontends.ts`, over the window's `importModule` in `packages/renderer/src/adapters/pack-frontends.ts`).
   - The code runs in the app window's own JavaScript realm, with the same globals as the host.
-  - It shares the host's `@abuddy/sdk` and `@abuddy/ui` through `window.__abuddy`, and renders its plugins (Vue components) into the app's DOM.
+  - It shares the host's `@abuddy/sdk` and `@abuddy/ui` by resolution — the bundle leaves those specifiers bare and the document's import map names the host's module — and renders its plugins (Vue components) into the app's DOM.
 - A pack's plugins are XState machines the app shell spawns (`packages/abuddy-host/src/features/application/fe/`). They talk to the backend through `@abuddy/sdk/events`: `sendToSystem` goes over the frontend port's transport (the host's tRPC client, `bus.send`).
 
 **What that code can reach.** Anything the app window can, because the host and the pack share one realm:
@@ -101,7 +101,7 @@ So installing an external pack today means trusting it as much as the app itself
 
 - Build the chosen mechanism (Open decision 2) for a single external pack. The pack's `runtime/fe.js` loads there instead of through `import()` in the app window.
 - The host side starts, embeds and stops the isolated context with the pack's lifecycle: activate, teardown, reload, and `packClientReady` (`packages/abuddy-host/src/features/packs/fe/frontends.ts`, driven by the app shell in `packages/abuddy-host/src/features/application/fe/`).
-- No `window.electronAPI`, `window.__abuddy` host objects or `window.applicationState` exist in the isolated context.
+- No `window.electronAPI` or `window.applicationState` exists in the isolated context, and its document carries no import map naming the host's modules.
 
 **Done when:** the `tests/packs/external-pack` fixture renders its plugin through the isolated host. A renderer unit spec shows the isolated context has no `electronAPI`. Mutation: loading the pack with `import()` again fails that spec.
 
@@ -109,7 +109,7 @@ So installing an external pack today means trusting it as much as the app itself
 
 - A message bridge carries what Open decision 3 allows, in both directions. The pack side implements `@abuddy/sdk/events`, the frontend lookups and `secretsClient` over it; the host side answers from its registry and transport. Pack code keeps importing `@abuddy/sdk` unchanged.
 - The host validates every message: a pack can only send to systems it may address (`resolveName` rules), and only the calls the bridge defines.
-- `@abuddy/ui` and styles load inside the isolated context. The FE bundler's `window.__abuddy` proxying is replaced for isolated packs: they bundle UI or load a host-provided copy into their context.
+- `@abuddy/ui` and styles load inside the isolated context. What the FE bundler leaves external has to be answered there instead: an isolated pack bundles UI, or its own document carries a map naming a host-provided copy inside that context.
 
 **Done when:**
 - a fixture pack's plugin sends and receives events, reads lookups and lists secrets through the bridge;

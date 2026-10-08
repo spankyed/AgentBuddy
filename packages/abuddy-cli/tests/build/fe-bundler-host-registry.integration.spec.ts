@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
 import { population } from '@abuddy/sdk/testing';
 import { bundlePackFE } from '../../src/build/fe-bundler';
+import { bundleExternals } from '../_support/pack-builds';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '@app/publish-checks';
 
 const EARS_SOURCE = path.join(REPO_ROOT, 'packages', 'abuddy-ears');
@@ -75,13 +76,14 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
 
     expect(result.error).toBeUndefined();
     const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
-    expect(output).toContain('window.__abuddy?.["@abuddy/ui/components/tiptap/TiptapEditor"]');
-    expect(output).toContain('window.__abuddy?.["@abuddy/ui/composables/useDebounce"]');
+    // Left for the host to resolve, which is what gives the pack the app's instance
+    expect(await bundleExternals(path.join(packDir, 'dist', 'fe.js'))).toEqual(
+      expect.arrayContaining(['@abuddy/ui/components/tiptap/TiptapEditor', '@abuddy/ui/composables/useDebounce']));
     // No UI code: the editor's extensions, its styles or the debounce implementation
     expect(output).not.toMatch(/createExtensions|ProseMirror|clearTimeout/);
   });
 
-  it('bundles @abuddy/ui with fe.bundleUi and proxies the shared SDK modules it imports', async () => {
+  it('bundles @abuddy/ui with fe.bundleUi and still leaves the shared SDK modules it imports to the host', async () => {
     const { packDir, entry } = makePack(layout,
       `import { createEditorClickHandler } from '@abuddy/ui/components/tiptap/composables/createEditorClickHandler';\n` +
       `export const handler = createEditorClickHandler({ noteLinkClick() {}, imageClick() {} });\n`,
@@ -93,7 +95,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     expect(result.error).toBeUndefined();
     expect(result.success).toBe(true);
     const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
-    expect(output).toContain('window.__abuddy?.["sdkFe"]');
+    expect(await bundleExternals(path.join(packDir, 'dist', 'fe.js'))).toContain('@abuddy/sdk/fe');
     expect(output).toContain('createEditorClickHandler');
   });
 
@@ -107,8 +109,8 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
 
     expect(result.error).toBeUndefined();
     const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
-    expect(output).toContain('window.__abuddy?.["@tiptap/pm/state"]');
-    expect(output).toContain('window.__abuddy?.["@tiptap/vue-3/menus"]');
+    expect(await bundleExternals(path.join(packDir, 'dist', 'fe.js'))).toEqual(
+      expect.arrayContaining(['@tiptap/pm/state', '@tiptap/vue-3/menus']));
     // prosemirror-model's own code (its content-expression error) isn't inlined
     expect(output).not.toContain('Invalid content for node');
   });
@@ -168,7 +170,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     expect(output).toContain('Memo');
   });
 
-  it('builds when SDK imports go through host-shared proxies', async () => {
+  it('builds when SDK imports are left to the host', async () => {
     const { packDir, entry } = makePack(layout,
       `import { bindFeHost } from '@abuddy/sdk/runtime';\nimport { compareVersions } from '@abuddy/sdk/utils/pure';\n` +
       // What #generated/events imports: a pack's frontend sends through the host's transport
@@ -180,8 +182,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
 
     expect(result.error).toBeUndefined();
     expect(result.success).toBe(true);
-    const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
-    expect(output).toContain('window.__abuddy?.["sdkRuntime"]');
-    expect(output).toContain('window.__abuddy?.["sdkEvents"]');
+    expect(await bundleExternals(path.join(packDir, 'dist', 'fe.js'))).toEqual(
+      expect.arrayContaining(['@abuddy/sdk/runtime', '@abuddy/sdk/events']));
   });
 });

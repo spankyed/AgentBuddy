@@ -22,7 +22,7 @@ Tests live in `tests/`, mirroring `src/`, as in every other package.
 
 ## Boot (`src/main.ts`)
 
-Its static imports are evaluated first: `virtual:host-deps` assigns `window.__abuddy`, so it is in place before any pack code runs. The body then runs with a top-level `await`, in this order:
+Its static imports are evaluated first, `virtual:host-shared-modules` among them — which has no runtime effect and is imported for the two side effects of its modules being in this window's graph (see the Vite section). The body then runs with a top-level `await`, in this order:
 
 1. `installGlobalErrorHandling()` (`src/boot/errors.ts`): the Monaco error filter, then this window's `window.error` / `unhandledrejection` reporters (`electronAPI.rendererLog.write`, `fatal: true`). One call, because the filter only works when it is registered first. Reads `?popout=plugin&pluginId=…` (set by main's `plugin:popout`).
 2. Sets `window.appVersion` (`__APP_VERSION__`, the root `package.json` version) and runs `runFrontendMigrations(localStorage, __APP_VERSION__)` (`@abuddy/host/fe`), which moves what this window keeps in its storage forward before the shell reads those keys. The migrations are the host's (`src/fe/migrations/`); the window only says where its storage is and which version it is.
@@ -36,6 +36,7 @@ Its static imports are evaluated first: `virtual:host-deps` assigns `window.__ab
 6. Sets the globals:
    - `window.applicationState` is the actor. The E2E fixture (`@abuddy/testing`) finds the main window by it and drives it.
    - `window.__disableOnboardingUI()` sends `ONBOARDING_COMPLETE`.
+   - `window.__sendToSystem` is `untypedSendToSystem`, for the E2E suite: a send to a backend system is otherwise only reachable over the API's tRPC WebSocket, which is a client to stand up rather than a call to make.
 7. Subscribes to `protocolAction`: `abuddy://install?pack=…&source=…` → `installFromProtocol` (`@abuddy/host/fe`), which reads the parameters and sends `INSTALL_PACK` to the `packs` system.
 8. Mounts `views/App.vue`, sets a Vue `errorHandler`, then calls `electronAPI.rendererReady()`, which tells main to show the window.
 
@@ -46,12 +47,24 @@ Its static imports are evaluated first: `virtual:host-deps` assigns `window.__ab
 - **`devPackFrontendsPlugin(command === 'serve')`**, over `discoverDevPackFrontends` (`@abuddy/host/build/discover`):
   - `virtual:dev-pack-frontends` exports `{ [packId]: () => import('<abs path to pack-entry-fe.ts>') }` for each local pack whose codegen wrote that file — the packs under `packages/`, plus any directory `ABUDDY_DEV_PACK_DIRS` names. **Serving a pack's frontend from source is the whole of what the dev server adds, and the only reason a `.vue` edit patches the component**: the pack's modules are in this graph, so Vite has an accepting importer to stop the update at. The map is empty for `vite build`, where each pack's frontend is fetched over `pack://` from the bundle its own `abuddy build` wrote. It asks nothing about `builtIn` — a pack is in it because its source is on this disk.
   - `@/…` resolves into `renderer/src/`, whoever imports it — the renderer's own alias and nothing else's (`tsconfig.app.json` maps it the same way). A pack names its own modules with `#` subpath imports, which Node, Vite and esbuild resolve from the pack's own `package.json` without this hook, so the alias is not per-importer and no other bundler config implements it; `check:specifiers`' `pack-own-aliases` refuses a `@/` in pack code, which would resolve for `tsc` and for nothing else.
-- **`hostDepsPlugin`** generates `virtual:host-deps`: `window.__abuddy = { … }`, holding namespace imports of:
-  - `getSharedFeDeps()` (vue, xstate, `@xstate/vue`, tiptap, reka-ui, lucide, vue-flow, every `@tiptap/pm/*` and `@tiptap/vue-3/*` subpath, `prosemirror-*` aliases);
-  - `getSdkFeModules()` (`sdkFe`, `sdkEvents`, `sdkRuntime`, …);
-  - every `@abuddy/ui` export, keyed by specifier.
+- **`hostSharedModulesPlugin`** is how a pack gets *this app's* Vue, XState and SDK instance (with the
+  frontend host it binds): **by resolution**, not through a global. `sharedFeModules()`
+  (`@abuddy/host/build/shared-deps`) maps every specifier a pack may leave external to the module the host
+  loads for it — the shared deps, `getSdkFeModules()`, and every `@abuddy/ui` export. The plugin then:
+  - serves each distinct module. In `vite build` each is an extra `rollupOptions.input` entry with
+    `preserveEntrySignatures: 'exports-only'`; **only when building**, because naming `input` also makes the
+    dev server crawl those entries for dependency discovery in place of `index.html`, and a bare specifier
+    is not something it can crawl.
+  - injects `<script type="importmap">` ahead of the app's script (`transformIndexHtml`, `head-prepend`), so
+    it is parsed before any module resolves against it. A popout loads this same document and inherits it.
+  - `virtual:host-shared-modules` imports every one of them and does nothing else. It is in the graph for
+    two reasons: in **dev** it is what the map is read from — transforming it hands back the URLs Vite serves
+    each module at, which cannot be derived (measured 2026-10-08, this app's deps carried four different
+    `?v=` hashes at once, and a URL differing by one is a second copy of the module) — and it is how the dep
+    optimizer hears of the ProseMirror subpaths, which nothing else imports.
 
-  All three lists live in `@abuddy/host/build/shared-deps`. The pack FE bundler proxies the same specifiers to these globals, so packs share the host's Vue, XState and SDK instance (with the frontend host it binds).
+  The pack FE bundler leaves those same specifiers external, so the two cannot drift: both read
+  `sharedFeModules()`.
 - **Resolution:** conditions include `@abuddy/source`. The API's router type comes from `@app/api` (a type-only import, a dev dependency).
 - `base: './'` (loaded from `file://` in builds), `modulePreload: false`, and a long `optimizeDeps.include` list (Monaco, xterm, tiptap, vidstack, …) for the dev server.
 - `tsconfig.app.json` includes `../abuddy-sdk/src/fe/**/*` (the `Window.electronAPI` declaration, see `packages/preload/CLAUDE.md`) and maps `@/*` → `src/*`.
