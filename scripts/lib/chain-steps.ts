@@ -1153,7 +1153,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // declared — so an unchanged stamp means the same app, and running it again asks a question already
   // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
   // suite off the gate bought.
-  { name: 'test:smoke', timeout: 'suite', seconds: 21,
+  { name: 'test:smoke', timeout: 'suite', seconds: 16,
     outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },

@@ -43,7 +43,7 @@ import type { ExclusiveLock } from '@abuddy/host/exclusive-lock';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredMachine, machineText, MEASURED_ON, thisMachine, unmetRecordingConditions } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
-import { asCount, driftVerdict, idleNow, movedBeyondBand, parseFlags, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
+import { asCount, driftVerdict, idleAfterRun, idleNow, movedBeyondBand, parseFlags, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { machineLine, recordMachine, recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { driftedSteps, measurementsFrom, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
@@ -794,9 +794,18 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
       + `${machineText(want)} costs at ${cores(want.cores)}, and this ran on ${cores(budget)}.`);
     return;
   }
-  const idle = idleNow();
+  // **Judged once the box has stopped moving, not the instant the run returned.** That instant is when this
+  // run's own residue peaks, and a single reading there cannot tell it from a stranger's load —
+  // `idleWhenSettled` has what that cost. The late check itself stays: it is the only thing that sees a run
+  // disturbed half way through, which is the case the pre-flight at the top of `record` cannot reach.
+  // **The quietest reading over a watched window, not one taken as the run returns.** That instant is when
+  // this run's own residue peaks, and a single 250ms sample there answered for the box — `quietestOf` has
+  // what that cost and why the max is the statistic. The late check itself stays: it is the only thing that
+  // sees a run disturbed half way through, which the pre-flight at the top of `record` cannot reach.
+  const { idle, waitedMs } = idleAfterRun();
+  console.log(`\nwatched the box for ${(waitedMs / 1000).toFixed(1)}s after the run: quietest ${Math.round(idle * 100)}% idle`);
   if (refusesAsBusy({ idle, floor: RECORD_IDLE_FLOOR, force })) {
-    console.log(`\n--record refused: the machine is ${Math.round(idle * 100)}% idle and this needs ${Math.round(RECORD_IDLE_FLOOR * 100)}%.`);
+    console.log(`--record refused: this needs ${Math.round(RECORD_IDLE_FLOOR * 100)}%, and nothing quieter came up in that window.`);
     console.log('  What you would record now is the machine. Wait, or pass --force and know the number is forced.');
     return;
   }
