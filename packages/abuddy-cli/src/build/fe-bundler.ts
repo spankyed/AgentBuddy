@@ -112,8 +112,28 @@ function uiPackageDir(packDir: string): string | undefined {
   }
 }
 
+/**
+ * The directories whose installs own the shared packages, in the order they are tried: the pack, then its
+ * `@abuddy/ui` — which is what actually depends on tiptap and may hold its own nested copy.
+ *
+ * **Every consumer of the shared list resolves from the same two.** They are what makes the tiptap and
+ * ProseMirror subpaths resolvable at all for a pack that does not depend on tiptap directly, so a consumer
+ * passing only the pack dir gets a *shorter* list and no error — and two consumers with different lists is
+ * one externalising a specifier the other does not know about.
+ */
+function sharedResolveDirs(packDir: string): string[] {
+  return [packDir, uiPackageDir(packDir)].filter((dir): dir is string => dir !== undefined);
+}
+
+/** Every specifier this pack leaves for the host to resolve, which is the shared list minus its opt-out */
+function packSharedSpecifiers(packDir: string): string[] {
+  return Object.keys(sharedFeModules(...sharedResolveDirs(packDir))).filter(
+    (specifier) => !(bundlesUi(packDir) && /^@abuddy\/ui(\/|$)/.test(specifier)),
+  );
+}
+
 export function packExternalsPlugin(packDir: string): VitePlugin {
-  const resolveFrom = [packDir, uiPackageDir(packDir)].filter((dir): dir is string => dir !== undefined);
+  const resolveFrom = sharedResolveDirs(packDir);
   const feDeps = getSharedFeDeps(...resolveFrom);
   // A bundleUi pack imports ProseMirror and tiptap's Vue menus through the shared subpaths. If they
   // resolve to nothing the pack inlines its own copy and the app ends up with two ProseMirror
@@ -269,11 +289,9 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
  * not an `isExternalUrl` is wrapped, and a bare specifier can be neither.
  */
 function keepExternalsBarePlugin(packDir: string): VitePlugin {
-  const bare = Object.keys(sharedFeModules(packDir)).filter(
-    (specifier) => !(bundlesUi(packDir) && /^@abuddy\/ui(\/|$)/.test(specifier)),
-  );
   // Longest first, so `@abuddy/ui/design/button` is unwrapped before a prefix of it could be
-  const wrapped = bare.map((specifier) => [`"/@id/${specifier}"`, `"${specifier}"`] as const)
+  const wrapped = packSharedSpecifiers(packDir)
+    .map((specifier) => [`"/@id/${specifier}"`, `"${specifier}"`] as const)
     .sort((a, b) => b[0].length - a[0].length);
 
   return {
@@ -338,7 +356,7 @@ export async function packDevServerConfig(root: string, feEntry: string): Promis
     ],
     server: { port: 5199, strictPort: false, cors: true, hmr: { protocol: 'ws', host: 'localhost' } },
     logLevel: 'info',
-    optimizeDeps: { exclude: Object.keys(sharedFeModules(root)) },
+    optimizeDeps: { exclude: packSharedSpecifiers(root) },
   };
 }
 

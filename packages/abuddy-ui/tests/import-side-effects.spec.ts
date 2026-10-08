@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 
 /**
- * The app imports every @abuddy/ui module at startup to share it with packs (virtual:host-deps),
+ * The app imports every @abuddy/ui module at startup to share it with packs (virtual:host-shared-modules),
  * so a module must not act when imported: no top-level statements that run code (listeners,
  * registrations). Declarations, including objects built from calls, are fine; `<script setup>`
  * runs per component instance and isn't checked.
