@@ -71,7 +71,7 @@ Things that waste the most time, in order:
   `npm run packages:ensure` once first and every later call is a stat and a return, which is what makes
   a parallel chain safe; the 18 calls a serial chain makes are each paying that stat for nothing.
 
-Six rules that pay for themselves:
+Rules that pay for themselves:
 
 - **Measure before you optimise, and before you accept someone else's measurement.** Two proposals in
   this repo were rejected by one command each, and both had been argued for at length first.

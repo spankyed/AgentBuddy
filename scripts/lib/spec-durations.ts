@@ -28,26 +28,24 @@
  * else is the parse, the ranking, the totals, the cache, the window and `spec:dry`'s pricing, which are
  * read whether or not a marker is ever checked. So deleting the gate leaves the instrument intact.
  *
- * **What it guards is eleven annotations, in one direction, and its failure mode is a stale comment.**
- * What it is *for* is the decision underneath: whether a spec should move between halves. **As of
- * 2026-10-06 that decision has been made zero times** — `run-install.spec.ts` is the standing candidate,
- * named in `goal-placement-without-a-clock.md` and worth ~4.4s of the worst `npm run spec` loop (93
- * specs, 24.4s, from an `@abuddy/sdk` entity-type change), and nothing has moved it.
+ * **What it guards is fourteen annotations, in one direction, and its failure mode is a stale comment.**
+ * What it is *for* is the decision underneath: whether a spec should move between halves — and **that
+ * decision is live.** `f2a003bb2` moved two specs on this evidence: `fe-bundler-proxy-exports` into
+ * `@abuddy/cli`'s integration half, and `published-manifest-paths` against a recorded placement whose
+ * justifying figure had gone 2.5x stale. A marker that has quietly stopped being true is what makes the
+ * next such reading untrustworthy, which is why the one direction load cannot fabricate is the one gated.
  *
- * **A year's wait cannot answer that, which is the correction this condition needed.** All eleven markers
- * are in packages with a single vitest config, so the move the remedy names costs a new config and a root
- * project entry rather than a rename — `hasSplit` (`spec-halves.ts`) is where that fact lives. A year
- * therefore passes with nothing having moved whatever anyone decides, and a condition met by arithmetic
- * says nothing about whether the gate earned its place. The number to read instead is the one
- * `markerReachLines` (`unit-pool.ts`) prints on a passing run: while it equals the marker count, the
- * decision is *unavailable* rather than unmade.
+ * **Eleven of the fourteen are in packages with a single vitest config**, where the move the remedy names
+ * costs a new config and a root project entry rather than a rename — `hasSplit` (`spec-halves.ts`) holds
+ * that fact and `markerReachLines` (`unit-pool.ts`) prints the count on a passing run. The three in
+ * `@abuddy/cli` have both halves, so for those the decision is *available* and not merely nameable.
  *
- * So: **delete the gate and keep the ranking once either holds** — a year of this repo's work with no
- * spec having moved halves on this evidence *while a move was available to it*, or a settled judgement
- * that the markers are not worth their weight. Both are judgements rather than things a run can check,
- * which is why they are written here; the mechanical halves are cases — that the population has not
- * collapsed to nothing, in `markedSpecs`' describe, and how much of it could move, in
- * `poolDurationLines`'.
+ * So: **a year of silence is not the condition, because the wait was answered in the other direction.**
+ * What would justify deleting the gate is a settled judgement that keeping these markers true is not worth
+ * its weight — priced against the placement decisions it enables, of which there have been two, and
+ * against the count in the paragraph above rather than any figure restated here. The mechanical halves are
+ * cases: that the population has not collapsed to nothing, in `markedSpecs`' describe, and how much of it
+ * could move, in `poolDurationLines`'.
  *
  * And price any addition against that figure before making one. The subsystem this replaced grew to 1,884
  * lines by answering each objection with another mechanism, and the lesson recorded for it in the root
@@ -66,7 +64,7 @@ import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
  * that was slow throughout moves both and the comparison survives it. That is the property a millisecond
  * could not have, and it is why the gate needs no idle floor — correlated movement cancels.
  *
- * Measured 2026-10-05 over 414 files, the five marked specs clear the fast half's p90 by 5.2x to 32.7x,
+ * Measured 2026-10-05 over 414 files, the five specs marked then clear the fast half's p90 by 5.2x to 32.7x,
  * where a fixed 2,500ms left two of them 13% clear. **If this ever does fail on a spec that is still
  * genuinely slow, deepen the quantile** — the fix is never to record a reading, which is the subsystem
  * this replaced.

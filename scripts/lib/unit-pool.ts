@@ -420,14 +420,13 @@ const placementLines = (rows: readonly FileDuration[], marked: ReadonlyMap<strin
  *
  * The gate's whole subject is whether a spec belongs in the other half, and `hasSplit` already records
  * what makes that available: *"a package with one config has nowhere to move a spec to."* Nothing counted
- * the markers against it, and the count is the finding — measured 2026-10-06, **every marker in the repo
- * is in such a package**, so the remedy the gate points at costs a new vitest config and a root project
- * entry rather than a rename.
+ * the markers against it, and the count is the finding — **eleven of the fourteen are in such a package**,
+ * so for those the remedy the gate points at costs a new vitest config and a root project entry rather
+ * than a rename. The three in `@abuddy/cli` have both halves and so could move today.
  *
- * That is what this line is for. The gate carries a deletion condition turning on a year passing with no
- * spec having moved halves on its evidence, and while this number equals the marker count that year is
- * guaranteed to pass whatever anyone does — so the condition would be met by arithmetic rather than by
- * the gate having been found useless. A reader of a passing run should see which it was.
+ * That is what this line is for: the gap between the markers that could act on this evidence and the ones
+ * that could not. `f2a003bb2` moved two specs on it, so the question is no longer whether the gate is ever
+ * acted on but how much of its population is reachable, which is what a reader of a passing run sees here.
  *
  * Silent at zero, so the output stops mentioning it the moment a package gains a second half or a marker
  * lands in one of the three that already have one.

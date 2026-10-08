@@ -2,7 +2,7 @@
 // the recorded artifacts whose checks are chain steps.
 //
 // **Not in `typecheck-legs.ts`, though that is where a reader would look first.** That file is one of
-// `STEP_TABLES`, which `record-seconds.ts` rewrites by finding `name: '<step>'` and then the next `seconds:`.
+// `STEP_TABLES`, which locates a step's declaration by its `name:` and the `seconds:` that follows it.
 // An entry carrying a name and no cost of its own silently lands on a neighbour's span — `planSecondsEdits`
 // caught exactly that and refused, which is the only reason it was not a wrong number written into the table.
 // So anything naming a step without declaring its cost belongs outside those files.

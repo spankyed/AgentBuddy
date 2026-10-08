@@ -7,6 +7,7 @@
 import { covers } from '@abuddy/host/build/packages-built';
 import { isMeasuredMachine, isMeasuredSchedule, machineText, thisMachine, type Machine } from './core-budget.ts';
 import { criticalPath, overBand } from './step-timing.ts';
+import { IDLE_FLOOR } from './measure.ts';
 import type { SchedulableStep } from './chain-schedule.ts';
 
 /**
@@ -390,9 +391,9 @@ export function howLong(
  * suggests — that run answers the narrower question the failure asks, whether the step passes alone.
  *
  * **So what the schedule gates is the advice, never the numbers.** Off the measured schedule the rows still
- * print, because what a step cost is true wherever it ran; the sentence telling a reader to record it does
- * not, because `--record` refuses there. A chain on a second developer's machine used to print that
- * instruction on every run and the command it named refused on every run.
+ * print, because what a step cost is true wherever it ran; the sentence offering a number to write does not,
+ * because the number would not describe the schedule the table does. A chain on a second developer's machine
+ * used to print that instruction on every run against figures taken on different silicon.
  */
 /**
  * How contended a reading was, as a suffix — empty for a step that had the box to itself.
@@ -412,6 +413,45 @@ const listOf = (names: readonly string[], shown = 3): string => {
 
 const peerSuffix = (peers: number): string => (peers === 0 ? '  (alone)' : `  (${peers} peers)`);
 
+/**
+ * What the figures above were taken under, for the reader who is about to type one.
+ *
+ * **The judgement the recorder's idle floor used to make, moved to where the decision now is.** `seconds` is
+ * declared, so nothing refuses a run any more — which means a reader can read a drift off a loaded box and
+ * write the box into the table. These are the two facts that gate used to hold before it wrote, printed
+ * instead of enforced: how quiet the machine was, and whether the rows moved together.
+ *
+ * **The direction decides what a correlated move means, and the two are opposites.** Load can only make a
+ * step slower, so rows that all came in slower may be the box; rows that all came in *faster* cannot be,
+ * because nothing about contention speeds a step up — that is the table being genuinely stale, which is
+ * what `build:app` at 39s against a real 13s was. Mixed directions say neither and get no sentence.
+ *
+ * **One row gets no verdict however far it moved.** A single step carrying a drift is that step's business,
+ * and the rows are printed, so a reader sees concentration without the report computing it. The recorder
+ * needed that computed because it had to reach a write decision from the numbers alone; a report does not.
+ */
+const conditionsNote = (
+  shown: readonly { declared: number; measured: number }[],
+  conditions: { readonly idle: number; readonly comparable: number } | undefined,
+): string => {
+  if (conditions === undefined) return '';
+  const slower = shown.filter(({ declared, measured }) => measured > declared).length;
+  const lines = [`  ${shown.length} of ${conditions.comparable} comparable steps`
+    + `, and the box read ${Math.round(conditions.idle * 100)}% idle as the run started.`];
+  if (shown.length > 1 && (slower === 0 || slower === shown.length)) {
+    lines.push(slower === shown.length
+      ? '  All of them slower, and load can only slow a step — so read the box before the code.'
+      : '  All of them faster, which load cannot cause — so this is the table and not the run.');
+  }
+  // `IDLE_FLOOR` rather than a new number: it already means "below this a timing is not worth printing",
+  // which is the same claim as "do not copy this figure into a committed file"
+  if (conditions.idle < IDLE_FLOOR) {
+    lines.push('  That is under the floor `npm run measure` refuses below, so a figure here may be the'
+      + ' machine. Measuring the step alone is the reading contention cannot fool.');
+  }
+  return `\n${lines.join('\n')}`;
+};
+
 export function driftReport(
   drifted: readonly { name: string; declared: number; measured: number; peers: number }[],
   budget: number,
@@ -424,6 +464,11 @@ export function driftReport(
    * `isMeasuredSchedule` has why it takes three facts and not one.
    */
   machine: Machine = thisMachine(),
+  /**
+   * How quiet the box was as the run started, and how many steps could have drifted — the two facts the
+   * deleted recorder checked before it wrote. Omitted, the report says nothing about either.
+   */
+  conditions?: { readonly idle: number; readonly comparable: number },
 ): string {
   // The two directions are not alike, so a run that cannot answer for one can still answer for the other.
   // Under the band is the run's doing: a smaller budget, or most steps cached, is less contention, and with
@@ -446,14 +491,18 @@ export function driftReport(
     return `\n${count} ran past twice the declared cost — the step grew, not the schedule:\n`
       + `${rows(({ declared, measured }) => `${declared}s -> ${measured}s`)}`;
   }
-  // **The instruction is what the schedule gates, not the numbers.** `re-measure, or record` is followable
-  // only where `--record` would accept the run, and `--record` accepts it only on the measured schedule — so
-  // printing it anywhere else is advice whose one command refuses. Asked of `isMeasuredSchedule` rather than
-  // of `budget === measuredAt`, which is the weaker form that let `--cores 10` on a twenty-core box through:
-  // the budget matched while every width was twenty-core sized.
+  // **The instruction is what the schedule gates, not the numbers.** `seconds` is declared, so the remedy is
+  // an edit rather than a command, and an edit is followable on any box — but the *number* to write is only
+  // true of the schedule the table describes, so offering one off that schedule offers a value that would be
+  // wrong the moment it landed. Asked of `isMeasuredSchedule` rather than of `budget === measuredAt`, which
+  // is the weaker form that let `--cores 10` on a twenty-core box through: the budget matched while every
+  // width was twenty-core sized.
   if (isMeasuredSchedule(budget, measuredOn, machine)) {
-    return `\n${count} cost something other than chain-steps.ts says — re-measure, or record:\n`
-      + `${rows(({ declared, measured }) => `seconds: ${declared} -> ${measured}`)}`;
+    // The conditions go on this branch alone, because it is the only one that names a number to write. The
+    // other two print what a step cost without offering a figure, so there is nothing for them to qualify
+    return `\n${count} cost something other than chain-steps.ts says — edit the declaration to match:\n`
+      + `${rows(({ declared, measured }) => `seconds: ${declared} -> ${measured}`)}`
+      + conditionsNote(shown, conditions);
   }
   return `\non ${cores(budget)}, ${count} moved against ${measuredOn.cores}-core numbers`
     + ` — the schedule, not a stale table:\n`
@@ -501,8 +550,8 @@ export function shouldClassify(run: {
  * not. This is the one place a run can say so, because it is the one place both numbers exist.
  *
  * **Every sentence here is followable, which is what the caller's gate buys.** `outgrownRungs` answers only
- * on the schedule the table was measured on, so both commands below are ones the reader's own box accepts —
- * `--record` refuses any other, and a report whose one instruction refuses is the defect this chain has
+ * on the schedule the table was measured on, so the number it would have a reader write is one that
+ * describes that table; a report whose one instruction cannot be acted on is the defect this chain has
  * already shipped twice (`driftReport`'s doc, and the context paragraph in `chain.ts`).
  *
  * **It names what would make it a false alarm**, which a report has to do or it gets ignored: a crowded run
@@ -522,10 +571,10 @@ export function shouldClassify(run: {
  * the original reason: a step that passed is stamped, so a re-run without it finds the step cached and
  * measures nothing.
  *
- * **And it asks for the record, not the rung.** Moving a step to a longer class is the fix, but the
- * declaration moves first: `--all --record` writes what the step costs, `chain-graph.spec.ts` then fails the
- * bound on the new number, and *that* is what says the rung has to change. Advising the rung here would skip
- * the step that proves it.
+ * **And it asks for the declaration, not the rung.** Moving a step to a longer class is the fix, but the
+ * declaration moves first: edit `seconds` to what the step costs, `chain-graph.spec.ts` then fails the bound
+ * on the new number, and *that* is what says the rung has to change. Advising the rung here would skip the
+ * step that proves it.
  */
 export const outgrownReport = (
   found: readonly {
@@ -536,7 +585,7 @@ export const outgrownReport = (
   if (found.length === 0) return '';
   const count = `${found.length} step${found.length === 1 ? '' : 's'}`;
   // **The one condition this report skips, said rather than left out.** `outgrownRungs` takes two of the
-  // three `RECORDING_CONDITIONS` and reports a partial run anyway, because contention can only make a step
+  // three comparability conditions and reports a partial run anyway, because contention can only make a step
   // slower and so the reading is an upper bound — worth printing with the caveat, not worth printing as a
   // comparison with the table. Said once for the run rather than per row, since every row shares it.
   const partial = found.some(({ wholeTable }) => !wholeTable)
@@ -557,7 +606,7 @@ export const outgrownReport = (
     + 'not growth. If the schedule is the\n'
     + '  suspect instead, `npm run chain -- --all --cores 1` re-runs the table serially; without --all the\n'
     + '  step is cached and the re-run measures nothing.\n'
-    + '  If it has really grown, `npm run chain -- --all --record` writes the new cost and\n'
+    + '  If it has really grown, edit the cost it declares in chain-steps.ts and\n'
     + '  chain-graph.spec.ts fails the bound on it, which is what says the rung has to change.'
     + partial;
 };

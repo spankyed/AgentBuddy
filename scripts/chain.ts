@@ -41,12 +41,11 @@ import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { CHAIN_WAIT_MS, ChainLockHeld, chainInvocation, holdChainLock } from './lib/chain-lock.ts';
 import type { ExclusiveLock } from '@abuddy/host/exclusive-lock';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
-import { box, isMeasuredMachine, machineText, MEASURED_ON, thisMachine, unmetRecordingConditions } from './lib/core-budget.ts';
+import { box, isMeasuredMachine, machineText, MEASURED_ON, thisMachine } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
-import { asCount, driftVerdict, idleAfterRun, idleNow, movedBeyondBand, parseFlags, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
-import { machineLine, recordMachine, recordSeconds } from './lib/record-seconds.ts';
+import { asCount, idleNow, parseFlags } from './lib/measure.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { driftedSteps, measurementsFrom, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
+import { driftedSteps, measurementsFrom, outgrownRungs, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { CHAIN_RUN_ENV, DIAGNOSTIC_RUN_ENV, measureCommandFor, POOLS, poolDurationLines, type Pool } from './lib/unit-pool.ts';
@@ -326,13 +325,6 @@ async function main(): Promise<void> {
     throw new Error(`The chain takes flags only, not ${args.positionals.join(' ')}`
       + ' — npm keeps a flag you did not put after `--`, so write `npm run chain -- --dry`');
   }
-  // `--adopt` is what `--record` does on another machine, so on its own it is a flag that would be accepted
-  // and then never read — the shape `10e7b9391` removed when `--lanez 3` ran a full chain in silence. Refused
-  // here rather than inside `recordTheCosts`, which is reached after the whole chain has run.
-  if (args.flags.has('adopt') && !args.flags.has('record')) {
-    throw new Error('--adopt only means something with --record: it is how another machine records this table,'
-      + ' and it writes MEASURED_ON with the costs. Write `npm run chain -- --all --record --adopt`.');
-  }
   const all = args.flags.has('all');
   // What the chain would do, without doing it. The answer is a pure function of the tree, so it is the way
   // to check the cache on a machine too loaded to time a run on — and the way to find out why a step you
@@ -468,24 +460,11 @@ async function main(): Promise<void> {
   const dispatchSweep = freshnessSweep();
   pruneStamps();
 
-  // **Refused before the run, not after it.** `recordTheCosts` asks this at the end, which is where the answer
-  // arrives too late: twice on 2026-10-04 a `--all --record` spent 200 seconds and was then told the machine
-  // was 69% idle. The deleted `spec-cost:update` asked first — "it refuses to measure below IDLE_FLOOR,
-  // before running anything" — and this is the same gate in the same order, now the only one left.
-  //
-  // The late one stays, and both are needed: a box quiet now can be loaded by the end, and the chain is its own
-  // load. This one saves the run when the answer is already no; that one catches a run disturbed while it ran.
-  // `npm run check:idle` is the same reading as a command, for asking without starting anything.
-  if (args.flags.has('record')) {
-    const before = idleNow();
-    if (refusesAsBusy({ idle: before, floor: RECORD_IDLE_FLOOR, force: args.flags.has('force') })) {
-      console.log(`\n--record refused before running: the machine is ${Math.round(before * 100)}% idle and this `
-        + `needs ${Math.round(RECORD_IDLE_FLOOR * 100)}%.`);
-      console.log('  Refused now rather than after the run, which is where the same check used to sit. Wait, or'
-        + ' pass --force and know the number is forced.');
-      return;
-    }
-  }
+  // **Read before the run, not after it.** The drift report quotes this to whoever is about to type a
+  // number, and a reading taken as the run returns is of this run's own teardown: measured 2026-10-08, this
+  // box read 78% immediately after a chain run and ~91% once it had settled. Before needs no settling, which
+  // is why the five-second watch window the recorder's gate needed is not here.
+  const idleAtStart = idleNow();
 
   const outcome = await schedule({
     steps,
@@ -595,7 +574,7 @@ async function main(): Promise<void> {
   // Measured, not declared. Reporting the floor from `seconds` made it wrong by the amount the table had
   // drifted — 109s against the 125.8s those same four steps actually took in that run.
   // `measurementsFrom`, not the results: a killed step's elapsed time is its deadline, and every reader below
-  // — the floor, the drift report, the rung report, `--record` — would take that for a cost
+  // — the floor, the drift report, the rung report — would take that for a cost
   const measuredMs = measurementsFrom(results);
   const ran = steps.filter((step) => measuredMs.has(step.name))
     .map((step) => ({ ...step, seconds: Math.round((measuredMs.get(step.name) ?? 0) / 1000) }));
@@ -658,15 +637,20 @@ async function main(): Promise<void> {
   // The policy is now the box, because that is what the default budget is, and that makes a fact explicit
   // that was only ever implicit: these numbers were always measured on one machine and nothing said which.
   if (!isMeasuredMachine(MEASURED_ON)) {
-    // Context, and no instruction — this message fires *only* off the reference machine, and it used to end
-    // "Re-measure with `npm run chain -- --all --record`", which is refused *only* off the reference
-    // machine. The one line that appears there named the one command that cannot work there.
+    // Context, and no instruction — this message fires *only* off the reference machine, where the one
+    // thing a reader could do with it is write a number that does not describe the table's schedule.
     console.log(`\nchain-steps.ts' seconds were measured on ${machineText(MEASURED_ON)}; this is ${machineText(thisMachine())}.`);
     console.log('  So the report below is context rather than advice: what a step cost here is true, and the');
     console.log('  table it is compared against describes another machine.');
   }
 
-  const report = driftReport(driftedSteps(steps, measuredMs, outcome.peers), budget, MEASURED_ON, all);
+  // The same population `driftedSteps` compares, so the denominator it is reported against is honest: a
+  // step with a declared cost and a reading of at least a second. Counted here because that function hands
+  // back only the rows that drifted, and its row shape is asserted whole elsewhere
+  const comparable = steps.filter((step) => step.seconds !== undefined
+    && Math.round((measuredMs.get(step.name) ?? 0) / 1000) >= 1).length;
+  const report = driftReport(driftedSteps(steps, measuredMs, outcome.peers), budget, MEASURED_ON, all,
+    thisMachine(), { idle: idleAtStart, comparable });
   if (report !== '') console.log(report);
 
   // **The bound asked of the measurement.** `declaredShare` gates on what a step declares, and the band above
@@ -682,25 +666,10 @@ async function main(): Promise<void> {
   // The command comes from how the step is run rather than from its name, because the three pool steps cache
   // inside themselves and so cannot be measured by their npm script (`measureCommandFor`)
   // `all` goes in so the report can say the reading is an upper bound rather than a comparison; it is the
-  // one `RECORDING_CONDITIONS` member this reader skips, and `outgrownRungs` has why
+  // one comparability condition this reader skips, and `outgrownRungs` has why
   const outgrown = outgrownReport(outgrownRungs(steps, measuredMs, budget, MEASURED_ON, thisMachine(), all, outcome.peers)
     .map((row) => ({ ...row, measureWith: measureCommandFor(row.name) })));
   if (outgrown !== '') console.log(outgrown);
-
-  if (args.flags.has('record')) {
-    recordTheCosts(steps, measuredMs, budget, all, args.flags.has('force'), args.flags.has('adopt'),
-      args.flags.has('forget'), args.values.step);
-  } else if (args.flags.has('forget') || args.values.step !== undefined) {
-    // Both are modifiers on the write, so without `--record` there is no write to modify. Said rather than
-    // ignored: `--step` alone passed silently until 2026-10-04, which is a flag accepted and not used — the
-    // failure `CHAIN_FLAGS` exists to prevent, reappearing one level in from the parser.
-    const named = [args.flags.has('forget') ? '--forget' : '', args.values.step !== undefined ? '--step' : '']
-      .filter(Boolean);
-    const both = named.length > 1;
-    console.log(`\n${named.join(' and ')} ${both ? 'change' : 'changes'} what --record writes, so `
-      + `${both ? 'they need' : 'it needs'} --record: on ${both ? 'their' : 'its'} own there is nothing for `
-      + `${both ? 'them' : 'it'} to change.`);
-  }
 
   console.log(`\n${verdictText()} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${` on ${cores(budget)}`}${floor}`);
   // Not process.exit(): it drops whatever stdout has still to flush, and the failing step's captured output
@@ -712,206 +681,6 @@ async function main(): Promise<void> {
   lock.release();
 }
 
-/**
- * `--record`: write each step's measured cost back into the table it is declared in.
- *
- * The update half of a recorded artifact that had only a check. `driftReport` has always printed the
- * value to write; this writes it, under the three things a sample needs and a derivation does not.
- *
- * **It needs `--all`**, because a cached step is not a measurement — recording its 0s would give a step
- * that builds a budget sized for a step that does not, which is the mistake `seconds`' own doc describes
- * someone already making. **It refuses a busy machine**, because what you would record then is the
- * machine; `--force` is the deliberate override and says so. **And it moves a number only past the band**,
- * because a sample re-measured on an idle box still wanders, and rewriting a row that already agrees is
- * the churn the band exists to prevent.
- *
- * The band here is tighter than the one the report uses. `driftReport` speaks at twice the declared cost,
- * chosen so a slow machine does not nag; a record wants to track reality, so it follows `SETTLED_FRACTION`
- * with a one-second floor. They differ on purpose, which is why this prints everything it wrote.
- */
-function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<string, number>,
-  budget: number, all: boolean, force: boolean, adopt: boolean, forget: boolean, step?: string): void {
-  // **`--step` is what bounds a mistake, and it is the guard three detectors could not give.** `--forget`
-  // writes every row from one run, so a run that measured the machine writes the machine everywhere — watched
-  // below. None of the cheap ways to *detect* such a run works, so the answer is reach: a wrong number
-  // confined to the row you named cannot touch the other twenty-eight, and `declaredShare` catches that one.
-  //
-  // Refused rather than ignored where it names nothing, because narrowing to an empty set would report
-  // "nothing recorded" and read as a quiet table — the silent no-op this repo refuses everywhere.
-  if (step !== undefined) {
-    if (!forget) {
-      console.log('\n--step narrows what --forget writes, so it needs --forget: --record on its own already '
-        + 'writes only the rows past their band.');
-      return;
-    }
-    if (!steps.some((candidate) => candidate.name === step)) {
-      console.log(`\n--step ${step} is no step in this run, so it would record nothing.`);
-      return;
-    }
-  }
-  // **One question, two subjects.** `--adopt` is how another machine takes the table over, writing
-  // `MEASURED_ON` in the same operation — without it the costs move and the constant does not, which is the
-  // state that makes every check scoped on it skip the box whose numbers are in the file. So a plain record
-  // asks whether this run is the schedule the *table* describes, and an adopting one asks whether it is a
-  // schedule *this machine* can claim. The second used to be a hand-written `budget !== box()` three lines
-  // from a comparison against `measuredOn.cores`; it is the same predicate with the other subject.
-  const want = adopt ? thisMachine() : MEASURED_ON;
-  // **Every condition at once, from the one list that names them** (`RECORDING_CONDITIONS`). These were a
-  // bare `if (!all)` here and a `scheduleMismatch` three lines below, so what a recordable run *is* existed
-  // in two places and nowhere as a whole — and the two readers of this same table were each skipping a
-  // condition without saying so. `--record` needs all three, because it writes: recording any other
-  // schedule hands every step a kill deadline sized from a schedule it will not run under, and a gate
-  // comparing only the budget passed `--cores 10` on a twenty-core machine.
-  //
-  // Reported one at a time and in the list's order, which is the reason this is an ordered list rather than
-  // a boolean: taking the conjunction apart at this call site is what once put an instruction under a budget
-  // mismatch that only a machine mismatch can act on.
-  const unmet = unmetRecordingConditions({ budget, measuredOn: want, wholeTable: all });
-  if (unmet.includes('wholeTable')) {
-    console.log('\n--record needs --all: a cached step reports no time, and recording that would size a budget from it.');
-    return;
-  }
-  const mismatch = unmet[0];
-  if (mismatch === 'machine') {
-    console.log(`\n--record refused: these costs are the chain's on ${machineText(MEASURED_ON)}; `
-      + `this is ${machineText(thisMachine())}.`);
-    console.log(`  Pass --adopt to record this machine's instead, which also writes:\n    ${machineLine(thisMachine())}`);
-    return;
-  }
-  // **Reachable on the measuring machine, both ways, which is worth saying because it looks like it is
-  // not.** "Not the measured schedule" reads as "another box", but the budget is the other half of the
-  // question, so the ten-core machine that owns the table lands here whenever `--cores` disagrees with it.
-  // Exercised both ways 2026-10-03, after the predicate took this shape, and neither wrote anything:
-  //
-  //   --all --record --cores 9           these costs are what <box> costs at a 10-core budget, ran on 9
-  //   --all --record --adopt --cores 9   adopting records what <box> costs at a 10-core budget, ran on 9
-  //
-  // No case, because nothing can import `scripts/chain.ts` — a command is how this one is checked, and the
-  // note is the only place a reader can learn it has been. The reason it reaches here is in
-  // `scheduleMismatch`, which is where a case *can* reach the decision.
-  if (mismatch === 'budget') {
-    console.log(`\n--record refused: ${adopt ? 'adopting records' : 'these costs are'} what `
-      + `${machineText(want)} costs at ${cores(want.cores)}, and this ran on ${cores(budget)}.`);
-    return;
-  }
-  // **Judged once the box has stopped moving, not the instant the run returned.** That instant is when this
-  // run's own residue peaks, and a single reading there cannot tell it from a stranger's load —
-  // `idleWhenSettled` has what that cost. The late check itself stays: it is the only thing that sees a run
-  // disturbed half way through, which is the case the pre-flight at the top of `record` cannot reach.
-  // **The quietest reading over a watched window, not one taken as the run returns.** That instant is when
-  // this run's own residue peaks, and a single 250ms sample there answered for the box — `quietestOf` has
-  // what that cost and why the max is the statistic. The late check itself stays: it is the only thing that
-  // sees a run disturbed half way through, which the pre-flight at the top of `record` cannot reach.
-  const { idle, waitedMs } = idleAfterRun();
-  console.log(`\nwatched the box for ${(waitedMs / 1000).toFixed(1)}s after the run: quietest ${Math.round(idle * 100)}% idle`);
-  if (refusesAsBusy({ idle, floor: RECORD_IDLE_FLOOR, force })) {
-    console.log(`--record refused: this needs ${Math.round(RECORD_IDLE_FLOOR * 100)}%, and nothing quieter came up in that window.`);
-    console.log('  What you would record now is the machine. Wait, or pass --force and know the number is forced.');
-    return;
-  }
-  // Under a second is not a measurement of the step's work, and the one it would corrupt is named in
-  // `seconds`' own doc: `packages:ensure` returns in 0.3s with the packages fresh and takes 14s when it
-  // builds, so recording the 0 gives a step that builds a budget sized for a step that does not. The
-  // first run of this did exactly that. `driftedSteps` skips the same measurements for the same reason.
-  const measured = new Map([...measuredMs]
-    .map(([name, ms]) => [name, Math.round(ms / 1000)] as const)
-    .filter(([, seconds]) => seconds >= 1));
-  const declared = new Map(steps.flatMap((step) => (step.seconds === undefined ? [] : [[step.name, step.seconds] as const])));
-  // `SECONDS_FLOOR`, not a millisecond one: these are seconds, and the floor is what stops the fraction
-  // chasing noise on a step that costs less than a second to begin with. Shared with `driftedSteps`, which
-  // stays quiet about a drift this would refuse to write
-  const moved = (was: number | undefined, now: number): boolean => movedBeyondBand(was, now, SECONDS_FLOOR);
-
-  // **The two gates a sample needs beyond its per-row band, which this record did without until 2026-10-02.**
-  // `spec-cost` has had both; the primitives are shared now (`measure.ts`) rather than copied.
-  //
-  // The body gate is the one this very change would have walked into. Per-row hysteresis cannot see a drift
-  // that moves everything at once: a uniform shave sits under `SETTLED_FRACTION` on every row, so a handful
-  // re-record, the run reports success, and the table goes on describing the schedule before it. Changing
-  // the chain's admission policy is exactly that shape, and `criticalPath` sums these numbers, so the error
-  // compounds where it is least visible.
-  // The body itself is read where it is reported, below, so that the verdict and its remedy are decided in
-  // one place rather than a number travelling the length of the function to be interpreted at the end.
-  const comparable = [...measured.keys()].filter((name) => declared.has(name));
-  if (refusesAsContended({
-    hasPrevious: comparable.length > 0,
-    force,
-    moved: comparable.filter((name) => moved(declared.get(name), measured.get(name)!)).length,
-    comparable: comparable.length,
-  })) {
-    console.log(`\n--record refused: ${comparable.filter((name) => moved(declared.get(name), measured.get(name)!)).length}`
-      + ` of ${comparable.length} steps moved past their band, which is more than a measurement should.`);
-    console.log('  That is a loaded machine or a real regression. Wait, or pass --force if the chain really changed this much.');
-    return;
-  }
-
-  // **`--forget` changes what is written, never what is refused.** The band keeps a quiet run from rewriting
-  // the file on jitter, and it is also why a row 10-20% stale cannot be corrected at all: `max(1s, 35%)` is
-  // wider than that, and `--force` overrides the two refusals above rather than this. So the flag drops the
-  // band from the *write* while the refusals go on counting rows that crossed it — contention is still
-  // contention, which is the separation `spec-cost` drew between its own `--forget` and `--force`.
-  //
-  // `was !== now` rather than always: `planSecondsEdits` has no no-op filter, so writing unconditionally would
-  // splice identical bytes for every unchanged row, report `60s -> 60s` as an edit, and move this file's mtime
-  // for nothing — which the freshness sweep reports, on a file five steps read.
-  //
-  // **Use it when you know what changed, not to chase a drift you do not.** It replaces the whole table from
-  // one run, so a run that measured the machine rather than the code writes the machine into every row.
-  // Watched 2026-10-04: a `--all --record --forget` on a box 83% idle at the start put `build:app` at 78s
-  // against the ~39s six other runs agreed on, `test:integration` at 96s against 60s, and `declaredShare`
-  // then failed for two steps. The drift report said so in the same output — "the table moved 24% as a body
-  // … re-run on an idle machine until it settles" — and the right response is that advice, a second reading,
-  // not this flag again.
-  //
-  // **Three cheaper guards were tried against those logs and none separates the two cases.** Refusing on a
-  // drifted body refuses the one thing the flag is for. Refusing on a wide spread of per-step ratios drowns
-  // in steps that barely ran — `packages:ensure` reports 0.3s against a declared 14s on every run. Refusing
-  // on any step past `overBand` fires on every run too, quiet ones included, because `check:tiers` declares
-  // 0.3s and takes 2-3s. What tells a contended run from a real drift is more than one reading, which is the
-  // window `spec-cost.json` has and this table does not.
-  // Narrowed here rather than in the writer, which needs no notion of a scope: what it is handed is what it
-  // considers, so one filter is the whole of it
-  const writing = step === undefined ? measured : new Map([...measured].filter(([name]) => name === step));
-  const edits = recordSeconds(writing, declared, forget ? (was, now) => was !== now : moved);
-  // Written after the costs and only with them: the table and the box it was measured on are one fact, and
-  // the failure this closes is them moving apart. A run that adopts and then records nothing still takes the
-  // table over — every row it re-measured agreed, which is a measurement and not an absence of one.
-  // Nothing to adopt where this machine already owns the table — and the write is not free to repeat: it
-  // puts identical bytes back, which moves `chain-steps.ts`' mtime for no change, and the freshness sweep
-  // reports exactly that as a file whose mtime moved while its bytes did not.
-  if (adopt && !isMeasuredMachine(MEASURED_ON)) {
-    recordMachine(thisMachine());
-    console.log(`\nadopted the table: ${machineLine(thisMachine())}`);
-  }
-  if (edits.length === 0) {
-    console.log('\nevery step cost what the table says, within the band — nothing recorded');
-    return;
-  }
-  console.log(`\nrecorded ${edits.length} step cost${edits.length === 1 ? '' : 's'}:`);
-  for (const { step, from, to, file } of edits) {
-    console.log(`  ${step.padEnd(STEP_NAME_WIDTH)} ${from}s -> ${to}s   ${file}`);
-  }
-  // Reported after the edits rather than refused, because the rows that cross the band are recorded either
-  // way and the body is the thing no row can report. A run that clears a drift is not the run that finds it.
-  //
-  // Two findings and not one: a movement one step carries is that step's, and `--forget` over the whole
-  // table would write this run's machine into twenty-nine rows to fix one. `driftVerdict` asks the question
-  // twice; each branch names the operation that fits its answer.
-  const verdict = driftVerdict(declared, measured);
-  if (verdict.kind === 'body') {
-    console.log(`\nthe table moved ${(verdict.share * 100).toFixed(0)}% as a body, which is more than idle runs vary.`);
-    console.log('  It survives leaving out the largest mover, so this is the table and not one step.');
-    console.log('  A drift that size sits under every per-step band, so no single measurement re-records it.');
-    console.log('  Re-run `npm run chain -- --all --record` on an idle machine until it settles.');
-  } else if (verdict.kind === 'member') {
-    const rest = verdict.without === undefined
-      ? 'no other step has a cost to move from'
-      : `the rest moved ${(verdict.without * 100).toFixed(0)}%`;
-    console.log(`\nthe table moved ${(verdict.share * 100).toFixed(0)}% as a body, and ${verdict.name} is why: without it ${rest}.`);
-    console.log(`  So this is one step's cost, not the table's. Record that row alone:`);
-    console.log(`    npm run chain -- --all --record --forget --step ${verdict.name}`);
-  }
-}
 
 // A throw here is a bug in the chain, not a failing check, and the two must not look alike
 try {

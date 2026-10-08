@@ -2,9 +2,9 @@
 //
 // Its own module for the reason `chain-steps.ts` and `chain-schedule.ts` are: `scripts/chain.ts` runs the
 // chain when imported, so nothing may import it to ask a question — and the question here is one nothing
-// could ask before. `--cores`, `--record` and `--force` had all shipped undocumented; the chain read its
-// flags with `process.argv.includes`, which accepts anything and reports nothing, so
-// `npm run chain -- --lanez 3` ran a full chain while silently ignoring what it was told.
+// could ask before. Flags had shipped undocumented, `--cores` among them, because the chain read them with
+// `process.argv.includes`, which accepts anything and reports nothing: `npm run chain -- --lanez 3` ran a
+// full chain while silently ignoring what it was told.
 //
 // `chain-table.spec.ts` holds this list to the root `CLAUDE.md`, which is the only other place the flags
 // are written down — in the describe named for documenting the flags it takes. That check is free in chain
@@ -18,8 +18,8 @@
  * `measure.ts`, written after the same bug printed a citation claiming a load that never happened.
  */
 export const CHAIN_FLAGS = {
-  values: ['cores', 'step'],
-  booleans: ['all', 'dry', 'e2e', 'no-classify', 'record', 'force', 'forget', 'adopt', 'wait', 'strict'],
+  values: ['cores'],
+  booleans: ['all', 'dry', 'e2e', 'no-classify', 'wait', 'strict'],
 } as const;
 
 /** Each flag as it is written on a command line and in the docs */

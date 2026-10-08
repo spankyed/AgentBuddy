@@ -52,7 +52,7 @@ describe('where the chain lock lives', () => {
 
   it('names the chain and its flags, so the next arrival knows what it is behind', () => {
     expect(chainInvocation([])).toBe('npm run chain');
-    expect(chainInvocation(['--all', '--record'])).toBe('npm run chain --all --record');
+    expect(chainInvocation(['--all', '--strict'])).toBe('npm run chain --all --strict');
   });
 
   // The flag is declared, which is what makes `--wait` reach the parser rather than being refused as a typo
@@ -63,13 +63,13 @@ describe('where the chain lock lives', () => {
 
 describe('a second run', () => {
   it('is refused, and told who holds it and how to get past it', async () => {
-    heldByAnother('npm run chain --all --record');
+    heldByAnother('npm run chain --all --strict');
 
     const refused = await holdChainLock({ what: 'npm run chain', file }).catch((err: unknown) => err);
 
     expect(refused).toBeInstanceOf(ChainLockHeld);
     const { message } = refused as ChainLockHeld;
-    expect(message, 'the holder, so you know what you are behind').toContain('npm run chain --all --record');
+    expect(message, 'the holder, so you know what you are behind').toContain('npm run chain --all --strict');
     expect(message, "the holder's pid, so you can check it is really there").toContain(`pid ${process.ppid}`);
     expect(message, 'why it matters, not just that it happened').toContain('cache results the other took');
     expect(message, 'the way to queue').toContain('--wait');

@@ -4,7 +4,7 @@
  * and separate from `scripts/chain.ts` because that module runs the chain when imported.
  */
 import type { SchedulableStep } from './chain-schedule.ts';
-import { type Machine, thisMachine, unmetRecordingConditions } from './core-budget.ts';
+import { type Machine, scheduleMismatch, thisMachine } from './core-budget.ts';
 import { declaredShare, type TimeoutClass } from './step-timeouts.ts';
 
 /**
@@ -55,12 +55,10 @@ export const BAND = 2;
 export const overBand = (declared: number, measured: number): boolean => measured > declared * BAND;
 
 /**
- * The smallest movement a recorded cost follows, in seconds.
+ * The smallest movement worth reporting, in seconds.
  *
- * `chain --all --record` compares with `movedBeyondBand(declared, measured, SECONDS_FLOOR)`, so a
- * difference of a second or less never reaches the table whatever the band says. One constant with two
- * readers, like `BAND` above: the recorder, and `driftedSteps` below, which uses it to stay quiet about a
- * drift no record can follow.
+ * Read by `driftedSteps` below, which stays quiet about a drift this small whatever the band says: three
+ * steps declare under a second, so for those the band is crossed by a one-second reading that means nothing.
  *
  * A second rather than a fraction because these are seconds, and a fraction of a sub-second number chases
  * noise — `check:tiers` declares 0.3s.
@@ -72,12 +70,12 @@ export const SECONDS_FLOOR = 1;
  *
  * **A killed step's time is its deadline, not its cost.** `boundedSpawn` returns when the budget runs out, so a
  * wedged `test:integration` reports ~300s — and every reader of this map takes what it holds for a measurement:
- * `--record` writes it into the table, `declaredShare` makes 300s four times its `suite` rung, `outgrownRungs`
+ * the drift report offers it as an edit, `declaredShare` makes 300s four times its `suite` rung, `outgrownRungs`
  * then names it as outgrown by construction, and `criticalPath` puts the deadline on the floor. Not one of them
  * is wrong about the number. The number is not a measurement.
  *
- * `recordTheCosts` already draws this line at the other end, for the same reason: "Under a second is not a
- * measurement of the step's work" — `packages:ensure` returns in 0.3s fresh and takes 14s when it builds. A
+ * `SECONDS_FLOOR` draws this line at the other end, for the same reason: under a second is not a measurement
+ * of the step's work — `packages:ensure` returns in 0.3s fresh and takes 14s when it builds. A
  * deadline is the same category and the worse one, being large rather than small, so it survives that filter
  * and lands in the table looking like a cost.
  *
@@ -88,8 +86,8 @@ export const SECONDS_FLOOR = 1;
  * would be the one writing a deadline into source.
  *
  * **Exercised against a real kill 2026-10-04, because no case can reach the composition.** `check:tiers` was
- * pointed at a hang and the chain run with `--all --record`: it was killed at 62.0s against its 60s `quick`
- * deadline, and `--record` — reached, not refused — reported *"every step cost what the table says, within the
+ * pointed at a hang and the chain run with `--all`: it was killed at 62.0s against its 60s `quick`
+ * deadline, and the report — reached, not refused — said *"every step cost what the table says, within the
  * band — nothing recorded"*. That sentence is only possible with the step excluded: against a declared 0.3s,
  * 62s is 61.7s outside a 1s band, so it would have been written as the cost. `outgrownRungs` said nothing
  * either, where 62s is 4.13 of that rung. One run, both readers.
@@ -123,7 +121,7 @@ export const measurementsFrom = (
  * **A report and not a gate.** A measurement at this threshold is noisy upward in a way the 2x band is not —
  * `driftReport` records 0 over-band events in 40 step runs, which says nothing about a 25% overrun — and
  * failing a run for it would manufacture the flake the ladder exists to prevent. What it feeds is the chain's
- * own pipeline: the report, then `--all --record`, then `chain-graph` failing on the new declaration, then the
+ * own pipeline: the report, then the edit, then `chain-graph` failing on the new declaration, then the
  * step moving rung. Only the first was missing.
  *
  * A step already over on its *declaration* is left out: that is `chain-graph`'s to fail, and a run reaching
@@ -137,13 +135,13 @@ export const measurementsFrom = (
  * its rung with room to spare. The percentage would be its share of a machine 16x the reference, which no
  * rung is sized for and nothing measured.
  *
- * So the gate is the machine and the budget — two of the three `RECORDING_CONDITIONS` that `--record`
+ * So the gate is the machine and the budget — the schedule conditions that a comparison with the table
  * refuses on — and that is what keeps this report's advice followable: it says to re-measure and record, and
  * it only speaks where recording is accepted. `driftReport` splits the two — its rows are true wherever
  * they ran, so it prints them anywhere and gates only the sentence. Neither of these two survives that
  * split, because the number itself is the projection.
  *
- * **It takes two of the three `RECORDING_CONDITIONS`, and skipping `wholeTable` is a decision.** The table
+ * **It gates on the schedule and not on the whole run, and that is a decision.** The table
  * is written only under `--all`, so a partial run's timings are not the quantity the table holds — the
  * chain admits steps in parallel, and nine stale steps are a different schedule from thirty. The reason to
  * report anyway is an inequality: **contention can only make a step slower**, so a measurement is an upper
@@ -200,11 +198,11 @@ export function outgrownRungs<S extends SchedulableStep & { readonly timeout?: T
   /** Which steps ran beside each one, for the row to report — see `driftedSteps` */
   peers: ReadonlyMap<string, ReadonlySet<string>> = new Map(),
 ): Array<{ name: string; declared: number; measured: number; at: number; wholeTable: boolean; peers: number }> {
-  // Two of the three conditions, naming the one left out rather than leaving it absent: a partial run is
-  // reported with that caveat, where another machine or another budget makes the number meaningless
-  const blocking = unmetRecordingConditions({ budget, measuredOn, machine, wholeTable })
-    .filter((condition) => condition !== 'wholeTable');
-  if (blocking.length > 0) return [];
+  // The schedule only, and a partial run is reported rather than refused: contention can make a step look
+  // slower and never faster, so a partial reading is an upper bound that can exonerate a step and cannot
+  // convict one — which is worth printing with the caveat each row carries. Another machine or another
+  // budget makes the number meaningless instead, and that is what this refuses on.
+  if (scheduleMismatch(budget, measuredOn, machine) !== undefined) return [];
   const found: Array<{ name: string; declared: number; measured: number; at: number; wholeTable: boolean; peers: number }> = [];
   for (const step of steps) {
     const ms = measuredMs.get(step.name);
@@ -258,10 +256,10 @@ export function driftedSteps<S extends SchedulableStep>(
     if (ms === undefined || step.seconds === undefined) continue;
     const measured = Math.round(ms / 1000);
     if (measured < 1) continue;
-    // Nor one the record could not follow. Three steps declare under a second, and for those the band
-    // above is crossed by a 1s measurement while `SECONDS_FLOOR` refuses to write it — so the report named
-    // `check:tiers 0.3 -> 1` on every full run and the only thing it suggested, "re-measure, or record",
-    // could not be done. Advice that cannot be taken teaches a reader to skip the report.
+    // Nor one too small to mean anything. Three steps declare under a second, and for those the band above
+    // is crossed by a 1s reading — so the report named `check:tiers 0.3 -> 1` on every full run, offering an
+    // edit that would replace one arbitrary sub-second number with another. Advice that cannot be acted on
+    // teaches a reader to skip the report.
     if (Math.abs(measured - step.seconds) <= SECONDS_FLOOR) continue;
     if (overBand(step.seconds, measured) || measured < step.seconds / BAND) {
       drifted.push({ name: step.name, declared: step.seconds, measured, peers: peers.get(step.name)?.size ?? 0 });

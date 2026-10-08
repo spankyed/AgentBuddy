@@ -68,10 +68,9 @@ export interface Leg {
    * What it costs **in the chain**, where each leg is its own step — the same regime as `ChainStep.seconds`,
    * which this becomes (`chain-steps.ts` copies it onto the generated step).
    *
-   * **It used to say "alone, on an idle machine", and that was two regimes for one field.** `npm run chain
-   * -- --all --record` writes in-chain numbers here and `driftedSteps` compares a chain run against them;
-   * only `npm run typecheck`, run by a person directly, ever sees a leg alone. The figure the old wording
-   * described is in that command's own doc, which is where it informs something.
+   * **In the chain and not alone, which are two regimes for one field.** `driftedSteps` compares a chain
+   * run against these numbers; only `npm run typecheck`, run by a person directly, ever sees a leg alone.
+   * The figure for a leg alone is in that command's own doc, which is where it informs something.
    *
    * **It bounds nothing.** It sized each leg's kill deadline at four times until 2026-10-03, which made
    * every leg's deadline a function of this machine; a leg is bounded by the `quick` class now

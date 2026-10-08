@@ -99,20 +99,23 @@ two config files a spec was listed in, where nine of twelve packages had only on
 `spec-cost.json` accumulated one only in hindsight. The `@slow:` marker gate — `SLOW_QUANTILE`, `tailBar`,
 `slowReason`, `markedSpecs`, `placementOf`, the outlier detector and their six describes, about 550 of the
 1,901 lines across `spec-durations.ts`, its reporter and their specs, plus 115 in `unit-pool.ts` and its
-spec where the report is printed — guards eleven annotations in one direction, and its failure
-mode is a stale comment. What it is *for* is whether a spec should move between halves, and as of 2026-10-06
-that decision has been made **zero times**.
+spec where the report is printed — guards fourteen annotations in one direction, and its failure
+mode is a stale comment. What it is *for* is whether a spec should move between halves.
 
-**A year's wait cannot tell you why, which is the correction the condition needed.** All eleven markers sit
-in packages with a single vitest config, so the move the remedy names costs a new config and a root project
-entry rather than a rename — `hasSplit` is where that fact lives, and nothing counted the markers against it
-until a passing run started printing the count (`markerReachLines`). While that count equals the marker
-total the decision is *unavailable* rather than unmade, and a year would pass with nothing having moved
-whatever anyone decided. So: delete the gate and keep the ranking — the other 1,000 lines, read either
-way — once either a year passes with no spec having moved halves on this evidence **while a move was
-available to it**, or the markers are judged not worth their weight. Both are judgements rather than things
-a run can check, which is why they are prose; the mechanical halves are cases — that the markers have not
-collapsed to none, in `markedSpecs`' describe, and how many of them could move, in `poolDurationLines`'.
+**The wait was answered, and in the direction the condition did not expect.** `f2a003bb2` moved two specs
+on this evidence on 2026-10-06: `fe-bundler-proxy-exports` into `@abuddy/cli`'s integration half, and
+`published-manifest-paths` against a recorded placement whose justifying figure had gone 2.5x stale. So the
+condition as written — a year passing with nothing moved — cannot be the test any more, and the question is
+no longer whether the gate is ever acted on.
+
+**What the count still says is how much of the population is reachable.** Eleven of the fourteen sit in
+packages with a single vitest config, so for those the move the remedy names costs a new config and a root
+project entry rather than a rename — `hasSplit` is where that fact lives, and `markerReachLines` prints the
+gap on a passing run. The three in `@abuddy/cli` have both halves and could move today. So what would now
+justify deleting the gate and keeping the ranking is a settled judgement that keeping these markers true is
+not worth its weight, priced against the two placement decisions it has enabled — a judgement rather than
+something a run can check, which is why it is prose. The mechanical halves stay cases: that the markers
+have not collapsed to none, in `markedSpecs`' describe, and how many could move, in `poolDurationLines`'.
 
 **And the reported half was computed where no passing run could print it**, which is the defect that found
 all of the above. `placementOf`'s unmarked list was written only to the pool's own stdout, and both callers
@@ -132,8 +135,19 @@ A record that informs a column needs no hysteresis, no band, no tie rule, no mac
 floor, because there is no threshold for a reading to be wrong about. The file count does not grow either,
 so the prune still answers for every name in the directory.
 
-**The chain's `seconds` table is the sample-shaped thing that remains**, and it is a different case: its
-subject is one machine by declaration (`MEASURED_ON`), `--record` refuses any other, and its drift report
-answers the concentration objection outright — `driftVerdict` recomputes the movement without the largest
-mover, so a drift one step carried is named as that step's with `--forget --step <name>` as the remedy, and
-only a movement that survives the exclusion is called the table's.
+**The chain's `seconds` table was the sample-shaped thing that remained, and it is a declaration now.** Its
+recorder had the full apparatus — a half-to-double band, a one-second floor, a machine field, a budget check,
+an 80% idle floor sampled after the run, a body-versus-member drift verdict, and five flags to work around
+them — and the quantity underneath was still not one number: `test:smoke` read 11s, 16s, 20s, 21s and 24s
+across five runs that all passed that floor, because `seconds` is the cost *beside whichever peers the
+schedule admitted*, and no floor can see the schedule. The three readers that use it — `driftedSteps`,
+`declaredShare`, `criticalPath` — all tolerate half-to-double and none gates a merge on it, so none of them
+ever needed the number to be fresh.
+
+**What the deletion kept is the half that was working.** The drift report still prints what a run measured
+beside what the table says, on every run and on any box; what it offers only on the measured schedule is the
+*number to write*, since a figure taken elsewhere would be wrong the moment it landed. That is the same
+distinction as the duration cache above — the reading informs a column, and nothing compares it against an
+edge. The apparatus was there to let a *write* be automatic, and the write is a one-line edit a person makes
+from evidence. **Keep the reading; do not decide with it** is the rule, and this is the second subsystem it
+has now cost.

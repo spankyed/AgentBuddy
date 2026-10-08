@@ -118,9 +118,9 @@ export function coresFor(step: string, cores: number = box()): number {
  * **The core count alone is not an identity, which is the hole this closed.** A recorded table used to be
  * keyed by `cores` and nothing else, so every 10-core machine read as the one the numbers came from — an
  * M4 Pro, a 10-core Xeon, any of them. A second developer on a 10-core Mac, which is the commonest shape
- * there is, therefore got `--record` accepted, the drift report's instruction printed, and `spec-cost`'s
- * placement gate enforced, against a table measured on different silicon. That is the exact failure the
- * machine-portability work was for, surviving for one very common machine.
+ * there is, was therefore offered the drift report's figures as though they described their box, against a
+ * table measured on different silicon. That is the exact failure the machine-portability work was for,
+ * surviving for one very common machine.
  *
  * The CPU model is the cheapest thing that distinguishes them and it is already to hand. It is not a
  * perfect identity — two machines can share a model string and differ in thermals or memory — but it
@@ -179,10 +179,10 @@ export const isMeasuredSchedule = (
 /**
  * *Which* of the two facts above does not hold, for a caller that has to say something different about each.
  *
- * **A boolean hid the reason and every caller took the conjunction apart again.** `chain.ts` did exactly
- * that to decide whether `--adopt` was sensible advice, and got it wrong: the refusal fires for a budget
- * mismatch too, and there `--adopt` would write the machine the table already names and then be refused for
- * the budget. Advice nobody can act on is the defect this cost model was being reworked to remove.
+ * **A boolean hid the reason and every caller took the conjunction apart again.** A caller did exactly that
+ * to decide which advice was sensible, and got it wrong: the refusal fires for a budget mismatch too, where
+ * the advice that a machine mismatch calls for does nothing. Advice nobody can act on is the defect this
+ * cost model was being reworked to remove.
  *
  * The machine is reported first because it is the one a flag can do something about; a budget mismatch is
  * the caller's own argument.
@@ -192,55 +192,6 @@ export const isMeasuredSchedule = (
  * `budget === box()`, which `chain.ts` had spelled out by hand three lines from a comparison against
  * `measuredOn.cores`. Two budget comparisons against two core counts is the near-duplicate that drifts.
  */
-/**
- * **Every condition a run has to meet for its step timings to describe the cost table — one declaration.**
- *
- * There are three, and before this they lived in three places: two inside `scheduleMismatch` below, and the
- * third as a bare `if (!all)` in `recordTheCosts`. So the table was *written* under three conditions and
- * *read* under two, and nothing said that was a choice — `isMeasuredSchedule` is named for a schedule and
- * checks two thirds of one. A reader comparing a run's numbers to the table had no way to see which
- * condition they were skipping.
- *
- * **`wholeTable` is a schedule fact, not a flag's name.** The chain admits steps in parallel, so what a step
- * costs there is a function of what ran beside it; a run of nine stale steps and a run of all thirty are two
- * different schedules, and only the second is the one `--record` writes. That it is spelled `--all` is
- * incidental.
- *
- * **The two readers take different subsets, on purpose, and each says which.** `--record` needs all three,
- * because it writes. `outgrownRungs` takes the first two and skips `wholeTable` deliberately, for a reason
- * given there: contention can only make a step slower, so a partial run's reading is an *upper bound* on the
- * step's cost — it can exonerate a step and cannot convict one, which is worth printing with that caveat
- * rather than not printing. `driftReport` takes the first two as well and gates only its advice.
- */
-export const RECORDING_CONDITIONS = ['wholeTable', 'machine', 'budget'] as const;
-
-/** One of the three, in the order a caller reports them */
-export type RecordingCondition = (typeof RECORDING_CONDITIONS)[number];
-
-/**
- * Which of `RECORDING_CONDITIONS` this run fails, in that order — empty for a run whose timings describe
- * the table.
- *
- * Ordered rather than a set, because a caller with several to report says the most actionable first:
- * `wholeTable` is the reader's own argument, the machine is what a flag can change, and a budget mismatch is
- * the caller's argument again. That is `scheduleMismatch`'s ordering with the third condition in front of it.
- */
-export const unmetRecordingConditions = (run: {
-  budget: number;
-  /** The machine the table's costs were taken on (`MEASURED_ON`), or the one claiming it under `--adopt` */
-  measuredOn: Machine;
-  /** The box this is running on */
-  machine?: Machine;
-  /** Whether every step ran, so the schedule is the one the table describes */
-  wholeTable: boolean;
-}): readonly RecordingCondition[] => {
-  const unmet: RecordingCondition[] = [];
-  if (!run.wholeTable) unmet.push('wholeTable');
-  const mismatch = scheduleMismatch(run.budget, run.measuredOn, run.machine);
-  if (mismatch !== undefined) unmet.push(mismatch);
-  return unmet;
-};
-
 export const scheduleMismatch = (
   budget: number,
   measuredOn: Machine,
@@ -281,9 +232,7 @@ export const SLOWER_MACHINE = 4;
  * chain. Importing the step table for it made three steps fail `chain-table`'s stamp-reader check, which
  * reads a runner's text — the names were in their reach without being in their behaviour, which is the
  * reason `check:tiers` is already excepted there, and three more exceptions for one import is the check
- * telling you the import is wrong. `record-seconds.ts` writes this and the costs in one operation still;
- * it already addressed them as two locations (`MACHINE_ANCHOR` beside `SECONDS_TABLES`), so that is where
- * the move is a single line.
+ * telling you the import is wrong.
  *
  * The cores are both facts at once, because the chain's default budget *is* the box (`budgetFrom`,
  * scripts/chain.ts). A step's cost depends on what runs beside it, so the table is only true of one
@@ -291,8 +240,8 @@ export const SLOWER_MACHINE = 4;
  *
  * **The CPU is here because the core count alone is not an identity.** This was `MEASURED_AT_CORES = 10`
  * until 2026-10-03, so every 10-core machine read as the one these numbers came from, and a second
- * developer on a 10-core Mac got `--record` accepted and `spec-cost`'s placement gate enforced against a
- * table measured on different silicon. `isMeasuredSchedule` has the rest.
+ * developer on a 10-core Mac was offered figures taken on different silicon as describing their box.
+ * `isMeasuredSchedule` has the rest.
  *
  * **Nothing here bounds anything, which is the point and was not true a day ago.** Each of these used to
  * become a kill deadline at four times, so a smaller machine ran this machine's deadlines over slower
@@ -305,8 +254,8 @@ export const SLOWER_MACHINE = 4;
  * 2026-09-25 at 07:38 under one admission policy, the default changed at 09:30 the same day, and nothing
  * connected the two — it read 63s for two days and the drift band happened to absorb it.
  *
- * Re-measure it with `npm run chain -- --all --record`, which refuses any other budget for this reason,
- * refuses a busy machine, and refuses a run where too much moved to have been measuring the code.
+ * Re-measure the table with `npm run chain -- --all` on this box and edit what the drift report names; it
+ * offers a figure only where the run is the schedule the table describes, for this reason.
  */
 export const MEASURED_ON: Machine = { cpu: 'Apple M1 Pro', cores: 10 };
 
