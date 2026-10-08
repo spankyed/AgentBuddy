@@ -122,17 +122,19 @@ Three things the chain cannot work out for you, because they rewrite files you c
   `typecheck` fails until you do.
 - **default-setup's facade** — the types a dependent pack compiles against, bundled by `abuddy build` into
   `dist/types/pack-types.d.ts` and recorded in `etc/pack-types.api.md`. Run
-  `npm run facade:update -w @app/default-setup` and commit the report. **`typecheck` does not notice this
-  one**, which is the difference worth knowing: `exports:check` and `schema:check` are typecheck legs and
-  `api:check` and `facade:check` are chain steps, so it is easy to finish a typecheck and believe every
-  recorded artifact is current.
+  `npm run facade:update -w @app/default-setup` and commit the report. **`typecheck` fails until you do**, as
+  it does for all four recorded artifacts: `exports:check` and `schema:check` are legs, and `api:check` and
+  `facade:check` are chain steps the runner borrows (`ARTIFACT_CHECKS`, `scripts/lib/typecheck-jobs.ts`), so
+  one command answers for every one of them. It did not until 2026-10-08, and a green typecheck over a stale
+  report is what that cost.
   The check needs no build: it re-bundles the facade from the pack's sources, as `api:check` re-extracts the
   reports it compares, so what it holds the report to is what the pack describes now rather than whatever is
   in `dist`. **That is why it is a step of its own rather than appended to `compile`**, which is where it sat
   while it still read what the build wrote. `abuddy build` warns when the report has fallen behind the bundle
   it just wrote, which is a nudge at the moment the information exists and not the gate — the gate is
-  `facade:check`, and it is not a typecheck leg because it regenerates the pack's barrel, which a leg may
-  not do (`scripts/lib/typecheck-legs.ts`'s header says why).
+  `facade:check`. It is not a typecheck leg because it regenerates the pack's barrel, which a leg may not do
+  (`scripts/lib/typecheck-legs.ts`'s header says why); `npm run typecheck` borrows the step instead and passes
+  `--skip-generate`, having regenerated once ahead of its pool.
 - **a pack's seed source (`src/seeds/`)** — when only `sourceHash`/`rowSha256` moved, re-record
   deliberately with `npm run seed-parity:update -w @app/default-setup`, and never edit a hash by hand.
   Re-recording rewrites a test expectation, not user data; what reaches users is the new `sourceHash`.
@@ -393,14 +395,23 @@ npm run build-prod       # Full production build (build/build.sh)
 
 npm run typecheck        # Every check below, plus check:specifiers — its 17 legs run at once
                          # (scripts/typecheck.ts, legs in scripts/lib/typecheck-legs.ts), which is 65.1s of
-                         # single-threaded compilers in 18.0s (the wall measured 2026-10-05). The first two figures are
-                         # the table's own — the leg count and the sum of what they declare — and
-                         # typecheck-legs.spec.ts holds this line to them, so a leg added or re-costed fails
-                         # here rather than leaving the sentence to drift. The wall time is a measurement and
-                         # can only be re-measured. Only `packages:ensure` is ordered; the rest are
-                         # independent, and `-- --cores 1` runs them one at a time to test that claim or to
-                         # read a confusing failure. A failure prints that leg's output alone, and several
-                         # legs can fail in one run where the old `&&` chain stopped at the first
+                         # single-threaded compilers in 19.9s (median of 3, 19.7-21.1s, 2026-10-08). The first
+                         # two figures are the table's own — the leg count and the sum of what they declare —
+                         # and typecheck-legs.spec.ts holds this line to them, so a leg added or re-costed
+                         # fails here rather than leaving the sentence to drift. The wall time is a
+                         # measurement and can only be re-measured.
+                         # **It answers for every recorded artifact**: beside the legs it borrows the two
+                         # whose checks are chain steps (api:check, facade:check — ARTIFACT_CHECKS), taking
+                         # each step's own timeout class, declared cost and core width rather than restating
+                         # them. Borrowed, not moved: as legs they would need five hand-written fields each
+                         # and would drop inputs that decide what a report says.
+                         # **Two ordered prerequisites, then the rest at once.** `packages:ensure` builds what
+                         # the jobs read; `generate:entries` regenerates the pack's barrel, which
+                         # typecheck:pack compiles and two repo-scope legs walk — so it is ordered rather than
+                         # concurrent, and facade:check runs with `--skip-generate` and writes nothing. Those
+                         # two are the only jobs that write. `-- --cores 1` runs everything one at a time, to
+                         # test that claim or to read a confusing failure. A failure prints that job's output
+                         # alone, and several can fail in one run where the old `&&` chain stopped at the first
 npm run typecheck:fe     # Frontend only (vue-tsc)
 npm run typecheck:be     # Backend only (tsc --noEmit, plus the api's scripts)
 npm run typecheck:ears   # @abuddy/ears only
@@ -571,7 +582,9 @@ npm run facade:check     # A chain step: fails if the facade the pack's sources 
                          # 2026-10-07), so `dist` is never its subject and a build from older sources cannot
                          # be mistaken for one. That is what makes it a step rather than a line appended to
                          # `compile`, where it cost that step 2.7s in series for an ordering it stopped
-                         # needing. Not a typecheck leg either, for the one reason a leg may not: it writes
+                         # needing. Not a typecheck leg either, for the one reason a leg may not: it writes,
+                         # regenerating the barrel it bundles. `--skip-generate` is for a caller that has
+                         # just done that — `npm run typecheck` ahead of its pool — and makes it a pure read
 npm run facade:update    # Dev: regenerate etc/pack-types.api.md, off that same re-bundle
                          # Both are `abuddy facade-report [--update]`: it reads one pack's sources and writes
                          # that pack's etc, so it is a CLI command like `validate` and `build`, not a repo

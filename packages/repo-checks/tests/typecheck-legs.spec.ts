@@ -3,8 +3,10 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { scopeOf, TYPECHECK_LEGS, type Leg } from '../../../scripts/lib/typecheck-legs.ts';
+import { ARTIFACT_CHECKS } from '../../../scripts/lib/typecheck-jobs.ts';
 import { rootScripts } from '../../../scripts/lib/npm-scripts.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
+import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
 import { population } from '@abuddy/sdk/testing';
 
 /**
@@ -130,5 +132,50 @@ describe("CLAUDE.md's figures for this table", () => {
   it('names the sum of what they declare', () => {
     const declared = TYPECHECK_LEGS.reduce((total, leg) => total + (leg.seconds ?? 0), 0);
     expect(entry).toContain(`${declared.toFixed(1)}s of`);
+  });
+});
+
+/**
+ * `npm run typecheck` answers for every recorded artifact, which is the trap it used to leave open: two of the
+ * four checks were legs and two were chain steps, so a green run said nothing about `etc/*.api.md` or
+ * `etc/pack-types.api.md` and the guide warned about it in prose.
+ *
+ * Derived rather than restated. An artifact is a noun with both halves — the `<artifact>:check` /
+ * `<artifact>:update` convention root `CLAUDE.md` gives and `chain-table.spec.ts` holds the other direction
+ * of. Of those, the ones the runner has to borrow are exactly the ones whose check is a chain step and not a
+ * leg: a leg it already runs, and a check that is neither is covered by a spec instead
+ * (`NOT_RUN_BY_THE_CHAIN`). So a fifth recorded artifact cannot arrive without either being a leg or landing
+ * here.
+ */
+describe('the recorded artifacts npm run typecheck answers for', () => {
+  /** Every `<noun>:check` that has an `<noun>:update` beside it, in the root manifest or a package's */
+  const artifactChecks = (): string[] => {
+    const manifests = [path.join(REPO_ROOT, 'package.json'),
+      ...PACKAGE_DIRS.map((dir) => path.join(REPO_ROOT, 'packages', dir, 'package.json'))]
+      .filter((file) => fs.existsSync(file));
+    return [...new Set(manifests.flatMap((file) => {
+      const scripts = (JSON.parse(fs.readFileSync(file, 'utf-8')) as { scripts?: Record<string, string> }).scripts ?? {};
+      return Object.keys(scripts)
+        .filter((name) => name.endsWith(':update') && scripts[`${name.slice(0, -':update'.length)}:check`] !== undefined)
+        .map((name) => `${name.slice(0, -':update'.length)}:check`);
+    }))].sort();
+  };
+
+  it('are the artifact checks that are chain steps rather than legs', () => {
+    const artifacts = population('the recorded artifacts', artifactChecks(), { atLeast: 4 });
+    const legs = new Set(TYPECHECK_LEGS.map((leg) => leg.name));
+    const steps = new Set(CHAIN_STEPS.map((step) => step.name));
+
+    const borrowable = artifacts.filter((name) => steps.has(name) && !legs.has(name)).sort();
+
+    expect(ARTIFACT_CHECKS.map((check) => check.name).sort()).toEqual(borrowable);
+  });
+
+  // Each borrows a step's class, cost and width, so a name that is not a step has nothing to borrow and the
+  // runner throws at startup rather than running a short command
+  it('each name a chain step the runner can borrow from', () => {
+    for (const { name } of ARTIFACT_CHECKS) {
+      expect(CHAIN_STEPS.find((step) => step.name === name), name).toBeDefined();
+    }
   });
 });

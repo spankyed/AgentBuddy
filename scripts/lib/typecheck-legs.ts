@@ -81,7 +81,7 @@ export interface Leg {
   readonly seconds: number;
 }
 
-/** The one ordering constraint: every other leg reads what it builds */
+/** The first ordering constraint: every other job reads what it builds */
 export const ENSURE = 'packages:ensure';
 
 /**

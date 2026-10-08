@@ -38,8 +38,14 @@ export async function facadeReport(args: string[]): Promise<void> {
 
   // The generated barrel the facade is bundled from, regenerated first: it skips on a matching `.inputs-hash`
   // in milliseconds and resolves its own dependencies, so this closes the one input a re-bundle alone would
-  // still read as whatever was last written — a manifest change nobody regenerated for
-  await generateEntries([]);
+  // still read as whatever was last written — a manifest change nobody regenerated for.
+  //
+  // **`--skip-generate` is for a caller that has just regenerated it**, which is the only way this command
+  // can run beside something reading the pack: codegen writes `src/__generated__`, and `typecheck:pack`
+  // compiles out of it. `scripts/typecheck.ts` regenerates once, ordered ahead of its pool, and passes this —
+  // the same flag and the same reasoning as `abuddy build --skip-generate`. Default is to regenerate, so a
+  // pack author running it by hand still gets an answer over a tree nobody has built.
+  if (!args.includes('--skip-generate')) await generateEntries([]);
   // Into the scratch directory, never dist/: that is the build's output, and a check that wrote it would both
   // claim a build had run and race one that had
   const built = await bundlePackTypes(packDir, path.join(scratch, 'pack-types.d.ts'));

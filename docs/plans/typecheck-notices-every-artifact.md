@@ -68,39 +68,54 @@ and the declared sum 65.1s, so `CLAUDE.md:388-389` needs no edit.
 wants four. That is the two-schedulers-with-different-weights defect that runner's own header exists to
 describe, and `cores: coresFor(leg.name)` closes it for the legs as well.
 
-## The one half that needs code first: `facade:check` must stop writing
+## The one half that needs code: `facade:check` must not write while the pool runs
 
-It runs `generateEntries([])` (`packages/abuddy-cli/src/commands/facade-report.ts:42`), whose `outDir` is
-`<pack>/src/__generated__` (`generate-entries.ts:108`) — the tree `typecheck:pack`'s `vue-tsc` compiles, and
-which `check:specifiers` and `lint:check` also walk. `computeInputsHash` covers **every file under `src/`**,
-because codegen reads pack sources (a system's events come from its `be/contract.ts`), so any source edit
-makes the barrel stale and the write fire. Running it in a pool beside repo-wide readers is a race, and
-ordering around it is not available: two of those readers are repo-scope, which is most of the pool.
+It calls `generateEntries([])` (`packages/abuddy-cli/src/commands/facade-report.ts:42`), whose `outDir` is
+`<pack>/src/__generated__` (`generate-entries.ts:108`) — the tree `typecheck:pack`'s `vue-tsc` compiles and
+that `check:specifiers` and `lint:check` walk. `computeInputsHash` covers **every file under `src/`**, because
+codegen reads pack sources (a system's events come from its `be/contract.ts`), so any source edit makes the
+barrel stale and the write fire. In a pool beside repo-wide readers that is a race.
 
-**Refusing instead does not work — do not re-walk this.** A read-only check that refuses on a stale barrel
-refuses after *any* source edit, and answering after a source edit is the check's entire purpose;
-`facade-report.integration.spec.ts`' *"follows an edit to the pack's own sources, with nothing rebuilt"* is
-what catches it. Tried on 2026-10-08 and reverted.
+**The fix is a flag the build already has, plus one more ordered step.**
 
-**What does work: codegen into `<pack>/src/.facade-check/`.** Verified:
+`abuddy build` takes `--skip-generate` (`build.ts:104`). Give `facade-report` the same flag, and have the
+runner regenerate *before* the pool starts — the shape `packages:ensure` already is. The pool then invokes
+`facade:check --skip-generate` and the check writes nothing.
 
-- It must be a **direct child of `src/`**. The barrel imports only siblings (`./ears.ts`), but those siblings
-  import `../features/<name>/be/contract.ts` — one level up. So `os.tmpdir()` cannot be used.
-- Dot-prefixed, so three separate walkers skip it: `inputFiles`
-  (`packages/abuddy-host/src/build/packages-built.ts:299`), TypeScript's wildcard `include` (verified with
-  `tsc --listFilesOnly`: a planted `src/.probe/x.ts` is absent, `src/probe.ts` present), and
-  `check:specifiers`' `SKIPPED_DIRS` (`scripts/lib/import-populations.ts:32`).
-- `.gitignore` gets the pattern, for oxlint, which reads `.` with `--ignore-path .gitignore`.
+```
+npm run typecheck
+  packages:ensure                     (ordered, writes — builds what the rest read)
+  abuddy generate-entries -w pack     (ordered, writes — regenerates what the rest read)
+  then all 17 legs + api:check + facade:check --skip-generate, concurrently, none of them writing
+```
 
-**Cost:** 1.6s median of 3 (1.5–1.6s, 2026-10-08) the first time, because a fresh directory has no
-`.inputs-hash` to skip on. It persists and keeps its own hash, so later runs skip in milliseconds and the
-check stays at its measured 2.7s.
+**What this avoids building:** an output directory parameter on `generateEntries`, an entry directory
+parameter on `bundlePackTypes`, a `<pack>/src/.facade-check/` tree, a `.gitignore` entry for it, a case
+pinning that codegen into two directories stays byte-identical, and a 1.6s first-run cost. That design was
+drafted and is not needed.
 
-**The edits:** `generateEntries` gains an output directory (threaded to the hash file, the lock and every
-write); `bundlePackTypes` gains the entry directory it hardcodes (`build/types-bundler.ts:18`);
-`facade-report.ts` passes both. **Plus a case pinning that codegen into the alternate directory produces
-byte-identical output** — without it the check can start comparing a facade the build would never emit, which
-is worse than the trap being removed.
+**And it is better, not only cheaper, in two ways:**
+
+- **`typecheck:pack` stops compiling stale generated code.** Today `npm run typecheck` runs `vue-tsc` over
+  whatever is on disk; with codegen ordered first it checks current code. Nothing to do with the facade, and
+  it was invisible until the ordering question came up. (The chain is already right here — `typecheck:pack`
+  depends on `compile`.)
+- **The tested capability survives untouched.** No flag still regenerates, so
+  `facade-report.integration.spec.ts`' *"follows an edit to the pack's own sources, with nothing rebuilt"*
+  keeps passing unchanged. The read-only rewrite tried on 2026-10-08 failed precisely because it broke that
+  case; this sidesteps it rather than fighting it.
+
+**The cost, plainly.** `npm run typecheck` goes from one thing writing before the checks start to two. It
+gets ~0.3s slower normally and up to 1.6s when generated code is actually stale, and it regenerates the
+pack's generated code as a side effect — gitignored (`packages/default-setup/.gitignore:3`), so `git status`
+stays clean. The sentence in `typecheck-legs.ts` that makes running seventeen checks at once safe — *"The one
+ordering constraint: every other leg reads what it builds"* — becomes two constraints. That is the whole of
+it: the ordering is what makes a writer safe, and the second writer has the same ordering as the first.
+
+**Left as-is deliberately:** the chain's own `facade:check` step keeps regenerating, because it depends on
+`compile` and so the regenerate is already a no-op there. Passing it the flag too would also remove the
+undeclared write documented at `scripts/lib/chain-steps.ts`'s step comment — a one-word follow-up, not needed
+for this.
 
 ## Order of work
 
@@ -109,10 +124,9 @@ is worse than the trap being removed.
 2. **Re-measure the typecheck wall.** `CLAUDE.md:388-389` records 65.1s of work in 18.0s. The work figure is
    the legs' declared sum and does not move, but the wall will: `api:check` is 6.9s of mostly-parallel work
    wanting four cores. Only the wall needs re-measuring, and it is a measurement, so it can only be re-measured.
-3. **The facade read-only work** — the alternate codegen directory, the `.gitignore` entry, the
-   byte-identical case.
-4. **`facade:check` into the runner**, then **delete the warning** at `CLAUDE.md:122-127`, which is only
-   correct once both are in.
+3. **`--skip-generate` on `facade-report`**, and the ordered codegen step in the runner.
+4. **`facade:check --skip-generate` into the runner**, then **delete the warning** at `CLAUDE.md:122-127`,
+   which is only correct once both are in.
 
 ## What it costs
 
@@ -156,6 +170,6 @@ npm run measure -- --runs 3 "npm run typecheck"   # the new wall, for CLAUDE.md:
 | mutation | expected single failure |
 |---|---|
 | drop `api:check` from the runner's list | the trap case above passes again, i.e. typecheck goes quiet on a stale report |
-| point codegen's alternate output at a dir that is not a child of `src/` | the facade bundle fails to resolve `../features/...` |
-| make codegen write one byte differently into the alternate dir | the byte-identical case |
-| remove the `.gitignore` entry for the alternate dir | `lint:check` reports the generated tree |
+| drop `facade:check` from the runner's list | the trap case passes again for the pack's report |
+| have the runner pass no `--skip-generate` | the check regenerates mid-pool; `--cores 1` is how to see it is ordering and not luck |
+| remove the ordered codegen step | a stale barrel reaches `typecheck:pack`, which compiles it without complaint |
