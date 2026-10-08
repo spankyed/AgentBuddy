@@ -1,6 +1,7 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { _whenSatisfied } from '@abuddy/sdk/testing/waiting';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
 /** scripts/with-source.mjs gives a command's Node processes the @abuddy/source condition */
@@ -43,43 +44,89 @@ describe('with-source', () => {
     expect(run(['node', '-e', 'process.exit(3)']).status).toBe(3);
   });
 
-  // The wrapper shares its process group with the command it runs, so a terminal's Ctrl+C reaches
-  // both. Running it detached and signalling the group reproduces that without a tty.
-  function ctrlC(childCode: string) {
-    return new Promise<{ out: string; code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
-      const child = spawn(process.execPath, [WITH_SOURCE, process.execPath, '-e', childCode], {
-        cwd: REPO_ROOT,
-        env: { PATH: process.env.PATH },
-        detached: true, // its own process group, as the terminal's foreground group is
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-      let out = '';
-      let signalled = false;
-      child.stdout.setEncoding('utf-8');
-      child.stdout.on('data', (chunk: string) => {
-        out += chunk;
-        if (signalled || !out.includes('ready')) return;
-        signalled = true;
-        process.kill(-(child.pid as number), 'SIGINT');
-      });
-      child.on('error', reject);
-      child.on('exit', (code, signal) => resolve({ out, code, signal }));
+  /**
+   * Runs a command through the wrapper, signals it once it says `ready`, and hands back everything the run
+   * produced.
+   *
+   * **Resolved on `close`, not `exit`, because the process being watched is not the one that writes.** The
+   * wrapper spawns with `stdio: 'inherit'`, so the command's output reaches this pipe through an inherited
+   * fd; `exit` fires on the wrapper's own SIGCHLD and claims nothing about whether those bytes arrived,
+   * where `close` fires only once every stdio stream has ended. `bounded-spawn.ts` resolves on `close` for
+   * this reason.
+   *
+   * **`stderr` and `signal` come back whether a case asserts on them or not.** The wrapper reports a spawn
+   * failure on stderr, and a command killed by a signal is only visible in `signal` — a run that read
+   * neither cannot say what happened to it.
+   */
+  async function signalled(childCode: string, send: (child: ChildProcess) => void) {
+    const child = spawn(process.execPath, [WITH_SOURCE, process.execPath, '-e', childCode], {
+      cwd: REPO_ROOT,
+      env: { PATH: process.env.PATH },
+      detached: true, // its own process group, as the terminal's foreground group is
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
+    let out = '';
+    let err = '';
+    child.stdout.setEncoding('utf-8');
+    child.stderr.setEncoding('utf-8');
+    child.stdout.on('data', (chunk: string) => { out += chunk; });
+    child.stderr.on('data', (chunk: string) => { err += chunk; });
+    // Subscribed before the command is signalled, so nothing it prints afterwards is missed
+    const finished = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
+      child.on('error', reject);
+      child.on('close', (code, signal) => resolve({ code, signal }));
+    });
+
+    // Awaited rather than assumed: a command that never announces itself fails naming that, where a bare
+    // `data` listener would hang to the suite's own timeout and say only that the test took too long
+    await _whenSatisfied(
+      (notify) => {
+        child.stdout.on('data', notify);
+        return () => child.stdout.off('data', notify);
+      },
+      () => out.includes('ready') || undefined,
+      'the wrapped command to print ready',
+    );
+    send(child);
+    return { ...await finished, out, err };
   }
 
+  /** A terminal's Ctrl+C: SIGINT to the whole foreground group, which the wrapper and its command share */
+  const groupCtrlC = (child: ChildProcess) => { process.kill(-(child.pid as number), 'SIGINT'); };
+
+  /**
+   * Each of these lets its last write drain instead of calling `process.exit` on the line after
+   * `console.log`: stdout to a pipe is asynchronous and `process.exit` does not flush it, so the line the
+   * case asserts on can be dropped outright. Clearing the keep-alive timer lets the loop empty and the
+   * process exit 0 of its own accord, after the write has gone.
+   */
   const READY_THEN_COUNT_SIGINTS =
-    "let n=0;process.on('SIGINT',()=>{if(++n===1)setTimeout(()=>{console.log('sigints='+n);process.exit(0)},300)});" +
-    'setTimeout(()=>{},5000);console.log("ready")';
+    'const alive=setTimeout(()=>{},5000);let n=0;'
+    + "process.on('SIGINT',()=>{if(++n===1)setTimeout(()=>{console.log('sigints='+n);clearTimeout(alive)},300)});"
+    + 'console.log("ready")';
+
+  const READY_THEN_RERAISE =
+    "process.on('SIGINT',()=>{process.removeAllListeners('SIGINT');process.kill(process.pid,'SIGINT')});"
+    + 'setTimeout(()=>{},5000);console.log("ready")';
+
+  const READY_THEN_REPORT_SIGTERM =
+    'const alive=setTimeout(()=>{},5000);'
+    + "process.on('SIGTERM',()=>{console.log('sigterm');clearTimeout(alive)});"
+    + 'console.log("ready")';
 
   it.skipIf(process.platform === 'win32')('delivers a terminal Ctrl+C to the command exactly once', async () => {
-    const { out, code } = await ctrlC(READY_THEN_COUNT_SIGINTS);
-    expect(out).toContain('sigints=1');
-    expect(code).toBe(0);
+    const { out, err, code, signal } = await signalled(READY_THEN_COUNT_SIGINTS, groupCtrlC);
+
+    // `sigints=2` is the failure this guards: the wrapper re-sending a signal the group already delivered
+    expect(out, `stderr: ${err}`).toContain('sigints=1');
+    expect({ code, signal }, 'the command chose its own exit, so neither it nor the wrapper died by signal')
+      .toEqual({ code: 0, signal: null });
   });
 
   it.skipIf(process.platform === 'win32')('exits the way a signalled command did', async () => {
-    const { signal } = await ctrlC("process.on('SIGINT',()=>{process.removeAllListeners('SIGINT');process.kill(process.pid,'SIGINT')});setTimeout(()=>{},5000);console.log('ready')");
-    expect(signal).toBe('SIGINT');
+    const { signal, err } = await signalled(READY_THEN_RERAISE, groupCtrlC);
+
+    expect(signal, `stderr: ${err}`).toBe('SIGINT');
   });
 
   /**
@@ -88,27 +135,9 @@ describe('with-source', () => {
    * the two paths apart — absorbing SIGTERM the way SIGINT is absorbed would leave the command running.
    */
   it.skipIf(process.platform === 'win32')('forwards a SIGTERM aimed at the wrapper alone to the command', async () => {
-    const child = spawn(process.execPath, [WITH_SOURCE, process.execPath, '-e',
-      "process.on('SIGTERM',()=>{console.log('sigterm');process.exit(0)});setTimeout(()=>{},5000);console.log('ready')"], {
-      cwd: REPO_ROOT,
-      env: { PATH: process.env.PATH },
-      detached: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    const result = await new Promise<{ out: string; code: number | null }>((resolve, reject) => {
-      let out = '';
-      let signalled = false;
-      child.stdout.setEncoding('utf-8');
-      child.stdout.on('data', (chunk: string) => {
-        out += chunk;
-        if (signalled || !out.includes('ready')) return;
-        signalled = true;
-        child.kill('SIGTERM'); // the wrapper alone, not its process group
-      });
-      child.on('error', reject);
-      child.on('exit', (code) => resolve({ out, code }));
-    });
-    expect(result.out).toContain('sigterm');
-    expect(result.code).toBe(0);
+    const { out, err, code } = await signalled(READY_THEN_REPORT_SIGTERM, (child) => { child.kill('SIGTERM'); });
+
+    expect(out, `stderr: ${err}`).toContain('sigterm');
+    expect(code).toBe(0);
   });
 });
