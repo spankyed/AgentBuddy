@@ -86,6 +86,20 @@ export interface BuildReads {
   /** The recorder for one phase */
   forPhase(phase: BuildPhase): RecordReads;
   /**
+   * Keeps the previous build's reads for a phase this build **reused** rather than ran, and says whether
+   * there were any to keep.
+   *
+   * A reused phase takes the previous build's output forward unchanged, so what that build read is still
+   * exactly what produced these files. Without this the record would lose a phase whenever it was cheapest
+   * to build — and the only check in this repo that compares a declared input set against an observed one
+   * (`repo-checks`' `dep-files`) would quietly stop speaking for it, which it notices by asserting the
+   * recorded phases are every phase the build has.
+   *
+   * `false` means there is nothing to carry, and the caller's answer to that is to run the phase: a record
+   * with a phase missing is the state this exists to prevent.
+   */
+  carry(phase: BuildPhase): boolean;
+  /**
    * Write the record. Called where the build commits its output, so a failed build records nothing — and
    * it never fails the build itself, however it fails.
    */
@@ -105,6 +119,17 @@ export function buildReads(packDir: string): BuildReads | undefined {
   const cwd = process.cwd();
   const phases = new Map<BuildPhase, Set<string>>();
   const bundlers = new Map<string, string>();
+  /** The last record, read once and only if a phase is reused */
+  let prior: BuildReadsRecord | undefined | null = null;
+  const priorRecord = (): BuildReadsRecord | undefined => {
+    if (prior !== null) return prior;
+    try {
+      prior = JSON.parse(fs.readFileSync(path.join(packDir, PACK_READS_FILE), 'utf-8')) as BuildReadsRecord;
+    } catch {
+      prior = undefined;
+    }
+    return prior;
+  };
 
   /**
    * The write itself, as a closure rather than a member: the only caller is `write` below, which exists to
@@ -144,6 +169,23 @@ export function buildReads(packDir: string): BuildReads | undefined {
       const into = phases.get(phase) ?? new Set<string>();
       for (const file of read.files) into.add(file);
       phases.set(phase, into);
+    },
+    carry(phase) {
+      const record = priorRecord();
+      const files = record?.phases?.[phase];
+      if (!files || files.length === 0) return false;
+      // Back to absolute, because that is what the writer relativises — the paths round-trip through the
+      // same two functions rather than through a second spelling of the same rule
+      const root = fs.realpathSync(packDir);
+      const into = phases.get(phase) ?? new Set<string>();
+      for (const file of files) into.add(path.resolve(root, file));
+      phases.set(phase, into);
+      // The versions that produced these files, for any bundler this build has not run itself. A record
+      // whose phases are carried but whose bundlers are absent reads as a record from other tools
+      for (const [bundler, version] of Object.entries(record?.bundlers ?? {})) {
+        if (!bundlers.has(bundler)) bundlers.set(bundler, version);
+      }
+      return true;
     },
     write() {
       // **Never fails the build.** The record is diagnostic: a build that produced its dist, its snapshot

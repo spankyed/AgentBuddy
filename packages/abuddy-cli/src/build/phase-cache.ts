@@ -144,6 +144,27 @@ export function abuddyScope(packDir: string): { readonly dirs: readonly string[]
   return missing.length > 0 ? { missing } : { dirs };
 }
 
+/**
+ * The versions of the tools that do the bundling, so upgrading one invalidates what it produced.
+ *
+ * **Deliberately one set for every phase rather than per phase.** A typescript bump invalidating the
+ * frontend bundle costs one rebuild; the other error — a phase reusing output a different bundler made —
+ * is silent, and over-broad is the safe direction for a cache key. Before reuse existed this needed no
+ * answer at all, because the bundler always ran.
+ *
+ * `bundlerSource` covers the CLI's own code; this covers what it calls.
+ */
+function bundlerVersions(): string {
+  const require = createRequire(import.meta.url);
+  return ['vite', 'rollup', 'esbuild', 'typescript'].map((pkg) => {
+    try {
+      return `${pkg}@${(JSON.parse(fs.readFileSync(require.resolve(`${pkg}/package.json`), 'utf-8')) as { version?: string }).version ?? '?'}`;
+    } catch {
+      return `${pkg}@absent`;
+    }
+  }).join(',');
+}
+
 /** Hashable file lists, each a scope rather than a list of reads */
 function hashTree(hash: ReturnType<typeof createHash>, dir: string, keep: (name: string) => boolean): void {
   for (const file of filesUnder(dir)) {
@@ -190,6 +211,7 @@ function phaseInputsHash(root: string, o: {
   const hash = createHash('sha256');
   if (o.release !== undefined) hash.update(`release:${o.release}`);
   hash.update(bundlerSource(o.bundler));
+  hash.update(bundlerVersions());
   for (const file of ['abuddy.json', 'package.json', 'tsconfig.json', 'tailwind.config.ts', 'tailwind.config.js']) {
     const full = path.join(root, file);
     if (fs.existsSync(full)) { hash.update(file); hash.update(fs.readFileSync(full)); }

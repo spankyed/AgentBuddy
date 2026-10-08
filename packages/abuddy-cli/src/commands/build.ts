@@ -239,7 +239,8 @@ async function buildIntoStaging(args: string[]) {
   const defs: Record<string, string> = {};
   const packTypesFile = path.join(outputDir, PACK_LAYOUT.typesDir, `${PACK_TYPES_DEF}.d.ts`);
   const typesHash = typesInputsHash(root, depSnapshots);
-  const typesStale = reuseProblem(stamps.types, distDir, typesHash);
+  const typesStale = reuseProblem(stamps.types, distDir, typesHash)
+    ?? (reads && !reads.carry('types') ? 'no reads recorded to carry' : null);
   const packTypes = typesStale === null
     ? (takeForward(distDir, outputDir, stamps.types!.files),
        nextStamps.types = stamps.types!,
@@ -350,7 +351,8 @@ async function buildIntoStaging(args: string[]) {
   if (manifest.dsl) {
     const dslScope = abuddyScope(root);
     const dslHash = 'missing' in dslScope ? null : dslInputsHash(root, dslScope.dirs);
-    const dslStale = dslHash === null ? 'scope incomplete' : reuseProblem(stamps.dslDefs, distDir, dslHash);
+    const dslStale = dslHash === null ? 'scope incomplete'
+      : reuseProblem(stamps.dslDefs, distDir, dslHash) ?? (reads && !reads.carry('dslDefs') ? 'no reads recorded to carry' : null);
     // Its files live in the pack's real `dist` either way, so reuse is not re-bundling them
     const defs = dslStale === null
       ? (takeForward(distDir, outputDir, stamps.dslDefs!.files),
@@ -399,7 +401,7 @@ async function buildIntoStaging(args: string[]) {
     // either way. `--skip-fe` is the other thing, and omits them on purpose
     const problem = feHash === null
       ? `can't resolve ${(scope as { missing: readonly string[] }).missing.join(', ')} to hash against`
-      : reuseProblem(stamps.fe, distDir, feHash);
+      : reuseProblem(stamps.fe, distDir, feHash) ?? (reads && !reads.carry('fe') ? 'no reads recorded to carry' : null);
     if (problem === null) {
       takeForward(distDir, outputDir, stamps.fe!.files);
       nextStamps.fe = stamps.fe!;
