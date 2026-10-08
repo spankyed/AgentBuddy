@@ -201,6 +201,10 @@ export const NOT_A_BUILD_INPUT: Record<string, string> = {
   'packages/abuddy-host/src/build/packages-built.ts': 'the freshness rule and the stamp protocol itself; '
     + 'the bundles that inline it watch it as ordinary source, and a build that cannot embed it has no verdict '
     + 'that depends on it',
+  'packages/abuddy-host/src/exclusive-lock.ts': 'the lock the build takes so two of them do not interleave; '
+    + 'it decides when a build may start, never what one writes',
+  'packages/abuddy-host/src/process-liveness.ts': 'whether the process named by a lock is still there, which '
+    + 'is the lock above asking its one question',
 };
 
 /**
