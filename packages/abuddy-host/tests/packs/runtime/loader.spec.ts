@@ -10,6 +10,7 @@ import { appState } from '../../../src/app-state/index.ts';
 import { getLoadedPackEntries } from '../../../src/packs/layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
 import { PACK_SNAPSHOT_FORMAT, seedFile } from '@abuddy/sdk/build';
+import type { SeedKeyRecord } from '@abuddy/sdk/utils';
 import { _appDirOf } from '@abuddy/sdk/env';
 import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
@@ -556,6 +557,45 @@ describe('seedPacks: failures', () => {
     expect(failures).toEqual([]);
     expect(registryEntry('recovered')).not.toHaveProperty('lastError');
   });
+
+  /** A seeder that defines the given keys and reports what it was told to */
+  const seedDefining = (keys: string[], counts = { created: 1, updated: 0, skipped: 0 }) =>
+    (options: { keyRecord?: SeedKeyRecord }) => {
+      seenBefore.push([...(options.keyRecord?.before ?? [])]);
+      for (const key of keys) options.keyRecord?.defined.add(key);
+      return { notes: counts };
+    };
+  let seenBefore: string[][] = [];
+  beforeEach(() => { seenBefore = []; });
+
+  /**
+   * **The record of what a pack's content defined is what makes a destroyed row stay deleted**, so what
+   * belongs here are the two halves `seedPacks` owns: a run is handed what the last one defined, and what
+   * this one defined is what gets recorded. What a seeder then does with it is default-setup's seed specs.
+   */
+  it('hands a run the keys the last one defined, and records the keys this one did', () => {
+    const pack = installedPack('keys');
+    writeRegistry(['keys']);
+
+    seedPacks([pack], seedDefining(['keys:notes/a', 'keys:notes/b']));
+    // Changed seed data, or the second run is skipped on its hash
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
+    seedPacks([pack], seedDefining(['keys:notes/a']));
+
+    expect(seenBefore).toEqual([[], ['keys:notes/a', 'keys:notes/b']]);
+    // What this run defined, not the union: a key the content dropped stops being recorded rather than
+    // counting as deleted for good
+    expect(appState.get().packSeedKeys).toEqual({ keys: ['keys:notes/a'] });
+  });
+
+  it('records no keys for a run that failed, so a row it never created is not taken for a deleted one', () => {
+    const pack = installedPack('keys-failed');
+    writeRegistry(['keys-failed']);
+
+    seedPacks([pack], seedDefining(['keys-failed:notes/a'], { created: 0, updated: 0, skipped: 1, errors: ['nope'] } as never));
+
+    expect(appState.get().packSeedKeys).toEqual({});
+  });
 });
 
 describe('seedPacks', () => {
@@ -594,10 +634,12 @@ describe('seedPacks', () => {
 
     expect(applyFn).toHaveBeenCalledOnce();
     // No `include`: every key a pack seeds is imported. What a seed leaves alone it decides from the rows —
-    // an unchanged hash, an edited row, one the user deleted — rather than from a policy naming keys
+    // an unchanged hash, an edited row, one the user trashed — and from the keys the last run defined, for
+    // a row deleted outright; never from a policy naming keys
     expect(applyFn).toHaveBeenCalledWith({
       compiledDir: path.join(pack.dir, 'runtime', 'seeds'),
       mode: 'replace-on-collision',
+      keyRecord: { before: new Set(), defined: new Set() },
     });
   });
 

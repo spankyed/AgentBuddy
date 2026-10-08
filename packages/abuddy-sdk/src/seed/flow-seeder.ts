@@ -138,6 +138,19 @@ export function createFlowSeeder(): Seeder {
 
         const existing = lookupSeeded(existingFlows, key);
         const compiledHash = isFlowConfig(entry) ? (entry as any).sourceHash : undefined;
+        ctx.keyRecord?.defined.add(flowSeedKey(packId, key));
+
+        /**
+         * **Defined on the last run and no flow now: the user deleted it.** A flow is destroyed rather than
+         * trashed (`flowRepository.deleteFlow`), so the row that would say so is gone and the record of the
+         * key is the only thing left (`SeedKeyRecord`). `wipe-and-replace` is exempt by name: it deleted
+         * every flow itself above, and importing them again is what that mode is.
+         */
+        if (!existing && ctx.mode !== 'wipe-and-replace' && ctx.keyRecord?.before.has(flowSeedKey(packId, key))) {
+          ctx.log(`  flow skipped (removed): ${key}`);
+          counts.skipped++;
+          continue;
+        }
 
         if (existing) {
           if (ctx.mode === 'keep-existing') {

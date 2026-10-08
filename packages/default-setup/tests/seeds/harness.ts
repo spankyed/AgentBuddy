@@ -4,13 +4,21 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { buildPackConfigFromManifest, compilePack } from '@abuddy/sdk/build';
-import { importCompiledSeeds, type ImportMode, type ImportCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { importCompiledSeeds, type ImportMode, type ImportCounts, type SeedIncludeSet, type SeedKeyRecord } from '@abuddy/sdk/utils';
 import { untypedQx as qx } from '@abuddy/ears';
 import { entityIds } from '@abuddy/sdk/testing';
 import { resetTestData, testMediaPath } from '@abuddy/testing/harness';
 
 export const PACK_DIR = path.resolve(import.meta.dirname, '../..');
 export const FIXTURES = path.join(PACK_DIR, 'tests/_support/fixtures/seed-parity');
+
+/**
+ * A boot seed's key record: what the last run defined, and an empty set for what this one does. Boot seeding
+ * is the only caller that passes one, so a spec that wants the removed-row rule builds it the way
+ * `seedPacks` does — and one that doesn't passes nothing, as a user-requested import does.
+ */
+export const keyRecordAfter = (defined: ReadonlySet<string> = new Set()): SeedKeyRecord =>
+  ({ before: defined, defined: new Set<string>() });
 
 /** The seed keys the parity gate covers */
 export const PARITY_KEYS = ['actions', 'prompts', 'library', 'notes'] as const;

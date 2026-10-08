@@ -9,12 +9,12 @@ import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { compileBuiltinFormat, type SeedFormatConfig, type SeedRecord } from '@abuddy/sdk/build';
 import { createSeeder } from '@abuddy/sdk/seed';
-import type { ImportMode, ImportCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
-import { untypedQx as qx } from '@abuddy/ears';
+import type { ImportMode, ImportCounts, SeedIncludeSet, SeedKeyRecord } from '@abuddy/sdk/utils';
+import { untypedQx as qx, untypedTx as tx } from '@abuddy/ears';
 import { trash } from '@abuddy/sdk/repositories';
 import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
 import { createEntityWithDefaults, type EARS } from '#generated/ears.ts';
-import { FIXTURES, PACK_DIR, resetDatabase, snapshot, type Snapshot } from './harness.ts';
+import { FIXTURES, PACK_DIR, keyRecordAfter, resetDatabase, snapshot, type Snapshot } from './harness.ts';
 
 const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'abuddy.json'), 'utf-8'));
 /** default-setup's notes format; the test setup registers its Note seed hooks with the pack */
@@ -43,9 +43,19 @@ afterAll(() => {
 });
 
 const seeder = createSeeder({ key: 'notes', entities: ['Note'], identity: NOTES_FORMAT.identity, relKind: NOTES_FORMAT.tree?.relKind });
-function seedNotes(sources: 'v1' | 'v2' | 'default-setup', options: { mode?: ImportMode; include?: SeedIncludeSet } = {}): ImportCounts {
-  return seeder.apply({ compiledDir: compile(sources).dir, mode: options.mode, include: options.include, log: () => {} });
+function seedNotes(
+  sources: 'v1' | 'v2' | 'default-setup',
+  options: { mode?: ImportMode; include?: SeedIncludeSet; keyRecord?: SeedKeyRecord } = {},
+): ImportCounts {
+  return seeder.apply({
+    compiledDir: compile(sources).dir,
+    mode: options.mode,
+    include: options.include,
+    keyRecord: options.keyRecord,
+    log: () => {},
+  });
 }
+
 
 /** The notes part of a snapshot, as the goldens record it */
 /** Every Note row with this title, deleted ones included: a recreated note is a second id, not a changed row */
@@ -250,6 +260,47 @@ describe('notes seeding (generic pipeline)', () => {
     expect(notesTitled('Projects'), 'the deleted parent was seeded again').toEqual(projects);
     expect(snapshot().rows['Note:Projects/Archive/Old Task'].completed,
       'a child under a deleted parent was updated, so the seeder descended into it').toBe(false);
+  });
+
+  /**
+   * **A note the user deleted *outright* is not seeded again either.** Notes trash, so the two cases above
+   * read the row itself; a flow or a library document is destroyed, and then nothing is left to read. What
+   * answers for those is the record of the keys the pack's content defined last time (`SeedKeyRecord`), which
+   * boot seeding keeps in `AppState.packSeedKeys` — a key in it with no row is the user's deletion.
+   *
+   * Destroying the row rather than trashing it is the whole point of the case, so it uses `tx().destroy()`
+   * directly: `trash.move` would leave the row the earlier cases are about and prove nothing new.
+   */
+  it('leaves a note the user deleted outright alone, given the keys the last run defined', () => {
+    resetDatabase();
+    addLinkTargets();
+    const firstRun = keyRecordAfter();
+    seedNotes('v1', { keyRecord: firstRun });
+    const welcome = notesTitled('Welcome');
+    if (welcome.length !== 1) throw new Error(`expected one seeded Welcome note to delete, found ${welcome.length}`);
+    tx(welcome[0]).destroy();
+    expect(notesTitled('Welcome'), 'a destroyed row leaves nothing behind, which is the premise').toEqual([]);
+
+    seedNotes('v2', { mode: 'replace-on-collision', keyRecord: keyRecordAfter(firstRun.defined) });
+
+    expect(notesTitled('Welcome'), 'the seed created the note the user deleted outright').toEqual([]);
+  });
+
+  /**
+   * **And the same import without that record creates it**, which is what a user asking for a pack's data
+   * back is (`IMPORT_PACK_SEEDS` passes none). It is the other half of the case above: without it, both
+   * assertions would hold for a seeder that had simply stopped creating notes.
+   */
+  it('seeds a note the user deleted outright when the import carries no key record', () => {
+    resetDatabase();
+    addLinkTargets();
+    seedNotes('v1');
+    const welcome = notesTitled('Welcome');
+    tx(welcome[0]).destroy();
+
+    seedNotes('v2', { mode: 'replace-on-collision' });
+
+    expect(notesTitled('Welcome').length, 'the data the user asked for was not put back').toBe(1);
   });
 
   it('wipes nested notes and seeds them again', () => {

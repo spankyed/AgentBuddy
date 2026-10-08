@@ -240,6 +240,7 @@ export function createSeeder(options: SeederOptions): Seeder {
           const hooks = record.entity ? _seedHookRegistry.get(record.entity) : undefined;
           const label = recordLabel(record, identity);
           const seedKey = childSeedKey(parentKey, record, identity);
+          ctx.keyRecord?.defined.add(seedKey);
           try {
             const { match: existing, reused, deleted } = find(record, seedKey, context, hooks);
             if (existing) {
@@ -288,6 +289,18 @@ export function createSeeder(options: SeederOptions): Seeder {
                 ctx.log(`  ${key} updated: ${label}`);
               }
               if (record.children) visit(record.children, existing.id, seedKey);
+              return;
+            }
+            /**
+             * **Defined on the last run and no row now: the user deleted it outright.** The deleted branch
+             * above reads the row the user trashed; this reads the record of the key, which is all that is
+             * left of a row destroyed rather than trashed (`SeedKeyRecord`). Same verdict, so the children
+             * are not visited either — and `wipe-and-replace` is exempt by name, since it removed the rows
+             * itself a moment ago and re-creating them is what that mode is.
+             */
+            if (ctx.mode !== 'wipe-and-replace' && ctx.keyRecord?.before.has(seedKey)) {
+              counts.skipped++;
+              ctx.log(`  ${key} skipped (removed): ${label}`);
               return;
             }
             const id = createTracked(record, context, seedKey, hooks);

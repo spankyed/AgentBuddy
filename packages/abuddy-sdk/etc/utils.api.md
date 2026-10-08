@@ -153,6 +153,7 @@ export function importCompiledSeeds(options: {
     compiledDir: string;
     include?: Record<string, SeedIncludeSet | undefined>;
     mode?: ImportMode;
+    keyRecord?: SeedKeyRecord;
     verbose?: boolean;
 }): Record<string, ImportCounts>;
 
@@ -162,6 +163,8 @@ export interface ImportContext {
     compiledDir: string;
     // (undocumented)
     include?: SeedIncludeSet;
+    // (undocumented)
+    keyRecord?: SeedKeyRecord;
     // (undocumented)
     log: (...args: unknown[]) => void;
     // (undocumented)
@@ -296,6 +299,14 @@ export interface Seeder {
 
 // @public (undocumented)
 export type SeedIncludeSet = true | ReadonlySet<string>;
+
+// @public
+export interface SeedKeyRecord {
+    // (undocumented)
+    before: ReadonlySet<string>;
+    // (undocumented)
+    defined: Set<string>;
+}
 
 // @public (undocumented)
 export function shouldImportAll(inc: SeedIncludeSet | undefined): boolean;

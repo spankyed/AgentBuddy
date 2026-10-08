@@ -44,6 +44,16 @@ export interface AppState {
    */
   packSeedDeps: Record<string, string>;
   /**
+   * The seed keys each pack's content defined when it was last seeded, by pack id. Kept on uninstall with
+   * the two above, for the same reason: they say what has been done to the data.
+   *
+   * It is what makes "the user deleted this" knowable for a row deleted outright. A trashed row carries its
+   * own seed key and the seeder finds it; a destroyed row leaves nothing, so a key here with no row is the
+   * user's deletion and the seed leaves it deleted (`SeedKeyRecord`, `@abuddy/sdk/utils`). A key the pack's
+   * content no longer defines simply stops being recorded.
+   */
+  packSeedKeys: Record<string, string[]>;
+  /**
    * The plugins whose sidebar tab the user showed or hid, by ref. A plugin not here shows as its feature declares
    * (`features[].settings`' `visible`), so a pack's default reaches everyone who never touched its tab.
    */
@@ -53,7 +63,7 @@ export interface AppState {
 }
 
 const FIELDS = [
-  'hasOnboarded', 'version', 'packVersions', 'packSeedHashes', 'packSeedDeps',
+  'hasOnboarded', 'version', 'packVersions', 'packSeedHashes', 'packSeedDeps', 'packSeedKeys',
   'pluginVisibility', 'lastActivePlugin',
 ] as const satisfies readonly (keyof AppState)[];
 
@@ -67,7 +77,9 @@ const _everyFieldIsRead: [UnreadField] extends [never] ? true : UnreadField = tr
 void _everyFieldIsRead;
 
 /** The fields holding one entry per pack, from the shape rather than a list of their names */
-type PerPackField = { [K in keyof AppState]-?: AppState[K] extends Record<string, string> ? K : never }[keyof AppState];
+type PerPackField = { [K in keyof AppState]-?: AppState[K] extends Record<string, PerPackValue> ? K : never }[keyof AppState];
+/** What one pack's entry may be: a recorded string, or a recorded list of them */
+type PerPackValue = string | string[];
 
 type StoredAppState = Partial<AppState>;
 
@@ -88,6 +100,7 @@ export const appState = {
       packVersions: row.packVersions ?? {},
       packSeedHashes: row.packSeedHashes ?? {},
       packSeedDeps: row.packSeedDeps ?? {},
+      packSeedKeys: row.packSeedKeys ?? {},
       pluginVisibility: row.pluginVisibility ?? {},
       ...(row.lastActivePlugin != null && { lastActivePlugin: row.lastActivePlugin }),
     };
@@ -104,7 +117,7 @@ export const appState = {
   },
 
   /** Records one pack's entry in a per-pack field, or with `undefined` removes it, leaving the others' alone */
-  updatePackEntry: (field: PerPackField, packId: string, value: string | undefined): void => {
+  updatePackEntry: (field: PerPackField, packId: string, value: PerPackValue | undefined): void => {
     const entries = { ...appState.get()[field] };
     if (value === undefined) delete entries[packId];
     else entries[packId] = value;

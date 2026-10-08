@@ -261,12 +261,13 @@ After Phases 1 and 2.
 
 ## Deferred
 
-1. **A retired-seed-key ledger for hard deletes.** Decision 1 covers soft delete, which is what notes and
-   the other trashed entity types use. An entity type with no trash is deleted outright, its `seedKey`
-   going with the row, so the seeder cannot know. Covering that needs a per-pack list of retired seed keys
-   — a record that only grows. Do not build it; revisit when a user asks why a deleted flow or library
-   document came back. (**The premise written here was false**: this said nothing in the repo seeds a
-   hard-deleted type, and two of the five shipped seed keys do — see the correction below.)
+1. **A retired-seed-key ledger for hard deletes.** ~~Do not build it~~ — **answered, and not by a ledger.**
+   Decision 1 covers soft delete, which is what notes and the other trashed entity types use; an entity type
+   with no trash is deleted outright, its `seedKey` going with the row. The premise written here was also
+   false (it said nothing in the repo seeds a hard-deleted type; two of the five shipped keys do). What
+   covers it is a record of what the pack's content *defined*, not of what was deleted — so it is a snapshot
+   the size of the pack's content rather than a list that only grows, and it needs no write at any delete
+   site. See the correction below.
 2. **Validating `seedPolicy`'s key names** against `boot.seed` in `manifest-schema.ts`'s `superRefine`.
    The field is gone after Phase 2, so the check has no subject. Named here because it is the obvious fix
    to reach for and would be dead code.
@@ -334,9 +335,23 @@ that soft-deletes leaves one. Notes (`trash.move`), actions and prompts do. Flow
 (`flowRepository.deleteFlow` → `untypedTx(flowId).destroy()`), nor do library documents and collections
 (`features/library/be/repository/commands.ts` → `tx(id).destroy()`), so a user who deletes the seeded demo
 flow or a library document still gets it back — exactly the complaint Phase 1 was written to fix, for two
-of the keys it did not reach. What this changes is a sentence rather than the code: the fix for those two is
-either to trash them like the rest or the ledger in Deferred 1, and neither is a thing to decide while
-writing an outcome.
+of the keys it did not reach.
+
+**Closed, by a third shape neither Decision 1 nor Deferred 1 had in view.** Trashing those two entities turned
+out not to be a contained change: library reads rows straight off relation walks with raw `qx(...).pickAll()`
+— 19 sites in 4 files with no filtered read anywhere — and flows and the brain another 4, and neither
+`linksTo` nor `findRelations` filters `deleted`, so a trashed flow would stay listed and stay runnable. What
+landed instead is the same fact from the other side: the seed keys a pack's content defined on its last run
+(`SeedKeyRecord`, recorded in `AppState.packSeedKeys` by `seedPacks`), so a key defined before with no row now
+is the user's deletion whatever that feature's delete does. No read path changed and no pack-facing API was
+added beyond the record itself. What it does not give is recovery — a destroyed row is still gone — and it
+infers rather than observes, so a row lost some other way is also left uncreated.
+
+**It costs existing installs one last re-creation, and no migration can avoid that.** Data from before this
+has no record, so the first boot seed after upgrading defines every key for the first time and creates the
+rows a user destroyed earlier; from then on the rule holds. A migration cannot seed the record usefully:
+what it could record is the keys of the rows that *are* there, which is exactly the set that needs no
+protecting, and the deleted ones are what nothing knows about.
 
 **Decision 5 was implemented more narrowly than it was written.** It called for `services.settings` to "gain a
 reset narrower than today's". No new service method was needed: `removeStored(path)` already existed and was
@@ -362,6 +377,7 @@ reached only by migrations, so what the change added was an address — an optio
   standing exception, above. An entry needing a policy that says "do not import this" is not one, and a `.ts`
   source a pack reads back itself is an import of its own source.
 - **A registration carries code; the manifest and the compiled artifacts carry facts.**
-- **A seeded row the user *trashed* is not seeded again, and nor are its children.** Where deletion is
-  recorded, which is what the qualifier is doing: a row destroyed outright leaves nothing to find and is
-  created again on the next boot.
+- **A seeded row the user deleted is not seeded again, and nor are its children** — for both kinds of
+  deletion, by two different records. A trashed row carries its own seed key and the seeder reads it; a row
+  destroyed outright is covered by the keys the pack's content defined on its last run. A user asking for a
+  pack's data back gets it: that import carries no such record.

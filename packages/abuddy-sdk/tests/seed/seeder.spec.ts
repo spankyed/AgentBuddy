@@ -8,7 +8,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { dropAttribute, resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { createSeeder, markSeededRowUnedited } from '../../src/seed/seeder.ts';
 import type { SeedHooks } from '../../src/seed/hooks.ts';
-import { _getMediaPath } from '../../src/utils/index.ts';
+import { _getMediaPath, type ImportMode, type SeedKeyRecord } from '../../src/utils/index.ts';
 import type { SeedRecord } from '../../src/build/seeds/records.ts';
 import type { EARS } from '../../src/types/entities.ts';
 
@@ -45,7 +45,72 @@ function compiled(packId: string, records: Array<{ name: string; body: string; v
 }
 
 const seeder = createSeeder({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'] });
-const seed = (dir: string) => seeder.apply({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} });
+const seed = (dir: string, keyRecord?: SeedKeyRecord, mode: ImportMode = 'replace-on-collision') =>
+  seeder.apply({ compiledDir: dir, mode, keyRecord, log: () => {} });
+/** A boot seed's key record, as `seedPacks` builds it: what the last run defined, and a set for this one */
+const keyRecordAfter = (defined: ReadonlySet<string> = new Set()): SeedKeyRecord =>
+  ({ before: defined, defined: new Set<string>() });
+
+describe('a row the user deleted outright', () => {
+  /**
+   * **The row is gone, so the record of the key is all there is to go on.** A trashed row still carries its
+   * seed key and the seeder finds it (`find` reads deleted rows); a destroyed one leaves nothing, and without
+   * the keys the last run defined the seeder cannot tell it from a record it has never imported.
+   */
+  it('is not created again when the last run defined its key', () => {
+    const firstRun = keyRecordAfter();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), firstRun);
+    ears().tx(memo('Intro').id).destroy();
+    expect(memos('Intro'), 'a destroyed row leaves nothing behind, which is the premise').toEqual([]);
+
+    const counts = seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]),
+      keyRecordAfter(firstRun.defined));
+
+    expect(counts).toEqual({ created: 0, updated: 0, skipped: 1 });
+    expect(memos('Intro')).toEqual([]);
+  });
+
+  /** And the record says so whatever the outcome was, or the next run would create what this one skipped */
+  it('stays in the record of what this run defined', () => {
+    const firstRun = keyRecordAfter();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), firstRun);
+    ears().tx(memo('Intro').id).destroy();
+
+    const secondRun = keyRecordAfter(firstRun.defined);
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), secondRun);
+
+    expect([...secondRun.defined]).toEqual([...firstRun.defined]);
+  });
+
+  /**
+   * **An import carrying no record creates it**, which is what a user asking for a pack's data back is
+   * (`IMPORT_PACK_SEEDS`), and what makes the first case about the record rather than about the seeder
+   * having stopped creating rows.
+   */
+  it('is created again by an import that carries no record', () => {
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+    ears().tx(memo('Intro').id).destroy();
+
+    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }])))
+      .toEqual({ created: 1, updated: 0, skipped: 0 });
+    expect(memo('Intro').body).toBe('Hello again');
+  });
+
+  /**
+   * **`wipe-and-replace` is exempt**, and by name rather than by luck: it removes the rows itself and then
+   * creates every record, so every key would be one "the user deleted" if the rule applied to it.
+   */
+  it('is created again by wipe-and-replace, which removed the rows itself', () => {
+    const firstRun = keyRecordAfter();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), firstRun);
+
+    const counts = seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]),
+      keyRecordAfter(firstRun.defined), 'wipe-and-replace');
+
+    expect(counts).toMatchObject({ created: 1 });
+    expect(memo('Intro').body).toBe('Hello again');
+  });
+});
 
 describe('a row with no stored sourceHash', () => {
   // The seeder's user-owned rule (`seeder.ts`: "skipped (untracked)"), which every entity type runs through. It is

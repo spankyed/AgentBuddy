@@ -7,13 +7,13 @@ import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { SEED_INDEX_FILE, seedFile } from '@abuddy/sdk/build';
 import { createFlowSeeder, createSeeder } from '@abuddy/sdk/seed';
-import { importCompiledSeeds } from '@abuddy/sdk/utils';
+import { importCompiledSeeds, type SeedKeyRecord } from '@abuddy/sdk/utils';
 import { registerPack, unregisterPack } from '@abuddy/testing/harness';
 import { findWhere } from '#generated/ears.ts';
 import { dropAttribute } from '@abuddy/sdk/testing';
 import { findRelations, untypedTx } from '@abuddy/ears';
 import { repository } from '#generated/repository.ts';
-import { PACK_DIR, resetDatabase } from './harness.ts';
+import { PACK_DIR, keyRecordAfter, resetDatabase } from './harness.ts';
 import type { EARS } from '@abuddy/ears';
 
 type FlowRow = { id: EARS.EntityId; label: string; sourceHash?: string };
@@ -48,7 +48,7 @@ function compiled(changed: string[] = [], version = 'changed', { only, packId = 
   return dir;
 }
 
-const seedFlows = (dir: string) => importCompiledSeeds({ compiledDir: dir, mode: 'replace-on-collision' }).flows;
+const seedFlows = (dir: string, keyRecord?: SeedKeyRecord) => importCompiledSeeds({ compiledDir: dir, mode: 'replace-on-collision', keyRecord }).flows;
 
 beforeEach(() => {
   resetDatabase();
@@ -136,6 +136,42 @@ describe('re-seeding edited flows', () => {
     const refs = nodesOf('Root Flow').filter((node) => node.nodeType === 'subflow').map((node) => (node as { flowRef?: string }).flowRef);
     expect(refs).toContain(mine);
     expect(refs).not.toContain('Codex');
+  });
+});
+
+describe('a seeded flow the user deleted', () => {
+  /**
+   * **A flow is destroyed, not trashed** (`flowRepository.deleteFlow` ends in `destroy()`), so there is no row
+   * left carrying its seed key and the rule that leaves a trashed note alone has nothing to read. What answers
+   * for it is the record of the keys this pack's content defined on its last run (`SeedKeyRecord`), which boot
+   * seeding keeps in `AppState.packSeedKeys`: a key in it with no flow now is the user's deletion.
+   *
+   * The second seed gives Codex a new `sourceHash`, which is what would otherwise bring it back — a re-seed
+   * of unchanged content skips every flow and would pass without the rule.
+   */
+  it('is not seeded again, given the keys the last run defined', () => {
+    const firstRun = keyRecordAfter();
+    seedFlows(compiled(), firstRun);
+    repository.flowsCommands.deleteFlow(flow('Codex')[0].id);
+    expect(flow('Codex'), 'a destroyed flow leaves nothing behind, which is the premise').toEqual([]);
+
+    const counts = seedFlows(compiled(['Codex']), keyRecordAfter(firstRun.defined));
+
+    expect(flow('Codex'), 'the seed created the flow the user deleted').toEqual([]);
+    expect(counts).toMatchObject({ created: 0 });
+  });
+
+  /**
+   * **And the same import without that record creates it**, which is what asking for a pack's data back is.
+   * Without this half, the case above would also pass for a seeder that had stopped creating flows at all.
+   */
+  it('is seeded when the import carries no key record', () => {
+    repository.flowsCommands.deleteFlow(flow('Codex')[0].id);
+
+    const counts = seedFlows(compiled(['Codex']));
+
+    expect(flow('Codex').length, 'the data the user asked for was not put back').toBe(1);
+    expect(counts).toMatchObject({ created: 1 });
   });
 });
 

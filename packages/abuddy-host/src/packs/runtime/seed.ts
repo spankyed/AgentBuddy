@@ -116,13 +116,21 @@ export function seedPacks(packs: Iterable<PackSeedTarget>, importSeeds: typeof i
 
     logger.info(`Importing seeds for pack: ${packId}`);
     let errors: string[];
+    /**
+     * **Boot seeding is where "the user deleted this" can be inferred, so this is where the record goes.**
+     * `before` is the keys this pack's content defined when it last seeded; a seeder that finds no row for
+     * one of them leaves it alone rather than creating it again, which is the only thing left to go on for a
+     * row destroyed rather than trashed. A user asking for a pack's data back (`IMPORT_PACK_SEEDS`) passes
+     * no record, because that request is for the rows to come back.
+     */
+    const keyRecord = { before: new Set(state.packSeedKeys[packId] ?? []), defined: new Set<string>() };
     try {
-      // `include` is how a pack's policy keeps a key out of this run: an empty set skips that seeder.
       // `replace-on-collision` is what the seeders do by default — they branch only on `keep-existing` and
       // `wipe-and-replace` — so naming it changes nothing and says what this is
       errors = importErrors(importSeeds({
         compiledDir: seedsDir,
         mode: 'replace-on-collision',
+        keyRecord,
       }));
     } catch (err) {
       errors = [errorMessage(err)];
@@ -136,6 +144,12 @@ export function seedPacks(packs: Iterable<PackSeedTarget>, importSeeds: typeof i
       continue;
     }
     appState.updatePackEntry('packSeedDeps', packId, undefined);
+    /**
+     * Recorded only after a clean run, and recorded as what this run defined rather than merged with what
+     * came before: a key the pack's content no longer defines stops being recorded, and a key whose row
+     * failed to be created is not remembered as one the user deleted.
+     */
+    appState.updatePackEntry('packSeedKeys', packId, [...keyRecord.defined]);
     outcomes.set(packId, undefined);
     logger.info(`Pack seeded: ${packId}`);
   }

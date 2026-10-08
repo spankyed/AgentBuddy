@@ -14,10 +14,29 @@ export type SeedIncludeSet = true | ReadonlySet<string>;
 
 export type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace';
 
+/**
+ * The seed keys a pack's content defines, across runs: `before` is what it defined when it was last
+ * imported, and a seeder adds to `defined` every key it defines now.
+ *
+ * **It is how a seed knows about a row that was destroyed rather than trashed.** A trashed row is its own
+ * record — it still carries its seed key, and the seeder finds it and leaves it alone. A row deleted
+ * outright leaves nothing at all, so without this a seed cannot tell the user's deletion from a record it
+ * has never imported, and creates it again on the next run. A key in `before` with no row now is the
+ * former.
+ *
+ * Whoever imports decides whether that inference applies: boot seeding passes a record (`seedPacks`), and
+ * a user asking for a pack's data back passes none, because that request is for the rows to come back.
+ */
+export interface SeedKeyRecord {
+  before: ReadonlySet<string>;
+  defined: Set<string>;
+}
+
 export interface ImportContext {
   compiledDir: string;
   include?: SeedIncludeSet;
   mode?: ImportMode;
+  keyRecord?: SeedKeyRecord;
   log: (...args: unknown[]) => void;
 }
 
@@ -56,6 +75,7 @@ export function importCompiledSeeds(options: {
   compiledDir: string;
   include?: Record<string, SeedIncludeSet | undefined>;
   mode?: ImportMode;
+  keyRecord?: SeedKeyRecord;
   verbose?: boolean;
 }): Record<string, ImportCounts> {
   const log = options.verbose ? console.log.bind(console) : () => {};
@@ -73,6 +93,7 @@ export function importCompiledSeeds(options: {
       compiledDir: options.compiledDir,
       include: inc,
       mode: options.mode,
+      keyRecord: options.keyRecord,
       log,
     });
   }

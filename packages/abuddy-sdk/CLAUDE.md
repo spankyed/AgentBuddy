@@ -114,10 +114,12 @@ entries first, which is why it is the one pack authors call. The code:
   - Rows carry `sourceHash`, `seededFields` (the field names plus a hash of their stored values) and `seedKey`. `seedKey` is `<packId>:<key>/…`, built by `childSeedKey` per tree level, with `packId` read from `seeds.json` (`seedPackId`, which throws if it is missing).
   - `find` tries `seedKey` first, then the `find` hook or `identity` (with `parent` matched through `relKind`). An identity match that carries a `seedKey` is ignored.
   - Outcomes:
+    - A row marked deleted is skipped with its subtree: the user trashed it, and its children would be created under a deleted parent.
     - `keep-existing` skips the row and its subtree.
     - An existing row with no `sourceHash` is skipped as user-owned.
     - A row whose hash matches is skipped.
     - A row whose seeded fields changed is skipped as edited.
+    - No row at all, and `ctx.keyRecord.before` holds the key: the user deleted it outright, so it is skipped with its subtree. `SeedKeyRecord` (`@abuddy/sdk/utils`) is the keys the pack's content defined on its last run, which boot seeding keeps in `AppState.packSeedKeys` and a user-requested import leaves out; `wipe-and-replace` is exempt by name, having removed the rows itself.
     - Otherwise the row is updated, and `clearedFields` resets fields the record no longer sets.
   - Creation is transactional by hand. `createTracked` removes the row if media copy or stamping throws. `updateTracked` restores the previous `sourceHash`/`seededFields` if the update throws.
   - Per-record errors land in `counts.errors` instead of throwing.

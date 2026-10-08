@@ -64,6 +64,9 @@ const MOVED = {
   packSeedHashes: { 'memo-pack': 'memo-hash', [BUILT_IN_ID]: 'boot-hash' },
   // Only written for a pack whose seed failed, and the move doesn't produce one
   packSeedDeps: {},
+  // Written by a seed run, not by the move: data migrated from 0.3.14 has never recorded its keys, so the
+  // first boot seed after this treats every row as one it has not imported before
+  packSeedKeys: {},
   // The shell's state, which 0.3.14's settings here don't hold
   pluginVisibility: {},
 };
