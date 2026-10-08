@@ -29,6 +29,11 @@ exitOnEpipe();
  * there arrives after ~2s per package has already been spent; its job is to catch a direct
  * `npm run api:check -w @abuddy/sdk`, which never reaches this file. This one is for the command the chain
  * runs, where the cost is three of those compiles.
+ *
+ * **A new caller of this is a new freshness door, and the doors are a numbered table**
+ * (`packages/abuddy-testing/CLAUDE.md`) — most of them are npm scripts, and JSON carries no comments, so
+ * nothing but that table says a door exists. Copying this line without adding a row is how door 8 arrived
+ * unrecorded; no check holds the table, which describes kinds of door rather than call sites.
  */
 packagesBuiltOrRefuse('npm run packages:build');
 

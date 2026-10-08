@@ -106,6 +106,7 @@ mid-run would be wrong. All they can do is fail, and say what to run.
 | 5 | `assertCheckoutPackagesFresh()` | a pack author's bare `npx vitest` or `npx playwright test`, with no CLI in front of it | `src/checkout-freshness.ts`, called from `setupPackTests` and the `electronApp` fixture |
 | 6 | a throw while the module loads | a spec that reads the built packages run without its `pretest` (`npx vitest`, a watch run): `@app/publish-checks`' specs and `@app/repo-checks`' `published-sdk-peers` | `packagesBuiltOrRefuse()` in `@abuddy/host/build/packages-built`, called from `abuddy-cli/tests/helpers/published-packages.ts` and the spec |
 | 7 | the same throw, in a report generator | `api:check`, which reads the built declarations and is a chain step — so it must not rebuild them, where `api:update` is a command a user runs and carries door 1's prefix | `scripts/api-reports.ts` |
+| 8 | the same throw, in a verification step | `packages:check`, which reads the five staged trees and is a chain step, so it must not rebuild them either. Every caller already builds first — the chain orders it after `packages:ensure` through the outputs it declares, and both workflows build in the step before — so what this catches is a by-hand run against a tree the sources have moved past, which the guides already told the reader to build first. A gate that reports the published packages fine about a tree it did not verify is the silent green `ALLOW_UNBUILT`'s comment records | `scripts/packages-check.ts` |
 
 Three things follow.
 

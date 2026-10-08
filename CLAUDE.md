@@ -686,7 +686,9 @@ npm run lint:fix         # Rewrites what it can — oxlint has no fixer for no-u
                          # not clear those for you
 
 npm run packages:build   # Build dist/ for @abuddy/ears, @abuddy/sdk and @abuddy/ui, bundle @abuddy/cli and @abuddy/testing
-npm run packages:check   # publint + arethetypeswrong on the five published trees (after packages:build).
+npm run packages:check   # publint + arethetypeswrong on the five published trees. It refuses a tree the
+                         # sources have moved past rather than checking it, so `after packages:build` is
+                         # enforced rather than advised — door 8 in packages/abuddy-testing/CLAUDE.md.
                          # A chain step, for the opposite reason to the proxy `api:check` does without —
                          # see "packages:check is a chain step" above
 

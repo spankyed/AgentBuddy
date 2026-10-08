@@ -34,7 +34,17 @@ import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 
 exitOnEpipe();
 
-/** Ahead of everything, so a stale tree costs nothing rather than a subprocess per check below */
+/**
+ * **A gate must not report success about an artifact it did not verify**, which is the whole of why this is
+ * here: publint and attw over a tree the sources have moved past say the published packages are fine about
+ * output nobody would publish. Door 8 of the freshness doors (`packages/abuddy-testing/CLAUDE.md`, the only
+ * record that a door exists — add a row before adding a caller).
+ *
+ * It refuses rather than rebuilding, as door 7 does: this is a chain step, and a step that writes what it
+ * declares as an input leaves every later step stale. Every caller already builds first — the chain orders
+ * this after `packages:ensure`, both workflows build in the step before — so what it catches is a run by
+ * hand, and it costs a stale tree nothing rather than a subprocess per check below.
+ */
 packagesBuiltOrRefuse('npm run packages:build');
 
 const trees: PublishedTree[] = Object.entries(publishedTreeDirs()).map(([pkg, dir]) => ({
