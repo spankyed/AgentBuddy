@@ -11,8 +11,9 @@ bin/app-launcher.sh    `abuddy` inside the packaged app (runs the bundle on Elec
 src/index.ts           USAGE text + COMMANDS table (lazy import per command)
 src/utils.ts           findPackRoot, readManifest, parseTargetEnv (-d/-b), sdkVersion, cliBin, cliVersion
 src/commands/          one module per command; add/ holds one module per `abuddy add` entity
-src/build/             bundlers and build-time gates used by `build` and `dev`
-src/app/               which AgentBuddy `abuddy test` (and dependency resolution) runs against
+src/build/             bundlers and build-time gates, read by every command that builds, checks or
+                       launches a pack
+src/app/               which AgentBuddy a command runs against, and the throwaway data dirs it runs in
 tests/                 vitest specs (see Tests)
 ```
 
