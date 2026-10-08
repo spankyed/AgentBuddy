@@ -5,9 +5,9 @@
  * bundle, the facade types and the DSL defs — so a build whose pack sources have not changed can take the
  * previous build's output forward instead of making it again. Measured on the pack the app ships,
  * 2026-10-08: hashing the whole scope is **17-19ms over 705 files**, against 11.3s for the frontend bundle
- * alone, and a build whose pack has not changed goes **20.9s to 11.3s, -46%** (paired A/B, median of 3,
- * 81% idle falling to 68%). The saving is the phase less the hash and the copy of what it produced — 101
- * files and 8.5 MB for the pack the app ships.
+ * alone, and a build whose pack has not changed goes **21.0s to 6.3s, -70%** with all three gated (paired
+ * A/B, median of 3, 74% idle, 2026-10-08). What is left is the hash and the copy of what the phases
+ * produced — 101 files and 8.5 MB for the pack the app ships.
  *
  * **Reuse, not skip.** `--skip-fe` omits the frontend from the published tree; this produces the same tree
  * either way, which is the whole requirement — `abuddy build` stages into `.abuddy/build/` and renames
@@ -162,15 +162,44 @@ const SOURCE = /\.(ts|tsx|js|mjs|cjs|vue|json|css)$/;
  * pack.
  */
 export function feInputsHash(root: string, options: { readonly release: boolean }, abuddyDirs: readonly string[]): string {
+  // `dist/defs` because the bundle resolves the DSL defs from the pack's real dist as `?raw`
+  return phaseInputsHash(root, { bundler: 'fe-bundler.ts', release: options.release, dirs: abuddyDirs, trees: ['dist/defs'] });
+}
+
+/** The facade types a dependent compiles against: the pack's own sources, and what it compiles them with */
+export function typesInputsHash(root: string, depSnapshots: ReadonlyMap<string, unknown>): string {
+  return phaseInputsHash(root, { bundler: 'types-bundler.ts', depSnapshots });
+}
+
+/** The DSL defs: the manifest's `dsl` entries, the sources they name, and the packages their types come from */
+export function dslInputsHash(root: string, abuddyDirs: readonly string[]): string {
+  return phaseInputsHash(root, { bundler: 'dsl-defs.ts', dirs: abuddyDirs });
+}
+
+/**
+ * One hash for every gated phase: the pack's own sources and build inputs, whatever else the phase reaches,
+ * the implementation that produces it, and the options that change what it writes.
+ */
+function phaseInputsHash(root: string, o: {
+  readonly bundler: string;
+  readonly release?: boolean;
+  readonly dirs?: readonly string[];
+  readonly trees?: readonly string[];
+  readonly depSnapshots?: ReadonlyMap<string, unknown>;
+}): string {
   const hash = createHash('sha256');
-  hash.update(`release:${options.release}`);
-  hash.update(bundlerSource('fe-bundler.ts'));
+  if (o.release !== undefined) hash.update(`release:${o.release}`);
+  hash.update(bundlerSource(o.bundler));
   for (const file of ['abuddy.json', 'package.json', 'tsconfig.json', 'tailwind.config.ts', 'tailwind.config.js']) {
     const full = path.join(root, file);
     if (fs.existsSync(full)) { hash.update(file); hash.update(fs.readFileSync(full)); }
   }
   hashTree(hash, path.join(root, 'src'), (name) => SOURCE.test(name));
-  hashTree(hash, path.join(root, 'dist', 'defs'), () => true);
-  for (const dir of abuddyDirs) hashTree(hash, dir, (name) => SOURCE.test(name));
+  for (const tree of o.trees ?? []) hashTree(hash, path.join(root, tree), () => true);
+  for (const dir of o.dirs ?? []) hashTree(hash, dir, (name) => SOURCE.test(name));
+  for (const id of [...(o.depSnapshots?.keys() ?? [])].sort()) {
+    hash.update(id);
+    hash.update(JSON.stringify(o.depSnapshots!.get(id)));
+  }
   return hash.digest('hex');
 }

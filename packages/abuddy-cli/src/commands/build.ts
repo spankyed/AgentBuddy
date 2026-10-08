@@ -11,7 +11,7 @@ import {
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type SeedDependency,
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
-import { abuddyScope, feInputsHash, filesUnder, readStamps, reuseProblem, takeForward, writeStamps, type PhaseStamp } from '../build/phase-cache';
+import { abuddyScope, dslInputsHash, feInputsHash, typesInputsHash, filesUnder, readStamps, reuseProblem, takeForward, writeStamps, type PhaseStamp } from '../build/phase-cache';
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
@@ -238,7 +238,17 @@ async function buildIntoStaging(args: string[]) {
   // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
   const defs: Record<string, string> = {};
   const packTypesFile = path.join(outputDir, PACK_LAYOUT.typesDir, `${PACK_TYPES_DEF}.d.ts`);
-  const packTypes = await bundlePackTypes(root, packTypesFile, reads?.forPhase('types'));
+  const typesHash = typesInputsHash(root, depSnapshots);
+  const typesStale = reuseProblem(stamps.types, distDir, typesHash);
+  const packTypes = typesStale === null
+    ? (takeForward(distDir, outputDir, stamps.types!.files),
+       nextStamps.types = stamps.types!,
+       console.log('  facade types: unchanged, reused'),
+       { success: true as const, content: fs.readFileSync(packTypesFile, 'utf-8') })
+    : await bundlePackTypes(root, packTypesFile, reads?.forPhase('types'));
+  if (typesStale !== null && packTypes.success) {
+    nextStamps.types = { hash: typesHash, files: [path.join(PACK_LAYOUT.typesDir, `${PACK_TYPES_DEF}.d.ts`)] };
+  }
   const packTypesProblems = packTypes.success ? facadeProblems(root, packTypesFile) : [];
   if (packTypes.success && packTypesProblems.length === 0) {
     defs[PACK_TYPES_DEF] = packTypes.content;
@@ -338,7 +348,19 @@ async function buildIntoStaging(args: string[]) {
 
   // ── DSL editor definitions ───────────────────────────────────────────
   if (manifest.dsl) {
-    const defs = await bundleDslDefs(root, manifest, reads?.forPhase('dslDefs'));
+    const dslScope = abuddyScope(root);
+    const dslHash = 'missing' in dslScope ? null : dslInputsHash(root, dslScope.dirs);
+    const dslStale = dslHash === null ? 'scope incomplete' : reuseProblem(stamps.dslDefs, distDir, dslHash);
+    // Its files live in the pack's real `dist` either way, so reuse is not re-bundling them
+    const defs = dslStale === null
+      ? (takeForward(distDir, outputDir, stamps.dslDefs!.files),
+         nextStamps.dslDefs = stamps.dslDefs!,
+         console.log('  dsl defs: unchanged, reused'),
+         { success: true as const, files: [] as string[] })
+      : await bundleDslDefs(root, manifest, reads?.forPhase('dslDefs'));
+    if (dslStale !== null && defs.success && dslHash !== null) {
+      nextStamps.dslDefs = { hash: dslHash, files: defs.files.map((file) => path.relative('dist', file)) };
+    }
     if (defs.success) {
       for (const file of defs.files) console.log(`  dsl defs: ${file}`);
       // **The one phase that writes outside the staged tree**, because the path its consumer uses is source

@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { feInputsHash, filesUnder, reuseProblem, takeForward } from '../../src/build/phase-cache';
+import { dslInputsHash, feInputsHash, filesUnder, reuseProblem, takeForward, typesInputsHash } from '../../src/build/phase-cache';
 
 const dirs: string[] = [];
 
@@ -92,5 +92,34 @@ describe('feInputsHash', () => {
     const later = new Date(Date.now() + 60_000);
     fs.utimesSync(path.join(root, 'src/a.ts'), later, later);
     expect(feInputsHash(root, { release: false }, [])).toBe(before);
+  });
+});
+
+describe('the other two gated phases', () => {
+  const pack = () => tmp({ 'abuddy.json': '{"id":"p"}', 'src/a.ts': 'export const a = 1' });
+
+  it('the facade hash moves when a source changes', () => {
+    const root = pack();
+    const before = typesInputsHash(root, new Map());
+    fs.writeFileSync(path.join(root, 'src/a.ts'), 'export const a = 2');
+    expect(typesInputsHash(root, new Map())).not.toBe(before);
+  });
+
+  it("the facade hash moves when a dependency's snapshot does, which is what it compiles against", () => {
+    const root = pack();
+    expect(typesInputsHash(root, new Map([['dep', { v: 1 }]])))
+      .not.toBe(typesInputsHash(root, new Map([['dep', { v: 2 }]])));
+  });
+
+  it('the DSL hash moves when the manifest changes, since its entries are what it reads', () => {
+    const root = pack();
+    const before = dslInputsHash(root, []);
+    fs.writeFileSync(path.join(root, 'abuddy.json'), '{"id":"p","dsl":{}}');
+    expect(dslInputsHash(root, [])).not.toBe(before);
+  });
+
+  it('gives each phase its own hash, so one going stale does not rebuild the others', () => {
+    const root = pack();
+    expect(new Set([feInputsHash(root, { release: false }, []), typesInputsHash(root, new Map()), dslInputsHash(root, [])]).size).toBe(3);
   });
 });
