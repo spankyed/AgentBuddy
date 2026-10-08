@@ -11,7 +11,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
 import { declaredPaths, diffableStamp } from '@abuddy/host/build/packages-built';
-import { DIAGNOSTIC_RUN_ENV, POOLS, livePoolStamps, measureCommandFor, poolStampFor, poolUnitFor, projectsThatDidNotRun, recordRun, recordsVerdict, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
+import { DIAGNOSTIC_RUN_ENV, holdPoolLock, POOLS, livePoolStamps, poolLockFor, measureCommandFor, poolStampFor, poolUnitFor, projectsThatDidNotRun, recordRun, recordsVerdict, whyItRuns, type Pool } from '../../../scripts/lib/unit-pool.ts';
 import type { ReportedRun } from '../../../scripts/lib/spec-durations-reporter.ts';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, POOL_SECONDS, poolStepName } from '../../../scripts/lib/chain-steps.ts';
@@ -792,5 +792,52 @@ describe('poolDurationLines', () => {
 
   it('says nothing at all where no run has measured anything', () => {
     expect(lines(fs.mkdtempSync(path.join(os.tmpdir(), 'pool-lines-empty-')))).toEqual([]);
+  });
+});
+
+/**
+ * One run per pool. Two runs of the same pool each stamp the projects the other's vitest is still running, so
+ * neither record describes a run that happened — which is the one thing a per-project cache is for.
+ *
+ * **Per pool, not per directory**, which is narrower than the rule in `pipeline-lessons.md` and is the right
+ * unit: a stamp's name carries its pool's half and provenance, so two pools write disjoint files, and
+ * `prunePoolStamps` derives `live` from every pool's keys so one pool's prune cannot take another's. The cases
+ * assert that partition rather than taking it on trust, since it is what licenses the narrower lock.
+ */
+describe('one run per pool', () => {
+  const pools = Object.keys(POOLS) as Pool[];
+
+  it('gives each pool its own lock, under a name prunePoolStamps will not delete', () => {
+    const files = pools.map((pool) => poolLockFor(pool));
+
+    expect(new Set(files).size, 'one lock each, or two pools share one and neither can run beside the other').toBe(pools.length);
+    // The live predicate, which is what prunes: a `.json` lock would be removed by the next run mid-hold
+    for (const file of files) expect(path.basename(file).endsWith('.json'), file).toBe(false);
+  });
+
+  // The partition the per-pool lock rests on: no two pools can write one stamp file
+  it('keeps every pool\'s stamps disjoint from every other pool\'s', () => {
+    const byPool = pools.map((pool) => new Set(POOLS[pool].suites().map((suite) => poolStampFor(suite, POOLS[pool].half, 'chain'))));
+    const all = byPool.flatMap((set) => [...set]);
+
+    expect(new Set(all).size, 'two pools stamping one file would need the directory locked, not the pool').toBe(all.length);
+  });
+
+  it('refuses a second run of the same pool, naming the one that holds it', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pool-lock-'));
+    const file = path.join(dir, 'host.lock');
+    try {
+      const held = holdPoolLock('host', file);
+
+      // Asked once, and that is not fussiness: a refused take releases before it throws, and in *this* process
+      // the holder's pid is ours — so a second `toThrow` finds the file gone, takes the lock, and passes
+      // having tested nothing. Between two real processes the pid differs and the holder's lock is untouched.
+      expect(() => holdPoolLock('host', file)).toThrow(/another host pool run holds[\s\S]*would stamp the projects the other is still running/);
+
+      held.release();
+      expect(fs.existsSync(file), 'released, so the next run may take it').toBe(false);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
