@@ -149,7 +149,7 @@ An app already running on that data dir is used as it is; otherwise `run` starts
 
 Without an FE entry it rebuilds, reinstalls and reloads on any change instead.
 
-#### `abuddy drive [script | --serve] [--app-root <path> | --app beta] [instance flags]`
+#### `abuddy drive [script | --serve | --eval <body>] [--app-root <path> | --app beta] [instance flags]`
 
 Launch AgentBuddy and drive it from a script: navigate, send events, read state, take screenshots.
 
@@ -293,6 +293,27 @@ operation was not, which is the common case while driving. A malformed request, 
 unknown verb answers `4xx`, because nothing ran.
 
 The app's own output is in `drive/results/app-0.log` for the whole session, so there is nothing to stream.
+
+##### One question
+
+A script and a session both assume you have more than one question. For the first one — and often the only
+one — `--eval`, `--query` and `--state` launch the app, ask the session one thing, print it and exit:
+
+```bash
+abuddy drive --eval 'return document.title'
+{"ok":true,"value":"Agent X"}
+```
+
+The answer is the same `{ ok, value }` envelope the HTTP verbs return, as **one JSON line on stdout and
+nothing else there**, so `$(abuddy drive --eval …)` is directly parseable; the app's output goes to stderr
+and the exit code follows `ok`. It runs headless, since nothing is watching a single question.
+
+`--eval` takes a function **body**, not an expression — the same input `/eval` takes — so `return` is
+required and a body without one answers `{"ok":true}`.
+
+`--attach` asks a session `--serve` already has up instead of launching an app, which answers in
+milliseconds and leaves that session running. Without a session it says so and names the command to start
+one. The curl recipe above is still the way to ask *many* things; this is the way to ask one.
 
 It takes the same app and instance flags as `abuddy run`, with one difference in the default: where `abuddy run` uses the shared development data dir, `abuddy drive` gives each session a fresh one and throws it away afterwards, so a driving session starts clean and leaves nothing. `--instance <name>` is how a session keeps its state for the next one. It launches its own app rather than joining one `abuddy run` already has, because Electron allows one app per data dir — so if a person wants to watch what a driver is doing, they watch the driver's window rather than starting a second app.
 

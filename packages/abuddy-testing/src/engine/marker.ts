@@ -56,6 +56,17 @@ export function removeEngineMarker(outputDir: string): void {
  */
 export const RECIPE_READ_PATH = '/state';
 
+/**
+ * The start of the line a listening session prints, named because something waits for it.
+ *
+ * A parent that starts a session to ask it one question (`abuddy drive --eval`) reads this off the child's
+ * stdout, and the marker is published immediately before it is printed — so the line arriving means the
+ * file is there and complete. Anchoring that on an unnamed literal would make a reword of the sentence
+ * below a hang with no other symptom, which is why this is a declaration and `marker.spec.ts` holds the
+ * recipe to it.
+ */
+export const ENGINE_READY = 'drive engine listening on';
+
 /** The one verb the recipe shows a body for, and that body. A spec holds both to the real table. */
 export const RECIPE_WRITE_PATH = '/query';
 export const RECIPE_WRITE_BODY = '{"code":"return qx(EARS.Entity.Note).count()"}';
@@ -81,7 +92,7 @@ export const engineRecipe = (
     return found.length === 0 ? [] : [`  ${label} ${found.join(' ')}`];
   };
   return [
-    `drive engine listening on ${at} — ${where}`,
+    `${ENGINE_READY} ${at} — ${where}`,
     `  curl -s ${at}${RECIPE_READ_PATH} ${auth}`,
     `  curl -s ${at}${RECIPE_WRITE_PATH} ${auth} -d '${RECIPE_WRITE_BODY}'`,
     ...listing('POST', 'POST'),

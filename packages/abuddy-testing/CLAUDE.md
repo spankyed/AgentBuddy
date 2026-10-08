@@ -55,9 +55,16 @@ One helper per kind of run, because a setting means something different to each:
   one is a compile error rather than a value quietly discarded; the handshake is also spread last, so a cast
   cannot break a session either. What each one breaks is on the type. The rule for which settings are
   locked: **the ones the tool or its own docs read back.**
-- **The session's filename is declared twice**, here for `testMatch` and in `@abuddy/cli`'s `drive.ts` for
-  the file that command writes. Making it one declaration would mean the CLI importing this package at
-  runtime — a dependency on the published CLI for one string — so the gate compares the two instead.
+- **Four strings are declared twice**, here and in `@abuddy/cli`: the session's filename (here for
+  `testMatch`, there for the file `drive.ts` writes), and the token header, the marker's filename and
+  `ENGINE_READY` — which `abuddy drive --eval` needs to talk to a session from Node. Making any of them one
+  declaration would mean the CLI importing this package at runtime: it is a *devDependency*, so
+  `bundle-package.ts` would refuse the bundle outright, and a real dependency would put this harness in
+  every pack that installs the CLI. So the gate compares them instead —
+  `@app/repo-checks`' `playwright-config.spec.ts`, one case per pair, as a loop over a declared list.
+  `ENGINE_READY` is the one with a silent failure: it is read off a child's stdout, so a reword of the
+  recipe's first line is a one-shot that hangs to its deadline, which is why `marker.spec.ts` holds the
+  recipe to it.
 
 ## Vitest: isolated data dirs (`@abuddy/testing/vitest`)
 

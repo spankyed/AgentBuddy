@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ENGINE_READY,
   engineRecipe,
   RECIPE_READ_PATH,
   RECIPE_WRITE_PATH,
@@ -60,4 +61,22 @@ describe('the engine recipe', () => {
   it('prints nothing for a method the table has none of, rather than an empty list', () => {
     expect(recipe({ '/state': { method: 'GET' } })).not.toContain('POST \n');
   });
+});
+
+/**
+ * The ready line is a readiness signal something waits for, so the recipe has to keep printing it.
+ *
+ * `abuddy drive --eval` starts a session and reads this off its stdout. Reword the first line of
+ * `engineRecipe` without moving `ENGINE_READY` and every one-shot hangs to its 180s deadline with no other
+ * symptom — which is the edit this case exists to fail.
+ */
+it('opens the recipe with the line a parent waits for', () => {
+  const recipe = engineRecipe(
+    '/tmp/run/drive/results/engine.json',
+    { host: '127.0.0.1', port: 1234, token: 't', pid: 9 },
+    'x-abuddy-drive-token',
+    { '/state': { method: 'GET' } },
+  );
+
+  expect(recipe.split('\n')[0]).toContain(ENGINE_READY);
 });

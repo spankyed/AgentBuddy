@@ -23,7 +23,8 @@ Commands:
   run [--app-root <path> | --app beta] [--instance <name> | --fresh | --ephemeral]
                       Launch the app with this pack, and reload it as you edit
   init-tests            Scaffold Playwright E2E test setup
-  drive [script]        Launch the app and drive it from a script in drive/ (not a test)
+  drive [script]        Launch the app and drive it: a script in drive/, a --serve session, or one
+                        --eval/--query/--state question (not a test)
   test [args...]        Run E2E tests in AgentBuddy (--app-root <path> | --app beta)
   open [-b]           Open the installed AgentBuddy app
   upgrade [-b] [--relaunch]  Install the latest AgentBuddy release into /Applications

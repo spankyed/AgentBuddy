@@ -24,10 +24,12 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process';
 import { findPackRoot, readManifest } from '../utils';
 import { cliDirs, parseAppFlags, resolveDevelopmentApp } from '../app/app-target';
 import { instanceFor, instanceInUse, parseInstanceFlags, removeInstance, INSTANCE_USAGE } from '../app/instances';
+import { ONE_SHOT_ASKS, type AskName, type EngineAsk } from '../app/drive-engine.ts';
+import { oneShot } from '../app/drive-one-shot.ts';
 import { fixtureEnv } from './test';
 import { appEnv } from './run';
 import { copySecretsInto } from '../app/instance-secrets.ts';
@@ -46,7 +48,7 @@ const DRIVE_DIR = 'drive';
  * precedent: exported for exactly this, and asserted in `tests/commands/test-contract.spec.ts`.
  */
 export const DRIVE_USAGE = `
-Usage: abuddy drive [script | --serve] [--app-root <path> | --app beta] [instance]
+Usage: abuddy drive [script | --serve | --eval <body>] [--app-root <path> | --app beta] [instance]
 
 Launch AgentBuddy and drive it from a script: navigate, send events, read state, screenshot.
 Mainly for an agent debugging or developing against the app; a person can watch, the windows are shown.
@@ -64,8 +66,25 @@ launches an app of its own, so a question about one is not answerable with the o
 By default the app gets a fresh data dir that is thrown away afterwards, so each session starts clean.
 Name an instance to keep its state between sessions.
 
+**One question, without writing a script.** --eval, --query and --state launch the app, ask the session one
+thing, print the answer and exit — the same verbs --serve answers, asked once. The answer is the engine's
+own envelope, one JSON line on stdout and nothing else there, so it can be read by a program; everything
+else goes to stderr, and the exit code follows the envelope's "ok". Headless, because nothing is watching
+one question.
+
+  abuddy drive --eval 'return document.title'      ->  {"ok":true,"value":"Agent X"}
+  abuddy drive --state                             ->  {"ok":true,"value":{...}}
+
+--eval takes a function *body*, not an expression, exactly as the /eval verb does — so "return" is
+required, and a body without one answers {"ok":true}. --attach asks a --serve session that is already
+running instead of launching an app: milliseconds instead of a launch, and it leaves that session up.
+
 Options:
   --serve             hold the app open and answer HTTP requests (see above)
+  --eval <body>       launch, evaluate one function body in the page, print the envelope, exit
+  --query <code>      the same, for one EARS read over the bus
+  --state             the same, for the app shell's state
+  --attach            ask a running --serve session rather than launching an app
   --app-root <path>   a local AgentBuddy checkout (installed and built)
   --app beta          the newest AgentBuddy Beta build that satisfies the pack's hostVersion
 ${INSTANCE_USAGE}
@@ -96,6 +115,11 @@ drive('open notes and look at it', async ({ app, appPage }) => {
 \`\`\`
 
 Run everything with \`abuddy drive\`, or one script with \`abuddy drive drive/notes.ts\`.
+
+For one question, no script is needed — \`abuddy drive --eval 'return document.title'\` launches the app,
+answers with the engine's \`{ ok, value }\` envelope on stdout and exits. It is a function *body*, so
+\`return\` is required. \`--query\` and \`--state\` ask the same way, and \`--attach\` asks a
+\`--serve\` session that is already up.
 
 This drives a built app, not a dev server — \`abuddy run\` is the one that serves your frontend with HMR.
 
@@ -166,6 +190,48 @@ drive('drive engine', driveEngineBody({
  * Every unconsumed flag ends up in `flags.args`, which is forwarded to the Playwright CLI verbatim — so
  * a flag this command means for itself has to be removed here or Playwright is asked about it.
  */
+/**
+ * The one-shot flags, taken before anything else parses.
+ *
+ * **Before `takeServeFlag`**, so `--eval --serve` is reported by name here rather than surviving every
+ * parser and failing inside the Playwright CLI, which is where `parseAppFlags` sends what nobody claimed.
+ *
+ * The name half is matched **exactly**, after splitting an inline value off — `parseInstanceFlags`' shape,
+ * and what makes it prefix-safe: `--evaluate` and `--state-dump` fall through to `rest` rather than being
+ * eaten, as `--serve-forever` does.
+ */
+export function takeOneShotFlags(argv: string[]): { ask?: AskName; argument?: string; attach: boolean; rest: string[] } {
+  const rest: string[] = [];
+  let ask: AskName | undefined;
+  let argument: string | undefined;
+  let attach = false;
+
+  for (let i = 0; i < argv.length; i++) {
+    const [name, inline] = argv[i]!.split(/=(.*)/s, 2) as [string, string | undefined];
+    if (name === '--attach') { attach = true; continue; }
+    const asked = (['eval', 'query', 'state'] as const).find((verb) => name === `--${verb}`);
+    if (asked === undefined) { rest.push(argv[i]!); continue; }
+    if (ask !== undefined) {
+      throw new Error(ask === asked
+        ? `--${asked} was given twice; a one-shot asks one question.`
+        : `--${asked} can't be combined with --${ask}; a one-shot asks one question.`);
+    }
+    ask = asked;
+    const spec: EngineAsk = ONE_SHOT_ASKS[asked];
+    if (spec.field === undefined) {
+      // Silently ignoring it is the trap `parseInstanceFlags`' `--fresh` still has; not worth copying
+      if (inline !== undefined) throw new Error(`--${asked} does not take a value.`);
+      continue;
+    }
+    argument = inline ?? argv[++i];
+    if (argument === undefined) {
+      throw new Error(`--${asked} needs a value. For --eval it is a function *body*, not an expression, so`
+        + ' `return` is required: --eval "return document.title"');
+    }
+  }
+  return { ...(ask === undefined ? {} : { ask }), ...(argument === undefined ? {} : { argument }), attach, rest };
+}
+
 export function takeServeFlag(args: string[]): { serve: boolean; rest: string[] } {
   const rest = args.filter(arg => arg !== '--serve');
   return { serve: rest.length !== args.length, rest };
@@ -265,9 +331,9 @@ export function scaffold(root: string): DriveScaffold {
 function reportStaleConfigs(stale: string[]): void {
   for (const file of stale) {
     const helper = CONFIG_HELPERS[path.basename(file)]![0]!;
-    console.log(`${file} does not call ${helper}(), so its settings no longer follow @abuddy/testing. Replace its body with:`);
-    console.log(`  import { ${helper} } from '@abuddy/testing/playwright';`);
-    console.log(`  export default ${helper}();\n`);
+    console.error(`${file} does not call ${helper}(), so its settings no longer follow @abuddy/testing. Replace its body with:`);
+    console.error(`  import { ${helper} } from '@abuddy/testing/playwright';`);
+    console.error(`  export default ${helper}();\n`);
   }
 }
 
@@ -279,25 +345,47 @@ export async function drive(args: string[]) {
 
   const root = findPackRoot(process.cwd());
   const manifest = readManifest(root);
-  const { serve, rest: unserved } = takeServeFlag(args);
+  const { ask, argument, attach, rest: unasked } = takeOneShotFlags(args);
+  const { serve, rest: unserved } = takeServeFlag(unasked);
   const { mode, withSecrets, rest } = parseInstanceFlags(unserved);
   const flags = parseAppFlags(rest);
+  const asking = ask === undefined ? undefined : ONE_SHOT_ASKS[ask];
+
+  if (asking !== undefined && serve) {
+    throw new Error(`--${ask} can't be combined with --serve: --serve holds the app open, --${ask} asks one question and closes it.`);
+  }
+  if (attach && asking === undefined) throw new Error('--attach needs a question: add --eval, --query or --state.');
+
+  const resultsDir = path.join(root, DRIVE_DIR, 'results');
+  /**
+   * `--attach` asks a session someone else is running, so it builds nothing, resolves no app and launches
+   * nothing — and it must not close what it did not start. Short-circuited here, above every one of those.
+   */
+  if (attach && asking !== undefined) {
+    const outcome = await oneShot({ ask: asking, argument, resultsDir, startHint: 'abuddy drive --serve' });
+    console.log(outcome.line);
+    process.exitCode = outcome.code;
+    return;
+  }
+
+  // A one-shot *is* a serving session, asked once: same config, same generated session file
+  const serving = serve || asking !== undefined;
 
   // Before the app is resolved, which can prompt and can download a Beta: a first run has nothing to
   // drive, and used to find that out only after paying for a build and a launch and then failing with
   // Playwright's "No tests found"
   const layer = scaffold(root);
-  if (layer.created.length > 0) console.log(`Created ${DRIVE_DIR}/ — a README and a config are in there.\n`);
-  const engine = serve ? writeEngineFiles(root) : { created: [], keptStale: [] };
+  if (layer.created.length > 0) console.error(`Created ${DRIVE_DIR}/ — a README and a config are in there.\n`);
+  const engine = serving ? writeEngineFiles(root) : { created: [], keptStale: [] };
   reportStaleConfigs([...layer.keptStale, ...engine.keptStale]);
   // A serving session is the thing being run, so a pack with no scripts of its own is not empty-handed
-  if (!serve && driveScripts(root).length === 0) {
-    console.log(`No driving scripts yet. Write one in ${DRIVE_DIR}/ and run this again:\n`);
-    console.log(`  // ${DRIVE_DIR}/look.ts`);
-    console.log("  import { drive } from '@abuddy/testing';\n");
-    console.log("  drive('look at it', async ({ app, appPage }) => {");
-    console.log("    await app.screenshot('look');");
-    console.log('  });');
+  if (!serving && driveScripts(root).length === 0) {
+    console.error(`No driving scripts yet. Write one in ${DRIVE_DIR}/ and run this again:\n`);
+    console.error(`  // ${DRIVE_DIR}/look.ts`);
+    console.error("  import { drive } from '@abuddy/testing';\n");
+    console.error("  drive('look at it', async ({ app, appPage }) => {");
+    console.error("    await app.screenshot('look');");
+    console.error('  });');
     return;
   }
 
@@ -305,7 +393,7 @@ export async function drive(args: string[]) {
   const instance = instanceFor(mode, cliDirs());
   if (instance?.created && withSecrets) {
     const { count, from } = copySecretsInto(instance, appEnv(app));
-    console.log(`Copied ${count} secret${count === 1 ? '' : 's'} from ${from}\n`);
+    console.error(`Copied ${count} secret${count === 1 ? '' : 's'} from ${from}\n`);
   }
 
   /**
@@ -325,7 +413,7 @@ export async function drive(args: string[]) {
       return;
     }
     removeInstance(cliDirs(), instance.dir);
-    console.log(`\nRemoved the ephemeral instance ${instance.name}.`);
+    console.error(`\nRemoved the ephemeral instance ${instance.name}.`);
   }
 
   let child: ChildProcess | undefined;
@@ -356,17 +444,20 @@ export async function drive(args: string[]) {
 
     // No build here: the fixture builds the pack itself when PACK_DIR is set, which `fixtureEnv` does
     // below. `abuddy test` leaves it to the fixture for the same reason
-    ensureCheckoutPackages(root);
+    // A one-shot's stdout carries one JSON envelope, so npm's banner goes to stderr with everything else
+    ensureCheckoutPackages(root, asking === undefined ? 'inherit' : ['ignore', 2, 2]);
 
     if (instance) {
-      console.log(`Instance ${instance.name}${instance.ephemeral ? ' (removed when this exits)' : ''}`);
-      console.log(`  ${instance.dir}\n`);
+      console.error(`Instance ${instance.name}${instance.ephemeral ? ' (removed when this exits)' : ''}`);
+      console.error(`  ${instance.dir}\n`);
     }
 
     const env = fixtureEnv(app, root, process.env);
     // Shown, because the whole point is to watch it. Under Playwright the app hides its windows unless
-    // this says otherwise (the guards in packages/main).
-    env.PLAYWRIGHT_VISIBLE = '1';
+    // this says otherwise (the guards in packages/main). **A one-shot is the exception**: no window flashes
+    // up per question, and it then takes the other branch of `pinsViewport`, so the page gets the emulated
+    // viewport a suite gets and a one-shot's answer matches what `npm test` sees.
+    if (asking === undefined) env.PLAYWRIGHT_VISIBLE = '1';
     // The fixture makes a throwaway dir unless it is given one; an instance is the caller's to keep
     if (instance) env.E2E_DATA_DIR = instance.dir;
     // Beside the scripts that take them, not under `tests/` — driving output is not test output
@@ -375,15 +466,35 @@ export async function drive(args: string[]) {
     // Spawned rather than spawnSync'd so this process keeps an event loop. With spawnSync a Ctrl-C took
     // the default action and killed this process where it stood, so the teardown below never ran and an
     // ephemeral instance was left on disk — measured, not reasoned about.
-    child = spawn(
-      process.execPath,
-      [
-        resolvePlaywrightCli(root), 'test',
-        '--config', path.join(DRIVE_DIR, serve ? ENGINE_CONFIG_FILE : 'playwright.config.ts'),
-        ...flags.args,
-      ],
-      { cwd: root, env, stdio: 'inherit' },
-    );
+    const playwright = [
+      resolvePlaywrightCli(root), 'test',
+      '--config', path.join(DRIVE_DIR, serving ? ENGINE_CONFIG_FILE : 'playwright.config.ts'),
+      ...flags.args,
+    ];
+    // **A one-shot pipes stdout and mirrors it to stderr.** The readiness line is read off that pipe, and
+    // stdout has to carry the envelope alone — Playwright's reporter writes there, so inheriting it would
+    // put the reporter's lines in front of the answer.
+    const stdio: StdioOptions = asking === undefined ? 'inherit' : ['ignore', 'pipe', 'inherit'];
+
+    if (asking !== undefined) {
+      const outcome = await oneShot({
+        ask: asking, argument, resultsDir, startHint: 'abuddy drive --serve',
+        launch: () => {
+          const spawned = spawn(process.execPath, playwright, { cwd: root, env, stdio });
+          // Also assigned to the outer `child`, which is what the signal handlers above forward to
+          child = spawned;
+          return {
+            child: spawned,
+            exited: new Promise((resolve) => spawned.on('exit', (code) => resolve({ code }))),
+          };
+        },
+      });
+      console.log(outcome.line);
+      process.exitCode = outcome.code;
+      return;
+    }
+
+    child = spawn(process.execPath, playwright, { cwd: root, env, stdio });
     const [code, killedBy] = await new Promise<[number | null, NodeJS.Signals | null]>(resolve => {
       child!.on('exit', (exitCode, signal) => resolve([exitCode, signal]));
     });

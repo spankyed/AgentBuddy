@@ -4,7 +4,7 @@
 // behind the checkout's source — so a command that loads it asks the checkout to bring it up to date.
 // Installed packages have nothing to build: their dist is what npm delivered.
 import { createRequire } from 'node:module';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, type StdioOptions } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { CHECKOUT_MARKER } from '@abuddy/host/build/packages-built';
@@ -44,12 +44,17 @@ export function checkoutFor(packDir: string): string | undefined {
  * loads is what the checkout says. A no-op for a pack whose packages are installed, and a directory
  * walk (under a second) when nothing is stale.
  */
-export function ensureCheckoutPackages(packDir: string): void {
+/**
+ * @param stdio where the build's own output goes. `inherit` for a command whose stdout is prose; a caller
+ * whose stdout is *data* passes `['ignore', 2, 2]` to send it to stderr instead — `abuddy drive --eval`
+ * prints one JSON envelope and npm's two banner lines in front of it would corrupt what a program parses.
+ */
+export function ensureCheckoutPackages(packDir: string, stdio: StdioOptions = 'inherit'): void {
   const checkout = checkoutFor(packDir);
   if (!checkout) return;
   // npm is a shell script on Windows, which spawn cannot launch without one
   const windows = process.platform === 'win32';
-  const result = spawnSync(windows ? 'npm.cmd' : 'npm', ['run', 'packages:ensure'], { cwd: checkout, stdio: 'inherit', shell: windows });
+  const result = spawnSync(windows ? 'npm.cmd' : 'npm', ['run', 'packages:ensure'], { cwd: checkout, stdio, shell: windows });
   if (result.status === 0) return;
   // A spawn that never ran has no status and a reason of its own; a build that failed printed its own
   const why = result.error ? `: ${result.error.message}` : '';

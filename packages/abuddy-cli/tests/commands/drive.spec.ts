@@ -2,7 +2,11 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { driveScripts, DRIVE_USAGE, scaffold, takeServeFlag, writeEngineFiles } from '../../src/commands/drive';
+import { driveScripts, DRIVE_USAGE, scaffold, takeOneShotFlags, takeServeFlag, writeEngineFiles } from '../../src/commands/drive';
+import { oneShotOutcome, readEngineMarker } from '../../src/app/drive-engine';
+import { whenReady } from '../../src/app/drive-one-shot';
+import { EventEmitter } from 'node:events';
+import { PassThrough } from 'node:stream';
 
 let root: string;
 
@@ -135,6 +139,17 @@ describe('the help text', () => {
   it('says how a session ends, which is the one thing a caller cannot guess', () => {
     expect(DRIVE_USAGE).toContain('/close');
   });
+
+  // One per claim a reader acts on, which is this file's existing bar for the usage text
+  it('says what a one-shot asks, what it prints and what the input is', () => {
+    for (const flag of ['--eval', '--query', '--state', '--attach']) expect(DRIVE_USAGE).toContain(flag);
+    // The trap: a body without `return` answers ok:true with no value rather than failing
+    expect(DRIVE_USAGE).toContain('body');
+    expect(DRIVE_USAGE).toContain('return');
+    // The output contract a caller parses against
+    expect(DRIVE_USAGE).toContain('stdout');
+    expect(DRIVE_USAGE).toContain('{"ok":true,"value":"Agent X"}');
+  });
 });
 
 /**
@@ -195,5 +210,153 @@ describe('a config that has stopped delegating', () => {
     expect(first.created).toEqual([path.join('drive', 'engine.config.mts'), path.join('drive', 'engine-session.mts')]);
     expect(second.created).toEqual([]);
     expect(second.keptStale, 'what it wrote itself calls the helper').toEqual([]);
+  });
+});
+
+// Everything a one-shot decides before it launches anything, and the two places it can silently do nothing.
+describe('asking one question', () => {
+  describe('takeOneShotFlags', () => {
+    it('consumes nothing when no question is asked, and keeps the order', () => {
+      const argv = ['look.ts', '--grep', 'x'];
+
+      expect(takeOneShotFlags(argv)).toEqual({ attach: false, rest: ['look.ts', '--grep', 'x'] });
+    });
+
+    it('takes a value as the next argument or inline, to the same answer', () => {
+      expect(takeOneShotFlags(['--eval', 'return 1'])).toEqual({ ask: 'eval', argument: 'return 1', attach: false, rest: [] });
+      expect(takeOneShotFlags(['--eval=return 1'])).toEqual({ ask: 'eval', argument: 'return 1', attach: false, rest: [] });
+    });
+
+    // The firing case. An implementation matching on a prefix passes every other case here and fails only
+    // this one, and the cost of that is an argument vanishing on its way to the Playwright CLI
+    it('leaves a flag that merely starts with one of its own', () => {
+      const argv = ['--evaluate', '--state-dump'];
+
+      expect(takeOneShotFlags(argv)).toEqual({ attach: false, rest: ['--evaluate', '--state-dump'] });
+    });
+
+    it('leaves every other argument in place and in order', () => {
+      const { rest } = takeOneShotFlags(['--eval', 'return 1', '--instance', 'probe', '--grep', 'n']);
+
+      expect(rest).toEqual(['--instance', 'probe', '--grep', 'n']);
+    });
+
+    it('refuses a second question, a value --state cannot take, and a missing value', () => {
+      expect(() => takeOneShotFlags(['--eval', 'a', '--query', 'b'])).toThrow(/--query can't be combined with --eval/);
+      expect(() => takeOneShotFlags(['--eval', 'a', '--eval', 'b'])).toThrow(/--eval was given twice/);
+      expect(() => takeOneShotFlags(['--state=x'])).toThrow(/--state does not take a value/);
+      // The message names `return`, because a body without one answers `{"ok":true}` rather than failing
+      expect(() => takeOneShotFlags(['--eval'])).toThrow(/`return` is required/);
+    });
+
+    it('takes --attach without taking the question with it', () => {
+      expect(takeOneShotFlags(['--attach', '--state'])).toEqual({ ask: 'state', attach: true, rest: [] });
+    });
+  });
+
+  /**
+   * The exit code comes from the envelope, never from the status — and this is the case that proves it.
+   *
+   * The engine wraps every verb in `attempt`, which turns a verb that *threw* into `ok: false` with status
+   * **200**. An implementation that reads the status exits 0 on every real failure, and nothing downstream
+   * notices: `npm run drive:eval -- 'throw 1' && echo ok` would print ok.
+   */
+  describe('oneShotOutcome', () => {
+    it('exits 1 for a failed verb the engine answered 200 with', () => {
+      const outcome = oneShotOutcome({ status: 200, body: { ok: false, error: 'eval: boom' } });
+
+      expect(outcome.code).toBe(1);
+      expect(JSON.parse(outcome.line)).toEqual({ ok: false, error: 'eval: boom' });
+    });
+
+    it('exits 0 for an answer, and passes the envelope through unchanged', () => {
+      const outcome = oneShotOutcome({ status: 200, body: { ok: true, value: { a: 1 } } });
+
+      expect(outcome.code).toBe(0);
+      expect(JSON.parse(outcome.line)).toEqual({ ok: true, value: { a: 1 } });
+    });
+
+    it("prints a refusal's own words rather than rewording it", () => {
+      const outcome = oneShotOutcome({ status: 401, body: { ok: false, error: 'missing or wrong x-abuddy-drive-token' } });
+
+      expect(outcome.code).toBe(1);
+      expect(outcome.line).toContain('missing or wrong x-abuddy-drive-token');
+    });
+
+    it('synthesises an envelope only where there is no answer at all', () => {
+      expect(oneShotOutcome({ unreachable: 'nothing answered' })).toEqual({ line: '{"ok":false,"error":"nothing answered"}', code: 1 });
+      // Something that is not an envelope is not passed off as one
+      expect(oneShotOutcome({ status: 200, body: 'hello' }).code).toBe(1);
+    });
+  });
+
+  describe('whenReady', () => {
+    const fakeChild = (): { child: any; stdout: PassThrough } => {
+      const stdout = new PassThrough();
+      const child = Object.assign(new EventEmitter(), { stdout, kill: () => {} });
+      return { child, stdout };
+    };
+
+    it('settles when the session says it is listening', async () => {
+      const { child, stdout } = fakeChild();
+      const ready = whenReady(child, () => {}, 5_000);
+
+      stdout.write('drive engine listening on http://127.0.0.1:1234 — drive/results/engine.json\n');
+
+      await expect(ready).resolves.toBeUndefined();
+    });
+
+    // The firing case: a readiness marker can straddle a chunk boundary, and a per-chunk `includes` —
+    // which is what `packages/main`'s ProcessManager does — never fires. The symptom is a 180s hang
+    it('settles when the line arrives in two pieces', async () => {
+      const { child, stdout } = fakeChild();
+      const ready = whenReady(child, () => {}, 5_000);
+
+      stdout.write('drive engine listen');
+      stdout.write('ing on http://127.0.0.1:1234 — drive/results/engine.json\n');
+
+      await expect(ready).resolves.toBeUndefined();
+    });
+
+    it('reports a session that died instead of starting, with what it printed', async () => {
+      const { child, stdout } = fakeChild();
+      const ready = whenReady(child, () => {}, 5_000);
+
+      stdout.write('Error: no tests found\n');
+      child.emit('exit', 1);
+
+      await expect(ready).rejects.toThrow(/exited \(1\) before it was listening[\s\S]*no tests found/);
+    });
+
+    it('gives up on the bound rather than waiting for a session that never speaks', async () => {
+      const { child } = fakeChild();
+
+      await expect(whenReady(child, () => {}, 20)).rejects.toThrow(/did not start within/);
+    });
+  });
+
+  describe('reading a session marker', () => {
+    it('names the command this caller would run when there is no session', () => {
+      const read = readEngineMarker(path.join(root, 'drive', 'results'), 'npm run drive:serve');
+
+      expect(read).toEqual({ problem: expect.stringContaining('npm run drive:serve') });
+      expect((read as { problem: string }).problem).toContain('drop --attach');
+    });
+
+    it('reports a file that is not a marker rather than crashing on it', () => {
+      const dir = path.join(root, 'drive', 'results');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'engine.json'), '{"host":"127.0.0.1"}');
+
+      expect(readEngineMarker(dir, 'x')).toEqual({ problem: expect.stringContaining('needs a host, a port and a token') });
+    });
+
+    it('reads a real one', () => {
+      const dir = path.join(root, 'drive', 'results');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'engine.json'), JSON.stringify({ host: '127.0.0.1', port: 1, token: 't', pid: 2 }));
+
+      expect(readEngineMarker(dir, 'x')).toEqual({ marker: { host: '127.0.0.1', port: 1, token: 't', pid: 2 } });
+    });
   });
 });

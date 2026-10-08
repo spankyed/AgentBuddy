@@ -111,6 +111,36 @@ describe('a Playwright config calls its helper', () => {
    * Drift here scaffolds a session the serving config does not collect, which Playwright reports as
    * finding no tests.
    */
+  /**
+   * The same bind, for the wire vocabulary a one-shot needs.
+   *
+   * `abuddy drive --eval` talks to a session over HTTP from Node, which means knowing the token header,
+   * the marker's filename and the line a listening session prints. `@abuddy/cli` cannot import
+   * `@abuddy/testing` to get them — it is a devDependency, and `bundle-package.ts` refuses an external it
+   * cannot find in `dependencies` — so they are declared twice and compared here, as the session filename
+   * above is. Drift is a one-shot that hangs to its deadline (the ready line) or is refused (the header).
+   *
+   * A loop over a declared list, so the next string added is covered without editing the case.
+   */
+  it('names one wire vocabulary across the two packages that spell it', () => {
+    const engine = [
+      ['ENGINE_TOKEN_HEADER', path.join('packages', 'abuddy-testing', 'src', 'engine', 'server.ts')],
+      ['MARKER_FILE', path.join('packages', 'abuddy-testing', 'src', 'engine', 'marker.ts')],
+      ['ENGINE_READY', path.join('packages', 'abuddy-testing', 'src', 'engine', 'marker.ts')],
+    ] as const;
+    const cli = read(path.join('packages', 'abuddy-cli', 'src', 'app', 'drive-engine.ts'));
+    const named = (source: string, declaration: string): string | undefined =>
+      new RegExp(`${declaration}\\s*=\\s*'([^']+)'`).exec(codeOrEmpty(source))?.[1];
+
+    for (const [declaration, file] of engine) {
+      const inEngine = named(read(file), declaration);
+      const inCli = named(cli, declaration);
+      expect(inEngine, `${file} no longer declares ${declaration} under that name`).toBeDefined();
+      expect(inCli, `drive-engine.ts no longer declares ${declaration} under that name`).toBeDefined();
+      expect(inCli, `${declaration} has drifted between the engine and the CLI that talks to it`).toBe(inEngine);
+    }
+  });
+
   it('names one engine session file across the two packages that spell it', () => {
     const helper = read(path.join('packages', 'abuddy-testing', 'src', 'playwright.ts'));
     const cli = read(path.join('packages', 'abuddy-cli', 'src', 'commands', 'drive.ts'));

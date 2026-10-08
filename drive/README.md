@@ -48,6 +48,24 @@ drive('how long the renderer takes', async ({ app, appPage }) => {
 });
 ```
 
+## One question
+
+No script needed — the answer comes back on stdout as the engine's own envelope, so a program can read it:
+
+```bash
+npm run drive:eval -- 'return document.title'     # {"ok":true,"value":"Agent X"}
+npm run drive:state                               # {"ok":true,"value":{"running":"connected"}}
+npm run drive:query -- 'return qx(EARS.Entity.Note).count()'
+```
+
+**It is a function body, not an expression**, exactly as the session's `/eval` verb is — so `return` is
+required, and a body without one answers `{"ok":true}` rather than failing. One JSON line on stdout and
+nothing else there; the app's output and any staleness warning go to stderr, and the exit code follows the
+envelope's `ok`. Headless, so no window appears for a question.
+
+Add `--attach` to ask a session `npm run drive:serve` already has up: ~0.35s instead of ~3.5s, and it
+leaves that session running.
+
 ## One session, many questions
 
 A script here runs and ends. To ask many things of one warm app instead, serve it:
