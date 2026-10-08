@@ -75,6 +75,35 @@ Six rules that pay for themselves:
 
 - **Measure before you optimise, and before you accept someone else's measurement.** Two proposals in
   this repo were rejected by one command each, and both had been argued for at length first.
+- **Attribute a concurrent pipeline's cost with a CPU profile, not by timing its stages.** Rollup drives
+  `transform` concurrently, so wrapping each Vite plugin hook and summing the wall clock of its calls
+  reported **120s of hooks inside an 11.5s build** — a tenfold double-count that still read as a table with
+  a plausible winner, `vite:vue:transform` at 1049% of the phase. The instrument for a single-threaded
+  pipeline is `node --cpu-prof` with self time aggregated per package, which put the pack frontend bundle's
+  **12.8s of CPU** at **6.1s inside rollup's tree-shaking walk** (`includeCallArguments`, `include`,
+  `includePath` and the two path trackers), 1.6s GC, 0.7s tailwind and **0.3s compiling every SFC** — so
+  the stage the first table blamed held a twentieth of the cost, and both intuitive optimisations ("make
+  Vue faster", "cache the SFC transforms") were aimed at it. Subtract two profiles to isolate one phase
+  (`abuddy build` against `--skip-fe`), and read what the subtraction attributes rather than trusting it:
+  it charged the frontend phase 0.75s of `spawnSync` that was `packages:ensure` running in both arms.
+
+  **What the profile bought was a rejection, which is the usual return on one.** `treeshake: false` for the
+  non-release build measured **22.2s to 18.2s, -19%, for 443 KB more output** on 8.5 MB — paired A/B, median
+  of 3, 75% idle, 2026-10-08, with the size change as the positive control that the knob had turned. It is
+  reverted, because `fe-bundler-host-registry.integration.spec.ts`' *"drops the generated EARS facade from
+  FE code that only uses the EARS constants"* fails under it, and that case generalises: every pack's
+  `#generated/ears` pairs the constants with a `/*#__PURE__*/ defineEars()` call, so without the shake a
+  frontend importing one constant carries that call into the renderer and **runs** it. Off is a divergence
+  in what executes between a dev build and a release rather than only in what ships, and the dev build is
+  what that spec and the E2E suite cover. The first comment written for the change claimed the opposite —
+  that retaining code cannot crash what a release would not — which is wrong in the one way that matters:
+  retained code runs.
+
+  **Skipping the phase is not the other lever.** `abuddy build` records what each phase read, and that
+  record's own header says it is *"never a cache key"* — it is a dep file, so it can be stale about a read
+  nobody has made yet. The chain already caches `compile` on declared inputs, so an unchanged tree never
+  pays the 11.3s in the first place, and the gate would only serve a hand-run build. What is left is making
+  the two builds cheaper, or leaving it.
 - **A mutation check is worth more than a re-run.** Breaking the thing on purpose and watching the
   right test fail proves more than running the whole suite again.
 - **A check that reports nothing may have looked at nothing**, and a green run cannot tell you which. This
@@ -172,8 +201,20 @@ There are four such directories under `node_modules/.cache`, and as of 2026-10-0
 |---|---|---|
 | `abuddy-packages-build` | `packages:ensure`, `packages:build` | `withBuildLock` (`@abuddy/host/build/packages-built`) |
 | `abuddy-chain` | `npm run chain` | `holdChainLock` (`scripts/lib/chain-lock.ts`) |
-| `abuddy-unit-pool` | `test:unit:host`, `test:unit:pack`, `test:integration` | nothing |
-| `abuddy-spec-durations` | `npm run spec`, the pools' reporter | nothing |
+| `abuddy-unit-pool` | `test:unit:host`, `test:unit:pack`, `test:integration` | `holdPoolLock` (`scripts/lib/unit-pool.ts`), **per pool** |
+| `abuddy-spec-durations` | `npm run spec`, the pools' reporter | nothing, deliberately — see below |
+
+**The unit is the entries, and the directory is only usually the right proxy for them.** The pool stamps are
+locked per *pool*, not per directory, because a stamp's name carries its pool's half and provenance — so two
+pools write disjoint files, and `prunePoolStamps` derives what is live from *every* pool's keys, so one pool's
+prune cannot take another's. Two runs of the **same** pool is the case that collides. `unit-pool.spec.ts`
+asserts that partition rather than assuming it, since it is what licenses the narrower lock.
+
+**`abuddy-spec-durations` is not locked, and should not be.** It holds a ten-run window of measured file
+durations, which informs one column of a report and gates nothing. A lost write loses a data point. Locking
+it would be apparatus around a sample, and `spec-cost.json` — 1,884 lines of band, window, tie rule, machine
+field and two idle floors, to place a spec in one of two config files — is what that costs. If something ever
+*decides* on those numbers, that is the moment to revisit, and the decision is the thing to question first.
 
 **The fix for an unguarded one is three lines**, and it is the same three: `holdExclusiveLock` from
 `@abuddy/host/exclusive-lock` with a lock file beside the stamps, a refusal naming the holder, and a release

@@ -248,6 +248,11 @@ Six rules that pay for themselves:
 
 - **Measure before you optimise, and before you accept someone else's measurement.** Two proposals here were
   rejected by one command each, both having been argued for at length first.
+- **Attribute a concurrent pipeline's cost with a CPU profile, not by timing its stages.** Wall clock
+  summed per stage double-counts everything that overlaps, and the result reads as a table with a plausible
+  winner rather than as an error: the pack frontend bundle's plugin hooks totalled 120s inside an 11.5s
+  build, and the stage that table blamed held a twentieth of the cost. `node --cpu-prof` with self time per
+  package is the instrument, and two profiles subtracted isolate one phase.
 - **A mutation check is worth more than a re-run.** Breaking the thing on purpose and watching the right
   test fail proves more than running the whole suite again.
 - **But a mutation check does not redeem a test that mirrors the code.** A case asserting the
