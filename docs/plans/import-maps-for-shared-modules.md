@@ -63,12 +63,22 @@ The usual objection to import maps is browser support. It does not apply here:
 
 And it gains correct ESM semantics: live bindings, and a link-time error naming a missing export.
 
-**It is also worth 1.59s of every pack build.** Measured 2026-10-08 by instrumenting
+**It is also worth 1.59s of every frontend rebuild.** Measured 2026-10-08 by instrumenting
 `discoverSharedExports` over `abuddy build` for default-setup: **48 specifiers, 1586ms** — modules compiled
-for no output but a list of names, which is 14% of that build's 11.3s frontend bundle and 7% of its 22.5s
-total. Not the reason to do this, and not the `compile` step's 13s → 31s growth either, which is the frontend
-bundle existing at all now. But a correctness argument that also returns a second and a half is worth
-stating with the number.
+for no output but a list of names, 14% of that build's 11.3s frontend bundle.
+
+**Per rebuild, not per build**, since `phase-cache.ts` landed the same day: a pack whose scope has not moved
+now reuses the previous frontend bundle, and their paired A/B puts an unchanged build at **21.0s → 6.3s**.
+So this saving is paid when the bundle is actually made. Not the reason to do this, and not the `compile`
+step's 13s → 31s growth either, which is the frontend bundle existing at all now.
+
+**The larger prize is next to it, and the phase cache is what exposed it.** `feInputsHash`
+(`abuddy-cli/src/build/phase-cache.ts:164`) hashes the `@abuddy` packages' `dist` into the frontend phase's
+scope, and its doc says why: *"the frontend phase read 329 files under the pack's `src/` and 84 in the
+`@abuddy` packages' `dist`, and no others."* **Those 84 files are the discovery pass.** Stop reading them and
+the frontend phase's scope narrows to the pack's own sources — so rebuilding the SDK stops invalidating every
+pack's frontend bundle. That is a cache hit across a whole class of change, which is worth more than the
+1.59s, and it is why narrowing that scope is part of step 2 rather than a follow-up.
 
 ## The design
 
@@ -222,6 +232,18 @@ while both exist.
 `packExternalsPlugin` stops generating proxies. This is where the deletions land, and where
 `fe-bundler-proxy-exports`' 69 cases and `fe-bundler-dev-server` lose their subject — each deleted case
 says in its commit message which it was: subject gone, or awkward.
+
+**`resolveId` has to say `external`, and that is not the same as declining to claim.** `bundlePackFE` sets no
+`rollupOptions.external`, and `resolveId`'s `sharedInstancePackage` branch *resolves* `@abuddy/sdk` and
+`@abuddy/ears` against the pack's own copy, so an unclaimed specifier is **inlined** rather than left bare.
+Both have to change. The `generateBundle` guard that fails a build when an inlined SDK module reaches a host
+binding stays exactly as it is — it is the check that catches this step going wrong.
+
+**Narrow `feInputsHash`'s scope in the same change.** Once the phase stops reading the `@abuddy` packages'
+`dist`, a scope that still hashes it is a declaration claiming reads nobody makes — and it costs a frontend
+rebuild on every SDK change. The reads record (`build-reads.ts`) is how that scope was checked against
+reality in the first place, so re-read it after the change rather than reasoning about it: the phase's
+recorded reads are the evidence that the narrower scope is right.
 
 ### 3. Remove the global
 
