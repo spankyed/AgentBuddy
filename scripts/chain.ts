@@ -38,6 +38,8 @@ import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANG
 import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, poolStepName, STEP_TABLES } from './lib/chain-steps.ts';
 import { stampFor, STAMP_DIR } from './lib/chain-stamps.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
+import { CHAIN_WAIT_MS, ChainLockHeld, chainInvocation, holdChainLock } from './lib/chain-lock.ts';
+import type { ExclusiveLock } from '@abuddy/host/exclusive-lock';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredMachine, machineText, MEASURED_ON, thisMachine, unmetRecordingConditions } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
@@ -435,6 +437,30 @@ async function main(): Promise<void> {
    * invocation, and when it rebuilds anything its readers must compare against the new bytes rather than the
    * ones this sweep read before it started.
    */
+  /**
+   * One run per checkout from here on, because everything below writes this checkout's stamps — `pruneStamps`
+   * first. Taken after the `--dry` return above, which reads and writes nothing and is documented as the thing
+   * to run on a machine too loaded to time a run on, so it must not be blocked by a run in progress.
+   *
+   * Released on the way out by `exclusive-lock.ts`'s own `exit` and interrupt handlers, so there is no
+   * `finally` here for a chain that throws or is Ctrl-C'd.
+   */
+  let lock: ExclusiveLock;
+  try {
+    lock = await holdChainLock({
+      what: chainInvocation(),
+      waitMs: args.flags.has('wait') ? CHAIN_WAIT_MS : 0,
+      onWait: (holder) => console.log(`waiting for another chain run to finish:\n  ${holder}`),
+    });
+  } catch (err) {
+    // Printed rather than rethrown: a throw reaches the top-level catch, which says "the chain itself
+    // failed", and this is a refusal. Exit 1, because a caller reading 0 would take it for a chain that passed
+    if (!(err instanceof ChainLockHeld)) throw err;
+    console.error(`\n${err.message}`);
+    process.exitCode = 1;
+    return;
+  }
+
   const dispatchSweep = freshnessSweep();
   pruneStamps();
 
@@ -657,6 +683,9 @@ async function main(): Promise<void> {
   // printed just above is the one thing here worth reading. Measured: piped, process.exit() delivers 64KB
   // of a 500KB write, and @app/default-setup's suite output alone is 654KB.
   process.exitCode = outcome.failed ? 1 : 0;
+  // The handlers in `exclusive-lock.ts` would do this on the way out anyway; releasing here frees it for the
+  // next run while this one is still printing, which on a piped run is the longest part of its exit
+  lock.release();
 }
 
 /**

@@ -274,6 +274,12 @@ Six rules that pay for themselves:
 - **A list and its type are one declaration.** Write the list and derive the type from it
   (`const XS = [...] as const; type X = (typeof XS)[number]`), or the other way round — never both by hand.
   Four pairs here were written twice and each had a different failure.
+- **A stamp directory has one writer, and a lock beside the stamps is what makes that true.** Two writers
+  make a cached result mean "some run with these inputs passed" rather than "this tree passed", and nothing
+  downstream can tell. `holdExclusiveLock` (`@abuddy/host/exclusive-lock`) is the mechanism for all of them —
+  `holdChainLock` (`scripts/lib/chain-lock.ts`) is the worked example, and the lock file must not end in
+  `.json` or `pruneStamps` deletes a live run's. Two of the four are guarded;
+  [`reference/pipeline-lessons.md`](docs/reference/pipeline-lessons.md) names the other two and what the fix is.
 - **A cache needs a key that cannot go stale, or a scope in which it cannot — and a reset hatch is neither.**
   Content-key where the input is a file (path, mtime **and** size), scope where it is a tree. If you reach
   for a hatch anyway, give it a case that fails when it is forgotten.
@@ -437,6 +443,11 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # suite is opt-in rather than a gate.
                          # **Never pipe a backgrounded run**: it buffers output and prints only a failing
                          # step's, which `| tail` discards and a passing re-run never brings back.
+                         # **One run per checkout**, held by a lock beside the stamps
+                         # (node_modules/.cache/abuddy-chain/chain.lock): two runs share those stamps, so
+                         # each would cache results the other took against a different tree, and `cached`
+                         # would mean "some run with these inputs passed". A second run names the first and
+                         # exits 1; `--dry` is exempt, reading the tree and writing nothing.
                          # Afterwards, on the machine its table was measured on, it names what the run
                          # contradicted — a step past double its declared `seconds`, one that passed and is
                          # already stale again, one whose measured cost outgrew its timeout rung.
@@ -460,6 +471,10 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #              and the one the drift report names for you
                          #   --adopt    record on another machine, rewriting MEASURED_ON with the costs
                          #   --no-classify  do not re-run a step that failed while the machine was busy
+                         #   --wait     queue behind a run already holding the lock rather than refusing,
+                         #              up to 10 minutes — a bound, not a schedule: it starts the moment
+                         #              that run ends, and says what it is waiting for so a wait does not
+                         #              read as a hang
                          # docs/reference/pipeline-commands.md: what each flag replaced and what was
                          # measured to choose it, including the three guards that do not separate a
                          # correlated drift from one step's.
@@ -779,6 +794,7 @@ What crosses to the app follows one rule, **bind resources, derive behaviour**. 
 - `@abuddy/host/fe` — host-only: `createFePackRegistry()`, the renderer's registered pack frontends (`registerPackFE`, `getRegisteredPlugins`, app extensions); `createShellMachine`, the app shell over the I/O it's given (`ShellClient`, pack frontends, storage, notify, the event target), which the renderer composes with the window's and a test with fakes; and the `host/packs` feature's frontend (`fe/packs/`), beside the system that answers it — the Packs plugin's machine, pack-frontend loading over `PackFrontendIO` (the window's `import()` and stylesheets), the install a deep link asks for, and `runFrontendMigrations`, the window-storage counterpart of the app's migrations. It re-exports the `host/settings` feature's frontend too (`features/settings/fe/machine.ts`: `createSettingsMachine(io)`, over the restart and report the renderer gives it). `src/fe/index.ts` is where all three features' frontends are named — the package's export surface, which is why naming them there isn't the cross-feature import `check:specifiers` refuses; a port both the shell and the packs feature need (`ShellPackFrontends`) lives at the seam in `src/fe/` rather than in either.
 - `@abuddy/host/settings` — the app's settings as a program composing the app needs them: `createSettingsStore({ defaults })` (the one row and its one writer, which checks each next document), `createSettingsService(store)` (what packs reach as `services.settings`), and `document.ts`'s pure operations. The host knows one section, `plugins`, keyed by feature ref; every other section is a pack's contribution (`PackRegistration.settingsSections`, `abuddy.json` `settingsSections`) and opaque to it. The system that answers the Settings view and the machine behind it live in `features/settings/{be,fe}`; the Vue is the renderer's (`packages/renderer/src/views/settings/`).
 - `@abuddy/host/packs`, `/packs/runtime`, `/packs/dev-server`, `/backup`, `/build/discover`, `/build/shared-deps`, `/build/source-resolution` — pack registration (`createPackRegistry()`: the registered packs as an instance, with their partition policy and shutdown hooks), discovery, registry, installer, updater, pack layout and module bridge (the CLI imports this barrel, which never imports `/packs/runtime`); the pack runtime the app runs, on the registry it's given (loader, SDK bridge, lifecycle, reload, seeding, the host `packs` system); the `abuddy run` server marker the `pack://` handler proxies to; backups of the LMDB store; build-time pack discovery and host-shared dependency lists; the `@abuddy/source` condition helpers and the check that a process resolves workspace source, not `dist`.
+- `@abuddy/host/exclusive-lock` — one writer at a time for a file two processes would otherwise interleave on: `holdExclusiveLock({ file, what, refuse })`, `findLockHolder`, `readLock`, `INTERRUPTS`. The mechanism only — the lock file's name and the refusal's wording belong to whoever takes it, which `database/write-lock.ts` (a tool changing a data dir), the CLI's code generation and the chain's `holdChainLock` each do. `wx` is the acquisition, so two arriving together cannot both win; a lock whose holder has exited is taken over, and one that cannot be read or names another machine counts as held.
 - `@abuddy/host/process-liveness` — what a running process left on disk and whether it is still there: `lockIsHeld`, `recordIsStale`, and `readApiEndpoint` for the port file a running API publishes. The app's own plumbing, so packs never reach it.
 - `@abuddy/host/bus` — `createBusMachine`, the backend bus (spawns registered systems, routes events, pack activate/teardown/reload), `createAppBus()`, the app's composition of it, and `receiveClientEvent()`, the check, log and send behind the API's `bus.send`. It never imports the pack loader; the pack test harness runs the same machine.
 - `@abuddy/host/migrations` — the app's migrations runners (`runAppMigrations`, `runPackMigrations`; see Migrations below). Host-only, never bridged to packs.

@@ -159,3 +159,54 @@ Six rules that pay for themselves:
   `import-specifiers.integration` had already closed five days earlier by asserting each rule fires. A
   repo-wide rule mandating the fixture was then built on that premise and deleted (`487a8c115`). "X is the
   whole point" cannot be checked; "Y fails when Z" can.
+
+## A stamp directory has one writer
+
+**The rule.** A cache of "this passed against these inputs" is only sound while one process writes it. Two
+writers make `cached` mean *"some run with these inputs passed"* rather than *"this tree passed"*, and
+nothing downstream can tell the difference.
+
+There are four such directories under `node_modules/.cache`, and as of 2026-10-07 two are guarded:
+
+| directory | written by | guarded by |
+|---|---|---|
+| `abuddy-packages-build` | `packages:ensure`, `packages:build` | `withBuildLock` (`@abuddy/host/build/packages-built`) |
+| `abuddy-chain` | `npm run chain` | `holdChainLock` (`scripts/lib/chain-lock.ts`) |
+| `abuddy-unit-pool` | `test:unit:host`, `test:unit:pack`, `test:integration` | nothing |
+| `abuddy-spec-durations` | `npm run spec`, the pools' reporter | nothing |
+
+**The fix for an unguarded one is three lines**, and it is the same three: `holdExclusiveLock` from
+`@abuddy/host/exclusive-lock` with a lock file beside the stamps, a refusal naming the holder, and a release
+the mechanism already does for you on `exit` and on four interrupts. `scripts/lib/chain-lock.ts` is the
+worked example and is 90 lines including its prose. **Do not write a fourth lock**: that module's header is
+explicit that the mechanism is shared and only the policy — the file's name, the refusal's words — belongs to
+the caller.
+
+**Two traps, both paid for once already.**
+
+The lock file must not end in `.json`. `pruneStamps` (`scripts/chain.ts`) removes every `.json` in the stamp
+directory that is not a live step's stamp, so a lock named that way is deleted by the *next* run while the
+first still holds it, and both then run — the exact failure the lock exists to prevent, arrived at through
+the lock. `chain-lock.spec.ts` asserts the name against `pruneStamps`' own predicate rather than against the
+string, because a case pinning `'chain.lock'` passes while the coupling rots.
+
+A spec for one of these cannot take the real lock. `repo-checks` runs inside `test:integration`, which the
+chain runs, so a case taking `CHAIN_LOCK` is refused by the run that is running it. Take a `file` parameter
+defaulting to the real path — `withBuildLock(label, run, file = LOCK_FILE)` and `runningPackageBuild(file =
+LOCK_FILE)` already do — and assert the real path's *properties* separately.
+
+**What this cost to learn.** Four chain runs on 2026-10-07 produced three failures, none attributable to
+code, while two sessions worked in one checkout. Each guard reported truthfully and none could name the
+writer: `PackagesWentStale` said *"something rebuilt or edited them"*, the classifier said *"contention or a
+flake, not the code"* having removed a variable it never identified, and the freshness sweep filed a step
+whose inputs moved mid-run as a step that will not be cached next time — a caching note over a correctness
+fact, printed after both runs had spent the time. Two hypotheses were investigated and disproven first (tsc
+union ordering; a codegen skip ignoring its own generator), and two fixes were proposed that already existed.
+The lesson is not that a guard was missing. It is that these guards assume one writer, and say nothing useful
+when that assumption is the thing that broke.
+
+**What is still open, and would make a violation legible rather than merely prevented:** `PackagesWentStale`
+naming the process as well as the file (`holdDatabaseWriteLock` records pid, machine and intent — the same
+record would serve); the freshness sweep's "inputs changed while it ran" failing the run rather than noting a
+cache miss; and the classifier reporting "unexplained" instead of "flake" when running a step alone makes it
+pass.
