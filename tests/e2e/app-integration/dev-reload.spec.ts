@@ -7,7 +7,7 @@ import type { Page } from '@playwright/test';
 import { API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
 import { test, expect } from '@abuddy/testing';
 
-const SEED_FILE = path.resolve(import.meta.dirname, '../../../packages/default-setup/dist/library.seed.json');
+const SEED_FILE = path.resolve(import.meta.dirname, '../../../packages/default-setup/dist/runtime/seeds/library.seed.json');
 const SEEDED_DOCUMENT = 'Codex commands';
 const REBUILT_DOCUMENT = 'Codex commands after a rebuild';
 
@@ -63,7 +63,7 @@ test('a rebuilt built-in pack reloads with the seed data the rebuild changed', a
   const response = await fetch(`http://127.0.0.1:${apiPort}/dev/reload`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: apiToken },
-    body: JSON.stringify({ packId: 'default-setup', builtIn: true }),
+    body: JSON.stringify({ packId: 'default-setup' }),
   });
   expect(response.status, await response.text()).toBe(200);
 

@@ -182,7 +182,17 @@ export interface ShippedPackInstall {
  * could not install is a pack that is not there, which the Packs view reports like any other failure; a
  * read-only second load path is the thing this goal removed.
  */
-export async function installShippedPacks(shippedDir: string, packsDir: string, options: InstallOptions = {}): Promise<ShippedPackInstall[]> {
+export interface ShippedInstallOptions extends InstallOptions {
+  /**
+   * One pack id rather than all of them, for a caller refreshing a single install: a reload after a rebuild
+   * (`reloadPackById`) asks for the pack it is about to re-require, so the copy it loads is the one the
+   * shipped directory holds now. The comparison already writes nothing when they agree, which is what makes
+   * asking on every reload affordable.
+   */
+  only?: string;
+}
+
+export async function installShippedPacks(shippedDir: string, packsDir: string, options: ShippedInstallOptions = {}): Promise<ShippedPackInstall[]> {
   if (!fs.existsSync(shippedDir)) return [];
   const results: ShippedPackInstall[] = [];
   for (const entry of fs.readdirSync(shippedDir, { withFileTypes: true })) {
@@ -194,6 +204,9 @@ export async function installShippedPacks(shippedDir: string, packsDir: string, 
     let shipped: Record<string, string>;
     try {
       id = (JSON.parse(fs.readFileSync(path.join(source, PACK_LAYOUT.manifest), 'utf-8')) as { id?: string }).id ?? entry.name;
+      // Read the manifest before this, never the directory name: the id is what the manifest says, and the
+      // two need not agree
+      if (options.only !== undefined && id !== options.only) continue;
       shipped = stagedFileHashes(source);
     } catch (err) {
       results.push({ id: entry.name, outcome: 'failed', error: `could not read the pack the app ships at ${source}: ${reason(err)}` });

@@ -1,8 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@abuddy/sdk/logger';
-import { resolveAppContext } from '@abuddy/sdk/env';
+import { resolveAppContext, getAppVersion } from '@abuddy/sdk/env';
 import { packSystemIds, type PackRegistry } from '../registry.ts';
+import { installShippedPacks } from '../installer.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import type { PackManifest } from '../discovery.ts';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
@@ -94,6 +96,25 @@ export async function reloadPackById(
 ): Promise<void> {
   const { packsDir } = resolveAppContext();
   const packDir = path.join(packsDir, packId);
+
+  // A pack the app ships is rebuilt in the checkout and loaded from `packsDir`, so the rebuild reaches the
+  // app only once the installed copy carries it. `installShippedPacks` is the same comparison the boot
+  // makes and writes nothing when the two agree, so asking here costs a pack's worth of hashing on a
+  // reload that changed nothing — and a reload of any other pack matches no shipped id and does nothing.
+  // Without it `abuddy build --watch` rebuilds and the app re-requires the copy from before the edit.
+  const shippedDir = process.env.SHIPPED_PACKS_DIR;
+  if (shippedDir) {
+    for (const result of await installShippedPacks(shippedDir, packsDir, {
+      only: packId,
+      hostVersion: getAppVersion(),
+      packFormat: PACK_SNAPSHOT_FORMAT,
+    })) {
+      // The author's edit is the point of the reload, so a refresh that failed is the answer rather than a
+      // note beside a reload of the previous build
+      if (result.outcome === 'failed') throw new Error(`Could not refresh the installed copy of ${packId}, which this app ships: ${result.error}`);
+      if (result.outcome !== 'current') logger.info(`Refreshed the installed copy of ${packId} from ${shippedDir}`);
+    }
+  }
 
   if (!fs.existsSync(packDir)) {
     throw new Error(`Pack directory not found: ${packDir}`);
