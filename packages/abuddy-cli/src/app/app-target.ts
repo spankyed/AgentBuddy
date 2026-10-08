@@ -1,21 +1,20 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { createInterface } from 'node:readline';
 import envPaths from 'env-paths';
 import semver from 'semver';
 import { cachedBetaBuilds, ensureBetaApp, type PackagedApp } from './beta-app';
+import { checkoutFor } from '../build/checkout-packages';
 
 /** An app to launch a pack in: a built monorepo checkout, or a packaged app build. */
 export type AppTarget =
   | { kind: 'source'; root: string }
   | { kind: 'packaged'; executable: string; version: string };
 
-/** What the author chose on first run, stored in the user config dir. */
+/** A kind of app, as a place that names one says it: a checkout at a path, or a Beta build. */
 export type AppChoice = { source: string } | { beta: true };
 
 export interface CliDirs {
-  config: string;
   cache: string;
   /** Machine state the CLI owns and the app does not: today, the instances `abuddy run` creates */
   data: string;
@@ -23,32 +22,12 @@ export interface CliDirs {
 
 export function cliDirs(): CliDirs {
   const paths = envPaths('abuddy-cli', { suffix: '' });
-  return { config: paths.config, cache: paths.cache, data: paths.data };
-}
-
-const configFile = (dirs: CliDirs) => path.join(dirs.config, 'config.json');
-
-export function readAppChoice(dirs: CliDirs): AppChoice | undefined {
-  try {
-    const app = JSON.parse(fs.readFileSync(configFile(dirs), 'utf-8')).app;
-    // Anything else (hand-edited, older format) counts as no choice: ask again
-    if (app && typeof app === 'object' && (typeof app.source === 'string' || app.beta === true)) return app;
-  } catch {}
-  return undefined;
+  return { cache: paths.cache, data: paths.data };
 }
 
 /** `~/AgentBuddy` → the home directory's AgentBuddy. */
 export function expandHome(input: string): string {
   return input === '~' || input.startsWith('~/') ? path.join(os.homedir(), input.slice(1)) : input;
-}
-
-export function saveAppChoice(dirs: CliDirs, app: AppChoice): void {
-  let config: Record<string, unknown> = {};
-  try {
-    config = JSON.parse(fs.readFileSync(configFile(dirs), 'utf-8'));
-  } catch {}
-  fs.mkdirSync(dirs.config, { recursive: true });
-  fs.writeFileSync(configFile(dirs), JSON.stringify({ ...config, app }, null, 2) + '\n');
 }
 
 /** Missing pieces of a monorepo checkout needed to launch a pack in it; empty when usable. */
@@ -108,26 +87,20 @@ export interface AppLookupOptions {
   betaApp?: (hostVersion: string, cacheDir: string) => Promise<PackagedApp>;
 }
 
-export type ConfiguredAppOptions = AppLookupOptions;
+export interface ConfiguredAppOptions extends AppLookupOptions {
+  /** The pack whose checkout to look for, when nothing names an app. Absent means "do not derive" */
+  from?: string;
+  /** Injected for tests; defaults to `checkoutFor` */
+  checkout?: (from: string) => string | undefined;
+}
 
 const betaAppFrom = (options: AppLookupOptions) =>
   options.betaApp ?? ((range: string, cacheDir: string) => ensureBetaApp({ hostVersion: range, cacheDir }));
 
-/** A place an app can be named; `from` is what an error message calls it. */
+/** A place an app can be named; `from` is what an error message and `announceApp` call it. */
 interface NamedApp {
   choice: AppChoice;
   from: string;
-  /**
-   * The stored preference rather than something asked for on this run. It may be answered from the
-   * download cache where an explicit `ABUDDY_APP=beta` is not — see `configuredAppPackagesDir`.
-   */
-  stored?: boolean;
-}
-
-/** The stored preference as a named app, labelled for the errors `sourceTarget` throws. */
-function savedApp(dirs: CliDirs): NamedApp | undefined {
-  const saved = readAppChoice(dirs);
-  return saved && { choice: saved, from: `The saved app root in ${configFile(dirs)}`, stored: true };
 }
 
 /**
@@ -153,23 +126,33 @@ function namedApp(flags: AppFlags | undefined, env: NodeJS.ProcessEnv, saved?: N
 
 /**
  * The built-in packs directory of the app `abuddy build` resolves dependencies through: ABUDDY_APP=beta
- * (downloaded when needed), ABUDDY_ROOT, or the saved choice (a checkout, or the newest
- * downloaded beta, downloading one if none is cached). Never prompts. Lets a pack resolve
+ * (downloaded when needed), ABUDDY_ROOT, or the AgentBuddy checkout behind the pack. Lets a pack resolve
  * dependencies on built-in packs before the app has ever run, including in CI.
  *
- * It reads the saved choice where `resolvePinnedApp` refuses to, and the difference is that this one
- * cannot surprise anyone: it never prompts and never writes a choice, so the preference it reads is one
- * some other command was asked to hold. Pinning it instead would make every author's `build` download a
- * beta, or set ABUDDY_ROOT on each invocation, to reach the checkout they already named once.
+ * **It derives the checkout where `resolveLaunchApp` does, and validates nothing where that one does.**
+ * Both halves matter. The derivation is what retired the stored choice: this function used to read it,
+ * on the argument that "pinning it would make every author's `build` download a beta, or set ABUDDY_ROOT
+ * on each invocation, to reach the checkout they already named once" — true, and answered by finding the
+ * checkout instead of remembering it. The validation is what must *not* be shared: a build reads the
+ * checkout's `packages/`, so failing it for want of `main/dist` would refuse a tree that is perfectly
+ * readable.
+ *
+ * **It never downloads a Beta it was not asked for.** Named beta, yes; derived, no — `null` lets
+ * `fetch-deps` fall through to an installed app, the `.abuddy` cache and GitHub, which is cheaper and more
+ * predictable than a build that quietly reaches the network.
  */
 export async function configuredAppPackagesDir(options: ConfiguredAppOptions = {}): Promise<{ dir: string; label: string } | null> {
-  const { dirs = cliDirs(), env = process.env, hostVersion = '*' } = options;
+  const { dirs = cliDirs(), env = process.env, hostVersion = '*', from, checkout = checkoutFor } = options;
   const betaApp = betaAppFrom(options);
   const asPackages = (app: PackagedApp) =>
     ({ dir: packagedAppPackagesDir(app.executable), label: `AgentBuddy Beta ${app.version}` });
 
-  const named = namedApp(undefined, env, savedApp(dirs));
-  if (!named) return null;
+  const named = namedApp(undefined, env, undefined);
+  if (!named) {
+    const found = from === undefined ? undefined : checkout(from);
+    if (found === undefined) return null;
+    return { dir: path.join(found, 'packages'), label: `AgentBuddy checkout ${found}` };
+  }
 
   if ('source' in named.choice) {
     // No `sourceAppProblems` here, and that is the point of the branch being its own: a build reads the
@@ -254,9 +237,14 @@ export function parseAppFlags(argv: string[]): AppFlags {
 export interface ResolveAppOptions extends AppLookupOptions {
   flags: AppFlags;
   hostVersion: string;
-  interactive?: boolean;
-  /** Asks the first-run question; injected for tests. */
-  prompt?: (question: string) => Promise<string>;
+}
+
+/** What a derivation needs beyond a lookup: where the pack is, so a checkout can be found behind it */
+export interface DeriveAppOptions extends ResolveAppOptions {
+  /** The pack being worked on, or the directory a command was run from when there is no pack */
+  from: string;
+  /** Injected for tests; defaults to `checkoutFor` */
+  checkout?: (from: string) => string | undefined;
 }
 
 /** The Beta build the pack's `hostVersion` asks for, downloaded if it isn't cached. */
@@ -268,26 +256,10 @@ async function packagedTarget(options: ResolveAppOptions): Promise<AppTarget> {
   return { kind: 'packaged', ...app };
 }
 
-/** One readline for the whole conversation: answers typed ahead are buffered, not lost between questions. */
-async function withTerminalPrompt<T>(fn: (prompt: (question: string) => Promise<string>) => Promise<T>): Promise<T> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  // The line iterator queues lines as they arrive; rl.question drops lines typed before it's asked
-  const lines = rl[Symbol.asyncIterator]();
-  try {
-    return await fn(async question => {
-      process.stdout.write(question);
-      const { value, done } = await lines.next();
-      if (done) throw new Error('No answer: input closed');
-      return value.trim();
-    });
-  } finally {
-    rl.close();
-  }
-}
 
 /**
  * The app a run is *pinned* to: the flags, the environment, then the Beta build the pack's `hostVersion`
- * asks for. **It never prompts and never reads the saved choice.**
+ * asks for. **It derives nothing and reads no machine state.**
  *
  * That separation is the point. `resolveTestApp` used to fall through to `~/.config/abuddy-cli/config.json`
  * and, in a terminal, to a question whose answer it then persisted — so a pack's test result depended on
@@ -297,8 +269,9 @@ async function withTerminalPrompt<T>(fn: (prompt: (question: string) => Promise<
  * below where the leak was.
  *
  * Removing the config read leaves no hole, because the pinned answer already existed: `--app beta`
- * computes it from the manifest. The saved choice was shadowing a correct default, not supplying a
- * missing one.
+ * computes it from the manifest. The stored choice was shadowing a correct default, not supplying a
+ * missing one — and it is gone now, so what this still refuses is the *derivation*: a pinned run must not
+ * depend on which directory the pack happens to sit in either.
  *
  * `resolveDevelopmentApp` below is the other half, for the commands whose job *is* to hold a preference.
  */
@@ -316,10 +289,10 @@ export function appLabel(app: AppTarget): string {
  * Says which app was resolved and **where the answer came from**, on stderr.
  *
  * The provenance is the half that matters. Every source on the ladder but one was asked for on *this* run
- * — a flag, an environment variable — so the reader already knows about it. The saved choice is the
- * exception: it wins silently, forever, from a question answered once on this machine, and a stale one
- * then makes every run drive an app nobody chose today. Stating it costs a line and makes that impossible
- * to be surprised by, which is why it is here rather than in each command.
+ * — a flag, an environment variable — so the reader already knows about it. The **derived** answer is the
+ * exception: nothing in the request mentions it, and being derived is exactly what makes it worth stating,
+ * since a reader who disagrees with it needs to know which of the two rules fired before they can say so.
+ * A derivation nobody can see is a preference by another name.
  *
  * **stderr, not stdout**, because it describes the run rather than being its output: `abuddy drive --eval`
  * prints one JSON envelope on stdout and a program reads it. `abuddy db` prints its target the same way
@@ -327,31 +300,6 @@ export function appLabel(app: AppTarget): string {
  */
 function announceApp(app: AppTarget, from: string): void {
   console.error(`Using ${appLabel(app)} (${from})`);
-}
-
-/**
- * The app a command drives when nothing is driving a *pack*: the checkout it is standing in.
- *
- * **It passes no saved choice**, exactly as `resolvePinnedApp` does and for a sharper reason: this is the
- * policy for `abuddy drive` at an AgentBuddy checkout with no `abuddy.json`, where "which app?" has an
- * unambiguous answer in front of it. Reading a preference there would make `npm run drive` in a checkout
- * launch whatever app some earlier first run saved — a different app from the same command, from state no
- * part of the request mentions. Naming one is still honoured, because then the caller has chosen.
- *
- * The property worth keeping is structural rather than documented: it cannot consult machine state,
- * because it has no `dirs` to read one from.
- */
-export async function resolveCheckoutApp(options: { flags: AppFlags; root: string; env?: NodeJS.ProcessEnv; hostVersion?: string }): Promise<AppTarget> {
-  const { flags, root, env = process.env, hostVersion = '*' } = options;
-  const named = namedApp(flags, env, undefined);
-  if (named) {
-    const app = 'source' in named.choice ? sourceTarget(named.choice.source, named.from) : await packagedTarget({ flags, env, hostVersion });
-    announceApp(app, named.from);
-    return app;
-  }
-  const app: AppTarget = { kind: 'source', root };
-  announceApp(app, 'this checkout');
-  return app;
 }
 
 export async function resolvePinnedApp(options: ResolveAppOptions): Promise<AppTarget> {
@@ -364,58 +312,42 @@ export async function resolvePinnedApp(options: ResolveAppOptions): Promise<AppT
 }
 
 /**
- * Which app to develop against, in order: --app-root / --app flags, ABUDDY_ROOT, the saved
- * choice, then (interactive terminals only) a first-run prompt whose answer is saved.
- * CI never prompts: without one of the above it fails with the options.
+ * **Which app, derived rather than remembered.** Named on this run wins; else the AgentBuddy checkout
+ * behind the pack; else the newest Beta the pack's `hostVersion` accepts.
  *
- * Holding a preference is this function's job and nothing else's — see `resolvePinnedApp`.
+ * This replaced a question asked once and stored in the user's config dir, which was wrong three ways: one
+ * slot answered for every pack on the machine, so two packs with different `hostVersion` ranges shared an
+ * app; a stale answer went on winning silently for as long as the file existed; and the prompt was the
+ * worst thing to put in a CLI an agent drives, because it does not fail, it hangs.
+ *
+ * **The checkout rule is the correct pairing, not a convenience.** If a pack's `@abuddy/*` resolve into a
+ * checkout — or the pack simply sits inside one, which `checkoutFor` also answers — then the pack is
+ * compiled against that checkout's packages. Launching it inside a released Beta pairs a source-built pack
+ * with a released host, which is a mismatch to report rather than a preference to hold.
+ *
+ * **`checkoutFor` says a checkout is there, never that it can be launched.** That is `sourceTarget`'s job
+ * here (`electron`, `main/dist`, `renderer/dist`), and an unbuilt one fails naming `npm run build` rather
+ * than quietly falling through to a Beta — falling through is how you end up with the mismatch above and
+ * only a warning between you and a confusing runtime failure. `configuredAppPackagesDir` deliberately does
+ * *not* validate, because a build reads `packages/` and launches nothing.
  */
-export async function resolveDevelopmentApp(options: ResolveAppOptions): Promise<AppTarget> {
-  const { flags, dirs = cliDirs(), env = process.env } = options;
-  const interactive = options.interactive ?? (Boolean(process.stdin.isTTY) && !env.CI);
-
-  const named = namedApp(flags, env, savedApp(dirs));
+export async function deriveApp(options: DeriveAppOptions): Promise<NamedApp & { target: AppTarget }> {
+  const { flags, env = process.env, from, checkout = checkoutFor } = options;
+  const named = namedApp(flags, env, undefined);
   if (named) {
-    const app = 'source' in named.choice ? sourceTarget(named.choice.source, named.from) : await packagedTarget(options);
-    announceApp(app, named.from);
-    return app;
+    const target = 'source' in named.choice ? sourceTarget(named.choice.source, named.from) : await packagedTarget(options);
+    return { ...named, target };
   }
-
-  if (!interactive) {
-    throw new Error(
-      'No AgentBuddy app to develop against. Pass one of:\n' +
-      '  --app-root <path>   a local AgentBuddy checkout (installed and built)\n' +
-      '  --app beta          the newest AgentBuddy Beta build that satisfies the pack\'s hostVersion\n' +
-      'or set ABUDDY_APP=beta or ABUDDY_ROOT. Run it in a terminal once to save a default.',
-    );
+  const found = checkout(from);
+  if (found !== undefined) {
+    return { choice: { source: found }, from: 'the checkout this pack is built against', target: sourceTarget(found, 'The AgentBuddy checkout behind this pack') };
   }
-
-  const choice = await (options.prompt ? askForApp(options.prompt, dirs) : withTerminalPrompt(prompt => askForApp(prompt, dirs)));
-  if ('source' in choice) return { kind: 'source', root: choice.source };
-  // Saved only once a beta is actually available here, so a failed first choice asks again next run
-  const app = await packagedTarget(options);
-  saveAppChoice(dirs, choice);
-  console.log(`Saved to ${configFile(dirs)}`);
-  return app;
+  return { choice: { beta: true }, from: `hostVersion ${options.hostVersion}`, target: await packagedTarget(options) };
 }
 
-async function askForApp(prompt: (question: string) => Promise<string>, dirs: CliDirs): Promise<AppChoice> {
-  console.log('Which AgentBuddy app should your pack run in?');
-  console.log('  1) A local AgentBuddy checkout (installed and built)');
-  console.log('  2) The newest AgentBuddy Beta build (downloaded and cached)');
-  for (;;) {
-    const answer = await prompt('Choose 1 or 2: ');
-    if (answer === '2') return { beta: true };
-    if (answer === '1') {
-      const root = path.resolve(expandHome(await prompt('Path to the AgentBuddy checkout: ')));
-      const problems = sourceAppProblems(root);
-      if (problems.length > 0) {
-        console.log(`${root} can't be used:\n${problems.map(p => `  - ${p}`).join('\n')}`);
-        continue;
-      }
-      saveAppChoice(dirs, { source: root });
-      console.log(`Saved to ${configFile(dirs)}`);
-      return { source: root };
-    }
-  }
+/** The app a command **launches**, derived and validated, and stated so the derivation is never silent. */
+export async function resolveLaunchApp(options: DeriveAppOptions): Promise<AppTarget> {
+  const { target, from } = await deriveApp(options);
+  announceApp(target, from);
+  return target;
 }

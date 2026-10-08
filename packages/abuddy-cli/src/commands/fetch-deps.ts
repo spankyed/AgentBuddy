@@ -167,11 +167,11 @@ function resolveFromInstalledApp(depId: string, range: string, rejected: Rejecte
   return null;
 }
 
-/** Built-in packs of the app configured for `abuddy test` (a checkout or a downloaded beta). */
+/** Built-in packs of the app this pack is built against: a named one, or the checkout behind it. */
 async function resolveFromConfiguredApp(root: string, depId: string): Promise<(DepFiles & { label: string }) | null> {
   let hostVersion: string | undefined;
   try { hostVersion = readManifest(root).hostVersion; } catch {}
-  const app = await configuredAppPackagesDir({ hostVersion });
+  const app = await configuredAppPackagesDir({ hostVersion, from: root });
   if (!app) return null;
   const found = findDepFiles(path.join(app.dir, depId));
   return found && { ...found, label: app.label };
@@ -371,8 +371,8 @@ function copySeeds(from: string, to: string): void {
 // ── Resolution chain ──
 
 /**
- * Sources on this machine, in order: the workspace, the app configured for `abuddy test`
- * (ABUDDY_APP, ABUDDY_ROOT or the saved choice), then installed apps. Each must satisfy the
+ * Sources on this machine, in order: the workspace, the app this pack is built against (ABUDDY_APP,
+ * ABUDDY_ROOT, or the AgentBuddy checkout behind the pack), then installed apps. Each must satisfy the
  * declared range. They're cheap, so they're re-read on every build instead of trusting the cache.
  */
 async function resolveFromMachine(root: string, depId: string, range: string, rejected: Rejected): Promise<(DepFiles & { resolvedFrom: string }) | null> {

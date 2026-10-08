@@ -7,7 +7,7 @@ import { build } from './build';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
 import { reloadPack, type AppPlace, type DevReload } from '../build/dev-reload.ts';
-import { cliDirs, parseAppFlags, resolveDevelopmentApp, type AppTarget } from '../app/app-target';
+import { cliDirs, parseAppFlags, resolveLaunchApp, type AppTarget } from '../app/app-target';
 import { instanceFor, parseInstanceFlags, removeInstance, INSTANCE_USAGE } from '../app/instances';
 import { copySecretsInto } from '../app/instance-secrets.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
@@ -32,7 +32,8 @@ Options:
 ${INSTANCE_USAGE}
   --help, -h          Show this help
 
-With no app named, the one saved on first run is used, and you are asked once if there is none.
+With no app named: the AgentBuddy checkout this pack is built against, if there is one, else the newest
+Beta build its hostVersion accepts. Nothing is remembered and nothing is asked.
 With no instance named, the shared development data dir is used, as before.
 
 Note that --app beta reloads by restarting rather than in place: a packaged build refuses a
@@ -171,7 +172,7 @@ async function session(args: string[], hooks: SessionHooks) {
   if (unknown.length > 0) {
     throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See abuddy run --help.`);
   }
-  const app = await resolveDevelopmentApp({ flags, hostVersion: manifest.hostVersion ?? '*' });
+  const app = await resolveLaunchApp({ flags, hostVersion: manifest.hostVersion ?? '*', from: root });
   const env = appEnv(app);
   const instance = instanceFor(mode, cliDirs());
   if (instance?.created && withSecrets) {

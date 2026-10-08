@@ -24,7 +24,7 @@ const printed = (): string => vi.mocked(console.log).mock.calls.map((call) => St
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-instances-cmd-'));
-  dirs = { config: path.join(tmp, 'config'), cache: path.join(tmp, 'cache'), data: path.join(tmp, 'data') };
+  dirs = { cache: path.join(tmp, 'cache'), data: path.join(tmp, 'data') };
   bytes.mockClear();
   vi.spyOn(console, 'log').mockImplementation(() => {});
 });

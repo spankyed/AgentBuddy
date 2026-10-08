@@ -111,7 +111,8 @@ Five things the original review listed that a grep could not settle:
 
 - build-only facets not enforced: `.vue`/`.css` imports are stubbed, but `vue`/`lucide` stay external
   (`be-bundler.ts:113-120`)
-- a saved beta choice ignoring `hostVersion` (`app-target.ts:111-118`)
+- ~~a saved beta choice ignoring `hostVersion`~~ — moot: there is no saved choice. The app is derived
+  (the checkout behind the pack, else a Beta the `hostVersion` accepts), so nothing can ignore the range.
 - "Install in PATH" errors other than `EACCES`/`EPERM` becoming unhandled rejections
   (`cli-command.ts`, `MacOSAppMenu.ts`)
 - three more fixture smells: `readPackLastError` failing open, teardown `rmSync` racing API shutdown, the

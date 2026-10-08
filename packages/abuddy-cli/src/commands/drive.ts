@@ -26,7 +26,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process';
 import { findPackRootOrNone, readManifest } from '../utils';
-import { cliDirs, parseAppFlags, resolveCheckoutApp, resolveDevelopmentApp } from '../app/app-target';
+import { cliDirs, parseAppFlags, resolveLaunchApp } from '../app/app-target';
 import { instanceFor, instanceInUse, parseInstanceFlags, removeInstance, INSTANCE_USAGE } from '../app/instances';
 import { ONE_SHOT_ASKS, type AskName, type EngineAsk } from '../app/drive-engine.ts';
 import { oneShot } from '../app/drive-one-shot.ts';
@@ -400,9 +400,9 @@ export async function drive(args: string[]) {
   // A one-shot *is* a serving session, asked once: same config, same generated session file
   const serving = serve || asking !== undefined;
 
-  // Before the app is resolved, which can prompt and can download a Beta: a first run has nothing to
-  // drive, and used to find that out only after paying for a build and a launch and then failing with
-  // Playwright's "No tests found"
+  // Before the app is resolved, which can download a Beta: a first run has nothing to drive, and used to
+  // find that out only after paying for a build and a launch and then failing with Playwright's
+  // "No tests found"
   const layer = scaffold(root);
   if (layer.created.length > 0) console.error(`Created ${DRIVE_DIR}/ — a README and a config are in there.\n`);
   const engine = serving ? writeEngineFiles(root) : { created: [], keptStale: [] };
@@ -418,11 +418,10 @@ export async function drive(args: string[]) {
     return;
   }
 
-  // Which of the two policies answers "which app?" is the only thing driving a pack changes here, and both
-  // state what they resolved and why (`announceApp`). The reasoning for each is on it, in `app-target.ts`.
-  const app = target.packDir === undefined
-    ? await resolveCheckoutApp({ flags, root: target.root })
-    : await resolveDevelopmentApp({ flags, hostVersion: target.hostVersion });
+  // One policy whether or not a pack is being driven: `deriveApp` looks for the checkout behind
+  // `from`, which is the pack when there is one and this directory when there is not — and in the second
+  // case that *is* the checkout. It states what it resolved and why; the reasoning is in `app-target.ts`.
+  const app = await resolveLaunchApp({ flags, hostVersion: target.hostVersion, from: target.packDir ?? target.root });
   const instance = instanceFor(mode, cliDirs());
   if (instance?.created && withSecrets) {
     const { count, from } = copySecretsInto(instance, appEnv(app));

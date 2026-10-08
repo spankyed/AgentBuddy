@@ -381,7 +381,7 @@ Things worth knowing before changing it:
 cd /path/to/my-pack
 abuddy init-tests    # playwright.config.ts + tests/e2e/smoke.spec.ts; adds @abuddy/testing + @playwright/test
 npm install
-abuddy test          # first run asks which app to test against
+abuddy test          # a Beta matching your hostVersion, or --app-root <path>
 ```
 
 No monorepo checkout, `ABUDDY_ROOT`, symlinks or PATH changes are needed.
@@ -393,10 +393,11 @@ No monorepo checkout, `ABUDDY_ROOT`, symlinks or PATH changes are needed.
 1. `--app-root <path>` — a local AgentBuddy checkout (installed and built)
 2. `--app beta` — the newest AgentBuddy Beta release (from `spankyed/AgentBuddy` releases) whose version satisfies the pack's `hostVersion`. The zip is verified against its published `.sha256` and cached per version in the CLI cache dir (`~/Library/Caches/abuddy-cli/apps/beta/<version>` on macOS). macOS arm64 only.
 3. `ABUDDY_APP=beta` (the env form of `--app beta`, for CI), then `ABUDDY_ROOT` — a local checkout
-4. The saved choice in the CLI config (`~/Library/Preferences/abuddy-cli/config.json` on macOS)
-5. First run in an interactive terminal: asks for a checkout path or the beta download and saves the answer
+4. The newest Beta the pack's `hostVersion` accepts, as `--app beta` would
 
-Without a TTY (CI, or `CI` set) it never prompts and fails with those options.
+**It reads no machine state and never asks**, which is what makes a test run mean the same thing on a
+fresh machine as on one you have been developing on. It also derives nothing from where the pack sits,
+where `abuddy run` and `abuddy drive` do (the checkout behind the pack) — holding that is their job.
 
 It then runs the Playwright CLI that the pack's `@abuddy/testing` resolves (never `npx playwright`), so the runner and the fixture share one `@playwright/test`. It passes the fixture:
 
@@ -520,7 +521,7 @@ Screenshot output location depends on context:
 ## Running tests
 
 ```bash
-abuddy test                          # the saved app (asks on first run)
+abuddy test                          # a Beta matching the pack's hostVersion
 abuddy test --app-root ~/AgentBuddy  # a local checkout
 abuddy test --app beta               # the newest matching AgentBuddy Beta
 abuddy test -g "renders"             # Playwright args are forwarded

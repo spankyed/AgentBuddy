@@ -6,7 +6,7 @@
 # digest, because the work dir is outside the checkout on purpose and the chain can only derive an edge from
 # a repo-relative path.
 #
-#   8. abuddy test passes against the app it is told to use (--app-root; it reads no saved choice)
+#   8. abuddy test passes against the app it is told to use (--app-root; it reads no machine state)
 #   9. the packed CLI's abuddy db reads and exports the data that app seeded
 # Requires a built app (npm run build) and the author half having run.
 # KEEP_WORK=1 keeps the work dir and the app data dir.
@@ -31,7 +31,7 @@ useWorkDir "$WORK"
 cd "$PACK"
 
 step "8. abuddy test on the packed archive (the app named on the command line)"
-# --app-root, not the saved choice above: `abuddy test` is pinned to what it is given, so that a run
+# --app-root, and nothing in the environment: `abuddy test` is pinned to what it is given, so that a run
 # means the same thing on a fresh machine as on one someone has developed on
 # PACK_ARCHIVE installs step 6's .tgz as it is, so this runs the artifact a release ships rather than
 # another build of the same source — the one thing the rest of the script cannot check.

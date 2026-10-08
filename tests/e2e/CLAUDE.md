@@ -265,7 +265,7 @@ Pack developers can write and run E2E tests without the AgentBuddy repo. The fix
 cd /path/to/my-pack
 abuddy init-tests          # scaffold config + sample test, add @abuddy/testing + @playwright/test
 npm install
-abuddy test                # first run: choose a local checkout or the AgentBuddy Beta download
+abuddy test                # a Beta matching the pack's hostVersion; --app-root <path> for a checkout
 abuddy test --app beta     # CI: never prompts, use --app beta or --app-root <path>
 ```
 

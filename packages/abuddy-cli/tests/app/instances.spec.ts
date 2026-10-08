@@ -21,7 +21,7 @@ let dirs: CliDirs;
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-instances-'));
-  dirs = { config: path.join(tmp, 'config'), cache: path.join(tmp, 'cache'), data: path.join(tmp, 'data') };
+  dirs = { cache: path.join(tmp, 'cache'), data: path.join(tmp, 'data') };
 });
 afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });

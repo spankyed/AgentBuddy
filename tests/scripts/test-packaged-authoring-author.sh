@@ -87,26 +87,21 @@ node -e '
 npm pkg set "devDependencies.@abuddy/testing=file:$TESTING_TGZ"
 npm install --silent --prefer-offline --no-audit --no-fund
 
-step "Configure the app the way the first-run prompt saves it (a local checkout)"
-# This is what `abuddy build` resolves a dependency on a built-in pack through (fetch-deps'
-# configuredAppPackagesDir), which is why it is written before step 2 adds that dependency.
-# `abuddy test` deliberately does not read it — step 8 names its app on the command line with a
-# usable choice sitting right here, which is what makes that step a check of the hermeticity
+step "Name the checkout the build resolves a shipped pack through"
+# `abuddy build` reads a dependency on a shipped pack out of an app's `packages/` (fetch-deps'
+# `configuredAppPackagesDir`), so something has to name an app before step 2 adds that dependency.
+#
+# **ABUDDY_ROOT, and only for the commands that build.** That function derives the AgentBuddy checkout
+# *behind the pack* when nothing names an app — and this pack is deliberately outside any checkout,
+# installing the packages from packed tarballs, which is the population this script exists to represent.
+# So the derivation correctly finds nothing here and the checkout has to be named. It used to be named by
+# writing the first-run prompt's config file by hand; there is no prompt and no config file now.
+#
+# Per-command rather than exported, so step 8 still means something: `abuddy test` reads ABUDDY_ROOT like
+# any other caller, and exporting it would hand that step an app without its asking. Left unset, step 8 has
+# no app at all but the one it names on the command line — which is what makes it a check of hermeticity
 # rather than a restatement of it.
-# Written directly, not typed at a prompt. The prompt is covered in @abuddy/cli's suite
-# (tests/app/app-target.spec.ts: it asks, re-asks for an unusable path, saves, and the next run reuses the
-# answer) with an injected prompt and no terminal. Driving it here took `expect`, a real tty and `env -u CI`
-# — and `expect`'s `set timeout` covers a pattern match, not `wait`, so when `abuddy test --list` started a
-# Playwright server that never returned, `lassign [wait]` blocked forever and hung the machine.
-# The shape below is pinned by that spec ("writes the saved choice where the packaged-authoring script
-# expects it"), so this literal cannot drift away from what the CLI writes.
-mkdir -p "$HOME/Library/Preferences/abuddy-cli"
-ROOT="$ROOT" node -e '
-  const fs = require("fs"), path = require("path");
-  const file = path.join(process.env.HOME, "Library", "Preferences", "abuddy-cli", "config.json");
-  fs.writeFileSync(file, JSON.stringify({ app: { source: process.env.ROOT } }, null, 2) + "\n");
-'
-grep -q "\"source\": \"$ROOT\"" "$HOME"/Library/Preferences/abuddy-cli/config.json || fail "the app choice was not saved"
+BUILD_ENV=(env "ABUDDY_ROOT=$ROOT")
 
 step "2. A flow using keepAlive from default-setup"
 node -e '
@@ -209,7 +204,7 @@ node -e '
 npm install --silent --prefer-offline --no-audit --no-fund --save ai@^7.0.100
 
 step "3. abuddy build"
-"$ABUDDY" build | tee "$WORK/build.log"
+"${BUILD_ENV[@]}" "$ABUDDY" build | tee "$WORK/build.log"
 node -e '
   const fs = require("fs");
   const read = (key) => JSON.parse(fs.readFileSync(`dist/runtime/seeds/${key}.seed.json`, "utf8")).records;
@@ -340,7 +335,8 @@ git init --quiet -b main
 git add -A
 git -c user.name=author -c user.email=author@example.com commit --quiet -m "initial pack"
 git remote add origin https://github.com/example/demo-pack.git
-"$ABUDDY" release patch --local --dry-run --skip-e2e | tee "$WORK/release.log"
+# The release runs a build of its own, so it needs the same naming
+"${BUILD_ENV[@]}" "$ABUDDY" release patch --local --dry-run --skip-e2e | tee "$WORK/release.log"
 ARCHIVE="$(sed -n 's/^Pack: //p' "$WORK/release.log")"
 [ -f "$ARCHIVE" ] && [ -f "$ARCHIVE.sha256" ] || fail "release did not produce an archive and checksum"
 (cd "$(dirname "$ARCHIVE")" && shasum -a 256 -c "$(basename "$ARCHIVE").sha256")

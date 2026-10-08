@@ -340,7 +340,7 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 
 1. **`file:` path** — the given directory (relative to the pack root or absolute), in any layout. Not cached. A missing snapshot is an error.
 2. **Workspace** — `../<id>`, `../../packages/<id>`, `../../<id>`.
-3. **Configured app** — the built-in packs of the app `abuddy test` is configured for (`ABUDDY_APP`, `ABUDDY_ROOT` or the saved choice).
+3. **The app the pack is built against** — the built-in packs of a named app (`ABUDDY_APP`, `ABUDDY_ROOT`) or of the AgentBuddy checkout behind the pack.
 4. **Installed apps** — `packs/<id>` in each environment's data dir (production, beta, development, test), which is where every pack that app has is installed, the ones it ships included.
 5. **Cache** — `.abuddy/deps/<id>/`, used only when no source on this machine matches and the cached version satisfies the range. `fetch-deps` skips it.
 6. **GitHub releases** — for `github:owner/repo [range]` values: the newest release matching the range, whose `<id>-<version>.tgz` is downloaded with its `.sha256`, checksum-checked, extracted and verified.

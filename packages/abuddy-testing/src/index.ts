@@ -93,7 +93,8 @@ function resolveApp(options: CreateTestOptions): AppLaunch {
 
   throw new Error(
     'Could not find an AgentBuddy app to test against. Run the tests with `abuddy test`, which ' +
-    'resolves one (--app-root <path>, --app beta, or your saved choice), or set ABUDDY_ROOT to a built AgentBuddy checkout.',
+    'resolves one (--app-root <path>, --app beta, or the AgentBuddy checkout behind your pack), or set\n' +
+    'ABUDDY_ROOT to a built AgentBuddy checkout.',
   );
 }
 

@@ -72,7 +72,7 @@ Resolve every dependency and cache its snapshot, build code and backend runtime 
 
 1. `file:` path: read directly, never cached, no fallback
 2. The workspace: in each directory above the pack, nearest first, `packages/<id>` then `<id>`. A pack anywhere inside an AgentBuddy checkout builds against that checkout's packages
-3. The app configured for `abuddy test` (`ABUDDY_APP=beta`, `ABUDDY_ROOT`, or the saved choice)
+3. The app this pack is built against (`ABUDDY_APP=beta`, `ABUDDY_ROOT`, or the AgentBuddy checkout behind the pack)
 4. Installed AgentBuddy apps' built-in packs (production, beta, development, test data dirs)
 5. GitHub releases, for `github:owner/repo` values (the `<id>-<version>.tgz` asset and its `.sha256`)
 
@@ -126,7 +126,11 @@ Stage the built `dist/` into a verified pack (`integrity.json` lists a sha256 pe
 
 Launch AgentBuddy with your pack installed and keep it in step with your edits.
 
-It picks an app the way you tell it to — `--app-root <path>` for a local AgentBuddy checkout, `--app beta` for a Beta that satisfies your `hostVersion` (a downloaded one if you have it, the newest otherwise) — and with neither it uses the app you saved on first run, asking once if there is none. **`run` is the command that owns that choice**; `abuddy test` never reads it, so a test run means the same thing on a fresh machine as on one you have been developing on.
+It picks an app the way you tell it to — `--app-root <path>` for a local AgentBuddy checkout, `--app beta` for a Beta that satisfies your `hostVersion` (a downloaded one if you have it, the newest otherwise) — and **with neither it works one out rather than asking**: the AgentBuddy checkout your pack is built against, if there is one, else that newest Beta. Nothing is remembered, nothing is asked, and it prints which app it chose and which rule chose it.
+
+Deriving the checkout is the right pairing rather than a convenience: a pack whose `@abuddy/*` resolve into a checkout is *compiled against that checkout's packages*, so running it inside a released Beta would pair source-built pack code with a released host. If that checkout is not built, `run` says so and names `npm run build` instead of quietly using a Beta you were not built against.
+
+`abuddy test` deliberately derives nothing — it pins from your `hostVersion` — so a test run means the same thing on a fresh machine as on one you have been developing on.
 
 The environment follows the app: a checkout runs as `development`, and a packaged Beta runs as `beta`, because a packaged build stamps its own channel. Neither touches production data.
 
@@ -316,8 +320,9 @@ milliseconds and leaves that session running. Without a session it says so and n
 one. The curl recipe above is still the way to ask *many* things; this is the way to ask one.
 
 **With no `abuddy.json` above it, it drives the app of the AgentBuddy checkout it is in** rather than a
-pack: nothing is built or installed, and the app is that checkout's — not a saved choice and not a
-downloaded Beta, which is what naming `--app-root` or `--app beta` is still for. That is the mode the
+pack: nothing is built or installed, and the app is that checkout's — which is the same rule as for a
+pack, since the checkout behind "no pack here" is the one you are standing in. Naming `--app-root` or
+`--app beta` still overrides it. That is the mode the
 AgentBuddy repo's own `npm run drive` scripts use, so they are calls to this command rather than a second
 implementation of it.
 

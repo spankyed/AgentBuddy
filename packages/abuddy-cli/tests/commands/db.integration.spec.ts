@@ -272,7 +272,7 @@ describe('naming the data dir', () => {
   // everywhere else. Resolved through listInstances rather than by joining the name to the instances root,
   // which is what makes an ephemeral one — a level down, under .ephemeral/ — reachable by its printed name.
   it('resolves --instance to that instance\'s data dir, ephemeral ones included', () => {
-    cliTree = { config: tempDir('abuddy-db-cfg-'), cache: tempDir('abuddy-db-cache-'), data: tempDir('abuddy-db-data-') };
+    cliTree = { cache: tempDir('abuddy-db-cache-'), data: tempDir('abuddy-db-data-') };
     const named = openInstance(cliTree, 'probe');
     const ephemeral = mintInstance(cliTree, true);
 
@@ -284,7 +284,7 @@ describe('naming the data dir', () => {
   // A name that matches nothing lists what there is: resolving it to a path and letting the open fail would
   // report a directory the user never typed
   it('names the instances there are when --instance matches none', () => {
-    cliTree = { config: tempDir('abuddy-db-cfg-'), cache: tempDir('abuddy-db-cache-'), data: tempDir('abuddy-db-data-') };
+    cliTree = { cache: tempDir('abuddy-db-cache-'), data: tempDir('abuddy-db-data-') };
     openInstance(cliTree, 'probe');
     expect(() => parseDbArgs(['--instance', 'nope'], {}, 'usage')).toThrow(/No instance named "nope"\. There is: probe\./);
 

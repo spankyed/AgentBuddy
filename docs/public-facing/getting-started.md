@@ -79,7 +79,7 @@ abuddy run
 
 This launches AgentBuddy with your pack installed and keeps it in step with your edits: frontend changes hot-reload through Vite HMR, `abuddy.json` changes regenerate `src/__generated__/`, and backend `.ts` changes rebuild, reinstall and reload the pack's backend in the running app.
 
-The first run asks which app to use — a local AgentBuddy checkout, or the newest Beta build — and remembers the answer; `--app-root <path>` and `--app beta` name one outright. If an app is already running on that data dir, `run` uses it rather than starting a second.
+It works out which app to use rather than asking: the AgentBuddy checkout your pack is built against if there is one, else the newest Beta build your `hostVersion` accepts. `--app-root <path>` and `--app beta` name one outright, and it always says which it chose and why. If an app is already running on that data dir, `run` uses it rather than starting a second.
 
 The build pipeline (`abuddy build`):
 

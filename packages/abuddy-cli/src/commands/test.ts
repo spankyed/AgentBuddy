@@ -14,7 +14,8 @@ export const TEST_USAGE = `Usage: abuddy test [--app-root <path> | --app beta] [
 
 Runs the pack's Playwright tests in AgentBuddy. The app is, in order: --app-root (a local
 AgentBuddy checkout), --app beta (the newest AgentBuddy Beta build satisfying the pack's
-hostVersion, downloaded and cached), ABUDDY_ROOT, or the app you chose on first run.
+hostVersion, downloaded and cached), ABUDDY_ROOT, or that newest Beta. It reads no machine state and
+derives nothing from where the pack sits, so a run means the same thing on any machine.
 
 --prebuilt installs the build already in dist/ instead of making a new one, for a caller that built the
 pack in an earlier step. The build is still held to being no older than the sources, so a stale one fails
@@ -52,7 +53,7 @@ export function fixtureEnv(
   delete env.ABUDDY_APP_EXECUTABLE;
   // ABUDDY_APP as well as the executable: the fixture builds the pack, and resolving its dependencies
   // on built-in packs reads the app choice, not the launch target. Without it a `--app beta` run
-  // resolves against whatever checkout was saved on first run, or finds nothing at all in CI.
+  // resolves against the checkout behind the pack, or finds nothing at all in CI.
   delete env.ABUDDY_APP;
   // Where the app's data goes, and where its screenshots and reports land, is this run's to decide and
   // never the shell's. All three are read straight from the environment by the fixture, because the `test`

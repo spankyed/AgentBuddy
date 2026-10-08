@@ -31,7 +31,7 @@ const tags = (): string[] => {
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-clean-'));
-  dirs = { config: path.join(tmp, 'config'), cache: path.join(tmp, 'cache'), data: path.join(tmp, 'data') };
+  dirs = { cache: path.join(tmp, 'cache'), data: path.join(tmp, 'data') };
   vi.spyOn(console, 'log').mockImplementation(() => {});
 });
 

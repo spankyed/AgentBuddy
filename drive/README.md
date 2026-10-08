@@ -36,8 +36,8 @@ here stands one up, and `npm start`'s renderer and `abuddy run`'s pack server ar
 **Every script here is `abuddy drive`**, which is also what a pack author runs — the npm scripts are thin
 calls to it, so `npm run drive -- --help` is the reference and a flag works the same from either side. With
 no `abuddy.json` above it the command drives *this checkout's* app rather than a pack's, which is what
-makes that possible; it does not resolve a saved app choice or offer to download a Beta, because the app
-you mean is the one you are standing in.
+makes that possible — the checkout behind "no pack here" is the one you are standing in, which is the
+same rule `abuddy drive` applies inside a pack.
 
 **Each run gets a fresh data dir under `$TMPDIR` and throws it away**, so a script cannot touch your
 development or production data, and every session starts clean. `--instance <name>` keeps a data dir
