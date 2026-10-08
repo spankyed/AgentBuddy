@@ -22,6 +22,22 @@ that fits none of them probably belongs somewhere else.
 A spec that needs a path in the repo resolves it three levels up now (`../../..`), not two — moving these
 into folders broke three of them at once, and the suite is what said so.
 
+**Audited against those two halves on 2026-10-08: twelve of the thirteen specs here meet both.** Each
+`app-integration/` spec rests on something no harness has — a token-bearing WebSocket, an API process
+crashed and restarted, `abuddy db` against a live data dir, `POST /dev/reload`, `media://`, the bus
+dropping sends until a client connects, key strings absent from logs and files — and each `ui/` spec
+asserts rendered output, which is the other half: a component reaching for a plugin it is not rendered in
+(`navigation`), main accepting a ref as a window id (`popout`), a pack's compiled entries reaching the
+Settings view (`settings-help`), a panel a plugin lends another actually drawing (`fallback-panel`).
+
+**The shape that fails the second half is worth recognising, because it reads like a UI test.** A spec
+that sends a plugin an event and then asserts *shell state* — which plugin is open, what the context holds
+— needs no window: the shell's side of that is covered on fakes (`@abuddy/host`'s
+`tests/features/application/fe/`) and the pack's side is `setupPackTests` with `startFeTestRuntime`, in
+milliseconds. `packages/default-setup/tests/features/browser/fe/open-link.spec.ts` is one written that
+way, and being cheap is what lets it assert both branches of the setting it reads rather than the default
+alone.
+
 **If it needs neither, it is a harness test.** `setupPackTests` (`@abuddy/testing`) runs a pack's code in
 memory in milliseconds; an assertion about state or data that never renders and never crosses a process
 boundary pays a full Electron launch for nothing.
@@ -346,7 +362,6 @@ data dir, the pack loader: things no harness test can reach.
 |------|---------|
 | `ui/fallback-panel.spec.ts` | A plugin offering its panel for plugins without one (`fallbackPanel`), and saying itself when it shows: the brain's inspect mode |
 | `ui/navigation.spec.ts` | Opens every plugin and every plugin's settings without a renderer error — a component reaching for a plugin it isn't rendered in fails here |
-| `ui/open-link.spec.ts` | `openLink` hands a link to the plugin playing the browser role, which opens it by its own setting |
 | `ui/popout.spec.ts` | A plugin popped out into its own window: main accepts the plugin's ref as its id and the popout renders its canvas as part of that plugin |
 | `ui/settings-help.spec.ts` | Help as a pack contribution: the pack's compiled entries, collected by the host, rendered by the Settings view |
 
