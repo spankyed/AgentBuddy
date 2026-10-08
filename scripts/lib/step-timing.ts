@@ -288,6 +288,13 @@ export function driftedSteps<S extends SchedulableStep>(
  *
  * Reported, not failed: a step that will not cache is slow, not wrong, and a chain that goes red for
  * slowness teaches people to ignore it.
+ *
+ * **That argument covers one of the two cases this finds, and the chain splits them.** A file that moved
+ * *after* the step finished is the slowness above — the next run pays for it and nothing is wrong. A file
+ * that moved *while it ran* is a different claim: the step read a tree that no longer exists, so its pass
+ * establishes nothing. This function cannot tell them apart, because it compares fingerprints and a
+ * fingerprint says that something moved and never when; `whenChanged` in `chain-output.ts` is what places a
+ * change, and `chain.ts` fails on the second under `--strict`.
  */
 export function willNotCache<S extends { name: string; neverCachedBecause?: string }>(
   steps: readonly S[],

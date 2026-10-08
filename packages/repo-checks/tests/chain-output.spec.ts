@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { firstChange, REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, orderedSteps } from '../../../scripts/lib/chain-steps.ts';
 import { machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
-import { briefly, classifyLine, criticalPathLine, pathSavingsLine, outgrownReport, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
+import { briefly, classifyLine, criticalPathLine, pathSavingsLine, outgrownReport, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
 
 describe('wrapAt', () => {
   /**
@@ -56,6 +56,62 @@ describe('writerOf', () => {
   /** Nobody's output is the interesting answer: an undeclared write is the one there is something to do about */
   it('answers nothing for a file no step declares', () => {
     expect(writerOf('tests/packs/probe.txt', steps)).toBeUndefined();
+  });
+});
+
+/**
+ * Which of `whenChanged`'s four readings voids a step's pass. Only one does, and the three that do not are
+ * each a reason the chain must stay green: an ordinary cache miss, a change that cannot be placed, and a
+ * stamp with no brackets to place it against. A chain that went red for any of them would go red for an edit
+ * made deliberately while a long run finished, which is how a report gets ignored.
+ *
+ * The cases iterate every reading rather than naming the one that fires, so a fifth could not arrive
+ * unwatched — `whenChanged`'s return type is the population.
+ */
+describe('movedWhileItRan', () => {
+  const readings = ['while it ran', 'since it ran', 'though its mtime predates the run', ''] as const;
+
+  it('voids a pass only for a change inside the run', () => {
+    const voided = readings.filter((when) => movedWhileItRan([{ when }]));
+
+    expect(voided, 'the other three are reasons not to fail, not weaker versions of the same one').toEqual(['while it ran']);
+  });
+
+  it('finds one among several, since a step reads more than one file', () => {
+    expect(movedWhileItRan([{ when: 'since it ran' }, { when: '' }, { when: 'while it ran' }])).toBe(true);
+    expect(movedWhileItRan([{ when: 'since it ran' }, { when: '' }])).toBe(false);
+  });
+
+  // A declared-set change has no files at all, so there is nothing to place and nothing to void
+  it('says nothing is voided when no file moved', () => {
+    expect(movedWhileItRan([])).toBe(false);
+  });
+});
+
+/**
+ * The line those steps get. **Printed whether or not `--strict` is on**, which is the whole of what the flag
+ * gates: a reader who is told only "will not be cached next run" reads the step's `ok` as a pass, and it was
+ * not one. The flag decides whether the chain stops a merge, not whether the reader is told.
+ */
+describe('voidedLine', () => {
+  it('names the step and says its result does not describe this tree', () => {
+    const line = voidedLine(['typecheck'], false);
+
+    expect(line).toContain("typecheck's result does not describe this tree");
+    expect(line, 'read, not written — the step is the victim here, not the culprit').toContain('it read files that changed while it ran');
+  });
+
+  it('offers the flag when it is off, and does not when it is on', () => {
+    expect(voidedLine(['typecheck'], false)).toContain('--strict fails the run on this.');
+    expect(voidedLine(['typecheck'], true), 'it already did').not.toContain('--strict');
+  });
+
+  // One defect can void many steps at once: api:check rebuilding @abuddy/testing mid-chain once left twenty
+  it('counts them rather than listing twenty names in a sentence', () => {
+    const line = voidedLine(['a', 'b', 'c'], true);
+
+    expect(line).toContain("3 steps' results do not describe this tree");
+    expect(line).toContain('they read files that changed while they ran');
   });
 });
 
@@ -645,8 +701,46 @@ describe('classifyLine', () => {
     const line = classifyLine({ code: 0, ms: 47_200 }, HERE);
 
     expect(line).toContain('passed in 47.2s');
-    expect(line).toContain('contention or a flake, not the code');
     expect(line).toContain('The chain still fails.');
+  });
+
+  /**
+   * The conclusion it used to draw, and the reason it could not. Running alone rules the *code* out — the same
+   * command over the same tree — and rules nothing else out, so "contention or a flake" picked between two
+   * possibilities over a variable the message had never identified. It cost two wrong hypotheses on 2026-10-07.
+   *
+   * The same `.not.toContain(<the conclusion>)` + `.toContain(<the hedge>)` pair the timeout arm below uses.
+   */
+  it('claims no cause, naming what it ruled out and what it did not', () => {
+    const line = classifyLine({ code: 0, ms: 47_200 }, HERE, ['test:unit:host']);
+
+    expect(line, 'the verdict it has no evidence for').not.toContain('contention or a flake');
+    expect(line, 'the half the re-run did establish').toContain('the code is ruled out, and nothing else is');
+    expect(line, 'and that it cannot choose between what is left').toContain('neither does this message');
+  });
+
+  // What the schedule recorded, rather than what the budget permitted — which is why this was a guess before
+  it('names the steps that actually ran beside it', () => {
+    const line = classifyLine({ code: 0, ms: 1_000 }, HERE, ['lint:check', 'typecheck:fe']);
+
+    expect(line).toContain('It ran beside lint:check, typecheck:fe the first time.');
+  });
+
+  it('counts the rest rather than listing a whole schedule', () => {
+    const line = classifyLine({ code: 0, ms: 1_000 }, HERE, ['a', 'b', 'c', 'd', 'e']);
+
+    expect(line).toContain('beside a, b, c and 2 others the first time');
+  });
+
+  /**
+   * A step that failed while already alone is not re-run (`shouldClassify`), so an empty set reaching here is
+   * the harness's case rather than the chain's — and it must still read as a sentence rather than trailing off.
+   */
+  it('says so when nothing ran beside it', () => {
+    const line = classifyLine({ code: 0, ms: 1_000 }, HERE, []);
+
+    expect(line).toContain('nothing here was beside it');
+    expect(line, 'and still refuses the verdict').toContain('neither does this message');
   });
 
   it('says the failure is real when it failed alone too', () => {

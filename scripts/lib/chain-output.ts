@@ -180,6 +180,34 @@ export const writerOf = (
  * is the same mistake as reading an mtime as a cause: what the file did is known from the digests, and when it
  * did it is not.
  */
+/**
+ * Whether a step's pass establishes anything, given what moved under its inputs.
+ *
+ * **Only `'while it ran'` counts**, and the other three readings are each a reason not to fail. `'since it
+ * ran'` is the ordinary cache miss `willNotCache` was written for — the next run pays and nothing is wrong.
+ * `'though its mtime predates the run'` cannot be placed at all, and `whenChanged`'s own doc argues that
+ * claiming a window the mtime will not support is the mistake this report was rebuilt to stop making. `''` is
+ * a stamp with no brackets to compare against, which is a diagnosis missing rather than a fact found.
+ *
+ * So the predicate is narrow on purpose: a chain that failed on any of the four would go red for an edit made
+ * deliberately while a long run finished, which is the way to teach a reader to ignore it.
+ */
+export const movedWhileItRan = (files: readonly { readonly when: ReturnType<typeof whenChanged> }[]): boolean =>
+  files.some(({ when }) => when === 'while it ran');
+
+/**
+ * What the chain says about the steps whose inputs moved mid-run — printed whether or not it fails the run,
+ * because a reader who is not told reads the step's `ok` as a pass. `--strict` chooses whether the chain
+ * stops a merge over it, and the line says so where it does not.
+ */
+export function voidedLine(voided: readonly string[], strict: boolean): string {
+  const one = voided.length === 1;
+  const subject = one ? `${voided[0]}'s result does not` : `${voided.length} steps' results do not`;
+  const they = one ? 'it' : 'they';
+  return `  ${subject} describe this tree: ${they} read files that changed while ${they} ran.`
+    + `${strict ? '' : ' --strict fails the run on this.'}`;
+}
+
 export const whenChanged = (
   mtimeMs: number | undefined,
   ranFrom: number | undefined,
@@ -376,6 +404,12 @@ export function howLong(
  *
  * Both reports take it, because both compare a measurement against the table.
  */
+/** Up to three names, then a count: a line naming twenty steps is a line nobody reads to the end */
+const listOf = (names: readonly string[], shown = 3): string => {
+  const [head, rest] = [names.slice(0, shown), names.length - shown];
+  return rest > 0 ? `${head.join(', ')} and ${rest} other${rest === 1 ? '' : 's'}` : head.join(', ');
+};
+
 const peerSuffix = (peers: number): string => (peers === 0 ? '  (alone)' : `  (${peers} peers)`);
 
 export function driftReport(
@@ -533,9 +567,19 @@ export const outgrownReport = (
  *
  * A pass here rules the code out, which is the useful half: the retry runs the same command over the same tree,
  * so anything deterministic in it would fail again. What is left is interference from whatever else was running,
- * or the step being nondeterministic on its own — hence "contention or a flake" rather than either alone. It
- * does not say which, and the admission limit would not tell it: that is what was permitted, not the
- * concurrency that actually happened, and a full budget with nine steps cached is none at all.
+ * or the step being nondeterministic on its own. It does not say which — and **it used to conclude "contention
+ * or a flake, not the code", which is a verdict over a variable it had never identified.**
+ *
+ * What it names now is what the schedule saw: `ScheduleResult.peers`, the steps that actually overlapped,
+ * recorded at dispatch. The reason this was a guess is recorded here and has since expired — the admission
+ * limit cannot say it, being what was permitted rather than what happened, and a full budget with nine steps
+ * cached is none at all. `peers` is not the budget, so the objection that stood against naming the variable is
+ * now the argument for it.
+ *
+ * It still claims no cause, and says so, because there is a variable it cannot see at all: a writer outside
+ * the chain. `docs/reference/pipeline-lessons.md` has the run where that was the answer, and the shape of the
+ * hedging is `timedOutBecause`'s — a disjunction rather than a verdict, and a sentence admitting the message
+ * cannot decide.
  *
  * A pass is also the dangerous output: it is the one a reader can mistake for the chain being fine. It says
  * "fails" in the sentence, the exit code stays 1, and the retry records nothing — `run` rather than
@@ -549,6 +593,12 @@ export function classifyLine(
   retry: { readonly code: number; readonly ms: number; readonly timedOut?: true },
   /** The machine the costs were measured on (`MEASURED_ON`), which is what licenses the word "wedged" */
   measuredOn: Machine,
+  /**
+   * The steps that actually overlapped the failing one (`ScheduleResult.peers`), which is what the pass arm
+   * names instead of calling the whole thing contention. `schedule` records them at dispatch, so this is what
+   * happened rather than what the budget permitted.
+   */
+  peers: readonly string[] = [],
 ): string {
   const took = `${(retry.ms / 1000).toFixed(1)}s`;
   // Running alone rules out contention, which is the question this re-run exists to answer — but not slowness.
@@ -561,9 +611,16 @@ export function classifyLine(
         + `against ${machineText(measuredOn)} and this is ${machineText(thisMachine())}, so wedged and simply `
         + 'slow are both still open.';
   }
-  return retry.code === 0
-    ? `\nre-ran it alone: passed in ${took} — contention or a flake, not the code. The chain still fails.`
-    : `\nre-ran it alone: failed again (exit ${retry.code}) in ${took} — the failure is real.`;
+  if (retry.code !== 0) return `\nre-ran it alone: failed again (exit ${retry.code}) in ${took} — the failure is real.`;
+  // What it ran beside, which is the fact; `and N others` keeps a 24-step line readable while still saying how
+  // many there were, since "three of them" and "twenty of them" are different situations to look into
+  const beside = peers.length === 0
+    ? 'It ran alone the first time too, so nothing here was beside it.'
+    : `It ran beside ${listOf(peers)} the first time.`;
+  return `\nre-ran it alone: passed in ${took} — so the code is ruled out, and nothing else is. ${beside}`
+    + ' Either one of those interfered, or something this run cannot see did — a tool outside the chain, an'
+    + ' editor, another checkout — or the step is nondeterministic on its own. Running it alone does not say'
+    + ' which, and neither does this message. The chain still fails.';
 }
 
 /**

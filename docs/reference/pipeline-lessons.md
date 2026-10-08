@@ -205,8 +205,24 @@ union ordering; a codegen skip ignoring its own generator), and two fixes were p
 The lesson is not that a guard was missing. It is that these guards assume one writer, and say nothing useful
 when that assumption is the thing that broke.
 
-**What is still open, and would make a violation legible rather than merely prevented:** `PackagesWentStale`
-naming the process as well as the file (`holdDatabaseWriteLock` records pid, machine and intent — the same
-record would serve); the freshness sweep's "inputs changed while it ran" failing the run rather than noting a
-cache miss; and the classifier reporting "unexplained" instead of "flake" when running a step alone makes it
-pass.
+**What closed it, and the shape all three took.** Each report held the fact it needed one frame up and printed
+a guess instead, so each now names what it has and says what it could not rule out:
+
+- **`PackagesWentStale` names the writer.** `waitForPackageBuild` already returned the holder it waited for and
+  `ensurePackagesBuilt` discarded it — and that return is the *only* evidence in the ordinary case, because by
+  the time staleness is read the writer has finished, which is what let the run past the wait. So reading the
+  lock at that moment, which this doc used to suggest, answers for almost nothing. `packageWriter` has three
+  arms: the build this run waited for; a lock still on disk, with whether its holder is alive, which covers a
+  crash, a wedge and a writer arriving after the wait; and neither, which means something that does not take
+  the lock did it.
+- **A step whose inputs moved *while it ran* says its result is void**, and `--strict` fails the run on it.
+  Only that reading of `whenChanged` counts: a change *after* the step is the ordinary cache miss, and two of
+  the four readings cannot be placed at all. Proven on a live run where five steps were stale and exactly one
+  was voided.
+- **The classifier claims no cause.** It names the steps `ScheduleResult.peers` recorded beside the failing one
+  — what happened, rather than the admission limit, which was the recorded reason it used to guess — and says
+  it cannot choose between one of those, a writer outside the chain, and the step being nondeterministic.
+
+**The one thing none of them can close** is a writer that records nothing: an editor, a tool that takes no
+lock, another session. All three now say that in the arm where it is the answer, which is the difference
+between a report a reader can act on and one they learn to skip.
