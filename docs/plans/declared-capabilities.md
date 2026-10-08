@@ -50,10 +50,13 @@ and `abuddy validate`/`abuddy build` are where it binds for an external pack.
 { "id": "code", "capabilities": ["filesystem", "inference"] }
 ```
 
-Host services only — a pack's own services and its dependencies' are already declared elsewhere, and
-`logger`/`emitter`/`repository` are the SDK's own implementations over the bound bus and engine, so they
-are the floor rather than a capability. The list to gate is the six the app implements: `appData`,
-`traceStore`, `inference`, `secrets`, `filesystem`, `settings`.
+Host services only — a pack's own services and its dependencies' are already declared elsewhere. The list
+to gate is the six the app implements: `appData`, `traceStore`, `inference`, `secrets`, `filesystem`,
+`settings`. `logger` and `emitter` are the floor: the SDK's own implementations over the bound bus, with
+nothing to withhold.
+
+**`repository` is not the floor, and gating it would not be enough** — see *The data layer is the real
+gap*, which is where this plan stops being about services.
 
 **2. Codegen builds the facade from it**, so an undeclared service is absent at runtime and a type error at
 compile time. The pack's own services and its dependencies' keep their current treatment.
@@ -64,6 +67,50 @@ compile time. The pack's own services and its dependencies' keep their current t
 a feature's services object only the declared keys. Codegen is the ergonomic gate; the registry is the real
 one.
 
+## The data layer is the real gap
+
+**A capability list over services leaves the most sensitive surface open**, and this plan would be
+misleading without saying so. Three paths reach a pack's and every other pack's rows, and only the first
+looks like a service:
+
+1. **`services.repository`** — the typed repositories, which an earlier draft of this plan called "the
+   floor". It is not; it is data access.
+2. **`untypedQx` / `untypedTx` from `@abuddy/ears`** — and this one is *documented as a pack affordance*:
+   the root guide says pack code "queries untyped with `untypedQx`". Gating the repository while this stays
+   open locks the front door and leaves the side door in the manual.
+3. **Seeds**, which touch `services` not at all. A seeder calls
+   `createEntityWithDefaults(record.entity, …)` (`abuddy-sdk/src/seed/seeder.ts:164`) with the entity name
+   taken from the pack's compiled seed data.
+
+**What is enforced today is declaration, not use.** The registry refuses a pack that *declares* a reserved
+entity type or one another pack already declared (`packs/registry.ts:37`, `:324`). The engine's
+`isEntityType` (`abuddy-ears/src/transaction.ts:28`) asks whether a name is a known entity type, never
+whose it is — it has no concept of packs. So a pack may read every row in the app, and write rows of any
+declared type, including another pack's.
+
+### The decision this forces, which is not mine to make
+
+Restricting the data layer contradicts a documented affordance. Either:
+
+- **the data layer stays open by design** — defensible for a local single-user app where packs are
+  installed deliberately, and the right answer is to *write that down* so it is a decision rather than an
+  oversight, and to scope this plan's title to services; or
+- **data access becomes a declared scope** — which is a different shape from a service list: not a boolean
+  per name but a set of entity types, and read distinct from write. That is OSGi's import/export packages
+  or a filesystem permission, not a flag, and it is a larger plan than this one.
+
+### The cheap piece worth doing either way
+
+**A pack's compiled seeds may only create entity types the pack declares** — derivable at build time from
+`abuddy.json`'s `ears.entities` against the `record.entity` values in the compiled seed data, and refused by
+`abuddy validate` and `abuddy build`. It closes the seed path without touching runtime queries or the
+untyped affordance, and it is the same shape as the externals subset check `goal-one-kind-of-pack` landed
+(`abuddy-cli/tests/build/pack-externals.spec.ts`): two declarations, one derived comparison, a build-time
+refusal.
+
+It is worth doing whichever way the decision above goes, because a pack seeding another pack's entity types
+is a bug under either model.
+
 ## Steps
 
 1. The capability list in `manifest-schema.ts` plus `schema:update`, with the six gateable services as a
@@ -72,6 +119,7 @@ one.
 3. `check:specifiers` rule, with its firing case.
 4. The registry gate, with a case that an undeclared service is absent.
 5. default-setup declares what it uses — which is the migration, and the only pack to migrate.
+6. The seed-ownership check above, which is independent of 1-5 and can land first.
 
 ## Verification
 
