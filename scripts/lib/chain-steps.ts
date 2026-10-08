@@ -1119,11 +1119,11 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // `need`. It declared `PACK_SOURCES` while the renderer's plugin and the api's tsup each traced a generated
   // entry into the pack's `src`; `check:tiers` and the app build's own header are what keep that from coming
   // back quietly
-  { name: 'build:app', timeout: 'suite', seconds: 39, outputs: APP_OUTPUTS,
+  { name: 'build:app', timeout: 'suite', seconds: 13, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
       'packages/api/tsup.config.ts', ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
-  { name: 'test:external-pack:app', timeout: 'scenario', seconds: 33,
+  { name: 'test:external-pack:app', timeout: 'scenario', seconds: 18,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
     // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@abuddy/testing` resolves to its
@@ -1153,7 +1153,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // declared — so an unchanged stamp means the same app, and running it again asks a question already
   // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
   // suite off the gate bought.
-  { name: 'test:smoke', timeout: 'suite', seconds: 9,
+  { name: 'test:smoke', timeout: 'suite', seconds: 21,
     outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },
