@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, diffableStamp, ensurePackagesBuilt, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, PackagesWentStale, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit, type StaleUnit } from '@abuddy/host/build/packages-built';
+import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, diffableStamp, ensurePackagesBuilt, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, packageWriter, PackagesWentStale, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit, type StaleUnit } from '@abuddy/host/build/packages-built';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
@@ -1062,6 +1062,58 @@ describe('recording that something ran', () => {
  * Driven through `EnsurePackagesOptions` rather than by making a real package stale, which would mean deleting
  * a cache stamp every other suite in the checkout is reading.
  */
+/**
+ * The middle arm of `packageWriter`: a lock still on disk. None of the three states that produces is the
+ * ordinary case — a crashed writer, one wedged past the wait's bound, or one that arrived between the wait
+ * returning and the stamps being read — and whether it is still running is what tells them apart.
+ *
+ * Asked of `packageWriter` directly, with a lock file of its own: reaching this through
+ * `ensurePackagesBuilt` would mean holding the repo's real lock to assert a message.
+ */
+describe('a lock still on disk when the packages went stale', () => {
+  const lockAt = (holder: unknown): string => {
+    const file = path.join(tempDir(), 'packages-build.lock');
+    fs.writeFileSync(file, JSON.stringify(holder));
+    return file;
+  };
+
+  it('names a holder that is still running', () => {
+    // This process: its pid exists and it started in this boot, which is what `holderIsRunning` asks
+    const file = lockAt({ pid: process.pid, label: '@abuddy/ui', startedAt: new Date().toISOString() });
+
+    const writer = packageWriter(undefined, file);
+
+    expect(writer).toContain(`pid ${process.pid} (@abuddy/ui`);
+    expect(writer).toContain('is still running');
+  });
+
+  // A crashed writer's record outlives it, and before this nothing read it
+  it('names a holder that is gone, and says its lock was left behind', () => {
+    const file = lockAt({ pid: process.pid, label: '@abuddy/sdk', startedAt: new Date(Date.now() - (os.uptime() + 3600) * 1000).toISOString() });
+
+    const writer = packageWriter(undefined, file);
+
+    expect(writer).toContain('@abuddy/sdk');
+    expect(writer).toContain('is gone, having left its lock behind');
+  });
+
+  it('says the lock could not be read rather than inventing a holder', () => {
+    const file = lockAt('not a lock');
+
+    expect(packageWriter(undefined, file)).toContain('an unreadable lock file');
+  });
+
+  /**
+   * And the wait wins over the file. A writer that finished and a *different* one that has since taken the
+   * lock are two facts, and the one that moved these packages is the one this run waited for.
+   */
+  it('prefers what the wait saw over a lock taken since', () => {
+    const file = lockAt({ pid: process.pid, label: '@abuddy/ui', startedAt: new Date().toISOString() });
+
+    expect(packageWriter('pid 99 (@abuddy/ears, started then)', file)).toContain('@abuddy/ears');
+  });
+});
+
 describe('ensurePackagesBuilt, where the caller says the packages are already built', () => {
   const moved: StaleUnit[] = [{ workspace: '@abuddy/sdk', reason: INPUTS_CHANGED, moved: 'src/index.ts' }];
 
@@ -1078,13 +1130,12 @@ describe('ensurePackagesBuilt, where the caller says the packages are already bu
     }
   }
 
-  it('reports what moved and builds nothing', () => {
+  /** The refusal's message, for a `wait` that saw whatever the case says it saw */
+  function refusalWith(wait: () => string | undefined): { refusal: string; built: string[]; reported: string[] } {
     const built: string[] = [];
     const reported: string[] = [];
-    const run = () => ensurePackagesBuilt({ wait: () => {}, stale: () => moved, build: (w) => built.push(w), report: (m) => reported.push(m) });
-
+    const run = () => ensurePackagesBuilt({ wait, stale: () => moved, build: (w) => built.push(w), report: (m) => reported.push(m) });
     const refusal = withFlag('1', () => {
-      expect(run).toThrow(PackagesWentStale);
       try {
         run();
         return '';
@@ -1092,19 +1143,52 @@ describe('ensurePackagesBuilt, where the caller says the packages are already bu
         return (err as Error).message;
       }
     });
+    return { refusal, built, reported };
+  }
 
+  it('reports what moved and builds nothing', () => {
+    const { refusal, built, reported } = refusalWith(() => undefined);
+
+    expect(() => withFlag('1', () => ensurePackagesBuilt({ wait: () => undefined, stale: () => moved, build: () => {}, report: () => {} })))
+      .toThrow(PackagesWentStale);
     expect(built, 'it built under the flag, which is the race the refusal exists to avoid').toEqual([]);
     expect(reported, 'the refusal carries the message; printing one too says it twice').toEqual([]);
     expect(refusal).toContain('@abuddy/sdk');
     expect(refusal, 'a reader has to be told which file moved, or the refusal names no suspect')
       .toContain('src/index.ts');
-    expect(refusal, 'and what usually moves it, since the cause is another process').toMatch(/packages:build/);
+  });
+
+  /**
+   * **Who** moved it, which is the half that used to be a guess: the message named `packages:build` as "the
+   * usual cause" whatever had happened, so a reader chasing it had nothing to check. The three arms are the
+   * three states the evidence can be in, and each says only what it has.
+   *
+   * The first is the ordinary one and the only one that can answer it. By the time staleness is read the
+   * writer has finished — that is what let this run past the wait — so the lock is gone and what the wait
+   * returned is all there is.
+   */
+  it('names the build it waited for, which is the only evidence in the ordinary case', () => {
+    const { refusal } = refusalWith(() => 'pid 4821 (@abuddy/ui, started 2026-10-08T00:43:43.374Z)');
+
+    expect(refusal, 'the writer, named').toContain('pid 4821 (@abuddy/ui, started 2026-10-08T00:43:43.374Z)');
+    expect(refusal).toContain('held the build lock during this run and released it');
+    expect(refusal, 'the guess it replaces').not.toMatch(/usual cause/);
+  });
+
+  // Nothing took the lock, so it was something that does not take it. A fact, not a shrug — and the
+  // 2026-10-07 case, where two sessions shared a checkout and an editor was the writer
+  it('says so when nothing took the build lock', () => {
+    const { refusal } = refusalWith(() => undefined);
+
+    expect(refusal).toContain('nothing took the build lock');
+    expect(refusal, 'what that leaves, so the reader knows where to look').toMatch(/an editor, a tool outside the lock, or another session/);
+    expect(refusal, 'no pid it does not have').not.toMatch(/pid \d/);
   });
 
   // The other direction, which is every ordinary caller: the same staleness is work to do, not a refusal
   it('builds the stale workspace when no caller claims to have built it', () => {
     const built: string[] = [];
-    withFlag(undefined, () => ensurePackagesBuilt({ wait: () => {}, stale: () => moved, build: (w) => built.push(w), report: () => {} }));
+    withFlag(undefined, () => ensurePackagesBuilt({ wait: () => undefined, stale: () => moved, build: (w) => built.push(w), report: () => {} }));
     expect(built).toEqual(['@abuddy/sdk']);
   });
 
@@ -1119,7 +1203,7 @@ describe('ensurePackagesBuilt, where the caller says the packages are already bu
   it('waits for a build already in flight before it reads any stamp', () => {
     const order: string[] = [];
     ensurePackagesBuilt({
-      wait: () => order.push('wait'),
+      wait: () => { order.push('wait'); return undefined; },
       stale: () => { order.push('stale'); return []; },
       build: () => order.push('build'),
       report: () => {},
@@ -1130,7 +1214,7 @@ describe('ensurePackagesBuilt, where the caller says the packages are already bu
   it('is a no-op when nothing is stale, whichever the caller is', () => {
     for (const flag of ['1', undefined]) {
       const built: string[] = [];
-      withFlag(flag, () => ensurePackagesBuilt({ wait: () => {}, stale: () => [], build: (w) => built.push(w), report: () => {} }));
+      withFlag(flag, () => ensurePackagesBuilt({ wait: () => undefined, stale: () => [], build: (w) => built.push(w), report: () => {} }));
       expect(built).toEqual([]);
     }
   });

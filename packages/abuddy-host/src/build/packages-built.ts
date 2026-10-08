@@ -890,6 +890,46 @@ export function runningPackageBuild(file = LOCK_FILE): { pid: number; label: str
   return holder && holderIsRunning(holder) ? holder : undefined;
 }
 
+/**
+ * A build holder as a reader is told about it, which `withBuildLock`'s refusal already words this way.
+ * `null` is a lock file whose contents this version cannot read — it says the lock was there and no more.
+ */
+const describeHolder = (holder: LockHolder | null): string =>
+  (holder === null ? 'an unreadable lock file' : `pid ${holder.pid} (${holder.label}, started ${holder.startedAt})`);
+
+/**
+ * Who rebuilt the packages under a run that had already built them, as `PackagesWentStale` names them.
+ *
+ * **`waitedFor` is the one that answers in the ordinary case, and it is the only one that can.** By the time
+ * staleness is read the writer has finished — that is what let the reader past `waitForPackageBuild` — so
+ * there is no lock left to look at. What the wait returns is therefore the whole of the evidence, and
+ * discarding it is why this error said "something" for as long as it did.
+ *
+ * A lock still on disk means one of three things, none of them the ordinary case: a writer that crashed
+ * (its record survives and names it), one wedged past the wait's bound, or one that arrived in the moment
+ * between the wait returning and the stamps being read. Each is worth naming, and whether it is still
+ * running is the part that tells them apart.
+ *
+ * With neither, nothing that takes the build lock did this. That is a fact rather than a shrug: it was
+ * something that writes `dist` without taking the lock — an editor, a tool outside it, another session.
+ *
+ * **It does not read the chain's lock.** A process throwing this is a child of the chain run that holds
+ * `chain.lock`, so reading it names this run rather than whoever interfered — and since `holdChainLock`
+ * admits one chain per checkout, a second chain cannot be the writer.
+ */
+export function packageWriter(waitedFor: string | undefined, file = LOCK_FILE): string {
+  if (waitedFor !== undefined) {
+    return `${waitedFor} held the build lock during this run and released it, so its rebuild is what moved them`;
+  }
+  if (!fs.existsSync(file)) {
+    return 'nothing took the build lock, so this was a writer that does not — an editor, a tool outside the '
+      + 'lock, or another session in this checkout';
+  }
+  const holder = readLock(file);
+  const running = holder !== null && holderIsRunning(holder);
+  return `${describeHolder(holder)} holds the build lock now and ${running ? 'is still running' : 'is gone, having left its lock behind'}`;
+}
+
 /** A synchronous pause, for the module-level readers below, which cannot await */
 function sleepSync(ms: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
@@ -961,9 +1001,20 @@ export function packagesBuiltOrRefuse(buildCommand: string): boolean {
   return built;
 }
 
+/**
+ * The lock's holder, or `null` for a file this cannot make a holder out of — absent, unparseable, or parsed
+ * into something without the two fields every reader here goes on to use.
+ *
+ * **The fields are checked, not assumed.** Without that, a lock holding anything else parses into a holder
+ * whose `pid` is `undefined`: `holderIsRunning` then reads it as not running, so a live writer's lock is
+ * ignored and the reader walks into the race the lock exists to prevent, and `describeHolder` renders
+ * `pid undefined (undefined, …)`. `exclusive-lock.ts`'s own `readLock` has always checked; this one had not.
+ */
 function readLock(file: string): LockHolder | null {
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf-8'));
+    const held = JSON.parse(fs.readFileSync(file, 'utf-8')) as Partial<LockHolder> | null;
+    if (typeof held?.pid !== 'number' || typeof held.label !== 'string') return null;
+    return { pid: held.pid, label: held.label, startedAt: String(held.startedAt ?? '') };
   } catch {
     return null;
   }
@@ -1030,7 +1081,7 @@ export async function withBuildLock<T>(label: string, run: () => T | Promise<T>,
           continue;
         }
         if (takeovers > 0 || holder === null || live) {
-          const who = holder === null ? 'an unreadable lock file' : `pid ${holder.pid} (${holder.label}, started ${holder.startedAt})`;
+          const who = describeHolder(holder);
           const waited = intent === 'freshness' ? ` after waiting ${Math.round(waitMs / 1000)}s` : '';
           throw new Error(`another package build holds ${repoRelative(file)}${waited}: ${who}. Wait for it to finish, then run this again.`);
         }
@@ -1144,10 +1195,10 @@ export const PACKAGES_PREBUILT_ENV = 'ABUDDY_PACKAGES_PREBUILT';
  * because the alternative is two of them rebuilding one `dist` at once.
  */
 export class PackagesWentStale extends Error {
-  constructor(readonly stale: readonly StaleUnit[]) {
+  constructor(readonly stale: readonly StaleUnit[], readonly writer: string) {
     super(`the published packages went stale during a run that had already built them:\n${staleMessage(stale)}\n`
-      + 'Something rebuilt or edited them while this process was reading them — `npm run packages:build` in a\n'
-      + 'concurrent step is the usual cause. Nothing was rebuilt here, because that would race the writer.');
+      + `Who rebuilt them: ${writer}.\n`
+      + 'Nothing was rebuilt here, because that would race the writer.');
   }
 }
 
@@ -1193,8 +1244,14 @@ function buildOnePackage(workspace: string): void {
  * injected answer was consulted — the shared state the seam exists to keep out of a unit test.
  */
 export interface EnsurePackagesOptions {
-  /** How it waits for a build already in flight; a case replaces it rather than taking the repo's lock */
-  readonly wait?: () => void;
+  /**
+   * How it waits for a build already in flight; a case replaces it rather than taking the repo's lock.
+   *
+   * It returns a description of the holder it waited for, or nothing where no build was running — which is
+   * what lets `PackagesWentStale` name the writer. The description rather than the holder, so `LockHolder`
+   * stays private to this module and a case passes a string.
+   */
+  readonly wait?: () => string | undefined;
   /** How it learns what is stale */
   readonly stale?: () => StaleUnit[];
   /** How it fixes one; a case asserts the refusal called this for nothing, which is the half that matters */
@@ -1205,7 +1262,10 @@ export interface EnsurePackagesOptions {
 
 /** Builds every publishable package when any of them is stale; a no-op when they are all up to date */
 export function ensurePackagesBuilt({
-  wait = () => { waitForPackageBuild(); },
+  wait = () => {
+    const waitedFor = waitForPackageBuild();
+    return waitedFor && describeHolder(waitedFor);
+  },
   stale: staleUnits = stalePackageUnits,
   build = buildOnePackage,
   report = (message: string) => { fs.writeSync(2, message); },
@@ -1213,7 +1273,9 @@ export function ensurePackagesBuilt({
   // Another process may be building them right now — two test suites started together each run this as
   // their pretest. Wait for that build rather than reading the stamps it is rewriting and starting a
   // second one, which is a race that fails the reader with "no stamp".
-  wait();
+  // Kept, not discarded: by the time staleness is read this writer has finished, so what the wait saw is the
+  // only evidence of who it was (`packageWriter`)
+  const waitedFor = wait();
   const stale = staleUnits();
   if (stale.length === 0) return;
   // A caller that has already built them is asserting nothing will go stale under it, so staleness here
@@ -1221,7 +1283,7 @@ export function ensurePackagesBuilt({
   // would race the writer; saying so stops two processes fighting over one dist and reports the real
   // problem instead of the build error it turns into.
   if (process.env[PACKAGES_PREBUILT_ENV] === '1') {
-    throw new PackagesWentStale(stale);
+    throw new PackagesWentStale(stale, packageWriter(waitedFor));
   }
   report(`Published packages are out of date:\n${staleMessage(stale)}\nRebuilding ${stale.length} of ${Object.keys(BUILD_UNITS).length}\n`);
   for (const { workspace } of stale) build(workspace);
