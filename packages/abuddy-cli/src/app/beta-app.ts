@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { replaceDir } from '@abuddy/host/replace-dir';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import semver from 'semver';
@@ -132,11 +133,14 @@ export async function ensureBetaApp(options: BetaAppOptions): Promise<PackagedAp
     if (!fs.existsSync(packagedExecutable(extracted))) {
       throw new Error(`${release.zip.name} does not contain ${PRODUCT_NAME}.app`);
     }
-    // Another run may have finished the same download meanwhile; keep the app it may be using
-    if (!fs.existsSync(executable)) {
-      fs.rmSync(appDir, { recursive: true, force: true });
-      fs.renameSync(extracted, appDir);
-    }
+    // Another run may have finished the same download meanwhile; keep the app it may be using.
+    //
+    // `replaceDir` rather than a remove and a rename: removing first leaves the cached app absent, and a run
+    // that has already checked `executable` can be launching it. It also makes the check above advisory
+    // rather than load-bearing — two runs that both find it missing would otherwise rename onto each other's
+    // directory, which is not a portable operation. The copy it moves aside lands in `staging`, so the
+    // `finally` below removes it.
+    if (!fs.existsSync(executable)) replaceDir(extracted, appDir);
   } finally {
     fs.rmSync(staging, { recursive: true, force: true });
   }
