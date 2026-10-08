@@ -119,7 +119,10 @@ unrouted. Before them a seed source was told *"No spec covers …"*, which its g
 Three things the chain cannot work out for you, because they rewrite files you commit:
 
 - **a public export of `@abuddy/ears`, `/sdk` or `/ui`** — `npm run api:update`, and commit `etc/`.
-  `typecheck` fails until you do.
+  `typecheck` fails until you do. **Read the regenerated diff before committing it, and that is the whole
+  of the review** — every line should be the edit you just made, and one that is not is what these records
+  exist to show you. That holds for all four: regenerating is the ordinary next step after a deliberate
+  change, while regenerating a diff you cannot account for is how a surface change comes to look reviewed.
 - **default-setup's facade** — the types a dependent pack compiles against, bundled by `abuddy build` into
   `dist/types/pack-types.d.ts` and recorded in `etc/pack-types.api.md`. Run
   `npm run facade:update -w @app/default-setup` and commit the report. **`typecheck` fails until you do**, as
