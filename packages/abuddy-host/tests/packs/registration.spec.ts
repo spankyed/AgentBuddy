@@ -291,18 +291,17 @@ describe('packSeedTargets', () => {
   // origin knows and a registration does not, so a pack never has to tell the host where its compiled data
   // is: a registration claiming a `compiledDir` is not enough to be seeded from.
   it('leaves out a pack with no origin, having nowhere to read seeds from', () => {
-    registerPack({ id: 'nowhere-pack', boot: { seedManifest: {} } } as unknown as PackRegistration);
+    registerPack({ id: 'nowhere-pack', boot: { onInit() {} } } as unknown as PackRegistration);
     registered.push('nowhere-pack');
 
     expect(registry.packSeedTargets().map((t) => t.manifest.id)).not.toContain('nowhere-pack');
     // Still reported as a boot hook the pack declares, which is a different question
-    expect(getPackExtensions('nowhere-pack')?.bootHooks).toEqual(['seedManifest']);
+    expect(getPackExtensions('nowhere-pack')?.bootHooks).toEqual(['onInit']);
   });
 
   /**
-   * A seed target is where a pack's seeds are and what it depends on, and nothing else. It carried a
-   * `seedPolicy` read from the registration until the two things that declared one turned out to be
-   * something else — a missing read in the seeder, and a vestige of settings-before-0.3.15.
+   * A seed target is where a pack's seeds are and what it depends on, and nothing else: what a seed leaves
+   * alone the seeder decides from the rows, so nothing about a pack's seeding travels on its registration.
    */
   it("carries each pack's own id and directory, whoever ships it", () => {
     registerPack({ id: 'shipped-pack' } as PackRegistration, origin('shipped-pack', true));

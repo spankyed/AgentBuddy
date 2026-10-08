@@ -1,12 +1,10 @@
 /**
  * What this pack contributes to the app's settings (`src/app-settings/`).
  *
- * **These are defaults, not seed data.** They were a `boot.seed` entry whose compiled artifact was read back
- * by this pack with `readFileSync` and whose "seeder" ignored its own record to call `services.settings.reset()`
- * — so `boot.seedPolicy.skipAtBoot` existed to stop the import machinery firing that reset at boot. The
- * settings row holds only what the user changed and the store composes these underneath it, so nothing was
- * ever written: the entry is gone, the defaults are an import, and the one claim the compiler made about them
- * is checked here instead.
+ * **These are defaults, not seed data**, which is why they are an import rather than a `boot.seed` entry:
+ * the settings row holds only what the user changed and the store composes these underneath it, so there is
+ * nothing for seeding to write. `boot.seed` is for entries that import rows, and content a pack reads back
+ * itself is an import of its own source.
  */
 import { describe, expect, it } from 'vitest';
 import { assertNoPluginSlice, getBaseSettings, settingsSections } from '#app-settings/index.ts';

@@ -6,10 +6,8 @@
  * needed no new capability: `services.settings.removeStored` has always been the narrow door, reached until
  * now only by migrations. What the event gained is an address.
  *
- * This is also what replaced a user-facing reset that was reachable only by importing a pack's "seeds": the
- * `settings` entry in `boot.seed` whose seeder ignored its own record and called `reset()`, kept out of boot
- * by `boot.seedPolicy.skipAtBoot`. A destructive action belongs in the Settings view with a confirmation,
- * not in an import dialog.
+ * **A destructive action belongs in the Settings view behind a confirmation**, not in an import dialog —
+ * which is the other reason settings are not seed data: an import is the wrong place to offer one.
  */
 import { describe, expect, it } from 'vitest'
 import { startApp } from '@abuddy/testing/harness'

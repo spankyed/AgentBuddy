@@ -110,7 +110,6 @@ describe('reloading a pack the app ships', () => {
           features: { widget: { system: { machine: { id: 'widget', config: {} }, receives: ['PING'] } } },
           boot: {
             onInit() { module.exports.compiledDirAtInit = module.exports.getCompiledDir(); },
-            seedManifest: {},
           },
         },
       };

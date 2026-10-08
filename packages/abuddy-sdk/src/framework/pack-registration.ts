@@ -14,21 +14,16 @@ export interface PackMigration {
 }
 
 /**
- * What a pack's registration says about its seeding — which today is only the policy.
+ * The pack's boot hooks: code the app runs for it, and nothing else.
  *
- * It carried `seedKeys` and `compiledDir` as well, for `orchestrateDeclarativeSeed` to read; nothing has read
- * either since that was deleted, and a pack author saw two fields on a published type that did nothing. What
- * reads the compiled seeds now asks the pack's own directory (`PACK_LAYOUT.seedsDir`), and which keys are
- * seeded is in the `seeds.json` beside them — the one account of it, written by the build that compiled them.
+ * **A registration carries code; the manifest and the compiled artifacts carry facts.** So nothing here
+ * describes a pack's seeding: which keys it seeds is `seeds.json`'s, where its compiled seeds are follows
+ * from where the pack is installed, and what a seed leaves alone the seeder decides from the rows — an
+ * unchanged hash, an edited row, one the user deleted. A fact put here is a second account of one of those.
  */
-export interface PackSeedManifest {
-  seedPolicy?: { skipAtBoot?: string[]; skipAfterOnboarding?: string[] };
-}
-
 export interface PackBootHooks {
   onInit?: () => void;
   onShutdown?: () => void;
-  seedManifest?: PackSeedManifest;
 }
 
 export interface PackEARS {

@@ -119,7 +119,7 @@ export const registration: PackRegistration = {
   services?: Record<string, unknown>;
   ears?: PackEARS;           // entities + relKinds
   repositories?: Record<string, unknown>;  // features[].repositories, registered with the app's engine
-  boot?: PackBootHooks;      // onInit/onShutdown (boot.hooks), seedManifest (boot.seed)
+  boot?: PackBootHooks;      // onInit/onShutdown (boot.hooks)
   migrations?: PackMigration[];
   steps?: StepDefinition[];
   artifacts?: ArtifactDefinition[];

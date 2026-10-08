@@ -657,11 +657,7 @@ ${help ? '  help: __help,' : ''}
     entities: ${JSON.stringify(manifest.entities ?? {})},
     relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
   },
-  boot: {
-${manifest.boot?.hooks ? '    ..._hooks,' : ''}
-    seedManifest: {},
-  },
-${manifest.migrations ? '  migrations,' : ''}
+${manifest.boot?.hooks ? '  boot: { ..._hooks },\n' : ''}${manifest.migrations ? '  migrations,' : ''}
 };
 ${contractCheck}`;
   }

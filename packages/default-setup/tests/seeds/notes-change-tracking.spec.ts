@@ -205,8 +205,8 @@ describe('notes seeding (generic pipeline)', () => {
    * **A note the user deleted is not seeded again.** Notes delete softly (`trash.move` marks the row and keeps
    * its `seedKey`), so the record of the deletion is on the row the seeder searches for — but the seeder used
    * a finder that hides deleted rows, missed it, missed it again by identity, and created a second note beside
-   * the one in the trash. `boot.seedPolicy.skipAfterOnboarding` was what stopped that happening for this one
-   * key; the lookup seeing deleted rows stops it for every key.
+   * the one in the trash. The lookup seeing deleted rows is what makes the rule hold for every seed key,
+   * rather than for whichever key someone noticed the symptom on.
    *
    * The assertion is that no *second* row appears: `snapshot()` reads with an unfiltered `qx`, so the trashed
    * row is still there either way, and a count is what tells "left alone" from "recreated".

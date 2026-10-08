@@ -101,14 +101,12 @@ export type MachineMatchesContract<Entry, C extends SystemContract> = Entry exte
 // @public
 export function onPackSettingsDefaultsChanged(listener: () => void): () => void;
 
-// @public (undocumented)
+// @public
 export interface PackBootHooks {
     // (undocumented)
     onInit?: () => void;
     // (undocumented)
     onShutdown?: () => void;
-    // (undocumented)
-    seedManifest?: PackSeedManifest;
 }
 
 // @public
@@ -186,15 +184,6 @@ export interface PackRegistration {
     settingsSections?: () => Record<string, unknown>;
     // (undocumented)
     steps?: StepDefinition[];
-}
-
-// @public
-export interface PackSeedManifest {
-    // (undocumented)
-    seedPolicy?: {
-        skipAtBoot?: string[];
-        skipAfterOnboarding?: string[];
-    };
 }
 
 // @public

@@ -253,7 +253,6 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
         },
         boot: {
           onInit() {},
-          seedManifest: {},
         },
         ${extra}
       },
@@ -297,16 +296,16 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     }
   });
 
-  // Nothing is taken off an installed pack's registration any more: its `boot.seedManifest` is honoured
-  // like a shipped pack's, both being seeded by one path
+  // Nothing is taken off an installed pack's registration: its boot hooks reach the host as the pack wrote
+  // them, like a shipped pack's, both being loaded and seeded by one path
   it("keeps the pack's registration as the pack wrote it", () => {
     const dir = makeBundledPack('intact-pack', registration('intact-pack'));
 
     const [pack] = loadExternalPacks();
-    expect(pack.registration.boot?.seedManifest).toBeDefined();
+    expect(pack.registration.boot?.onInit).toBeDefined();
 
     const exported = (require(path.join(dir, 'runtime', 'index.cjs')) as { registration: PackRegistration }).registration;
-    expect(exported.boot?.seedManifest).toBeDefined();
+    expect(exported.boot?.onInit).toBeDefined();
   });
 
   // A pack's seeds are files the host reads with the seeders that pack *registered*; a function the pack

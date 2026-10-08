@@ -89,7 +89,6 @@ beforeAll(async () => {
   const registration = {
     id: BUILT_IN_ID,
     // A boot seed: the single seed hash of 0.3.14 was this pack's
-    boot: { seedManifest: {} },
     migrations: ['0.3.14', '0.3.16'].map((target) => ({ target, description: target, up: () => { ran.push(target); } })),
   };
   // Registered straight into the registry: what this file is about is the migration runner, and routing

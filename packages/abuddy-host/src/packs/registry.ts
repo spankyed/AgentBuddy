@@ -617,7 +617,6 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
 
       const bootHooks: string[] = [];
       if (reg.boot?.onInit) bootHooks.push('onInit');
-      if (reg.boot?.seedManifest) bootHooks.push('seedManifest');
       if (reg.boot?.onShutdown) bootHooks.push('onShutdown');
 
       return {

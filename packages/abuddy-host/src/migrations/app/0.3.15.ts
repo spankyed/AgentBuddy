@@ -41,9 +41,14 @@ function legacyInternal(): LegacyInternal | undefined {
   return storedSettings()?.internal;
 }
 
-/** The built-in packs with a boot seed: the ones the single seed hash stood for */
-const bootSeedPacks = (registry: Pick<PackRegistry, 'getPackRegistration' | 'shippedPacks'>): string[] =>
-  registry.shippedPacks().map(({ id }) => id).filter((id) => registry.getPackRegistration(id)?.boot?.seedManifest);
+/**
+ * Every built-in pack: the single pre-0.3.15 seed hash stood for all of them, so the hash is filed under each.
+ *
+ * **Narrowing this to the packs that declare a `boot.seed` would change which data this migration touches**,
+ * which is the one thing a migration may not do quietly. It reads like the obvious improvement, and is not.
+ */
+const bootSeedPacks = (registry: Pick<PackRegistry, 'shippedPacks'>): string[] =>
+  registry.shippedPacks().map(({ id }) => id);
 
 /** A per-pack record with the stored one's entries it lacks */
 const withMissing = (current: Record<string, string>, legacy: Record<string, string> | undefined) => ({ ...legacy, ...current });
