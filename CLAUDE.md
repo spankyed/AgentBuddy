@@ -169,7 +169,10 @@ cheap. **It takes no mutex, and that is a thing it had to stop needing**: `attw 
 inside the tree it is checking, which made it a second writer of trees twenty-nine other steps read, so it ran
 alone — 6s of a cold run for a tool that takes a tarball path. `scripts/packages-check.ts` packs outside the
 repository instead (`packTree`), and derives both populations from `publishedTreeDirs()`: publint over all five
-trees, attw over the four that ship declarations. It is not the
+tarballs, attw over the four whose tree ships declarations. Both read the same tarball per tree — publint's
+other mode asks `npm pack --dry-run` for the file list, which is a subprocess for an answer already inside the
+tarball (0.4s against 0.1s, interleaved, paired over 5 at 83% idle, 2026-10-08), and the same rules run either
+way: both of publint's input kinds converge on one `core()` with a different virtual filesystem. It is not the
 dangling-published-path check, which publint cannot be — it skips any target behind a custom condition, which
 is how 99 published paths named files no tarball held. `@app/publish-checks`' `published-manifest-paths` is
 that one.
@@ -696,9 +699,12 @@ npm run lint:fix         # Rewrites what it can — oxlint has no fixer for no-u
                          # not clear those for you
 
 npm run packages:build   # Build dist/ for @abuddy/ears, @abuddy/sdk and @abuddy/ui, bundle @abuddy/cli and @abuddy/testing
-npm run packages:check   # publint + arethetypeswrong on the five published trees. It refuses a tree the
-                         # sources have moved past rather than checking it, so `after packages:build` is
-                         # enforced rather than advised — door 8 in packages/abuddy-testing/CLAUDE.md.
+npm run packages:check   # publint + arethetypeswrong over a tarball packed from each of the five published
+                         # trees — the artifact npm ships, rather than the directory it is derived from, and
+                         # one tarball per tree so the two tools cannot read different bytes of it. It
+                         # refuses a tree the sources have moved past rather than checking it, so
+                         # `after packages:build` is enforced rather than advised — door 8 in
+                         # packages/abuddy-testing/CLAUDE.md.
                          # A chain step, for the opposite reason to the proxy `api:check` does without —
                          # see "packages:check is a chain step" above
 
