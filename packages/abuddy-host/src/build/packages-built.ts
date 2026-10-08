@@ -270,6 +270,39 @@ const LOCK_POLL_MS = 200;
 export const stampFile = (workspace: string): string => path.join(STAMP_DIR, `${workspace.replace(/[@/]/g, '-').replace(/^-/, '')}.json`);
 
 /**
+ * Where a bundle records what it actually read — the esbuild metafile's inputs, repo-relative.
+ *
+ * **An observation, never a cache key.** A unit's `inputs` stay a declaration, because a record of the last
+ * run's reads cannot invalidate on a file that was not read last time: a newly imported module would be
+ * absent from it, so an edit to that module would change nothing and the unit would read fresh over a stale
+ * bundle. That is exactly the failure this is here to *catch* — the `@abuddy/cli` and `@abuddy/testing`
+ * bundles inline `@abuddy/sdk` and `@abuddy/ears` from source and declared neither, which no check could see,
+ * because every other input check compares one declaration against another.
+ *
+ * In a `reads/` subdirectory so it can never be taken for a stamp: `stampFile` names its files in this
+ * directory's root, and nothing walking them descends.
+ */
+export const bundleReadsFile = (workspace: string): string =>
+  path.join(STAMP_DIR, 'reads', `${workspace.replace(/[@/]/g, '-').replace(/^-/, '')}.json`);
+
+/** What a bundle read, as its build recorded it, or `undefined` for a bundle that has not been built here */
+export function bundleReadsOf(workspace: string): string[] | undefined {
+  try {
+    const held = JSON.parse(fs.readFileSync(bundleReadsFile(workspace), 'utf-8')) as { files?: unknown };
+    return Array.isArray(held.files) ? held.files.filter((f): f is string => typeof f === 'string') : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Records it, with the build that wrote it: a record from another build is not evidence about this one */
+export function recordBundleReads(workspace: string, files: readonly string[]): void {
+  const file = bundleReadsFile(workspace);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${JSON.stringify({ workspace, at: new Date().toISOString(), files: [...files].sort() }, null, 2)}\n`);
+}
+
+/**
  * Every file under a path, repo-relative — the walk a fingerprint is taken over.
  *
  * Exported because **a claim about what a unit or a step reads is evaluated over resolved files, never over the

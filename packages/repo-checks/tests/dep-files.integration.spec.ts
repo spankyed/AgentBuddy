@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { inputFiles, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { BUILD_UNITS, bundleReadsOf, inputFiles, REPO_ROOT, type BuildUnit } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
 import { ENSURE, namedByScript, scopeOf, TYPECHECK_LEGS } from '../../../scripts/lib/typecheck-legs.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
@@ -610,5 +610,70 @@ describe('what has looked at a step at all', () => {
       'test:smoke',
       'typecheck:fe',
     ]);
+  });
+});
+
+/**
+ * **What a bundle read, against what its build unit declares.**
+ *
+ * The third thing this repo can observe, after the compilers' dep files and `abuddy build`'s module graphs —
+ * and the one whose absence cost a real defect. `@abuddy/cli` and `@abuddy/testing` are bundled by esbuild
+ * with `@abuddy/host` *and* the shared-instance packages inlined **from source**, and `bundled()` declared
+ * only the first. So an edit to `@abuddy/sdk/src` left both bundles stale with their stamps reading fresh,
+ * `packages:ensure` rebuilt nothing, and it surfaced only when a packaged-authoring run type-checked a
+ * generated file against an SDK whose type no longer matched the CLI that emitted it.
+ *
+ * No other input check could see it. `chain-table`'s closure walk follows a build *script's* own imports, and
+ * the bundler reaches these through the package being bundled; everything else compares one declaration
+ * against another. This compares a declaration against an observation, which is the only kind that can catch
+ * a read nobody modelled.
+ *
+ * The record is never a cache key — `bundleReadsFile`'s comment has why: last run's reads cannot invalidate
+ * on a file that was not read last time, which is this same defect wearing a different hat.
+ */
+describe('a bundle reads nothing its build unit leaves undeclared', () => {
+  const BUNDLED = ['@abuddy/cli', '@abuddy/testing'];
+
+  it('finds the records to read, or says plainly that there is no evidence here', () => {
+    for (const workspace of BUNDLED) {
+      expect(bundleReadsOf(workspace),
+        `no record for ${workspace}: run npm run packages:build once, then this can check what its bundle read`)
+        .toBeDefined();
+    }
+  });
+
+  /**
+   * What a unit's inputs cover, built from the files each one expands to — `inputFiles` walks a directory and
+   * answers for a file as itself, which is what makes a unit naming a tree cover a read inside it.
+   *
+   * One path for the real cases and the mutation below, so the mutation exercises the rule rather than a copy.
+   */
+  const notCoveredBy = (unit: BuildUnit, read: readonly string[]): string[] => {
+    // `coverageOf` takes repo-relative inputs and joins the root itself, where a `BuildUnit`'s are absolute
+    // by design — so the unit is restated in that shape rather than the comparison being written twice
+    const declares = coverageOf({
+      inputs: unit.inputs.map((input) => path.relative(REPO_ROOT, input)),
+      excludes: (unit.excludes ?? []).map((excluded) => path.relative(REPO_ROOT, excluded)),
+    });
+    // A read that is no longer on disk says nothing about a declaration: the record is of the last build
+    return read.filter(onDisk).filter((file) => !declares(file)).sort();
+  };
+
+  it.each(BUNDLED)('%s', (workspace) => {
+    const read = bundleReadsOf(workspace) ?? [];
+    expect(read.length, 'an empty record is not a passing one').toBeGreaterThan(50);
+    expect(notCoveredBy(BUILD_UNITS[workspace]!, read).slice(0, 5).map((file) => `${workspace}'s bundle read ${file}, undeclared`),
+      "editing one of these leaves the bundle stale while its unit's stamp reads fresh").toEqual([]);
+  });
+
+  /**
+   * And the comparison can report, which a passing gate never shows. A real source file no bundle declares,
+   * rather than a fabricated path: a read that is not on disk is dropped before the comparison it is meant to
+   * exercise.
+   */
+  it('reports a read the unit does not declare', () => {
+    const planted = 'packages/renderer/src/main.ts';
+    expect(fs.existsSync(path.join(REPO_ROOT, planted)), 'point this at a file that exists').toBe(true);
+    expect(notCoveredBy(BUILD_UNITS['@abuddy/cli']!, [planted])).toEqual([planted]);
   });
 });

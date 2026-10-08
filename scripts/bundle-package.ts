@@ -9,7 +9,7 @@ import * as path from 'node:path';
 import { builtinModules, createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { packageName } from '@abuddy/host/build/specifiers';
-import { runPackageBuild } from '@abuddy/host/build/packages-built';
+import { recordBundleReads, runPackageBuild } from '@abuddy/host/build/packages-built';
 import { replaceDir } from '@abuddy/host/replace-dir';
 import { manifestPaths, type Manifest } from '@abuddy/host/build/published-manifest';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
@@ -209,6 +209,18 @@ async function main(): Promise<void> {
     banner: { js: "import { createRequire as __abuddyCreateRequire } from 'node:module'; const require = __abuddyCreateRequire(import.meta.url);" },
     plugins: [externalizeAllButInlined],
   });
+
+  // What the bundle read, for `dep-files.integration.spec.ts` to hold this unit's declaration to. An
+  // observation and never a key: see `bundleReadsFile`.
+  //
+  // **Repo-relative, which the metafile's paths are not**: esbuild reports them relative to its working
+  // directory, so an inlined workspace package arrives as `../abuddy-ears/src/x.ts` — which is why the first
+  // version of this recorded zero of the files it exists to record. A dependency under a real `node_modules`
+  // is left out: those are covered by `package-lock.json`, which every unit declares.
+  const repoRelative = (input: string): string => path.relative(repoRoot, path.resolve(pkgDir, input));
+  recordBundleReads(pkg.name, [...new Set([
+    ...Object.keys(result.metafile.inputs), ...Object.keys(sharedExternal?.metafile?.inputs ?? {}),
+  ])].map(repoRelative).filter((file) => !file.startsWith('..') && !file.includes('node_modules/')));
 
   const imported = new Set<string>();
   for (const output of [...Object.values(result.metafile.outputs), ...Object.values(sharedExternal?.metafile?.outputs ?? {})]) {
