@@ -83,7 +83,7 @@ describe('createHostRuntime', () => {
     const boot = { onInit: () => order.push(`onInit (${secretsStore.list().length} keys)`), onShutdown: () => order.push('onShutdown') };
     packs.registerPack({ id: 'reset-pack', boot }, externalOrigin('reset-pack', 'Reset'));
     // A pack the app ships, with a seed policy — seeded by the same call as the installed one
-    packs.registerPack({ id: 'seeded-pack', boot: { seedManifest: { seedKeys: ['notes'], compiledDir: '/nowhere' } } },
+    packs.registerPack({ id: 'seeded-pack', boot: { seedManifest: {} } },
       { id: 'seeded-pack', name: 'Seeded', version: '1.0.0', dir: '/packs/seeded-pack', shipped: true } as never);
     packs.registerShutdownHook(boot.onShutdown, 'reset-pack');
     try {
@@ -107,7 +107,7 @@ describe('startPacks', () => {
     order.length = 0;
     appMigrations.succeed = false;
     const packs = createPackRegistry();
-    packs.registerPack({ id: 'late-seeded-pack', boot: { seedManifest: { seedKeys: ['notes'], compiledDir: '/nowhere' } } });
+    packs.registerPack({ id: 'late-seeded-pack', boot: { seedManifest: {} } });
     packs.registerPack({ id: 'late-pack' }, externalOrigin('late-pack', 'Late'));
     try {
       startPacks(packs);

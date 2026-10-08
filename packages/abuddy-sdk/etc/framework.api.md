@@ -188,11 +188,8 @@ export interface PackRegistration {
     steps?: StepDefinition[];
 }
 
-// @public (undocumented)
+// @public
 export interface PackSeedManifest {
-    // (undocumented)
-    compiledDir: string;
-    seedKeys: string[];
     // (undocumented)
     seedPolicy?: {
         skipAtBoot?: string[];

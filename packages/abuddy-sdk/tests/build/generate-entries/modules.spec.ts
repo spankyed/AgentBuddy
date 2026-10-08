@@ -104,7 +104,7 @@ describe('generated imports', () => {
   // because no runtime resolves an extensionless specifier in ESM — which the second assertion pins.
   it('names generated modules by the file that is there', () => {
     const files = generate({ features: [system('memos')] });
-    expect(files['src/__generated__/pack-entry.ts']).toContain("import { getCompiledDir, seeders } from './seeders.ts';");
+    expect(files['src/__generated__/pack-entry.ts']).toContain("import { seeders } from './seeders.ts';");
     expect(files['src/__generated__/pack-entry.ts']).not.toMatch(/from '\.\/seeders';/);
   });
 
@@ -199,7 +199,6 @@ describe('generated seeders', () => {
     expect(seeders).toContain('  createFlowSeeder(),');
     expect(seeders).toContain('  createSeeder({"key":"memos","entities":["Memo"],"identity":["title","parent"],"relKind":"has_memo","media":true}),');
     expect(seeders).not.toContain('help');
-    expect(files['src/__generated__/pack-entry.ts']).toContain('seedKeys: ["actions", "flows", "memos"],');
   });
 
   it("uses a dependency's format settings for an entry naming it", () => {
@@ -225,7 +224,6 @@ describe('generated seeders', () => {
     expect(seeders).toContain("import { apply as __seeder_settings } from '../seeds/settings-seeder.ts';");
     expect(seeders).toContain('  { key: "settings", apply: __seeder_settings },');
     expect(seeders).not.toContain('createSeeder');
-    expect(files['src/__generated__/pack-entry.ts']).toContain('seedKeys: ["settings"],');
   });
 
   it('accepts format entities from the SDK and dependencies, and rejects one nobody declares', () => {

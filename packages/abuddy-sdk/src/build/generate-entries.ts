@@ -599,7 +599,6 @@ export function generatePackFiles(
       ? `import * as _hooks from '${toImportPath(root, manifest.boot.hooks)}';`
       : '';
 
-    const seedKeysList = seededKeys().map(k => JSON.stringify(k)).join(', ');
     const hookEntries = seedHookEntries();
     // The pack's settings sections: a function returning them, called the first time the defaults are read
     const sections = manifest.settingsSections
@@ -637,7 +636,7 @@ ${manifest.migrations ? `import { migrations } from '${toImportPath(root, manife
 ${stepsRegister ? `import { steps } from '${toImportPath(root, stepsRegister)}';` : ''}
 ${manifest.artifacts ? `import { artifacts } from '${toImportPath(root, manifest.artifacts)}';` : ''}
 ${manifest.blocks ? `import { blocks } from '${toImportPath(root, manifest.blocks)}';` : ''}
-import { getCompiledDir, seeders } from './seeders.ts';
+import { seeders } from './seeders.ts';
 export { setCompiledDir } from './seeders.ts';
 ${sections ? `import { ${sections.exportName} as __settingsSections } from '${toImportPath(root, sections.source)}';` : ''}
 ${help ? `import { ${help.exportName} as __help } from '${toImportPath(root, help.source)}';` : ''}
@@ -662,9 +661,7 @@ ${help ? '  help: __help,' : ''}
   },
   boot: {
 ${manifest.boot?.hooks ? '    ..._hooks,' : ''}
-    seedManifest: {
-      seedKeys: [${seedKeysList}],
-      get compiledDir() { return getCompiledDir(); },${seedPolicyLine}
+    seedManifest: {${seedPolicyLine}
     },
   },
 ${manifest.migrations ? '  migrations,' : ''}
@@ -1417,11 +1414,6 @@ export type { ImportMode } from '@abuddy/sdk/utils';
   }
 
   /** The seed keys the host seeds into the database: entries with a seeder */
-  function seededKeys(): string[] {
-    return Object.entries(resolvedSeeds())
-      .filter(([, seed]) => seed.kind !== 'format' || seed.seeder !== undefined || formatEntities(seed.format).length > 0)
-      .map(([key]) => key);
-  }
 
   /** [entity, source module specifier, export name] of each seed hook the manifest declares */
   function seedHookEntries(): [string, string, string][] {

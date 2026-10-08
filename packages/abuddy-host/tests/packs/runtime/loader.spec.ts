@@ -253,7 +253,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
         },
         boot: {
           onInit() {},
-          seedManifest: { seedKeys: ['actions'], get compiledDir() { return compiledDir; } },
+          seedManifest: {},
         },
         ${extra}
       },

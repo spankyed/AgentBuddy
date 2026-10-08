@@ -21,6 +21,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PUBLISH_TREE } from './published-manifest.ts';
+import { SHARED_INSTANCE_PACKAGES } from './shared-deps.ts';
 // The signal list, not a second copy of it: `exclusive-lock.ts` owns which interruptions a release has
 // to be hung on, and why `SIGBREAK` is in it. Relative, as every import inside this package is
 import { INTERRUPTS } from '../exclusive-lock.ts';
@@ -129,6 +130,8 @@ function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
       pkgFile('abuddy-host', 'src', 'build', 'published-manifest.ts'),
       pkgFile('abuddy-host', 'src', 'build', 'specifiers.ts'),
       pkgFile('abuddy-host', 'src', 'build', 'source-resolution.ts'),
+      // Reached through this module: it is where the list of inlined packages comes from
+      pkgFile('abuddy-host', 'src', 'build', 'shared-deps.ts'),
       // How the built tree is published: assembled under `.temp/` and renamed over `dist`, so it decides where
       // the output lands rather than merely whether the build runs — which is what `NOT_A_BUILD_INPUT` is for,
       // and why this is declared instead
@@ -139,13 +142,32 @@ function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
   };
 }
 
-/** A package esbuild bundles into `dist/package/`, inlining @abuddy/host from source (scripts/bundle-package.ts) */
+/**
+ * Each workspace whose source a bundle **inlines**, as a directory name.
+ *
+ * Derived from the list of what is inlined rather than written out, so a third shared-instance package arrives
+ * declared. The naming is the repo's own and holds for all of them: `@abuddy/x` lives in `packages/abuddy-x`.
+ */
+const INLINED_SOURCE_DIRS = SHARED_INSTANCE_PACKAGES.map((name) => name.replace('@abuddy/', 'abuddy-'));
+
+/**
+ * A package esbuild bundles into `dist/package/`, inlining @abuddy/host and the shared-instance packages from
+ * source (scripts/bundle-package.ts).
+ *
+ * **It declares every source it inlines, which is the whole of what it reads.** `abuddy-host/src` was there
+ * and the shared-instance packages' were not, so an edit to `@abuddy/sdk/src` left the `@abuddy/cli` and
+ * `@abuddy/testing` bundles stale with their stamps reading fresh — silent, and the way it surfaced was a
+ * packaged-authoring run type-checking a generated file against an SDK whose type no longer matched the CLI
+ * that emitted it. `chain-inputs.spec.ts` walks a build script's own imports, which these are not: the
+ * bundler reaches them through the package being bundled.
+ */
 function bundled(pkg: string, ...extraInputs: string[]): BuildUnit {
   return {
     inputs: [...SHARED_INPUTS, repoFile('scripts', 'bundle-package.ts'),
       repoFile('scripts', 'lib', 'published-imports.ts'), ...extraInputs,
       pkgFile(pkg, 'src'), pkgFile(pkg, 'package.json'), pkgFile(pkg, 'tsconfig.json'),
-      pkgFile('abuddy-host', 'src'), pkgFile('abuddy-host', 'package.json')],
+      pkgFile('abuddy-host', 'src'), pkgFile('abuddy-host', 'package.json'),
+      ...INLINED_SOURCE_DIRS.flatMap((dir) => [pkgFile(dir, 'src'), pkgFile(dir, 'package.json')])],
     outputs: [pkgFile(pkg, 'dist', 'package', 'package.json'), pkgFile(pkg, 'dist', 'package', 'dist')],
   };
 }

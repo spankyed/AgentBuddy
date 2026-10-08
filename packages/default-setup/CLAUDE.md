@@ -346,7 +346,7 @@ Version-targeted migrations in `src/migrations/`, one file per target version. R
 The pack registers boot hooks via `__generated__/pack-entry.ts`:
 - `onInit` — from `boot.hooks` (`src/features/hooks.ts`): nothing to do at present. The Settings row is the host's and is written on the user's first change
 - `onShutdown` — from `boot.hooks`: kills terminal processes, clears brain schedules, removes ad-hoc listeners and clears the flow actor registry
-- `seedManifest` — from `boot.seed` and `boot.seedPolicy`: its `seedKeys` are the compiled seeds the host seeds (hash-checked)
+- `seedManifest` — from `boot.seedPolicy`: what the pack asks not to be seeded, and when. Which keys are seeded is `seeds.json`'s, written beside the compiled seeds by the build that compiled them
 
 ## Build
 

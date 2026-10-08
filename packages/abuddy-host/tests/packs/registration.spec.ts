@@ -291,7 +291,7 @@ describe('packSeedTargets', () => {
   // origin knows and a registration does not, so a pack never has to tell the host where its compiled data
   // is: a registration claiming a `compiledDir` is not enough to be seeded from.
   it('leaves out a pack with no origin, having nowhere to read seeds from', () => {
-    registerPack({ id: 'nowhere-pack', boot: { seedManifest: { seedKeys: ['actions'], compiledDir: '/compiled' } } } as unknown as PackRegistration);
+    registerPack({ id: 'nowhere-pack', boot: { seedManifest: {} } } as unknown as PackRegistration);
     registered.push('nowhere-pack');
 
     expect(registry.packSeedTargets().map((t) => t.manifest.id)).not.toContain('nowhere-pack');
@@ -301,7 +301,7 @@ describe('packSeedTargets', () => {
 
   it("carries each pack's own id, directory and declared policy, whoever ships it", () => {
     const seedPolicy = { skipAtBoot: ['settings'] };
-    registerPack({ id: 'shipped-pack', boot: { seedManifest: { seedKeys: ['actions'], compiledDir: '/c', seedPolicy } } } as unknown as PackRegistration,
+    registerPack({ id: 'shipped-pack', boot: { seedManifest: { seedPolicy } } } as unknown as PackRegistration,
       origin('shipped-pack', true));
     registerPack({ id: 'installed-pack' } as PackRegistration, origin('installed-pack', false));
     registered.push('shipped-pack', 'installed-pack');

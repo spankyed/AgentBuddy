@@ -13,10 +13,15 @@ export interface PackMigration {
   up: () => void;
 }
 
+/**
+ * What a pack's registration says about its seeding — which today is only the policy.
+ *
+ * It carried `seedKeys` and `compiledDir` as well, for `orchestrateDeclarativeSeed` to read; nothing has read
+ * either since that was deleted, and a pack author saw two fields on a published type that did nothing. What
+ * reads the compiled seeds now asks the pack's own directory (`PACK_LAYOUT.seedsDir`), and which keys are
+ * seeded is in the `seeds.json` beside them — the one account of it, written by the build that compiled them.
+ */
 export interface PackSeedManifest {
-  /** The pack's seeded keys (`boot.seed`), each with a `<key>.seed.json` in `compiledDir` */
-  seedKeys: string[];
-  compiledDir: string;
   seedPolicy?: { skipAtBoot?: string[]; skipAfterOnboarding?: string[] };
 }
 
