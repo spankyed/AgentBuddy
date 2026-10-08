@@ -114,9 +114,21 @@ Rules that pay for themselves:
   and the specifier rewrite are the cheap part; being answerable for a vendor bundle's semantics is not.
   Revisit when the phase skip below has landed and this still matters, or when a second prebuilt
   dependency makes the mechanism pay for itself twice.
-  **What does not work is pre-converting while still bundling**: 20.7s to 24.7s, +20%. That arm was also
-  confounded — the spike's resolver ran before `opaqueVendorPlugin` and so turned `no-treeshake` off with
-  it — so all it establishes is that the idea is not worth isolating properly.
+  **Pre-converting while still bundling is the worst of the three, and it took two measurements to say
+  why.** The first read +20% against the shipped arm, and it was confounded: the spike's resolver returned
+  before `opaqueVendorPlugin` could, so that arm silently lost `no-treeshake` too — two plugins matching
+  one specifier, both `enforce: 'pre'`, and rollup calls only the first to return. Measured again with both
+  arms in the same regime (the spike returning `moduleSideEffects: 'no-treeshake'` itself), handing rollup
+  the pre-converted ESM is **-1.0s and -1.1s, about -5%**, consistent over 3 and 5 interleaved pairs; the
+  output is the same size to within 662 bytes either way, because the CommonJS interop was expanding the
+  UMD to the same thing. So the whole of that +20% was the lost shake, and the format is a small saving
+  rather than a cost — the decomposition first written here, +2.6s of shake plus +1.4s for a bigger input,
+  was wrong in the second term's sign.
+  **What that buys is a sharper conclusion, not a candidate.** It needs the same conversion, so it carries
+  the same risk, for a third of what externalising gives: whoever takes on being answerable for a vendor
+  bundle's semantics should take the -3.0s and not the -1.0s. The lesson about the arms is the reusable
+  half — the byte count tells the two regimes apart (8,511,670 shaken against 8,549,845 opaque), it had
+  already caught one dead plugin in this same spike, and it was not run on this arm.
 
   **Skipping the phase is not the other lever.** `abuddy build` records what each phase read, and that
   record's own header says it is *"never a cache key"* — it is a dep file, so it can be stale about a read
