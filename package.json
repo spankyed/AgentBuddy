@@ -55,6 +55,7 @@
     "spec": "tsx scripts/spec.ts",
     "spec:full": "tsx scripts/spec.ts --full",
     "spec:dry": "tsx scripts/spec.ts --dry",
+    "check:idle": "tsx scripts/check-idle.ts",
     "measure": "tsx scripts/measure.ts",
     "measure:loop": "tsx scripts/measure-loop.ts",
     "measure:stretch": "tsx scripts/measure-stretch.ts",

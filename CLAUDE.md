@@ -664,6 +664,16 @@ npm run measure:loop -- "<cmd>"  # Not how long a command took, but how long eac
                          # the block alone — 38s against 60s is one busy afternoon from failing. `elu` says
                          # whether a quiet process was waiting or working.
                          # docs/reference/pipeline-commands.md has the measured habits behind both.
+npm run check:idle       # Is this machine quiet enough to measure on — `82% idle — quiet enough to
+                         # measure on`, exit 1 below `IDLE_FLOOR`. One floor, because every command that
+                         # asks it prints its reading and records nothing. `measure` and `measure:loop`
+                         # refuse on the same floor before they run anything, so asking first saves a
+                         # five-run A/B: `npm run check:idle && npm run measure -- "<cmd>"`.
+                         # **It answers "is it worth starting", not "will this be clean"**: a reading is of
+                         # this instant, and a long command is its own load — a chain run reads 83% before
+                         # ending under the floor. Not a chain step, and must not become one, since the
+                         # chain would then gate on its own load
+
 # Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)
 npm run check:specifiers # Every import rule, over the whole repo (2.5s, one parse and one tree walk). Takes paths to
                          # run only the per-file rules over them (0.9s over one feature), and says which
