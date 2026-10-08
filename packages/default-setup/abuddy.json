@@ -271,9 +271,6 @@
     "seedPolicy": {
       "skipAtBoot": [
         "settings"
-      ],
-      "skipAfterOnboarding": [
-        "notes"
       ]
     }
   },

@@ -667,6 +667,8 @@ Re-seeding follows the same rules for every entry:
 
 Rows without a stored `sourceHash` (rows users created) stay user-owned. A seeded row without `seededFields` (flows: `seededGraph`) can't be checked for edits, so it's left alone like an edited one.
 
+**A seeded row the user deleted is not seeded again, and nor are its children.** A seed finds its own row by `seedKey` whether or not the row is deleted, so a soft-deleted row is one the user threw away: it is left alone, and its children are not visited — they would be created under a deleted parent. This is the same rule as the ones above (leave what the user has taken ownership of), and it means a pack needs no policy to say "seed this only on a first run". `wipe-and-replace` is the exception by definition: it removes every row of the entry's types first, deleted ones included, and creates them all again.
+
 ## Slash commands
 
 A slash command is a `/name` the chat composer recognizes. The composer's list is two sources merged:

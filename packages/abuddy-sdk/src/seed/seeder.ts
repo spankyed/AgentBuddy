@@ -133,9 +133,20 @@ export function createSeeder(options: SeederOptions): Seeder {
        * A container another record seeded (another pack's, or another entry's) is reused as a parent
        * (`reused`): its children are seeded under it and the row itself is left alone.
        */
-      const find = (record: SeedRecord, seedKey: string, context: SeedHookContext, hooks?: SeedHooks): { match?: SeedHookMatch; reused?: boolean } => {
-        const keyed = record.entity ? ears().findWhere<{ id: EARS.EntityId; sourceHash?: string }>(record.entity as EARS.Entity, SEED_KEY as string, seedKey)[0] : undefined;
-        if (keyed) return { match: { id: keyed.id, sourceHash: keyed.sourceHash } };
+      const find = (record: SeedRecord, seedKey: string, context: SeedHookContext, hooks?: SeedHooks): { match?: SeedHookMatch; reused?: boolean; deleted?: boolean } => {
+        /**
+         * **The keyed lookup sees deleted rows, and that is the whole of how a seed knows the user removed
+         * one.** `qx` carries no filter; the finders do (`@abuddy/ears`' `query-helpers.ts`, `!isDeleted`),
+         * so `findWhere` here hid exactly the row that answers "did the user delete this" — a soft-deleted
+         * row keeps the `seedKey` this is searching for. With it hidden, `findByIdentity` missed too (same
+         * filter) and the record was created again: a fresh copy beside the one in the trash, every time the
+         * pack's compiled seeds changed.
+         */
+        const keyed = record.entity
+          ? qx(record.entity as EARS.Entity).where(SEED_KEY as string, seedKey)
+            .pickAll()[0] as { id: EARS.EntityId; sourceHash?: string; deleted?: boolean } | undefined
+          : undefined;
+        if (keyed) return { match: { id: keyed.id, sourceHash: keyed.sourceHash }, deleted: keyed.deleted === true };
         const match = findByIdentity(record, context, hooks);
         if (!match) return {};
         const owner = ears().getAttr(match.id, SEED_KEY) as string | null;
@@ -226,8 +237,24 @@ export function createSeeder(options: SeederOptions): Seeder {
           const label = recordLabel(record, identity);
           const seedKey = childSeedKey(parentKey, record, identity);
           try {
-            const { match: existing, reused } = find(record, seedKey, context, hooks);
+            const { match: existing, reused, deleted } = find(record, seedKey, context, hooks);
             if (existing) {
+              /**
+               * **The user removed it, which settles every other question — so this comes first.** A row
+               * carrying this record's seed key and marked deleted is one the seed created and the user threw
+               * away; recreating it is the one outcome nobody wants, and it is what happened until the lookup
+               * above could see it. It joins the three outcomes beside it — untracked, unchanged, edited — all
+               * of which are the same idea: leave what the user has taken ownership of.
+               *
+               * **And its children are not visited.** They would be created under a deleted parent, since
+               * that is what `context.parentId` would carry. `wipe-and-replace` never reaches here: `wipe`
+               * removed the rows first, the deleted ones with them, which is what that mode means.
+               */
+              if (deleted) {
+                counts.skipped++;
+                ctx.log(`  ${key} skipped (deleted): ${label}`);
+                return;
+              }
               // A container another record seeded stays that record's: it isn't updated, stamped or re-keyed,
               // and its children are seeded in every mode (keep-existing skips only the ones that exist)
               if (reused) {

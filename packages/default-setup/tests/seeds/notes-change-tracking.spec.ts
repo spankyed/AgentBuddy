@@ -11,6 +11,7 @@ import { compileBuiltinFormat, type SeedFormatConfig, type SeedRecord } from '@a
 import { createSeeder } from '@abuddy/sdk/seed';
 import type { ImportMode, ImportCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
 import { untypedQx as qx } from '@abuddy/ears';
+import { trash } from '@abuddy/sdk/repositories';
 import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
 import { createEntityWithDefaults, type EARS } from '#generated/ears.ts';
 import { FIXTURES, PACK_DIR, resetDatabase, snapshot, type Snapshot } from './harness.ts';
@@ -47,6 +48,12 @@ function seedNotes(sources: 'v1' | 'v2' | 'default-setup', options: { mode?: Imp
 }
 
 /** The notes part of a snapshot, as the goldens record it */
+/** Every Note row with this title, deleted ones included: a recreated note is a second id, not a changed row */
+function notesTitled(title: string): EARS.EntityId[] {
+  return (entityIds() as EARS.EntityId[]).filter((id) => id.startsWith('Note-')
+    && (qx(id).pickAll() as Array<Record<string, unknown>>)[0]?.title === title);
+}
+
 function notesOf(snap: Snapshot, { withHash = false } = {}) {
   return {
     rows: Object.fromEntries(
@@ -192,6 +199,57 @@ describe('notes seeding (generic pipeline)', () => {
     const after = snapshot();
     expect(after.rows['Note:Welcome'], 'the untracked note').toEqual(before.rows['Note:Welcome']);
     expectReseed(before, after, compile('v2').records, 'replace-on-collision');
+  });
+
+  /**
+   * **A note the user deleted is not seeded again.** Notes delete softly (`trash.move` marks the row and keeps
+   * its `seedKey`), so the record of the deletion is on the row the seeder searches for — but the seeder used
+   * a finder that hides deleted rows, missed it, missed it again by identity, and created a second note beside
+   * the one in the trash. `boot.seedPolicy.skipAfterOnboarding` was what stopped that happening for this one
+   * key; the lookup seeing deleted rows stops it for every key.
+   *
+   * The assertion is that no *second* row appears: `snapshot()` reads with an unfiltered `qx`, so the trashed
+   * row is still there either way, and a count is what tells "left alone" from "recreated".
+   */
+  it('leaves a note the user deleted alone, rather than seeding it again', () => {
+    resetDatabase();
+    addLinkTargets();
+    seedNotes('v1');
+    const welcome = notesTitled('Welcome');
+    if (welcome.length !== 1) throw new Error(`expected one seeded Welcome note to delete, found ${welcome.length}`);
+    trash.move([welcome[0]]);
+
+    seedNotes('v2', { mode: 'replace-on-collision' });
+
+    const after = notesTitled('Welcome');
+    expect(after, 'the seed created a second Welcome beside the deleted one').toEqual(welcome);
+    expect((qx(welcome[0]).pickAll() as Array<{ deleted?: boolean }>)[0]?.deleted, 'still the user\'s').toBe(true);
+  });
+
+  /**
+   * **And its children are not visited**, which is a separate claim: they would be created under a deleted
+   * parent, since that is what the seeder would pass as their `parentId`. Only the parent is trashed here —
+   * `noteCommands.delete` would trash the subtree, which would make the case pass for the wrong reason.
+   *
+   * `Projects/Archive/Old Task` is a child two levels down whose `completed` v2 changes, so "not visited"
+   * is observable as the v1 value surviving a v2 seed.
+   */
+  it('does not seed the children of a note the user deleted', () => {
+    resetDatabase();
+    addLinkTargets();
+    seedNotes('v1');
+    const projects = notesTitled('Projects');
+    if (projects.length !== 1) throw new Error(`expected one seeded Projects note to delete, found ${projects.length}`);
+    const deepChild = snapshot().rows['Note:Projects/Archive/Old Task'];
+    expect(deepChild, 'the fixture no longer has the child this case is about').toBeDefined();
+    expect(deepChild.completed, 'v1 leaves it incomplete, which is what v2 changes').toBe(false);
+    trash.move([projects[0]]);
+
+    seedNotes('v2', { mode: 'replace-on-collision' });
+
+    expect(notesTitled('Projects'), 'the deleted parent was seeded again').toEqual(projects);
+    expect(snapshot().rows['Note:Projects/Archive/Old Task'].completed,
+      'a child under a deleted parent was updated, so the seeder descended into it').toBe(false);
   });
 
   it('wipes nested notes and seeds them again', () => {
