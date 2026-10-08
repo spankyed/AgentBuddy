@@ -15,7 +15,13 @@ export type IncomingSettingsEvents =
   // field. A field declared here would need a producer in every sender, which is the part a per-event
   // correlation gets wrong: declaring it is cheap and minting it everywhere is not.
   | { type: 'UPDATE_SETTINGS'; entityType: 'section' | 'plugin'; label: string; path: string[]; value: any }
-  | { type: 'RESET_SETTINGS' }
+  /**
+   * Forgets the user's changes. With no `target`, every one of them; with one, that section's or that
+   * feature's alone — which is *removing* the user's slice, after which the registration's defaults apply on
+   * the next read. One optional object rather than two optional fields, so "a kind without a label" is not a
+   * shape anyone has to check for.
+   */
+  | { type: 'RESET_SETTINGS'; target?: { entityType: 'section' | 'plugin'; label: string } }
   | { type: 'REPLACE_SETTINGS'; data: unknown }
   | { type: 'RESET_APP' }
 

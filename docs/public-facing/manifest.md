@@ -141,10 +141,6 @@ The `boot` object configures hooks that run during app startup:
       "actions": "src/seeds/actions",
       "prompts": "src/seeds/prompts",
       "flows": { "path": "src/seeds/flows" }
-    },
-    "seedPolicy": {
-      "skipAtBoot": ["flows"],
-      "skipAfterOnboarding": ["onboarding"]
     }
   }
 }
@@ -153,8 +149,7 @@ The `boot` object configures hooks that run during app startup:
 | Field | Type | Description |
 |---|---|---|
 | `hooks` | `string` | Module exporting lifecycle hooks (see below) |
-| `seed` | `Record<string, string \| SeedEntryConfig>` | Seed sources: `actions`, `prompts` and `flows` take a path; any other key is `{ path, format }` (optionally with `seeder`) or `{ seeder }`. Declare a feature's default settings with `features[].settings` |
-| `seedPolicy` | `object` | Controls which seed types to skip at boot or after onboarding |
+| `seed` | `Record<string, string \| SeedEntryConfig>` | Seed sources: `actions`, `prompts` and `flows` take a path; any other key is `{ path, format }` (optionally with `seeder`) or `{ seeder }`. **Every entry imports rows into the database** — that is what `boot.seed` is for, so content your own code reads back is an ordinary import of your own source, not an entry here. Declare a feature's default settings with `features[].settings` |
 
 The `hooks` module's named exports become the pack's boot hooks:
 

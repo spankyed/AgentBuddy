@@ -11,9 +11,16 @@ export interface FakeSettingsUpdate {
   value: unknown;
 }
 
+/** A reset a component asked for: one target, or every change the user made */
+export interface FakeSettingsReset {
+  target?: SettingsTarget;
+}
+
 export interface FakeSettings extends SettingsPort {
   /** Every change made through the port, in the order they were made */
   readonly updates: readonly FakeSettingsUpdate[];
+  /** Every reset asked for through the port, in order */
+  readonly resets: readonly FakeSettingsReset[];
   /** Makes `document` the settings in effect and tells whoever is following them */
   set(document: Record<string, unknown>): void;
   /** What the last change was answered with; `saved` unless a test says otherwise */
@@ -47,11 +54,13 @@ export function fakeSettings(document: Record<string, unknown> = {}): FakeSettin
   let doc = { plugins: {}, ...document } as Record<string, unknown>;
   let save: SettingsSaveStatus = { status: 'idle', problems: [] };
   const updates: FakeSettingsUpdate[] = [];
+  const resets: FakeSettingsReset[] = [];
   const listeners = new Set<() => void>();
   const tell = () => { for (const listener of listeners) listener(); };
 
   return {
     updates,
+    resets,
     section: <T,>(name: string) => doc[name] as T | undefined,
     feature: <T,>(ref: FeatureRef) => (doc.plugins as Record<string, unknown> | undefined)?.[ref] as T | undefined,
     saveStatus: () => save,
@@ -63,6 +72,22 @@ export function fakeSettings(document: Record<string, unknown> = {}): FakeSettin
       updates.push({ target, path: [...path], value });
       const at = 'section' in target ? [target.section, ...path] : ['plugins', target.feature, ...path];
       doc = setIn(doc, at, value);
+      save = { status: 'saved', problems: [] };
+      tell();
+    },
+    /**
+     * Drops what `target` names from the document, or the whole of it with none — which is what the real port
+     * does: a reset *removes* the user's slice so the defaults apply again, rather than writing values in. The
+     * document here holds no defaults underneath, so what a test sees is the slice gone.
+     */
+    reset(target) {
+      resets.push({ ...(target && { target }) });
+      if (!target) doc = { plugins: {} };
+      else if ('section' in target) doc = Object.fromEntries(Object.entries(doc).filter(([key]) => key !== target.section));
+      else {
+        const plugins = Object.entries((doc.plugins ?? {}) as Record<string, unknown>).filter(([ref]) => ref !== target.feature);
+        doc = { ...doc, plugins: Object.fromEntries(plugins) };
+      }
       save = { status: 'saved', problems: [] };
       tell();
     },

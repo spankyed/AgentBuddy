@@ -4,10 +4,9 @@ import * as crypto from 'crypto';
 import { createLogger } from '@abuddy/sdk/logger';
 import { PACK_LAYOUT, packSeedFiles } from '../layout.ts';
 import { recordSeedOutcomes } from '../installed.ts';
-import type { PackSeedManifest } from '@abuddy/sdk/framework';
 import type { PackManifest } from '@abuddy/sdk/build';
 import { appState } from '../../app-state/index.ts';
-import { importCompiledSeeds, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { importCompiledSeeds } from '@abuddy/sdk/utils';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('pack-seed');
@@ -62,11 +61,6 @@ export interface PackSeedTarget {
   manifest: Pick<PackManifest, 'id' | 'dependencies'>;
   /** The pack's own directory; its compiled seeds are at `runtime/seeds` under it */
   dir: string;
-  /**
-   * What the pack asks not to be seeded, and when (`boot.seedManifest.seedPolicy`). Read from its
-   * registration rather than its manifest, since it is the pack's code that declares it.
-   */
-  seedPolicy?: PackSeedManifest['seedPolicy'];
 }
 
 /**
@@ -87,7 +81,7 @@ function dependencyState(dependencies: Record<string, string> | undefined, seede
  * (`packSeedOrder`), so a pack sees what the packs it depends on seeded in this same run.
  *
  * **Every pack, by one rule**, whoever ships it: one hash over the files in its seeds directory, one record
- * (`AppState.packSeedHashes`), one retry rule, and its own `seedPolicy` honoured if it declares one. Which
+ * (`AppState.packSeedHashes`) and one retry rule. Which
  * directory that is follows from where the pack lives, so a pack does not tell the host
  * where its compiled data is — the host knows, because it is the host that put the pack there.
  *
@@ -128,7 +122,6 @@ export function seedPacks(packs: Iterable<PackSeedTarget>, importSeeds: typeof i
       // `wipe-and-replace` — so naming it changes nothing and says what this is
       errors = importErrors(importSeeds({
         compiledDir: seedsDir,
-        include: evaluateSeedPolicy(pack.seedPolicy),
         mode: 'replace-on-collision',
       }));
     } catch (err) {
@@ -151,28 +144,3 @@ export function seedPacks(packs: Iterable<PackSeedTarget>, importSeeds: typeof i
   return failures;
 }
 
-/**
- * The keys a pack's policy keeps out of this seed run, as the `include` filter `importCompiledSeeds` takes:
- * an empty set for a key means its seeder is skipped. `skipAtBoot` is unconditional — default-setup's
- * settings are seeded once by its own onboarding rather than restored on every boot — and
- * `skipAfterOnboarding` applies only once the user has finished onboarding, so first-run data arrives and
- * does not come back after they have deleted it.
- */
-function evaluateSeedPolicy(policy?: PackSeedManifest['seedPolicy']): Record<string, SeedIncludeSet> {
-  if (!policy) return {};
-  const include: Record<string, SeedIncludeSet> = {};
-
-  for (const key of policy.skipAtBoot ?? []) {
-    include[key] = new Set();
-  }
-
-  if (policy.skipAfterOnboarding?.length) {
-    if (appState.get().hasOnboarded) {
-      for (const key of policy.skipAfterOnboarding) {
-        include[key] = new Set();
-      }
-    }
-  }
-
-  return include;
-}

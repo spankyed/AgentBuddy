@@ -594,46 +594,12 @@ describe('seedPacks', () => {
     seedPacks([pack], applyFn);
 
     expect(applyFn).toHaveBeenCalledOnce();
+    // No `include`: every key a pack seeds is imported. What a seed leaves alone it decides from the rows —
+    // an unchanged hash, an edited row, one the user deleted — rather than from a policy naming keys
     expect(applyFn).toHaveBeenCalledWith({
       compiledDir: path.join(pack.dir, 'runtime', 'seeds'),
-      // Nothing skipped: the pack declares no seed policy, so no key is filtered out of the run
-      include: {},
       mode: 'replace-on-collision',
     });
-  });
-
-  // **`seedPolicy` is any pack's now, which is the point of the merge.** It was read only on the path the
-  // pack the app ships took, so an installed pack declaring one was seeded as though it had not — and
-  // default-setup's own policy (`skipAtBoot: ['settings']`) is what that path existed to honour.
-  it("keeps a pack's declared keys out of the run, whoever ships the pack", () => {
-    const packsDir = path.join(_appDirOf(tmpDir), 'packs');
-    const pack = makePackWithSeeds(packsDir, 'policy-pack', {
-      [seedFile('actions')]: [{ label: 'kept' }],
-      [seedFile('settings')]: { theme: 'dark' },
-    });
-
-    const applyFn = vi.fn().mockReturnValue({});
-    seedPacks([{ ...pack, seedPolicy: { skipAtBoot: ['settings'] } }], applyFn);
-
-    // An empty set for a key is how `importCompiledSeeds` is told to skip that seeder
-    expect(applyFn).toHaveBeenCalledWith(expect.objectContaining({ include: { settings: new Set() } }));
-  });
-
-  // The other half of the policy, which only applies once the user is past onboarding
-  it('keeps skipAfterOnboarding keys only once the user has onboarded', () => {
-    const packsDir = path.join(_appDirOf(tmpDir), 'packs');
-    const pack = makePackWithSeeds(packsDir, 'onboarding-pack', { [seedFile('notes')]: [{ title: 'first run' }] });
-    const policy = { skipAfterOnboarding: ['notes'] };
-
-    const applyFn = vi.fn().mockReturnValue({});
-    seedPacks([{ ...pack, seedPolicy: policy }], applyFn);
-    expect(applyFn, 'first-run data arrives').toHaveBeenCalledWith(expect.objectContaining({ include: {} }));
-
-    appState.update({ hasOnboarded: true, packSeedHashes: {} });
-    applyFn.mockClear();
-    seedPacks([{ ...pack, seedPolicy: policy }], applyFn);
-    expect(applyFn, "and does not come back after they have deleted it")
-      .toHaveBeenCalledWith(expect.objectContaining({ include: { notes: new Set() } }));
   });
 
   it('skips packs without runtime/seeds', () => {

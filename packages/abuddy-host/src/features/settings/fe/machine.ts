@@ -91,7 +91,8 @@ type UIEvent =
   | { type: 'PLUGIN.SELECT'; pluginId: FeatureRef }
   | ({ type: 'SETTINGS.UPDATE'; path: string[]; value: any } & SettingsTarget)
   | { type: 'SETTINGS.REPLACE'; data: unknown }
-  | { type: 'SETTINGS.RESET' }
+  /** With no `target`, every change the user made; with one, that section's or that feature's alone */
+  | { type: 'SETTINGS.RESET'; target?: { entityType: 'section' | 'plugin'; label: string } }
   | { type: 'SETTINGS.LOAD' }
   | { type: 'CLI.TEST'; provider: string }
   | { type: 'PACK_SEEDS.PREVIEW'; directory: string }
@@ -215,9 +216,11 @@ export function createSettingsMachine(io: SettingsIO) {
       save: { status: 'refused' as const, problems: typeOf('SETTINGS_REFUSED', event).problems },
     })),
 
-    resetSettings: () => {
+    resetSettings: ({ event }) => {
+      const { target } = typeOf('SETTINGS.RESET', event);
       sendToSystem('settings', {
         type: 'RESET_SETTINGS',
+        ...(target && { target }),
       });
     },
 

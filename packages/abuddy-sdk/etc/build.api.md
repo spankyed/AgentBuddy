@@ -51,16 +51,6 @@ export const BootConfigSchema: z.ZodObject<{
         format?: string | undefined;
         seeder?: string | undefined;
     }>>>;
-    seedPolicy: z.ZodOptional<z.ZodObject<{
-        skipAtBoot: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-        skipAfterOnboarding: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-    }, "strict", z.ZodTypeAny, {
-        skipAtBoot?: string[] | undefined;
-        skipAfterOnboarding?: string[] | undefined;
-    }, {
-        skipAtBoot?: string[] | undefined;
-        skipAfterOnboarding?: string[] | undefined;
-    }>>;
 }, "strict", z.ZodTypeAny, {
     hooks?: string | undefined;
     seed?: Record<string, string | {
@@ -68,10 +58,6 @@ export const BootConfigSchema: z.ZodObject<{
         format?: string | undefined;
         seeder?: string | undefined;
     }> | undefined;
-    seedPolicy?: {
-        skipAtBoot?: string[] | undefined;
-        skipAfterOnboarding?: string[] | undefined;
-    } | undefined;
 }, {
     hooks?: string | undefined;
     seed?: Record<string, string | {
@@ -79,10 +65,6 @@ export const BootConfigSchema: z.ZodObject<{
         format?: string | undefined;
         seeder?: string | undefined;
     }> | undefined;
-    seedPolicy?: {
-        skipAtBoot?: string[] | undefined;
-        skipAfterOnboarding?: string[] | undefined;
-    } | undefined;
 }>;
 
 // @public (undocumented)
@@ -580,16 +562,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             format?: string | undefined;
             seeder?: string | undefined;
         }>>>;
-        seedPolicy: z.ZodOptional<z.ZodObject<{
-            skipAtBoot: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-            skipAfterOnboarding: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-        }, "strict", z.ZodTypeAny, {
-            skipAtBoot?: string[] | undefined;
-            skipAfterOnboarding?: string[] | undefined;
-        }, {
-            skipAtBoot?: string[] | undefined;
-            skipAfterOnboarding?: string[] | undefined;
-        }>>;
     }, "strict", z.ZodTypeAny, {
         hooks?: string | undefined;
         seed?: Record<string, string | {
@@ -597,10 +569,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             format?: string | undefined;
             seeder?: string | undefined;
         }> | undefined;
-        seedPolicy?: {
-            skipAtBoot?: string[] | undefined;
-            skipAfterOnboarding?: string[] | undefined;
-        } | undefined;
     }, {
         hooks?: string | undefined;
         seed?: Record<string, string | {
@@ -608,10 +576,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             format?: string | undefined;
             seeder?: string | undefined;
         }> | undefined;
-        seedPolicy?: {
-            skipAtBoot?: string[] | undefined;
-            skipAfterOnboarding?: string[] | undefined;
-        } | undefined;
     }>>;
     steps: z.ZodOptional<z.ZodObject<{
         register: z.ZodString;
@@ -882,10 +846,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             format?: string | undefined;
             seeder?: string | undefined;
         }> | undefined;
-        seedPolicy?: {
-            skipAtBoot?: string[] | undefined;
-            skipAfterOnboarding?: string[] | undefined;
-        } | undefined;
     } | undefined;
     steps?: {
         register: string;
@@ -990,10 +950,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             format?: string | undefined;
             seeder?: string | undefined;
         }> | undefined;
-        seedPolicy?: {
-            skipAtBoot?: string[] | undefined;
-            skipAfterOnboarding?: string[] | undefined;
-        } | undefined;
     } | undefined;
     steps?: {
         register: string;
@@ -1098,10 +1054,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             format?: string | undefined;
             seeder?: string | undefined;
         }> | undefined;
-        seedPolicy?: {
-            skipAtBoot?: string[] | undefined;
-            skipAfterOnboarding?: string[] | undefined;
-        } | undefined;
     } | undefined;
     steps?: {
         register: string;
@@ -1206,10 +1158,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             format?: string | undefined;
             seeder?: string | undefined;
         }> | undefined;
-        seedPolicy?: {
-            skipAtBoot?: string[] | undefined;
-            skipAfterOnboarding?: string[] | undefined;
-        } | undefined;
     } | undefined;
     steps?: {
         register: string;

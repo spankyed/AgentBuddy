@@ -494,6 +494,9 @@ export function pushNavHistory<T>(history: NavHistory<T>, entry: T): NavHistory<
 // @public
 export function readUntypedPluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): TSelected | undefined;
 
+// @public
+export function resetSettings(target?: SettingsTarget): void;
+
 // @public (undocumented)
 export type RouteComponents = Record<RouteName, Component>;
 
@@ -538,6 +541,7 @@ export interface SecretsSnapshot {
 // @public
 export interface SettingsPort {
     feature<T = unknown>(ref: FeatureRef): T | undefined;
+    reset(target?: SettingsTarget): void;
     saveStatus(): SettingsSaveStatus;
     section<T = unknown>(name: string): T | undefined;
     subscribe(listener: () => void): () => void;
@@ -710,6 +714,7 @@ export function usePlugin<T>(): T;
 export function useSettingsSave(): {
     save: Readonly<Ref<SettingsSaveStatus>>;
     update: SettingsPort['update'];
+    reset: SettingsPort['reset'];
 };
 
 // @public

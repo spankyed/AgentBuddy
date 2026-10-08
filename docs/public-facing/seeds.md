@@ -9,7 +9,7 @@ A seed passes through four, and each has its own vocabulary. **A seed is a noun 
 
 | Stage | What happens | Named |
 |---|---|---|
-| **author** | you write the sources | `src/seeds/`, `boot.seed`, `seedFormats`, `seedHooks`, `seedPolicy` |
+| **author** | you write the sources | `src/seeds/`, `boot.seed`, `seedFormats`, `seedHooks` |
 | **compile** | `abuddy build` turns them into records and hashes each one | `dist/runtime/seeds/*.seed.json`, `seeds.json`, `sourceHash` |
 | **import** | the app writes those records into the database | `importSeeds()`, `ImportMode`, `ImportCounts`, a `Seeder`'s `apply()` |
 | **record** | each row remembers where it came from, so your edits survive the next import | `seedKey`, `seededFields`, `seededGraph` |
@@ -442,11 +442,10 @@ Point your manifest at the seed directories:
 }
 ```
 
-A specialty key takes its path as a string or `{ "path": … }`; any other key is a [seed entry](#seeding-entities). `abuddy build` compiles each key into `<key>.seed.json` (media into `media/<key>/`) and writes `seeds.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Seeds. Seeding runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. The hash covers every seeded key's compiled file, including default-setup's `settings`: changing default settings re-runs the boot seed (its other rows are still skipped by their own hashes), while `seedPolicy.skipAtBoot` keeps boot seeding from resetting settings. At boot, packs seed in dependency order, so a pack's seeds can reference what a pack it declares a dependency on seeded. A seed that reports errors fails: an external pack's error is recorded on its installed-packs entry, and the same output isn't retried until it changes — or until one of the packs it depends on seeds, since that is the other thing that can change the outcome. Installing the pack again is also a fresh attempt, even at the version already installed: an install replaces the compiled files, and what was last seeded is remembered as the files and not only their contents.
+A specialty key takes its path as a string or `{ "path": … }`; any other key is a [seed entry](#seeding-entities). `abuddy build` compiles each key into `<key>.seed.json` (media into `media/<key>/`) and writes `seeds.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Seeds. Seeding runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. The hash covers every seeded key's compiled file, so changing one key's source re-runs the pack's boot seed, its other rows still being skipped by their own hashes. At boot, packs seed in dependency order, so a pack's seeds can reference what a pack it declares a dependency on seeded. A seed that reports errors fails: an external pack's error is recorded on its installed-packs entry, and the same output isn't retried until it changes — or until one of the packs it depends on seeds, since that is the other thing that can change the outcome. Installing the pack again is also a fresh attempt, even at the version already installed: an install replaces the compiled files, and what was last seeded is remembered as the files and not only their contents.
 
 ### Seed policy
 
-`boot.seedPolicy` skips seed keys during boot seeding. It applies to built-in packs only (the loader drops an external pack's boot seed manifest, and its seeds run through the per-pack seeding above).
 
 | Field | Effect |
 |---|---|
@@ -455,7 +454,7 @@ A specialty key takes its path as a string or `{ "path": … }`; any other key i
 
 ### Include sets
 
-Seeders take an include set per key (`SeedIncludeSet = true | ReadonlySet<string>`, from `@abuddy/sdk/utils`). `true` or no entry seeds every item; a set seeds only the top-level items it names, and an empty set skips the key. Boot seeding builds them from `seedPolicy`; Import Pack Seeds from the items the user picks. Items are named as `seeds.json` lists them:
+Seeders take an include set per key (`SeedIncludeSet = true | ReadonlySet<string>`, from `@abuddy/sdk/utils`). `true` or no entry seeds every item; a set seeds only the top-level items it names, and an empty set skips the key. Boot seeding includes every key; Import Pack Seeds builds them from the items the user picks. Items are named as `seeds.json` lists them:
 
 | Key | Item name |
 |---|---|

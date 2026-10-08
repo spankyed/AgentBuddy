@@ -9,7 +9,7 @@ import { detectAllArrayChanges, errorMessage } from '@abuddy/sdk/utils/pure';
 import { services } from '@abuddy/sdk/services';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
-import { SettingsRefusedError } from './document.ts';
+import { PLUGINS_SECTION, SettingsRefusedError } from './document.ts';
 import { answerSettings, type SettingsAnswer } from './answer.ts';
 import type { SettingsDocument } from './store.ts';
 
@@ -210,12 +210,21 @@ export const settingsSystem = setup({
 
     // Answered like the other two writes: it was the one that said nothing at all on success, so a caller
     // could not tell a reset that worked from one that never arrived
-    resetSettings: ({ reply }) => {
+    resetSettings: ({ event, reply }) => {
+      const { target } = settingsSpec.typeOf('RESET_SETTINGS', event);
       const outcome = ((): SettingsAnswer => {
         try {
-          services.settings.reset();
+          // **Resetting is removing, not writing defaults back.** The row holds only what the user changed and
+          // the store composes the registration's defaults underneath it, so dropping a slice is the whole of
+          // it — and it is why this needs no new capability: `removeStored` has always been the narrow door,
+          // reached until now only by migrations.
+          if (!target) services.settings.reset();
+          else if (target.entityType === 'plugin') services.settings.removeStored([PLUGINS_SECTION, target.label]);
+          else services.settings.removeStored([target.label]);
         } catch (error) {
-          return refusal(error, "The settings weren't reset");
+          return refusal(error, target
+            ? `Settings for ${target.entityType} "${target.label}" weren't reset`
+            : "The settings weren't reset");
         }
         broadcastSettings('SETTINGS_RESET');
         return { type: 'SETTINGS_SAVED' };

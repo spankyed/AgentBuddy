@@ -30,10 +30,17 @@ export const settingsPort: SettingsPort = {
   },
 
   update(target: SettingsTarget, path, value) {
-    // The view's own event shape: a section by its name, a feature by its ref
-    const addressed = 'section' in target
-      ? { entityType: 'section' as const, label: target.section }
-      : { entityType: 'plugin' as const, label: target.feature };
-    view()?.send({ type: 'SETTINGS.UPDATE', ...addressed, path: [...path], value });
+    view()?.send({ type: 'SETTINGS.UPDATE', ...addressed(target), path: [...path], value });
+  },
+
+  reset(target) {
+    view()?.send({ type: 'SETTINGS.RESET', ...(target && { target: addressed(target) }) });
   },
 };
+
+/** The view's own event shape: a section by its name, a feature by its ref */
+function addressed(target: SettingsTarget): { entityType: 'section' | 'plugin'; label: string } {
+  return 'section' in target
+    ? { entityType: 'section', label: target.section }
+    : { entityType: 'plugin', label: target.feature };
+}

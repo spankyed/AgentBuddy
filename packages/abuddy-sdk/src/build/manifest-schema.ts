@@ -119,10 +119,6 @@ export const BootConfigSchema = z.object({
   hooks: z.string().describe('Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and seeds) and onShutdown (when the pack\'s backend stops).').optional(),
   seed: SeedSectionSchema
     .describe('Seed data sources. Keys are seed names; the specialty keys (actions, prompts, flows) take a path, other keys an entry object.').optional(),
-  seedPolicy: z.object({
-    skipAtBoot: z.array(z.string()).describe('Seed types to skip during boot.').optional(),
-    skipAfterOnboarding: z.array(z.string()).describe('Seed types to skip after onboarding completes.').optional(),
-  }).strict().describe('Controls which seed types to skip at boot or after onboarding.').optional(),
 }).strict().describe('Boot sequence configuration.');
 
 const SystemSchema = z.object({

@@ -105,6 +105,7 @@ export type FakeInferenceReply = string | {
 // @public (undocumented)
 export interface FakeSettings extends SettingsPort {
     answer(status: SettingsSaveStatus): void;
+    readonly resets: readonly FakeSettingsReset[];
     set(document: Record<string, unknown>): void;
     readonly updates: readonly FakeSettingsUpdate[];
 }

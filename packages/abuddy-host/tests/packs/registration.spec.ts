@@ -299,18 +299,21 @@ describe('packSeedTargets', () => {
     expect(getPackExtensions('nowhere-pack')?.bootHooks).toEqual(['seedManifest']);
   });
 
-  it("carries each pack's own id, directory and declared policy, whoever ships it", () => {
-    const seedPolicy = { skipAtBoot: ['settings'] };
-    registerPack({ id: 'shipped-pack', boot: { seedManifest: { seedPolicy } } } as unknown as PackRegistration,
-      origin('shipped-pack', true));
+  /**
+   * A seed target is where a pack's seeds are and what it depends on, and nothing else. It carried a
+   * `seedPolicy` read from the registration until the two things that declared one turned out to be
+   * something else — a missing read in the seeder, and a vestige of settings-before-0.3.15.
+   */
+  it("carries each pack's own id and directory, whoever ships it", () => {
+    registerPack({ id: 'shipped-pack' } as PackRegistration, origin('shipped-pack', true));
     registerPack({ id: 'installed-pack' } as PackRegistration, origin('installed-pack', false));
     registered.push('shipped-pack', 'installed-pack');
 
     const targets = registry.packSeedTargets();
     expect(targets.find((t) => t.manifest.id === 'shipped-pack'))
-      .toEqual({ manifest: { id: 'shipped-pack', dependencies: undefined }, dir: '/packs/shipped-pack', seedPolicy });
-    // No policy declared. Nothing in a seed target says which app shipped the pack: every pack's seeds are
-    // read from `runtime/seeds` under its own directory
+      .toEqual({ manifest: { id: 'shipped-pack', dependencies: undefined }, dir: '/packs/shipped-pack' });
+    // Nothing in a seed target says which app shipped the pack: every pack's seeds are read from
+    // `runtime/seeds` under its own directory
     expect(targets.find((t) => t.manifest.id === 'installed-pack'))
       .toEqual({ manifest: { id: 'installed-pack', dependencies: undefined }, dir: '/packs/installed-pack' });
   });

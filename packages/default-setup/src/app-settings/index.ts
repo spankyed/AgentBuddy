@@ -1,33 +1,44 @@
 // What this pack contributes to the app's settings: the sections it owns, with their defaults, and the help it
-// answers with. Both are read the first time the app reads them rather than at registration, because both come
-// from this pack's compiled seeds, which exist only after `abuddy build`.
-import * as fs from 'fs';
-import { seedFile, seedPath } from '@abuddy/sdk/build';
+// answers with. The help comes from this pack's compiled seeds, so it is read the first time the app asks
+// rather than at registration; the base settings are this pack's own source, imported directly.
+import { seedPath } from '@abuddy/sdk/build';
 import { getCompiledDir } from '#generated/seeders.ts';
 import { loadJSON } from '@abuddy/sdk/utils';
+import { isPlainObject } from '@abuddy/sdk/utils/pure';
 import type { HelpEntry } from '@abuddy/sdk/framework';
 import type { SettingsData } from './types.ts';
-import type { SettingsSeedRecord } from '../seeds/_compilers/settings.ts';
+import baseSettings from '../seeds/default-settings.ts';
 
-let base: SettingsData | null = null;
-
-/** The base settings this pack seeds: its `general` and `assistant` sections, with no plugin's slice */
+/**
+ * The base settings this pack contributes: its `general` and `assistant` sections, with no plugin's slice.
+ *
+ * **An import, because this is this pack's own source.** It used to be a `boot.seed` entry: compiled to
+ * `settings.seed.json`, written to disk, and read back here with `readFileSync` — a round trip whose only
+ * consumer was the pack that wrote it, and whose cost was a "run `npm run compile` first" error for anyone
+ * who had not paid it. `boot.seed` is for entries that import rows into the database, and this never did:
+ * the settings row holds only what the user changed, and the store composes these defaults underneath it
+ * from the registration.
+ *
+ * The compiler's one check comes with it, since that is a claim about this file rather than about compiling:
+ * a feature declares its own settings, and whether its tab shows, in `features[].settings`.
+ */
 export function getBaseSettings(): SettingsData {
-  if (!base) {
-    const settingsPath = seedPath(getCompiledDir(), 'settings');
-    let record: SettingsSeedRecord | undefined;
-    try {
-      record = (JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as { records?: SettingsSeedRecord[] }).records?.[0];
-    } catch (err) {
-      throw new Error(
-        `Missing or unreadable ${seedFile('settings')} at ${settingsPath}. ` +
-        `Run \`npm run compile\` before starting the backend. (${(err as Error).message})`
-      );
-    }
-    if (!record) throw new Error(`${settingsPath} holds no settings record. Run \`npm run compile\` before starting the backend.`);
-    base = record.settings as unknown as SettingsData;
+  assertNoPluginSlice(baseSettings, 'src/seeds/default-settings.ts');
+  return baseSettings;
+}
+
+/**
+ * Refuses base settings that set a plugin's slice, including the app shell's old `_meta`.
+ *
+ * A function rather than two lines inside the getter, because the getter reads a static import and a spec has
+ * no way to hand it a bad one: the claim is about any base file, so it is checked where it can be asked.
+ */
+export function assertNoPluginSlice(settings: unknown, source: string): void {
+  const plugins = isPlainObject(settings) ? (settings as { plugins?: unknown }).plugins : undefined;
+  if (isPlainObject(plugins) && Object.keys(plugins).length > 0) {
+    throw new Error(`${source} sets a plugin's settings: a feature declares its own, and whether its tab `
+      + 'shows, in features[].settings');
   }
-  return base;
 }
 
 /** The sections this pack owns, which the app merges under the user's changes */

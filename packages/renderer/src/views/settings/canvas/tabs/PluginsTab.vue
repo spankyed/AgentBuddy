@@ -58,6 +58,15 @@
           >
             <ExternalLink class="w-4 h-4" />
           </button>
+          <!-- Always offered: what the view holds is the settings *in effect*, defaults merged in, so it
+               cannot tell whether the user stored anything — and a reset with nothing stored is a no-op -->
+          <button
+            @click="showResetDialog = true"
+            title="Reset this plugin's settings to their defaults"
+            class="ml-auto p-1 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"
+          >
+            <RotateCcw class="w-4 h-4" />
+          </button>
         </div>
         <!-- A plugin's settings render as part of that plugin, so usePlugin() there is the plugin's own -->
         <PluginScope :plugin="selectedPlugin.id" :key="selectedPlugin.id">
@@ -87,6 +96,18 @@
         <p class="text-neutral-400">Select a plugin to configure its settings</p>
       </div>
     </div>
+
+    <!-- Resetting is removing what the user stored, after which the pack's current defaults apply again — so
+         the copy says "defaults" rather than naming values, and a pack whose defaults moved resets to those -->
+    <ConfirmationDialog
+      v-if="selectedPlugin"
+      v-model="showResetDialog"
+      title="Reset settings"
+      :description="`Forget your changes to ${selectedPlugin.label}'s settings? Its defaults will apply again.`"
+      confirm-text="Reset"
+      variant="danger"
+      @confirm="resetSelectedPlugin"
+    />
   </div>
 </template>
 
@@ -95,7 +116,8 @@ import { computed, ref, onMounted, onUpdated } from 'vue'
 import type { SettingUpdate } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { untypedOpenPlugin, PluginScope, usePlugin, useShell } from '@abuddy/sdk/fe'
-import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
+import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog'
+import { Package, CheckCircle, Eye, EyeOff, ExternalLink, RotateCcw } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '@/views/settings/save'
 import { HOST, type SettingsState } from '@abuddy/host/fe'
 import type { FeatureRef } from '@abuddy/sdk/ids'
@@ -107,6 +129,16 @@ const allPlugins = shell.plugins
 
 const selectedPluginId = useSelector(actor, (state) => state.context.selectedPluginId)
 const settings = useSelector(actor, (state) => state.context.settings)
+
+const showResetDialog = ref(false)
+/**
+ * Forgets what the user stored for this plugin. Sent to the view's own actor rather than through
+ * `@abuddy/sdk/fe`'s `resetSettings`: that is the door for a pack's component, and this *is* the view.
+ */
+function resetSelectedPlugin() {
+  if (!selectedPlugin.value) return
+  actor.send({ type: 'SETTINGS.RESET', target: { entityType: 'plugin', label: selectedPlugin.value.id } })
+}
 
 const sidebarRef = ref<HTMLElement | null>(null)
 function scrollToActive() {

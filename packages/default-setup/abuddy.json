@@ -261,17 +261,7 @@
       "faqs": {
         "path": "src/seeds/faqs",
         "format": "faqs"
-      },
-      "settings": {
-        "path": "src/seeds/default-settings.ts",
-        "format": "settings",
-        "seeder": "src/seeds/settings/seeder.ts"
       }
-    },
-    "seedPolicy": {
-      "skipAtBoot": [
-        "settings"
-      ]
     }
   },
   "entityShapes": {
@@ -365,9 +355,6 @@
     },
     "faqs": {
       "compiler": "src/seeds/_compilers/faqs.ts"
-    },
-    "settings": {
-      "compiler": "src/seeds/_compilers/settings.ts"
     }
   },
   "seedHooks": {

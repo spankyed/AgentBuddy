@@ -334,27 +334,6 @@
             "pattern": "^[a-z][a-z0-9-]*$"
           },
           "description": "Seed data sources. Keys are seed names; the specialty keys (actions, prompts, flows) take a path, other keys an entry object."
-        },
-        "seedPolicy": {
-          "type": "object",
-          "properties": {
-            "skipAtBoot": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "Seed types to skip during boot."
-            },
-            "skipAfterOnboarding": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "Seed types to skip after onboarding completes."
-            }
-          },
-          "additionalProperties": false,
-          "description": "Controls which seed types to skip at boot or after onboarding."
         }
       },
       "additionalProperties": false,

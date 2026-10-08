@@ -43,7 +43,9 @@ describe('core/seed — seeders', () => {
     expect(keys).toContain('flows');
     expect(keys).toContain('library');
     expect(keys).toContain('notes');
-    expect(keys).toContain('settings');
+    // No `settings` seeder: the app's default settings are this pack's own source, imported by
+    // `src/app-settings/`, and nothing about settings is written to the database by seeding
+    expect(keys).not.toContain('settings');
   });
 
   it('exports preview function', async () => {

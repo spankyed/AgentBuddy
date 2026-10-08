@@ -606,8 +606,6 @@ export function generatePackFiles(
       : undefined;
     // The pack's help entries, called the first time the Settings view's Help list is read
     const help = manifest.help ? valueExport('help', manifest.help) : undefined;
-    const seedPolicy = manifest.boot?.seedPolicy;
-    const seedPolicyLine = seedPolicy ? `\n      seedPolicy: ${JSON.stringify(seedPolicy)},` : '';
 
     // The machine each system was built from is typed by the contract the manifest names for its feature, and
     // nothing in either file says so: this asserts it where both are in scope.
@@ -661,8 +659,7 @@ ${help ? '  help: __help,' : ''}
   },
   boot: {
 ${manifest.boot?.hooks ? '    ..._hooks,' : ''}
-    seedManifest: {${seedPolicyLine}
-    },
+    seedManifest: {},
   },
 ${manifest.migrations ? '  migrations,' : ''}
 };

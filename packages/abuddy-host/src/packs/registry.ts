@@ -229,9 +229,8 @@ export interface PackRegistry extends PackRegistryView {
    */
   packMigrationTargets(packIds?: Iterable<string>): Array<{ manifest: PackManifest; migrations?: PackMigration[] }>;
   /**
-   * Every registered pack as `seedPacks` takes it, in dependency order: where its seeds are, what it
-   * depends on, and the `seedPolicy` its registration declares. With `packIds`, only those — activation and
-   * reload seed the one pack they handled.
+   * Every registered pack as `seedPacks` takes it, in dependency order: where its seeds are and what it
+   * depends on. With `packIds`, only those — activation and reload seed the one pack they handled.
    *
    * A pack the app ships is in here beside an installed one: one seed path, one freshness record, one
    * policy mechanism.
@@ -609,8 +608,6 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
       return ordered.map(({ origin }) => ({
         manifest: { id: origin.id, dependencies: origin.manifest?.dependencies },
         dir: origin.dir,
-        ...(registrations.get(origin.id)?.boot?.seedManifest?.seedPolicy
-          && { seedPolicy: registrations.get(origin.id)!.boot!.seedManifest!.seedPolicy }),
       }));
     },
 

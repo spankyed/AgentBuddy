@@ -42,6 +42,15 @@ export interface SettingsPort {
   subscribe(listener: () => void): () => void;
   /** Sets `value` at `path` in a section or a feature's slice */
   update(target: SettingsTarget, path: readonly string[], value: unknown): void;
+  /**
+   * Forgets the user's changes, so the defaults apply again: with a `target`, that section's or that
+   * feature's alone, and with none, every one of them.
+   *
+   * It *removes* rather than writing defaults in, which is why it needs no values: the stored row holds only
+   * what the user changed, and the registration's defaults are composed underneath it on the next read. So a
+   * pack whose defaults have since changed resets to the current ones, not to the ones it shipped with.
+   */
+  reset(target?: SettingsTarget): void;
 }
 
 const port = (): SettingsPort => boundFeHost().settings;
@@ -69,11 +78,28 @@ export function useFeatureSettings<T = unknown>(feature: FeatureRef): Readonly<R
  * Whether the last change was stored, with the store's reasons when it wasn't, and the one way to make one. A form
  * says "Saved" only for a change the store stored.
  */
-export function useSettingsSave(): { save: Readonly<Ref<SettingsSaveStatus>>; update: SettingsPort['update'] } {
-  return { save: following(() => port().saveStatus()), update: (target, path, value) => port().update(target, path, value) };
+export function useSettingsSave(): {
+  save: Readonly<Ref<SettingsSaveStatus>>;
+  update: SettingsPort['update'];
+  reset: SettingsPort['reset'];
+} {
+  return {
+    save: following(() => port().saveStatus()),
+    update: (target, path, value) => port().update(target, path, value),
+    reset: (target) => port().reset(target),
+  };
 }
 
 /** Changes a setting from outside a component (a machine's action), where nothing follows it */
 export function updateSettings(target: SettingsTarget, path: readonly string[], value: unknown): void {
   port().update(target, path, value);
+}
+
+/**
+ * Forgets the user's changes to one section or feature, or to all of them with no `target`, so the defaults
+ * apply again. Destructive, so a caller confirms it first; it answers through the same save status
+ * `useSettingsSave` reads, since the store refuses it the way it refuses a write.
+ */
+export function resetSettings(target?: SettingsTarget): void {
+  port().reset(target);
 }
