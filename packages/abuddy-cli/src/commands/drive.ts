@@ -26,7 +26,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process';
 import { findPackRootOrNone, readManifest } from '../utils';
-import { cliDirs, parseAppFlags, resolveDevelopmentApp } from '../app/app-target';
+import { cliDirs, parseAppFlags, resolveCheckoutApp, resolveDevelopmentApp } from '../app/app-target';
 import { instanceFor, instanceInUse, parseInstanceFlags, removeInstance, INSTANCE_USAGE } from '../app/instances';
 import { ONE_SHOT_ASKS, type AskName, type EngineAsk } from '../app/drive-engine.ts';
 import { oneShot } from '../app/drive-one-shot.ts';
@@ -418,17 +418,10 @@ export async function drive(args: string[]) {
     return;
   }
 
-  /**
-   * **With no pack and no app named, the app is the checkout you are standing in.**
-   *
-   * `resolveDevelopmentApp` reads a saved choice and may prompt or download a Beta, which is right when a
-   * pack is choosing what to run against. It is wrong here: it would make `npm run drive` in a checkout
-   * drive whatever app was saved on some earlier first run, silently and from the same command. Naming one
-   * (`--app-root`, `--app beta`) is still honoured, because then the caller has chosen.
-   */
-  const named = flags.appRoot !== undefined || flags.app !== undefined;
-  const app = target.packDir === undefined && !named
-    ? { kind: 'source' as const, root: target.root }
+  // Which of the two policies answers "which app?" is the only thing driving a pack changes here, and both
+  // state what they resolved and why (`announceApp`). The reasoning for each is on it, in `app-target.ts`.
+  const app = target.packDir === undefined
+    ? await resolveCheckoutApp({ flags, root: target.root })
     : await resolveDevelopmentApp({ flags, hostVersion: target.hostVersion });
   const instance = instanceFor(mode, cliDirs());
   if (instance?.created && withSecrets) {

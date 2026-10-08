@@ -3,7 +3,7 @@ import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { parseAppFlags, resolvePinnedApp, type AppTarget } from '../app/app-target';
+import { appLabel, parseAppFlags, resolvePinnedApp, type AppTarget } from '../app/app-target';
 import { resolvePlaywrightCli } from '../app/playwright';
 import { withoutSourceCondition } from '@abuddy/host/build/source-resolution';
 import { cliBin, readManifest, resolveVitestCli } from '../utils';
@@ -147,7 +147,7 @@ export async function test(args: string[], run?: ContractRunner): Promise<void> 
   // The harness bundle this run loads is built from the checkout's source, so bring it up to date first
   ensureCheckoutPackages(cwd);
 
-  console.log(app.kind === 'source' ? `Testing in AgentBuddy from ${app.root}` : `Testing in AgentBuddy Beta ${app.version}`);
+  console.log(`Testing in ${appLabel(app)}`);
   const result = spawnSync(process.execPath, [playwrightCli, 'test', ...flags.args], {
     cwd,
     env: fixtureEnv(app, manifest ? cwd : undefined, process.env, { release: flags.release, prebuilt: flags.prebuilt }),

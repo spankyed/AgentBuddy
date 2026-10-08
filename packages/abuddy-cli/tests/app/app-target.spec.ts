@@ -7,6 +7,7 @@ import {
   packagedAppPackagesDir,
   parseAppFlags,
   readAppChoice,
+  resolveCheckoutApp,
   resolveDevelopmentApp,
   resolvePinnedApp,
   saveAppChoice,
@@ -93,6 +94,37 @@ describe('parseAppFlags', () => {
  * forces `env: 'test'`, which is why this hid — the isolation you check for is real, one layer below the
  * leak. These cases fail the moment the config read comes back.
  */
+/**
+ * The policy for a command driving the app with no pack in front of it — `abuddy drive` at an AgentBuddy
+ * checkout, which is how this repo's own `npm run drive` scripts reach it.
+ */
+describe('resolveCheckoutApp', () => {
+  const checkout = (overrides: Partial<Parameters<typeof resolveCheckoutApp>[0]> = {}) =>
+    resolveCheckoutApp({ flags: { args: [] }, root: tmp, env: {}, ...overrides });
+
+  /**
+   * The firing case. Honouring the saved choice here would make the *same command* in the *same checkout*
+   * launch whatever app someone answered a prompt with once — a different app, from state the request never
+   * mentions. Remove the `undefined` this passes as `saved` and only this case fails.
+   */
+  it('ignores a saved choice: the app is the checkout it was given', async () => {
+    saveAppChoice(dirs, { source: makeCheckout('saved') });
+
+    await expect(checkout({ dirs } as never)).resolves.toEqual({ kind: 'source', root: tmp });
+  });
+
+  it('needs no prompt and no terminal, having an answer in front of it', async () => {
+    await expect(checkout()).resolves.toEqual({ kind: 'source', root: tmp });
+  });
+
+  it('still takes an explicitly named app, because then the caller has chosen', async () => {
+    const root = makeCheckout('explicit');
+
+    await expect(checkout({ flags: { appRoot: root, args: [] } })).resolves.toEqual({ kind: 'source', root });
+    await expect(checkout({ env: { ABUDDY_ROOT: root } })).resolves.toEqual({ kind: 'source', root });
+  });
+});
+
 describe('resolvePinnedApp', () => {
   const pinned = (overrides: Partial<Parameters<typeof resolvePinnedApp>[0]> = {}) =>
     resolvePinnedApp({ flags: { args: [] }, hostVersion: '>=0.3.0', dirs, env: {}, betaApp: beta, ...overrides });

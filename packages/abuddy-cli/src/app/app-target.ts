@@ -302,6 +302,58 @@ async function withTerminalPrompt<T>(fn: (prompt: (question: string) => Promise<
  *
  * `resolveDevelopmentApp` below is the other half, for the commands whose job *is* to hold a preference.
  */
+/**
+ * What a command is running against, as one sentence fragment.
+ *
+ * One rendering, because three commands describing the same app differently is how a reader stops trusting
+ * the line — and the line is the whole point of `announceApp`.
+ */
+export function appLabel(app: AppTarget): string {
+  return app.kind === 'source' ? `AgentBuddy from ${app.root}` : `AgentBuddy Beta ${app.version}`;
+}
+
+/**
+ * Says which app was resolved and **where the answer came from**, on stderr.
+ *
+ * The provenance is the half that matters. Every source on the ladder but one was asked for on *this* run
+ * — a flag, an environment variable — so the reader already knows about it. The saved choice is the
+ * exception: it wins silently, forever, from a question answered once on this machine, and a stale one
+ * then makes every run drive an app nobody chose today. Stating it costs a line and makes that impossible
+ * to be surprised by, which is why it is here rather than in each command.
+ *
+ * **stderr, not stdout**, because it describes the run rather than being its output: `abuddy drive --eval`
+ * prints one JSON envelope on stdout and a program reads it. `abuddy db` prints its target the same way
+ * for the same reason.
+ */
+function announceApp(app: AppTarget, from: string): void {
+  console.error(`Using ${appLabel(app)} (${from})`);
+}
+
+/**
+ * The app a command drives when nothing is driving a *pack*: the checkout it is standing in.
+ *
+ * **It passes no saved choice**, exactly as `resolvePinnedApp` does and for a sharper reason: this is the
+ * policy for `abuddy drive` at an AgentBuddy checkout with no `abuddy.json`, where "which app?" has an
+ * unambiguous answer in front of it. Reading a preference there would make `npm run drive` in a checkout
+ * launch whatever app some earlier first run saved — a different app from the same command, from state no
+ * part of the request mentions. Naming one is still honoured, because then the caller has chosen.
+ *
+ * The property worth keeping is structural rather than documented: it cannot consult machine state,
+ * because it has no `dirs` to read one from.
+ */
+export async function resolveCheckoutApp(options: { flags: AppFlags; root: string; env?: NodeJS.ProcessEnv; hostVersion?: string }): Promise<AppTarget> {
+  const { flags, root, env = process.env, hostVersion = '*' } = options;
+  const named = namedApp(flags, env, undefined);
+  if (named) {
+    const app = 'source' in named.choice ? sourceTarget(named.choice.source, named.from) : await packagedTarget({ flags, env, hostVersion });
+    announceApp(app, named.from);
+    return app;
+  }
+  const app: AppTarget = { kind: 'source', root };
+  announceApp(app, 'this checkout');
+  return app;
+}
+
 export async function resolvePinnedApp(options: ResolveAppOptions): Promise<AppTarget> {
   const { flags, env = process.env } = options;
 
@@ -324,7 +376,9 @@ export async function resolveDevelopmentApp(options: ResolveAppOptions): Promise
 
   const named = namedApp(flags, env, savedApp(dirs));
   if (named) {
-    return 'source' in named.choice ? sourceTarget(named.choice.source, named.from) : packagedTarget(options);
+    const app = 'source' in named.choice ? sourceTarget(named.choice.source, named.from) : await packagedTarget(options);
+    announceApp(app, named.from);
+    return app;
   }
 
   if (!interactive) {
