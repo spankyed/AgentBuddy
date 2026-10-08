@@ -99,6 +99,25 @@ Rules that pay for themselves:
   that retaining code cannot crash what a release would not — which is wrong in the one way that matters:
   retained code runs.
 
+  **Pre-bundling the vendor dependency is the other 3.0s, and it is spiked rather than built.**
+  `build.opaqueDeps` stops rollup *walking* elkjs; it still parses and emits 3.3MB of it every build.
+  Taking it out of the graph entirely — resolve the specifier to `{ external: true }` with a relative id,
+  convert the UMD bundle to ESM once with esbuild (0.35s, cacheable on the dependency's content hash) and
+  `emitFile` it beside the chunk — measured **20.8s to 17.8s, -14%**, paired A/B, median of 3, 71% idle,
+  2026-10-08. The output is a real layout: a 3.32MB ESM asset and `import("./elk.prebuilt.js")` in the
+  entry chunk, which resolves next to it over `pack://`. With the shipped `opaqueDeps` that is 23.3s to
+  17.8s, **-24% of the original**.
+  **It is not built because the machinery carries a risk nothing here would catch.** The conversion
+  becomes ours: esbuild turning a UMD bundle into ESM is a semantic transformation, and if it is wrong
+  elkjs fails at first layout — which no check runs, the chain never opening a flow canvas. Against that,
+  `opaqueDeps` only ever *retains* code, so it cannot break what it is applied to. The cache, the asset
+  and the specifier rewrite are the cheap part; being answerable for a vendor bundle's semantics is not.
+  Revisit when the phase skip below has landed and this still matters, or when a second prebuilt
+  dependency makes the mechanism pay for itself twice.
+  **What does not work is pre-converting while still bundling**: 20.7s to 24.7s, +20%. That arm was also
+  confounded — the spike's resolver ran before `opaqueVendorPlugin` and so turned `no-treeshake` off with
+  it — so all it establishes is that the idea is not worth isolating properly.
+
   **Skipping the phase is not the other lever.** `abuddy build` records what each phase read, and that
   record's own header says it is *"never a cache key"* — it is a dep file, so it can be stale about a read
   nobody has made yet. The chain already caches `compile` on declared inputs, so an unchanged tree never
