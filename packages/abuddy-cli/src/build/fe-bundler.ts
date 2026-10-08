@@ -289,9 +289,14 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
  * not an `isExternalUrl` is wrapped, and a bare specifier can be neither.
  */
 function keepExternalsBarePlugin(packDir: string): VitePlugin {
-  // Longest first, so `@abuddy/ui/design/button` is unwrapped before a prefix of it could be
+  // **Padded to the same length**, which is why the replacement is not simply the specifier. `send` appends
+  // an inline sourcemap computed against the body this then edits, so a shorter line would leave every
+  // mapping after the edit on it claiming a column 5 to the right of where it now is. Whitespace before a
+  // module specifier is legal wherever one appears, so the padding costs nothing and the map stays exact.
+  //
+  // Longest first, so `@abuddy/ui/design/button` is unwrapped before a prefix of it could be.
   const wrapped = packSharedSpecifiers(packDir)
-    .map((specifier) => [`"/@id/${specifier}"`, `"${specifier}"`] as const)
+    .map((specifier) => [`"/@id/${specifier}"`, `${' '.repeat('/@id/'.length)}"${specifier}"`] as const)
     .sort((a, b) => b[0].length - a[0].length);
 
   return {
@@ -306,8 +311,10 @@ function keepExternalsBarePlugin(packDir: string): VitePlugin {
             let body = chunk;
             for (const [from, to] of wrapped) body = body.split(from).join(to);
             if (body !== chunk) {
-              // The length moved, and a stale Content-Length truncates the module
-              if (res.getHeader('Content-Length') !== undefined) res.setHeader('Content-Length', Buffer.byteLength(body));
+              // Length-preserving by construction (see `wrapped`), so nothing already sent about the size
+              // of this body has gone stale. Asserted rather than assumed: a replacement that stopped
+              // preserving it would otherwise truncate the module against a Content-Length set upstream.
+              if (body.length !== chunk.length) throw new Error(`pack-externals-stay-bare changed a response's length (${chunk.length} to ${body.length}); the sourcemap Vite appended no longer lines up`);
               return (end as (c: unknown, ...r: unknown[]) => unknown)(body, ...rest);
             }
           }
