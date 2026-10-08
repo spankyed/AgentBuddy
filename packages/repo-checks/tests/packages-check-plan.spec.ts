@@ -25,10 +25,10 @@ const WITH_TYPES = { types: './dist/index.d.ts' };
 const TYPES_IN_EXPORTS = { exports: { '.': { types: './dist/index.d.ts', default: './dist/index.js' } } };
 
 describe('what each published tree is asked', () => {
-  it('gives attw a tarball and publint the directory', () => {
+  it('gives both tools the same tarball', () => {
     const checks = checksFor([tree('abuddy-sdk', WITH_TYPES)], packInto);
     expect(checks.map(({ label }) => label)).toEqual(['publint abuddy-sdk', 'attw abuddy-sdk']);
-    expect(checks[0]).toMatchObject({ tool: 'publint', args: ['--strict', '/repo/packages/abuddy-sdk/publish'] });
+    expect(checks[0]).toMatchObject({ tool: 'publint', args: ['--strict', '/tmp/packed/publish.tgz'] });
     expect(checks[1]).toMatchObject({ tool: 'attw', args: ['/tmp/packed/publish.tgz', '--profile', 'esm-only'] });
   });
 
@@ -36,11 +36,11 @@ describe('what each published tree is asked', () => {
    * The one that matters, stated as its own case because it is the regression this file exists for: an `attw`
    * argument that is a directory is `--pack` by another spelling, whether or not the flag is there.
    */
-  it('never hands attw a path inside the tree it is checking', () => {
+  it('never hands either tool a path inside the tree it is checking', () => {
     const trees = [tree('abuddy-ears', WITH_TYPES), tree('abuddy-sdk', TYPES_IN_EXPORTS), tree('abuddy-ui', WITH_TYPES)];
-    const attw = checksFor(trees, packInto).filter(({ label }) => label.startsWith('attw '));
-    expect(attw).toHaveLength(3);
-    for (const { label, args } of attw) {
+    const checks = checksFor(trees, packInto);
+    expect(checks).toHaveLength(6);
+    for (const { label, args } of checks) {
       const target = args.find((arg) => !arg.startsWith('--') && arg !== 'esm-only');
       expect(target, `${label} names no subject`).toBeDefined();
       expect(target, `${label} is given a tarball`).toMatch(/\.tgz$/);
@@ -49,8 +49,17 @@ describe('what each published tree is asked', () => {
   });
 
   it('asks publint alone of a tree that publishes no declarations', () => {
-    expect(checksFor([tree('abuddy-cli', { bin: { abuddy: './bin/abuddy.mjs' } })], packInto).map(({ label }) => label))
-      .toEqual(['publint abuddy-cli']);
+    const checks = checksFor([tree('abuddy-cli', { bin: { abuddy: './bin/abuddy.mjs' } })], packInto);
+    expect(checks.map(({ label }) => label)).toEqual(['publint abuddy-cli']);
+    // It still gets a tarball: what attw has nothing to say about is the declarations, not the artifact
+    expect(checks[0]!.args).toEqual(['--strict', '/tmp/packed/publish.tgz']);
+  });
+
+  /** One tarball per tree, so the two tools cannot be looking at different bytes of the same tree */
+  it('packs each tree once, however many tools read it', () => {
+    const packed: string[] = [];
+    checksFor([tree('abuddy-sdk', WITH_TYPES)], (dir) => { packed.push(dir); return packInto(dir); });
+    expect(packed).toEqual(['/repo/packages/abuddy-sdk/publish']);
   });
 
   it('finds types wherever the manifest puts them', () => {
