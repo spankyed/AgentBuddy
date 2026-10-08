@@ -1,6 +1,27 @@
+> **Done and closed.** Implemented in `85960abb9`: `npm run typecheck` borrows `api:check` and
+> `facade:check` from `CHAIN_STEPS`, `abuddy facade-report` takes `--skip-generate`, and codegen is a second
+> ordered prerequisite. Stale both reports and typecheck exits 1 naming `api:update` and `facade:update`;
+> before, it exited 0. The three incidental findings below are closed too. The text after this is the plan as
+> written, with two corrections the work found.
+>
+> **The first is where the declarations live.** The plan put `ARTIFACT_CHECKS` and `CODEGEN` in
+> `typecheck-legs.ts`; they are in `typecheck-jobs.ts`, outside the files `record-seconds` scans. Its locator
+> finds `name: '<step>'` and then the next `seconds:`, so an entry carrying a name and no cost of its own
+> silently lands on a neighbouring leg's span — `planSecondsEdits` refused exactly that, which is the only
+> reason a wrong number was not written into the cost table.
+>
+> **The second is a defect the ordering question surfaced**, unrelated to artifacts: the runner weighed every
+> leg at one core while `api:check` wants four, so a ten-core budget admitted thirteen cores of work. It is
+> `coresFor` now — the two-schedulers-with-different-weights problem `scripts/typecheck.ts`'s header exists to
+> describe, being paid by the legs as well.
+>
+> Measured 2026-10-08: the wall 18.0s to 19.9s (median of 3, 19.7-21.1s) for ~17s of added work, the pool
+> absorbing nearly all of it. **It buys a faster red, not a thing that was broken** — the chain caught both
+> reports before, so nothing shipped stale; what changes is that you find out from the command you already
+> run, and that `typecheck:pack` stops compiling generated code that no longer matches the manifest.
+
 # `npm run typecheck` notices every recorded artifact
 
-**Status:** ready — researched and costed, not started
 **Prompted by:** 2026-10-08, hitting the trap often enough to be worth removing
 
 ## The trap, demonstrated
@@ -17,7 +38,7 @@ npm run api:check     -> exit 1
 ```
 
 So you can change a pack's public types, run the command you were going to run anyway, see it pass, and learn
-nothing. The guide warns about it at [`CLAUDE.md:122-127`](../../CLAUDE.md) — *"it is easy to finish a
+nothing. The guide warns about it at [`CLAUDE.md:122-127`](../../../CLAUDE.md) — *"it is easy to finish a
 typecheck and believe every recorded artifact is current"* — which is the tell that it is a known trap rather
 than a surprise. A warning in a guide is the weakest available fix for something a command could answer.
 

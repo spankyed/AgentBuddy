@@ -482,6 +482,11 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #              and the one the drift report names for you
                          #   --adopt    record on another machine, rewriting MEASURED_ON with the costs
                          #   --no-classify  do not re-run a step that failed while the machine was busy
+                         #   --strict   fail the run when a step's inputs moved **while it ran** — it read a
+                         #              tree that no longer exists, so its pass establishes nothing. Always
+                         #              reported either way; this decides whether the chain stops a merge
+                         #              over it. A file that moved *after* a step finished is an ordinary
+                         #              cache miss and never fails
                          #   --wait     queue behind a run already holding the lock rather than refusing,
                          #              up to 10 minutes — a bound, not a schedule: it starts the moment
                          #              that run ends, and says what it is waiting for so a wait does not
@@ -676,7 +681,8 @@ npm run lint:fix         # Rewrites what it can — oxlint has no fixer for no-u
 
 npm run packages:build   # Build dist/ for @abuddy/ears, @abuddy/sdk and @abuddy/ui, bundle @abuddy/cli and @abuddy/testing
 npm run packages:check   # publint + arethetypeswrong on the five published trees (after packages:build).
-                         # A chain step; see "api:check is not a chain step" above for why this one is
+                         # A chain step, for the opposite reason to the proxy `api:check` does without —
+                         # see "packages:check is a chain step" above
 
 npm run check:repro      # **A diagnostic instrument, not a gate**, and nothing runs it on a schedule by
                          # design: everything it compares is a chain input, so the chain's freshness sweep
