@@ -312,7 +312,7 @@ export function timedOutBecause({ what, timeout, measuredOn, machine, seconds }:
     // "This run" and not "nothing": the scripts `scripts/bounded.ts` bounds are mostly chain steps, and
     // every chain step declares a cost (`chain-graph.spec.ts`), so what a direct run of one lacks is a step
     // record rather than a measurement. Claiming a global absence sent a reader looking for a number that is
-    // in `chain-steps.ts`. No figures here: they are that table's, which `--record` rewrites.
+    // in `chain-steps.ts`. No figures here: they are that table's, declared there and only there.
     const unknown = `${killed} This run carries no recorded cost, so how much rope that was is unknown`;
     // The same split as the two arms below, for the same reason: a class is sized so that a declared cost
     // fits inside it on a box `stretches` times slower, so overrunning it *here* means more than that whole

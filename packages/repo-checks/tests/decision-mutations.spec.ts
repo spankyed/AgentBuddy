@@ -120,13 +120,6 @@ interface Mutation {
 
 const MUTATIONS: readonly Mutation[] = [
   {
-    why: 'refusesAsContended lets --force through',
-    in: 'measure',
-    from: '!input.force && contended(',
-    to: 'contended(',
-    call: (lib) => lib.refusesAsContended({ hasPrevious: true, force: true, moved: 6, comparable: 20 }),
-  },
-  {
     // The flip is the whole decision: dropping it reports the idle share of the box as the busy one, which on
     // the reading this exists for turns a pool still running at 6.6 cores into one apparently at 3.4 — the
     // exact misreading it was added to prevent. The asymmetric input matters, since a half-idle box reads the
@@ -304,9 +297,9 @@ const MUTATIONS: readonly Mutation[] = [
      * run would say the same thing twice, in the weaker place, and a reader would not know which to act on.
      */
     /**
-     * Dropping the filter hands every reader a killed step's deadline as its cost — `--record` writes it into
-     * source, and `declaredShare` makes a wedged `suite` step four times its rung. The number is right and it
-     * is not a measurement.
+     * Dropping the filter hands every reader a killed step's deadline as its cost — the drift report offers
+     * it as an edit, and `declaredShare` makes a wedged `suite` step four times its rung. The number is right
+     * and it is not a measurement.
      */
     why: 'measurementsFrom leaves out a step whose time is the deadline it was killed at',
     in: 'step-timing',
@@ -335,15 +328,14 @@ const MUTATIONS: readonly Mutation[] = [
      * The gate that makes the number mean anything. `declaredShare` projects onto a machine `stretches`
      * times slower, so a reading from a slower box counts the slowdown twice — measured, a green run on the
      * 4x-slower runner puts 17 of 29 steps past rungs their declarations sit well inside. Without this the
-     * report fires hardest on the machines where `--record`, its own advice, refuses.
+     * report fires hardest on the machines whose readings cannot describe the table at all.
      */
     why: 'outgrownRungs answers only on the schedule the table was measured on',
     in: 'step-timing',
-    // Two of the three `RECORDING_CONDITIONS`: the gate is the machine and the budget, and `wholeTable` is
-    // filtered out deliberately — a partial run is reported with a caveat, since contention can only make a
-    // step slower and so its reading is an upper bound (`outgrownRungs`' doc, and `step-timing.spec.ts`'s
-    // partial-run cases). This entry is about the half that still gates
-    from: '  if (blocking.length > 0) return [];',
+    // The schedule and not the whole run: a partial run is reported with a caveat, since contention can only
+    // make a step slower and so its reading is an upper bound (`outgrownRungs`' doc, and
+    // `step-timing.spec.ts`'s partial-run cases). This entry is about the half that gates
+    from: '  if (scheduleMismatch(budget, measuredOn, machine) !== undefined) return [];',
     to: '',
     // 60s declared is 0.80 of `suite`; the reading is that same cost on a box four times slower, so the only
     // thing that could report it is the double count
@@ -410,7 +402,7 @@ const MUTATIONS: readonly Mutation[] = [
   {
     // The hole the CPU was added to close, and the one that actually turned up: a 10-core Mac is the
     // commonest shape there is, so before this conjunct every one of them read as the box the costs came
-    // from, and got `--record`, the drift instruction and the placement gate against someone else's silicon
+    // from, and were offered the drift report's figures as describing someone else's silicon
     why: 'a machine with the measured cores but different silicon is not the measured machine',
     in: 'core-budget',
     from: ' && machine.cpu === measuredOn.cpu',

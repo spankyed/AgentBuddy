@@ -9,7 +9,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
-import { asPercent, box, coresFor, isMeasuredSchedule, POOL_WIDTH, RECORDING_CONDITIONS, scheduleMismatch, shareOf, thisMachine, unmetRecordingConditions } from '../../../scripts/lib/core-budget.ts';
+import { asPercent, box, coresFor, isMeasuredSchedule, POOL_WIDTH, scheduleMismatch, shareOf, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { population } from '@abuddy/sdk/testing';
 
@@ -84,9 +84,8 @@ describe('isMeasuredSchedule', () => {
    * And another CPU at the same core count, which a core count alone cannot see.
    *
    * This is the hole: keyed on cores, every 10-core machine read as the measured one, so a second developer
-   * on a 10-core Mac got `--record` accepted and `spec-cost`'s placement gate enforced against a table
-   * measured on different silicon — the exact failure the portability work was for, surviving for the
-   * commonest machine there is.
+   * on a 10-core Mac was offered figures taken on different silicon as though they described their box — the
+   * exact failure the portability work was for, surviving for the commonest machine there is.
    */
   it('refuses another CPU at the same core count', () => {
     expect(isMeasuredSchedule(10, MEASURED, { cpu: 'Apple M4 Pro', cores: 10 })).toBe(false);
@@ -100,11 +99,10 @@ describe('isMeasuredSchedule', () => {
 /**
  * And *which* fact does not hold, which the boolean above hides.
  *
- * **The bug this exists for was in a caller taking the conjunction apart by hand.** `chain.ts` refused a
- * record on `!isMeasuredSchedule` and then re-asked about the machine to decide whether to suggest
- * `--adopt` — so a *budget* mismatch printed an instruction only a *machine* mismatch can act on: adopting
- * would write the machine the table already names and then be refused for the budget. Advice nobody can act
- * on is what the portability work was removing, so writing it in was worth a predicate.
+ * **The bug this exists for was in a caller taking the conjunction apart by hand.** It asked
+ * `!isMeasuredSchedule` and then re-asked about the machine to choose what to suggest — so a *budget*
+ * mismatch printed an instruction only a *machine* mismatch could act on. Advice nobody can act on is what
+ * the portability work was removing, so writing the conjunction once was worth a predicate.
  *
  * It also retires a hand-written variant. "Can this machine claim the table" is this question asked of
  * `thisMachine()`, where the machine conjunct is trivially true and only the budget is left — which
@@ -160,59 +158,6 @@ const configs = (): string[] => [
 const CAP = /\bmax(?:Threads|Forks|Workers)\s*:\s*'?([^,}'\s]+)'?/g;
 const capsInText = (text: string): string[] => [...text.matchAll(CAP)].map((hit) => hit[1]!);
 const capsIn = (rel: string): string[] => capsInText(fs.readFileSync(path.join(REPO_ROOT, rel), 'utf-8'));
-
-/**
- * What a run has to be for its step timings to describe the cost table.
- *
- * **Three conditions, one declaration.** They were a bare `if (!all)` in `recordTheCosts` and two inside
- * `scheduleMismatch`, so the table was written under three and read under two with nothing saying that was a
- * choice. The point of gathering them is that a reader taking a subset now has to name what it leaves out.
- */
-describe('unmetRecordingConditions', () => {
-  const TABLE = { cpu: 'Apple M1 Pro', cores: 10 };
-  const ask = (over: Partial<Parameters<typeof unmetRecordingConditions>[0]> = {}) =>
-    unmetRecordingConditions({ budget: TABLE.cores, measuredOn: TABLE, machine: TABLE, wholeTable: true, ...over });
-
-  it('is empty for the run the table describes', () => {
-    expect(ask()).toEqual([]);
-  });
-
-  it('names each condition on its own', () => {
-    expect(ask({ wholeTable: false })).toEqual(['wholeTable']);
-    expect(ask({ machine: { cpu: 'Other', cores: 10 } })).toEqual(['machine']);
-    expect(ask({ budget: 5 })).toEqual(['budget']);
-  });
-
-  /**
-   * Ordered rather than a set, and the order is what a caller reports first: `wholeTable` is the reader's own
-   * argument, the machine is what `--adopt` can change, and the budget is the caller's argument again. A
-   * boolean here is what once put an instruction under a budget mismatch that only a machine mismatch could
-   * act on.
-   */
-  it('reports several in the declared order', () => {
-    const unmet = ask({ wholeTable: false, budget: 5 });
-
-    expect(unmet).toEqual(['wholeTable', 'budget']);
-    const order = RECORDING_CONDITIONS.indexOf(unmet[0]!);
-    expect(order, 'the first reported is the first declared').toBeLessThan(RECORDING_CONDITIONS.indexOf(unmet[1]!));
-  });
-
-  // A machine mismatch hides the budget, since the budget is only meaningful against the machine it is a
-  // share of — the same reason `scheduleMismatch` answers one at a time
-  it('never names a budget against a machine that is already wrong', () => {
-    expect(ask({ machine: { cpu: 'Other', cores: 4 }, budget: 4 })).toEqual(['machine']);
-  });
-
-  it('agrees with the two-condition predicate the readers use', () => {
-    // The subset is the thing a reader skips, so the two have to come apart exactly there and nowhere else
-    for (const wholeTable of [true, false]) {
-      const unmet = ask({ wholeTable });
-      const blocking = unmet.filter((condition) => condition !== 'wholeTable');
-      expect(blocking.length === 0).toBe(isMeasuredSchedule(TABLE.cores, TABLE, TABLE));
-    }
-  });
-});
-
 describe('a config that caps its workers has told the budget', () => {
   /**
    * Every share `POOL_WIDTH` declares, as a config would write it.

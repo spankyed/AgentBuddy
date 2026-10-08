@@ -668,9 +668,9 @@ describe('CI\'s header names the rungs enabling it would settle', () => {
 /**
  * The chain's flags against the only other place they are written down.
  *
- * `--cores` shipped with no mention in the guide, and `--record` and `--force` had none either, because
- * nothing could ask: the chain read its flags with `process.argv.includes`, so there was no list to
- * compare. Declaring them (`chain-flags.ts`) makes a typo an error and makes this question askable.
+ * Flags shipped with no mention in the guide, `--cores` among them, because nothing could ask: the chain
+ * read its flags with `process.argv.includes`, so there was no list to compare. Declaring them
+ * (`chain-flags.ts`) makes a typo an error and makes this question askable.
  *
  * **One direction only.** Every accepted flag must be documented; a documented flag need not be accepted,
  * because the guide names `--lanes` deliberately — as the thing `--cores` replaced — and a check that
@@ -687,10 +687,10 @@ describe("the chain documents the flags it takes", () => {
   /**
    * The guide's entry for `npm run chain`, not the whole guide.
    *
-   * Searching the file lets **another command's** flag satisfy this check, and two of them share a name on
-   * purpose: `spec-cost:update` takes `--forget` too, because the word means the same thing for both records.
-   * So a chain flag can be undocumented while its spelling sits in `CLAUDE.md` under another command — the
-   * failure this check exists to prevent, admitted by the naming rule the repo wants. The same shape as
+   * Searching the file lets **another command's** flag satisfy this check, and names are shared on purpose
+   * where a word means the same thing for two commands. So a chain flag can be undocumented while its
+   * spelling sits in `CLAUDE.md` under another command — the failure this check exists to prevent, admitted
+   * by the naming rule the repo wants. The same shape as
    * `ci.yml`'s header check, which reads the comment block above `jobs:` rather than the file, because every
    * rung appears in some `run:` line.
    *

@@ -481,24 +481,6 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * Cross-referenced rather than duplicated: a reader who finds one needs to know the other exists, and the
    * two cannot be one check because neither has the other's input.
    */
-  /**
-   * The idle refusal comes before the run, which is the only order in which its answer is useful.
-   *
-   * `recordTheCosts` asks it at the end too, and both are needed — a box quiet now can be loaded by the end,
-   * and the chain is its own load. What was missing was the early one: twice on 2026-10-04 an `--all --record`
-   * spent 200 seconds and was then told the machine was 69% idle. `spec-cost:update` has always asked first,
-   * and `suite-split.spec.ts` holds it to that with this same assertion — a command cannot be imported, so its
-   * ordering is checked as text.
-   */
-  it('refuses a busy machine before spending the run, not only after it', () => {
-    const source = read('scripts/chain.ts');
-    const first = source.indexOf('refusesAsBusy(');
-    expect(first, 'the chain asks whether the machine is quiet').toBeGreaterThan(-1);
-    expect(first, 'before it starts the run, which is where the answer is worth having')
-      .toBeLessThan(source.indexOf('await schedule({'));
-    expect(source.lastIndexOf('refusesAsBusy('), 'and again at the end, since the run is its own load')
-      .toBeGreaterThan(source.indexOf('await schedule({'));
-  });
 
   it('names the measured counterpart of this bound, which only a run can ask', () => {
     const timing = read('scripts/lib/step-timing.ts');

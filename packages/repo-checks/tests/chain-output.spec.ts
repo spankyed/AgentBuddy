@@ -433,20 +433,20 @@ describe('driftReport', () => {
     expect(report).toContain('(4 peers)');
   });
 
-  it('prints the value to record, when the run is comparable to the table', () => {
+  it('prints the edit to make, when the run is comparable to the table', () => {
     const report = driftReport(drifted, 10, MEASURED, true, SAME);
 
-    expect(report).toContain('re-measure, or record');
+    expect(report).toContain('edit the declaration to match');
     expect(report).toContain('seconds: 57 -> 18');
   });
 
   /**
    * **The advice is what the schedule gates; the numbers are not.**
    *
-   * `re-measure, or record` is followable only where `--record` would accept the run, and it accepts only
-   * the measured schedule. A chain on a second developer's machine printed that instruction on every run
-   * and the command it named refused on every run — and the message that fires *only* off the reference box
-   * used to end by naming it.
+   * `seconds` is declared, so the remedy is an edit and an edit is followable anywhere — but the *number*
+   * to write is only true of the schedule the table describes, so offering one off that schedule offers a
+   * value that would be wrong the moment it landed. A chain on a second developer's machine printed the
+   * instruction on every run against numbers taken on different silicon.
    *
    * The box is the second number, not a nicety: `budget === measuredAt` alone passes `--cores 10` on a
    * twenty-core machine, where the budget matches and every width is twenty-core sized. That is the hole
@@ -456,13 +456,14 @@ describe('driftReport', () => {
     const report = driftReport(drifted, 10, MEASURED, true, OTHER_CORES);
 
     expect(report, 'what a step cost is true wherever it ran').toContain('57s -> 18s');
-    expect(report, '`--record` refuses there, so the advice cannot be taken').not.toContain('record');
+    expect(report, 'the number to write is not true there, so no edit is offered')
+      .not.toContain('edit the declaration');
   });
 
   it('gates on the machine as well as the budget, which a budget alone cannot', () => {
     // Same budget, same measured schedule, different machine — the one combination the weaker guard missed
-    expect(driftReport(drifted, 10, MEASURED, true, SAME)).toContain('re-measure, or record');
-    expect(driftReport(drifted, 10, MEASURED, true, OTHER_CORES)).not.toContain('re-measure, or record');
+    expect(driftReport(drifted, 10, MEASURED, true, SAME)).toContain('edit the declaration to match');
+    expect(driftReport(drifted, 10, MEASURED, true, OTHER_CORES)).not.toContain('edit the declaration to match');
   });
 
   /**
@@ -470,11 +471,11 @@ describe('driftReport', () => {
    *
    * Keyed on cores only, every 10-core machine read as the one the table was measured on — an M4 Pro, a
    * 10-core Xeon, any of them. A second developer on a 10-core Mac, the commonest shape there is, got this
-   * instruction on a table measured on different silicon, and `--record` accepted the run.
+   * instruction on a table measured on different silicon, naming a number that did not describe it.
    */
   it('prints no instruction on another machine with the same core count', () => {
     expect(driftReport(drifted, 10, MEASURED, true, OTHER_CPU), 'same cores, different CPU')
-      .not.toContain('re-measure, or record');
+      .not.toContain('edit the declaration to match');
     expect(driftReport(drifted, 10, MEASURED, true, OTHER_CPU), 'the numbers are still true there')
       .toContain('57s -> 18s');
   });
@@ -529,9 +530,9 @@ describe('driftReport', () => {
   });
 
   it('keeps an overrun out of the count when the run could answer for both directions', () => {
-    // forced: the run did all the work, so both directions are reportable and the record form is right
+    // forced: the run did all the work, so both directions are reportable and the edit form is right
     expect(driftReport([{ name: 'typecheck', declared: 27, measured: 61, peers: 0 }], 10, MEASURED, true, SAME))
-      .toContain('re-measure, or record');
+      .toContain('edit the declaration to match');
   });
 
   it('says nothing when nothing drifted, at either budget', () => {
@@ -655,14 +656,14 @@ describe('outgrownReport', () => {
     expect(outgrownReport(found)).not.toContain('chain -- --cores 1');
   });
 
-  it('asks for the record rather than the rung, since the declaration moves first', () => {
-    // The pipeline: report, then `--all --record`, then `chain-graph` fails on the new declaration, then the
+  it('asks for the declaration rather than the rung, since the declaration moves first', () => {
+    // The pipeline: report, then edit `seconds`, then `chain-graph` fails on the new declaration, then the
     // step moves. Telling a reader to move the rung first skips the step that proves it needs moving
-    expect(outgrownReport(found)).toContain('--record');
+    expect(outgrownReport(found)).toContain('edit the cost it declares');
   });
 
   /**
-   * **The one `RECORDING_CONDITIONS` member this report skips, said rather than left out.** The table is
+   * **The one comparability condition this report skips, said rather than left out.** The table is
    * written only under `--all`, so a partial run's reading is an upper bound and not a comparison — worth
    * printing with that caveat, which is the difference between a report and a finding.
    */

@@ -187,10 +187,11 @@ integration half, 4.37x apart against a band of 2.5x. The half is a decision now
 (`scripts/lib/spec-halves.ts`), and nothing re-derives it.
 
 [`docs/reference/recorded-artifacts.md`](docs/reference/recorded-artifacts.md) has what each of those cost,
-measurement by measurement. **The one sample-shaped thing that remains is the chain's `seconds` table**, and
-it is a different case: its subject is one machine by declaration (`MEASURED_ON`), `--record` refuses any
-other, and `driftVerdict` recomputes a movement without its largest mover so one step's drift is named as
-that step's rather than the table's.
+measurement by measurement. **There are none left, and the chain's `seconds` table is the one that was.** It
+was recorded behind a band, a machine field, a budget check and an idle floor, and the quantity underneath
+was never one number — `test:smoke` read 11s, 16s, 20s, 21s and 24s across five runs that all passed that
+floor, because it is the cost beside whichever peers the schedule admitted. It is declared now, and its
+three readers all tolerate half-to-double, so nothing needed the apparatus the floor was defending.
 
 The chain is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
@@ -199,10 +200,10 @@ check. The workflow's header says when it goes back on.
 
 **And when it does: CI may fail a check, never a clock.** A runner is smaller and noisier than any
 developer's box, so anything gating on wall-clock there manufactures flakes that read as code failures.
-Three things keep that true and are worth knowing before changing them: every kill deadline is a declared
-class rather than a multiple of a measurement (`scripts/lib/step-timeouts.ts`), `--record` refuses any
-machine but the one the cost table was measured on (`isMeasuredSchedule`), and the drift report prints its
-numbers but no instruction off that machine. CI already does the right thing where it has its own bound —
+Two things keep that true and are worth knowing before changing them: every kill deadline is a declared
+class rather than a multiple of a measurement (`scripts/lib/step-timeouts.ts`), and the drift report prints
+its numbers but offers no figure to write off the machine the table describes (`isMeasuredSchedule`), since
+nothing on a runner can produce a number that belongs in it. CI already does the right thing where it has its own bound —
 `ci.yml`'s `timeout-minutes` is a round number nobody measured — and it is the chain that was the outlier.
 **Do not gate any of this on `process.env.CI`**: a CI-gated refusal in this repo never fires, and the one
 that was cost thirteen spec files a silent green (`@abuddy/host/build/packages-built`, on `ALLOW_UNBUILT`).
@@ -244,7 +245,7 @@ Things that waste the most time, in order:
   race each other's build and fail about the race rather than the code. Run `npm run packages:ensure` once
   first and every later call is a stat and a return.
 
-Six rules that pay for themselves:
+Rules that pay for themselves:
 
 - **Measure before you optimise, and before you accept someone else's measurement.** Two proposals here were
   rejected by one command each, both having been argued for at length first.
@@ -301,6 +302,21 @@ Six rules that pay for themselves:
 - **A comment justifying something by a past failure must name what prevents that failure now.** If it is
   this code, say how it fails; if it is something else, name the file; if it is nothing, say nothing checks
   it. "X is the whole point" cannot be checked; "Y fails when Z" can.
+- **Keep readings; do not decide with them.** A record that informs a *column* needs no hysteresis, no band,
+  no tie rule, no machine field and no idle floor, because there is no threshold for a reading to be wrong
+  about — `spec-durations.ts`' ten-run window is that shape, uncommitted and machine-local, and it costs
+  nothing to be right. The moment a reading is compared against an edge it needs every one of those, and the
+  edge is usually the thing that could have been declared instead: two subsystems here grew the full
+  apparatus and both were deleted, their decisions replaced by a filename and a hand-written number.
+  **Before building one, ask what the reading decides and whether that could simply be stated.**
+- **Load inflates a duration and cannot deflate it**, so the two directions are not equally safe to act on.
+  Measured 1.27x median, 2.03x p90, 3.29x at worst: a busy box can hide a stale claim and cannot invent one.
+  So *measured faster than declared* is a fact about the code and is safe to gate anywhere — the `@slow:`
+  marker gate is the worked example — while *measured slower* may be a fact about the machine and is only
+  ever a report. Gating that direction is what cost the deleted subsystem its window, its band and its two
+  idle floors. **The asymmetry holds for a thing's own time and not for a bar derived from it**, which is
+  the correction [`reference/recorded-artifacts.md`](docs/reference/recorded-artifacts.md) records: a
+  quantile moves with the load that moves the files under it.
 
 [`docs/reference/pipeline-lessons.md`](docs/reference/pipeline-lessons.md) has what each of these cost to
 learn — the measurements, what was tried first, and the commit that closed it.
@@ -464,9 +480,12 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # each would cache results the other took against a different tree, and `cached`
                          # would mean "some run with these inputs passed". A second run names the first and
                          # exits 1; `--dry` is exempt, reading the tree and writing nothing.
-                         # Afterwards, on the machine its table was measured on, it names what the run
-                         # contradicted — a step past double its declared `seconds`, one that passed and is
-                         # already stale again, one whose measured cost outgrew its timeout rung.
+                         # Afterwards it names what the run contradicted — a step past double its declared
+                         # `seconds`, one that passed and is already stale again, one whose measured cost
+                         # outgrew its timeout rung. `seconds` is **declared**, so the remedy is an edit the
+                         # report prints for you; on the machine its table was measured on it offers the
+                         # number, and anywhere else it gives the rows without one, since the figure it
+                         # would name describes that box and not this one.
                          #   --dry      the plan, why each step is or is not cached, and **what bounds it**:
                          #              the critical path, plus **the most any step on it could buy**. A
                          #              step off the path runs in the shadow of the ones on it, and a step
@@ -478,14 +497,6 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #   --cores N  how much of the machine to spend; this machine's cores by default,
                          #              and a step declares its own width (POOL_WIDTH, core-budget.ts)
                          #   --e2e      run the E2E suite with the chain, ordered after test:smoke
-                         #   --record   write each step's measured cost into its table. Needs --all, and
-                         #              refuses another machine, another budget, or a busy box
-                         #   --force    record anyway, and know the number is forced
-                         #   --forget   with --all --record, write every row rather than the drifted ones —
-                         #              for a change you know about, not to chase a drift you do not
-                         #   --step <name>  with --forget, that one row and no other. **The usual form**,
-                         #              and the one the drift report names for you
-                         #   --adopt    record on another machine, rewriting MEASURED_ON with the costs
                          #   --no-classify  do not re-run a step that failed while the machine was busy
                          #   --strict   fail the run when a step's inputs moved **while it ran** — it read a
                          #              tree that no longer exists, so its pass establishes nothing. Always
@@ -648,22 +659,6 @@ npm run measure:loop -- "<cmd>"  # Not how long a command took, but how long eac
                          # whether a quiet process was waiting or working.
                          # docs/reference/pipeline-commands.md has the measured habits behind both.
 # Lint (root runs every workspace that has one; oxlint, plus eslint in the renderer)
-npm run check:idle       # Is this machine quiet enough to measure on, and for which kind of measurement —
-                         # `89% idle — quiet enough to record on`, exit 1 below the recording floor.
-                         # **Two floors, because what a command leaves behind decides how quiet it needs to
-                         # be**: recording needs 80% (`chain --record`), printing needs
-                         # 70% (`measure`, `measure:loop`). It reports both and exits on the stricter,
-                         # being a pre-flight for --record; a reader who only wants to print is told so.
-                         # Two commands refuse when the box is busy and neither could be asked in advance:
-                         # `measure` refuses before it runs anything, and
-                         # `chain --record` refused *after* the run, which is where the answer arrives too
-                         # late — twice on 2026-10-04 that spent 200s to be told the box was 69% idle. The
-                         # chain asks first now as well, and this is the same reading as a command, so it
-                         # composes: `npm run check:idle && npm run chain -- --all --record`.
-                         # **It answers "is it worth starting", not "will this be clean"**: a reading is of
-                         # this instant, and a long command is its own load — the chain reads 83% before a
-                         # run that ends under the floor. Not a chain step, and must not become one
-
 npm run check:specifiers # Every import rule, over the whole repo (2.5s, one parse and one tree walk). Takes paths to
                          # run only the per-file rules over them (0.9s over one feature), and says which
                          # whole-tree rules it skipped; --rule <id> runs one, --list prints them all

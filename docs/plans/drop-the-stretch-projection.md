@@ -64,8 +64,9 @@ Roughly 250 lines of source and 300 of spec.
 - **`driftedSteps` and `driftReport`.** *Does the declared cost still describe this step*, half to double. No
   projection, so it answers wherever it ran — which is why it keeps its rows anywhere and gates only its
   advice.
-- **`--record`'s three conditions** (`RECORDING_CONDITIONS`) and its idle floor. Those are about whether a
-  measurement describes the table, not about another machine.
+- **`scheduleMismatch` and `isMeasuredSchedule`.** Those are about whether a reading describes the table,
+  not about another machine. (They were three conditions behind `RECORDING_CONDITIONS` until the `seconds`
+  recorder went: its `wholeTable` member had no reader left that gated on it.)
 - **`ci.yml`'s `timeout-minutes`**, a round number nobody measured, which is the right shape for CI.
 
 ## The question this leaves open, stated so it is not lost

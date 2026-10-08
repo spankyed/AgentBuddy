@@ -129,7 +129,7 @@ describe('driftedSteps', () => {
  *
  * **A killed step's elapsed time is its deadline, not its cost.** `boundedSpawn` returns when the budget runs
  * out, so a wedged `test:integration` reports ~300s — and every reader of that map takes it for a measurement:
- * `--record` would write 300s into the table, `declaredShare` makes that 4.0 of its rung, `outgrownRungs` names
+ * the drift report would offer 300s as the edit, `declaredShare` makes that 4.0 of its rung, `outgrownRungs` names
  * it as outgrown by construction, and `criticalPath` puts the deadline on the floor. None of them is wrong
  * about the number; the number is not a measurement.
  *
@@ -266,7 +266,7 @@ describe('outgrownRungs', () => {
 
     it('says nothing at another budget on the measured machine either', () => {
       // `--cores 4` on the reference box. The costs are the schedule's, and this is not that schedule —
-      // which is the half a machine comparison alone misses, and the half `--record` also refuses on
+      // which is the half a machine comparison alone misses
       expect(asked(steps, fourTimesSlower, TABLE, 4)).toEqual([]);
     });
 
@@ -280,10 +280,10 @@ describe('outgrownRungs', () => {
 });
 
 /**
- * Which of the three `RECORDING_CONDITIONS` this report gates on, and which it reports through.
+ * Which conditions this report gates on, and which it reports through.
  *
- * **Two of three, and the third is a decision rather than an omission.** The table is written only under
- * `--all`, so a partial run's timings are not the quantity it holds. Reporting them anyway rests on an
+ * **The schedule, and the whole run is a decision rather than an omission.** The table holds what a full run
+ * costs, so a partial run's timings are not that quantity. Reporting them anyway rests on an
  * inequality: contention can only make a step slower, so a reading is an upper bound — it can clear a step
  * and cannot convict one. Gating on it instead would reopen the gap this report exists to close, over the
  * band between a step's rung and `driftedSteps`' 2x.

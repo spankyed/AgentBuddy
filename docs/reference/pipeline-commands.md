@@ -22,8 +22,9 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # **Never pipe a backgrounded run.** It buffers output and prints only a failing
                          # step's, so `| tail` discards the one thing a failure leaves behind, and that
                          # does not come back on a re-run that passes.
-                         # Afterwards, on the machine its table was measured on, it names the steps a run
-                         # contradicted: one past double its declared
+                         # Afterwards it names the steps a run contradicted, wherever it ran — what the
+                         # measured schedule gates is the figure it offers to write, never the rows: one
+                         # past double its declared
                          # `seconds`, and one that passed and is already stale again — the second with the
                          # inputs that differ and whether each moved while the step ran (an ordering to
                          # fix) or since. And a step whose *measured* cost outgrew the timeout rung it
@@ -73,44 +74,6 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             oversubscription and one below it is a cap a wide step cannot fit
                          #             inside, where it runs alone
                          #   --e2e     run the E2E suite with the chain, ordered after test:smoke
-                         #   --record  write each step's measured cost back into its table. Needs --all,
-                         #             refuses a budget other than the one the table was measured at,
-                         #             refuses a busy machine, and refuses a run where too much moved to
-                         #             have been measuring the code. --force overrides the last two
-                         #   --force   record anyway, and know the number is forced
-                         #   --forget  with --all --record: write what this run measured for every step,
-                         #             not only the rows past their band. The band is max(1s, 35%), which is
-                         #             wider than a 10-20% staleness, so a row inside it cannot be corrected
-                         #             by any other means — `--force` overrides the refusals, not the band.
-                         #             It writes only rows whose value actually differs, so a run that agrees
-                         #             with the table leaves no edit and moves no mtime. The same word
-                         #             the deleted `spec-cost:update` took, for the same operation: ignore
-                         #             what is recorded, keep what this run measured.
-                         #             **For a change you know about — a bundler bump, a policy change — and
-                         #             not to chase a drift you do not.** It replaces the whole table from one
-                         #             run, so a run that measured the machine writes the machine into every
-                         #             row: watched 2026-10-04 putting `build:app` at 78s against the ~39s six
-                         #             other runs agreed on, which then failed `declaredShare`.
-                         #             **The drift report now says which of the two you have**, so you need not
-                         #             guess: `driftVerdict` recomputes the movement without the largest mover,
-                         #             and a movement that does not survive that is one step's — reported with
-                         #             `--forget --step <name>` as the remedy. Only a movement that does
-                         #             survive is the table's, where the answer is to re-run on an idle machine
-                         #             until it settles. `scripts/chain.ts` records the three cheaper guards
-                         #             that were tried and do not separate the two cases
-                         #   --step <name>  with --forget: write that one step and no other. **The usual
-                         #             form**, and now the one the report names for you — a wrong number
-                         #             confined to the row you named cannot reach the other twenty-eight, and
-                         #             `declaredShare` catches the one. Bare --forget stays for a correlated
-                         #             drift, which is all-rows by nature and is the other branch the report
-                         #             distinguishes. Refused where it names no step in the run, which would
-                         #             record nothing and report a quiet table
-                         #   --adopt   record on another machine, writing `MEASURED_ON` with the costs.
-                         #             The table and the box it was measured on are one fact, so one
-                         #             operation writes both — without this the costs moved and the
-                         #             constant did not, and every check scoped on it then skipped the box
-                         #             whose numbers were in the file. Needs --all and this machine's cores
-                         #             as the budget, since it records what this machine costs
                          #   --no-classify  a step failing while the machine is busy is re-run alone, to
                          #             rule the code out — a pass there rules out nothing else, so the line
                          #             names the steps that overlapped it and claims no cause. The retry
@@ -139,9 +102,9 @@ npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a nu
                          #   --busy N          N CPU burners, so contention is induced rather than waited
                          #                     for. Implies --force and says so in the conditions
                          #   --idle PERCENT    lower the floor    --force  measure anyway
-                         # It refuses below IDLE_FLOOR (70%) — the floor for a command that *prints*, where
-                         # the output carries its own conditions; a command that records asks
-                         # RECORD_IDLE_FLOOR (80%) instead. Read from os.cpus() rather than load average,
+                         # It refuses below IDLE_FLOOR (70%), and that is the only floor now — it was the
+                         # looser of two while a command wrote measurements into a committed table, and
+                         # nothing writes one. Read from os.cpus() rather than load average,
                          # which lags — measured, loadavg 3.20 on a box that was 78.7% idle. **Idle is
                          # sampled between runs, never during one**: a reading taken while the command runs
                          # measures the command, and a quiet box reads 0% while a suite uses it.

@@ -149,12 +149,25 @@ export interface ChainStep {
    * number a run is compared against. A stale value misreports the floor and nothing else, which is the
    * whole of why this field may stay machine-bound (`docs/archive/plans/costs-across-machines.md`).
    *
-   * It is a measurement, so re-measure rather than raise it when a step legitimately grows. Every run
-   * reports a step that ran past double this number, which is what keeps the table honest without anyone
-   * remembering to check. A step that
-   * came in under half is reported only by `--all` at `MEASURED_ON`: a run with steps cached, or a
-   * smaller budget, has less contention and makes everything look fast, so that direction says nothing about
-   * the table. `driftedSteps` finds both; `driftReport` in chain-output.ts decides which the run can answer for.
+   * **Declared by hand, not recorded, and that is this field's one design choice.** Three readers use it —
+   * `driftedSteps` reports a run that contradicts it, `declaredShare` bounds it against the step's timeout
+   * rung, and `criticalPath` sums it to say what the chain waits on — and not one of them gates a merge on
+   * it. So none needs the number to be *fresh*, only approximately true of one machine, and every one of
+   * them tolerates the half-to-double band. A recorder for it needed a band, a window, a machine field and
+   * an idle floor before one reading could be compared with another, and the quantity underneath was never
+   * one number: `test:smoke` read 11s, 16s, 20s, 21s and 24s across five runs that all passed that floor,
+   * because this is the cost *beside whichever peers the schedule admitted*. **Keep the reading; do not
+   * decide with it** — the root guide's rule, and `docs/reference/recorded-artifacts.md` has what deciding
+   * with one cost the last time.
+   *
+   * **To change one:** run `npm run chain -- --all` and read the drift report, which prints the declared
+   * value beside the measured one; edit this number to match. That judgement is a person's, because one
+   * reading cannot tell a step that grew from a box that was busy — the rows are evidence, not an
+   * instruction. Every run reports a step that ran past double this number, which is what keeps the table
+   * honest without anyone remembering to check. A step that came in under half is reported only by `--all`
+   * at `MEASURED_ON`: a run with steps cached, or a smaller budget, has less contention and makes
+   * everything look fast, so that direction says nothing about the table. `driftedSteps` finds both;
+   * `driftReport` in chain-output.ts decides which the run can answer for.
    *
    * For a step that keeps a cache of its own — the two pooled steps, which run only their stale projects —
    * it is the cost of the *whole* pool, so that the drift report compares like with like. Those steps
@@ -717,11 +730,10 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
  * (`step-timeouts.ts`), so neither deadline is a function of this number. What it still has to be is the
  * cost of the whole pool and never of a partial run, so that the drift report compares like with like.
  *
- * **Correcting one of these takes `--forget --step`.** A plain `--record` holds any move inside
- * `recordSeconds`' band, `max(1s, 35%)`, which is wider than the drift a row usually acquires; bare `--forget`
- * drops the band for every row at once, so a run that measured the machine rather than the code writes the
- * machine into all of them. `--step <step>` writes the row named and no other — the scope a correction wants,
- * and the reason a stale row here never needs editing by hand.
+ * **Correcting one of these is an edit here**, like every other declared cost: the drift report prints what
+ * the pool measured beside what this says, and one key moves at a time. A run that measured the machine
+ * rather than the code is the reason that is a judgement rather than a rewrite — `driftedSteps` reports both
+ * directions and neither is self-evidently the code's.
  */
 export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { host: 34, pack: 19, integration: 60 };
 
@@ -730,9 +742,8 @@ export const POOL_SECONDS: Record<'host' | 'pack' | 'integration', number> = { h
  *
  * Two readers need it and had their own copies: `declaredIn` (`scripts/chain.ts`), which points a run at the
  * reasoning behind a never-cached step, knew only this file and so could not locate the seventeen typecheck
- * legs or the generated pool steps; `record-seconds.ts` knew both and called them `SECONDS_TABLES`. Same
- * question, two answers, and the one that was wrong was the one nothing checked —
- * `chain-graph.spec.ts` holds every step to being locatable through this list.
+ * legs or the generated pool steps. One question with two answers, and the one that was wrong was the one
+ * nothing checked — `chain-graph.spec.ts` holds every step to being locatable through this list.
  */
 export const STEP_TABLES = ['scripts/lib/chain-steps.ts', 'scripts/lib/typecheck-legs.ts'];
 
@@ -1099,8 +1110,8 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // Needs `compile` and not just `packages:ensure`, because `dependency-runtime` builds a pack that depends
   // on default-setup and so reads its `dist`. It used to run after `compile` only because of where it sat
   // in this table, which `orderedSteps` never promised.
-  // `POOL_SECONDS`, not a literal: `--record` rewrites that key, and two records of one cost drift the
-  // moment it rewrites whichever one it can find
+  // `POOL_SECONDS`, not a literal: one cost declared twice drifts the moment somebody edits whichever copy
+  // they found first
   // 1.94x, measured 2026-10-04: five workers to two is 42.5s -> 82.5s, median of 3 (`suite`'s own note).
   // It caps itself at half the cores, so it loses far fewer workers than the pool the rung's 4x was taken on
   { name: 'test:integration', timeout: 'suite', stretches: 1.94, seconds: POOL_SECONDS.integration,

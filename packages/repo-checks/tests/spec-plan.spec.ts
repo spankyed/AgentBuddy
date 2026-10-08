@@ -521,8 +521,8 @@ describe("the package's CLAUDE.md names what is here", () => {
    * One parse for both directions, which is the fix for two things at once. Searching the whole file let this
    * file's own *prose* vouch for a spec: it cites specs by name constantly, so a spec mentioned in a paragraph
    * counted as documented without ever getting a row. Latent rather than live — all 45 are in rows today — but
-   * it is the same hole that let `spec-cost:update`'s `--forget` satisfy the chain's flag check, where the two
-   * commands share a word on purpose.
+   * it is the same hole that let another command's flag satisfy the chain's flag check, where two commands
+   * share a word on purpose.
    *
    * And the two directions now cannot disagree about what "named" means, which they could while one read rows
    * and the other read the file.
