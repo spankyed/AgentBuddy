@@ -15,7 +15,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PACK_BUILD_WAIT_MS, PackBuildLockHeld, holdPackBuildLock, packBuildLock } from '../../src/build/build-lock';
+import { PACK_BUILD_WAIT_MS, PackBuildLockHeld, holdPackBuildLock, packBuildLock, waitForPackBuild } from '../../src/build/build-lock';
 import { buildStagingDir } from '../../src/commands/build';
 
 let root: string;
@@ -115,5 +115,44 @@ describe('the bound', () => {
   /** Several times a full build of the largest pack here, so a wedged holder is reported rather than waited on */
   it('is minutes rather than a build', () => {
     expect(PACK_BUILD_WAIT_MS).toBeGreaterThan(60_000);
+  });
+});
+
+/**
+ * **The read side, which holds nothing.** A reader of *another* pack's output cannot take that pack's lock
+ * while its own build holds its own: two locks acquired in an order neither caller controls is a deadlock
+ * waiting for a dependency cycle. So a dependency read waits out a build in flight and then reads — which
+ * covers a build already running when the read starts, and deliberately not one that starts during it.
+ */
+describe('waiting for a build without taking the lock', () => {
+  it('returns at once when no build is running, and takes nothing', async () => {
+    const root = pack();
+    expect(await waitForPackBuild(root)).toBeUndefined();
+    expect(fs.existsSync(packBuildLock(root)), 'a waiter must not create the lock it waits on').toBe(false);
+  });
+
+  it('names the build it waited for, and leaves that build holding its lock', async () => {
+    const root = pack();
+    heldByAnother(packBuildLock(root));
+    let clock = 0;
+    let looks = 0;
+    const waited = await waitForPackBuild(root, {
+      timeoutMs: 5_000,
+      now: () => clock,
+      pause: async (ms) => { looks += 1; clock += ms; },
+    });
+    expect(waited, 'it reports what it waited for, so a wait does not read as a hang').toContain('abuddy build');
+    expect(looks, 'it gave up without looking again').toBeGreaterThan(1);
+    expect(fs.existsSync(packBuildLock(root)), "the holder's lock is untouched").toBe(true);
+  });
+
+  /** The bound is a bound: a holder that outlasts it leaves the caller to read as it would have anyway */
+  it('returns rather than hanging when the holder outlasts the bound', async () => {
+    const root = pack();
+    heldByAnother(packBuildLock(root));
+    let clock = 0;
+    await expect(waitForPackBuild(root, {
+      timeoutMs: 1_000, now: () => clock, pause: async (ms) => { clock += ms; },
+    })).resolves.toContain('abuddy build');
   });
 });

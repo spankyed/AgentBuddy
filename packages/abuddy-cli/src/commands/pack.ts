@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
 import { createPackArchive, stagePack, staleBuildOutput, verifyPack, type PackIntegrity } from '@abuddy/host/packs';
+import { holdPackBuildLock } from '../build/build-lock.ts';
 
 const HELP = `
 Usage: abuddy pack [--out <dir>]
@@ -49,11 +50,23 @@ export async function buildPackArchive(root: string, outDir: string): Promise<Pa
   if (stale) {
     throw new Error(`${manifest.id}'s build is older than ${stale}. Run abuddy build, then pack.`);
   }
-  const stageDir = path.join(root, '.abuddy', 'staged', manifest.id);
-  stagePack(root, stageDir, { sdkVersion: sdkVersion(), source: gitSource(root) });
-  const integrity = verifyPack(stageDir);
-  const archive = await createPackArchive(stageDir, outDir);
-  return { ...archive, integrity };
+  // **Held for the whole stage, because this is a multi-file copy of `dist`.** A build renaming that tree
+  // mid-copy would leave an archive holding half of two builds — whole-looking, verified, and wrong — which is
+  // a far wider window than the rename and a worse outcome than the "not built" a short read sees.
+  const lock = await holdPackBuildLock(root, {
+    packId: manifest.id,
+    what: 'abuddy pack',
+    onWait: (holder) => console.log(`Waiting for ${holder} to finish...`),
+  });
+  try {
+    const stageDir = path.join(root, '.abuddy', 'staged', manifest.id);
+    stagePack(root, stageDir, { sdkVersion: sdkVersion(), source: gitSource(root) });
+    const integrity = verifyPack(stageDir);
+    const archive = await createPackArchive(stageDir, outDir);
+    return { ...archive, integrity };
+  } finally {
+    lock.release();
+  }
 }
 
 export async function pack(args: string[]) {

@@ -7,6 +7,7 @@ import { satisfies, rcompare, clean } from 'semver';
 import { SEED_INDEX_FILE, _cliFormatMismatchMessage, _snapshotFormatMismatch, type PackSnapshot } from '@abuddy/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
 import { PACK_LAYOUT, extractPackArchive, verifyPack } from '@abuddy/host/packs';
+import { waitForPackBuild } from '../build/build-lock.ts';
 import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
 import { configuredAppPackagesDir } from '../app/app-target';
 
@@ -108,10 +109,17 @@ function resolveFromLocal(root: string, depId: string): DepFiles | null {
  * inside an AgentBuddy checkout (a test fixture, say) builds against that checkout's packages rather
  * than an installed app's older copy.
  */
-function resolveFromWorkspace(root: string, depId: string): DepFiles | null {
+async function resolveFromWorkspace(root: string, depId: string): Promise<DepFiles | null> {
   for (let dir = path.dirname(path.resolve(root)); ; dir = path.dirname(dir)) {
-    const result = findDepFiles(path.join(dir, 'packages', depId)) ?? findDepFiles(path.join(dir, depId));
-    if (result) return result;
+    for (const candidate of [path.join(dir, 'packages', depId), path.join(dir, depId)]) {
+      // **A build of the dependency renames its `dist`, so a read taken during that swap finds no build dir
+      // and `withBuildAndRuntime` reports one that is simply absent** — which surfaces downstream as the
+      // dependency's seed compiler coming back unresolved, naming the wrong cause. Waiting costs an
+      // `existsSync` per candidate when no build is running, which is every ordinary resolution.
+      await waitForPackBuild(candidate, { onWait: (holder) => console.log(`Waiting for ${holder} to finish...`) });
+      const found = findDepFiles(candidate);
+      if (found) return found;
+    }
     if (path.dirname(dir) === dir) return null;
   }
 }
@@ -368,7 +376,7 @@ function copySeeds(from: string, to: string): void {
  * declared range. They're cheap, so they're re-read on every build instead of trusting the cache.
  */
 async function resolveFromMachine(root: string, depId: string, range: string, rejected: Rejected): Promise<(DepFiles & { resolvedFrom: string }) | null> {
-  const workspace = resolveFromWorkspace(root, depId);
+  const workspace = await resolveFromWorkspace(root, depId);
   if (usable(workspace, range, 'workspace', rejected)) return { ...workspace, resolvedFrom: 'workspace' };
 
   const configured = await resolveFromConfiguredApp(root, depId);
