@@ -33,9 +33,15 @@ put the thing you are looking at on disk, and the run warns when either has gone
 quietly showing you the previous build. So this is not the tool for a question about a dev server: nothing
 here stands one up, and `npm start`'s renderer and `abuddy run`'s pack server are not in the picture.
 
+**Every script here is `abuddy drive`**, which is also what a pack author runs — the npm scripts are thin
+calls to it, so `npm run drive -- --help` is the reference and a flag works the same from either side. With
+no `abuddy.json` above it the command drives *this checkout's* app rather than a pack's, which is what
+makes that possible; it does not resolve a saved app choice or offer to download a Beta, because the app
+you mean is the one you are standing in.
+
 **Each run gets a fresh data dir under `$TMPDIR` and throws it away**, so a script cannot touch your
-development or production data, and every session starts clean. `abuddy drive --instance <name>` keeps a
-data dir between sessions; `npm run drive` has no instances, being Playwright over this repo's own config.
+development or production data, and every session starts clean. `--instance <name>` keeps a data dir
+between sessions: `npm run drive -- --instance probe`.
 
 **For an answer you want to read rather than watch**, `app.report(name, value)` writes
 `drive/results/<name>.json` and prints one `[drive:report] <name> <json>` line — so a program reading the

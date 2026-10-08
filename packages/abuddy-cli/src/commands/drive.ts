@@ -25,7 +25,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process';
-import { findPackRoot, readManifest } from '../utils';
+import { findPackRootOrNone, readManifest } from '../utils';
 import { cliDirs, parseAppFlags, resolveDevelopmentApp } from '../app/app-target';
 import { instanceFor, instanceInUse, parseInstanceFlags, removeInstance, INSTANCE_USAGE } from '../app/instances';
 import { ONE_SHOT_ASKS, type AskName, type EngineAsk } from '../app/drive-engine.ts';
@@ -36,7 +36,7 @@ import { copySecretsInto } from '../app/instance-secrets.ts';
 import { resolvePlaywrightCli } from '../app/playwright';
 import { renderTemplate } from '../templates.ts';
 import { configCallsHelper } from '../build/config-text.ts';
-import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
+import { checkoutFor, ensureCheckoutPackages } from '../build/checkout-packages.ts';
 
 const DRIVE_DIR = 'drive';
 
@@ -337,14 +337,43 @@ function reportStaleConfigs(stale: string[]): void {
   }
 }
 
+/** What a driving run is about: a pack, or the app itself */
+interface DriveTarget {
+  /** Where `drive/` lives, and the Playwright run's working directory */
+  readonly root: string;
+  /** The pack under test. Absent when the app itself is the subject, which unsets `PACK_DIR` */
+  readonly packDir?: string;
+  readonly hostVersion: string;
+}
+
+/**
+ * The pack this drives, or the checkout it drives *itself* from.
+ *
+ * **A root with no `abuddy.json` is the second case, not an error.** This command used to open with
+ * `findPackRoot`, which throws there — so the AgentBuddy repo could not use it at all and kept npm scripts
+ * calling Playwright directly, with their own environment and their own drift. Driving the app with no pack
+ * under test is exactly what those scripts did, so it is a shape this understands now and the two entry
+ * points are one implementation.
+ */
+function driveTarget(cwd: string): DriveTarget {
+  const pack = findPackRootOrNone(cwd);
+  if (pack !== undefined) return { root: pack, packDir: pack, hostVersion: readManifest(pack).hostVersion ?? '*' };
+  const checkout = checkoutFor(cwd);
+  if (checkout === undefined) {
+    throw new Error('No abuddy.json here, and no AgentBuddy checkout above it. Run this from inside a pack,'
+      + ' or from a checkout to drive its app on its own.');
+  }
+  return { root: checkout, hostVersion: '*' };
+}
+
 export async function drive(args: string[]) {
   if (args.includes('--help') || args.includes('-h')) {
     console.log(HELP);
     return;
   }
 
-  const root = findPackRoot(process.cwd());
-  const manifest = readManifest(root);
+  const target = driveTarget(process.cwd());
+  const root = target.root;
   const { ask, argument, attach, rest: unasked } = takeOneShotFlags(args);
   const { serve, rest: unserved } = takeServeFlag(unasked);
   const { mode, withSecrets, rest } = parseInstanceFlags(unserved);
@@ -389,7 +418,18 @@ export async function drive(args: string[]) {
     return;
   }
 
-  const app = await resolveDevelopmentApp({ flags, hostVersion: manifest.hostVersion ?? '*' });
+  /**
+   * **With no pack and no app named, the app is the checkout you are standing in.**
+   *
+   * `resolveDevelopmentApp` reads a saved choice and may prompt or download a Beta, which is right when a
+   * pack is choosing what to run against. It is wrong here: it would make `npm run drive` in a checkout
+   * drive whatever app was saved on some earlier first run, silently and from the same command. Naming one
+   * (`--app-root`, `--app beta`) is still honoured, because then the caller has chosen.
+   */
+  const named = flags.appRoot !== undefined || flags.app !== undefined;
+  const app = target.packDir === undefined && !named
+    ? { kind: 'source' as const, root: target.root }
+    : await resolveDevelopmentApp({ flags, hostVersion: target.hostVersion });
   const instance = instanceFor(mode, cliDirs());
   if (instance?.created && withSecrets) {
     const { count, from } = copySecretsInto(instance, appEnv(app));
@@ -452,7 +492,8 @@ export async function drive(args: string[]) {
       console.error(`  ${instance.dir}\n`);
     }
 
-    const env = fixtureEnv(app, root, process.env);
+    // With no pack there is nothing resolving `dist`, and the subject is this checkout's own source
+    const env = fixtureEnv(app, target.packDir, process.env, { keepSourceCondition: target.packDir === undefined });
     // Shown, because the whole point is to watch it. Under Playwright the app hides its windows unless
     // this says otherwise (the guards in packages/main). **A one-shot is the exception**: no window flashes
     // up per question, and it then takes the other branch of `pinsViewport`, so the page gets the emulated
@@ -462,6 +503,9 @@ export async function drive(args: string[]) {
     if (instance) env.E2E_DATA_DIR = instance.dir;
     // Beside the scripts that take them, not under `tests/` — driving output is not test output
     env.E2E_SCREENSHOT_DIR = path.join(root, DRIVE_DIR, 'screenshots');
+    // Beside the screenshots, for the same reason. The CLI did not set this before, so `app.report` in a
+    // pack's driving script fell through to its `PACK_DIR/drive/results` guess
+    env.E2E_REPORT_DIR = path.join(root, DRIVE_DIR, 'results');
 
     // Spawned rather than spawnSync'd so this process keeps an event loop. With spawnSync a Ctrl-C took
     // the default action and killed this process where it stood, so the teardown below never ran and an

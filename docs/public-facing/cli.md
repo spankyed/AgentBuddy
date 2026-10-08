@@ -315,6 +315,12 @@ required and a body without one answers `{"ok":true}`.
 milliseconds and leaves that session running. Without a session it says so and names the command to start
 one. The curl recipe above is still the way to ask *many* things; this is the way to ask one.
 
+**With no `abuddy.json` above it, it drives the app of the AgentBuddy checkout it is in** rather than a
+pack: nothing is built or installed, and the app is that checkout's — not a saved choice and not a
+downloaded Beta, which is what naming `--app-root` or `--app beta` is still for. That is the mode the
+AgentBuddy repo's own `npm run drive` scripts use, so they are calls to this command rather than a second
+implementation of it.
+
 It takes the same app and instance flags as `abuddy run`, with one difference in the default: where `abuddy run` uses the shared development data dir, `abuddy drive` gives each session a fresh one and throws it away afterwards, so a driving session starts clean and leaves nothing. `--instance <name>` is how a session keeps its state for the next one. It launches its own app rather than joining one `abuddy run` already has, because Electron allows one app per data dir — so if a person wants to watch what a driver is doing, they watch the driver's window rather than starting a second app.
 
 ### Validation

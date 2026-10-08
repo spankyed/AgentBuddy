@@ -34,12 +34,16 @@ export function fixtureEnv(
   app: AppTarget,
   packDir: string | undefined,
   base: NodeJS.ProcessEnv,
-  options: { release?: boolean; prebuilt?: boolean } = {},
+  options: { release?: boolean; prebuilt?: boolean; keepSourceCondition?: boolean } = {},
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...base };
   // A pack resolves the packages' published dist, whoever runs it: the condition never reaches this run,
-  // even when the caller had it (npm test in a checkout)
-  const nodeOptions = withoutSourceCondition(base.NODE_OPTIONS);
+  // even when the caller had it (npm test in a checkout).
+  //
+  // **`keepSourceCondition` is for a run with no pack in it** — `abuddy drive` driving the app itself from
+  // a checkout, which is what this repo's `npm run drive` does. There is no pack to resolve `dist` for, the
+  // subject is the checkout's own source, and stripping the condition would change what that run loads.
+  const nodeOptions = options.keepSourceCondition === true ? base.NODE_OPTIONS : withoutSourceCondition(base.NODE_OPTIONS);
   if (nodeOptions) env.NODE_OPTIONS = nodeOptions;
   else delete env.NODE_OPTIONS;
   delete env.ABUDDY_ROOT;

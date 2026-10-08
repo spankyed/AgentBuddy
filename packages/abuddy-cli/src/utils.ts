@@ -21,13 +21,26 @@ export function envLabel(env: AppEnv): string {
 
 export const TARGET_ENV_USAGE = '-d, --dev    Target the dev environment\n  -b, --beta   Target the beta environment';
 
-export function findPackRoot(from: string): string {
+/**
+ * The pack at or above `from`, or undefined.
+ *
+ * Every command but one wants the throwing form below: they act on a pack, and having none is the end of
+ * it. `abuddy drive` is the exception — driving the app with no pack under test is a coherent thing to do,
+ * and this is what lets it say so rather than treating it as a failure.
+ */
+export function findPackRootOrNone(from: string): string | undefined {
   let dir = from;
   while (dir !== path.dirname(dir)) {
     if (fs.existsSync(path.join(dir, 'abuddy.json'))) return dir;
     dir = path.dirname(dir);
   }
-  throw new Error('No abuddy.json found. Run this command from inside a pack directory.');
+  return undefined;
+}
+
+export function findPackRoot(from: string): string {
+  const root = findPackRootOrNone(from);
+  if (root === undefined) throw new Error('No abuddy.json found. Run this command from inside a pack directory.');
+  return root;
 }
 
 export function readManifest(root: string): PackManifest {
