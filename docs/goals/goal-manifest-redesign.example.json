@@ -502,5 +502,10 @@
     }
   },
   "lifecycle": "src/features/hooks.ts",
-  "migrations": "src/migrations/index.ts"
+  "migrations": "src/migrations/index.ts",
+  "build": {
+    "opaqueDeps": [
+      "elkjs"
+    ]
+  }
 }

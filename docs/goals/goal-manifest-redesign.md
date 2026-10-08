@@ -23,7 +23,9 @@ Finished when:
   mutation-checked.
 - packages/default-setup/abuddy.json has exactly these top-level keys, in this order and no others:
   $schema, id, name, version, description, license, builtIn, hostVersion, data, features, extensions,
-  seed, lifecycle, migrations. No key holds a map whose keys equal its values.
+  seed, lifecycle, migrations, build. No key holds a map whose keys equal its values. (`checks` is the
+  schema's sixteenth root key and this pack has none: it switches off no rule, so the section is absent
+  rather than empty.)
 - Every feature carries an `about` line, and every entity is declared once — on the feature that owns
   it, or in `data.entities` when no feature does — as a shape reference or null.
 - No entity gains or loses a typed shape: the generated src/__generated__/ears.ts is byte-identical.
@@ -32,6 +34,9 @@ Finished when:
 - `features[].designation` is a string that need not equal the feature id (already true at the base
   commit — Decision 6 landed ahead of the phases), and no manifest or schema spells `designated`.
 - `packServices` exists in no manifest and no schema; a pack-level service is `extensions.services`.
+- `abuddy.checks.json` exists nowhere — in no pack, scaffold, fixture, doc or reader — and the rules a
+  pack switches off are `checks.allow` in its manifest; `fe.bundleUi` exists in no manifest and no
+  schema, a pack bundling its own `@abuddy/ui` saying so with `build.bundleUi`.
 - `$manifestVersion` exists in no manifest and no schema, `PACK_LAYOUT_VERSION` is renamed
   `PACK_FORMAT_VERSION` and still `1`, and neither it nor `verifyPack` uses `Math.floor`.
 - `FEATURE_LAYOUT` is the one definition of the feature layout; `validateFeatures`, `generate-entries`,
@@ -595,7 +600,8 @@ anything here needs it.
 
 **9. Every extension point moves under `extensions`**: `steps`, `artifacts`, `blocks`, `commands`,
 `dsl`, `fe` (tiptap plugins, app extensions) and `packServices`, which becomes `extensions.services`.
-This is VS Code's `contributes`.
+This is VS Code's `contributes`. **`fe.bundleUi` is not one of them** and goes to `build` (Decision 17):
+`extensions` is what the pack gives the app, and a packaging choice gives it nothing.
 
 `packServices` is the pack-level counterpart of `features[].services` — the same `path#export` map for
 a service that belongs to no feature — and it is read by codegen (`generate-entries.ts` at four
@@ -799,6 +805,44 @@ old files continuing to validate is not compatibility — there is no second rea
 translation, only a larger set of valid manifests. Decision 6 is the example. What the rule forbids is
 a renamed or removed key that keeps working through code written to accept it.
 
+**17. Two sections for what the app never loads: `build` and `checks`, and no sidecar files.**
+`build` holds settings that change what `abuddy build` produces or how long it takes; `checks` holds the
+pack rules the pack switches off. `abuddy.checks.json` is **deleted** and its contents become
+`checks: { allow: [...] }`, keeping that shape and vocabulary so the move is mechanical and its error
+messages stay true.
+
+**The criterion is not "the app never reads it", and getting that wrong is the trap.** Measured
+2026-10-08: of the manifest's 29 top-level keys the app reads ten — `builtIn`, `dependencies`,
+`description`, `entities`, `features`, `hostVersion`, `id`, `name`, `permissions`, `relKinds`, `version` —
+and never reads the other nineteen, `steps`, `artifacts`, `blocks`, `commands`, `dsl`, `help`,
+`settingsSections`, `seedFormats`, `seedHooks`, `entityShapes` and `migrations` among them. Those are
+contributions that reach the app through *generated code*, so a test of who parses the manifest key would
+sweep nearly the whole file into `build`. The test is instead: **does this key reach the running app by
+any route, generated code included, or does it only tune the build?**
+
+By that test `build` has exactly two residents and will stay small:
+
+| key | why |
+|---|---|
+| `opaqueDeps` | dependencies the frontend bundle includes whole instead of walking. Landed 2026-10-08 |
+| `bundleUi` | moves out of `fe`. A packaging choice: it declares no contribution, it decides which copy of `@abuddy/ui` the bundle carries. The borderline case, since that choice has a runtime consequence — but nothing reads it as a declaration |
+
+`checks` is its own section rather than `build.checks`, because `abuddy validate` runs the rules without
+building anything, so "build" is the wrong word for authoring policy, and `build.checks.allow` is three
+levels deep for one list.
+
+**Why these belong in `abuddy.json` at all**, against `goal-one-rule-set`'s reasoning for the sidecar — it
+put the rules in a file of their own as *"read at build time and never by the app, so `abuddy.json` stays
+what the app loads"*, with *"`ManifestSchema` is untouched"* beside it. The first was already false when it
+was written, by the measurement above. The second is the cost of that change, not a principle. What a
+sidecar costs is paid in validation: `abuddy.build.json` was built on 2026-10-08 and deleted the same day,
+because a bare JSON file has no schema, so it needed a 60-line hand-written reader and a seven-case spec
+for parse errors, unknown keys and wrong types. In the manifest, `.strict()` Zod does all of that — a
+typo'd `opaqueDeeps` fails `abuddy validate` with *"abuddy.json \"build\": Unrecognized key(s) in object"*,
+a better message than the hand-rolled one — and pack authors get completion from `$schema`. Folding in
+deletes code; splitting out writes it.
+
+
 ## Open decisions
 
 Settle these with the owner before Phase 1. Both are cosmetic renames, which is exactly why they have
@@ -970,7 +1014,7 @@ fail validation with the message naming the expected form.
   `renderer`, `api`). Sweep by key name — `designation` alone appears in 23 files — rather than by
   memory of which docs discuss manifests. Leave `docs/archive/` alone: archived goals record what was
   true when they were written, and rewriting them destroys that.
-- Add a spec asserting the built-in pack's manifest has exactly the fourteen root keys the prompt block
+- Add a spec asserting the built-in pack's manifest has exactly the fifteen root keys the prompt block
   names, **in that order**, and no map whose keys equal its values, so the shape does not silently
   regrow. Naming them beats counting them: a count passes when one key is swapped for another, and the
   order is half of what makes a flat root readable (Decision 1). This spec, not Decision 1's prose, is
@@ -991,6 +1035,31 @@ fail validation with the message naming the expected form.
 `boot.seed`, `boot.seedPolicy`, `defaultPlugin`, and the six moved extension keys); the new spec passes.
 Mutations: adding a 15th top-level key fails that spec; so does a map whose keys equal its values; so
 does writing the fourteen keys in a different order.
+
+### Phase 7 — `build` and `checks`: what the app never loads
+
+Decision 17. The smallest phase, and last because it is the only one that deletes a file rather than
+moving keys within the manifest.
+
+- `BuildConfigSchema` gains `bundleUi`, and `FEConfigSchema` loses it. `fe-bundler.ts`'s `bundlesUi`
+  reads `build.bundleUi`; its doc comment's reasoning about an unreadable manifest is unchanged, only the
+  key it reads. `tests/packs/bundled-ui-pack/abuddy.json` is the one manifest that sets it.
+- A `checks` section — `{ allow: [string] }`, `.strict()` — and `abuddy.checks.json` is deleted with
+  `loadPackChecks`' file handling: it reads `manifest.checks?.allow` instead. **Keep its two refusals**,
+  which the schema does not cover: a name that is not a rule, and a rule that is not switchable, each
+  erroring with the switchable set. Zod rejects a non-string and an unknown key; it does not know what a
+  rule name is. `loadPackChecks` then takes the parsed manifest rather than a pack directory, so the
+  reader has one input and no filesystem of its own.
+- **No pack has a checks file** (measured 2026-10-08: zero on disk), so nothing migrates — the escape
+  hatch has never been used, which is also why this costs nothing to move.
+- `docs/public-facing/cli.md`'s `abuddy validate` section documents `checks` in the manifest instead of
+  the file, and `manifest.md` gains `build` and `checks` beside the other sections.
+
+**Done when:** `abuddy.checks.json` appears in no source, doc, scaffold or fixture, and
+`loadPackChecks` touches no filesystem; `fe.bundleUi` appears in no manifest and no schema;
+`tests/packs/bundled-ui-pack` still bundles its own `@abuddy/ui` and its Playwright suite passes; a pack
+allowing a non-switchable rule still fails naming the switchable set; `npm run schema:check` passes with
+the regenerated schema committed, `npm run api:update` has been run, and the chain is green.
 
 ## Deferred
 
