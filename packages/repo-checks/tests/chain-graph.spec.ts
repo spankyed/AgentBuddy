@@ -800,4 +800,27 @@ describe('every spawn an orchestrator makes is bounded', () => {
       'these steps can run beside packages:ensure, so telling them the packages are already built is a claim '
       + 'the graph does not support — they would refuse on a package it is still building').toEqual([]);
   });
+
+  /**
+   * `facade:check` runs after `compile`, and that is what makes its one write safe rather than lucky.
+   *
+   * `abuddy facade-report` regenerates `src/__generated__` before it bundles — the chain's step passes no
+   * `--skip-generate`, where `npm run typecheck` does, having regenerated once ahead of its own pool. That
+   * tree is what `typecheck:pack` compiles and what the two repo-scope steps walk, so a step running beside
+   * it could read it mid-write. None does, because `compile` writes that tree and this one declares it as an
+   * input, so the edge derives; and `compile` runs the same codegen, so the `.inputs-hash` matches and the
+   * regenerate is a no-op by the time this runs. One declaration gives both the ordering and the quiet.
+   *
+   * **`chain-inputs`' "a step that reads what another writes depends on it" cannot hold this.** That rule
+   * fires on an overlap between one step's inputs and another's outputs, so narrowing this step's inputs
+   * until `packages/default-setup/src` is no longer among them takes the overlap away too — leaving the rule
+   * nothing to require, green, while the edge goes. Checked by hand at the time: `dependsOn` returns `[]`.
+   * So the edge is named here, where losing it fails.
+   */
+  it('orders facade:check after compile, which is what keeps its codegen a no-op', () => {
+    const step = CHAIN_STEPS.find((candidate) => candidate.name === 'facade:check');
+    expect(step, 'no facade:check step, so this would pass over nothing').toBeDefined();
+
+    expect(dependsOn(step!)).toContain('compile');
+  });
 });
