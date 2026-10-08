@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { packagesBuiltOrRefuse, publishedTreeDirs, REPO_ROOT } from '@abuddy/host/build/packages-built';
+import { packTree } from '@abuddy/host/build/published-manifest';
 
 const execFileAsync = promisify(execFile);
 
@@ -71,10 +72,12 @@ export function installPublishedPackages(): string {
     fs.symlinkSync(path.join(REPO_ROOT, 'node_modules', entry), path.join(modules, entry), 'dir');
   }
   for (const [name, dir] of Object.entries(PACKED_PACKAGES)) {
-    const [{ filename }] = JSON.parse(execFileSync('npm', ['pack', '--json', '--pack-destination', root], { cwd: dir }).toString());
+    // `packTree` rather than npm by hand: one declaration of this, shared with `packages:check`, which needs
+    // the same tarball for `attw` and must not pack it inside the tree it is checking
+    const tarball = packTree(dir, root);
     const target = path.join(modules, '@abuddy', name);
     fs.mkdirSync(target);
-    execFileSync('tar', ['-xzf', path.join(root, filename), '-C', target, '--strip-components', '1']);
+    execFileSync('tar', ['-xzf', tarball, '-C', target, '--strip-components', '1']);
   }
   return root;
 }

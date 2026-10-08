@@ -3,9 +3,15 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { freshnessSweep, INPUTS_CHANGED, stampedRun, unitStaleReason, type BuildUnit } from '@abuddy/host/build/packages-built';
-import { CHAIN_STEPS, conflictsOf, dependsOn } from '../../../scripts/lib/chain-steps.ts';
 
 /**
+ * `freshnessSweep`'s `forget`: beside `package-freshness.spec.ts`, which covers the rest of the same module.
+ *
+ * It was in `@app/repo-checks` while it also held the chain's one transient writer to its mutex. Nothing
+ * writes transiently now (`conflictsOf`'s comment says what that would need), and what is left is a claim
+ * about a host function — so it sits where that function's other spec does, which is also where
+ * `npm run spec` routes a change to it.
+ *
  * The chain's dispatch decisions share one reading of the tree, and `forget` is the whole reason they can.
  *
  * A shared reading answers as of its first look, so a step whose inputs another step has just written would
@@ -13,10 +19,11 @@ import { CHAIN_STEPS, conflictsOf, dependsOn } from '../../../scripts/lib/chain-
  * writer is always known: every step declares what it writes, the chain forgets exactly those paths as each
  * step finishes, and the next decision re-reads them.
  *
- * So two things have to hold, and neither is obvious enough to assume. `forget` must actually forget — by
- * prefix, since what is memoised are the files under a declared directory and the listing of it, not the
- * directory key. And nothing may read, concurrently, where another step writes without declaring a product:
- * a transient write is covered by a mutex rather than by an edge, so the cases below check the mutex.
+ * So what has to hold is that `forget` actually forgets — by prefix, since what is memoised are the files
+ * under a declared directory and the listing of it, not the directory key. Every write the chain has is a
+ * declared product, and a reader of one is ordered after its writer by `dependsOn`, derived from that same
+ * declaration; nothing writes transiently where another step reads (`conflictsOf`'s comment has what that
+ * would need).
  */
 const dirs: string[] = [];
 const tempTree = (content: string): { root: string; unit: BuildUnit; stamp: string } => {
@@ -82,40 +89,5 @@ describe('a shared reading forgets what a step writes', () => {
   // A path the sweep never read is not one it has to forget
   it('leaves alone what it was not asked about', () => {
     expect(() => freshnessSweep().forget(['/nowhere/at/all'])).not.toThrow();
-  });
-});
-
-/**
- * And the one declaration the sharing rests on that is *not* definitional.
- *
- * A reader of a step's `outputs` is ordered after it by construction — `dependsOn` is that relation. A
- * reader of its `alsoWrites` is not: a transient write produces nothing, so it creates a mutex rather than
- * an edge, and the mutex is what stops a reader observing the tree mid-write. If that ever stopped holding,
- * a shared reading could take in a tarball that is about to be deleted.
- */
-describe('nothing reads where a step writes without producing', () => {
-  const inside = (child: string, parent: string): boolean => child === parent || child.startsWith(`${parent}/`);
-  const overlaps = (a: readonly string[], b: readonly string[]): boolean =>
-    a.some((x) => b.some((y) => inside(x, y) || inside(y, x)));
-
-  it('finds a step that writes transiently, so this is not a check over nothing', () => {
-    expect(CHAIN_STEPS.filter((step) => (step.alsoWrites ?? []).length > 0).map((step) => step.name))
-      .not.toEqual([]);
-  });
-
-  it('keeps every such writer apart from everything that reads there', () => {
-    const after = (name: string, seen = new Set<string>()): Set<string> => {
-      for (const need of dependsOn(CHAIN_STEPS.find((s) => s.name === name)!)) {
-        if (!seen.has(need)) { seen.add(need); after(need, seen); }
-      }
-      return seen;
-    };
-    const exposed = CHAIN_STEPS.flatMap((writer) => CHAIN_STEPS
-      .filter((reader) => reader.name !== writer.name && overlaps(writer.alsoWrites ?? [], reader.inputs))
-      .filter((reader) => !conflictsOf(writer).includes(reader.name)
-        && !conflictsOf(reader).includes(writer.name)
-        && !after(reader.name).has(writer.name) && !after(writer.name).has(reader.name))
-      .map((reader) => `${reader.name} reads where ${writer.name} writes transiently, and nothing orders or excludes the pair`));
-    expect(exposed, 'a shared reading could take in a write that is about to be undone').toEqual([]);
   });
 });

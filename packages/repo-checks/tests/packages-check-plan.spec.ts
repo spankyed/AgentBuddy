@@ -1,0 +1,82 @@
+/**
+ * What `npm run packages:check` decides to run (`scripts/lib/packages-check-plan.ts`).
+ *
+ * **The load-bearing claim is that `attw` never gets a directory.** `attw --pack <dir>` runs `npm pack` inside
+ * the tree it is checking and deletes the tarball afterwards, which is a file appearing and vanishing under
+ * every other step that reads there — the recorded `ENOENT: open 'publish/abuddy-ui-0.1.0.tgz'`. Keeping other
+ * steps away from it instead was a mutex against 29 of the chain's 30 steps.
+ *
+ * Asked of the plan rather than of a run, because a run is 2s a tree and 7.8s for all five (measured
+ * 2026-10-08) and the step is checked by the chain anyway. What a tarball packed this way does to the tree it
+ * came from is `@abuddy/host`'s `published-manifest.spec.ts`, over `packTree` itself.
+ */
+import * as path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { publishedTreeDirs } from '@abuddy/host/build/packages-built';
+import { checksFor, declaresTypes, type PublishedTree } from '../../../scripts/lib/packages-check-plan.ts';
+
+/** A packer a case can recognise the output of, so what reaches `attw` is unambiguous */
+const packInto = (dir: string): string => path.join('/tmp/packed', `${path.basename(dir)}.tgz`);
+
+const tree = (pkg: string, manifest: Record<string, unknown>): PublishedTree =>
+  ({ pkg, dir: `/repo/packages/${pkg}/publish`, manifest });
+
+const WITH_TYPES = { types: './dist/index.d.ts' };
+const TYPES_IN_EXPORTS = { exports: { '.': { types: './dist/index.d.ts', default: './dist/index.js' } } };
+
+describe('what each published tree is asked', () => {
+  it('gives attw a tarball and publint the directory', () => {
+    const checks = checksFor([tree('abuddy-sdk', WITH_TYPES)], packInto);
+    expect(checks.map(({ label }) => label)).toEqual(['publint abuddy-sdk', 'attw abuddy-sdk']);
+    expect(checks[0]).toMatchObject({ tool: 'publint', args: ['--strict', '/repo/packages/abuddy-sdk/publish'] });
+    expect(checks[1]).toMatchObject({ tool: 'attw', args: ['/tmp/packed/publish.tgz', '--profile', 'esm-only'] });
+  });
+
+  /**
+   * The one that matters, stated as its own case because it is the regression this file exists for: an `attw`
+   * argument that is a directory is `--pack` by another spelling, whether or not the flag is there.
+   */
+  it('never hands attw a path inside the tree it is checking', () => {
+    const trees = [tree('abuddy-ears', WITH_TYPES), tree('abuddy-sdk', TYPES_IN_EXPORTS), tree('abuddy-ui', WITH_TYPES)];
+    const attw = checksFor(trees, packInto).filter(({ label }) => label.startsWith('attw '));
+    expect(attw).toHaveLength(3);
+    for (const { label, args } of attw) {
+      const target = args.find((arg) => !arg.startsWith('--') && arg !== 'esm-only');
+      expect(target, `${label} names no subject`).toBeDefined();
+      expect(target, `${label} is given a tarball`).toMatch(/\.tgz$/);
+      expect(trees.some(({ dir }) => target!.startsWith(dir)), `${label} packs inside the tree it checks`).toBe(false);
+    }
+  });
+
+  it('asks publint alone of a tree that publishes no declarations', () => {
+    expect(checksFor([tree('abuddy-cli', { bin: { abuddy: './bin/abuddy.mjs' } })], packInto).map(({ label }) => label))
+      .toEqual(['publint abuddy-cli']);
+  });
+
+  it('finds types wherever the manifest puts them', () => {
+    expect(declaresTypes(WITH_TYPES)).toBe(true);
+    expect(declaresTypes(TYPES_IN_EXPORTS)).toBe(true);
+    expect(declaresTypes({ exports: { './fe': { import: { types: './dist/fe.d.ts' } } } }), 'nested conditions').toBe(true);
+    expect(declaresTypes({ exports: { '.': './dist/index.js' } })).toBe(false);
+    expect(declaresTypes({})).toBe(false);
+  });
+});
+
+/**
+ * **What stops the cases above describing a population that is not the real one.** They are over hand-written
+ * manifests, so the derivation they exercise could be right about nothing — and the thing it decides is which
+ * of the repo's own trees `attw` sees.
+ */
+describe('the trees it is asked of', () => {
+  it('is every published tree, with attw over the ones that ship declarations', async () => {
+    const { readFileSync } = await import('node:fs');
+    const trees: PublishedTree[] = Object.entries(publishedTreeDirs()).map(([pkg, dir]) => ({
+      pkg, dir, manifest: JSON.parse(readFileSync(path.join(dir, 'package.json'), 'utf-8')) as Record<string, unknown>,
+    }));
+    expect(trees.map(({ pkg }) => pkg)).toEqual(
+      ['abuddy-ears', 'abuddy-sdk', 'abuddy-ui', 'abuddy-testing', 'abuddy-cli']);
+    // Four of the five: `@abuddy/cli` publishes a bundle and no declarations
+    expect(trees.filter(({ manifest }) => declaresTypes(manifest)).map(({ pkg }) => pkg))
+      .toEqual(['abuddy-ears', 'abuddy-sdk', 'abuddy-ui', 'abuddy-testing']);
+  });
+});

@@ -131,9 +131,9 @@ function pruneStamps(): void {
 }
 
 /** A step as a build unit: the same shape, so it goes through the same freshness check */
-/** What a finished step may have changed: its products, and the paths it writes without producing one */
+/** What a finished step may have changed: its products */
 const wrote = (step: ChainStep): string[] =>
-  [...(step.outputs ?? []), ...(step.alsoWrites ?? [])].map((target) => path.join(REPO_ROOT, target));
+  (step.outputs ?? []).map((target) => path.join(REPO_ROOT, target));
 
 const unitFor = (step: ChainStep): BuildUnit => ({
   inputs: step.inputs.map((input) => path.join(REPO_ROOT, input)),

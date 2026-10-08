@@ -90,21 +90,6 @@ describe('the chain graph', () => {
     expect(order.indexOf('test:smoke')).toBeLessThan(order.indexOf('test'));
   });
 
-  /**
-   * The E2E harness reads the published trees, so it may not run beside the step that rewrites them.
-   *
-   * `packages:check` runs `attw --pack`, which packs a tarball *inside* the tree it is checking, and
-   * `stagePublishTree` removes and recreates that tree — while every E2E spec loads its fixture from
-   * `@abuddy/testing`'s built bundle, which lives there. `test:smoke` declared those trees and was therefore
-   * mutexed; `test` declared only the app's four dists, so the pair was kept apart by nothing but the order
-   * the scheduler happened to pick. Asserted on `test` rather than left to the derivation, because what makes
-   * the mutex exist is one declaration that is easy to drop.
-   */
-  it('keeps the harness away from the step that rewrites what it loads', () => {
-    const harness = CHAIN_STEPS.find((step) => step.name === 'test')!;
-    expect(conflictsOf(harness), 'the harness no longer declares the published trees it imports from')
-      .toContain('packages:check');
-  });
 
   /**
    * Every step can be pointed at, which is what lets a run print where its reasoning lives instead of

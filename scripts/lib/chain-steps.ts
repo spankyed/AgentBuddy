@@ -56,20 +56,6 @@ export interface ChainStep {
    */
   readonly excludeSuffixes?: readonly string[];
   /**
-   * Paths this step writes that are not products: transient, not cached, and not safe to touch beside it.
-   *
-   * `outputs` answers "what did this build", and a tool that writes into the tree it is *reading* answers
-   * neither that nor `excludes`. `attw --pack` is the case: it packs a tarball inside each published tree,
-   * analyses it and removes it, so the path is a real write that no cache should record and no concurrent
-   * step should observe. Declaring it as an output would take the tree out of this step's own key — and
-   * the tree is exactly what the step checks, so it would cache over a stale one.
-   *
-   * The scheduler derives a mutex from it (`conflictsOf`): a transient write conflicts with anyone writing
-   * *or reading* the same path, where two outputs only conflict with each other. That is the difference
-   * between a product, which a reader waits for, and a disturbance, which a reader must not see.
-   */
-  readonly alsoWrites?: readonly string[];
-  /**
    * A step the chain does not cache, and why. Set means uncached; the chain prints this sentence where a
    * cache verdict would go, so it is a reason and not a flag — the one line it replaced was hardcoded about
    * Electron and was wrong about the second step to opt out.
@@ -324,15 +310,17 @@ export function dependsOn(step: ChainStep, steps: readonly ChainStep[] = CHAIN_S
 export function conflictsOf(step: ChainStep, steps: readonly ChainStep[] = CHAIN_STEPS): readonly string[] {
   const overlaps = (a: readonly string[], b: readonly string[]): boolean =>
     a.some((one) => b.some((two) => inside(one, two) || inside(two, one)));
-  const writes = (candidate: ChainStep): readonly string[] => [...(candidate.outputs ?? []), ...(candidate.alsoWrites ?? [])];
-  const disturbs = (candidate: ChainStep): readonly string[] => candidate.alsoWrites ?? [];
+  // Two writers of one path, in either order. **A reader is not one of them**, and needs no mutex: a reader of
+  // what a step produces is ordered after it by `dependsOn`, which is derived from these same outputs.
+  //
+  // It had a second arm, for a step writing *transiently* where another reads — a disturbance a reader must
+  // not see, as against a product a reader waits for. `packages:check` was its only user, through `attw
+  // --pack` packing a tarball inside each tree it checked, and that is a mutex against 29 of 30 steps for a
+  // tool that takes a tarball path. `scripts/packages-check.ts` packs outside the repository instead, so the
+  // distinction has no subject here; it is written down because it is what a future transient writer needs.
   return steps
-    .filter((other) => other.name !== step.name && (
-      // Two writers of one path, in either order
-      overlaps(writes(step), writes(other))
-      // Or one of them writes transiently where the other reads, which a reader must not observe
-      || overlaps(disturbs(step), other.inputs)
-      || overlaps(disturbs(other), step.inputs)))
+    .filter((other) => other.name !== step.name
+      && overlaps(other.outputs ?? [], step.outputs ?? []))
     .map((other) => other.name)
     .sort();
 }
@@ -1006,7 +994,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // (`PACKAGE_BUILD_OUTPUTS`) until 2026-10-05, which keyed it on the `@abuddy/cli` and `@abuddy/testing`
     // bundles it never opens and on the `publish/` trees, a staged copy of the same declarations — so a CLI
     // edit re-ran it and every declaration counted twice. Measured then: 1438 declared files, 239 of them
-    // read. Dropping `publish/` also drops a mutex, `packages:check` declaring those trees as `alsoWrites`.
+    // read. Dropping `publish/` also dropped a mutex, `packages:check` having declared those trees as written.
     //
     // Each package's own `package.json` is where the entry set comes from (`reportEntries` over `exports`),
     // so it is declared outright. It used to be covered only by accident, through the derived
@@ -1033,12 +1021,22 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // A report is a function of the declarations a package built. The compiled output beside them is what
     // `declaration: true` emits past them, and no report has ever read one
     excludeSuffixes: ['.js', '.mjs', '.cjs', '.js.map', '.mjs.map', '.cjs.map', '.css', '.css.map'] },
+  // Nothing it runs writes into a tree another step reads, so it takes no mutex: `scripts/packages-check.ts`
+  // packs each tarball `attw` wants into a temp directory outside the repository, where `attw --pack` packed
+  // it inside the tree it was checking. That cost the step a conflict with 29 of the 30 — 6s on its own of a
+  // cold run, simulated over this table's declared seconds — and the recorded
+  // `ENOENT: open 'publish/abuddy-ui-0.1.0.tgz'`
   { name: 'packages:check', timeout: 'quick', seconds: 6,
-    // `attw --pack` packs a tarball inside each tree it checks and removes it again. Transient, so not an
-    // output; real, so nothing may read those trees while it runs. This is what `exclusive: true` was.
-    alsoWrites: ['packages/abuddy-ears/publish', 'packages/abuddy-sdk/publish', 'packages/abuddy-ui/publish',
-      'packages/abuddy-testing/dist/package', 'packages/abuddy-cli/dist/package'],
-    inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS] },
+    // Its own script and what that reaches, as `api:check` declares its own: `packages-check-plan.ts` decides
+    // which tool is asked of which tree, and `published-manifest.ts` is where `packTree` lives — so an edit to
+    // either moves what this step checks while a fingerprint over the trees alone would read fresh. The two
+    // modules beside it are that module's own imports, which the closure check in `chain-inputs.spec.ts`
+    // follows: over-declaring costs a cache hit, under-declaring is silent
+    inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS,
+      'scripts/packages-check.ts', 'scripts/lib/packages-check-plan.ts', 'scripts/lib/exit-on-epipe.ts',
+      'packages/abuddy-host/src/build/published-manifest.ts',
+      'packages/abuddy-host/src/build/source-resolution.ts',
+      'packages/abuddy-host/src/replace-dir.ts'] },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
   // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
   { name: 'compile', timeout: 'suite', seconds: 28, outputs: PACK_OUTPUTS,
@@ -1067,8 +1065,9 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    * `packages/default-setup/src` reads what `compile` writes (`PACK_OUTPUTS` holds `src/__generated__`), so
    * `dependsOn` puts this after it; `compile` runs the same codegen, so the `.inputs-hash` matches by the
    * time this runs and the regenerate is a no-op. One declaration gives both the edge and the quiet.
-   * Declaring that write instead does not work in either available shape: as an `outputs` it reverses the
-   * edge into a cycle, and as an `alsoWrites` it is a mutex against twelve steps.
+   * Declaring that write instead does not work: as an `outputs` it reverses the edge into a cycle, and the
+   * graph has no way to say *written transiently, so no reader may see it* — which is a mutex rather than an
+   * edge, and `conflictsOf`'s comment records why nothing needs one today.
    *
    * `PACKAGE_BUILD_READS` is the entry to keep: the report's normalisation is the CLI's
    * (`build/facade-report.ts`, `build/declaration-text.ts`), so without it an edit there leaves this cached

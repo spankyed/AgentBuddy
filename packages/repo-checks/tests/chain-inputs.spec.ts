@@ -285,7 +285,7 @@ describe('the chain reads every source file', () => {
       const [, , ...rest] = input.split('/');
       return input.startsWith('packages/') && parts.has(rest.join('/'));
     };
-    const written = CHAIN_STEPS.flatMap((step) => [...(step.outputs ?? []), ...(step.alsoWrites ?? [])]);
+    const written = CHAIN_STEPS.flatMap((step) => step.outputs ?? []);
     const produced = (input: string): boolean => written.some((out) => covers(out, input) || covers(input, out));
 
     const absent = CHAIN_STEPS.flatMap((step) => step.inputs
@@ -327,8 +327,8 @@ describe('the chain reads every source file', () => {
 describe('a step keys on a staged publish tree only if it reads one', () => {
   /** A step that reads a staged tree, and what reads it. An entry that stops applying is reported. */
   const READS_A_PUBLISHED_TREE: Record<string, string> = {
-    'packages:check': 'publint --strict and attw run over the staged trees by name, not over the dist they '
-      + 'are staged from — which is the point of it, since a tarball is what npm ships',
+    'packages:check': 'publint reads each staged tree and attw a tarball packed from one, neither over the '
+      + 'dist they are staged from — which is the point of it, since a tarball is what npm ships',
   };
 
   /** Derived from the files an input covers, so a step naming one file inside a tree is caught like a step naming the tree */

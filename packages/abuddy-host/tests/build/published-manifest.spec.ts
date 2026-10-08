@@ -7,7 +7,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  manifestPaths, missingPublishedPaths, publishedManifest, stagePublishTree, workspacePackList,
+  manifestPaths, missingPublishedPaths, packTree, publishedManifest, stagePublishTree, workspacePackList,
 } from '../../src/build/published-manifest.ts';
 
 // What a published tarball may say, and what the build stages for npm to publish.
@@ -91,6 +91,41 @@ describe('workspacePackList', () => {
     pkg({ 'README.md': '# fake\n', 'LICENSE': 'MIT\n', 'notes.txt': 'not published\n' });
     const packed = workspacePackList(dir);
     expect([...packed].sort()).toEqual(['LICENSE', 'README.md', 'dist/index.d.ts', 'dist/index.js', 'package.json']);
+  });
+});
+
+describe('packTree', () => {
+  /**
+   * The whole of why it exists. `attw --pack <dir>` packs a tarball *inside* the tree it is checking and
+   * deletes it afterwards, so every other reader of that tree sees a file appear and vanish — the recorded
+   * `ENOENT: open 'publish/abuddy-ui-0.1.0.tgz'`, and the reason keeping other steps away from these trees was
+   * a mutex against 29 of the chain's 30 steps. Given a destination it writes nowhere else.
+   */
+  it('writes the tarball where it is told and leaves the packed tree alone', () => {
+    pkg({ 'README.md': '# fake\n' });
+    const dest = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'packed-')));
+    const before = fs.readdirSync(dir, { recursive: true, encoding: 'utf-8' }).sort();
+    try {
+      const tarball = packTree(dir, dest);
+      expect(path.dirname(tarball)).toBe(dest);
+      expect(fs.existsSync(tarball), 'the path it reports is the file it wrote').toBe(true);
+      expect(fs.readdirSync(dest)).toEqual([path.basename(tarball)]);
+      expect(fs.readdirSync(dir, { recursive: true, encoding: 'utf-8' }).sort(),
+        'nothing new in the tree it packed').toEqual(before);
+    } finally {
+      fs.rmSync(dest, { recursive: true, force: true });
+    }
+  });
+
+  /** Named for the package and version it holds, which is what `npm pack` would have called it in place */
+  it('names the tarball as npm does', () => {
+    const dest = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'packed-')));
+    pkg({}, { name: '@fake/pkg', version: '2.3.4' });
+    try {
+      expect(path.basename(packTree(dir, dest))).toBe('fake-pkg-2.3.4.tgz');
+    } finally {
+      fs.rmSync(dest, { recursive: true, force: true });
+    }
   });
 });
 

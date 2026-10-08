@@ -162,8 +162,11 @@ cost seconds together (its declared `seconds` is in `chain-steps.ts`, and the ch
 contradicts it, on the machine that table was measured on), so there is nothing to build a proxy for, and
 its only other homes were the publish workflow
 and a CI file whose triggers are commented out — the artifact checks ran at the one moment they cannot be
-cheap. It runs `exclusive`, alone: `attw --pack <dir>` packs a tarball inside the tree it is checking and
-`stagePublishTree` removes and recreates that tree, so the two must not overlap. It is not the
+cheap. **It takes no mutex, and that is a thing it had to stop needing**: `attw --pack <dir>` packs a tarball
+inside the tree it is checking, which made it a second writer of trees twenty-nine other steps read, so it ran
+alone — 6s of a cold run for a tool that takes a tarball path. `scripts/packages-check.ts` packs outside the
+repository instead (`packTree`), and derives both populations from `publishedTreeDirs()`: publint over all five
+trees, attw over the four that ship declarations. It is not the
 dangling-published-path check, which publint cannot be — it skips any target behind a custom condition, which
 is how 99 published paths named files no tarball held. `@app/publish-checks`' `published-manifest-paths` is
 that one.
