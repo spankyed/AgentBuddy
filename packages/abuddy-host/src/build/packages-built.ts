@@ -21,6 +21,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PUBLISH_TREE } from './published-manifest.ts';
+// The signal list, not a second copy of it: `exclusive-lock.ts` owns which interruptions a release has
+// to be hung on, and why `SIGBREAK` is in it. Relative, as every import inside this package is
+import { INTERRUPTS } from '../exclusive-lock.ts';
 
 /**
  * The file whose presence says a directory is an AgentBuddy checkout, not an installed package: this
@@ -1063,6 +1066,31 @@ export async function withBuildLock<T>(label: string, run: () => T | Promise<T>,
   const waitMs = options.timeoutMs ?? LOCK_WAIT_MS;
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const pending = `${file}.${process.pid}`;
+  /**
+   * Removes the lock on the way out, however this process ends. Idempotent, and only ever this process's own.
+   *
+   * **Node runs no `exit` handler for a signal**, so without these a Ctrl-C'd `packages:build` left its lock
+   * behind for the next arrival to take over — which works, and costs that arrival the wait and a message
+   * about a holder that is gone. `exclusive-lock.ts` has had this since it existed; this lock had not.
+   */
+  let released = false;
+  const release = (): void => {
+    if (released) return;
+    released = true;
+    process.off('exit', release);
+    for (const signal of INTERRUPTS) process.off(signal, onInterrupt);
+    // Only if it is still ours: a build that overran a stolen lock must not delete the new holder's
+    if (readLock(file)?.pid === process.pid) fs.rmSync(file, { force: true });
+  };
+  function onInterrupt(signal: NodeJS.Signals): void {
+    release();
+    // Re-raised so the caller's view of how it ended is the signal rather than a clean exit
+    process.kill(process.pid, signal);
+  }
+  // Registered before the lock exists, not after: a process descheduled between taking it and getting here
+  // would be killed by the default disposition and leave it behind — the very thing these are for
+  process.once('exit', release);
+  for (const signal of INTERRUPTS) process.once(signal, onInterrupt);
   fs.writeFileSync(pending, JSON.stringify({ pid: process.pid, label, startedAt: new Date().toISOString() }));
   try {
     const deadline = Date.now() + waitMs;
@@ -1095,8 +1123,7 @@ export async function withBuildLock<T>(label: string, run: () => T | Promise<T>,
   try {
     return await run();
   } finally {
-    // Only if it is still ours: a build that overran a stolen lock must not delete the new holder's
-    if (readLock(file)?.pid === process.pid) fs.rmSync(file, { force: true });
+    release();
   }
 }
 

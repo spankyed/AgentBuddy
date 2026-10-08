@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { INTERRUPTS } from '@abuddy/host/exclusive-lock';
 import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, diffableStamp, ensurePackagesBuilt, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, packageWriter, PackagesWentStale, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit, type StaleUnit } from '@abuddy/host/build/packages-built';
 
 /**
@@ -921,6 +922,47 @@ describe('a stamped build', () => {
       await expect(withBuildLock('@abuddy/other', () => 'never', lock)).rejects.toThrow(/another package build holds/);
     });
     expect(fs.existsSync(lock)).toBe(false);
+  });
+});
+
+/**
+ * That the build lock is hung on an interrupt at all.
+ *
+ * Node runs no `exit` handler for a signal, so without these a Ctrl-C'd `packages:build` left its lock behind
+ * for the next arrival to take over — which works, and costs that arrival the wait plus a message about a
+ * holder that is gone. **What is asked here is the registration, not the release**: that a `SIGINT` handler
+ * removes the file is `exclusive-lock.ts`'s behaviour, and `abuddy-host/tests/database/write-lock.spec.ts`
+ * already proves it with a real spawned holder per signal. Counting listeners is the part that is this
+ * lock's own, and it is cheap.
+ */
+describe('the build lock on the way out', () => {
+  const listeners = () => ({
+    exit: process.listenerCount('exit'),
+    ...Object.fromEntries(INTERRUPTS.filter((s) => s in os.constants.signals).map((s) => [s, process.listenerCount(s)])),
+  });
+
+  it('registers a release for exit and every interrupt, and takes them off again', async () => {
+    const file = path.join(tempDir(), 'packages-build.lock');
+    const before = listeners();
+    let during: ReturnType<typeof listeners> | undefined;
+
+    await withBuildLock('@abuddy/sdk', () => { during = listeners(); }, file);
+
+    for (const [signal, count] of Object.entries(before)) {
+      expect(during![signal as keyof typeof before], `${signal} while the lock was held`).toBe(count + 1);
+    }
+    expect(listeners(), 'and off again, or a process taking many locks piles them up').toEqual(before);
+  });
+
+  // A throw must not leave them behind either: the release is in the `finally`, not after `run()`
+  it('takes them off when the work throws', async () => {
+    const file = path.join(tempDir(), 'packages-build.lock');
+    const before = listeners();
+
+    await expect(withBuildLock('@abuddy/sdk', () => { throw new Error('boom'); }, file)).rejects.toThrow('boom');
+
+    expect(listeners()).toEqual(before);
+    expect(fs.existsSync(file), 'and the lock itself is gone').toBe(false);
   });
 });
 
