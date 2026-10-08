@@ -11,6 +11,7 @@ import {
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type SeedDependency,
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
+import { abuddyScope, feInputsHash, filesUnder, readStamps, reuseProblem, takeForward, writeStamps, type PhaseStamp } from '../build/phase-cache';
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
@@ -128,6 +129,9 @@ async function buildIntoStaging(args: string[]) {
   // phases with no bundler to ask — codegen, the seed compilation, feature settings, the pack rules — are
   // absent from the record rather than guessed at
   const reads = buildReads(root);
+  // What the last build left reusable, and what this one leaves for the next
+  const stamps = readStamps(root);
+  const nextStamps: Record<string, PhaseStamp> = {};
 
   // `outputDir` is where every phase below writes; `distDir` is what it becomes, once they have all succeeded
   const distDir = path.join(root, 'dist');
@@ -285,6 +289,7 @@ async function buildIntoStaging(args: string[]) {
     // produced neither. A phase's reads are kept in memory until here so a half-finished build leaves the
     // last complete record in place rather than a partial one
     reads?.write();
+    writeStamps(root, nextStamps);
     // Every phase has succeeded and the snapshot advertises them, so this is the moment the staged tree
     // becomes the pack's output — one rename, rather than the ~20s of absent `dist` that clearing it first cost
     replaceDir(outputDir, distDir);
@@ -364,14 +369,32 @@ async function buildIntoStaging(args: string[]) {
   const feEntry = args.includes('--skip-fe') ? null : findFEEntry(root);
   if (feEntry) {
     const feOutputDir = path.join(outputDir, PACK_LAYOUT.runtimeDir);
-    const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, release, recordReads: reads?.forPhase('fe') });
-    if (feResult.success) {
-      console.log(`  fe: dist/${PACK_LAYOUT.feEntry}`);
-      if (fs.existsSync(path.join(outputDir, PACK_LAYOUT.feStyles))) {
-        console.log(`  fe styles: dist/${PACK_LAYOUT.feStyles}`);
-      }
+    const scope = abuddyScope(root);
+    // No hash without the whole scope, and so no stamp either: recording one would let the next build that
+    // also cannot resolve them match it and reuse a bundle compiled against who knows what
+    const feHash = 'missing' in scope ? null : feInputsHash(root, { release }, scope.dirs);
+    // Reused rather than skipped: the staged tree is renamed over `dist`, so the files have to be here
+    // either way. `--skip-fe` is the other thing, and omits them on purpose
+    const problem = feHash === null
+      ? `can't resolve ${(scope as { missing: readonly string[] }).missing.join(', ')} to hash against`
+      : reuseProblem(stamps.fe, distDir, feHash);
+    if (problem === null) {
+      takeForward(distDir, outputDir, stamps.fe!.files);
+      nextStamps.fe = stamps.fe!;
+      console.log(`  fe: unchanged, reused (${stamps.fe!.files.length} files)`);
     } else {
-      fail(`FE bundle failed: ${feResult.error}`);
+      const before = new Set(filesUnder(feOutputDir));
+      const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, release, recordReads: reads?.forPhase('fe') });
+      if (feResult.success) {
+        const written = filesUnder(feOutputDir).filter((file) => !before.has(file));
+        if (feHash !== null) nextStamps.fe = { hash: feHash, files: written.map((file) => path.join(PACK_LAYOUT.runtimeDir, file)) };
+        console.log(`  fe: dist/${PACK_LAYOUT.feEntry}`);
+        if (fs.existsSync(path.join(outputDir, PACK_LAYOUT.feStyles))) {
+          console.log(`  fe styles: dist/${PACK_LAYOUT.feStyles}`);
+        }
+      } else {
+        fail(`FE bundle failed: ${feResult.error}`);
+      }
     }
   }
 
