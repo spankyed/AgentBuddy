@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { bundlePackRuntime } from './be-bundler.ts';
+import { holdPackBuildLock } from './build-lock.ts';
 import { reloadPack, type AppPlace } from './dev-reload.ts';
 
 /** How long to wait for the edits to stop before rebuilding */
@@ -26,11 +27,23 @@ export interface WatchOptions {
   readonly onFirstBuild?: () => void;
 }
 
-/** One rebuild. Reports rather than throws: a watcher that dies on a syntax error is a worse loop. */
-async function rebuild(root: string): Promise<boolean> {
-  const result = await bundlePackRuntime(root, path.join(root, 'dist'), {});
-  if (!result.success) console.error(`[watch] Runtime bundle failed: ${result.error}`);
-  return result.success;
+/**
+ * One rebuild. Reports rather than throws: a watcher that dies on a syntax error is a worse loop.
+ *
+ * **Under the pack's build lock, because this one writes into the live `dist`** rather than staging — it is
+ * one bundle, which is what makes it 40ms against a full build. A full build renames `dist` aside, so without
+ * the lock a rebuild landing in that window writes `runtime/index.cjs` into a directory that is about to be
+ * deleted: the app then reloads the pack and gets the runtime from before the edit, with nothing reporting it.
+ */
+async function rebuild(root: string, packId: string): Promise<boolean> {
+  const lock = await holdPackBuildLock(root, { packId, what: 'abuddy build --watch (a rebuild)' });
+  try {
+    const result = await bundlePackRuntime(root, path.join(root, 'dist'), {});
+    if (!result.success) console.error(`[watch] Runtime bundle failed: ${result.error}`);
+    return result.success;
+  } finally {
+    lock.release();
+  }
 }
 
 /**
@@ -82,7 +95,7 @@ export async function watchPackRuntime(root: string, packId: string, options: Wa
   const srcDir = path.join(root, 'src');
   if (!fs.existsSync(srcDir)) throw new Error(`No ${srcDir} to watch`);
 
-  if (!(await rebuild(root))) {
+  if (!(await rebuild(root, packId))) {
     // The first bundle is the one nothing else can stand in for: whatever asked for this loop is waiting
     // on the file, and watching on from here would leave it waiting with no error to read
     throw new Error('The first runtime bundle failed; fix the error above and start again');
@@ -95,7 +108,7 @@ export async function watchPackRuntime(root: string, packId: string, options: Wa
   let lastChange = '';
   const runs = coalescingRunner(async () => {
     const changed = lastChange;
-    if (!(await rebuild(root))) return;
+    if (!(await rebuild(root, packId))) return;
     const reload = await reloadPack(packId, options.place);
     if (reload.status === 'reloaded') console.log(`[watch] ${changed} — reloaded`);
     else console.warn(`[watch] ${changed} — rebuilt, but the app did not reload (${reload.detail})`);

@@ -22,6 +22,7 @@ import { compareFacadeReport, facadeReportFile, facadeReportText } from '../buil
 import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
 import { PACK_LAYOUT, createPackRegistry } from '@abuddy/host/packs';
 import { replaceDir } from '@abuddy/host/replace-dir';
+import { holdPackBuildLock } from '../build/build-lock.ts';
 import { checkFeatureSettings } from '@abuddy/sdk/framework';
 import { resolveDeps } from './generate';
 import { resolveDepFiles } from './fetch-deps';
@@ -95,7 +96,16 @@ export async function buildCommand(args: string[]): Promise<void> {
 }
 
 export async function build(args: string[]) {
-  const staged = buildStagingDir(findPackRoot(process.cwd()));
+  const root = findPackRoot(process.cwd());
+  const staged = buildStagingDir(root);
+  // One build of this pack at a time: two share the staging directory above and each clears it first, so the
+  // second would wipe the first's half-written tree and both would rename something over `dist`. A build
+  // already running is waited for rather than refused — see `build/build-lock.ts`
+  const lock = await holdPackBuildLock(root, {
+    packId: readValidManifest(root).id,
+    what: ['abuddy build', ...args].join(' '),
+    onWait: (holder) => console.log(`Waiting for ${holder} to finish...`),
+  });
   try {
     await buildIntoStaging(args);
   } catch (err) {
@@ -104,6 +114,8 @@ export async function build(args: string[]) {
     // missing settings file — is the half that would be forgotten
     fs.rmSync(staged, { recursive: true, force: true });
     throw err;
+  } finally {
+    lock.release();
   }
 }
 

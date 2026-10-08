@@ -148,3 +148,61 @@ export function holdExclusiveLock(options: {
   }
   return { release };
 }
+
+/** How often a waiter tries again. The take is the test, so this is only how long a loser sleeps */
+const POLL_MS = 500;
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+/**
+ * `holdExclusiveLock`, waiting for a held lock instead of refusing at once — up to `waitMs`, then refusing.
+ *
+ * **A bound, not a schedule**: it returns the moment the holder is gone. What the bound is for is a holder that
+ * is wedged rather than working, which waiting forever cannot tell apart from one making progress; a bound
+ * nobody will wait for is the same as no bound. `onWait` is told once, because a wait that prints nothing reads
+ * as a hang.
+ *
+ * **The retry is around the take, never a check and then a take.** The create is the test (`wx`), so two
+ * waiters arriving together cannot both win and a loser simply waits again. Asking who holds it and taking
+ * afterwards is the shape that lets every racer read "nothing holds it", which is what this module's header
+ * was written against.
+ *
+ * **A lock this process already holds is refused *before* the take is attempted**, which is load-bearing twice
+ * over. It keeps the no-re-entrancy rule above a refusal rather than a wedge, since waiting for yourself cannot
+ * succeed. And it leaves the file alone: `holdExclusiveLock` releases on its way to throwing, and a release
+ * removes a lock whose pid is this process — so a second take *inside* the loop deletes the first take's lock
+ * and the retry then wins, which is re-entrancy by accident and the holder's lock gone with it.
+ *
+ * Separate from `holdExclusiveLock` rather than an option on it, because that one is synchronous and its three
+ * callers take it inline; an `await` there would reach every one of them for a wait none of them wants.
+ */
+export async function holdExclusiveLockWaiting(options: {
+  file: string;
+  what: string;
+  refuse: (holder: string, waited: boolean) => Error;
+  waitMs: number;
+  onWait?: (holder: string) => void;
+  /** Injected by a spec, so the bound is reached without waiting out a real one */
+  now?: () => number;
+  pause?: (ms: number) => Promise<void>;
+}): Promise<ExclusiveLock> {
+  const { file, what, refuse, waitMs, onWait, now = Date.now, pause = sleep } = options;
+  const deadline = now() + waitMs;
+  let told = false;
+  for (;;) {
+    const mine = readLock(file);
+    if (mine !== null && mine.pid === process.pid && mine.machine === os.hostname()) {
+      throw refuse(findLockHolder(file) ?? mine.what, told);
+    }
+    try {
+      return holdExclusiveLock({ file, what, refuse: (holder) => refuse(holder, told) });
+    } catch (err) {
+      if (now() >= deadline) throw err;
+      if (!told) {
+        told = true;
+        onWait?.(findLockHolder(file) ?? what);
+      }
+      await pause(POLL_MS);
+    }
+  }
+}

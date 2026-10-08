@@ -1,0 +1,119 @@
+/**
+ * One build of a pack at a time (`src/build/build-lock.ts`).
+ *
+ * Two builds of one pack stage into the same directory and each clears it as its first act, so without this
+ * the second wipes the first's half-written tree and both rename something over `dist`. Nothing else excluded
+ * them: `holdChainLock` keeps one chain run per checkout and `withBuildLock` one build of the five `@abuddy`
+ * packages, and a pack's own build sat between the two.
+ *
+ * The mechanism — the take, the takeover of a dead holder's lock, the release on four interrupts, the bounded
+ * retry — is `@abuddy/host/exclusive-lock`'s, covered from above by `abuddy-host/tests/database/write-lock.spec.ts`
+ * with real processes. What is asked here is this caller's policy: where the file sits, that it waits, what it
+ * says when the wait runs out, and that the wait is not a wait on itself.
+ */
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { PACK_BUILD_WAIT_MS, PackBuildLockHeld, holdPackBuildLock, packBuildLock } from '../../src/build/build-lock';
+import { buildStagingDir } from '../../src/commands/build';
+
+let root: string;
+afterEach(() => { if (root) fs.rmSync(root, { recursive: true, force: true }); });
+
+const pack = (): string => {
+  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'build-lock-')));
+  return root;
+};
+
+/** A lock a *live* process holds, which is the only kind that keeps anyone out: a dead holder's is taken over */
+const heldByAnother = (file: string): void => {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify({
+    pid: process.ppid, machine: os.hostname(), what: 'abuddy build', since: new Date().toISOString(),
+  }));
+};
+
+describe('where the lock sits', () => {
+  it('is inside the pack, under the directory every pack ignores', () => {
+    expect(path.relative(pack(), packBuildLock(root))).toBe(path.join('.abuddy', 'build.lock'));
+  });
+
+  /**
+   * The load-bearing one. A build clears its staging directory before it starts, so a lock *inside* that
+   * directory is removed by its own holder and the next arrival takes it while the first is still building —
+   * asserted against `buildStagingDir` rather than by spelling the path, because what matters is the
+   * relationship between the two and a case pinning a string passes while that rots.
+   */
+  it('is not inside the staging directory a build clears first', () => {
+    const staged = buildStagingDir(pack());
+    const lock = packBuildLock(root);
+    expect(lock.startsWith(`${staged}${path.sep}`), `${lock} would be cleared by the build that holds it`).toBe(false);
+  });
+});
+
+describe('a second build', () => {
+  it('takes the lock when nothing holds it, and gives it back', async () => {
+    const lock = await holdPackBuildLock(pack(), { packId: 'demo', what: 'abuddy build' });
+    expect(fs.existsSync(packBuildLock(root))).toBe(true);
+    lock.release();
+    expect(fs.existsSync(packBuildLock(root))).toBe(false);
+  });
+
+  /** Waiting is this caller's choice, where the chain refuses: two builds serialised are both correct */
+  it('waits for a running build rather than refusing at once', async () => {
+    heldByAnother(packBuildLock(pack()));
+    let waitedFor: string | undefined;
+    // A clock of its own, so the bound is reached without spending it: a case that sleeps puts a guess about
+    // duration into every passing run, and `spec-waits` refuses one besides
+    let clock = 0;
+    let tries = 0;
+    await expect(holdPackBuildLock(root, {
+      packId: 'demo', what: 'abuddy build', waitMs: 5_000,
+      onWait: (holder) => { waitedFor = holder; },
+      now: () => clock,
+      pause: async (ms) => { tries += 1; clock += ms; },
+    })).rejects.toThrow(PackBuildLockHeld);
+    expect(tries, 'it refused at once instead of retrying while the holder ran').toBeGreaterThan(1);
+    expect(waitedFor, 'a wait that prints nothing reads as a hang').toContain('abuddy build');
+  });
+
+  it('names the holder, the pack and the file it is waiting on', async () => {
+    const file = packBuildLock(pack());
+    heldByAnother(file);
+    const err = await holdPackBuildLock(root, { packId: 'demo-pack', what: 'abuddy build', waitMs: 0 })
+      .then(() => undefined, (e: unknown) => e);
+    expect(err).toBeInstanceOf(PackBuildLockHeld);
+    const { message } = err as PackBuildLockHeld;
+    expect(message).toContain('demo-pack');
+    expect(message).toContain(path.relative(process.cwd(), file));
+    expect(message, 'it says what to do when no build is running').toMatch(/delete .* and try again/);
+  });
+
+  /**
+   * **A take by this process is refused at once, not waited for.** `exclusive-lock.ts`'s header makes
+   * non-re-entrancy deliberate — a lock that succeeds when you already hold it cannot tell you that you hold
+   * it twice — and waiting would turn that refusal into spending the whole bound to say the same thing.
+   */
+  it('does not wait for a lock this process already holds', async () => {
+    const held = await holdPackBuildLock(pack(), { packId: 'demo', what: 'abuddy build' });
+    try {
+      let tries = 0;
+      await expect(holdPackBuildLock(root, {
+        packId: 'demo', what: 'a second build', waitMs: 60_000,
+        pause: async () => { tries += 1; },
+      })).rejects.toThrow(PackBuildLockHeld);
+      expect(tries, 'it waited on itself, which cannot succeed, instead of refusing').toBe(0);
+      expect(fs.existsSync(packBuildLock(root)), "the refused take removed the holder's own lock").toBe(true);
+    } finally {
+      held.release();
+    }
+  });
+});
+
+describe('the bound', () => {
+  /** Several times a full build of the largest pack here, so a wedged holder is reported rather than waited on */
+  it('is minutes rather than a build', () => {
+    expect(PACK_BUILD_WAIT_MS).toBeGreaterThan(60_000);
+  });
+});

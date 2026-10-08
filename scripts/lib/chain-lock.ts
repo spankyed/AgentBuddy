@@ -10,7 +10,7 @@
 // It is a module of its own because `chain.ts` runs the chain on import (a top-level `await main()`), so a
 // spec can only reach this by it being here — the same reason `chain-stamps.ts` and `chain-flags.ts` exist.
 import * as path from 'node:path';
-import { holdExclusiveLock, type ExclusiveLock } from '@abuddy/host/exclusive-lock';
+import { holdExclusiveLockWaiting, type ExclusiveLock } from '@abuddy/host/exclusive-lock';
 import { STAMP_DIR } from './chain-stamps.ts';
 
 /**
@@ -30,9 +30,6 @@ export const CHAIN_LOCK = path.join(STAMP_DIR, 'chain.lock');
  */
 export const CHAIN_WAIT_MS = 600_000;
 
-/** How often a waiting run tries again. The take is the test, so this is only how long a loser sleeps */
-const POLL_MS = 500;
-
 /** Thrown when another run holds the lock: a refusal, which is why `chain.ts` prints it rather than rethrowing */
 export class ChainLockHeld extends Error {
   constructor(readonly holder: string, waited: boolean, file: string = CHAIN_LOCK) {
@@ -49,19 +46,15 @@ export class ChainLockHeld extends Error {
 export const chainInvocation = (argv: readonly string[] = process.argv.slice(2)): string =>
   ['npm run chain', ...argv].join(' ');
 
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
-
 /**
- * Takes the chain lock, or throws `ChainLockHeld`. With `waitMs`, a held lock is waited for and retried
- * until the bound, `onWait` told once what is being waited for — a wait that prints nothing reads as a hang.
- *
- * **The retry is around the take, never a check and then a take.** `holdExclusiveLock` refuses on `EEXIST`,
- * so the create is the test: two waiters arriving together cannot both win, and a loser simply waits again.
- * Asking `findLockHolder` first and taking afterwards is the shape that lets every racer read "nothing holds
- * it" — which is the bug `exclusive-lock.ts`'s header was written against.
+ * Takes the chain lock, or throws `ChainLockHeld`. With `waitMs`, a held lock is waited for and retried until
+ * the bound — `holdExclusiveLockWaiting`'s job, so the retry, the bound's meaning and the one-shot `onWait`
+ * are the mechanism's rather than a second copy of them here. What is this module's is the policy: where the
+ * file lives, what the refusal says, and that waiting is opt-in (`--wait`) because two chain runs sharing one
+ * checkout's stamps is a thing to be told about rather than queued for by default.
  */
 export async function holdChainLock(
-  { what, waitMs = 0, onWait, file = CHAIN_LOCK, now = Date.now, pause = sleep }: {
+  { what, waitMs = 0, onWait, file = CHAIN_LOCK, now, pause }: {
     what: string;
     waitMs?: number;
     onWait?: (holder: string) => void;
@@ -76,22 +69,13 @@ export async function holdChainLock(
     pause?: (ms: number) => Promise<void>;
   },
 ): Promise<ExclusiveLock> {
-  const deadline = now() + waitMs;
-  let told = false;
-  for (;;) {
-    try {
-      return holdExclusiveLock({
-        file,
-        what,
-        refuse: (holder) => new ChainLockHeld(holder, told, file),
-      });
-    } catch (err) {
-      if (!(err instanceof ChainLockHeld) || now() >= deadline) throw err;
-      if (!told) {
-        told = true;
-        onWait?.(err.holder);
-      }
-      await pause(POLL_MS);
-    }
-  }
+  return holdExclusiveLockWaiting({
+    file,
+    what,
+    waitMs,
+    refuse: (holder, waited) => new ChainLockHeld(holder, waited, file),
+    ...(onWait && { onWait }),
+    ...(now && { now }),
+    ...(pause && { pause }),
+  });
 }
