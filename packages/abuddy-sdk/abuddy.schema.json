@@ -466,6 +466,20 @@
       "additionalProperties": false,
       "description": "Frontend-specific pack configuration."
     },
+    "build": {
+      "type": "object",
+      "properties": {
+        "opaqueDeps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Dependencies the frontend bundle includes whole instead of tree-shaking, by package name. For a prebuilt bundle — a dependency shipped as one already-minified file, or compiled from another language — where the shake removes almost nothing and walking it is most of the build. Each ships as it is, so nothing inside it is dead-code eliminated."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Build-time configuration: settings that change what the build produces, never what the app loads."
+    },
     "dsl": {
       "type": "object",
       "additionalProperties": {

@@ -219,6 +219,30 @@ A `seedFormats` value, keyed by the format name: a lowercase letter, then lowerc
 
 The frontend entry itself isn't declared here: `abuddy build` bundles `src/pack-entry-fe.ts` (or `.js`) if present, else the generated `src/__generated__/pack-entry-fe.ts`, into the pack's `runtime/fe.js`, with any extracted styles as `runtime/fe.css`. The app loads whichever of those two files the installed pack has.
 
+## Build configuration
+
+```json
+{
+  "build": {
+    "opaqueDeps": ["elkjs"]
+  }
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `opaqueDeps` | `string[]` | Dependencies the frontend bundle includes whole instead of tree-shaking, by package name |
+
+Everything under `build` changes what `abuddy build` produces, or how long it takes, and nothing the app
+loads — which is what separates it from the sections above.
+
+**`opaqueDeps` is for a dependency that is already a bundle** — shipped as one already-minified file, or
+compiled from another language — where tree-shaking removes almost nothing and walking it is most of what
+the frontend build spends its time on. It trades a little output size for build time: on the pack
+AgentBuddy ships, naming its one such dependency took `abuddy build` from 23.3s to 20.6s for 38 KB on an
+8.5 MB bundle (median of 3 interleaved runs, 2026-10-08). Every other module is shaken as before, so a
+dependency you wrote yourself does not belong here — it would keep its dead code for nothing.
+
 ## Dependencies
 
 ```json

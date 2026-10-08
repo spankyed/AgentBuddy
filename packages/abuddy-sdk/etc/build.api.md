@@ -695,6 +695,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         appExtensions?: Record<string, string> | undefined;
         bundleUi?: boolean | undefined;
     }>>;
+    build: z.ZodOptional<z.ZodObject<{
+        opaqueDeps: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    }, "strict", z.ZodTypeAny, {
+        opaqueDeps?: string[] | undefined;
+    }, {
+        opaqueDeps?: string[] | undefined;
+    }>>;
     dsl: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
         entry: z.ZodString;
         targets: z.ZodArray<z.ZodEnum<["monaco"]>, "many">;
@@ -823,6 +830,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }> | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+    } | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
@@ -928,6 +938,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }> | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+    } | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
@@ -1033,6 +1046,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }> | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+    } | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
@@ -1138,6 +1154,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }> | undefined;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+    } | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;

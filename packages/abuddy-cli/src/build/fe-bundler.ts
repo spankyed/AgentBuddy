@@ -44,6 +44,51 @@ function generateGlobalProxy(specifier: string, globalKey: string, namedExports:
 }
 
 /**
+ * The package names the pack declares opaque to the bundler (`build.opaqueDeps`). Unreadable is an error
+ * for the reason `bundlesUi` makes it one: reading it as "none" would silently spend the build walking
+ * what the pack asked it not to.
+ */
+function opaqueDeps(packDir: string): string[] {
+  const manifestPath = path.join(packDir, 'abuddy.json');
+  if (!fs.existsSync(manifestPath)) return [];
+  try {
+    const declared = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')).build?.opaqueDeps;
+    return Array.isArray(declared) ? (declared as string[]) : [];
+  } catch (err) {
+    throw new Error(`Couldn't read ${manifestPath}, so the FE build can't tell which dependencies this pack declares opaque (build.opaqueDeps): ${errorMessage(err)}`);
+  }
+}
+
+/**
+ * Includes a declared dependency whole rather than tree-shaking it.
+ *
+ * **Rollup's include pass is what this is about, not the output.** Walking a prebuilt bundle costs most
+ * of the frontend phase and removes almost nothing from it: measured on the pack the app ships,
+ * 2026-10-08, declaring its one such dependency opaque took `abuddy build` from 23.3s to 20.6s, median
+ * of 3 interleaved runs, for 38 KB on an 8.5 MB output. Taking that dependency out of the graph
+ * altogether is 18.5s, which is the ceiling this cannot reach — the module still has to be parsed and
+ * emitted, because it is what the pack loads at runtime.
+ *
+ * `moduleSideEffects: 'no-treeshake'` is rollup's own primitive for it, so the module is retained
+ * exactly as published. Nothing else changes: every other module is shaken as before, which is what
+ * keeps the guarantees that rest on it — `fe-bundler-host-registry.integration.spec.ts`' EARS facade
+ * among them.
+ */
+function opaqueVendorPlugin(deps: readonly string[]): VitePlugin {
+  const declares = (source: string) => deps.some((dep) => source === dep || source.startsWith(`${dep}/`));
+  return {
+    name: 'abuddy-opaque-deps',
+    // Before Vite's own resolver, which would otherwise have answered already
+    enforce: 'pre',
+    async resolveId(source: string, importer: string | undefined) {
+      if (!declares(source)) return null;
+      const resolved = await this.resolve(source, importer, { skipSelf: true });
+      return resolved ? { id: resolved.id, moduleSideEffects: 'no-treeshake' } : null;
+    },
+  };
+}
+
+/**
  * Whether the pack's abuddy.json opts into bundling its own copy of @abuddy/ui (`fe.bundleUi`).
  * No manifest is fine — `bundleUi` is opt-in, and only a pack directory has one. A manifest that is
  * there but unreadable is not: it may be the one that opts in, and reading it as "no" would quietly
@@ -547,6 +592,7 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
   };
 
   try {
+    const opaque = opaqueDeps(packDir);
     await vite.build({
       root: packDir,
       configFile: false,
@@ -565,6 +611,7 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
         tailwindInjectPlugin,
         packExternalsPlugin(packDir),
         ...(recordReads ? [recordReadsPlugin(recordReads, vite.version)] : []),
+        ...(opaque.length > 0 ? [opaqueVendorPlugin(opaque)] : []),
         vue(),
       ],
       css: {

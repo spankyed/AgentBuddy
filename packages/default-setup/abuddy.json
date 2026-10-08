@@ -477,6 +477,11 @@
       "welcome": "src/extensions/app/Welcome.vue"
     }
   },
+  "build": {
+    "opaqueDeps": [
+      "elkjs"
+    ]
+  },
   "migrations": "src/migrations/index.ts",
   "dsl": {
     "action": {

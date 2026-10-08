@@ -186,6 +186,15 @@ const EntityShapeSchema = z.object({
   type: z.string().describe('Exported TypeScript type name for the entity attributes.'),
 }).strict();
 
+/**
+ * How the pack is built. These are settings no part of the app reads — unlike `entities` or `features`,
+ * which the host loads at boot — so what belongs here is anything that changes only what `abuddy build`
+ * produces or how long it takes.
+ */
+const BuildConfigSchema = z.object({
+  opaqueDeps: z.array(z.string()).describe('Dependencies the frontend bundle includes whole instead of tree-shaking, by package name. For a prebuilt bundle — a dependency shipped as one already-minified file, or compiled from another language — where the shake removes almost nothing and walking it is most of the build. Each ships as it is, so nothing inside it is dead-code eliminated.').optional(),
+}).strict().describe('Build-time configuration: settings that change what the build produces, never what the app loads.');
+
 const FEConfigSchema = z.object({
   tiptapPlugins: z.string().describe('Path to tiptap plugin registration module.').optional(),
   appExtensions: z.record(IdentifierSchema, z.string()).describe('Named app extensions. Keys are extension names (identifiers), values are paths to Vue components.').optional(),
@@ -242,6 +251,7 @@ export const ManifestSchema = z.object({
   blocks: z.string().describe('Path to message block registration module.').optional(),
   migrations: z.string().describe('Path to migrations index module.').optional(),
   fe: FEConfigSchema.optional(),
+  build: BuildConfigSchema.optional(),
   dsl: z.record(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
   seedFormats: z.record(z.string().regex(SEED_FORMAT_NAME, 'Must be lowercase alphanumeric with hyphens'), SeedFormatSchema)
     .describe('Named seed formats: how a source becomes records. boot.seed entries name one; dependents name them as "<pack id>:<name>".').optional(),
