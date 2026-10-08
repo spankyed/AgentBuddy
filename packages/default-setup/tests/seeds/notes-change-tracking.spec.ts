@@ -281,26 +281,12 @@ describe('notes seeding (generic pipeline)', () => {
     tx(welcome[0]).destroy();
     expect(notesTitled('Welcome'), 'a destroyed row leaves nothing behind, which is the premise').toEqual([]);
 
-    seedNotes('v2', { mode: 'replace-on-collision', keyRecord: keyRecordAfter(firstRun.defined) });
+    const counts = seedNotes('v2', { mode: 'replace-on-collision', keyRecord: keyRecordAfter(firstRun.defined) });
 
     expect(notesTitled('Welcome'), 'the seed created the note the user deleted outright').toEqual([]);
-  });
-
-  /**
-   * **And the same import without that record creates it**, which is what a user asking for a pack's data
-   * back is (`IMPORT_PACK_SEEDS` passes none). It is the other half of the case above: without it, both
-   * assertions would hold for a seeder that had simply stopped creating notes.
-   */
-  it('seeds a note the user deleted outright when the import carries no key record', () => {
-    resetDatabase();
-    addLinkTargets();
-    seedNotes('v1');
-    const welcome = notesTitled('Welcome');
-    tx(welcome[0]).destroy();
-
-    seedNotes('v2', { mode: 'replace-on-collision' });
-
-    expect(notesTitled('Welcome').length, 'the data the user asked for was not put back').toBe(1);
+    // The run did work on the other notes, so the empty result above is this rule rather than a seed that
+    // imported nothing. The exemptions — no record, and wipe-and-replace — are in abuddy-sdk's seeder spec
+    expect(counts.updated, 'nothing was seeded at all, so the case above proves nothing').toBeGreaterThan(0);
   });
 
   it('wipes nested notes and seeds them again', () => {

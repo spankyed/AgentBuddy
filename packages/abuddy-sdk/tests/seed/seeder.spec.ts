@@ -224,6 +224,23 @@ describe("a folder another pack seeded", () => {
     expect(folder.seedKey).toMatch(/^pack-a:/);
   });
 
+  /**
+   * **A container another seed owns is not this pack's key to claim.** pack-b reuses pack-a's folder rather
+   * than creating one, so that key stays out of pack-b's record — otherwise the folder going away with
+   * pack-a would read as the user deleting pack-b's folder, and pack-b would never make its own again.
+   */
+  it("stays out of this pack's record, so this pack makes its own once that folder is gone", () => {
+    registerHooks('Folder', { container: true });
+    seed(tree('pack-a', ['welcome.md']));
+    const packB = keyRecordAfter();
+    seed(tree('pack-b', ['theirs.md']), packB);
+    ears().tx(folders()[0].id).destroy();
+
+    // Its memo is still there and still pack-b's, so only the folder is created
+    expect(seed(tree('pack-b', ['theirs.md']), keyRecordAfter(packB.defined))).toMatchObject({ created: 1 });
+    expect(folders()[0].label, "pack-b never made its own folder").toBe('pack-b');
+  });
+
   it('is found again by the pack seeding into it: seeding it twice adds nothing', () => {
     registerHooks('Folder', { container: true });
     seed(tree('pack-a', ['welcome.md']));

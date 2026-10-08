@@ -15,17 +15,9 @@ export type SeedIncludeSet = true | ReadonlySet<string>;
 export type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace';
 
 /**
- * The seed keys a pack's content defines, across runs: `before` is what it defined when it was last
- * imported, and a seeder adds to `defined` every key it defines now.
- *
- * **It is how a seed knows about a row that was destroyed rather than trashed.** A trashed row is its own
- * record — it still carries its seed key, and the seeder finds it and leaves it alone. A row deleted
- * outright leaves nothing at all, so without this a seed cannot tell the user's deletion from a record it
- * has never imported, and creates it again on the next run. A key in `before` with no row now is the
- * former.
- *
- * Whoever imports decides whether that inference applies: boot seeding passes a record (`seedPacks`), and
- * a user asking for a pack's data back passes none, because that request is for the rows to come back.
+ * The seed keys a pack's content defines, across runs: what it defined when it last imported, and a set the
+ * seeders fill with what it defines now. It is how a row destroyed rather than trashed is known to be the
+ * user's — `removedByUser` (`seed/seeder.ts`) is the rule, and the app's `seedPacks` keeps the record.
  */
 export interface SeedKeyRecord {
   before: ReadonlySet<string>;

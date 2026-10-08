@@ -155,23 +155,12 @@ describe('a seeded flow the user deleted', () => {
     repository.flowsCommands.deleteFlow(flow('Codex')[0].id);
     expect(flow('Codex'), 'a destroyed flow leaves nothing behind, which is the premise').toEqual([]);
 
-    const counts = seedFlows(compiled(['Codex']), keyRecordAfter(firstRun.defined));
+    // Root Flow changes in the same run, so a seed that imported nothing at all would fail here rather than
+    // pass the assertion below. The exemptions are in abuddy-sdk's flow-seeder spec
+    const counts = seedFlows(compiled(['Codex', 'Root Flow']), keyRecordAfter(firstRun.defined));
 
     expect(flow('Codex'), 'the seed created the flow the user deleted').toEqual([]);
-    expect(counts).toMatchObject({ created: 0 });
-  });
-
-  /**
-   * **And the same import without that record creates it**, which is what asking for a pack's data back is.
-   * Without this half, the case above would also pass for a seeder that had stopped creating flows at all.
-   */
-  it('is seeded when the import carries no key record', () => {
-    repository.flowsCommands.deleteFlow(flow('Codex')[0].id);
-
-    const counts = seedFlows(compiled(['Codex']));
-
-    expect(flow('Codex').length, 'the data the user asked for was not put back').toBe(1);
-    expect(counts).toMatchObject({ created: 1 });
+    expect(counts).toMatchObject({ created: 0, updated: 1 });
   });
 });
 

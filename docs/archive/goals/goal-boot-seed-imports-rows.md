@@ -261,13 +261,13 @@ After Phases 1 and 2.
 
 ## Deferred
 
-1. **A retired-seed-key ledger for hard deletes.** ~~Do not build it~~ — **answered, and not by a ledger.**
-   Decision 1 covers soft delete, which is what notes and the other trashed entity types use; an entity type
-   with no trash is deleted outright, its `seedKey` going with the row. The premise written here was also
-   false (it said nothing in the repo seeds a hard-deleted type; two of the five shipped keys do). What
-   covers it is a record of what the pack's content *defined*, not of what was deleted — so it is a snapshot
-   the size of the pack's content rather than a list that only grows, and it needs no write at any delete
-   site. See the correction below.
+1. **A retired-seed-key ledger for hard deletes — answered, and not by a ledger.** Decision 1 covers soft
+   delete, which is what notes and the other trashed entity types use; an entity type with no trash is
+   deleted outright, its `seedKey` going with the row. This item was deferred on a false premise (that
+   nothing in the repo seeds a hard-deleted type; two of the five shipped keys do) and with the wrong shape
+   in mind: what covers it is a record of what the pack's content *defined*, not of what was deleted. That
+   is a snapshot the size of the pack's content rather than a list that only grows, and it needs no write at
+   any delete site. See the correction below.
 2. **Validating `seedPolicy`'s key names** against `boot.seed` in `manifest-schema.ts`'s `superRefine`.
    The field is gone after Phase 2, so the check has no subject. Named here because it is the obvious fix
    to reach for and would be dead code.

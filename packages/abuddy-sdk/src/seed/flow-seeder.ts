@@ -10,7 +10,7 @@ import { isFlowConfig, type FlowDSL } from '../build/compilers/flow-types.ts';
 import { EARS } from '../types/entities.ts';
 import type { ActionEntity, FlowEntity } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
-import { childSeedKey, SEED_KEY, seedKeyPrefix } from './seeder.ts';
+import { childSeedKey, defineSeedKey, removedByUser, SEED_KEY, seedKeyPrefix } from './seeder.ts';
 import { seedPackId } from '../utils/seed.ts';
 
 /** What the seeder wrote for a flow: its row's fields, each node's fields, the relation kinds between them, and a hash of their stored state */
@@ -138,15 +138,12 @@ export function createFlowSeeder(): Seeder {
 
         const existing = lookupSeeded(existingFlows, key);
         const compiledHash = isFlowConfig(entry) ? (entry as any).sourceHash : undefined;
-        ctx.keyRecord?.defined.add(flowSeedKey(packId, key));
+        const seedKey = flowSeedKey(packId, key);
+        defineSeedKey(ctx, seedKey);
 
-        /**
-         * **Defined on the last run and no flow now: the user deleted it.** A flow is destroyed rather than
-         * trashed (`flowRepository.deleteFlow`), so the row that would say so is gone and the record of the
-         * key is the only thing left (`SeedKeyRecord`). `wipe-and-replace` is exempt by name: it deleted
-         * every flow itself above, and importing them again is what that mode is.
-         */
-        if (!existing && ctx.mode !== 'wipe-and-replace' && ctx.keyRecord?.before.has(flowSeedKey(packId, key))) {
+        // A flow is destroyed rather than trashed (`flowRepository.deleteFlow`), so this record is the only
+        // one its deletion leaves
+        if (!existing && removedByUser(ctx, seedKey)) {
           ctx.log(`  flow skipped (removed): ${key}`);
           counts.skipped++;
           continue;

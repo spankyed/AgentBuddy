@@ -62,6 +62,31 @@ export function childSeedKey(parentKey: string, record: SeedRecord, identity: re
 /** A seed key names the seeding pack before the entry key */
 export const seedKeyPrefix = (packId: string) => `${packId}:`;
 
+/**
+ * Records that this run's content defines `key` (`SeedKeyRecord`, `@abuddy/sdk/utils`).
+ *
+ * Every seeder does this for every record it reaches, whatever the outcome was: the record is what this
+ * pack's content defines, not what it created, so a key skipped as edited or as removed stays in it. The one
+ * row not to claim is a container another seed owns — this run did not define it, and claiming it would
+ * make that pack's row disappearing read as the user deleting ours.
+ */
+export const defineSeedKey = (ctx: ImportContext, key: string): void => { ctx.keyRecord?.defined.add(key); };
+
+/**
+ * **Did the user delete the row this key names?** Asked where a seeder found no row: a key the last run
+ * defined with nothing behind it now can only be a row that was created and then deleted.
+ *
+ * It is the second of two records, and the only one a row destroyed rather than trashed leaves. A trashed
+ * row still carries its seed key, so a seeder finds it and leaves it alone without asking this. A destroyed
+ * row leaves nothing, so what answers is the memory of the key.
+ *
+ * `wipe-and-replace` is exempt by name: it removed the rows itself a moment ago, so every key would answer
+ * yes. An import carrying no record is exempt by having none — asking for a pack's data back is asking for
+ * the rows to come back.
+ */
+export const removedByUser = (ctx: ImportContext, key: string): boolean =>
+  ctx.mode !== 'wipe-and-replace' && (ctx.keyRecord?.before.has(key) ?? false);
+
 /** Records the row's values for the seeded fields, so a later seed can tell whether anything else changed them */
 function stampSeededFields(id: EARS.EntityId, fields: string[]): void {
   untypedTx(id).update(SEEDED_FIELDS, { fields, hash: hashStoredFields(id, fields) } satisfies SeededFields);
@@ -240,9 +265,9 @@ export function createSeeder(options: SeederOptions): Seeder {
           const hooks = record.entity ? _seedHookRegistry.get(record.entity) : undefined;
           const label = recordLabel(record, identity);
           const seedKey = childSeedKey(parentKey, record, identity);
-          ctx.keyRecord?.defined.add(seedKey);
           try {
             const { match: existing, reused, deleted } = find(record, seedKey, context, hooks);
+            if (!reused) defineSeedKey(ctx, seedKey);
             if (existing) {
               /**
                * **The user removed it, which settles every other question — so this comes first.** A row
@@ -291,14 +316,9 @@ export function createSeeder(options: SeederOptions): Seeder {
               if (record.children) visit(record.children, existing.id, seedKey);
               return;
             }
-            /**
-             * **Defined on the last run and no row now: the user deleted it outright.** The deleted branch
-             * above reads the row the user trashed; this reads the record of the key, which is all that is
-             * left of a row destroyed rather than trashed (`SeedKeyRecord`). Same verdict, so the children
-             * are not visited either — and `wipe-and-replace` is exempt by name, since it removed the rows
-             * itself a moment ago and re-creating them is what that mode is.
-             */
-            if (ctx.mode !== 'wipe-and-replace' && ctx.keyRecord?.before.has(seedKey)) {
+            // Same verdict as the deleted branch above, from the other record, so the children are not
+            // visited either: they would be created with no parent
+            if (removedByUser(ctx, seedKey)) {
               counts.skipped++;
               ctx.log(`  ${key} skipped (removed): ${label}`);
               return;
