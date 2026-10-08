@@ -734,9 +734,18 @@ one thing worth paying for.
 
 **The rest is not a regression suite, and is not in `npm run chain`.** It was built to watch the app while
 writing a feature, and it became a chain step while the reasoning around it drifted into caching policy —
-a question you only ask of a gate. It has not caught a regression. What earns a place here now is a test
-that asserts something a future change could break **and** needs the real process boundary; everything
-else is either a harness test or a driving script (`drive/`).
+a question you only ask of a gate. What earns a place here is a test that asserts something a future
+change could break **and** needs the real process boundary; everything else is either a harness test or a
+driving script (`drive/`).
+
+**One spec here has earned it, and what it caught is the argument for that rule rather than against the
+gate.** `app-integration/dev-reload.spec.ts` found that a rebuilt pack the app ships reloaded the copy
+installed *before* the edit — so every pack edit in dev appeared not to take effect, and `POST /dev/reload`
+answered 200. The chain, `test:smoke` and every unit suite passed straight through it, because the fact it
+rests on is a built pack in a real data dir reloaded over a real port, which no harness has. That is
+exactly the two-part test above, met; the ones that do not meet it are still the reason this is not a gate.
+**So the question to ask of a spec here is which of the two halves it has**, and `npm run chain -- --e2e`
+is how you run the suite when a change is in that territory.
 `npm run chain -- --e2e` runs it with the chain when you want it — ordered after `test:smoke`, since both
 drive Playwright at `tests/results` — and `npm test` runs it alone.
 
