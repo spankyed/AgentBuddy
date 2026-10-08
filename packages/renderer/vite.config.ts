@@ -128,7 +128,34 @@ function hostSharedModulesPlugin(): Plugin {
     }));
   }
 
+  /**
+   * **Asks again when the pre-bundle moved under it**, which is a recovery rather than a retry-and-hope.
+   *
+   * Vite throws `ERR_OUTDATED_OPTIMIZED_DEP` when a dep was re-optimised after the answer it is about to
+   * give was computed, and its message says what is meant to happen: *"a page reload is going to ask for
+   * it."* Every other consumer delegates that to the client — `transformMiddleware` answers 504 so the
+   * runtime reloads, `warmupRequest` just returns, because a reload is coming. **The document cannot
+   * delegate it**: there is no runtime yet to see a 504, and this request *is* the reload. Serving the page
+   * without a map would be worse than failing, since every pack's frontend would then resolve nothing and
+   * nothing would say why until someone reloaded by hand.
+   *
+   * So it waits for the pre-bundle that invalidated the last answer and asks again. Anything that is not
+   * that code, the count check below included, still throws on the first go.
+   */
   async function mapFromServer(server: ViteDevServer): Promise<Record<string, string>> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await servedMap(server);
+      } catch (err) {
+        if ((err as { code?: string }).code !== 'ERR_OUTDATED_OPTIMIZED_DEP' || attempt >= 2) throw err;
+        const optimizer = server.environments.client.depsOptimizer;
+        await optimizer?.scanProcessing;
+        await Promise.all((optimizer?.metadata.depInfoList ?? []).map((dep) => dep.processing));
+      }
+    }
+  }
+
+  async function servedMap(server: ViteDevServer): Promise<Record<string, string>> {
     // The specifier itself, not a `/@id/…` URL: unwrapping that prefix is the HTTP middleware's job, and
     // `transformRequest` hands what it is given straight to the resolvers.
     const transformed = await server.transformRequest(VIRTUAL_ID);
