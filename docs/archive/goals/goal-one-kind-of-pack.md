@@ -328,7 +328,7 @@ got wrong*.
 refinement's own reason is *"before external packs load"*, which cannot hold for a pack that is external —
 and it would let an arbitrary pack's system run before the data layer exists. Moving `logs` to the host
 would also have removed the privilege, and is deferred rather than rejected
-([`plans/logs-to-host.md`](../../plans/logs-to-host.md)): whether the Logs plugin should become a core app
+([`plans/logs-to-host.md`](../../plans/deferred/logs-to-host.md)): whether the Logs plugin should become a core app
 feature, updated only by a full app release, is a product question this goal does not need answered. Deleting the field removes more than the move would and touches nothing else.
 **The cost, which is the reason this is a decision and not a tidy-up:** `logs` stops starting before
 hydration, so hydration, `onInit`, migrations and seeding stop reaching the in-app viewer. They still reach
@@ -597,7 +597,7 @@ problems anyway.
 sets `early` afterwards, which is exactly what Decision 5 deletes `partitionPolicy` for, and a mechanism
 with no caller is a mechanism nobody is testing against reality. Against: `hostRegistration` writes its
 `PackFeatureSystem` literally, so re-expressing `early` for a host feature is one property rather than a
-manifest field — and [`plans/logs-to-host.md`](../../plans/logs-to-host.md) is the deferred move that would
+manifest field — and [`plans/logs-to-host.md`](../../plans/deferred/logs-to-host.md) is the deferred move that would
 want it back the same day. Decide it when Phase 4 is implemented; either answer keeps the capability out
 of the pack contract, which is the part that is settled.
 

@@ -1,7 +1,7 @@
 # Move `logs` into the host pack
 
 **Status:** deferred — researched, not scheduled
-**Prompted by:** 2026-10-07, [`goal-one-kind-of-pack`](../archive/goals/goal-one-kind-of-pack.md)'s Phase 4
+**Prompted by:** 2026-10-07, [`goal-one-kind-of-pack`](../../archive/goals/goal-one-kind-of-pack.md)'s Phase 4
 
 ## Why it is deferred, and why the research is kept
 
