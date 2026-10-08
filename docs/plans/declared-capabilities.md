@@ -137,8 +137,7 @@ and an `api:update`, which is the point, but it is friction where there was none
 
 **The facade is per *pack*, the services are per *feature*.** `#generated/services.ts` is one module for the
 whole pack, so a per-feature gate needs either a per-feature facade or the registry doing the real work with
-the facade widened to the pack's union. The second is simpler and still closes the hole; say which was
-chosen and why.
+the facade widened to the pack's union. The second is simpler and still closes the hole.
 
 **It is not a sandbox.** A pack's code runs in the same process and can reach the bound runtime by other
 means if it tries. This makes capabilities *declared, reviewable and enforced at the seam*, which is what
