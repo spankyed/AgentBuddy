@@ -9,6 +9,30 @@ import { devServerUrl } from '@abuddy/host/packs/dev-server';
 /** A pack id, as the manifest schema defines it (`abuddy-sdk/src/build/manifest-schema.ts`) */
 const PACK_ID = /^[a-z][a-z0-9-]*$/;
 
+/**
+ * What a `pack://` request addresses, or `null` when no pack does.
+ *
+ * **The pack id comes from the URL's host, and what the parser makes of that host is the thing being
+ * checked.** `pack://../x` parses to the host `..`, which would resolve the pack dir to its parent — the
+ * data dir — and pass the prefix check in `resolvePackFile`, serving any file sitting directly in it. A
+ * pack id is a single plain segment, so anything else is refused before it reaches the filesystem.
+ *
+ * Exported, and separate from the handler, for the reason `resolvePackFile` is: a refusal that lives inside
+ * `protocol.handle` can only be asserted by starting Electron, so it was asserted nowhere. Its subject is
+ * input, which means it needs a case that fires — and the parse it depends on is not this repo's, so the
+ * case is also what shows the parse changing under a scheme privilege or a Chromium bump.
+ */
+export function packRequestTarget(requestUrl: string): { packId: string; filePath: string } | null {
+  let url: URL;
+  try {
+    url = new URL(requestUrl);
+  } catch {
+    return null;
+  }
+  if (!PACK_ID.test(url.hostname)) return null;
+  return { packId: url.hostname, filePath: decodeURIComponent(url.pathname) };
+}
+
 /** What the pack:// handler serves each extension as. Exported so its spec asserts this map, not a copy. */
 /**
  * The file a `pack://` request serves, or `null`.
@@ -52,6 +76,17 @@ class PackProtocol implements AppModule {
       {
         scheme: 'pack',
         privileges: {
+          // A standard scheme, so a module served from `pack://` resolves like one served over http: relative
+          // specifiers against the module's own URL, and bare ones through the document's import map. Without
+          // it a pack bundle that emits more than one chunk cannot reliably load its own siblings, and nothing
+          // external can be shared by resolution rather than through a global.
+          //
+          // It changes how the *renderer* parses `pack://` — a standard scheme lowercases the host and
+          // normalises the path — so what the pack-id guard receives is not what it received before.
+          // `packRequestTarget`'s cases cannot see that: they run under Node's parser. The pack E2E suites
+          // are the ones that do. `local-file` in `../media-protocol/MediaProtocol.ts` already ships this
+          // combination.
+          standard: true,
           secure: true,
           supportFetchAPI: true,
         },
@@ -60,16 +95,9 @@ class PackProtocol implements AppModule {
 
     app.whenReady().then(() => {
       protocol.handle('pack', async (request) => {
-        const url = new URL(request.url);
-        const packId = url.hostname;
-        const filePath = decodeURIComponent(url.pathname);
-
-        // `pack://../x` parses to the host "..", which would resolve the pack dir to its parent — the data
-        // dir — and pass the prefix check below, serving any file sitting directly in it. A pack id is a
-        // single plain path segment, so anything else is refused before it reaches the filesystem.
-        if (!PACK_ID.test(packId)) {
-          return new Response('Forbidden', { status: 403 });
-        }
+        const target = packRequestTarget(request.url);
+        if (!target) return new Response('Forbidden', { status: 403 });
+        const { packId, filePath } = target;
 
         const {packsDir, userDataDir} = getAppContext();
 
