@@ -47,5 +47,6 @@ export {
   packFrontendFiles,
   createPackArchive, extractPackArchive, packArchiveName,
   getLoadedPackEntries, getPacksWithClientLoadedFrontends,
+  staleBuildOutput,
 } from './layout.ts';
 export type { PackIntegrity, LoadedPackEntry } from './layout.ts';

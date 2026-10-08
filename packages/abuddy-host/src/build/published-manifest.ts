@@ -22,6 +22,7 @@
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { replaceDir } from '../replace-dir.ts';
 import { SOURCE_CONDITION } from './source-resolution.ts';
 
 /** A parsed `package.json`. Only the fields below are read; the rest is copied through */
@@ -180,24 +181,42 @@ export function stagePublishTree(pkgDir: string, manifest: Manifest): string {
   if (!Array.isArray(manifest.files) || manifest.files.length === 0) {
     throw new Error(`${name} names no "files", so a staged tree would be its whole working directory. Name what ships.`);
   }
-  fs.rmSync(treeDir, { recursive: true, force: true });
-  fs.mkdirSync(treeDir, { recursive: true });
+  // Staged aside and renamed into place, so nothing ever *reads* a tree that is half a copy or absent — which
+  // is the whole of what it buys, and worth saying because the obvious conclusion from it is wrong.
+  //
+  // **It does not make `packages:check`'s `alsoWrites` unnecessary.** `attw --pack <dir>` packs a tarball
+  // *inside* the tree it is checking, so it is a second writer, and a rename replaces the directory holding
+  // its in-flight tarball exactly as removing and recreating one did — the recorded
+  // `ENOENT: open 'publish/abuddy-ui-0.1.0.tgz'`. What changes is the width of the window, not that there is
+  // one, and a write-write race is the scheduler's to prevent: the mutex stays. The fix for that half is the
+  // one `chain-steps.ts` names, packing to a temp directory rather than into the tree.
+  //
+  // Inside `pkgDir`, so the rename cannot cross a filesystem. `.temp/` is already gitignored for every
+  // package, which matters: a tree that appears and vanishes under a name `git` reports is what the root
+  // `.gitignore`'s `*.bundled_*` entry exists for, and eight specs take their population from `git ls-files`.
+  const staged = path.join(pkgDir, '.temp', 'publish-staged');
+  fs.rmSync(staged, { recursive: true, force: true });
+  fs.mkdirSync(staged, { recursive: true });
   // Exactly what npm would pack, so patterns, its force-included files and its default excludes are all its own
   // business rather than re-implemented here
   for (const file of workspacePackList(pkgDir)) {
-    const to = path.join(treeDir, file);
+    const to = path.join(staged, file);
     fs.mkdirSync(path.dirname(to), { recursive: true });
     fs.cpSync(path.join(pkgDir, file), to);
   }
   // After the copy, because `package.json` is in that list: this is the one file the staged tree does not share
   // with the source tree
   const published = publishedManifest(manifest);
-  fs.writeFileSync(path.join(treeDir, 'package.json'), `${JSON.stringify(published, null, 2)}\n`);
-  const missing = missingPublishedPaths(published, treeFiles(treeDir));
+  fs.writeFileSync(path.join(staged, 'package.json'), `${JSON.stringify(published, null, 2)}\n`);
+  // Checked before the swap, never after: a tree that failed this must not be the one readers find, and
+  // swapping first would leave a short tree reading as the published one
+  const missing = missingPublishedPaths(published, treeFiles(staged));
   if (missing.length > 0) {
+    fs.rmSync(staged, { recursive: true, force: true });
     throw new Error(`${name}'s published manifest names files the staged tree does not hold:\n`
       + `${missing.map((problem) => `  ${problem}`).join('\n')}\n`
       + 'Either "files" does not cover it, or the build did not write it.');
   }
+  replaceDir(staged, treeDir);
   return treeDir;
 }

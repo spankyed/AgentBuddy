@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { parse, satisfies } from 'semver';
-import { stagingDirName } from './staging.ts';
+import { replaceDir } from '../replace-dir.ts';
 import { DOWNLOAD_TIMEOUT_MS, fetchReleaseAsset, githubFetch, type GitHubReleaseAsset } from './github.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { PACK_ID_PATTERN } from '@abuddy/sdk/ids';
@@ -238,27 +238,24 @@ function sameHashes(a: Record<string, string>, b: Record<string, string>): boole
   return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
 }
 
-/** Replace <packsDir>/<id> with `sourceDir`'s contents without leaving a half-copied pack behind. */
+/**
+ * Replace <packsDir>/<id> with `sourceDir`'s contents without leaving a half-copied pack behind.
+ *
+ * What is this function's own is the copy: `sourceDir` is a staged pack in a temp dir that may be on another
+ * filesystem, so it is copied into a sibling of the destination first — a rename out of `os.tmpdir()` would
+ * fail with `EXDEV`. The swap itself is `replaceDir`, shared with the builds that publish a `dist`.
+ */
 function placePack(sourceDir: string, packsDir: string, id: string): string {
   const destDir = path.join(packsDir, id);
   const incoming = fs.mkdtempSync(path.join(packsDir, `.${id}.installing-${process.pid}-`));
   try {
     copyDir(sourceDir, incoming);
-    const previous = fs.existsSync(destDir) ? path.join(packsDir, stagingDirName(id, 'previous')) : null;
-    if (previous) fs.renameSync(destDir, previous);
-    try {
-      fs.renameSync(incoming, destDir);
-    } catch (err) {
-      // Put the installed version back rather than leaving the pack missing
-      if (previous && !fs.existsSync(destDir)) fs.renameSync(previous, destDir);
-      throw err;
-    }
-    if (previous) fs.rmSync(previous, { recursive: true, force: true });
-    return destDir;
   } catch (err) {
     fs.rmSync(incoming, { recursive: true, force: true });
     throw err;
   }
+  replaceDir(incoming, destDir);
+  return destDir;
 }
 
 /**

@@ -305,3 +305,49 @@ export async function extractPackArchive(archive: string, destDir: string, expec
 export function packSeedFiles(seedsDir: string): string[] {
   return fs.existsSync(seedsDir) ? listFiles(seedsDir).sort() : [];
 }
+
+/**
+ * The newest source file a pack's build should have seen, when that file is newer than the build — or
+ * nothing when the build is current.
+ *
+ * **Absence is no longer the signal that a build failed**, which is why this is here rather than in the one
+ * caller it started with. `abuddy build` assembles its output aside and renames it over `dist`, so a failed
+ * build leaves the previous one in place; every reader that took a missing tree to mean "nothing to use" has
+ * to ask this instead. Two do: `abuddy pack`, which would otherwise ship the build before the one that
+ * failed, and `abuddy test --prebuilt`, which trusts a build it did not make.
+ *
+ * Sources are the pack's `src/` and its `abuddy.json`; the build is the oldest of the two files the installer
+ * requires, since a build is only as current as its least finished part. mtimes are what a build leaves
+ * behind, so this is the same question `packages-built.ts` asks of the workspace packages and the same
+ * answer: it can only be wrong in the safe direction, reporting stale for a file touched without being
+ * changed. A rename preserves the mtime of the file as it was written, so staging does not disturb it.
+ */
+export function staleBuildOutput(packDir: string): string | undefined {
+  // `PACK_LAYOUT` is relative to a layout directory, which for a pack's own build output is `dist`
+  const built = [PACK_LAYOUT.runtimeEntry, PACK_LAYOUT.snapshot].map((file) => path.join(packDir, 'dist', file));
+  const builtAt = built.map((file) => (fs.existsSync(file) ? fs.statSync(file).mtimeMs : 0));
+  // Absent rather than stale: the caller's own "not built" message names the files and the command
+  if (builtAt.some((at) => at === 0)) return undefined;
+  const oldestBuilt = Math.min(...builtAt);
+
+  let newest: { file: string; at: number } | undefined;
+  const walk = (dir: string): void => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      // `__generated__` is written by the build itself, so it is output wearing a source file's path
+      if (entry.name === '__generated__' || entry.name === 'node_modules') continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else {
+        const at = fs.statSync(full).mtimeMs;
+        if (!newest || at > newest.at) newest = { file: path.relative(packDir, full), at };
+      }
+    }
+  };
+  const src = path.join(packDir, 'src');
+  if (fs.existsSync(src)) walk(src);
+  const manifest = path.join(packDir, PACK_LAYOUT.manifest);
+  const manifestAt = fs.existsSync(manifest) ? fs.statSync(manifest).mtimeMs : 0;
+  if (manifestAt > (newest?.at ?? 0)) newest = { file: PACK_LAYOUT.manifest, at: manifestAt };
+
+  return newest && newest.at > oldestBuilt ? newest.file : undefined;
+}

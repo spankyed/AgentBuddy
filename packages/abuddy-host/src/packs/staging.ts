@@ -1,22 +1,10 @@
-import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { recordHostInfo } from './host-info.ts';
 import { recordIsStale } from '../process-liveness.ts';
-
-export type StagingKind = 'installing' | 'previous';
-
-/** `.<id>.<kind>-<pid>` or `.<id>.<kind>-<pid>-<random>`: staging owned by a process */
-const OWNED_STAGING_DIR = /^\.(.+)\.(installing|previous)-(\d+)(?:-[A-Za-z0-9]+)?$/;
-
-/**
- * A hidden staging dir name for pack `id`, unique to this process: a crashed process's leftovers
- * never collide with a later process that reuses its PID.
- */
-export function stagingDirName(id: string, kind: StagingKind): string {
-  return `.${id}.${kind}-${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
-}
+// The naming convention lives with the module that makes one of these directories; this is its reader
+import { OWNED_STAGING_DIR, type StagingKind } from '../replace-dir.ts';
 
 interface StagingEntry { name: string; id: string; kind: StagingKind; stale: boolean }
 

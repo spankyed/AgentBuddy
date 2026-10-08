@@ -3,10 +3,20 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
-import { build, clearBuildOutput } from '../../src/commands/build';
+import { build, buildStagingDir } from '../../src/commands/build';
 import { PACK_LAYOUT } from '@abuddy/host/packs';
 
-/** abuddy build starts from no earlier output of its own, so nothing stale ships or gets published */
+/**
+ * **`abuddy build` assembles `dist/` elsewhere and renames it into place**, so a reader finds the previous
+ * build whole or this one whole. What that replaced is removing `dist` first, which published ~20s in which
+ * every reader of a pack's output — all of which read a missing output as *not built* — had the wrong answer;
+ * the fixture-pack race in `1e19b40d9` was exactly that, fixed then by removing one reader.
+ *
+ * So the cases here are the inverse of the ones they replace: a failed build leaves the **previous build
+ * intact** rather than leaving nothing. What is not asked here is that the swap replaces the tree whole — that
+ * is `replaceDir`'s, in `@abuddy/host`'s `tests/replace-dir.spec.ts`, and asking it again would cost a
+ * successful build of a fixture pack to re-establish what one rename already guarantees.
+ */
 let dist: string;
 afterEach(() => fs.rmSync(path.dirname(dist), { recursive: true, force: true }));
 
@@ -23,22 +33,11 @@ const list = (dir: string): string[] => fs.existsSync(dir)
   ? fs.readdirSync(dir, { recursive: true, withFileTypes: true }).filter((e) => e.isFile()).map((e) => path.relative(dir, path.join(e.parentPath, e.name))).sort()
   : [];
 
-describe('clearBuildOutput', () => {
-  // One pack kind, so one answer: `dist/` is this command's output and goes whole. It used to spare
-  // `runtime/` for the pack that ships with the app, whose runtime another command wrote.
-  it("clears a pack's whole dist/, runtime and compiled seeds included", () => {
-    previousBuild([
-      'notes.seed.json', 'seeds.json', 'media/library/pic.png', 'build/seed-compilers.mjs', 'types/pack-types.d.ts',
-      PACK_LAYOUT.snapshot, 'runtime/index.cjs', 'runtime/index.cjs.map', 'defs/monaco/actions.d.ts',
-    ]);
-    clearBuildOutput(dist);
-    expect(fs.existsSync(dist)).toBe(false);
-  });
-});
-
 describe('a build that fails', () => {
-  it('leaves nothing of the previous build behind', async () => {
-    const dir = previousBuild(['flows.seed.json', 'seeds.json', 'runtime/index.cjs', 'defs/monaco/actions.d.ts']);
+  const PREVIOUS = ['flows.seed.json', 'seeds.json', 'runtime/index.cjs', 'defs/monaco/actions.d.ts'];
+
+  it('leaves the whole of the previous build in place, and no staging tree', async () => {
+    const dir = previousBuild(PREVIOUS);
     const root = path.dirname(dir);
     packFixture({ at: root, manifest: {
       id: 'built-in-pack', name: 'Built-in', builtIn: true,
@@ -53,7 +52,8 @@ describe('a build that fails', () => {
     } finally {
       process.chdir(cwd);
     }
-    expect(list(dir)).toEqual([]);
+    expect(list(dir)).toEqual([...PREVIOUS].sort());
+    expect(fs.existsSync(buildStagingDir(root)), 'the staged tree goes with the failure').toBe(false);
   });
 });
 
@@ -79,7 +79,7 @@ describe('a pack whose seed compiler modules fail to bundle', () => {
       process.chdir(cwd);
       process.exitCode = exitCode;
     }
-    expect(list(dir)).not.toContain('snapshot.json');
+    expect(list(dir), 'the previous build is what a reader still finds').toEqual(['snapshot.json']);
   });
 });
 
@@ -101,5 +101,6 @@ describe('a pack whose runtime fails to bundle', () => {
       process.chdir(cwd);
     }
     expect(list(dist)).not.toContain(PACK_LAYOUT.snapshot);
+    expect(fs.existsSync(buildStagingDir(root))).toBe(false);
   });
 });

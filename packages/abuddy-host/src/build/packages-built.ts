@@ -128,7 +128,11 @@ function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
     inputs: [...SHARED_INPUTS, repoFile('scripts', 'lib', 'published-imports.ts'), repoFile('scripts', 'build-package.ts'),
       pkgFile('abuddy-host', 'src', 'build', 'published-manifest.ts'),
       pkgFile('abuddy-host', 'src', 'build', 'specifiers.ts'),
-      pkgFile('abuddy-host', 'src', 'build', 'source-resolution.ts'), ...extraInputs,
+      pkgFile('abuddy-host', 'src', 'build', 'source-resolution.ts'),
+      // How the built tree is published: assembled under `.temp/` and renamed over `dist`, so it decides where
+      // the output lands rather than merely whether the build runs — which is what `NOT_A_BUILD_INPUT` is for,
+      // and why this is declared instead
+      pkgFile('abuddy-host', 'src', 'replace-dir.ts'), ...extraInputs,
       pkgFile(pkg, 'src'),
       pkgFile(pkg, 'package.json'), pkgFile(pkg, 'tsconfig.json'), pkgFile(pkg, 'tsconfig.package.json')],
     outputs: [pkgFile(pkg, 'dist'), pkgFile(pkg, PUBLISH_TREE)],
@@ -1150,7 +1154,9 @@ export async function stampedBuild(
     // very likely building this same unit, and rebuilding what is already fresh is the duplicate work the
     // wait exists to avoid. A `command` builds regardless — it was asked for a build, not for freshness.
     if (intent === 'freshness' && unitStaleReason(unit, stamp) === null) return;
-    await stampedRun(label, unit, stamp, build);
+    // Every `build:package` script stages its tree and renames it into place (`replaceDir`), so its stamp
+    // stays readable for the length of the build
+    await stampedRun(label, unit, stamp, build, { atomic: true });
   }, lock, { ...lockOptions, intent });
 }
 
@@ -1179,11 +1185,43 @@ export interface StampedUnit {
  * under its own `tests/` or `etc/` while it runs (a `seed-parity:update`, a recorded snapshot), a later unit
  * would stamp a fingerprint of the output instead of the input and read fresh next time when it was not.
  */
-export async function stampedRunAll(units: readonly StampedUnit[], run: () => void | Promise<void>): Promise<void> {
+export async function stampedRunAll(
+  units: readonly StampedUnit[],
+  run: () => void | Promise<void>,
+  /**
+   * Whether `run` replaces its outputs by renaming rather than writing over them — see the run below.
+   *
+   * It is not fully atomic across *several* outputs: a build that swaps two trees can be killed between them
+   * and leave a matched-looking pair that is half of two builds, stamped fresh. What is left of that window is
+   * a `SIGKILL` between two renames, and what it costs is a `packages:check` reading the previous publish tree
+   * until the next source edit — where before this the same kill left no stamp at all. A throw is covered.
+   */
+  { atomic = false }: { atomic?: boolean } = {},
+): Promise<void> {
   const takenAt = new Date().toISOString();
   const taken = units.map(({ label, unit, stamp }) => ({ label, stamp, declared: declaredPaths(unit), ...fingerprintWithDigests(unit) }));
-  for (const { stamp } of taken) fs.rmSync(stamp, { force: true });
-  await run();
+  // **Removed first unless the caller replaces its outputs atomically**, and the difference is not a
+  // preference. A run that mutates its outputs in place — a chain step, a unit pool — leaves a half-done tree
+  // when it is killed, and the only thing that stops the next run trusting it is the stamp being gone;
+  // `chain.ts`'s `StepFailed` exists to produce exactly that ("a failed step must read as never run").
+  //
+  // A run that stages its work and renames it into place cannot leave a half-done tree, so removing its stamp
+  // only publishes a window in which the tree is whole and unstamped — which `unitStaleReason` answers with
+  // `'no stamp'`, so a reader mid-build still waits for the lock and the rename bought it nothing. Both
+  // outcomes of a kill stay consistent there: before the rename, the old tree and the old stamp; after it, the
+  // new tree and the old stamp, whose fingerprint is of inputs that have not moved.
+  const drop = () => { for (const { stamp } of taken) fs.rmSync(stamp, { force: true }); };
+  if (!atomic) drop();
+  try {
+    await run();
+  } catch (err) {
+    // An atomic run keeps its stamp *while it goes well*, and drops it the moment it does not. A build with
+    // more than one output swaps them one after another, so a throw between two swaps leaves a mismatched set
+    // — complete, so it reads as built, and stamped, so it would read as fresh. Dropping the stamp is what
+    // makes the next run rebuild it.
+    if (atomic) drop();
+    throw err;
+  }
   const builtAt = new Date().toISOString();
   for (const { label, stamp, fingerprint, declared, files } of taken) {
     fs.mkdirSync(path.dirname(stamp), { recursive: true });
@@ -1199,8 +1237,14 @@ export async function stampedRunAll(units: readonly StampedUnit[], run: () => vo
 }
 
 /** The single-unit case, which is most callers */
-export async function stampedRun(label: string, unit: BuildUnit, stamp: string, run: () => void | Promise<void>): Promise<void> {
-  await stampedRunAll([{ label, unit, stamp }], run);
+export async function stampedRun(
+  label: string,
+  unit: BuildUnit,
+  stamp: string,
+  run: () => void | Promise<void>,
+  options: { atomic?: boolean } = {},
+): Promise<void> {
+  await stampedRunAll([{ label, unit, stamp }], run, options);
 }
 
 /** Every `build:package` script wraps its work in this */

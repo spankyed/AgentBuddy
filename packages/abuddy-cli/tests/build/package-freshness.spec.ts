@@ -468,7 +468,9 @@ describe('the staleness verdict', () => {
   });
 
   it('is stale without a stamp, even when the output tree looks complete', () => {
-    // A build that failed or was killed after its rmSync leaves exactly this
+    // A failed build leaves exactly this, and the complete tree is no longer a lie about it: the build stages
+    // its work and renames it into place, so what a reader finds is the *previous* build whole, with its
+    // stamp dropped on the throw. Unstamped is the only thing left saying don't trust it
     const f = fixture();
     expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/no stamp/);
   });
@@ -886,12 +888,21 @@ describe('a stamped build', () => {
     expect(unitStaleReason(f.unit, path.join(f.root, 'stamp.json'))).toMatch(/no stamp/);
   });
 
-  it('clears the previous stamp before building, so an interrupted build cannot leave a stale one', async () => {
+  /**
+   * The other half of the atomic swap, and without it the swap buys nothing. A build that renames its output
+   * into place never publishes a half-built tree — but a reader mid-build asks the *stamp*, and a stamp removed
+   * before the run reads as `'no stamp'`, which is stale, which is the wait the rename was meant to remove.
+   *
+   * So this is the one a reader cares about: throughout the build, the previous build is **fresh**, not merely
+   * present. The build that mutates its output in place keeps the opposite contract, which is why the option is
+   * the caller's — `stampedRunAll`'s comment has the two kills side by side.
+   */
+  it('leaves the previous build fresh while an atomic build runs, since there is no half-built tree to disown', async () => {
     const f = fixture();
-    await run(f, () => {});
-    let stampDuringBuild = true;
-    await run(f, () => { stampDuringBuild = fs.existsSync(path.join(f.root, 'stamp.json')); });
-    expect(stampDuringBuild).toBe(false);
+    await run(f, () => fs.writeFileSync(path.join(f.out, 'built.js'), 'ok'));
+    let reasonDuringBuild: string | null = 'never asked';
+    await run(f, () => { reasonDuringBuild = unitStaleReason(f.unit, path.join(f.root, 'stamp.json')); });
+    expect(reasonDuringBuild).toBeNull();
   });
 
   it('records the sources as they were before the build, so a mid-build edit stays stale', async () => {

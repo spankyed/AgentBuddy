@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
-import { createPackArchive, stagePack, verifyPack, type PackIntegrity } from '@abuddy/host/packs';
+import { createPackArchive, stagePack, staleBuildOutput, verifyPack, type PackIntegrity } from '@abuddy/host/packs';
 
 const HELP = `
 Usage: abuddy pack [--out <dir>]
@@ -40,6 +40,14 @@ export async function buildPackArchive(root: string, outDir: string): Promise<Pa
   const manifest = readValidManifest(root);
   if (manifest.builtIn) {
     throw new Error('Built-in packs ship inside the app and are not packed.');
+  }
+  // **A build that is not of these sources must not be shipped, and absence is no longer what says so.**
+  // `abuddy build` renames its output into place, so a failed build leaves the previous one where it was and
+  // `stagePack` would find a complete `dist` to pack. Before that it left none, and the pack simply failed for
+  // want of files — which caught a failed build and missed a stale one. This catches both.
+  const stale = staleBuildOutput(root);
+  if (stale) {
+    throw new Error(`${manifest.id}'s build is older than ${stale}. Run abuddy build, then pack.`);
   }
   const stageDir = path.join(root, '.abuddy', 'staged', manifest.id);
   stagePack(root, stageDir, { sdkVersion: sdkVersion(), source: gitSource(root) });

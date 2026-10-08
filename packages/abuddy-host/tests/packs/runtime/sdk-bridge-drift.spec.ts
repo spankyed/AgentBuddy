@@ -87,6 +87,9 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // One writer at a time for a file the app and its tooling share: the CLI's codegen and `abuddy db` take it, and
   // the API's boot checks it. Pack code has nothing of the app's to serialise, so it never requires this.
   ['@abuddy/host/exclusive-lock', "the app's single-writer file locks, taken by the host and the CLI"],
+  // Putting a built tree in place of the one before it: the installer's and the builds', never a pack's — a
+  // pack has no derived tree of the app's to publish
+  ['@abuddy/host/replace-dir', 'how a build or an install swaps a directory into place'],
   // The app's log files: Electron main and the API append to them; a pack logs through createLogger, which
   // reaches the same files as a log event, redacted and capped like everything else the app writes
   ['@abuddy/host/logs', "the app's log files, appended to by main and the API"],

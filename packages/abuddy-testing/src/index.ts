@@ -7,7 +7,7 @@ import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { resolveName } from '@abuddy/sdk/ids';
-import { installPackFromLocal, PACK_LOAD_MESSAGES } from '@abuddy/host/packs';
+import { installPackFromLocal, PACK_LOAD_MESSAGES, staleBuildOutput } from '@abuddy/host/packs';
 import { appVersion } from './app-version.ts';
 import { appLaunchEnv, pinsViewport } from './launch-env.ts';
 import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
@@ -31,47 +31,6 @@ export interface CreateTestOptions {
 }
 
 
-/**
- * The newest source file a pack's build should have seen, when that file is newer than the build — or
- * nothing when the build is current. For `--prebuilt`, which trusts a build it did not make.
- *
- * Sources are the pack's `src/` and its `abuddy.json`; the build is the oldest of the two files the
- * installer requires, since a build is only as current as its least finished part. mtimes are what a build
- * leaves behind, so this is the same question `packages-built.ts` asks of the workspace packages and the
- * same answer: it can only be wrong in the safe direction, reporting stale for a file touched without being
- * changed.
- */
-function staleBuildOutput(packDir: string): string | undefined {
-  const built = [
-    path.join(packDir, 'dist', 'runtime', 'index.cjs'),
-    path.join(packDir, 'dist', 'types', 'snapshot.json'),
-  ];
-  const builtAt = built.map((file) => (fs.existsSync(file) ? fs.statSync(file).mtimeMs : 0));
-  // Absent rather than stale: the installer says "not built", which names the files and the command
-  if (builtAt.some((at) => at === 0)) return undefined;
-  const oldestBuilt = Math.min(...builtAt);
-
-  let newest: { file: string; at: number } | undefined;
-  const walk = (dir: string): void => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      // `__generated__` is written by the build itself, so it is output wearing a source file's path
-      if (entry.name === '__generated__' || entry.name === 'node_modules') continue;
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else {
-        const at = fs.statSync(full).mtimeMs;
-        if (!newest || at > newest.at) newest = { file: path.relative(packDir, full), at };
-      }
-    }
-  };
-  const src = path.join(packDir, 'src');
-  if (fs.existsSync(src)) walk(src);
-  const manifest = path.join(packDir, 'abuddy.json');
-  const manifestAt = fs.existsSync(manifest) ? fs.statSync(manifest).mtimeMs : 0;
-  if (manifestAt > (newest?.at ?? 0)) newest = { file: 'abuddy.json', at: manifestAt };
-
-  return newest && newest.at > oldestBuilt ? newest.file : undefined;
-}
 
 /** How the fixture launches AgentBuddy: from a checkout's sources, or a packaged build. */
 type AppLaunch = { kind: 'source'; root: string } | { kind: 'packaged'; executable: string };
@@ -384,11 +343,11 @@ export function createTest(options: CreateTestOptions = {}) {
           if (archive) assertArchiveIsCurrent(archive, packDir);
           if (!archive && process.env.ABUDDY_PACK_PREBUILT) {
             // The caller built it in an earlier step (`abuddy test --prebuilt`), so this installs that build.
-            // **Because a rebuild here would destroy it for the length of the build**: `abuddy build` clears
-            // `dist` before its first phase and the tree is absent until the last one, so a second builder of
-            // the same pack wipes the one mid-write, and any reader of that tree meanwhile sees a pack that
-            // is not built. With two fixture packs rebuilt in place by a step that declares `tests/packs` as
-            // an input, that is a race this suite lost under load rather than a hypothetical.
+            // **Because rebuilding it here is the expensive half of the step**: with two fixture packs rebuilt
+            // per run, dropping the rebuild took `test:external-pack:app` from 1.3m to 4.4s. It also stopped
+            // the step rebuilding a tree it declares as an input, which made each pack look unbuilt for the
+            // ~20s the rebuild took — a race this suite lost under load rather than a hypothetical, and one
+            // `abuddy build` no longer creates now that it stages its output and renames it into place.
             //
             // What the rebuild bought is checked instead of dropped: a build older than the sources it came
             // from fails here, which is the whole of "a stale build tested silently is worse than no test".
