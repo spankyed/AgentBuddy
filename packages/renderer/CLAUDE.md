@@ -63,8 +63,10 @@ Its static imports are evaluated first, `virtual:host-shared-modules` among them
     `?v=` hashes at once, and a URL differing by one is a second copy of the module) — and it is how the dep
     optimizer hears of the ProseMirror subpaths, which nothing else imports.
 
-  The pack FE bundler leaves those same specifiers external, so the two cannot drift: both read
-  `sharedFeModules()`.
+  The pack FE bundler leaves those same specifiers external. The two cannot drift because
+  `sharedFeModules()` is *derived* from the three lists the bundler checks against rather than written
+  beside them — and `fe-bundler-externals.spec.ts` asks the question directly, that every specifier a
+  bundle leaves bare is one this map names.
 - **Resolution:** conditions include `@abuddy/source`. The API's router type comes from `@app/api` (a type-only import, a dev dependency).
 - `base: './'` (loaded from `file://` in builds), `modulePreload: false`, and a long `optimizeDeps.include` list (Monaco, xterm, tiptap, vidstack, …) for the dev server.
 - `tsconfig.app.json` includes `../abuddy-sdk/src/fe/**/*` (the `Window.electronAPI` declaration, see `packages/preload/CLAUDE.md`) and maps `@/*` → `src/*`.
