@@ -7,6 +7,7 @@
 import { covers } from '@abuddy/host/build/packages-built';
 import { isMeasuredMachine, isMeasuredSchedule, machineText, thisMachine, type Machine } from './core-budget.ts';
 import { criticalPath, overBand } from './step-timing.ts';
+import { IDLE_FLOOR } from './measure.ts';
 import type { SchedulableStep } from './chain-schedule.ts';
 
 /**
@@ -412,6 +413,45 @@ const listOf = (names: readonly string[], shown = 3): string => {
 
 const peerSuffix = (peers: number): string => (peers === 0 ? '  (alone)' : `  (${peers} peers)`);
 
+/**
+ * What the figures above were taken under, for the reader who is about to type one.
+ *
+ * **The judgement the recorder's idle floor used to make, moved to where the decision now is.** `seconds` is
+ * declared, so nothing refuses a run any more — which means a reader can read a drift off a loaded box and
+ * write the box into the table. These are the two facts that gate used to hold before it wrote, printed
+ * instead of enforced: how quiet the machine was, and whether the rows moved together.
+ *
+ * **The direction decides what a correlated move means, and the two are opposites.** Load can only make a
+ * step slower, so rows that all came in slower may be the box; rows that all came in *faster* cannot be,
+ * because nothing about contention speeds a step up — that is the table being genuinely stale, which is
+ * what `build:app` at 39s against a real 13s was. Mixed directions say neither and get no sentence.
+ *
+ * **One row gets no verdict however far it moved.** A single step carrying a drift is that step's business,
+ * and the rows are printed, so a reader sees concentration without the report computing it. The recorder
+ * needed that computed because it had to reach a write decision from the numbers alone; a report does not.
+ */
+const conditionsNote = (
+  shown: readonly { declared: number; measured: number }[],
+  conditions: { readonly idle: number; readonly comparable: number } | undefined,
+): string => {
+  if (conditions === undefined) return '';
+  const slower = shown.filter(({ declared, measured }) => measured > declared).length;
+  const lines = [`  ${shown.length} of ${conditions.comparable} comparable steps`
+    + `, and the box read ${Math.round(conditions.idle * 100)}% idle as the run started.`];
+  if (shown.length > 1 && (slower === 0 || slower === shown.length)) {
+    lines.push(slower === shown.length
+      ? '  All of them slower, and load can only slow a step — so read the box before the code.'
+      : '  All of them faster, which load cannot cause — so this is the table and not the run.');
+  }
+  // `IDLE_FLOOR` rather than a new number: it already means "below this a timing is not worth printing",
+  // which is the same claim as "do not copy this figure into a committed file"
+  if (conditions.idle < IDLE_FLOOR) {
+    lines.push('  That is under the floor `npm run measure` refuses below, so a figure here may be the'
+      + ' machine. Measuring the step alone is the reading contention cannot fool.');
+  }
+  return `\n${lines.join('\n')}`;
+};
+
 export function driftReport(
   drifted: readonly { name: string; declared: number; measured: number; peers: number }[],
   budget: number,
@@ -424,6 +464,11 @@ export function driftReport(
    * `isMeasuredSchedule` has why it takes three facts and not one.
    */
   machine: Machine = thisMachine(),
+  /**
+   * How quiet the box was as the run started, and how many steps could have drifted — the two facts the
+   * deleted recorder checked before it wrote. Omitted, the report says nothing about either.
+   */
+  conditions?: { readonly idle: number; readonly comparable: number },
 ): string {
   // The two directions are not alike, so a run that cannot answer for one can still answer for the other.
   // Under the band is the run's doing: a smaller budget, or most steps cached, is less contention, and with
@@ -453,8 +498,11 @@ export function driftReport(
   // is the weaker form that let `--cores 10` on a twenty-core box through: the budget matched while every
   // width was twenty-core sized.
   if (isMeasuredSchedule(budget, measuredOn, machine)) {
+    // The conditions go on this branch alone, because it is the only one that names a number to write. The
+    // other two print what a step cost without offering a figure, so there is nothing for them to qualify
     return `\n${count} cost something other than chain-steps.ts says — edit the declaration to match:\n`
-      + `${rows(({ declared, measured }) => `seconds: ${declared} -> ${measured}`)}`;
+      + `${rows(({ declared, measured }) => `seconds: ${declared} -> ${measured}`)}`
+      + conditionsNote(shown, conditions);
   }
   return `\non ${cores(budget)}, ${count} moved against ${measuredOn.cores}-core numbers`
     + ` — the schedule, not a stale table:\n`

@@ -539,6 +539,70 @@ describe('driftReport', () => {
     expect(driftReport([], 10, MEASURED, true, SAME)).toBe('');
     expect(driftReport([], 1, MEASURED, true, SAME)).toBe('');
   });
+
+  /**
+   * **What the recorder's idle floor used to decide, said to the reader who now decides it.**
+   *
+   * Nothing refuses a run any more, so the way a stale number gets in is somebody reading a drift off a
+   * loaded box and typing it. These cases hold the two facts that stop that — how quiet the machine was,
+   * and whether the rows moved together — and, more importantly, hold the verdict to the cases where it is
+   * actually true. A report that says "this reads as the box" when it does not is the only way this lies.
+   */
+  const QUIET = { idle: 0.88, comparable: 30 };
+  const slowerBy = (over: number) => [{ name: 'compile', declared: 24, measured: 24 + over, peers: 0 }];
+
+  it('carries the reading and the count, so a figure is not copied blind', () => {
+    const report = driftReport(drifted, 10, MEASURED, true, SAME, QUIET);
+
+    expect(report).toContain('2 of 30 comparable steps');
+    expect(report).toContain('88% idle');
+  });
+
+  it('says nothing of conditions when it was told none, which is how every other caller reads', () => {
+    expect(driftReport(drifted, 10, MEASURED, true, SAME)).not.toContain('comparable steps');
+  });
+
+  it('names the box and the remedy below the floor measure refuses at', () => {
+    const report = driftReport(drifted, 10, MEASURED, true, SAME, { idle: 0.42, comparable: 30 });
+
+    expect(report, 'under IDLE_FLOOR, so the figure may be the machine').toContain('may be the');
+    expect(driftReport(drifted, 10, MEASURED, true, SAME, QUIET), 'and not above it')
+      .not.toContain('may be the');
+  });
+
+  /**
+   * The direction is the whole of it: load inflates a duration and cannot deflate one, so rows that all came
+   * in slower may be the box, and rows that all came in faster cannot be — that is the table being stale,
+   * which is what `build:app` declared at 39s against a real 13s was.
+   */
+  it('reads rows that all came in slower as the box', () => {
+    const report = driftReport([...slowerBy(40), { name: 'typecheck', declared: 27, measured: 61, peers: 0 }],
+      10, MEASURED, true, SAME, QUIET);
+
+    expect(report).toContain('read the box before the code');
+  });
+
+  it('reads rows that all came in faster as the table, since load cannot cause it', () => {
+    expect(driftReport(drifted, 10, MEASURED, true, SAME, QUIET))
+      .toContain('this is the table and not the run');
+  });
+
+  // Mutation: drop the `shown.length > 1` clause and this fails — one step carrying a drift is that step's
+  // business, and the rows are printed, so a reader sees concentration without the report asserting it
+  it('calls one row neither, however far it moved', () => {
+    const report = driftReport(slowerBy(200), 10, MEASURED, true, SAME, QUIET);
+
+    expect(report).toContain('1 of 30 comparable steps');
+    expect(report).not.toContain('read the box before the code');
+    expect(report).not.toContain('this is the table and not the run');
+  });
+
+  it('calls rows that moved both ways neither, since they tell no single story', () => {
+    const report = driftReport([...slowerBy(40), ...drifted], 10, MEASURED, true, SAME, QUIET);
+
+    expect(report).not.toContain('read the box before the code');
+    expect(report).not.toContain('this is the table and not the run');
+  });
 });
 
 describe('shouldClassify', () => {

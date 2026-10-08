@@ -43,7 +43,7 @@ import type { ExclusiveLock } from '@abuddy/host/exclusive-lock';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredMachine, machineText, MEASURED_ON, thisMachine } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
-import { asCount, parseFlags } from './lib/measure.ts';
+import { asCount, idleNow, parseFlags } from './lib/measure.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { driftedSteps, measurementsFrom, outgrownRungs, willNotCache } from './lib/step-timing.ts';
 import { briefly, classifyLine, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
@@ -460,6 +460,12 @@ async function main(): Promise<void> {
   const dispatchSweep = freshnessSweep();
   pruneStamps();
 
+  // **Read before the run, not after it.** The drift report quotes this to whoever is about to type a
+  // number, and a reading taken as the run returns is of this run's own teardown: measured 2026-10-08, this
+  // box read 78% immediately after a chain run and ~91% once it had settled. Before needs no settling, which
+  // is why the five-second watch window the recorder's gate needed is not here.
+  const idleAtStart = idleNow();
+
   const outcome = await schedule({
     steps,
     budget,
@@ -638,7 +644,13 @@ async function main(): Promise<void> {
     console.log('  table it is compared against describes another machine.');
   }
 
-  const report = driftReport(driftedSteps(steps, measuredMs, outcome.peers), budget, MEASURED_ON, all);
+  // The same population `driftedSteps` compares, so the denominator it is reported against is honest: a
+  // step with a declared cost and a reading of at least a second. Counted here because that function hands
+  // back only the rows that drifted, and its row shape is asserted whole elsewhere
+  const comparable = steps.filter((step) => step.seconds !== undefined
+    && Math.round((measuredMs.get(step.name) ?? 0) / 1000) >= 1).length;
+  const report = driftReport(driftedSteps(steps, measuredMs, outcome.peers), budget, MEASURED_ON, all,
+    thisMachine(), { idle: idleAtStart, comparable });
   if (report !== '') console.log(report);
 
   // **The bound asked of the measurement.** `declaredShare` gates on what a step declares, and the band above
