@@ -112,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUpdated } from 'vue'
+import { computed, ref, watch, onMounted, onUpdated } from 'vue'
 import type { SettingUpdate } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { untypedOpenPlugin, PluginScope, usePlugin, useShell } from '@abuddy/sdk/fe'
@@ -163,6 +163,15 @@ const pluginsWithSettings = computed(() => {
 // The first plugin with settings until one is picked
 const selectedPlugin = computed(() =>
   pluginsWithSettings.value.find((p) => p.id === selectedPluginId.value) ?? pluginsWithSettings.value[0] ?? null
+)
+
+// A confirmation names the plugin it was opened for, so a change of selection closes it rather than
+// retargeting the reset at whatever is selected when it is confirmed
+watch(
+  () => selectedPlugin.value?.id,
+  () => {
+    showResetDialog.value = false
+  }
 )
 
 const selectPlugin = (pluginId: FeatureRef) => {
