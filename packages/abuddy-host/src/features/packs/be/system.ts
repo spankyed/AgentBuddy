@@ -157,11 +157,26 @@ export function createPacksSystem(registry: PackRegistry) {
           // source. It is torn down before its files are replaced rather than after: a pack left running
           // on a directory that has been swapped underneath it loads the new code on its next lazy
           // require. Silent (`replacing`), because the activation below announces the change.
-          // No id is reserved here. `host` is refused by the manifest schema, before any caller of
-          // `parseManifest` sees the manifest; a pack this app ships *is* an installed pack, so taking its
-          // id replaces one, which this tears down and the next boot re-installs over
+          // **A shipped pack's id is not one an install may take**, which is what makes `canUninstall:
+          // false` a promise rather than a hidden button: the same predicate answers both, so the two doors
+          // to losing a pack the app needs are shut by one fact. Disabling, the third, is refused above for
+          // the reason this is — the app boots with no packs and the control that would put it back is the
+          // one the view does not draw.
+          //
+          // *"Installing over a pack is how an update lands"* is the general rule and does not reach this
+          // case, because a shipped pack updates with the app. An install over one buys nothing the next
+          // boot does not revert, and costs a session running a pack the user did not choose.
+          //
+          // Refused before the teardown below, so a refusal leaves the running pack untouched; `host` never
+          // reaches here, the manifest schema having refused it. **The limit:** a shipped pack that failed
+          // to load has no origin to read, so this cannot answer for it — `packOrigin` is the only thing
+          // here that knows which ids are the app's, and the next boot's hash comparison is what recovers
+          // that case (`tests/packs/shipped-packs.spec.ts`).
           beforePlace: (manifest) => {
             if (!registry.packOrigin(manifest.id)) return;
+            if (!canUninstall(manifest.id)) {
+              throw new Error(`"${manifest.id}" is part of AgentBuddy, so an install can't take its id`);
+            }
             replacedId = manifest.id;
             teardownPack(registry, manifest.id, system.get(HOST.bus), { replacing: true });
             broadcastToPlugin('packs', { type: 'PACK_DEACTIVATED' as const, packId: manifest.id });

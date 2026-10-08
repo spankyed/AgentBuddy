@@ -1,3 +1,37 @@
+> **Done and closed.** Packs share the host's frontend modules by resolution: each is an entry of the
+> renderer's build, the document carries an import map naming all 122 specifiers, and a pack's bundle leaves
+> them external. `window.__abuddy`, `generateGlobalProxy` and the whole export-name discovery around it are
+> gone — 134 lines from `fe-bundler.ts` and 69 spec cases whose subject was one mechanism policing the other.
+>
+> **Four corrections the work found**, each one the plan had wrong:
+>
+> - **The dev map cannot be computed, only read back.** The plan's `/@host/<specifier>` alias route would
+>   have produced *two* instances of every module: a module's identity in the browser is its URL, so serving
+>   the same file at a second URL is a second copy. Deriving the real URLs fails too — measured 2026-10-08,
+>   this app's deps carried four different `?v=` hashes at once while `depsOptimizer.metadata.optimized` was
+>   empty and every URL was live. What works is transforming `virtual:host-shared-modules` through the dev
+>   server and reading the specifiers Vite wrote, which answers for a pre-bundled dep and a workspace
+>   package's `/@fs/…` source alike. With no route, the plan's security section has no subject: there is no
+>   allow-list to get wrong because there is nothing to serve.
+> - **`abuddy run` needed a fix the plan did not foresee.** Vite appends `importAnalysisPlugin` *after* the
+>   user's `post` plugins and rewrites an external to `/@id/<specifier>`, which the browser resolves against
+>   the module's own `pack://` URL and asks the pack's dev server for — and that server left the specifier
+>   external and has nothing to answer with. `keepExternalsBarePlugin` undoes it in the response, the only
+>   hook that runs after, and the only path that matters since `pack://` proxies HTTP.
+> - **Finding 4 was already handled.** `resolveId`'s external branch runs before the `sharedInstancePackage`
+>   branch, so no `rollupOptions.external` and no reordering was needed.
+> - **The pack:// scheme change (step 0) bought nothing this needed.** Its claimed benefit — relative
+>   resolution inside a `pack://` module — was false, and the spike written to depend on it passed without
+>   the privilege. It stays for the one thing it does buy, a real origin per pack, which is latent until a
+>   pack's UI runs in its own document (`pack-fault-isolation.md`). `f85c279a1` records that.
+>
+> Verified: 122/122 map targets resolvable in both halves, the dev map's `vue` byte-identical to the URL the
+> renderer's own entry imports, smoke 4/4 and app-integration 11/11 against a built app, and both fixture
+> packs' suites — including the host's `@abuddy/ui` editor rendering inside a pack, a pack writing through
+> `@abuddy/ears` onto the app's engine, and `fe.bundleUi` still carrying its own UI kit.
+>
+> The text below is the plan as written.
+
 # Share the host's modules through resolution, not through a side channel
 
 Compiled 2026-10-07 on `AS/one-action-cache`, after fixing `abuddy run`'s frontend loop
@@ -63,12 +97,22 @@ The usual objection to import maps is browser support. It does not apply here:
 
 And it gains correct ESM semantics: live bindings, and a link-time error naming a missing export.
 
-**It is also worth 1.59s of every pack build.** Measured 2026-10-08 by instrumenting
+**It is also worth 1.59s of every frontend rebuild.** Measured 2026-10-08 by instrumenting
 `discoverSharedExports` over `abuddy build` for default-setup: **48 specifiers, 1586ms** — modules compiled
-for no output but a list of names, which is 14% of that build's 11.3s frontend bundle and 7% of its 22.5s
-total. Not the reason to do this, and not the `compile` step's 13s → 31s growth either, which is the frontend
-bundle existing at all now. But a correctness argument that also returns a second and a half is worth
-stating with the number.
+for no output but a list of names, 14% of that build's 11.3s frontend bundle.
+
+**Per rebuild, not per build**, since `phase-cache.ts` landed the same day: a pack whose scope has not moved
+now reuses the previous frontend bundle, and their paired A/B puts an unchanged build at **21.0s → 6.3s**.
+So this saving is paid when the bundle is actually made. Not the reason to do this, and not the `compile`
+step's 13s → 31s growth either, which is the frontend bundle existing at all now.
+
+**The larger prize is next to it, and the phase cache is what exposed it.** `feInputsHash`
+(`abuddy-cli/src/build/phase-cache.ts:164`) hashes the `@abuddy` packages' `dist` into the frontend phase's
+scope, and its doc says why: *"the frontend phase read 329 files under the pack's `src/` and 84 in the
+`@abuddy` packages' `dist`, and no others."* **Those 84 files are the discovery pass.** Stop reading them and
+the frontend phase's scope narrows to the pack's own sources — so rebuilding the SDK stops invalidating every
+pack's frontend bundle. That is a cache hit across a whole class of change, which is worth more than the
+1.59s, and it is why narrowing that scope is part of step 2 rather than a follow-up.
 
 ## The design
 
@@ -222,6 +266,18 @@ while both exist.
 `packExternalsPlugin` stops generating proxies. This is where the deletions land, and where
 `fe-bundler-proxy-exports`' 69 cases and `fe-bundler-dev-server` lose their subject — each deleted case
 says in its commit message which it was: subject gone, or awkward.
+
+**`resolveId` has to say `external`, and that is not the same as declining to claim.** `bundlePackFE` sets no
+`rollupOptions.external`, and `resolveId`'s `sharedInstancePackage` branch *resolves* `@abuddy/sdk` and
+`@abuddy/ears` against the pack's own copy, so an unclaimed specifier is **inlined** rather than left bare.
+Both have to change. The `generateBundle` guard that fails a build when an inlined SDK module reaches a host
+binding stays exactly as it is — it is the check that catches this step going wrong.
+
+**Narrow `feInputsHash`'s scope in the same change.** Once the phase stops reading the `@abuddy` packages'
+`dist`, a scope that still hashes it is a declaration claiming reads nobody makes — and it costs a frontend
+rebuild on every SDK change. The reads record (`build-reads.ts`) is how that scope was checked against
+reality in the first place, so re-read it after the change rather than reasoning about it: the phase's
+recorded reads are the evidence that the narrower scope is right.
 
 ### 3. Remove the global
 

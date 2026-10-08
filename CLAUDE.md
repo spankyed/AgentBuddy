@@ -169,7 +169,10 @@ cheap. **It takes no mutex, and that is a thing it had to stop needing**: `attw 
 inside the tree it is checking, which made it a second writer of trees twenty-nine other steps read, so it ran
 alone — 6s of a cold run for a tool that takes a tarball path. `scripts/packages-check.ts` packs outside the
 repository instead (`packTree`), and derives both populations from `publishedTreeDirs()`: publint over all five
-trees, attw over the four that ship declarations. It is not the
+tarballs, attw over the four whose tree ships declarations. Both read the same tarball per tree — publint's
+other mode asks `npm pack --dry-run` for the file list, which is a subprocess for an answer already inside the
+tarball (0.4s against 0.1s, interleaved, paired over 5 at 83% idle, 2026-10-08), and the same rules run either
+way: both of publint's input kinds converge on one `core()` with a different virtual filesystem. It is not the
 dangling-published-path check, which publint cannot be — it skips any target behind a custom condition, which
 is how 99 published paths named files no tarball held. `@app/publish-checks`' `published-manifest-paths` is
 that one.
@@ -696,9 +699,12 @@ npm run lint:fix         # Rewrites what it can — oxlint has no fixer for no-u
                          # not clear those for you
 
 npm run packages:build   # Build dist/ for @abuddy/ears, @abuddy/sdk and @abuddy/ui, bundle @abuddy/cli and @abuddy/testing
-npm run packages:check   # publint + arethetypeswrong on the five published trees. It refuses a tree the
-                         # sources have moved past rather than checking it, so `after packages:build` is
-                         # enforced rather than advised — door 8 in packages/abuddy-testing/CLAUDE.md.
+npm run packages:check   # publint + arethetypeswrong over a tarball packed from each of the five published
+                         # trees — the artifact npm ships, rather than the directory it is derived from, and
+                         # one tarball per tree so the two tools cannot read different bytes of it. It
+                         # refuses a tree the sources have moved past rather than checking it, so
+                         # `after packages:build` is enforced rather than advised — door 8 in
+                         # packages/abuddy-testing/CLAUDE.md.
                          # A chain step, for the opposite reason to the proxy `api:check` does without —
                          # see "packages:check is a chain step" above
 
@@ -847,7 +853,7 @@ What crosses to the app follows one rule, **bind resources, derive behaviour**. 
 - `@abuddy/host/services` — the host's implementations of the services packs reach through `services` (`app-data.ts`, `trace-store.ts`, `inference.ts`, `secrets.ts`, `filesystem.ts`, `settings.ts`, each named after its contract and delegate in `@abuddy/sdk/services`). `createHostRuntime({ store, engine, transport, appVersion, packs })` (`services/index.ts`) is the only place the app's `HostRuntime` is assembled, over the LMDB store (`appData` and `traceStore` use it); the API's composition binds it. `appData.reset()` resets the whole app: stores and keys, each pack's `onInit` and boot seed, then the host's `runAppMigrations(registry)`. `src/services` holds only those six services and the index (`tests/boundaries.spec.ts`). A service's implementation never lives in the API, which keeps only transport, process boot and composition (`packages/api/tests/source-layout.spec.ts` lists its files); the API's tRPC procedures delegate to host (`receiveClientEvent`, `secretsStore`/`secretsSnapshot`, `getLoadedPackEntries`).
 - `@abuddy/host/app-state` — host-only: the app's own state, one `AppState` row (`hasOnboarded`, `version`, `packVersions`, `packSeedHashes`, `packSeedDeps`, `pluginVisibility`, `lastActivePlugin`) that only host code reads and writes (`appState`); the host registers the entity type next to the SDK's, with `Settings` (`HOST_ENTITY_TYPES`), and no pack may declare either. Packs learn whether the user onboarded through `services.appData.hasOnboarded()`/`completeOnboarding()`, the renderer through the application plugin's `CLIENT_CONNECTED`. Resetting settings doesn't touch it; `appData.reset()` empties it with the rest.
 - `@abuddy/host/secrets` — host-only, never bridged to packs: the store of the user's API keys (metadata plain, values AES-256-GCM encrypted in `secrets.json`, the data key in a `KeyVault`: the OS credential store via `@napi-rs/keyring`, or a file in the test environment or after the user allows unprotected storage). Values reach it only through the API's `secrets.*` tRPC procedures, off the event bus (`forwardSecretsChanges()` tells every system that declares it takes `SECRETS_CHANGED` that keys changed, never their values); inference reads them with `secretsStore.keyFor(provider)`. The API logger and error reports redact key-shaped strings.
-- `@abuddy/ui` (`packages/abuddy-ui`) — Vue components, editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`, `@abuddy/ui/composables/useDebounce`). Published as compiled JS (tsdown, with vue-tsc declarations). Packs use the host's copy at runtime: the renderer exposes every export on `window.__abuddy` and the pack FE bundler proxies `@abuddy/ui` imports, unless `abuddy.json` sets `fe.bundleUi`. Contracts and host-shared state (`useShell`, menu state, the tiptap plugin and DSL type lookups) stay in `@abuddy/sdk/fe`; `@abuddy/sdk` must not import `@abuddy/ui`.
+- `@abuddy/ui` (`packages/abuddy-ui`) — Vue components, editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`, `@abuddy/ui/composables/useDebounce`). Published as compiled JS (tsdown, with vue-tsc declarations). Packs use the host's copy at runtime: the renderer serves every export as a build entry and names it in the document's import map, and the pack FE bundler leaves `@abuddy/ui` imports external, unless `abuddy.json` sets `fe.bundleUi`. Contracts and host-shared state (`useShell`, menu state, the tiptap plugin and DSL type lookups) stay in `@abuddy/sdk/fe`; `@abuddy/sdk` must not import `@abuddy/ui`.
 - `@abuddy/sdk/utils` — **Node-only**: re-exports everything (pure + Node-dependent). Backend code imports from here.
 - `@abuddy/sdk/utils/pure` — **environment-agnostic**: pure utilities only (`compareVersions`, `detectChanges`, `BinaryOperator`, `toMap`, `randomId`, etc.). Frontend/renderer code must import from this path (or a specific sub-path like `@abuddy/sdk/utils/compare-versions`), never from `@abuddy/sdk/utils`.
 

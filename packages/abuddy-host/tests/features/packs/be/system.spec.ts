@@ -170,20 +170,32 @@ describe('a pack that ships with the app', () => {
     }
   });
 
-  // Its id is not reserved, which is the half of `shippedWithApp` that had nothing to do with shipping:
-  // installing over an installed pack is how an update lands, and a shipped pack is installed like any
-  // other. What makes the shipped copy authoritative is the next boot, which re-installs it when the
-  // installed one's hashes differ (`tests/packs/shipped-packs.spec.ts`) — not a refusal here.
-  it('is replaced by an installed pack taking its id, and put back at the next boot', async () => {
+  /**
+   * The third door to losing it, and the one that was left open. Uninstalling and disabling are refused
+   * above; an install naming its id used to tear the running pack down and replace its files, which is the
+   * same outcome by another route — so `canUninstall: false` hid a button while the Packs view's own
+   * install field achieved what the button would have.
+   *
+   * *"Installing over a pack is how an update lands"* was the argument for allowing it, and it does not
+   * reach a pack that updates with the app: the next boot's hash comparison reverts the replacement
+   * (`tests/packs/shipped-packs.spec.ts`), so what an install bought was a session running a pack nobody
+   * chose. Refused before the teardown, which is what the last assertion here holds.
+   */
+  it("is not replaced by an install taking its id, and keeps running", async () => {
+    await installPackFromLocal(packSource('1.0.0'));
     registry.registerPack({ id: PACK_ID }, shipped);
     const system = runPacksSystem();
     try {
       system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0'), source: 'local' });
 
-      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_COMPLETE'));
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED'));
+      expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED'))
+        .toMatchObject({ error: `"${PACK_ID}" is part of AgentBuddy, so an install can't take its id` });
       const installed = path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'abuddy.json');
-      expect(JSON.parse(fs.readFileSync(installed, 'utf-8')).version).toBe('2.0.0');
-      expect(emitted(system.sent).map(e => e.type)).toContain('PACK_DEACTIVATED');
+      expect(JSON.parse(fs.readFileSync(installed, 'utf-8')).version, 'its files are untouched').toBe('1.0.0');
+      expect(emitted(system.sent).map(e => e.type), 'and it was never torn down')
+        .not.toContain('PACK_DEACTIVATED');
+      expect(registry.packOrigin(PACK_ID)).toEqual(shipped);
     } finally {
       system.stop();
     }

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { APP_ONLY_EXPORTS, SHARED_DEPS, getSharedBeDeps, getSharedFeDeps, unresolvedSubpathPackages, sharedInstanceExports, sharedInstanceSpecifiers } from '../../src/build/shared-deps.ts';
+import { APP_ONLY_EXPORTS, SHARED_DEPS, getSharedBeDeps, getSharedFeDeps, getSdkFeModules, getUiFeModules, sharedFeModules, unresolvedSubpathPackages, sharedInstanceExports, sharedInstanceSpecifiers } from '../../src/build/shared-deps.ts';
 import { appBridgedSpecifiers } from '../../src/build/render-sdk-modules.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..', '..', '..');
@@ -71,6 +71,58 @@ describe('the shared tiptap and ProseMirror subpaths', () => {
     const nowhere = fs.mkdtempSync(path.join(os.tmpdir(), 'shared-deps-'));
     try {
       expect(unresolvedSubpathPackages(nowhere, REPO_ROOT)).toEqual([]);
+    } finally {
+      fs.rmSync(nowhere, { recursive: true, force: true });
+    }
+  });
+});
+
+// The one list the renderer serves from and the pack bundler externalises against. What it has to get right
+// is that a specifier and the module behind it are different questions: a pack may import either spelling of
+// a ProseMirror module, and both have to arrive at one module or the app has two copies of ProseMirror.
+describe('sharedFeModules', () => {
+  const RENDERER = path.join(REPO_ROOT, 'packages', 'renderer');
+
+  it('covers every specifier from all three populations', () => {
+    const modules = sharedFeModules(RENDERER);
+
+    for (const specifier of Object.keys(getSharedFeDeps(RENDERER))) expect(modules, specifier).toHaveProperty([specifier]);
+    for (const specifier of Object.keys(getSdkFeModules())) expect(modules, specifier).toHaveProperty([specifier]);
+    for (const specifier of Object.keys(getUiFeModules(RENDERER))) expect(modules, specifier).toHaveProperty([specifier]);
+    expect(Object.keys(modules).length).toBeGreaterThan(0);
+  });
+
+  // `@tiptap/pm/model` is `export * from 'prosemirror-model'`, so the module is the prosemirror one. Pointing
+  // the two spellings at two modules is two copies of ProseMirror, which is what sharing them is for.
+  it('sends both spellings of a ProseMirror module to the prosemirror package', () => {
+    const modules = sharedFeModules(RENDERER);
+
+    expect(modules['prosemirror-model']).toBe('prosemirror-model');
+    expect(modules['@tiptap/pm/model']).toBe('prosemirror-model');
+  });
+
+  it('leaves every other specifier naming itself', () => {
+    const modules = sharedFeModules(RENDERER);
+
+    expect(modules['vue']).toBe('vue');
+    expect(modules['@xstate/vue']).toBe('@xstate/vue');
+    expect(modules['@abuddy/sdk/fe']).toBe('@abuddy/sdk/fe');
+    expect(modules['@abuddy/ui/design/button']).toBe('@abuddy/ui/design/button');
+  });
+
+  // The mutation: from a directory with none of the packages installed, the subpaths resolve to nothing, so
+  // the answer must lose them rather than name modules the host cannot serve. Without this the two cases
+  // above would pass over a hard-coded pair.
+  it('names no module it could not resolve', () => {
+    const nowhere = fs.mkdtempSync(path.join(os.tmpdir(), 'shared-fe-modules-'));
+    try {
+      const modules = sharedFeModules(nowhere);
+
+      expect(modules).not.toHaveProperty(['prosemirror-model']);
+      expect(modules).not.toHaveProperty(['@tiptap/pm/model']);
+      expect(modules).not.toHaveProperty(['@abuddy/ui/design/button']);
+      // What survives is the list that needs no install to be read
+      expect(modules['vue']).toBe('vue');
     } finally {
       fs.rmSync(nowhere, { recursive: true, force: true });
     }

@@ -10,10 +10,4 @@ declare module 'virtual:dev-pack-frontends' {
   export default packs;
 }
 
-declare module 'virtual:host-deps' {}
-
-declare global {
-  interface Window {
-    __abuddy?: Record<string, unknown>;
-  }
-}
+declare module 'virtual:host-shared-modules' {}

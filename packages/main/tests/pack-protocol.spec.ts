@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { MIME_TYPES, resolvePackFile } from '../src/modules/pack-protocol/PackProtocol.ts';
+import { MIME_TYPES, packRequestTarget, resolvePackFile } from '../src/modules/pack-protocol/PackProtocol.ts';
 
 describe('PackProtocol MIME types', () => {
 
@@ -43,6 +43,42 @@ describe('PackProtocol MIME types', () => {
  * than to where a spec lives: deferred by `goal-test-cleanup.md`'s Decision 7 and left deferred here. The
  * MIME describe above was the half that could be fixed by an export, and was.
  */
+// Which pack a request addresses, which `resolvePackFile` then trusts: it puts `packId` into every prefix it
+// compares against, so a host that is not a plain segment moves the root rather than being refused by it.
+//
+// **These cases pin the guard against Node's parse, and that is not Chromium's.** They run under vitest, so
+// `new URL` here is Node's and an Electron scheme privilege cannot reach it. The two differ in exactly one
+// way that matters here, measured 2026-10-08: `pack` is a standard scheme, so the renderer **lowercases the
+// host** where Node preserves it. `pack://My-Pack/x` is therefore refused by this guard under Node and
+// reaches the `my-pack` pack in the renderer — which is what http does with hosts, and why it is not in the
+// list below. Everything else below parses the same in both.
+//
+// So these hold the guard against a parse that is stable and nearby; the pack E2E suites are what hold it
+// against the one that actually serves.
+describe('which pack a request addresses', () => {
+  it('takes the pack id from the host and the file from the path', () => {
+    expect(packRequestTarget('pack://my-pack/runtime/fe.js'))
+      .toEqual({ packId: 'my-pack', filePath: '/runtime/fe.js' });
+  });
+
+  it('decodes the path, so an encoded space names the file it means', () => {
+    expect(packRequestTarget('pack://my-pack/a%20b.js')?.filePath).toBe('/a b.js');
+  });
+
+  // The case the guard exists for: `..` as a host would resolve the pack dir to the data dir itself
+  it('refuses a host that is not a plain pack id', () => {
+    for (const url of ['pack://../x', 'pack://a%2F..%2Fb/x', 'pack://1pack/x', 'pack://-pack/x', 'pack://pack_x/y']) {
+      expect(packRequestTarget(url), url).toBeNull();
+    }
+  });
+
+  it('refuses a request with no pack at all', () => {
+    for (const url of ['pack:///runtime/fe.js', 'pack://', 'not a url']) {
+      expect(packRequestTarget(url), url).toBeNull();
+    }
+  });
+});
+
 describe('the file a pack:// request serves', () => {
   // Over real directories and through `resolvePackFile` itself. The two cases here before re-derived the
   // handler's own `path.join(packsDir, packId) + path.sep` inside the test and asserted `startsWith` on it,

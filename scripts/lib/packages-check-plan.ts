@@ -1,10 +1,15 @@
 // What `npm run packages:check` decides to run, apart from the running of it (`scripts/packages-check.ts`).
 //
-// Separate so it can be asked without five subprocesses: the one claim worth holding is that **`attw` is
-// never given a directory**, because `attw --pack <dir>` packs a tarball inside the tree it is checking and
-// deletes it again — a file appearing and vanishing under every other step that reads there. Asking that of a
-// real run costs 2s a tree and 6.2s for all five (median of 5, 6.1-6.2s, 73% idle, 2026-10-08), where asking
-// it of the plan is free — and the chain runs the step anyway.
+// Separate so it can be asked without five subprocesses: the one claim worth holding is that **neither tool is
+// given a directory**, because `attw --pack <dir>` packs a tarball inside the tree it is checking and deletes
+// it again — a file appearing and vanishing under every other step that reads there. Asking that of a real run
+// costs 2s a tree and 6.2s for all five (median of 5, 6.1-6.2s, 73% idle, 2026-10-08), where asking it of the
+// plan is free — and the chain runs the step anyway.
+//
+// **Both tools read the same tarball**, which is the artifact in question: npm ships a tarball, not a
+// directory, so a check over the directory is a check over the thing it is derived from. It also means publint
+// stops running its own `npm pack --json --dry-run` per tree to work out the file list — five subprocesses
+// whose answer is already in the tarball beside it.
 
 /** One tool over one tree */
 export interface Check {
@@ -44,10 +49,11 @@ export function declaresTypes(manifest: Record<string, unknown>): boolean {
  */
 export function checksFor(trees: readonly PublishedTree[], packInto: (dir: string) => string): Check[] {
   return trees.flatMap(({ pkg, dir, manifest }) => {
-    // publint reads the directory and gets its file list from `npm pack --json --dry-run --ignore-scripts`
-    // (`@publint/pack`'s `packAsJson`), so it writes nothing and needs no tarball of its own
-    const publint: Check = { label: `publint ${pkg}`, tool: 'publint', args: ['--strict', dir] };
+    // One tarball per tree, read by both: packed once here rather than once per tool, so the two cannot be
+    // looking at different bytes of the same tree
+    const tarball = packInto(dir);
+    const publint: Check = { label: `publint ${pkg}`, tool: 'publint', args: ['--strict', tarball] };
     if (!declaresTypes(manifest)) return [publint];
-    return [publint, { label: `attw ${pkg}`, tool: 'attw', args: [packInto(dir), '--profile', 'esm-only'] }];
+    return [publint, { label: `attw ${pkg}`, tool: 'attw', args: [tarball, '--profile', 'esm-only'] }];
   });
 }

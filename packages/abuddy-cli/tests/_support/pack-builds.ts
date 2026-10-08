@@ -153,3 +153,18 @@ export async function buildPack(dir: string, name = path.basename(dir)): Promise
   if (build.code !== 0) throw new Error(`abuddy build failed in ${name}:\n${build.output}`);
   return build.output;
 }
+
+/**
+ * The bare specifiers a built frontend bundle left for the host to resolve.
+ *
+ * This is what a bundle now says about sharing, sharing being resolution: a specifier here is one the
+ * document's import map has to name, and one that is *absent* was inlined into the pack. Read with the
+ * module lexer rather than from Rollup's graph, because what the browser links against is this text.
+ */
+export async function bundleExternals(file: string): Promise<string[]> {
+  const { init, parse } = await import('es-module-lexer');
+  await init;
+  const code = fs.readFileSync(file, 'utf-8');
+  const [imports] = parse(code, file);
+  return [...new Set(imports.map((i) => i.n).filter((n): n is string => n !== undefined))].sort();
+}

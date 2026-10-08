@@ -101,7 +101,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
 
 const UNBRIDGED_BY_DESIGN = new Map(UNBRIDGED_BY_POLICY);
 
-/** Renderer-only subpaths reach pack FE code through Vite + window.__abuddy, never the CJS bridge. */
+/** Renderer-only subpaths reach pack FE code through the document's import map, never the CJS bridge. */
 function isFeSpecifier(s: string): boolean {
   return /^@abuddy\/(sdk|ears|host)\/fe(\/|$)/.test(s);
 }

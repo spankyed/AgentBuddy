@@ -434,16 +434,21 @@ describe('abuddy build says what it read', () => {
    */
   it('keeps a mixed-case read where the filesystem is case-sensitive', () => {
     // From the records rather than written out: a path chosen by hand goes all-lowercase without anyone
-    // noticing, and then the case passes whatever the order is — which is what the first version of it did
-    const mixed = readsByPack().flatMap(({ files }) => files).find((file) => file !== file.toLowerCase());
+    // noticing, and then the case passes whatever the order is — which is what the first version of it did.
+    // **The step comes from the same record as the file**, because the two have to be about one pack: naming
+    // a step here instead pins the case to whichever pack's record happens to be read first, and it fails
+    // the day a build reads one mixed-case file earlier than it used to.
+    const mixed = readsByPack().flatMap(({ packDir, files }) => {
+      const step = building(packDir);
+      return step === undefined ? [] : files.filter((file) => file !== file.toLowerCase()).map((file) => ({ file, step }));
+    })[0];
     expect(mixed, 'no recorded read has mixed case, so this case has nothing to be about').toBeDefined();
     // A filesystem that answers for the real case and nothing else, which is every filesystem but this one's
-    const caseSensitive = (file: string) => file === mixed;
-    expect(undeclared([mixed!], { inputs: [] }, caseSensitive), 'a read it cannot find is a read it stops checking')
-      .toEqual([mixed!]);
+    const caseSensitive = (file: string) => file === mixed!.file;
+    expect(undeclared([mixed!.file], { inputs: [] }, caseSensitive), 'a read it cannot find is a read it stops checking')
+      .toEqual([mixed!.file]);
     // And the fold is still what the comparison uses, so a step declaring that file covers it whatever its case
-    const contract = CHAIN_STEPS.find((step) => step.name === 'test:external-pack:contract')!;
-    expect(undeclared([mixed!], contract, () => true), 'the comparison stopped folding case').toEqual([]);
+    expect(undeclared([mixed!.file], mixed!.step, () => true), 'the comparison stopped folding case').toEqual([]);
   });
 
   it('reports a read the step does not declare', () => {

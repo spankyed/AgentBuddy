@@ -9,6 +9,30 @@ import { devServerUrl } from '@abuddy/host/packs/dev-server';
 /** A pack id, as the manifest schema defines it (`abuddy-sdk/src/build/manifest-schema.ts`) */
 const PACK_ID = /^[a-z][a-z0-9-]*$/;
 
+/**
+ * What a `pack://` request addresses, or `null` when no pack does.
+ *
+ * **The pack id comes from the URL's host, and what the parser makes of that host is the thing being
+ * checked.** `pack://../x` parses to the host `..`, which would resolve the pack dir to its parent — the
+ * data dir — and pass the prefix check in `resolvePackFile`, serving any file sitting directly in it. A
+ * pack id is a single plain segment, so anything else is refused before it reaches the filesystem.
+ *
+ * Exported, and separate from the handler, for the reason `resolvePackFile` is: a refusal that lives inside
+ * `protocol.handle` can only be asserted by starting Electron, so it was asserted nowhere. Its subject is
+ * input, which means it needs a case that fires — and the parse it depends on is not this repo's, so the
+ * case is also what shows the parse changing under a scheme privilege or a Chromium bump.
+ */
+export function packRequestTarget(requestUrl: string): { packId: string; filePath: string } | null {
+  let url: URL;
+  try {
+    url = new URL(requestUrl);
+  } catch {
+    return null;
+  }
+  if (!PACK_ID.test(url.hostname)) return null;
+  return { packId: url.hostname, filePath: decodeURIComponent(url.pathname) };
+}
+
 /** What the pack:// handler serves each extension as. Exported so its spec asserts this map, not a copy. */
 /**
  * The file a `pack://` request serves, or `null`.
@@ -52,6 +76,22 @@ class PackProtocol implements AppModule {
       {
         scheme: 'pack',
         privileges: {
+          // **A real origin per pack**, which is the whole of what this buys. Measured in Electron 37,
+          // 2026-10-08: with it, `new URL('pack://p/x').origin` is `pack://p`; without it, `"null"`.
+          // Everything a module needs is identical either way — relative specifiers inside a `pack://`
+          // module, bare ones through the document's import map, dot-segment normalisation, `fetch`,
+          // `import.meta.url` — so nothing about loading a pack's bundle rests on this, and a claim that
+          // something does can be checked by taking the flag off and watching it still pass.
+          //
+          // The origin is latent today: only modules are loaded at `pack://`, never a document, so nothing
+          // partitions storage or consults it. It becomes load-bearing the day a pack's UI runs in its own
+          // document (`docs/plans/pack-fault-isolation.md`).
+          //
+          // **The one behaviour it does change is the host's case**: a standard scheme lowercases it, so
+          // `pack://My-Pack/x` reaches the `my-pack` pack rather than being refused. That is what http does
+          // with hosts, and `PACK_ID` still refuses everything that is not a plain segment.
+          // `local-file` in `../media-protocol/MediaProtocol.ts` already ships this combination.
+          standard: true,
           secure: true,
           supportFetchAPI: true,
         },
@@ -60,16 +100,9 @@ class PackProtocol implements AppModule {
 
     app.whenReady().then(() => {
       protocol.handle('pack', async (request) => {
-        const url = new URL(request.url);
-        const packId = url.hostname;
-        const filePath = decodeURIComponent(url.pathname);
-
-        // `pack://../x` parses to the host "..", which would resolve the pack dir to its parent — the data
-        // dir — and pass the prefix check below, serving any file sitting directly in it. A pack id is a
-        // single plain path segment, so anything else is refused before it reaches the filesystem.
-        if (!PACK_ID.test(packId)) {
-          return new Response('Forbidden', { status: 403 });
-        }
+        const target = packRequestTarget(request.url);
+        if (!target) return new Response('Forbidden', { status: 403 });
+        const { packId, filePath } = target;
 
         const {packsDir, userDataDir} = getAppContext();
 

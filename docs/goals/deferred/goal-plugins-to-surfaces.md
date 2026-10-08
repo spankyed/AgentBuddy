@@ -140,7 +140,7 @@ Final.
    - tiptap/ProseMirror: `TiptapPlugin`, `tiptapPluginRegistry`, `tiptapPlugins` in a pack's frontend
      registration, and anything under `abuddy-ui/src/components/tiptap/`;
    - Vite, rollup and PostCSS: `VitePlugin`, `plugins: [...]` in any config, `packExternalsPlugin`,
-     `builtInPacksPlugin`, `hostDepsPlugin`, `tailwindInjectPlugin`, `rejectHostImportsPlugin`,
+     `builtInPacksPlugin`, `hostSharedModulesPlugin`, `tailwindInjectPlugin`, `rejectHostImportsPlugin`,
      `stubFrontendAssetsPlugin`, `collect-bare-imports`;
    - `pack`, which is the extension unit and is not this concept;
    - **already-shipped migrations and their specs**, which describe a state of the world that was.
