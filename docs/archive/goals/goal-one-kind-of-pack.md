@@ -1,12 +1,18 @@
 # One kind of pack: retire "built-in"
 
+> **Done** (Phases 1-7, on `AS/one-kind-of-pack`: `9a6022043`, `14c377d26`, `e673a78c0`, `b5c2f0f06`,
+> `eec3c74f2`, `a0637b07f`, `1be49673d`). The text below is the plan as written; see **Outcome** at the
+> foot for what it came to, including the three places the plan's premises were wrong and the two
+> production bugs the change exposed.
+
+
 > **Written in session** `d364117f-5480-4324-a724-c63f04694b9f` (Claude Code, 2026-10-07). Resume it with `claude -r d364117f-5480-4324-a724-c63f04694b9f`.
 
 ```
 # Goal: every pack is the same kind of pack, and every one of them hot-reloads
 
-Implement docs/goals/goal-one-kind-of-pack.md on master, at or after 02688f256 — the base its Background
-was surveyed at.
+Implement docs/goals/goal-one-kind-of-pack.md on AS/one-kind-of-pack, at or after 02688f256 — the base
+its Background was surveyed at. The branch was cut from master at b8c1a34f5, which contains it.
 Before Phase 1, confirm the base: `bundledLoaders` in abuddy-host/src/packs/runtime/loader.ts, the
 `if (!external)` early return in abuddy-cli/src/commands/build.ts, `builtInPacksPlugin` in
 renderer/vite.config.ts, `builtInPackLoadersModule` in api/tsup.config.ts, `partitionPolicy` in
@@ -34,6 +40,10 @@ Finished when:
   shipped integrity differs from the installed one.
 - npm run chain passes; npm run build-prod produces an app that boots with its default pack, verified
   with DEBUG_E2E=1 npm test -- smoke.
+- **A thorough review of the whole change for bugs and completeness is the last step**, after Phase 6 and
+  before the archive: read the diff against master as a reviewer who did not write it, report the findings,
+  then fix all of them. A finding is a defect — not intended behaviour, not a decision already taken, and
+  not doc or process bookkeeping.
 - A final summary: phase -> done/deferred, evidence, and the conventional choices made.
 - The doc is in docs/archive/goals/, with its status blockquote and an Outcome section, committed.
 
@@ -318,7 +328,7 @@ got wrong*.
 refinement's own reason is *"before external packs load"*, which cannot hold for a pack that is external —
 and it would let an arbitrary pack's system run before the data layer exists. Moving `logs` to the host
 would also have removed the privilege, and is deferred rather than rejected
-([`plans/logs-to-host.md`](../plans/logs-to-host.md)): whether the Logs plugin should become a core app
+([`plans/logs-to-host.md`](../../plans/deferred/logs-to-host.md)): whether the Logs plugin should become a core app
 feature, updated only by a full app release, is a product question this goal does not need answered. Deleting the field removes more than the move would and touches nothing else.
 **The cost, which is the reason this is a decision and not a tidy-up:** `logs` stops starting before
 hydration, so hydration, `onInit`, migrations and seeding stop reaching the in-app viewer. They still reach
@@ -353,20 +363,33 @@ deletes: `installedPacks()` answers it once a shipped pack is installed.
 uses. Unify the snapshot filename while here: `build.ts:147` writes `BUILT_IN_SNAPSHOT` where every other
 pack writes `PACK_LAYOUT.snapshot`.
 
-Then **delete `dev-build.mjs`'s own esbuild** — 164 lines reimplementing `bundlePackRuntime`.
+Then **delete `dev-build.mjs`** — 164 lines, of which the esbuild config is a *second* backend bundle
+rather than a copy of `bundlePackRuntime`: it leaves every package external where the CLI inlines them, and
+carries an alias plugin for `@/` specifiers that no default-setup source has used since
+[`goal-one-way-to-name-your-own-modules`](goal-one-way-to-name-your-own-modules.md) and a
+`.vue` stub the CLI's `stubFrontendAssetsPlugin` already does.
 
 **This is not free for the dev loop, which an earlier version of this doc got wrong.** `dev-build.mjs` is
 also the backend watcher: `dev-mode.js:27` forks it with `--watch` and `:52` waits for its first compile
-before the API boots. Keep a thin `--watch` wrapper that calls `bundlePackRuntime` instead of its own
-bundler, so `npm start` behaves exactly as it does now. Switching the dev loop to `abuddy run`'s watcher is
-the alternative, and it costs the single-command start.
+before the API boots. The watch belongs in the CLI, as `abuddy build --watch`, so there is one home for it
+and a pack author gets the same loop — the shim this doc first proposed would have been a third place that
+knows how to bundle a pack's backend.
+
+**What `--watch` rebuilds is the runtime alone, and the numbers are why.** Measured 2026-10-07 on
+default-setup: a full `abuddy build` is **23.7s**, of which the Vite frontend bundle is 11.1s; the backend
+runtime bundle on its own is **40ms** (956KB, three runs, 30-50ms). A loop that re-ran the whole build per
+edit would cost 24s against today's ~1s, so `--watch` rebuilds the one output whose staleness the app can
+see and says so in its own help text. That is also exactly today's semantics: `npm start` never recompiled
+seeds or facade types on an edit either. It is what `abuddy run`'s BE watcher should adopt — it calls
+`build([])` per edit, which is that 23.7s for a pack this size.
 
 **And it retires three built-in-aware pieces of the build record**, since removing that gate is exactly what
 makes default-setup record the `runtime` and `fe` phases like any other pack. Each site names this document:
 
 - `isBuiltIn`, and one branch of `rebuildCommand`, in `scripts/lib/build-reads.ts` — they exist only to name
   the command that rebuilds a pack's record, and with one kind of pack the path answers that, as it already
-  does for a fixture pack.
+  does for a fixture pack. These two outlive Phase 1: the branch still picks `npm run compile` over `abuddy
+  build` for default-setup, and `manifest.builtIn` is not gone until Phase 6.
 - the two-kind evidence guard in `repo-checks/tests/dep-files.integration.spec.ts` — the nine bundling phases
   take a built-in pack *and* an external one to observe between them, precisely because a built-in pack
   records neither of those two. Afterwards one record carries all nine and the guard collapses into the case
@@ -389,6 +412,13 @@ commands* — its own comment says so, and the throw reads *"seeds compiled agai
 runtime"* — and one command doing both removes the cause. `BUILT_IN_RUNTIME_SEEDS_HASH`, the file and the throw
 are then a check that cannot fail, so they are deleted, or the throw stays as an assertion with a comment
 naming the edit that would fire it, which is this repo's rule for one.
+
+**A pack's backend bundle inlines its npm dependencies, and three of default-setup's cannot be inlined.**
+`node-pty` and `fsevents` (chokidar's optional macOS watcher) load a `.node`, which is compiled machine code
+esbuild has no loader for; `@vscode/ripgrep` computes its binary's path from its own `__dirname`, which in a
+bundle is the bundle's directory. They are named in `RESOLVED_AT_RUNTIME` (`abuddy-cli/src/build/be-bundler.ts`)
+and resolve from `node_modules` at run time. `dev-build.mjs` never met this, having left every package
+external. The failure names the file it could not find, so a fourth is diagnosed the same way.
 
 **The chain declaration moves too.** `compile` gains the Vite frontend bundle, so its declared `seconds` needs
 a deliberate `chain --all --record --forget --step compile`, on the machine the cost table was measured on.
@@ -446,7 +476,7 @@ does, and the frontend loads over `pack://` for every pack.
 **What this step does not touch, and the two config files are why it is worth saying:** the generated entries
 those virtual modules import. `pack-entry.ts` and `pack-entry-fe.ts` stay on disk, written by `abuddy
 generate-entries` on the triggers and under the stamp
-[`codegen-staleness.md`](../archive/plans/codegen-staleness.md) records — a pack's own typecheck reads them through
+[`codegen-staleness.md`](../plans/codegen-staleness.md) records — a pack's own typecheck reads them through
 `#generated/*`, so they could not be synthesised by a plugin even if this step wanted them to be. What changes
 is only who imports them: after this, each pack's own `abuddy build` rather than the renderer's and the api's.
 
@@ -567,7 +597,7 @@ problems anyway.
 sets `early` afterwards, which is exactly what Decision 5 deletes `partitionPolicy` for, and a mechanism
 with no caller is a mechanism nobody is testing against reality. Against: `hostRegistration` writes its
 `PackFeatureSystem` literally, so re-expressing `early` for a host feature is one property rather than a
-manifest field — and [`plans/logs-to-host.md`](../plans/logs-to-host.md) is the deferred move that would
+manifest field — and [`plans/logs-to-host.md`](../../plans/deferred/logs-to-host.md) is the deferred move that would
 want it back the same day. Decide it when Phase 4 is implemented; either answer keeps the capability out
 of the pack contract, which is the part that is settled.
 
@@ -633,6 +663,30 @@ has replaced `BUILT_IN_PACKS_DIR` at every reader; `publishHostPackOutput`, `pru
 Mutations, each firing one case: ship a pack directory with no `integrity.json` (the install refuses,
 naming it); leave the installed copy's integrity older than the shipped one (boot re-installs); set a
 shipped pack's uninstall property true (the Packs view offers the button).
+
+### Phase 7 — Review the whole change, then fix what it finds
+
+**Not a phase of work; a phase of reading.** Six phases of mechanical deletion across the loader, the two
+bundler configs, the shell, the seed paths and the installer leave the kind of defect no single phase's
+"Done when" is pointed at: a case that still passes because its fixture moved with the code, a branch whose
+last caller went, an error message naming a thing that no longer exists, a claim in a guide that the diff
+quietly falsified.
+
+So: read `git diff master...` as a reviewer who did not write it — the source first, then the specs, then
+the prose — and report the findings. **A finding is a defect.** Behaviour a Decision chose, a difference a
+later phase was always going to remove, and doc or process bookkeeping are not findings, and listing them
+buries the ones that are. Then fix all of them, with a case for any that a check would have caught.
+
+Two questions worth asking deliberately, because nothing else here asks them:
+
+- **Does any check still look at nothing?** Six phases deleted subjects. A spec whose premise went but whose
+  assertions still pass is the failure mode, and `population(...)` / the empty-subject rules are what the
+  repo has for it.
+- **Is every message still true?** A refusal, a warning or a log line naming `bundledLoaders`, a `builtIn`
+  distinction or a path that moved is a lie told at the worst moment.
+
+**Done when:** the findings are reported, each one is fixed or explicitly declined with a reason, and
+`npm run chain` is green afterwards.
 
 ## Risks
 
@@ -705,3 +759,75 @@ phase's "Done when" names the narrow commands and the chain runs once at the end
 background while the diff is read. Phases 1 and 3 are the two that genuinely need a slow check every time —
 `npm run compile` for the first, a packaged build for the second — and that is a decision rather than a
 habit.
+
+---
+
+## Outcome
+
+**Every pack is installed, and loaded from where it is installed.** `installShippedPacks` copies each
+directory under `SHIPPED_PACKS_DIR` that holds an `abuddy.json` into `<userData>/abuddy/packs/<id>`, and
+`loadAppPacks` then loads every pack by one path. `manifest.builtIn` decides nothing: it survives as a
+field a pack declares and as `pack.ts`'s refusal to pack a pack that ships inside the app, which Phase 6's
+own text keeps as axis 1.
+
+**Phase by phase**
+
+| Phase | | |
+|---|---|---|
+| 1 | done | `abuddy build --watch` replaces `dev-build.mjs`; `RESOLVED_AT_RUNTIME` named. The watch rebuilds the runtime alone — 40ms against the full build's 23.7s |
+| 2 | done | `partitionPolicy` gone; `appPartitionPolicy()` is a constant in `database/open.ts` |
+| 3 | done | `npm run start` alone gives frontend and backend hot reload for every workspace pack, `tests/packs/external-pack` included, with no `abuddy run`. Held by `repo-checks`' `dev-pack-hmr` |
+| 4 | done | `earlySystem` deleted, not widened |
+| 5 | done | one `seedPacks`, one `packSeedHashes`/`packSeedDeps`, one policy for every pack |
+| 6 | done | install replaces publish; `publishHostPackOutput`, `pruneHostPackOutputs`, `hostPacksDir`, `loadBuiltInPacks`, `discoverBuiltInPacks`, the `publishing` staging kind and `schema.ts`'s `degraded` branch are gone |
+| 7 | done | 15 findings, all fixed; `npm run chain` green |
+
+**Two production bugs the change exposed, both invisible before it.** A pack loaded from a checkout has the
+workspace `node_modules` above it, which answered every bare specifier its bundle left external; an
+installed pack has none. So:
+
+- **`vue` and `@vscode/ripgrep` were externals nothing provided.** A pack's backend bundle carries its
+  steps' frontend facets, so `extensions/steps/<type>/fe.ts` puts a top-level `require("vue")` in it. The
+  loader provided only `getSharedBeDeps()` (`xstate`, `zod`). `HOST_RESOLVED_BINARIES` moved to
+  `shared-deps.ts`, where the bundler's externals and the loader's `hostPackages` both read it, and
+  `hostPackages` now covers every external. `pack-externals.spec.ts` holds the two halves together.
+- **A lazy `require` outlived the resolution that served it.** esbuild defers a module body into an
+  `__init` the bundle calls on first use, so default-setup's action step required `@abuddy/sdk/logger`
+  when a step first ran, long after `withHostResolution` had restored the resolver. Seeding the require
+  cache cannot cover it, Node resolving before it reads the cache. `keepHostModulesResolvable` installs
+  resolution for the process and never throws; `withModuleBridge`'s refusals stay scoped to the load they
+  diagnose, which is where a *rebuild this pack* message belongs.
+
+Both would have shipped: `DEBUG_E2E=1 npm test -- smoke` passed its four cases while the app logged
+`Cannot find module '@abuddy/sdk/logger'` for every action step. **A green suite beside a failing app is
+what that flag is for.**
+
+**Three premises in this plan were wrong**, corrected in place where they are stated: `dev-build.mjs`'s
+esbuild was not what rebuilt the pack's frontend, the published `host-packs/` layout's `.fingerprint`
+answered freshness rather than integrity, and `be-bundler.ts`'s comment claimed an installed pack resolves
+`RESOLVED_AT_RUNTIME` from its own `node_modules`, which it has none of.
+
+**Conventional choices, where the plan left a detail open**
+
+- `canUninstall` is derived (`packId !== HOST_PACK_ID && origin?.shipped !== true`) rather than a stored
+  property. `PackInfo.canUninstall` is the half the Packs view reads, which is what Decision 8 asked for;
+  flipping it later is one line.
+- `beforePlace`'s `HOST_PACK_ID` refusal was **deleted** rather than kept: `manifest-schema.ts` refuses the
+  id before any caller sees the manifest, so the second check could not fire. One gate, with its own case.
+- `rebuildCommand` names the one pack the repo builds through a script of its own
+  (`SCRIPTED_PACK_BUILDS`) rather than asking a manifest what kind a pack is.
+- A leftover `host-packs/` in an existing dev data dir is **left alone**. It is derived build output that
+  nothing reads any more, and deleting from a user's data dir was not asked for.
+- `installShippedPacks` filters on an `abuddy.json` being present, not on `builtIn`. In this checkout only
+  `packages/default-setup` matches; a second shipped pack would be installed, which is the point.
+
+**What was not done, and why**
+
+- **`grep -rn goal-one-kind-of-pack packages scripts` returns 3, not 1.** The dev-server spec's, plus
+  Phase 3's acceptance spec (`dev-pack-hmr`) and the `repo-checks` table row describing it — neither
+  existed when that line was written, and a spec whose whole subject is this goal's devex requirement is
+  the right place to cite it.
+- **`chain --record` was not run.** `compile` grew 13s → 31s and `test:smoke` 9s → 25s, both real: the
+  pack's build now produces its frontend bundle, and a fresh data dir now installs a pack. Recording needs
+  a quiet machine and is the user's call —
+  `npm run check:idle && npm run chain -- --all --record --forget --step compile` (and `--step test:smoke`).

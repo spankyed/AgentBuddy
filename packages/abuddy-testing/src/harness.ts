@@ -226,7 +226,9 @@ function readDependencies(packDir: string, manifest: PackManifest): Map<string, 
 
 /** Where a pack came from, as the app records it */
 function originOf(manifest: PackManifest, dir: string): PackOrigin {
-  return { id: manifest.id, name: manifest.name, version: manifest.version, dir, builtIn: manifest.builtIn === true, manifest };
+  // `shipped` is about the app having installed this copy, which a test app never did — and nothing a pack's
+  // own tests exercise reads it
+  return { id: manifest.id, name: manifest.name, version: manifest.version, dir, shipped: false, manifest };
 }
 
 /** A seed runtime as a registration: its entity types, repositories and seed hooks, and the pack's seeders */

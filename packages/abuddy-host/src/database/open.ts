@@ -1,19 +1,32 @@
 // Opening an app's database: the one composition of the LMDB store and the engine, which the API's boot and tools
 // (abuddy db) share, so both hydrate a data dir the same way
-import { createEarsEngine, installEngine, type EarsAdmin, type EarsEngine, type EarsQuery } from '@abuddy/ears';
+import { createEarsEngine, installEngine, makePolicy, type EarsAdmin, type EarsEngine, type EarsQuery, type PartitionPolicy } from '@abuddy/ears';
 import { openLmdbStore, type LmdbPaths, type LmdbStore, type WriteFailure } from '@abuddy/ears/lmdb';
 import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
 import type { _AppDataPaths } from '@abuddy/sdk/utils';
 import { findAppDataPaths } from './layout.ts';
 import { readInstalledSchema, type DatabaseSchema, type InstalledSchema } from './schema.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
+import { SDK_EXCLUDED_ENTITY_TYPES } from '@abuddy/sdk/types';
+
+/**
+ * Which partition an entity type lives in: the SDK's volatile types in the volatile partition, everything
+ * else persisted. It takes no arguments and nothing contributes to it — a partition is the engine's
+ * business, and a pack has no way to ask for one of its types to be kept out of the database.
+ *
+ * So it is a constant rather than registry state, which is why it is here, at the one call that opens a
+ * store, instead of being carried on whatever the caller passed as its schema.
+ */
+export function appPartitionPolicy(): PartitionPolicy {
+  return makePolicy({ excludedEntityTypes: new Set(SDK_EXCLUDED_ENTITY_TYPES) });
+}
 
 export interface DatabaseStoreOptions {
   /** Told when a write is dropped, with the row it was for (`openLmdbStore`'s port) */
   onWriteFailure?: (failure: WriteFailure) => void;
   /** Each partition's database directory */
   paths: LmdbPaths;
-  /** The entity types and partition policy: the app's registered packs, or the installed packs' manifests */
+  /** The entity types: the app's registered packs, or the installed packs' manifests */
   schema: DatabaseSchema;
   readOnly?: boolean;
   /** Where the store's progress lines go; `console.log` by default */
@@ -25,7 +38,7 @@ export interface DatabaseStoreOptions {
  * hydrated or installed: the caller hydrates (`store.hydrate()`) once `schema` holds every entity type.
  */
 export function openDatabaseStore({ paths, schema, readOnly, log, onWriteFailure }: DatabaseStoreOptions): { store: LmdbStore; engine: EarsEngine } {
-  const store = openLmdbStore({ paths, policy: schema.partitionPolicy, onWriteFailure, engine: () => engine.admin, readOnly, log });
+  const store = openLmdbStore({ paths, policy: appPartitionPolicy(), onWriteFailure, engine: () => engine.admin, readOnly, log });
   const engine = createEarsEngine({ persistence: store.sink, isEntityType: (name) => schema.getRegisteredEntityTypes().has(name) });
   return { store, engine };
 }
@@ -35,7 +48,7 @@ export interface AppDatabase {
   userDataDir: string;
   /** The data dir's stores */
   paths: _AppDataPaths;
-  /** The installed packs' entity types, relation kinds and partition policy */
+  /** The installed packs' entity types and relation kinds */
   schema: InstalledSchema;
   store: LmdbStore;
   query: EarsQuery;
@@ -77,9 +90,9 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
   const context = resolveAppContext({ env, userDataDir });
   const paths = findAppDataPaths(userDataDir);
   const schema = readInstalledSchema(context, { schemaFrom });
-  // A write needs the whole schema, not most of it. The engine asks it whether a name is an entity type, and
-  // for one it has never heard of `tx('Note')` takes the name for an id and writes a row called `Note` — a
-  // junk entity in the user's database, permanently. Reading is what an incomplete schema is good for.
+  // A write needs a schema, not most of one. The engine asks it whether a name is an entity type, and for
+  // one it has never heard of `tx('Note')` takes the name for an id and writes a row called `Note` — a junk
+  // entity in the user's database, permanently. Reading is what an incomplete schema is good for.
   if (!readOnly && schema.degraded !== undefined) {
     throw new Error(`${schema.degraded}\n\nThis command changes the database, and an incomplete schema would write the wrong rows.`);
   }

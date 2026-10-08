@@ -42,13 +42,13 @@ function legacyInternal(): LegacyInternal | undefined {
 }
 
 /** The built-in packs with a boot seed: the ones the single seed hash stood for */
-const bootSeedPacks = (registry: Pick<PackRegistry, 'getPackRegistration' | 'builtInPacks'>): string[] =>
-  registry.builtInPacks().map(({ id }) => id).filter((id) => registry.getPackRegistration(id)?.boot?.seedManifest);
+const bootSeedPacks = (registry: Pick<PackRegistry, 'getPackRegistration' | 'shippedPacks'>): string[] =>
+  registry.shippedPacks().map(({ id }) => id).filter((id) => registry.getPackRegistration(id)?.boot?.seedManifest);
 
 /** A per-pack record with the stored one's entries it lacks */
 const withMissing = (current: Record<string, string>, legacy: Record<string, string> | undefined) => ({ ...legacy, ...current });
 
-type MigrationRegistry = Pick<PackRegistry, 'getPackRegistration' | 'builtInPacks' | 'externalPacks' | 'pluginIds' | 'systemIds'>;
+type MigrationRegistry = Pick<PackRegistry, 'getPackRegistration' | 'shippedPacks' | 'loadedPacks' | 'pluginIds' | 'systemIds'>;
 
 /** The manifests of the external packs installed on disk, whether or not they loaded this boot */
 export type InstalledManifests = () => ReadonlyArray<Pick<PackManifest, 'id' | 'features'>>;
@@ -74,15 +74,25 @@ export const migration = (registry: MigrationRegistry, installed: InstalledManif
 });
 
 /**
- * AppState's four per-pack seed records, renamed for the axis that tells them apart. They were `packSeedHashes` and
- * `packSeedDeps` for external packs against `seedHashes` and `seedStatFingerprints` for built-in ones — told apart by
- * the word `pack`, which cannot tell them apart, since built-in packs are packs. `appState` reads only the names it
- * knows, so data written under the old ones is invisible to it and the app would re-import every seed once.
+ * Every name a per-pack seed record has been stored under, onto the one pair that carries them now.
+ * `appState` reads only the names it knows, so a record under any other name is invisible to it and the app
+ * would re-import that pack's seeds once.
+ *
+ * **Three names reach `packSeedHashes`**, because the app kept a record per kind of pack and now keeps one.
+ * `seedHashes` was the shipped pack's boot seed; `builtInSeedHashes` and `externalSeedHashes` are what an
+ * earlier run of *this* migration wrote, and 0.3.15 has not shipped — so a data dir holding them is a
+ * developer's, and dropping them would re-import every pack's seeds on the next boot. Each merges with
+ * `withMissing`, so a record already on the field keeps its values.
+ *
+ * **`packSeedHashes` and `packSeedDeps` are deliberately not in here.** They are the names the row carries
+ * *now*, so `appState` already reads them: an entry for either would read the attribute, write it back
+ * unchanged and then `drop` it, which deletes the record this migration exists to preserve.
  */
 const RENAMED_SEED_RECORDS = {
-  packSeedHashes: 'externalSeedHashes',
-  packSeedDeps: 'externalSeedDeps',
-  seedHashes: 'builtInSeedHashes',
+  seedHashes: 'packSeedHashes',
+  externalSeedHashes: 'packSeedHashes',
+  externalSeedDeps: 'packSeedDeps',
+  builtInSeedHashes: 'packSeedHashes',
 } as const satisfies Record<string, keyof AppState>;
 
 /**
@@ -109,7 +119,9 @@ function renameSeedRecords(): void {
     const value = row[from];
     // `drop` leaves the attribute as null rather than removing the key, so null is "already moved"
     if (value == null) continue;
-    moved[to] = withMissing(current[to], value);
+    // Over what this loop has already moved, not only over what the row holds: several old names reach
+    // `packSeedHashes`, and reading `current` each time would have the last one win
+    moved[to] = withMissing(moved[to] ?? current[to], value);
     tx.drop(from);
   }
   // Dropped rather than moved: nothing reads them, so carrying them forward would leave the row holding a record
@@ -136,8 +148,8 @@ function moveAppState(registry: MigrationRegistry): void {
 
   const moved: Partial<AppState> = {
     packVersions: withMissing(current.packVersions, internal.packVersions),
-    externalSeedHashes: withMissing(current.externalSeedHashes, internal.packSeedHashes),
-    builtInSeedHashes: withMissing(current.builtInSeedHashes, seedHashes),
+    // Both of the old row's seed records reach the one field: the installed packs' and the shipped pack's
+    packSeedHashes: withMissing(withMissing(current.packSeedHashes, internal.packSeedHashes), seedHashes),
     // Onboarding, once finished, stays finished
     ...(internal.hasOnboarded && !current.hasOnboarded && { hasOnboarded: true }),
     // The version the data was migrated to decides which migrations still run: kept unless one is recorded
@@ -173,7 +185,7 @@ export interface PluginOwners {
    * The host and the built-in packs, whose plugins registered first under bare ids: a bare id one of them shares with
    * an external pack's feature was its
    */
-  builtIn: readonly string[];
+  shipped: readonly string[];
 }
 
 /**
@@ -185,7 +197,7 @@ function ownersIn(registry: MigrationRegistry, installed: ReturnType<InstalledMa
   // The bus is listed among the systems but is no feature: it never had settings or a plugin, so it owns no key
   const refs = [...new Set<string>([...registry.pluginIds(), ...registry.systemIds(), ...declared])]
     .filter((ref) => splitRef(ref) && ref !== HOST.bus);
-  return { refs: refs as FeatureRef[], builtIn: [HOST_PACK_ID, ...registry.builtInPacks().map(({ id }) => id)] };
+  return { refs: refs as FeatureRef[], shipped: [HOST_PACK_ID, ...registry.shippedPacks().map(({ id }) => id)] };
 }
 
 /**
@@ -200,7 +212,7 @@ function declaredFeatureRefs(manifest: { id?: unknown; features?: unknown }): st
 }
 
 /** Each bare feature id to its owner's ref, or null when no single one owns it (two external packs share it) */
-function ownersOf({ refs, builtIn }: PluginOwners): Map<string, FeatureRef | null> {
+function ownersOf({ refs, shipped }: PluginOwners): Map<string, FeatureRef | null> {
   const byFeature = new Map<string, FeatureRef[]>();
   for (const ref of refs) {
     const parts = splitRef(ref);
@@ -208,8 +220,8 @@ function ownersOf({ refs, builtIn }: PluginOwners): Map<string, FeatureRef | nul
   }
   const owners = new Map<string, FeatureRef | null>();
   for (const [featureId, candidates] of byFeature) {
-    const builtInOnes = candidates.filter((ref) => builtIn.includes(splitRef(ref)!.packId));
-    owners.set(featureId, candidates.length === 1 ? candidates[0] : builtInOnes.length === 1 ? builtInOnes[0] : null);
+    const shippedOnes = candidates.filter((ref) => shipped.includes(splitRef(ref)!.packId));
+    owners.set(featureId, candidates.length === 1 ? candidates[0] : shippedOnes.length === 1 ? shippedOnes[0] : null);
   }
   return owners;
 }

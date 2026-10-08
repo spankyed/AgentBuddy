@@ -80,11 +80,19 @@ export class BareImports {
 
 
 /** Throws when an exports target outside the source condition wasn't built. */
-export function assertExportTargetsBuilt(pkgDir: string, exportsMap: Record<string, unknown>): void {
+export function assertExportTargetsBuilt(pkgDir: string, exportsMap: Record<string, unknown>, distDir = path.join(pkgDir, 'dist')): void {
   const targets = (entry: unknown): string[] =>
     typeof entry === 'string' ? [entry]
       : Object.entries(entry as Record<string, unknown>).flatMap(([condition, t]) => (condition === SOURCE_CONDITION ? [] : targets(t)));
-  const missing = Object.values(exportsMap).flatMap(targets).filter((t) => !fs.existsSync(path.join(pkgDir, t)));
+  // A build asks this of the tree it has just staged, before that tree is renamed over `dist` — so a target
+  // naming `dist` is re-rooted at wherever the build actually wrote it. Checking after the swap would leave a
+  // tree that failed this reading as the built one, which is worse than the window the swap closes.
+  const resolved = (target: string): string => {
+    const full = path.join(pkgDir, target);
+    const underDist = path.relative(path.join(pkgDir, 'dist'), full);
+    return underDist.startsWith('..') ? full : path.join(distDir, underDist);
+  };
+  const missing = Object.values(exportsMap).flatMap(targets).filter((t) => !fs.existsSync(resolved(t)));
   if (missing.length > 0) throw new Error(`Export targets were not built:\n  ${missing.join('\n  ')}`);
 }
 

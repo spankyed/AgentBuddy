@@ -8,10 +8,10 @@ import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 import { PACK_LAYOUT } from '@abuddy/host/packs';
 
-/** A built-in pack writes dist/snapshot.json; an external one writes it into the pack's types dir */
-const snapshotFile = (pack: string): string | undefined =>
-  [path.join(REPO_ROOT, pack, 'dist', 'snapshot.json'), path.join(REPO_ROOT, pack, 'dist', PACK_LAYOUT.snapshot)]
-    .find((file) => fs.existsSync(file));
+const snapshotFile = (pack: string): string | undefined => {
+  const file = path.join(REPO_ROOT, pack, 'dist', PACK_LAYOUT.snapshot);
+  return fs.existsSync(file) ? file : undefined;
+};
 
 const snapshotAt = (pack: string): { types: { entities: Record<string, string>; relKinds: Record<string, string> } } =>
   JSON.parse(fs.readFileSync(snapshotFile(pack)!, 'utf-8'));

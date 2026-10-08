@@ -17,7 +17,7 @@ const id = (name: string) => name as EARS.EntityId;
 const quiet = { log: () => {} };
 
 describe('readInstalledSchema', () => {
-  it("takes entity types from the built-in snapshots and the enabled external packs' manifests", () => {
+  it("takes entity types from every enabled pack's own manifest, the app's own packs included", () => {
     const dir = dataDirWithPacks({
       external: [
         { id: 'bookmarks', entities: { Bookmark: 'Bookmark' } },
@@ -31,28 +31,22 @@ describe('readInstalledSchema', () => {
     expect(types.has('Hidden')).toBe(false);
     expect(schema.relKinds.MENTIONS).toBe('mentions');
     expect(schema.packs).toEqual([
-      { id: 'core', builtIn: true },
-      { id: 'bookmarks', builtIn: false },
-      { id: 'listed', builtIn: false },
+      { id: 'bookmarks' },
+      { id: 'core' },
+      { id: 'listed' },
     ]);
-  });
-
-  it("routes the built-in packs' excluded types (and the SDK's) to the volatile partition, never an external pack's", () => {
-    const dir = dataDirWithPacks({ external: [{ id: 'bookmarks', entities: { Bookmark: 'Bookmark' } }] });
-    const { partitionPolicy } = readInstalledSchema(schemaContext(dir));
-    expect(partitionPolicy.routeEntity('Trace-1')).toBe('volatileBackup');
-    expect(partitionPolicy.routeEntity('TNode-1')).toBe('volatileBackup');
-    expect(partitionPolicy.routeEntity('Note-1')).toBe('primary');
-    expect(partitionPolicy.routeEntity('Bookmark-1')).toBe('primary');
   });
 
   // It used to throw, which is wrong for a tool whose job is looking at a data dir something is already wrong
   // with. It reports instead, and the caller decides: a dir with no published snapshots still opens and every
   // row is still reachable by id — what is lost is naming a pack's entity type in a query.
-  it('reports, rather than refuses, a data dir the app never published its built-in packs to', () => {
+  // A data dir with nothing installed knows the app's own types and no pack's, which is the truth about it
+  // rather than an incomplete reading of it — every pack that is there has its manifest there
+  it('knows only the app\'s own types for a data dir with no packs installed', () => {
     const dir = tempDir('host-database-');
     const schema = readInstalledSchema(schemaContext(dir));
-    expect(schema.degraded).toMatch(/has no built-in pack snapshots .*--schema-from/s);
+    expect(schema.packs).toEqual([]);
+    expect(schema.degraded, 'reported, because a caller about to write needs to know').toMatch(/has no packs installed .*--schema-from/s);
     expect(schema.getRegisteredEntityTypes().has('AppState'), "the app's own types are still known").toBe(true);
     expect(schema.getRegisteredEntityTypes().has('Bookmark'), "a pack's are not").toBe(false);
   });
@@ -65,9 +59,9 @@ describe('readInstalledSchema', () => {
 
     const snapshot = path.join(dir, 'spare.json');
     fs.writeFileSync(snapshot, JSON.stringify({ manifest: { id: 'spare', entities: {} } }));
-    const { degraded, notes } = readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot });
-    expect(degraded, 'the dir accounted for itself, so nothing is degraded').toBeUndefined();
-    expect(notes.join('\n')).toMatch(/publishes its own built-in pack snapshots, so --schema-from .* was not used/);
+    // Named a pack the dir does not have, so it is read and added
+    const { notes } = readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot });
+    expect(notes).toEqual([]);
   });
 
   // The snapshot a caller names stands in for the ones the data dir never published
@@ -76,7 +70,6 @@ describe('readInstalledSchema', () => {
     const snapshot = path.join(dir, 'snapshot.json');
     fs.writeFileSync(snapshot, JSON.stringify({ manifest: { id: 'named', entities: { Bookmark: 'Bookmark' } } }));
     const schema = readInstalledSchema(schemaContext(dir), { schemaFrom: snapshot });
-    expect(schema.degraded, 'nothing is degraded once a snapshot is named').toBeUndefined();
     expect(schema.getRegisteredEntityTypes().has('Bookmark')).toBe(true);
   });
 });
@@ -124,17 +117,40 @@ describe('openAppDatabase', () => {
    * row literally called `Note` — measured against a real data dir before this refusal existed. A read of the
    * same dir is fine and is the whole point of the fallback.
    */
-  it('refuses a writable open on an incomplete schema, and allows a read', async () => {
+  // A dir whose packs were removed still holds their rows — uninstalling deletes a directory, not rows — so
+  // "no pack installed" is a schema that cannot be written against, however true it is about the directory
+  it('refuses a writable open on a data dir whose packs were removed, and allows a read', async () => {
     const dir = dataDirWithPacks();
     await writeData(dir, () => {});
-    fs.rmSync(path.join(_appDirOf(dir), 'host-packs'), { recursive: true });
+    fs.rmSync(path.join(_appDirOf(dir), 'packs'), { recursive: true });
 
     await expect(openAppDatabase({ env: 'test', userDataDir: dir, ...quiet }))
-      .rejects.toThrow(/This command changes the database, and an incomplete schema would write the wrong rows/);
+      .rejects.toThrow(/has no packs installed .*an incomplete schema would write the wrong rows/s);
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });
-    expect(db.schema.degraded, 'the read says so rather than pretending').toBeDefined();
-    db.close();
+    try {
+      expect(db.schema.packs).toEqual([]);
+      expect(db.schema.getRegisteredEntityTypes().has('Note')).toBe(false);
+    } finally {
+      db.close();
+    }
+  });
+
+  // The escape hatch the refusal names, so the message is not a dead end
+  it('takes the schema a caller names, and then writes', async () => {
+    const dir = dataDirWithPacks();
+    await writeData(dir, () => {});
+    fs.rmSync(path.join(_appDirOf(dir), 'packs'), { recursive: true });
+    const snapshot = path.join(dir, 'core.json');
+    fs.writeFileSync(snapshot, JSON.stringify({ manifest: { id: 'core', entities: { Note: 'Note' } } }));
+
+    const db = await openAppDatabase({ env: 'test', userDataDir: dir, schemaFrom: snapshot, ...quiet });
+    try {
+      expect(db.schema.degraded).toBeUndefined();
+      expect(db.query.tx('Note').put('title', 'new').id().startsWith('Note-')).toBe(true);
+    } finally {
+      db.close();
+    }
   });
 
   it('hydrates the primary partition with the installed types, and installs the engine until close', async () => {
@@ -142,7 +158,7 @@ describe('openAppDatabase', () => {
     await writeData(dir, () => {
       untypedTx(id('Note-1'), true).put('entityType', 'Note').put('title', 'kept').grant('pinned').link('mentions', id('Note-2'));
       untypedTx(id('Note-2'), true).put('entityType', 'Note').put('title', 'other');
-      untypedTx(id('Trace-1'), true).put('step', 'volatile');
+      untypedTx(id('TNode-1'), true).put('step', 'volatile');
     });
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
@@ -153,16 +169,16 @@ describe('openAppDatabase', () => {
     expect(db.query.getRoles(id('Note-1'))).toEqual(['pinned']);
     expect(db.query.findRelations({ sourceEntity: id('Note-1') })).toHaveLength(1);
     // The volatile partition isn't hydrated, as in the app
-    expect(db.query.getAttr(id('Trace-1'), 'step')).toBeNull();
+    expect(db.query.getAttr(id('TNode-1'), 'step')).toBeNull();
     db.close();
 
     const withHistory = await openAppDatabase({ env: 'test', userDataDir: dir, includeVolatile: true, ...quiet });
-    expect(withHistory.query.getAttr(id('Trace-1'), 'step')).toBe('volatile');
+    expect(withHistory.query.getAttr(id('TNode-1'), 'step')).toBe('volatile');
     expect(withHistory.query.getAttr(id('Note-1'), 'title')).toBe('kept');
     withHistory.close();
 
     const db2 = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
-    expect(db2.query.getAttr(id('Trace-1'), 'step')).toBeNull();
+    expect(db2.query.getAttr(id('TNode-1'), 'step')).toBeNull();
     // An entity type creates an entity
     const created = db2.query.tx('Note').put('title', 'new').id();
     expect(created.startsWith('Note-')).toBe(true);

@@ -9,7 +9,7 @@ import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
 const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
 
-const { getEventValidationMap, getRegisteredSystems, getEarlySystems, registerPack, unregisterPack } = createPackRegistry();
+const { getEventValidationMap, registerPack, unregisterPack } = createPackRegistry();
 
 const machine = setup({}).createMachine({});
 
@@ -26,18 +26,6 @@ describe('getEventValidationMap', () => {
 
     unregisterPack('validation-pack');
     expect(getEventValidationMap().has('validation-pack/feature')).toBe(false);
-  });
-
-  // An early system starts outside the bus, but a client still sends to it: at its address, like any system
-  it("checks a pack's early system at its address, and leaves starting it to the app", () => {
-    registerPack({ id: 'early-pack', features: { logs: { system: { machine, receives: ['CLEAR_LOGS'], early: true } } } });
-    try {
-      expect(getEventValidationMap().get('early-pack/logs')).toEqual(new Set(['CLEAR_LOGS']));
-      expect(getRegisteredSystems().has('early-pack/logs')).toBe(false);
-      expect(getEarlySystems()).toEqual([{ id: 'early-pack/logs', machine }]);
-    } finally {
-      unregisterPack('early-pack');
-    }
   });
 
   // The registry makes every ref `<packId>/<featureId>`, so a feature id naming another pack's feature is refused

@@ -155,11 +155,11 @@
       </div>
 
       <!-- Built-in packs -->
-      <div v-if="builtInPacks.length > 0">
+      <div v-if="nonRemovablePacks.length > 0">
         <h3 class="text-sm font-medium text-neutral-400 mb-3">Built-in</h3>
         <div class="space-y-2">
           <div
-            v-for="pack in builtInPacks"
+            v-for="pack in nonRemovablePacks"
             :key="pack.id"
             class="flex items-center justify-between px-4 py-3 bg-neutral-800/30 border border-neutral-700/30 rounded-lg cursor-pointer"
             @click="selectPack(pack.id)"
@@ -200,8 +200,12 @@ import PackDetail from './PackDetail.vue';
 const actor = usePlugin<PacksState>();
 
 const packs = useSelector(actor, s => s.context.packs);
-const builtInPacks = computed(() => packs.value.filter(p => p.builtIn));
-const externalPacks = computed(() => packs.value.filter(p => !p.builtIn));
+// Grouped by whether the app would offer to uninstall them, which is what the two sections mean to a user
+// Grouped by what the user can do with them rather than by where they came from: the system answers
+// `canUninstall` per pack, so a pack the app ships becoming removable moves it to the list above
+// without a change here
+const nonRemovablePacks = computed(() => packs.value.filter(p => !p.canUninstall));
+const externalPacks = computed(() => packs.value.filter(p => p.canUninstall));
 const selectedPackId = useSelector(actor, s => s.context.selectedPackId);
 const selectedPack = computed(() => {
   if (!selectedPackId.value) return null;

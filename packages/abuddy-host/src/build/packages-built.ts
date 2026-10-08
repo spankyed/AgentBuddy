@@ -21,6 +21,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PUBLISH_TREE } from './published-manifest.ts';
+// The signal list, not a second copy of it: `exclusive-lock.ts` owns which interruptions a release has
+// to be hung on, and why `SIGBREAK` is in it. Relative, as every import inside this package is
+import { INTERRUPTS } from '../exclusive-lock.ts';
 
 /**
  * The file whose presence says a directory is an AgentBuddy checkout, not an installed package: this
@@ -125,7 +128,11 @@ function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
     inputs: [...SHARED_INPUTS, repoFile('scripts', 'lib', 'published-imports.ts'), repoFile('scripts', 'build-package.ts'),
       pkgFile('abuddy-host', 'src', 'build', 'published-manifest.ts'),
       pkgFile('abuddy-host', 'src', 'build', 'specifiers.ts'),
-      pkgFile('abuddy-host', 'src', 'build', 'source-resolution.ts'), ...extraInputs,
+      pkgFile('abuddy-host', 'src', 'build', 'source-resolution.ts'),
+      // How the built tree is published: assembled under `.temp/` and renamed over `dist`, so it decides where
+      // the output lands rather than merely whether the build runs — which is what `NOT_A_BUILD_INPUT` is for,
+      // and why this is declared instead
+      pkgFile('abuddy-host', 'src', 'replace-dir.ts'), ...extraInputs,
       pkgFile(pkg, 'src'),
       pkgFile(pkg, 'package.json'), pkgFile(pkg, 'tsconfig.json'), pkgFile(pkg, 'tsconfig.package.json')],
     outputs: [pkgFile(pkg, 'dist'), pkgFile(pkg, PUBLISH_TREE)],
@@ -198,6 +205,10 @@ export const NOT_A_BUILD_INPUT: Record<string, string> = {
   'packages/abuddy-host/src/build/packages-built.ts': 'the freshness rule and the stamp protocol itself; '
     + 'the bundles that inline it watch it as ordinary source, and a build that cannot embed it has no verdict '
     + 'that depends on it',
+  'packages/abuddy-host/src/exclusive-lock.ts': 'the lock the build takes so two of them do not interleave; '
+    + 'it decides when a build may start, never what one writes',
+  'packages/abuddy-host/src/process-liveness.ts': 'whether the process named by a lock is still there, which '
+    + 'is the lock above asking its one question',
 };
 
 /**
@@ -272,6 +283,17 @@ export const covers = (outer: string, inner: string): boolean => outer === inner
  */
 export const repoRelative = (absolute: string): string => path.relative(REPO_ROOT, absolute).split(path.sep).join('/');
 
+/**
+ * A config a bundler compiled in order to load it: `bundle-require` writes `<name>.bundled_<id>.mjs` beside
+ * the config and removes it again, which is what `tsup` leaves in `packages/api` for the length of a build.
+ *
+ * Skipped because it is there for part of a build and gone at rest, so a fingerprint taken while one exists
+ * records a file the next walk cannot find — the step then never caches and nothing says why. Its id is
+ * random, so no `excludes` entry could name it. `.gitignore` carries the same pattern for the tools that
+ * honour one; this walk does not, which is why both exist.
+ */
+const COMPILED_CONFIG = /\.bundled_[^.]+\.[mc]js$/;
+
 export function inputFiles(target: string, out: string[] = []): string[] {
   let stat: fs.Stats;
   try {
@@ -282,8 +304,11 @@ export function inputFiles(target: string, out: string[] = []): string[] {
   }
   if (stat.isFile()) return (out.push(repoRelative(target)), out);
   for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
-    // Dot files (editor and OS droppings) and installed modules are not sources of this build
-    if (!entry.name.startsWith('.') && entry.name !== 'node_modules') inputFiles(path.join(target, entry.name), out);
+    // Dot files (editor and OS droppings), installed modules and a bundler's compiled config are not sources
+    // of this build
+    if (!entry.name.startsWith('.') && entry.name !== 'node_modules' && !COMPILED_CONFIG.test(entry.name)) {
+      inputFiles(path.join(target, entry.name), out);
+    }
   }
   return out;
 }
@@ -876,6 +901,46 @@ export function runningPackageBuild(file = LOCK_FILE): { pid: number; label: str
   return holder && holderIsRunning(holder) ? holder : undefined;
 }
 
+/**
+ * A build holder as a reader is told about it, which `withBuildLock`'s refusal already words this way.
+ * `null` is a lock file whose contents this version cannot read — it says the lock was there and no more.
+ */
+const describeHolder = (holder: LockHolder | null): string =>
+  (holder === null ? 'an unreadable lock file' : `pid ${holder.pid} (${holder.label}, started ${holder.startedAt})`);
+
+/**
+ * Who rebuilt the packages under a run that had already built them, as `PackagesWentStale` names them.
+ *
+ * **`waitedFor` is the one that answers in the ordinary case, and it is the only one that can.** By the time
+ * staleness is read the writer has finished — that is what let the reader past `waitForPackageBuild` — so
+ * there is no lock left to look at. What the wait returns is therefore the whole of the evidence, and
+ * discarding it is why this error said "something" for as long as it did.
+ *
+ * A lock still on disk means one of three things, none of them the ordinary case: a writer that crashed
+ * (its record survives and names it), one wedged past the wait's bound, or one that arrived in the moment
+ * between the wait returning and the stamps being read. Each is worth naming, and whether it is still
+ * running is the part that tells them apart.
+ *
+ * With neither, nothing that takes the build lock did this. That is a fact rather than a shrug: it was
+ * something that writes `dist` without taking the lock — an editor, a tool outside it, another session.
+ *
+ * **It does not read the chain's lock.** A process throwing this is a child of the chain run that holds
+ * `chain.lock`, so reading it names this run rather than whoever interfered — and since `holdChainLock`
+ * admits one chain per checkout, a second chain cannot be the writer.
+ */
+export function packageWriter(waitedFor: string | undefined, file = LOCK_FILE): string {
+  if (waitedFor !== undefined) {
+    return `${waitedFor} held the build lock during this run and released it, so its rebuild is what moved them`;
+  }
+  if (!fs.existsSync(file)) {
+    return 'nothing took the build lock, so this was a writer that does not — an editor, a tool outside the '
+      + 'lock, or another session in this checkout';
+  }
+  const holder = readLock(file);
+  const running = holder !== null && holderIsRunning(holder);
+  return `${describeHolder(holder)} holds the build lock now and ${running ? 'is still running' : 'is gone, having left its lock behind'}`;
+}
+
 /** A synchronous pause, for the module-level readers below, which cannot await */
 function sleepSync(ms: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
@@ -947,9 +1012,20 @@ export function packagesBuiltOrRefuse(buildCommand: string): boolean {
   return built;
 }
 
+/**
+ * The lock's holder, or `null` for a file this cannot make a holder out of — absent, unparseable, or parsed
+ * into something without the two fields every reader here goes on to use.
+ *
+ * **The fields are checked, not assumed.** Without that, a lock holding anything else parses into a holder
+ * whose `pid` is `undefined`: `holderIsRunning` then reads it as not running, so a live writer's lock is
+ * ignored and the reader walks into the race the lock exists to prevent, and `describeHolder` renders
+ * `pid undefined (undefined, …)`. `exclusive-lock.ts`'s own `readLock` has always checked; this one had not.
+ */
 function readLock(file: string): LockHolder | null {
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf-8'));
+    const held = JSON.parse(fs.readFileSync(file, 'utf-8')) as Partial<LockHolder> | null;
+    if (typeof held?.pid !== 'number' || typeof held.label !== 'string') return null;
+    return { pid: held.pid, label: held.label, startedAt: String(held.startedAt ?? '') };
   } catch {
     return null;
   }
@@ -998,6 +1074,31 @@ export async function withBuildLock<T>(label: string, run: () => T | Promise<T>,
   const waitMs = options.timeoutMs ?? LOCK_WAIT_MS;
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const pending = `${file}.${process.pid}`;
+  /**
+   * Removes the lock on the way out, however this process ends. Idempotent, and only ever this process's own.
+   *
+   * **Node runs no `exit` handler for a signal**, so without these a Ctrl-C'd `packages:build` left its lock
+   * behind for the next arrival to take over — which works, and costs that arrival the wait and a message
+   * about a holder that is gone. `exclusive-lock.ts` has had this since it existed; this lock had not.
+   */
+  let released = false;
+  const release = (): void => {
+    if (released) return;
+    released = true;
+    process.off('exit', release);
+    for (const signal of INTERRUPTS) process.off(signal, onInterrupt);
+    // Only if it is still ours: a build that overran a stolen lock must not delete the new holder's
+    if (readLock(file)?.pid === process.pid) fs.rmSync(file, { force: true });
+  };
+  function onInterrupt(signal: NodeJS.Signals): void {
+    release();
+    // Re-raised so the caller's view of how it ended is the signal rather than a clean exit
+    process.kill(process.pid, signal);
+  }
+  // Registered before the lock exists, not after: a process descheduled between taking it and getting here
+  // would be killed by the default disposition and leave it behind — the very thing these are for
+  process.once('exit', release);
+  for (const signal of INTERRUPTS) process.once(signal, onInterrupt);
   fs.writeFileSync(pending, JSON.stringify({ pid: process.pid, label, startedAt: new Date().toISOString() }));
   try {
     const deadline = Date.now() + waitMs;
@@ -1016,7 +1117,7 @@ export async function withBuildLock<T>(label: string, run: () => T | Promise<T>,
           continue;
         }
         if (takeovers > 0 || holder === null || live) {
-          const who = holder === null ? 'an unreadable lock file' : `pid ${holder.pid} (${holder.label}, started ${holder.startedAt})`;
+          const who = describeHolder(holder);
           const waited = intent === 'freshness' ? ` after waiting ${Math.round(waitMs / 1000)}s` : '';
           throw new Error(`another package build holds ${repoRelative(file)}${waited}: ${who}. Wait for it to finish, then run this again.`);
         }
@@ -1030,8 +1131,7 @@ export async function withBuildLock<T>(label: string, run: () => T | Promise<T>,
   try {
     return await run();
   } finally {
-    // Only if it is still ours: a build that overran a stolen lock must not delete the new holder's
-    if (readLock(file)?.pid === process.pid) fs.rmSync(file, { force: true });
+    release();
   }
 }
 
@@ -1054,7 +1154,9 @@ export async function stampedBuild(
     // very likely building this same unit, and rebuilding what is already fresh is the duplicate work the
     // wait exists to avoid. A `command` builds regardless — it was asked for a build, not for freshness.
     if (intent === 'freshness' && unitStaleReason(unit, stamp) === null) return;
-    await stampedRun(label, unit, stamp, build);
+    // Every `build:package` script stages its tree and renames it into place (`replaceDir`), so its stamp
+    // stays readable for the length of the build
+    await stampedRun(label, unit, stamp, build, { atomic: true });
   }, lock, { ...lockOptions, intent });
 }
 
@@ -1083,11 +1185,43 @@ export interface StampedUnit {
  * under its own `tests/` or `etc/` while it runs (a `seed-parity:update`, a recorded snapshot), a later unit
  * would stamp a fingerprint of the output instead of the input and read fresh next time when it was not.
  */
-export async function stampedRunAll(units: readonly StampedUnit[], run: () => void | Promise<void>): Promise<void> {
+export async function stampedRunAll(
+  units: readonly StampedUnit[],
+  run: () => void | Promise<void>,
+  /**
+   * Whether `run` replaces its outputs by renaming rather than writing over them — see the run below.
+   *
+   * It is not fully atomic across *several* outputs: a build that swaps two trees can be killed between them
+   * and leave a matched-looking pair that is half of two builds, stamped fresh. What is left of that window is
+   * a `SIGKILL` between two renames, and what it costs is a `packages:check` reading the previous publish tree
+   * until the next source edit — where before this the same kill left no stamp at all. A throw is covered.
+   */
+  { atomic = false }: { atomic?: boolean } = {},
+): Promise<void> {
   const takenAt = new Date().toISOString();
   const taken = units.map(({ label, unit, stamp }) => ({ label, stamp, declared: declaredPaths(unit), ...fingerprintWithDigests(unit) }));
-  for (const { stamp } of taken) fs.rmSync(stamp, { force: true });
-  await run();
+  // **Removed first unless the caller replaces its outputs atomically**, and the difference is not a
+  // preference. A run that mutates its outputs in place — a chain step, a unit pool — leaves a half-done tree
+  // when it is killed, and the only thing that stops the next run trusting it is the stamp being gone;
+  // `chain.ts`'s `StepFailed` exists to produce exactly that ("a failed step must read as never run").
+  //
+  // A run that stages its work and renames it into place cannot leave a half-done tree, so removing its stamp
+  // only publishes a window in which the tree is whole and unstamped — which `unitStaleReason` answers with
+  // `'no stamp'`, so a reader mid-build still waits for the lock and the rename bought it nothing. Both
+  // outcomes of a kill stay consistent there: before the rename, the old tree and the old stamp; after it, the
+  // new tree and the old stamp, whose fingerprint is of inputs that have not moved.
+  const drop = () => { for (const { stamp } of taken) fs.rmSync(stamp, { force: true }); };
+  if (!atomic) drop();
+  try {
+    await run();
+  } catch (err) {
+    // An atomic run keeps its stamp *while it goes well*, and drops it the moment it does not. A build with
+    // more than one output swaps them one after another, so a throw between two swaps leaves a mismatched set
+    // — complete, so it reads as built, and stamped, so it would read as fresh. Dropping the stamp is what
+    // makes the next run rebuild it.
+    if (atomic) drop();
+    throw err;
+  }
   const builtAt = new Date().toISOString();
   for (const { label, stamp, fingerprint, declared, files } of taken) {
     fs.mkdirSync(path.dirname(stamp), { recursive: true });
@@ -1103,8 +1237,14 @@ export async function stampedRunAll(units: readonly StampedUnit[], run: () => vo
 }
 
 /** The single-unit case, which is most callers */
-export async function stampedRun(label: string, unit: BuildUnit, stamp: string, run: () => void | Promise<void>): Promise<void> {
-  await stampedRunAll([{ label, unit, stamp }], run);
+export async function stampedRun(
+  label: string,
+  unit: BuildUnit,
+  stamp: string,
+  run: () => void | Promise<void>,
+  options: { atomic?: boolean } = {},
+): Promise<void> {
+  await stampedRunAll([{ label, unit, stamp }], run, options);
 }
 
 /** Every `build:package` script wraps its work in this */
@@ -1130,10 +1270,10 @@ export const PACKAGES_PREBUILT_ENV = 'ABUDDY_PACKAGES_PREBUILT';
  * because the alternative is two of them rebuilding one `dist` at once.
  */
 export class PackagesWentStale extends Error {
-  constructor(readonly stale: readonly StaleUnit[]) {
+  constructor(readonly stale: readonly StaleUnit[], readonly writer: string) {
     super(`the published packages went stale during a run that had already built them:\n${staleMessage(stale)}\n`
-      + 'Something rebuilt or edited them while this process was reading them — `npm run packages:build` in a\n'
-      + 'concurrent step is the usual cause. Nothing was rebuilt here, because that would race the writer.');
+      + `Who rebuilt them: ${writer}.\n`
+      + 'Nothing was rebuilt here, because that would race the writer.');
   }
 }
 
@@ -1179,8 +1319,14 @@ function buildOnePackage(workspace: string): void {
  * injected answer was consulted — the shared state the seam exists to keep out of a unit test.
  */
 export interface EnsurePackagesOptions {
-  /** How it waits for a build already in flight; a case replaces it rather than taking the repo's lock */
-  readonly wait?: () => void;
+  /**
+   * How it waits for a build already in flight; a case replaces it rather than taking the repo's lock.
+   *
+   * It returns a description of the holder it waited for, or nothing where no build was running — which is
+   * what lets `PackagesWentStale` name the writer. The description rather than the holder, so `LockHolder`
+   * stays private to this module and a case passes a string.
+   */
+  readonly wait?: () => string | undefined;
   /** How it learns what is stale */
   readonly stale?: () => StaleUnit[];
   /** How it fixes one; a case asserts the refusal called this for nothing, which is the half that matters */
@@ -1191,7 +1337,10 @@ export interface EnsurePackagesOptions {
 
 /** Builds every publishable package when any of them is stale; a no-op when they are all up to date */
 export function ensurePackagesBuilt({
-  wait = () => { waitForPackageBuild(); },
+  wait = () => {
+    const waitedFor = waitForPackageBuild();
+    return waitedFor && describeHolder(waitedFor);
+  },
   stale: staleUnits = stalePackageUnits,
   build = buildOnePackage,
   report = (message: string) => { fs.writeSync(2, message); },
@@ -1199,7 +1348,9 @@ export function ensurePackagesBuilt({
   // Another process may be building them right now — two test suites started together each run this as
   // their pretest. Wait for that build rather than reading the stamps it is rewriting and starting a
   // second one, which is a race that fails the reader with "no stamp".
-  wait();
+  // Kept, not discarded: by the time staleness is read this writer has finished, so what the wait saw is the
+  // only evidence of who it was (`packageWriter`)
+  const waitedFor = wait();
   const stale = staleUnits();
   if (stale.length === 0) return;
   // A caller that has already built them is asserting nothing will go stale under it, so staleness here
@@ -1207,7 +1358,7 @@ export function ensurePackagesBuilt({
   // would race the writer; saying so stops two processes fighting over one dist and reports the real
   // problem instead of the build error it turns into.
   if (process.env[PACKAGES_PREBUILT_ENV] === '1') {
-    throw new PackagesWentStale(stale);
+    throw new PackagesWentStale(stale, packageWriter(waitedFor));
   }
   report(`Published packages are out of date:\n${staleMessage(stale)}\nRebuilding ${stale.length} of ${Object.keys(BUILD_UNITS).length}\n`);
   for (const { workspace } of stale) build(workspace);

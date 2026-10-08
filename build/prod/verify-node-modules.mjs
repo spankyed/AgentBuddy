@@ -43,14 +43,18 @@ function resolvable(fromDir, name) {
 }
 
 const missing = [];
+// Type-only; electron-builder.mjs excludes node_modules/@types on purpose. It is which *package* is not
+// shipped, not which field declared it, so it has to hold for optional dependencies too: `dompurify`
+// declares `@types/trusted-types` as one, and nothing at run time requires either.
+const typesOnly = (name) => name.startsWith('@types/');
 function check(dir) {
   const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf-8'));
   for (const name of Object.keys(pkg.dependencies ?? {})) {
-    // Type-only; electron-builder.mjs excludes node_modules/@types on purpose
-    if (name.startsWith('@types/')) continue;
+    if (typesOnly(name)) continue;
     if (!resolvable(dir, name)) missing.push(`${path.relative(appDir, dir)} → ${name}`);
   }
   for (const name of Object.keys(pkg.optionalDependencies ?? {})) {
+    if (typesOnly(name)) continue;
     // Installed for this platform when the app was built, so the app needs it too
     const installed = fs.existsSync(path.join(workspaceDir, 'node_modules', name, 'package.json'));
     if (installed && !resolvable(dir, name)) missing.push(`${path.relative(appDir, dir)} → ${name} (optional, installed for this platform)`);

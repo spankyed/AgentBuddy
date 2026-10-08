@@ -1,7 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
-  _clearCompiledSeeds,
   compilePack,
   buildPackConfigFromManifest,
   PACK_TYPES_DEF,
@@ -16,12 +15,13 @@ import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
 import { buildReads } from '../build/build-reads';
-import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
+import { bundleDslDefs } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
 import { compareFacadeReport, facadeReportFile, facadeReportText } from '../build/facade-report';
 import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
 import { PACK_LAYOUT, createPackRegistry } from '@abuddy/host/packs';
+import { replaceDir } from '@abuddy/host/replace-dir';
 import { checkFeatureSettings } from '@abuddy/sdk/framework';
 import { resolveDeps } from './generate';
 import { resolveDepFiles } from './fetch-deps';
@@ -52,22 +52,21 @@ export async function featureSettingsProblems(root: string, features: ReadonlyAr
   return problems;
 }
 
-/** A built-in pack's snapshot, in its in-repo dist/ layout */
-const BUILT_IN_SNAPSHOT = 'snapshot.json';
-
 /**
- * Removes the previous build's output before anything can fail, so a failed build or a dropped
- * output never leaves an older file behind.
- * - External packs build into the pack layout (runtime/, build/, types/); dist/ is pure output,
- *   cleared whole, so `abuddy pack` and the test fixture never ship an older build.
- * - Built-in packs keep their in-repo layout, where the pack's runtime build writes runtime/ too. Only
- *   this build's output goes: the compiled seeds, build/, types/, defs/ and snapshot. The runtime records
- *   the compiled seeds it was built beside, and the app doesn't publish it with seeds compiled after it.
+ * Where a build writes before it is a build: the whole of `dist/` is assembled here and renamed into place at
+ * the end, so `dist` holds the previous build whole or this one whole and never neither.
+ *
+ * **What that replaced is removing `dist` first**, which every reader of a pack's output reads as *not built* —
+ * so a build published ~20s in which that was the answer, and the fixture-pack race in `1e19b40d9` was it. The
+ * tree still goes whole, which is what stops `abuddy pack` and the test fixtures shipping a dropped output: it
+ * goes whole by being a different tree, rather than by being deleted.
+ *
+ * Inside the pack, so the rename cannot cross a filesystem, and under `.abuddy/` because every pack already
+ * ignores that directory — a staging tree `git` reports is a directory that appears and vanishes inside the
+ * population this repo's own checks derive from.
  */
-export function clearBuildOutput(outputDir: string, { builtIn }: { builtIn: boolean }): void {
-  const owned = builtIn ? [PACK_LAYOUT.buildDir, PACK_LAYOUT.typesDir, DEFS_DIR, BUILT_IN_SNAPSHOT] : ['.'];
-  for (const entry of owned) fs.rmSync(path.join(outputDir, entry), { recursive: true, force: true });
-  if (builtIn) _clearCompiledSeeds(outputDir);
+export function buildStagingDir(root: string): string {
+  return path.join(root, '.abuddy', 'build');
 }
 
 /**
@@ -78,16 +77,37 @@ export function clearBuildOutput(outputDir: string, { builtIn }: { builtIn: bool
  * It sits here rather than in `build()` because `abuddy run` calls that on every file change, and the
  * check reads every source of all five packages: once per command is right, once per keystroke is not.
  *
- * `npm start` depends on this one. Its `prebuild:be:dev` builds the built-in pack with `abuddy build
- * --skip-fe` and declares no `packages:ensure` of its own, because this is it. Putting the check back
+ * `npm start` depends on this one. The root `prebuild:be:dev` builds the pack the app ships with `abuddy
+ * build --skip-fe` and declares no `packages:ensure` of its own, because this is it. Putting the check back
  * on that script is the fix if this ever stops ensuring.
  */
 export async function buildCommand(args: string[]): Promise<void> {
-  ensureCheckoutPackages(findPackRoot(process.cwd()));
+  const root = findPackRoot(process.cwd());
+  ensureCheckoutPackages(root);
+  if (args.includes('--watch')) {
+    const { watchPackRuntime } = await import('../build/watch.ts');
+    // `npm start` forks this and boots the API against the runtime it writes, so it waits to be told the
+    // first bundle landed. `process.send` is absent for anyone who ran the command themselves
+    await watchPackRuntime(root, readValidManifest(root).id, { onFirstBuild: () => process.send?.({ type: 'ready' }) });
+    return;
+  }
   await build(args);
 }
 
 export async function build(args: string[]) {
+  const staged = buildStagingDir(findPackRoot(process.cwd()));
+  try {
+    await buildIntoStaging(args);
+  } catch (err) {
+    // Whatever failed and wherever, the pack is left with the build it had. Out here rather than beside each
+    // `throw` because a phase that fails before the gates are even reached — an invalid manifest, a feature's
+    // missing settings file — is the half that would be forgotten
+    fs.rmSync(staged, { recursive: true, force: true });
+    throw err;
+  }
+}
+
+async function buildIntoStaging(args: string[]) {
   const root = findPackRoot(process.cwd());
   // The installer rejects an invalid manifest; don't build (or let CI publish) one
   const manifest = readValidManifest(root);
@@ -97,9 +117,11 @@ export async function build(args: string[]) {
   // absent from the record rather than guessed at
   const reads = buildReads(root);
 
-  const outputDir = path.join(root, 'dist');
-  const external = !manifest.builtIn;
-  clearBuildOutput(outputDir, { builtIn: !external });
+  // `outputDir` is where every phase below writes; `distDir` is what it becomes, once they have all succeeded
+  const distDir = path.join(root, 'dist');
+  const outputDir = buildStagingDir(root);
+  fs.rmSync(outputDir, { recursive: true, force: true });
+  fs.mkdirSync(outputDir, { recursive: true });
 
   if (!args.includes('--skip-generate')) {
     const { depTypes, depSnapshots } = await resolveDeps(root, manifest.dependencies);
@@ -143,8 +165,10 @@ export async function build(args: string[]) {
   }
 
   const packDir = root;
-  const seedsOutputDir = external ? path.join(outputDir, PACK_LAYOUT.seedsDir) : outputDir;
-  const snapshotPath = path.join(outputDir, external ? PACK_LAYOUT.snapshot : BUILT_IN_SNAPSHOT);
+  // One place for a pack's compiled seeds, whoever ships it: `dist/runtime/seeds/`, which staging and
+  // publishing carry to `runtime/seeds/` in the installed layout. The app's seeding reads that one path
+  const seedsOutputDir = path.join(outputDir, PACK_LAYOUT.seedsDir);
+  const snapshotPath = path.join(outputDir, PACK_LAYOUT.snapshot);
 
   let result: { seeds: Record<string, number>; warnings: string[] } | null = null;
 
@@ -206,7 +230,7 @@ export async function build(args: string[]) {
     // about it. A **warning**, not a `fail`: the collected failures below are for output dependents cannot
     // use, and a report that has not caught up is not that. It would also mean a pack author could not start
     // the app until they had rewritten a reviewed artifact mid-change, where `facade:check` is the gate that
-    // says so once, in `npm run compile` and in CI. A pack with no report has nothing to be stale against
+    // says so once — its own chain step, and CI. A pack with no report has nothing to be stale against
     if (fs.existsSync(facadeReportFile(root))) {
       const report = compareFacadeReport(root, facadeReportText(packTypes.content, root, manifest.id));
       if (report.problem) console.warn(`\nWarning: ${report.problem}`);
@@ -249,7 +273,10 @@ export async function build(args: string[]) {
     // produced neither. A phase's reads are kept in memory until here so a half-finished build leaves the
     // last complete record in place rather than a partial one
     reads?.write();
-    console.log(`\nOutput: ${path.relative(process.cwd(), outputDir)}/`);
+    // Every phase has succeeded and the snapshot advertises them, so this is the moment the staged tree
+    // becomes the pack's output — one rename, rather than the ~20s of absent `dist` that clearing it first cost
+    replaceDir(outputDir, distDir);
+    console.log(`\nOutput: ${path.relative(process.cwd(), distDir)}/`);
   };
 
   console.log(`\nBuild complete:`);
@@ -297,16 +324,20 @@ export async function build(args: string[]) {
     const defs = await bundleDslDefs(root, manifest, reads?.forPhase('dslDefs'));
     if (defs.success) {
       for (const file of defs.files) console.log(`  dsl defs: ${file}`);
+      // **The one phase that writes outside the staged tree**, because the path its consumer uses is source
+      // text rather than an argument: codegen emits `'../../dist/defs/monaco/<name>-defs.d.ts?raw'` into
+      // `src/__generated__/`, and the FE bundle below resolves that from the pack's real `dist`. So the files
+      // are written there and copied into the staged tree, which is what the swap then publishes — and what
+      // drops a def file for a `dsl` entry this build no longer has, since the staged tree holds only these.
+      // The write into the live `dist` overwrites and never clears, so nothing reading it finds a file absent.
+      for (const file of defs.files) {
+        const dest = path.join(outputDir, path.relative('dist', file));
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.copyFileSync(path.join(root, file), dest);
+      }
     } else {
       fail(`DSL definitions bundle failed: ${defs.error}`);
     }
-  }
-
-  if (!external) {
-    // Built-in packs' FE is compiled into the renderer (virtual:built-in-packs) and their
-    // backend into the API bundle, never loaded from dist/
-    finish();
-    return;
   }
 
   // ── Backend runtime ──────────────────────────────────────────────────

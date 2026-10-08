@@ -14,11 +14,23 @@ export interface PackFrontendStyles {
   remove(packId: string): void;
 }
 
+/**
+ * A pack's frontend served from its source on this disk, by pack id. A dev server fills it (the renderer's
+ * `virtual:dev-pack-frontends`); a built app's is empty.
+ *
+ * It is preferred over `pack://` when the pack is in it, because its modules are in the dev server's own
+ * graph: that is what lets a `.vue` edit patch the component rather than reload the whole page. It is keyed
+ * by pack id and asks nothing else about the pack — a pack is in it because its source is here.
+ */
+export type DevPackFrontends = Record<string, () => Promise<{ default?: unknown }>>;
+
 /** What loading a pack's frontend needs from the window it loads into */
 export interface PackFrontendIO {
   /** Imports a module by URL, as the window's dynamic `import()` does */
   importModule(url: string): Promise<{ default?: unknown }>;
   styles: PackFrontendStyles;
+  /** The packs this window serves from source, preferred over `pack://`; none in a built app */
+  devFrontends?: DevPackFrontends;
 }
 
 /**
@@ -34,17 +46,23 @@ function packFileUrl(packBaseUrl: string, file: string, revision?: string): stri
   return `${packBaseUrl}/${file}${revision ? `?v=${revision}` : ''}`;
 }
 
-/** Imports a pack's FE entry: its registration, or null when it exports none. Throws when the import fails. */
+/**
+ * Imports a pack's FE entry: its registration, or null when it exports none. Throws when the import fails.
+ *
+ * `source` is a loader for the pack's own sources when this window serves them, in which case `url` names
+ * nothing that is fetched and only labels the failure.
+ */
 export async function loadPackFEEntry(
   io: PackFrontendIO,
   entry: string,
   packBaseUrl: string,
   revision?: string,
+  source?: () => Promise<{ default?: unknown }>,
 ): Promise<PackFERegistration | null> {
-  const url = packFileUrl(packBaseUrl, entry, revision);
+  const url = source ? `${packBaseUrl} (from source)` : packFileUrl(packBaseUrl, entry, revision);
   let mod: { default?: unknown };
   try {
-    mod = await io.importModule(url);
+    mod = source ? await source() : await io.importModule(packFileUrl(packBaseUrl, entry, revision));
   } catch (err) {
     // The pack:// URL names the pack; the E2E fixture matches on it
     console.error(`[pack-loader] Failed to load FE entry ${url}:`, err);
@@ -74,10 +92,14 @@ export function createPackFrontends(io: PackFrontendIO, packs: FePackRegistry): 
   return {
     async load(pack: LoadedPackEntry): Promise<Plugin[] | null> {
       const packBaseUrl = `pack://${pack.id}`;
-      if (pack.feStyles) await io.styles.add(pack.id, packFileUrl(packBaseUrl, pack.feStyles, pack.feRevision));
-      if (!pack.feEntry) return null;
+      // Served from source, the pack's styles come through its own module graph with the rest of it
+      const source = io.devFrontends?.[pack.id];
+      if (pack.feStyles && !source) await io.styles.add(pack.id, packFileUrl(packBaseUrl, pack.feStyles, pack.feRevision));
+      // A pack served from source has a frontend whatever its built manifest says, since the map holds only
+      // packs whose codegen wrote one
+      if (!pack.feEntry && !source) return null;
 
-      const registration = await loadPackFEEntry(io, pack.feEntry, packBaseUrl, pack.feRevision);
+      const registration = await loadPackFEEntry(io, pack.feEntry ?? '', packBaseUrl, pack.feRevision, source);
       if (!registration) return [];
       return packs.registerPackFE(registration);
     },

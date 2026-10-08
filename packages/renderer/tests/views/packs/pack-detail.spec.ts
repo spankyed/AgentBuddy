@@ -5,7 +5,7 @@ import PackDetail from '@/views/packs/PackDetail.vue';
 
 /** An installed external pack with nothing declared, and `overrides` */
 const pack = (overrides: Partial<PackInfo> = {}): PackInfo => ({
-  id: 'memo-pack', name: 'Memos', version: '1.0.0', builtIn: false, enabled: true,
+  id: 'memo-pack', name: 'Memos', version: '1.0.0', canUninstall: true, enabled: true,
   entities: {}, relKinds: {}, features: [], services: [], steps: [], artifacts: [], blocks: [], systems: [],
   permissions: [], bootHooks: [], migrationCount: 0,
   ...overrides,

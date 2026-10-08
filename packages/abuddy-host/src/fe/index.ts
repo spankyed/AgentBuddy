@@ -22,7 +22,7 @@ export type { ShellNotify, ShellOptions, ShellStorage } from '../features/applic
 // The Packs plugin, the pack-frontend loader the shell is given, and the install a deep link asks for
 // (`features/packs/fe/`)
 export { default as packsMachine, type PacksContext, type PacksState, type PackInfo } from '../features/packs/fe/machine.ts';
-export { createPackFrontends, loadPackFEEntry, type PackFrontendIO, type PackFrontendStyles } from '../features/packs/fe/frontends.ts';
+export { createPackFrontends, loadPackFEEntry, type DevPackFrontends, type PackFrontendIO, type PackFrontendStyles } from '../features/packs/fe/frontends.ts';
 export { installFromProtocol, packInstallRequest, requestPackInstall, type PackInstallRequest } from '../features/packs/fe/install-url.ts';
 
 // The Settings view's machine, as the renderer pairs it with the view's components (`features/settings/fe/`)

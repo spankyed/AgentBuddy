@@ -13,8 +13,8 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-database-parity-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
-const { loadBuiltInPacks, loadExternalPacks, registerExternalPacks, startPacks } = await import('@abuddy/host/packs/runtime');
-const { installPackFromLocal, publishHostPackOutput } = await import('@abuddy/host/packs');
+const { loadAppPacks, startPacks } = await import('@abuddy/host/packs/runtime');
+const { installPackFromLocal, installShippedPacks } = await import('@abuddy/host/packs');
 const { openAppDatabase } = await import('@abuddy/host/database');
 const { resolveAppContext } = await import('@abuddy/sdk/env');
 const { unbindHost } = await import('@abuddy/sdk/runtime/internals');
@@ -35,12 +35,14 @@ function snapshot(query: EarsQuery) {
   };
 }
 
-/** The API's boot up to hydration (setup/backend.ts), for the built-in packs and the installed external ones; the caller closes the store */
+/**
+ * The API's boot up to hydration (`setupBackend`): the packs the app ships installed into the data dir,
+ * then every installed pack loaded. The caller closes the store.
+ */
 async function bootApi() {
   const app = openAppStore();
-  const infos = await loadBuiltInPacks(app.packs, PACKAGES_DIR, { runtimeEntry: 'only' });
-  for (const info of infos) publishHostPackOutput(info.dir, path.join(resolveAppContext().hostPacksDir, info.id));
-  registerExternalPacks(app.packs, loadExternalPacks());
+  const installed = await installShippedPacks(PACKAGES_DIR, resolveAppContext().packsDir);
+  loadAppPacks(app.packs, new Set(installed.map((result: { id: string }) => result.id)));
   await app.store.hydrate();
   return app;
 }
@@ -77,8 +79,6 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
 
     const api = await bootApi();
     const fromApi = snapshot(api.engine.query);
-    const types = [...api.packs.getRegisteredEntityTypes()];
-    const routes = (policy: typeof api.packs.partitionPolicy) => types.map((type) => policy.routeEntity(`${type}-1`, type));
     api.store.close();
     unbindHost();
 
@@ -92,10 +92,10 @@ describe('a data dir opened by the API and by openAppDatabase', () => {
     expect(fromApi.entities.find(({ id }) => id === 'Note-parity')).toMatchObject({ roles: ['pinned'] });
     expect(fromApi.entities.find(({ id }) => id === 'TNode-parity')).toBeUndefined();
     expect(fromTool).toEqual(fromApi);
-    // The tool knows the built-in pack's entity types, and writes each where the API does
+    // The tool knows the built-in pack's entity types. Which partition each lands in is not compared here:
+    // both sides call the one `appPartitionPolicy()`, so an equality between them cannot fail —
+    // tests/database/partition-policy.spec.ts is where that routing is asserted
     expect(db.schema.getRegisteredEntityTypes()).toEqual(api.packs.getRegisteredEntityTypes());
-    expect(routes(db.schema.partitionPolicy)).toEqual(routes(api.packs.partitionPolicy));
-    expect(routes(api.packs.partitionPolicy)).toContain('volatileBackup');
   });
 });
 
@@ -130,12 +130,11 @@ describe('what the tool writes', () => {
 // The tool takes the entity types of every installed pack, not only the built-in ones: an external pack's rows are
 // its user's data like any other
 describe('an installed external pack', () => {
-  it('is in the entity types and the routing the tool reconstructs, as it is in the API\'s registry', async () => {
+  it('is in the entity types the tool reconstructs, as it is in the API\'s registry', async () => {
     await installExternalPack('memo-pack', 'Memo');
 
     const api = await bootApi();
     const types = [...api.packs.getRegisteredEntityTypes()];
-    const routes = (policy: typeof api.packs.partitionPolicy) => types.map((type) => policy.routeEntity(`${type}-1`, type));
     api.store.close();
     unbindHost();
 
@@ -143,7 +142,6 @@ describe('an installed external pack', () => {
     try {
       expect(types).toContain('Memo');
       expect(db.schema.getRegisteredEntityTypes()).toEqual(api.packs.getRegisteredEntityTypes());
-      expect(routes(db.schema.partitionPolicy)).toEqual(routes(api.packs.partitionPolicy));
       expect(db.schema.entities.Memo).toBe('Memo');
     } finally {
       db.close();

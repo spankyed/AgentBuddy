@@ -22,3 +22,17 @@ build/prod/logs/
 # The packaged-authoring check hands its work dir from the author half to the app half through here
 tests/authoring-handoff/
 
+# API Extractor's working directory: the regenerated reports `api:check` compares against, and the
+# declarations it builds them from. Each package ignores its own, which `git` reads — but the root
+# `oxlint .` reads *this* file for `--ignore-path`, and found 144 files with 17 errors under one of them when
+# asked directly. It skips them today only by its own hidden-directory default, which is a tool's behaviour
+# rather than something this repo declares
+.temp/
+
+# A config a bundler compiled to load it (`bundle-require`, through tsup), written beside the config for the
+# length of a build. Ignored so a repo-wide walk that honours this file cannot enumerate one and then find it
+# gone: oxlint reads `.` with `--ignore-path .gitignore`, and a cold chain failed once on exactly that race.
+# `inputFiles` in @abuddy/host/build/packages-built skips the same pattern, for the walks that do not read this
+*.bundled_*.mjs
+*.bundled_*.cjs
+

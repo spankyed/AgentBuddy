@@ -122,8 +122,8 @@ ABI-stable across Node and Electron. A `node-gyp`/NAN module (`fs-ext` and its r
 **Two of the four questions have exact answers that need no lock at all.** `readApiEndpoint` and the
 dev-server marker both exist so a caller can decide whether to talk to an endpoint. Asking the endpoint is
 both exact and cheaper than inferring it from a pid and an mtime — and it catches a process that is alive
-but no longer serving, which no pid check can. `dev-build.mjs` already works this way after
-`2a5854631`: it reads the port and lets the request fail.
+but no longer serving, which no pid check can. The pack watcher already works this way: `findAppApi` reads the port and lets the request fail
+(`abuddy-cli/src/build/dev-reload.ts`).
 
 ## Decisions
 

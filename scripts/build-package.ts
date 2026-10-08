@@ -18,43 +18,56 @@ import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { BareImports, assertExportTargetsBuilt, isDeclaration, rewriteDeclarationExtensions, walk } from './lib/published-imports.ts';
 import { runPackageBuild } from '@abuddy/host/build/packages-built';
+import { replaceDir } from '@abuddy/host/replace-dir';
 import { stagePublishTree } from '@abuddy/host/build/published-manifest';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const pkgDir = path.resolve(process.argv[2] ?? '');
 const srcDir = path.join(pkgDir, 'src');
 const outDir = path.join(pkgDir, 'dist');
+/**
+ * Built here and renamed over `dist` at the end, so a reader never finds the package unbuilt: every consumer
+ * of a derived tree in this repo treats a missing output as *not built*, and clearing `dist` first published
+ * ~14s in which that was the answer. Inside the package, so the rename cannot cross a filesystem, and under
+ * `.temp/` because that is already gitignored for every package — a staging directory `git` reports is what
+ * the root `.gitignore`'s `*.bundled_*` entry exists for.
+ */
+const stagedDir = path.join(pkgDir, '.temp', 'build');
 
 async function main(): Promise<void> {
   const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf-8'));
-  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.rmSync(stagedDir, { recursive: true, force: true });
+  fs.mkdirSync(stagedDir, { recursive: true });
 
+  // `--outDir` overrides the tsconfig's, and `rootDir` is `src` either way, so the emitted layout is the same
   execFileSync(
     process.execPath,
-    [createRequire(import.meta.url).resolve('typescript/bin/tsc'), '-p', path.join(pkgDir, 'tsconfig.package.json')],
+    [createRequire(import.meta.url).resolve('typescript/bin/tsc'), '-p', path.join(pkgDir, 'tsconfig.package.json'), '--outDir', stagedDir],
     { stdio: 'inherit' },
   );
 
   // Hand-written declarations ship as source
   for (const file of walk(srcDir).filter((f) => f.endsWith('.d.ts'))) {
-    const dest = path.join(outDir, path.relative(srcDir, file));
+    const dest = path.join(stagedDir, path.relative(srcDir, file));
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.copyFileSync(file, dest);
   }
 
   // rewriteRelativeImportExtensions rewrites the emitted JS but not the declarations beside it
-  rewriteDeclarationExtensions(outDir);
+  rewriteDeclarationExtensions(stagedDir);
 
   // Every shipped module's imports must be installable by a pack that uses it — declarations included,
   // because a type-only import is erased from the JS, so an undeclared dependency would ship unseen
-  const bareImports = new BareImports(outDir);
-  for (const file of walk(outDir).filter((f) => f.endsWith('.js') || isDeclaration(f))) {
+  const bareImports = new BareImports(stagedDir);
+  for (const file of walk(stagedDir).filter((f) => f.endsWith('.js') || isDeclaration(f))) {
     const contents = fs.readFileSync(file, 'utf-8');
     if (isDeclaration(file)) bareImports.fromDeclaration(contents, file);
     else await bareImports.fromModule(contents, 'js', path.dirname(file), file);
   }
   bareImports.assertDeclared(pkg, path.join(path.relative(repoRoot, pkgDir), 'package.json'));
-  assertExportTargetsBuilt(pkgDir, pkg.exports);
+  assertExportTargetsBuilt(pkgDir, pkg.exports, stagedDir);
+  // Every check above has passed against the staged tree, so this is the moment it becomes the built one
+  replaceDir(stagedDir, outDir);
   // What npm publishes: the derived manifest and a copy of what `files` names, checked against itself
   const treeDir = stagePublishTree(pkgDir, pkg);
   console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`

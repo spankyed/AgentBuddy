@@ -6,8 +6,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultRunner, nextReleaseVersion, preflight, publishRelease, releaseStateReport, runRelease, type Runner } from '../../src/commands/release';
 import { readPackIntegrity } from '@abuddy/host/packs';
 
-// runRelease verifies with a release build; these tests use prebuilt packs
-vi.mock('../../src/commands/build', () => ({ build: vi.fn(async () => {}) }));
+/**
+ * runRelease verifies with a release build; these tests use prebuilt packs, so the build is a stand-in.
+ *
+ * **It still has to leave what the steps after it read.** `writeVersion` rewrites `abuddy.json` immediately
+ * before `verify`, and `abuddy pack` refuses a build older than the sources it came from — a build it cannot
+ * see having happened is exactly the stale build that check exists for. A stand-in returning nothing claimed
+ * the build had run and left a tree it had not touched, which is the fidelity gap rather than the check being
+ * wrong: a real `abuddy build` writes `dist` here.
+ */
+const builtAt = vi.hoisted(() => ({ root: undefined as string | undefined }));
+vi.mock('../../src/commands/build', () => ({
+  build: vi.fn(async () => {
+    if (!builtAt.root) return;
+    const [{ readFileSync, writeFileSync }, { join }] = await Promise.all([import('node:fs'), import('node:path')]);
+    // Rewritten rather than `utimesSync(new Date())`, which truncates to the millisecond and so can stamp a
+    // time *before* the sub-millisecond one the manifest was just written at — the stand-in then looks older
+    // than the sources it was supposedly built from. Writing the bytes is what a build does, and it takes the
+    // filesystem's own clock at its full precision
+    for (const file of ['dist/runtime/index.cjs', 'dist/types/snapshot.json']) {
+      const at = join(builtAt.root, file);
+      writeFileSync(at, readFileSync(at));
+    }
+  }),
+}));
 import { buildPackArchive } from '../../src/commands/pack';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
@@ -33,6 +55,8 @@ function builtPack(version = '1.2.3'): string {
   write('package-lock.json', JSON.stringify({ name: 'demo-pack', version, lockfileVersion: 3, packages: { '': { name: 'demo-pack', version } } }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
   write('dist/types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  // Which pack the stand-in build above refreshes
+  builtAt.root = root;
   return root;
 }
 

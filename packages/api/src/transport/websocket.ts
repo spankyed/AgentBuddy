@@ -9,7 +9,7 @@ import { jsonSafeEncoder } from '@/transport/encoder';
 import { createLogger } from '@abuddy/sdk/logger';
 import { SERVER_CONFIG, apiToken, apiTokenIsOwn, isApiToken } from '@/boot/config';
 import { appPacks, appStore, backendActor } from '@/runtime';
-import { reloadBuiltInPack, reloadExternalPack } from '@abuddy/host/packs/runtime';
+import { reloadPackById } from '@abuddy/host/packs/runtime';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { ApiEndpoint } from '@abuddy/host/process-liveness';
 import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
@@ -56,7 +56,7 @@ function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) 
     req.on('data', (chunk) => { body += chunk; });
     req.on('end', async () => {
       try {
-        const { packId, builtIn } = JSON.parse(body);
+        const { packId } = JSON.parse(body);
         if (!packId || typeof packId !== 'string') {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'packId required' }));
@@ -69,11 +69,7 @@ function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) 
         }
         reloadingPacks.add(packId);
         try {
-          if (builtIn) {
-            await reloadBuiltInPack(appPacks, packId, backendActor);
-          } else {
-            await reloadExternalPack(appPacks, packId, backendActor);
-          }
+          await reloadPackById(appPacks, packId, backendActor);
         } finally {
           reloadingPacks.delete(packId);
         }

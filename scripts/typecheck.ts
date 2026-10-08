@@ -32,11 +32,13 @@
  * resolve what it found, which is what keeps that one honest.
  */
 import { boundedSpawn } from './lib/bounded-spawn.ts';
+import { CHAIN_STEPS } from './lib/chain-steps.ts';
 import { schedule } from './lib/chain-schedule.ts';
-import { box, MEASURED_ON } from './lib/core-budget.ts';
+import { box, coresFor, MEASURED_ON } from './lib/core-budget.ts';
 import { pruneDepFiles } from './lib/dep-files.ts';
 import { asCount, parseFlags } from './lib/measure.ts';
-import { TIMEOUT_MS, timedOutBecause } from './lib/step-timeouts.ts';
+import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
+import { ARTIFACT_CHECKS, CODEGEN } from './lib/typecheck-jobs.ts';
 import { ENSURE, LEG_TIMEOUT, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
 
 /**
@@ -61,8 +63,48 @@ import { ENSURE, LEG_TIMEOUT, TYPECHECK_LEGS } from './lib/typecheck-legs.ts';
  * `box()` rather than `os.cpus().length`, which counts the host's cores where this reads a container's
  * quota — `core-budget.ts` has the reasoning, and this was the last place in the repo getting it wrong.
  */
-const budgetFrom = (cores: string | undefined): number =>
-  asCount(cores, 'cores') ?? Math.min(TYPECHECK_LEGS.length, Math.max(2, box()));
+const budgetFrom = (cores: string | undefined, jobs: number): number =>
+  asCount(cores, 'cores') ?? Math.min(jobs, Math.max(2, box()));
+
+/** One thing this runner spawns: a leg, a prerequisite that writes, or a recorded artifact's check */
+interface Job {
+  readonly name: string;
+  readonly command: string;
+  readonly timeout: TimeoutClass;
+  readonly seconds: number;
+  readonly cores: number;
+  readonly dependsOn: readonly string[];
+}
+
+/** A chain step this runner borrows: its own timeout class, declared cost and core width, none restated here */
+function borrowed({ name, command }: { name: string; command: string }): Job {
+  const step = CHAIN_STEPS.find((candidate) => candidate.name === name);
+  if (!step) throw new Error(`${name} is not a chain step, so there is no class or cost to borrow — `
+    + 'either it was renamed or it belongs in TYPECHECK_LEGS');
+  return { name, command, timeout: step.timeout, seconds: step.seconds ?? 0, cores: coresFor(name),
+    dependsOn: [ENSURE, CODEGEN] };
+}
+
+/**
+ * Everything this command runs, in the order a failure is reported in.
+ *
+ * Two ordered prerequisites and then the rest at once. `cores` is `coresFor`, not one per job: the budget is
+ * cores, and weighing a four-core `api:check` at one admits more work than the box has — the
+ * two-schedulers-with-different-weights defect this file's header describes, which the legs were also paying.
+ */
+const JOBS: readonly Job[] = [
+  ...TYPECHECK_LEGS.map((leg) => ({
+    name: leg.name,
+    command: leg.command,
+    timeout: LEG_TIMEOUT,
+    seconds: leg.seconds,
+    cores: coresFor(leg.name),
+    dependsOn: leg.name === ENSURE ? [] : [ENSURE, CODEGEN],
+  })),
+  { name: CODEGEN, command: `npm run ${CODEGEN} -w @app/default-setup`, timeout: LEG_TIMEOUT, seconds: 2,
+    cores: 1, dependsOn: [ENSURE] },
+  ...ARTIFACT_CHECKS.map(borrowed),
+];
 
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
 
@@ -81,14 +123,15 @@ const result = await schedule({
   // `needs: [ENSURE]` on all seventeen legs — a hand-written edge beside a fact, which is what the chain
   // stopped keeping. The chain derives its own from `PACKAGE_BUILD_OUTPUTS`; this runner has one graph
   // and no inputs to derive from, so it says the rule instead of repeating it.
-  steps: TYPECHECK_LEGS.map((leg) => ({ ...leg, dependsOn: leg.name === ENSURE ? [] : [ENSURE] })),
-  budget: budgetFrom(parseFlags(process.argv.slice(2), { values: ['cores'], booleans: [] }).values.cores),
+  steps: JOBS,
+  budget: budgetFrom(parseFlags(process.argv.slice(2), { values: ['cores'], booleans: [] }).values.cores, JOBS.length),
   skip: () => false,
   async run(leg) {
     const [command, ...args] = leg.command.split(' ');
-    // Not `leg.seconds`: a deadline from a measurement is a deadline from this machine. The class is
-    // `LEG_TIMEOUT`, declared beside the legs so the chain's copy of these steps reads the same one.
-    const outcome = await boundedSpawn(command!, args, TIMEOUT_MS[LEG_TIMEOUT].ms);
+    // Not `leg.seconds`: a deadline from a measurement is a deadline from this machine. The class is the job's
+    // own — `LEG_TIMEOUT` for a leg, and for a borrowed step the one its chain entry declares, so a step that
+    // fans out keeps the rung sized for that rather than a leg's.
+    const outcome = await boundedSpawn(command!, args, TIMEOUT_MS[leg.timeout].ms);
     done.set(leg.name, outcome);
     // One line as it finishes, so a ten-second command is not ten seconds of silence. Completion order, since
     // that is what progress *is*; the failures below are in declared order, which is what reading wants.
@@ -97,7 +140,7 @@ const result = await schedule({
   },
 });
 
-const failed = TYPECHECK_LEGS.filter((leg) => (done.get(leg.name)?.code ?? 0) !== 0);
+const failed = JOBS.filter((leg) => (done.get(leg.name)?.code ?? 0) !== 0);
 for (const leg of failed) {
   const outcome = done.get(leg.name)!;
   // `LEG_TIMEOUT`, never the literal: this named `'quick'` while the kill above read `TIMEOUT_MS[LEG_TIMEOUT]`,
@@ -105,7 +148,7 @@ for (const leg of failed) {
   const why = outcome.timedOut === true
     ? timedOutBecause({
       what: leg.name,
-      timeout: LEG_TIMEOUT,
+      timeout: leg.timeout,
       measuredOn: MEASURED_ON,
       seconds: leg.seconds,
     })

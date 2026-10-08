@@ -55,15 +55,13 @@ function tryReadSnapshot(filePath: string): PackSnapshot | null {
 
 /**
  * Find artifacts in a pack directory in any layout: an installed or extracted bundle
- * (types/, build/), an external pack source built in the pack layout (dist/types,
- * dist/build), or a built-in pack's dist/ (dist/snapshot.json).
+ * (types/, build/), a pack source built in the pack layout (dist/types, dist/build), or the
+ * dependency cache, which holds the snapshot alone.
  */
 export function findDepFiles(dir: string): DepFiles | null {
   const candidates = [
     { root: dir, snapshot: path.join(dir, 'types', 'snapshot.json') },
     { root: path.join(dir, 'dist'), snapshot: path.join(dir, 'dist', 'types', 'snapshot.json') },
-    // A built-in pack's dist: its snapshot at the top, build/ and runtime/ in the pack layout
-    { root: path.join(dir, 'dist'), snapshot: path.join(dir, 'dist', 'snapshot.json') },
     // .abuddy/deps/<id>/ cache
     { root: dir, snapshot: path.join(dir, 'snapshot.json') },
   ];
@@ -78,14 +76,15 @@ export function findDepFiles(dir: string): DepFiles | null {
 function withBuildAndRuntime(snapshot: PackSnapshot, root: string): DepFiles {
   const buildDir = path.join(root, PACK_LAYOUT.buildDir);
   const runtimeEntry = path.join(root, PACK_LAYOUT.runtimeEntry);
-  // An installed pack's seeds are under runtime/; a built-in pack's dist keeps them at its top
-  const seedsDir = [path.join(root, PACK_LAYOUT.seedsDir), root].find((dir) => fs.existsSync(path.join(dir, SEED_INDEX_FILE)));
+  // One place for every pack's compiled seeds, named by its index
+  const seedsDir = path.join(root, PACK_LAYOUT.seedsDir);
+  const hasSeeds = fs.existsSync(path.join(seedsDir, SEED_INDEX_FILE));
   const hasRuntime = fs.existsSync(runtimeEntry);
   return {
     snapshot,
     ...(fs.existsSync(buildDir) && { buildDir }),
     ...(hasRuntime && { runtimeEntry }),
-    ...(hasRuntime && seedsDir && { seedsDir }),
+    ...(hasRuntime && hasSeeds && { seedsDir }),
   };
 }
 
@@ -151,10 +150,10 @@ function unusable(depId: string, rejected: Rejected): Error {
   return new Error(`Dependency "${depId}" has no build this CLI can use:\n${rejected.map((r) => `  - ${r.where}: ${r.message}`).join('\n')}`);
 }
 
-/** Built-in packs published by an installed AgentBuddy (any channel) into its data dir at boot. */
+/** A pack installed in an AgentBuddy's data dir (any channel) — the ones it ships among them. */
 function resolveFromInstalledApp(depId: string, range: string, rejected: Rejected): (DepFiles & { env: AppEnv }) | null {
   for (const env of ['production', 'beta', 'development', 'test'] as const) {
-    const found = findDepFiles(path.join(resolveAppContext({ env }).hostPacksDir, depId));
+    const found = findDepFiles(path.join(resolveAppContext({ env }).packsDir, depId));
     if (usable(found, range, `installed app (${env})`, rejected)) return { ...found, env };
   }
   return null;
@@ -351,16 +350,14 @@ function cacheDep(root: string, depId: string, artifacts: DepFiles): void {
   }
 }
 
-/** Copies compiled seeds (`*.seed.json`, `seeds.json`, `media/`) without the rest of a built-in pack's dist */
+/**
+ * Copies a pack's compiled seeds. The whole directory, because that is all it holds — it used to pick
+ * `*.seed.json`, `seeds.json` and `media/` out of a built-in pack's entire `dist/`, which is not where any
+ * pack's seeds are written any more.
+ */
 function copySeeds(from: string, to: string): void {
-  fs.mkdirSync(to, { recursive: true });
-  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
-    if (entry.isFile() && (entry.name.endsWith('.seed.json') || entry.name === SEED_INDEX_FILE)) {
-      fs.copyFileSync(path.join(from, entry.name), path.join(to, entry.name));
-    } else if (entry.isDirectory() && entry.name === 'media') {
-      fs.cpSync(path.join(from, entry.name), path.join(to, entry.name), { recursive: true });
-    }
-  }
+  fs.rmSync(to, { recursive: true, force: true });
+  fs.cpSync(from, to, { recursive: true });
 }
 
 // ── Resolution chain ──

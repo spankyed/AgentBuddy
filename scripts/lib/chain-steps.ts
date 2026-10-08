@@ -466,7 +466,6 @@ export const WORKSPACE_PARTS = [
   // The two vitest configs from `CONFIG_BY_HALF`, which is where that naming is declared
   ...Object.values(CONFIG_BY_HALF), 'vite.config.ts', 'vite.config.js',
   'eslint.config.ts', 'postcss.config.cjs', 'tailwind.config.ts', 'tsdown.config.ts', 'env.d.ts',
-  'dev-build.mjs',
 ];
 const workspace = (pkg: string): string[] => WORKSPACE_PARTS.map((part) => `packages/${pkg}/${part}`);
 
@@ -623,13 +622,25 @@ export const PACK_OUTPUTS = ['packages/default-setup/dist', 'packages/default-se
  * `imports` map. Not `etc` or `tests`, which no build reads, and not `workspace('default-setup')`, which would
  * make a pack test edit cost an app build.
  *
- * **Hand-written, and not derived from `discoverBuiltInPacksForBuild`** as `FIXTURE_OUTPUTS` below is derived
+ * **Hand-written, and not derived from a scan of the packs** as `FIXTURE_OUTPUTS` below is derived
  * from the fixtures: `chain-inputs.spec.ts` derives its population from exactly that function, and a check
  * whose two sides come from one source cannot fail. The asymmetry is what makes a second built-in pack fail
  * that case rather than silently satisfy it.
  */
 const PACK_SOURCES = ['packages/default-setup/src', 'packages/default-setup/abuddy.json',
   'packages/default-setup/package.json'];
+
+/**
+ * What a step reads to derive something from the pack's sources, which `compile` and `facade:check` both do:
+ * those sources, the tsconfig the declaration bundler compiles them with, the committed facade report, and
+ * the `@abuddy/cli` bundle that does the deriving.
+ *
+ * Named once because the two lists are identical and nothing would notice them drifting apart — the failure
+ * `packages:ensure`' inputs are derived to avoid, a few hundred lines up. The two steps differ in what they
+ * *write*, not in what they read: `compile` declares `PACK_OUTPUTS`, and the check declares nothing.
+ */
+const PACK_DERIVED_READS = [...ROOT, ...PACK_SOURCES, 'packages/default-setup/tsconfig.json',
+  'packages/default-setup/etc', ...PACKAGE_BUILD_READS];
 
 /**
  * What building the fixture packs writes, derived from the fixtures themselves. These sit *inside*
@@ -1019,19 +1030,46 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     inputs: [...ROOT, ...PACKAGE_BUILD_OUTPUTS] },
   // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
   // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
-  { name: 'compile', timeout: 'suite', seconds: 13, outputs: PACK_OUTPUTS,
+  { name: 'compile', timeout: 'suite', seconds: 28, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `abuddy build` never reads those
     //
-    // This step runs `facade:check`, so how the report is normalised is part of what it accepts — edit that
-    // and a cached step would never re-run. The CLI's sources reach here through `PACKAGE_BUILD_OUTPUTS`,
-    // since an edit to them makes the `@abuddy/cli` build unit stale and `packages:ensure` rewrites the
-    // bundle this declares.
+    // The CLI's sources reach here through `PACKAGE_BUILD_OUTPUTS`, since an edit to them makes the
+    // `@abuddy/cli` build unit stale and `packages:ensure` rewrites the bundle this declares — and what the
+    // bundle does decides what this step writes.
     //
-    // `etc` is the committed facade report, which that check compares against — so a hand-edited report
-    // invalidates this step, the one case nothing else here can see. It is the `api:check` precedent above,
-    // and it was missing while the check was read as a step that only looked at what the build wrote
-    inputs: [...ROOT, ...PACK_SOURCES, 'packages/default-setup/tsconfig.json',
-      'packages/default-setup/etc', 'packages/default-setup/dev-build.mjs', ...PACKAGE_BUILD_READS] },
+    // `etc` is the committed facade report, which the build reads to warn when the bundle it has just
+    // produced has outgrown it. A read is a read, so a hand-edited report invalidates this step, even though
+    // what it buys here is a warning rather than a verdict — `facade:check` below is the step that fails
+    inputs: PACK_DERIVED_READS },
+  /**
+   * The committed facade report against the facade the pack's sources describe, re-bundled here rather than
+   * read from `dist` — the `api:check` shape, a derivation with no staleness record of its own.
+   *
+   * **Its own step rather than a `typecheck` leg, though `exports:check` and `schema:check` are and this is
+   * their shape.** Those two are the `--check` halves of generators and write nothing, which is the claim
+   * `typecheck-legs.ts` makes by running its legs at once — *"nothing here writes what another leg reads"*.
+   * This one runs `generateEntries`, which rewrites `src/__generated__` whenever anything under the pack's
+   * `src` has moved, and `typecheck:pack` compiles out of that tree. As a leg it would race it in exactly
+   * the state `npm run typecheck` is run in.
+   *
+   * **Here the write cannot be observed, and that is derived rather than hoped for.** Declaring
+   * `packages/default-setup/src` reads what `compile` writes (`PACK_OUTPUTS` holds `src/__generated__`), so
+   * `dependsOn` puts this after it; `compile` runs the same codegen, so the `.inputs-hash` matches by the
+   * time this runs and the regenerate is a no-op. One declaration gives both the edge and the quiet.
+   * Declaring that write instead does not work in either available shape: as an `outputs` it reverses the
+   * edge into a cycle, and as an `alsoWrites` it is a mutex against twelve steps.
+   *
+   * `PACKAGE_BUILD_READS` is the entry to keep: the report's normalisation is the CLI's
+   * (`build/facade-report.ts`, `build/declaration-text.ts`), so without it an edit there leaves this cached
+   * green over a report it would now word differently.
+   *
+   * **No `forceArgs`, though `generateEntries` keeps a cache of its own** (`.inputs-hash`) that `--all`
+   * cannot reach: a skip there cannot make this step a no-op, because the re-bundle and the comparison run
+   * either way. The same reasoning `test:external-pack:contract` carries below, and it has to be written
+   * down — that cache lives in `@abuddy/cli` rather than under `scripts/`, which is where `chain-table`'s
+   * stamp-reading derivation looks, so nothing would report its absence.
+   */
+  { name: 'facade:check', timeout: 'quick', seconds: 7, inputs: PACK_DERIVED_READS },
   // The fixture packs depend on default-setup, so they need its snapshot from compile
   //
   // The third place in this chain with a cache inside a cached step, and the one that is benign: `abuddy
@@ -1074,19 +1112,18 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // it declares as an input. It invalidated itself, and the five steps that read that tree, on every run:
   // measured, a warm chain cached 7 of 17 steps instead of 16. `npm run build` still builds everything, for
   // CI and `build/build.sh`; the chain does not need it to, because `compile` is a declared `need`.
-  // `PACK_SOURCES` because two of the four builds compile the pack itself, not only the entry `compile` wrote:
-  // the renderer's plugin and the api's tsup each trace a generated entry into the pack's `src`, and Tailwind
-  // reads every file under it for class names. Measured 2026-10-07, before this: a `.vue` edit under the pack
-  // left this step `cached` after `compile` ran, so the app the chain then tested never held the change —
-  // `PACK_OUTPUTS` carries the pack's `dist`, which has no frontend bundle for a built-in pack, and
-  // `src/__generated__`, whose only file that moves on such an edit is the dot-prefixed `.inputs-hash` that
-  // `inputFiles` skips. `chain-inputs.spec.ts` holds this declaration; `goal-one-kind-of-pack.md`'s Phase 3 is what
-  // removes the edge, and this comes back out with it
-  { name: 'build:app', timeout: 'suite', seconds: 39, outputs: APP_OUTPUTS,
+  // **No pack's `src` here, and that is a property of the build rather than an omission.** Nothing compiles a
+  // pack into the app any more: a pack's backend is loaded at run time from its own `dist/runtime/index.cjs`
+  // and its frontend fetched over `pack://`, so what this reads of a pack is `PACK_OUTPUTS` — its `dist`,
+  // which now holds both bundles. A pack source edit reaches this step through `compile`, which is a declared
+  // `need`. It declared `PACK_SOURCES` while the renderer's plugin and the api's tsup each traced a generated
+  // entry into the pack's `src`; `check:tiers` and the app build's own header are what keep that from coming
+  // back quietly
+  { name: 'build:app', timeout: 'suite', seconds: 13, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
       'packages/api/tsup.config.ts', ...APP_ENTRY,
-      ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS, ...PACK_SOURCES] },
-  { name: 'test:external-pack:app', timeout: 'scenario', seconds: 33,
+      ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
+  { name: 'test:external-pack:app', timeout: 'scenario', seconds: 18,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
     // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@abuddy/testing` resolves to its
@@ -1116,7 +1153,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // declared — so an unchanged stamp means the same app, and running it again asks a question already
   // answered. Uncached it put the warm chain back to 5.6s from 0.9s, which is most of what taking the
   // suite off the gate bought.
-  { name: 'test:smoke', timeout: 'suite', seconds: 9,
+  { name: 'test:smoke', timeout: 'suite', seconds: 16,
     outputs: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },

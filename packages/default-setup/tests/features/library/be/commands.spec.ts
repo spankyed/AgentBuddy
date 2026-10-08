@@ -13,7 +13,8 @@ import { repository } from '#generated/repository.ts'
 import { services } from '#generated/services.ts'
 import manifest from '../../../../abuddy.json'
 
-const DIST = path.resolve(import.meta.dirname, '../../../../dist')
+/** Where `abuddy build` writes this pack's compiled seeds */
+const DIST = path.resolve(import.meta.dirname, '../../../../dist', 'runtime', 'seeds')
 
 const commandNames = (event: unknown) => ((event as { commands: Array<{ name: string }> }).commands).map((command) => command.name)
 const commandDocuments = () => repository.libraryQueries.getDocuments().filter((document) => document.collectionPath?.join('/') === 'internal/commands')

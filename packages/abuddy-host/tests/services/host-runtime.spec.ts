@@ -25,8 +25,9 @@ vi.mock('../../src/migrations/index.ts', () => ({
 }));
 vi.mock('../../src/packs/runtime/seed.ts', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/packs/runtime/seed.ts')>(),
-  orchestrateDeclarativeSeed: (_manifest: unknown, packId: string) => { order.push(`boot seed (${packId})`); },
-  importPackSeeds: (packs: Array<{ manifest: { id: string } }>) => { order.push(`pack seeds (${packs.map((p) => p.manifest.id)})`); return []; },
+  // Sorted: which packs are in the one call is this file's claim, where their order among themselves is
+  // `packSeedOrder`'s and is held by the registry's own spec
+  seedPacks: (packs: Array<{ manifest: { id: string } }>) => { order.push(`pack seeds (${packs.map((p) => p.manifest.id).sort()})`); return []; },
 }));
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'host-runtime-'));
@@ -38,7 +39,7 @@ const newEngine = () => createEarsEngine({ isEntityType: () => false });
 
 /** An external pack the app loaded: where it came from, as the loader records it */
 const externalOrigin = (id: string, name: string) => ({
-  id, name, version: '1.0.0', dir: '/nowhere', builtIn: false,
+  id, name, version: '1.0.0', dir: '/nowhere', shipped: false,
   manifest: { id, name, version: '1.0.0' },
 });
 
@@ -81,8 +82,9 @@ describe('createHostRuntime', () => {
     // An external pack the app loaded, holding something open between its onInit and onShutdown
     const boot = { onInit: () => order.push(`onInit (${secretsStore.list().length} keys)`), onShutdown: () => order.push('onShutdown') };
     packs.registerPack({ id: 'reset-pack', boot }, externalOrigin('reset-pack', 'Reset'));
-    // A built-in pack with a boot seed
-    packs.registerPack({ id: 'seeded-pack', boot: { seedManifest: { seedKeys: ['notes'], compiledDir: '/nowhere' } } });
+    // A pack the app ships, with a seed policy — seeded by the same call as the installed one
+    packs.registerPack({ id: 'seeded-pack', boot: { seedManifest: { seedKeys: ['notes'], compiledDir: '/nowhere' } } },
+      { id: 'seeded-pack', name: 'Seeded', version: '1.0.0', dir: '/packs/seeded-pack', shipped: true } as never);
     packs.registerShutdownHook(boot.onShutdown, 'reset-pack');
     try {
       await runtime.services.appData.reset();
@@ -90,9 +92,11 @@ describe('createHostRuntime', () => {
       packs.unregisterPack('reset-pack');
       packs.unregisterPack('seeded-pack');
     }
+    // One seed call for every pack, after the migrations — where it was the shipped pack's boot seed and
+    // then the installed packs', which is why only the second half retried or saw a dependency seed
     expect(order).toEqual([
       'onShutdown', 'engine cleared', 'store reset', 'onInit (0 keys)',
-      'migrations', 'pack migrations (reset-pack)', 'boot seed (seeded-pack)', 'pack seeds (reset-pack)',
+      'migrations', 'pack migrations (reset-pack)', 'pack seeds (reset-pack,seeded-pack)',
     ]);
     expect(engine.query.getAttr(id, 'title')).toBeNull();
   });

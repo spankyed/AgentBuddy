@@ -10,6 +10,7 @@ import { builtinModules, createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { packageName } from '@abuddy/host/build/specifiers';
 import { runPackageBuild } from '@abuddy/host/build/packages-built';
+import { replaceDir } from '@abuddy/host/replace-dir';
 import { manifestPaths, type Manifest } from '@abuddy/host/build/published-manifest';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import ts from 'typescript';
@@ -102,6 +103,8 @@ const config = CONFIGS[pkg.name];
 if (!config) throw new Error(`No bundle config for ${pkg.name}`);
 
 const outDir = path.join(pkgDir, 'dist', 'package');
+/** Built here and renamed over `dist/package` at the end; `scripts/build-package.ts` says why */
+const stagedDir = path.join(pkgDir, '.temp', 'build');
 const workspaceManifest = (name: string) =>
   JSON.parse(fs.readFileSync(createRequire(path.join(repoRoot, 'package.json')).resolve(`${name}/package.json`), 'utf-8'));
 const sharedPkgs = SHARED_INSTANCE_PACKAGES.map(workspaceManifest);
@@ -178,18 +181,21 @@ function reachableDeclarations(outDir: string, manifest: Manifest): string[] {
 }
 
 async function main(): Promise<void> {
-  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.rmSync(stagedDir, { recursive: true, force: true });
+  fs.mkdirSync(stagedDir, { recursive: true });
+  // The swap renames onto `dist/package`, so its parent has to be there to rename into
+  fs.mkdirSync(path.dirname(outDir), { recursive: true });
 
   const sharedExternal = config.sharedExternalEntries && await build({
     ...sharedOptions,
     entryPoints: Object.fromEntries(Object.entries(config.sharedExternalEntries).map(([name, src]) => [name, path.join(pkgDir, src)])),
-    outdir: path.join(outDir, 'dist'),
+    outdir: path.join(stagedDir, 'dist'),
     plugins: [externalizeAllButHost],
   });
 
   const result = await build({
     entryPoints: Object.fromEntries(Object.entries(config.entries).map(([name, src]) => [name, path.join(pkgDir, src)])),
-    outdir: path.join(outDir, 'dist'),
+    outdir: path.join(stagedDir, 'dist'),
     bundle: true,
     splitting: true,
     format: 'esm',
@@ -234,7 +240,7 @@ async function main(): Promise<void> {
 
   for (const file of config.copy ?? []) {
     const from = path.join(pkgDir, file);
-    const dest = path.join(outDir, file);
+    const dest = path.join(stagedDir, file);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     // A directory as well as a file, since the CLI ships its scaffold templates as a tree. `copyFileSync`
     // throws EISDIR on one, which is how this was found rather than shipped empty.
@@ -246,7 +252,7 @@ async function main(): Promise<void> {
     const tsc = createRequire(import.meta.url).resolve('typescript/bin/tsc');
     const entryFiles = [...Object.values(config.entries), ...Object.values(config.sharedExternalEntries ?? {})].map((src) => path.join(pkgDir, src));
     execFileSync(process.execPath, [
-      tsc, ...entryFiles, '--declaration', '--emitDeclarationOnly', '--outDir', path.join(outDir, 'dist'),
+      tsc, ...entryFiles, '--declaration', '--emitDeclarationOnly', '--outDir', path.join(stagedDir, 'dist'),
       '--module', 'esnext', '--moduleResolution', 'bundler', '--customConditions', '@abuddy/source', '--allowImportingTsExtensions', '--target', 'es2022',
       '--strict', '--esModuleInterop', '--skipLibCheck', '--types', 'node',
     ], { stdio: 'inherit' });
@@ -266,8 +272,8 @@ async function main(): Promise<void> {
     peerDependenciesMeta: pkg.peerDependenciesMeta,
     publishConfig: { access: 'public', provenance: true },
   };
-  fs.writeFileSync(path.join(outDir, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
-  assertPublishedPathsExist(config, pkgDir, outDir, pkg.name);
+  fs.writeFileSync(path.join(stagedDir, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
+  assertPublishedPathsExist(config, pkgDir, stagedDir, pkg.name);
 
   // The declarations must name only packages a consumer installs. `tsc --emitDeclarationOnly` copies a bare
   // specifier through untouched where esbuild would have inlined the same import — so a type taken from
@@ -281,13 +287,15 @@ async function main(): Promise<void> {
     // and tsc writes a declaration per module it compiled, so walking everything reports a module a consumer
     // cannot name — `checkout-freshness.d.ts` takes a host type in an options bag only this package's own
     // spec passes, and no entry's declaration mentions it.
-    const bareImports = new BareImports(outDir);
-    for (const file of reachableDeclarations(outDir, manifest as Manifest)) {
+    const bareImports = new BareImports(stagedDir);
+    for (const file of reachableDeclarations(stagedDir, manifest as Manifest)) {
       bareImports.fromDeclaration(fs.readFileSync(file, 'utf-8'), file);
     }
     bareImports.assertDeclared(manifest as Parameters<BareImports['assertDeclared']>[0],
       path.join(path.relative(repoRoot, pkgDir), 'package.json'));
   }
+  // Every check above has passed against the staged tree, so this is the moment it becomes the built one
+  replaceDir(stagedDir, outDir);
   console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`);
 }
 

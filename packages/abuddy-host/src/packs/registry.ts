@@ -8,18 +8,19 @@
 
 import * as fs from 'node:fs';
 import type { AnyStateMachine } from 'xstate';
-import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem, PackSeedManifest } from '@abuddy/sdk/framework';
+import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem } from '@abuddy/sdk/framework';
 import type { PackManifest } from '@abuddy/sdk/build';
 import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { HostServices } from '@abuddy/sdk/services';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
-import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
+import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
 import { HOST_SYSTEM_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 import { HOST_PACK_ID, resolveName, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
-import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
+import { registerRepository, unregisterRepository } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { discoverPacks, packSeedOrder } from './discovery.ts';
+import type { PackSeedTarget } from './runtime/seed.ts';
 import { addContributions, createDefinitionStore, createDesignationStore, createStepStore, definitions, type Contribution, type UndoLog } from './extensions.ts';
 import { createCommandStore, createHelpStore, createSeedHookStore, createSeederStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
@@ -50,9 +51,9 @@ function systemsOf(reg: PackRegistration): Array<{ ref: FeatureRef; system: Pack
   return featuresOf(reg).flatMap(({ ref, feature }) => (feature.system ? [{ ref, system: feature.system }] : []));
 }
 
-/** The refs of the systems the bus runs for a registration (all but the early ones), before or after it registers */
+/** The refs of the systems the bus runs for a registration, before or after it registers */
 export function packSystemIds(reg: PackRegistration): FeatureRef[] {
-  return systemsOf(reg).filter(({ system }) => !system.early).map(({ ref }) => ref);
+  return systemsOf(reg).map(({ ref }) => ref);
 }
 
 /** Role → the ref of the feature playing it: its system and its plugin share it */
@@ -96,9 +97,14 @@ export interface PackInfo extends PackExtensions {
   name: string;
   version: string;
   enabled: boolean;
-  builtIn: boolean;
+  /**
+   * Whether the app offers to uninstall it. False for whatever this app ships, which it needs to run — the
+   * Packs view hides the button rather than refusing the click. A pack property, so making a shipped pack
+   * uninstallable is one decision in one place.
+   */
+  canUninstall: boolean;
   entityCount: number;
-  /** Whether the pack has frontend code: an external pack's runtime/fe.js, a built-in pack's plugins */
+  /** Whether the pack has frontend code: its `runtime/fe.js` */
   hasFrontend: boolean;
   hostVersion?: string;
   description?: string;
@@ -130,10 +136,18 @@ export interface PackOrigin {
   id: string;
   name: string;
   version: string;
-  /** Where the pack's files are: `packs/<id>` for an external pack, `host-packs/<id>` for a built-in one */
+  /** Where the pack's files are: `packs/<id>`, for every pack */
   dir: string;
-  builtIn: boolean;
-  /** An external pack's `abuddy.json`, which its loader read to find the pack at all */
+  /**
+   * Whether this app shipped this pack's copy — the one thing left of "built-in", and a fact about where
+   * the installed copy came from rather than about the pack. Two things read it, both genuinely about
+   * shipping: a pack released with the app has migrations targeting *app* versions (`runAppMigrations`),
+   * and the app will not offer to uninstall what it needs to run (`PackInfo.canUninstall`).
+   *
+   * `manifest.builtIn` decides none of this, and nothing else decides anything by it.
+   */
+  shipped: boolean;
+  /** The pack's `abuddy.json`, which its loader read to find the pack at all */
   manifest?: PackManifest;
 }
 
@@ -164,8 +178,6 @@ export interface PackRegistry extends PackRegistryView {
   clearLoadProblem(packId: string): void;
   /** Host systems and every registered pack's that the bus runs, by id: all but the early ones */
   getRegisteredSystems(): Map<string, AnyStateMachine>;
-  /** The registered packs' early systems (`system.early`), which the app starts before hydration and outside the bus */
-  getEarlySystems(): Array<{ id: FeatureRef; machine: AnyStateMachine }>;
   /** The refs of a registered pack's systems, `<packId>/<featureId>` */
   getRegisteredPackSystemIds(packId: string): string[];
   /**
@@ -188,31 +200,43 @@ export interface PackRegistry extends PackRegistryView {
    * is opened with, and each call reads the policy of the packs registered then (cached until a pack
    * registers or unregisters).
    */
-  readonly partitionPolicy: PartitionPolicy;
   getBootHooks(): PackBootHooks[];
   /** A registered pack's registration, as it was registered */
   getPackRegistration(packId: string): PackRegistration | null;
   /** Where a registered pack came from, or `null` for one registered without an origin (a test's) */
   packOrigin(packId: string): PackOrigin | null;
-  /** The built-in packs this app loaded, in registration order */
-  builtInPacks(): PackOrigin[];
-  /** The external packs this app loaded, in registration order */
-  externalPacks(): PackOrigin[];
+  /** The packs whose installed copy this app shipped, in registration order */
+  shippedPacks(): PackOrigin[];
+  /** The packs this app loaded, in registration order */
+  loadedPacks(): PackOrigin[];
   /**
-   * Each registered external pack as the runtime's per-pack helpers take it: where it came from, plus the
-   * migrations it registered. One place joins the two halves, so no caller holds its own list of packs.
-   * With `packIds`, only those — activation and reload migrate and seed the one pack they handled.
+   * The packs `runPackMigrations` runs, as it takes them: each one's manifest and the migrations it
+   * registered. With `packIds`, only those — activation and reload migrate the one pack they handled.
    *
-   * In dependency order (`packSeedOrder`), so a pack's migrations and seeds run after those of the packs
-   * it depends on: its seeds may reference what they seeded. Registration order, which decides who wins a
-   * designation or a plugin id, is a different order and is not this.
+   * **A pack this app ships is never in here**, and that is the whole reason this is not `loadedPacks()`
+   * joined with its registrations at the call site. A shipped pack's migrations target *app* versions and
+   * `runAppMigrations` runs them against `AppState.version`; running them again here, against the pack's
+   * own version, would run each one twice and record a second version for the same pack. Excluding them
+   * where the list is built rather than at each of the four callers is what keeps that true for the fifth.
+   *
+   * **The contrast with `packSeedTargets` is deliberate**: seeds are one path for every pack, because what
+   * a seed is keyed on is its own compiled data. Migrations are two, because what a migration is keyed on
+   * is a version, and a shipped pack's version is the app's.
+   *
+   * In dependency order (`packSeedOrder`), so a pack's migrations run after those of the packs it depends
+   * on. Registration order, which decides who wins a designation or a plugin id, is a different order and
+   * is not this.
    */
-  externalPackTargets(packIds?: Iterable<string>): Array<{ manifest: PackManifest; dir: string; migrations?: PackMigration[] }>;
+  packMigrationTargets(packIds?: Iterable<string>): Array<{ manifest: PackManifest; migrations?: PackMigration[] }>;
   /**
-   * Seeds each registered pack's declarative boot seed (`boot.seedManifest`, built-in packs only: the
-   * loader strips it from external packs, which seed through `importPackSeeds`)
+   * Every registered pack as `seedPacks` takes it, in dependency order: where its seeds are, what it
+   * depends on, and the `seedPolicy` its registration declares. With `packIds`, only those — activation and
+   * reload seed the one pack they handled.
+   *
+   * A pack the app ships is in here beside an installed one: one seed path, one freshness record, one
+   * policy mechanism.
    */
-  runRegisteredBootSeeds(orchestrateSeed: (manifest: PackSeedManifest, packId: string) => void): void;
+  packSeedTargets(packIds?: Iterable<string>): PackSeedTarget[];
   getPackExtensions(packId: string): PackExtensions | null;
   /** Registers a hook run when the pack `key` stops, or, without a key, when the app exits */
   registerShutdownHook(hook: () => void, key?: string): void;
@@ -222,14 +246,6 @@ export interface PackRegistry extends PackRegistryView {
   runShutdownHooksForKey(key: string): void;
   /** Removes a pack's shutdown hooks without running them */
   removeShutdownHooksForKey(key: string): void;
-}
-
-/**
- * The app's partition policy for the entity types packs exclude (`ears.partitionPolicy.excludedEntityTypes`, the
- * built-in packs'): those and the SDK's volatile types live in the volatile partition
- */
-export function appPartitionPolicy(packExcluded: Iterable<string>): PartitionPolicy {
-  return makePolicy({ excludedEntityTypes: new Set([...SDK_EXCLUDED_ENTITY_TYPES, ...packExcluded]) });
 }
 
 /** A new, empty registry */
@@ -327,10 +343,10 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
    * reports a dependency cycle: computing it per call had activating or reloading any pack re-logging a
    * cycle between two others.
    */
-  const orderedExternalPacks = derived((): PackOrigin[] =>
+  const orderedPacks = derived((): PackOrigin[] =>
     packSeedOrder(
       [...origins.values()]
-        .filter((o) => !o.builtIn && o.manifest)
+        .filter((o) => o.manifest)
         // The dependencies are the manifest's, not the origin's own: spreading the origin would leave every
         // pack looking dependency-free, and `dependencies` being optional means nothing would say so
         .map((o) => ({ id: o.id, dependencies: o.manifest!.dependencies, origin: o })),
@@ -489,14 +505,6 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     return map;
   }
 
-  function getRegisteredEARSPolicy(): { excludedEntityTypes: string[] } {
-    const excluded: string[] = [...SDK_EXCLUDED_ENTITY_TYPES];
-    for (const reg of registrations.values()) {
-      if (reg.ears?.partitionPolicy?.excludedEntityTypes) excluded.push(...reg.ears.partitionPolicy.excludedEntityTypes);
-    }
-    return { excludedEntityTypes: excluded };
-  }
-
   /** The refs of the registered features that can have settings: those declaring defaults, and those with a plugin */
   const registeredSettingsRefs = derived(() =>
     [...registrations.values()].flatMap((reg) => featuresOf(reg).filter(({ feature }) => feature.settings || feature.plugin).map(({ ref }) => ref)));
@@ -513,7 +521,6 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
   );
   /** Every installed feature that can have settings: a registered pack's, and one in the packs dir that isn't running */
   const featuresWithSettings = (): readonly FeatureRef[] => [...new Set([...registeredSettingsRefs(), ...installedSettingsRefs()])];
-  const policy = derived((): PartitionPolicy => appPartitionPolicy(getRegisteredEARSPolicy().excludedEntityTypes));
   const eventValidationMap = derived(buildEventValidationMap);
   const pluginEventValidationMap = derived(buildPluginEventValidationMap);
   const entityTypes = derived((): ReadonlySet<string> => new Set<string>([
@@ -552,23 +559,20 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     getRegisteredSystems() {
       const systems = new Map<string, AnyStateMachine>();
       for (const reg of registrations.values()) {
-        for (const { ref, system } of systemsOf(reg)) if (!system.early) systems.set(ref, system.machine);
+        for (const { ref, system } of systemsOf(reg)) systems.set(ref, system.machine);
       }
       return systems;
     },
 
-    getEarlySystems: () => [...registrations.values()].flatMap((reg) =>
-      systemsOf(reg).flatMap(({ ref, system }) => (system.early ? [{ id: ref, machine: system.machine }] : []))),
-
     getRegisteredPackSystemIds,
     packOrigin: (packId) => origins.get(packId) ?? null,
-    builtInPacks: () => [...origins.values()].filter((o) => o.builtIn),
-    externalPacks: () => [...origins.values()].filter((o) => !o.builtIn),
-    externalPackTargets: (packIds) => {
+    shippedPacks: () => [...origins.values()].filter((o) => o.shipped),
+    loadedPacks: () => [...origins.values()],
+    packMigrationTargets: (packIds) => {
       const wanted = packIds && new Set(packIds);
-      return orderedExternalPacks()
-        .filter((o) => !wanted || wanted.has(o.id))
-        .map((o) => ({ manifest: o.manifest!, dir: o.dir, migrations: registrations.get(o.id)?.migrations }));
+      return orderedPacks()
+        .filter((o) => !o.shipped && (!wanted || wanted.has(o.id)))
+        .map((o) => ({ manifest: o.manifest!, migrations: registrations.get(o.id)?.migrations }));
     },
 
     // Both maps are keyed by the registered features' refs, the host's included
@@ -591,19 +595,23 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     getRegisteredEntityTypes: entityTypes,
     getRegisteredServices: services,
 
-    partitionPolicy: {
-      routeEntity: (...args) => policy().routeEntity(...args),
-      routeRelation: (...args) => policy().routeRelation(...args),
-      get hydrate() { return policy().hydrate; },
-    },
-
     getBootHooks: () => [...registrations.values()].flatMap((reg) => (reg.boot ? [reg.boot] : [])),
     getPackRegistration: (packId) => registrations.get(packId) ?? null,
 
-    runRegisteredBootSeeds(orchestrateSeed) {
-      for (const reg of registrations.values()) {
-        if (reg.boot?.seedManifest) orchestrateSeed(reg.boot.seedManifest, reg.id);
-      }
+    packSeedTargets(packIds) {
+      const wanted = packIds && new Set(packIds);
+      // Dependency order over every pack. A pack the app ships declares no dependencies — it is what others
+      // depend on — so it sorts ahead of them, which is the order the two separate paths used to produce by
+      // running one after the other
+      const ordered = packSeedOrder([...origins.values()]
+        .filter((origin) => !wanted || wanted.has(origin.id))
+        .map((origin) => ({ id: origin.id, dependencies: origin.manifest?.dependencies, origin })));
+      return ordered.map(({ origin }) => ({
+        manifest: { id: origin.id, dependencies: origin.manifest?.dependencies },
+        dir: origin.dir,
+        ...(registrations.get(origin.id)?.boot?.seedManifest?.seedPolicy
+          && { seedPolicy: registrations.get(origin.id)!.boot!.seedManifest!.seedPolicy }),
+      }));
     },
 
     getPackExtensions(packId) {

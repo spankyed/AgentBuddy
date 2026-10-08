@@ -1,20 +1,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@abuddy/sdk/logger';
-import { resolveAppContext } from '@abuddy/sdk/env';
+import { resolveAppContext, getAppVersion } from '@abuddy/sdk/env';
 import { packSystemIds, type PackRegistry } from '../registry.ts';
-import { publishHostPackOutput } from '../layout.ts';
+import { installShippedPacks } from '../installer.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import type { PackManifest } from '../discovery.ts';
-import {
-  loadSingleExternalPack,
-  clearPackRequireCache,
-  registerExternalPacks,
-  builtInRuntimeEntry,
-  loadBuiltInRuntime,
-  refreshBuiltInPackInfo,
-} from './loader.ts';
+import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
-import { orchestrateDeclarativeSeed, importPackSeeds } from './seed.ts';
+import { seedPacks } from './seed.ts';
 
 const logger = createLogger('pack-reload');
 
@@ -87,13 +81,40 @@ async function reloadPack(
   logger.info(`Pack reloaded: ${packId} (${fresh.newSystemIds.length} systems)`);
 }
 
-export async function reloadExternalPack(
+/**
+ * Reloads a pack after a rebuild: its built runtime is re-required from its own directory, its systems are
+ * stopped and respawned, and its data is brought up to date.
+ *
+ * **The caller says which pack, never what kind of pack it is.** The registry already knows which directory
+ * the pack was loaded from, and a caller that could claim otherwise could ask for a reload of a pack the app
+ * does not have in the place it says.
+ */
+export async function reloadPackById(
   registry: PackRegistry,
   packId: string,
   backendActor: import('xstate').AnyActorRef,
 ): Promise<void> {
   const { packsDir } = resolveAppContext();
   const packDir = path.join(packsDir, packId);
+
+  // A pack the app ships is rebuilt in the checkout and loaded from `packsDir`, so the rebuild reaches the
+  // app only once the installed copy carries it. `installShippedPacks` is the same comparison the boot
+  // makes and writes nothing when the two agree, so asking here costs a pack's worth of hashing on a
+  // reload that changed nothing — and a reload of any other pack matches no shipped id and does nothing.
+  // Without it `abuddy build --watch` rebuilds and the app re-requires the copy from before the edit.
+  const shippedDir = process.env.SHIPPED_PACKS_DIR;
+  if (shippedDir) {
+    for (const result of await installShippedPacks(shippedDir, packsDir, {
+      only: packId,
+      hostVersion: getAppVersion(),
+      packFormat: PACK_SNAPSHOT_FORMAT,
+    })) {
+      // The author's edit is the point of the reload, so a refresh that failed is the answer rather than a
+      // note beside a reload of the previous build
+      if (result.outcome === 'failed') throw new Error(`Could not refresh the installed copy of ${packId}, which this app ships: ${result.error}`);
+      if (result.outcome !== 'current') logger.info(`Refreshed the installed copy of ${packId} from ${shippedDir}`);
+    }
+  }
 
   if (!fs.existsSync(packDir)) {
     throw new Error(`Pack directory not found: ${packDir}`);
@@ -122,56 +143,9 @@ export async function reloadExternalPack(
       onShutdown: pack.registration.boot?.onShutdown,
       onInit: pack.registration.boot?.onInit,
       afterRegister: () => {
-        const targets = registry.externalPackTargets([packId]);
-        runPackMigrations(targets);
-        importPackSeeds(targets);
+        runPackMigrations(registry.packMigrationTargets([packId]));
+        seedPacks(registry.packSeedTargets([packId]));
       },
     };
   }, packDir);
-}
-
-export async function reloadBuiltInPack(
-  registry: PackRegistry,
-  packId: string,
-  backendActor: import('xstate').AnyActorRef,
-): Promise<void> {
-  const packInfo = registry.packOrigin(packId);
-  if (!packInfo?.builtIn) throw new Error(`Built-in pack not found: ${packId}`);
-
-  const runtimeEntry = builtInRuntimeEntry(packInfo.dir);
-  if (!fs.existsSync(runtimeEntry)) {
-    throw new Error(`Built runtime not found: ${runtimeEntry}`);
-  }
-
-  await reloadPack(registry, packId, backendActor, () => {
-    const registration = loadBuiltInRuntime(packInfo.dir);
-    if (!registration) throw new Error(`Built runtime for ${packId} has no registration export`);
-
-    return {
-      // The origin survives the reload: the pack is in the same place, and a re-register that dropped it
-      // would leave the next reload unable to find the pack it just reloaded
-      register: () => registry.registerPack(registration, packInfo),
-      newSystemIds: packSystemIds(registration),
-      onShutdown: registration.boot?.onShutdown,
-      onInit: registration.boot?.onInit,
-      afterRegister: () => {
-        refreshBuiltInPackInfo(registry, packId);
-        // A rebuild can carry new compiled seeds; the boot seed is hash-checked, so unchanged data isn't re-imported.
-        // A rebuild running again mid-reload can take those files out from under it, so it doesn't stop the rest.
-        const seedManifest = registry.getPackRegistration(packId)?.boot?.seedManifest;
-        try {
-          if (seedManifest) orchestrateDeclarativeSeed(seedManifest, packId);
-        } catch (err) {
-          logger.error(`Could not seed ${packId}'s compiled data on reload:`, err as Error);
-        }
-        // Pack authors resolve this pack's types, build code and seeds from the app's copy
-        const { hostPacksDir } = resolveAppContext();
-        try {
-          publishHostPackOutput(packInfo.dir, path.join(hostPacksDir, packId));
-        } catch (err) {
-          logger.warn(`Could not publish build output for ${packId}:`, err as Error);
-        }
-      },
-    };
-  }, path.join(packInfo.dir, 'dist'));
 }

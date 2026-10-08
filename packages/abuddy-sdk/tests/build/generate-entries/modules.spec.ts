@@ -332,11 +332,11 @@ describe('the snapshot format', () => {
   const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
     $manifestVersion: true, $schema: true, artifacts: true, blocks: true, boot: true, builtIn: true, commands: true,
     dependencies: true, description: true, dsl: true, entities: true, entityShapes: true, help: true, fe: true, features: true,
-    hostVersion: true, id: true, license: true, migrations: true, name: true, packServices: true, partitionPolicy: true,
+    hostVersion: true, id: true, license: true, migrations: true, name: true, packServices: true,
     permissions: true, relKinds: true, seedFormats: true, seedHooks: true, settingsSections: true, steps: true, version: true,
   };
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
-    designation: true, earlySystem: true, id: true, plugin: true, references: true, repositories: true, services: true,
+    designation: true, id: true, plugin: true, references: true, repositories: true, services: true,
     settings: true, system: true, typesEntry: true,
   };
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
@@ -356,7 +356,7 @@ describe('the snapshot format', () => {
   const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
     designation: true, system: true, plugin: true, services: true, settings: true,
   };
-  const REGISTRATION_SYSTEM_FIELDS: Record<keyof PackFeatureSystem, true> = { early: true, machine: true, receives: true };
+  const REGISTRATION_SYSTEM_FIELDS: Record<keyof PackFeatureSystem, true> = { machine: true, receives: true };
   const REGISTRATION_PLUGIN_FIELDS: Record<keyof PackFeaturePlugin, true> = { receives: true };
 
   /** Every name generated code imports from a dependency's facade, with a send to one of its plugins */
@@ -396,9 +396,9 @@ describe('the snapshot format', () => {
         fields: [
           '$manifestVersion', '$schema', 'artifacts', 'blocks', 'boot', 'builtIn', 'commands', 'dependencies', 'description', 'dsl',
           'entities', 'entityShapes', 'fe', 'features', 'help', 'hostVersion', 'id', 'license', 'migrations', 'name', 'packServices',
-          'partitionPolicy', 'permissions', 'relKinds', 'seedFormats', 'seedHooks', 'settingsSections', 'steps', 'version',
+          'permissions', 'relKinds', 'seedFormats', 'seedHooks', 'settingsSections', 'steps', 'version',
         ],
-        feature: ['designation', 'earlySystem', 'id', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
+        feature: ['designation', 'id', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
         plugin: ['contract', 'default', 'entry'],
@@ -409,7 +409,7 @@ describe('the snapshot format', () => {
       registration: {
         fields: ['artifacts', 'blocks', 'boot', 'commands', 'ears', 'features', 'help', 'id', 'migrations', 'repositories', 'seedHooks', 'seeders', 'services', 'settingsSections', 'steps'],
         feature: ['designation', 'plugin', 'services', 'settings', 'system'],
-        system: ['early', 'machine', 'receives'],
+        system: ['machine', 'receives'],
         plugin: ['receives'],
       },
       provenanceKinds: ['commands', 'entities', 'plugins', 'relKinds'],

@@ -439,6 +439,46 @@ export function idleNow(): number {
   return idleFrom(before, cpuTimes(os.cpus()));
 }
 
+/**
+ * How long to watch the box after a run before judging it, in whole samples of `SAMPLE_MS`.
+ *
+ * Long enough that a process tree still exiting has gone, short enough to be noise on a run that takes
+ * minutes. Measured 2026-10-08: after an Electron suite this box is back at its baseline within the first
+ * second, so this is mostly headroom for a chain run's wider tail.
+ */
+export const WATCH_SAMPLES = 20;
+
+/**
+ * The quietest reading in a series — how quiet this box got while it was watched.
+ *
+ * **The maximum, because work only ever pushes a reading down.** Each sample is one 250ms window, and
+ * anything running during that window lowers it, so the readings scatter *below* the box's true ceiling and
+ * never above it: measured on an idle box, twenty samples ran 83-96% around a 91% mean. That makes the mean
+ * and the median estimates of the jitter and the max the estimate of the ceiling, which is the quantity the
+ * floor is about — could this box have been quiet. A stranger holding two cores caps every sample, so the
+ * max stays low and the refusal stands; jitter cannot manufacture a high one.
+ *
+ * **What this replaces is a single reading at one instant**, which is the shape the gate had. That reading
+ * is taken as a long run's residue peaks, so it answered "what was this box doing in one 250ms window while
+ * my own children exited" — 78% on a box whose baseline was 91%, refusing four `--record` runs on
+ * 2026-10-08. Two richer rules over the same samples were built and thrown away first, and both failed for
+ * the same reason: a plateau in adjacent readings cannot be detected under jitter of ±6 points, whether the
+ * rule compares a pair or a window of them.
+ */
+export const quietestOf = (readings: readonly number[]): number => Math.max(...readings);
+
+/**
+ * How quiet this box got in the moments after a run — the reading to judge that run's cleanliness by.
+ *
+ * Takes `WATCH_SAMPLES` readings and hands back the quietest, so the caller waits a fixed, small time and
+ * compares one number against its floor.
+ */
+export function idleAfterRun(samples = WATCH_SAMPLES): { idle: number; waitedMs: number } {
+  const started = Date.now();
+  const readings = Array.from({ length: samples }, () => idleNow());
+  return { idle: quietestOf(readings), waitedMs: Date.now() - started };
+}
+
 /** This instant's cumulative CPU counters — the open bracket of a `coresBusySince` window. */
 export const cpuNow = (): CpuTimes => cpuTimes(os.cpus());
 

@@ -1,8 +1,10 @@
-# Share the host's modules with an import map, not a global and a generated proxy
+# Share the host's modules through resolution, not through a side channel
 
 Compiled 2026-10-07 on `AS/one-action-cache`, after fixing `abuddy run`'s frontend loop
-(`fe-bundler.ts`'s `compiledSource`) and finding that every sharp edge in that area has one parent. Every
-location, count and measurement below was checked against the tree on that date.
+(`fe-bundler.ts`'s `compiledSource`) and finding that every sharp edge in that area has one parent. Rewritten
+2026-10-08, after `goal-one-kind-of-pack` hit the same defect on the backend **and fixed it** — see **The
+backend already did this**, which is now the precedent this plan argues from rather than a second half it
+has to carry. Every location, count and measurement was checked against the tree on the date beside it.
 
 ## Context
 
@@ -61,6 +63,13 @@ The usual objection to import maps is browser support. It does not apply here:
 
 And it gains correct ESM semantics: live bindings, and a link-time error naming a missing export.
 
+**It is also worth 1.59s of every pack build.** Measured 2026-10-08 by instrumenting
+`discoverSharedExports` over `abuddy build` for default-setup: **48 specifiers, 1586ms** — modules compiled
+for no output but a list of names, which is 14% of that build's 11.3s frontend bundle and 7% of its 22.5s
+total. Not the reason to do this, and not the `compile` step's 13s → 31s growth either, which is the frontend
+bundle existing at all now. But a correctness argument that also returns a second and a half is worth
+stating with the number.
+
 ## The design
 
 **One route shape, generated from the lists that already exist** (`getSharedFeDeps`, `getSdkFeModules`,
@@ -92,6 +101,98 @@ a name list and is available where it is needed: the host's build is always a bu
 There is precedent for the shape: `@abuddy/ui`'s own public entries are already generated shims that read
 `export { default } from './x.vue'; export * from './x.vue';` (`exports:update`).
 
+## The backend already did this
+
+`goal-one-kind-of-pack` hit the same mistake in Node and corrected it, which makes the backend the worked
+example rather than a second problem. Its bug:
+
+> A lazy require outlived its resolution. esbuild defers a module body into an `__init`, so the action step
+> required `@abuddy/sdk/logger` when a step first ran — long after the scoped patch was gone, and the require
+> cache cannot help because Node resolves first.
+
+**The fix was to stop scoping the resolution.** `keepHostModulesResolvable` (`packs/module-bridge.ts:104`)
+patches `Module._resolveFilename` once for the process, behind a `hostModulesKept` guard, and
+`withHostResolution` (`packs/runtime/bridge.ts:69`) now says so: *"The resolution outlives the call, because
+a pack's require does too … What is scoped to `fn` is the refusals, which are diagnostics about the pack
+being loaded."* Its companion bug — `vue` and `@vscode/ripgrep` as externals nothing provided — was closed
+the same way, by `HOST_PROVIDED_PACKAGES` and a build-time subset check holding the loader's list against
+the externals a pack is built with (`abuddy-cli/tests/build/pack-externals.spec.ts`).
+
+So the two sides are no longer symmetric, and that is the argument:
+
+| | how the host's instance is shared | lifetime |
+|---|---|---|
+| backend | a resolver, installed once for the process | as long as the process |
+| frontend | a global object, read at module-evaluation time | the moment the proxy evaluates |
+
+The backend went from a side channel with a lifetime to resolution that persists. **The frontend is the side
+that still has one**, and its lifetime problem shows up as the thing this plan opens with: names must be
+enumerated because they are copied off an object, and `export const x = __m.x` snapshots where ESM binds.
+
+The analogy is close enough to be useful and worth stating where it stops. Both answers are "let resolution
+do it" — but Node's is a monkey-patch of `Module._resolveFilename`, where the browser's is a standard the
+platform implements. The frontend gets the better of the two mechanisms for free.
+
+**One asymmetry still worth closing, and it is small:** the backend now checks at build time that every
+external its bundle emits is provided (`pack-externals.spec.ts`). The frontend has no equivalent — it warns
+at *runtime* instead (`generateGlobalProxy`'s `warnMissing`), which is why `DEBUG_E2E=1 npm test -- smoke`
+could pass its four cases while the app logged `Cannot find module '@abuddy/sdk/logger'` for every action
+step. Under an import map the same question becomes "does the map name every specifier the pack imports",
+answerable at build time from two declarations — which is the case listed under *Verification*.
+
+## Security
+
+**There is no runtime boundary today, and this does not remove one.** `window.__abuddy`
+(`renderer/vite.config.ts:85`) is a plain enumerable global: any code in the renderer, a pack's frontend
+included, can read it and ignore the proxies. The proxies are module resolution, not containment. What
+actually holds the line is **build time** — `check:specifiers` for this repo's packs and `abuddy build` for
+external ones, refusing `@abuddy/host`, `_`-prefixed internals and `APP_ONLY_EXPORTS`
+(`@abuddy/ears/lmdb`, *"the app's LMDB store"*).
+
+An import map leaves that boundary where it was: the pack's source still names the specifier, so the same
+build-time checks see the same thing. In one respect it is tighter — a bare specifier absent from the map
+does not resolve at all, where today the global is open to whatever the host put on it.
+
+### The shim route is an allow-list, and that is a requirement
+
+**`/@host/<specifier>` must serve only the specifiers the map contains, and 404 everything else.** A route
+that builds a shim from whatever specifier was requested is an arbitrary-module re-export endpoint: a pack
+could ask for `/@host/@abuddy/host/secrets` or `/@host/@abuddy/ears/lmdb` at runtime and be handed a module
+the build-time rules exist to forbid. Those rules never run at runtime, so nothing else would stop it.
+
+Two things bound the exposure, and they are the reason this is a requirement rather than a reason not to
+proceed:
+
+- **Production has no such route.** The shims are emitted at build time from a fixed list, so the on-demand
+  case is dev-only — which means `abuddy run` and `npm start`.
+- **The modules worth protecting are not in the renderer.** `secretsStore`, the LMDB store and the
+  migrations run in the API process; a shim re-exporting them into a browser context would mostly fail to
+  resolve. The renderer's sensitive surface is the preload bridge and the API token, and any renderer code
+  reaches those today either way.
+
+**It needs a firing case**, because its subject is input: ask the route for a host-only specifier — one from
+`APP_ONLY_EXPORTS` and one under `@abuddy/host` — and assert it is refused rather than served. A gate with
+no case is a gate nothing has watched fail, and this one is the only runtime check in the design.
+
+### Three smaller points
+
+- **Do not serve the shims from a CORS-open server.** `abuddy run`'s pack dev server sets `cors: true`
+  (`run.ts`). The host's shims belong to the renderer's dev server, not that one, and should not inherit it
+   — otherwise any page in a browser can fetch the host's modules. Not an escalation, since it is shipped
+  code, but no reason to widen the surface.
+- **A future CSP gets slightly harder.** There is no CSP in the renderer today; an inline
+  `<script type="importmap">` would need a nonce or a hash once there is one. Worth knowing before someone
+  adds a CSP and finds the map blocked.
+- **One door opens:** an import map can carry `integrity` for its targets, so shared modules could be
+  subresource-integrity checked. A global has no equivalent. Not a reason to migrate, but it is a capability
+  this design has and the current one cannot.
+
+### What this is still not
+
+Containment. If packs should be *restricted at runtime* rather than *checked at build time*, neither design
+does that, and the renderer is the wrong place to attempt it — that is process isolation or a sandboxed
+frame, and a far larger piece of work than this plan.
+
 ## Steps
 
 ### 0. The spike, before anything else
@@ -103,7 +204,9 @@ import map, and externalise that specifier in `packExternalsPlugin` instead of p
 1. the pack's import resolves to the host's module;
 2. the binding is **live** — reassign a host export and the pack sees it;
 3. it works under `file://`, which is how production loads the renderer
-   (`WindowManager.ts:481`, `loadFile`).
+   (`WindowManager.ts:481`, `loadFile`);
+4. the route refuses a specifier outside the map — try one from `APP_ONLY_EXPORTS`. Worth doing in the spike
+   rather than after it: if the allow-list is awkward to place, that shapes where the route lives.
 
 **If any of those fails, stop and record why.** Point 3 is the one that cannot be assumed: a packaged app
 has no server, so the map's targets are relative `file://` URLs.
@@ -129,11 +232,17 @@ name), so delete it in the same change.
 
 ## Verification
 
-- **The spike's three checks** above, which decide whether the rest happens.
+- **The spike's four checks** above, which decide whether the rest happens.
 - `npm run spec -- fe-bundler` for the plugin's suites, and `npm run chain` for the rest.
-- **The fixture pack's frontend actually loading**, in both modes: `abuddy run` against the
-  `external-pack` fixture (dev), and a packaged build (`npm run build-prod`) with the same pack installed.
-  The second is the one that exercises `file://` and emitted chunk names.
+- **The fixture pack's frontend actually loading**, in both modes. `npm run start` covers the dev half:
+  since `goal-one-kind-of-pack`'s phase 3 the renderer's dev server serves every pack in the tree from
+  source, `tests/packs/external-pack` included, and `repo-checks`' `dev-pack-hmr.integration.spec.ts` holds
+  it to patching a component rather than reloading. A packaged build (`npm run build-prod`) with the same
+  pack installed covers the other, and is the one that exercises `file://` and emitted chunk names.
+  `abuddy run` remains the path for a pack outside the tree, where the proxy is replaced by the map.
+- **The map names every specifier a pack imports, checked at build time** — the guard the backend already
+  has as `pack-externals.spec.ts` and the frontend has only as a runtime warning. Two declarations, so it is
+  derivable: the specifiers a pack's bundle leaves external against the specifiers the map carries.
 - **One Vue instance, asserted rather than assumed**: the fixture pack renders a component that reads the
   host's Vue — if the map ever resolves to a second copy, that breaks loudly. `tests/packs/bundled-ui-pack`
   is the existing subject for the opposite case (a pack that deliberately carries its own `@abuddy/ui`), and
@@ -166,8 +275,7 @@ must gate the map the same way — with a case, since this is the one path where
   versions. It brings a runtime and version negotiation that this repo has no subject for yet: one host
   version, and no third-party distribution — `resolveFromRemoteRegistry` throws for every name. Revisit when
   that stops being true.
-- **Not a change to the backend's sharing.** Pack backend code gets the host's instances through a
-  require-cache bridge (`withHostResolution`, `packs/runtime/bridge.ts`). That is CJS and a different
-  mechanism for the same idea; import maps do not apply, and merging the two is not in scope.
+- **Not an import map on the backend.** Node's CJS resolution is not the browser's, so the mechanism below
+  is different even though the mistake is the same.
 - **Not a performance change.** The win is correct module semantics and the deletion of a name-discovery
   pipeline, not speed.

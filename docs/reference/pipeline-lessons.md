@@ -75,6 +75,35 @@ Six rules that pay for themselves:
 
 - **Measure before you optimise, and before you accept someone else's measurement.** Two proposals in
   this repo were rejected by one command each, and both had been argued for at length first.
+- **Attribute a concurrent pipeline's cost with a CPU profile, not by timing its stages.** Rollup drives
+  `transform` concurrently, so wrapping each Vite plugin hook and summing the wall clock of its calls
+  reported **120s of hooks inside an 11.5s build** — a tenfold double-count that still read as a table with
+  a plausible winner, `vite:vue:transform` at 1049% of the phase. The instrument for a single-threaded
+  pipeline is `node --cpu-prof` with self time aggregated per package, which put the pack frontend bundle's
+  **12.8s of CPU** at **6.1s inside rollup's tree-shaking walk** (`includeCallArguments`, `include`,
+  `includePath` and the two path trackers), 1.6s GC, 0.7s tailwind and **0.3s compiling every SFC** — so
+  the stage the first table blamed held a twentieth of the cost, and both intuitive optimisations ("make
+  Vue faster", "cache the SFC transforms") were aimed at it. Subtract two profiles to isolate one phase
+  (`abuddy build` against `--skip-fe`), and read what the subtraction attributes rather than trusting it:
+  it charged the frontend phase 0.75s of `spawnSync` that was `packages:ensure` running in both arms.
+
+  **What the profile bought was a rejection, which is the usual return on one.** `treeshake: false` for the
+  non-release build measured **22.2s to 18.2s, -19%, for 443 KB more output** on 8.5 MB — paired A/B, median
+  of 3, 75% idle, 2026-10-08, with the size change as the positive control that the knob had turned. It is
+  reverted, because `fe-bundler-host-registry.integration.spec.ts`' *"drops the generated EARS facade from
+  FE code that only uses the EARS constants"* fails under it, and that case generalises: every pack's
+  `#generated/ears` pairs the constants with a `/*#__PURE__*/ defineEars()` call, so without the shake a
+  frontend importing one constant carries that call into the renderer and **runs** it. Off is a divergence
+  in what executes between a dev build and a release rather than only in what ships, and the dev build is
+  what that spec and the E2E suite cover. The first comment written for the change claimed the opposite —
+  that retaining code cannot crash what a release would not — which is wrong in the one way that matters:
+  retained code runs.
+
+  **Skipping the phase is not the other lever.** `abuddy build` records what each phase read, and that
+  record's own header says it is *"never a cache key"* — it is a dep file, so it can be stale about a read
+  nobody has made yet. The chain already caches `compile` on declared inputs, so an unchanged tree never
+  pays the 11.3s in the first place, and the gate would only serve a hand-run build. What is left is making
+  the two builds cheaper, or leaving it.
 - **A mutation check is worth more than a re-run.** Breaking the thing on purpose and watching the
   right test fail proves more than running the whole suite again.
 - **A check that reports nothing may have looked at nothing**, and a green run cannot tell you which. This
@@ -159,3 +188,82 @@ Six rules that pay for themselves:
   `import-specifiers.integration` had already closed five days earlier by asserting each rule fires. A
   repo-wide rule mandating the fixture was then built on that premise and deleted (`487a8c115`). "X is the
   whole point" cannot be checked; "Y fails when Z" can.
+
+## A stamp directory has one writer
+
+**The rule.** A cache of "this passed against these inputs" is only sound while one process writes it. Two
+writers make `cached` mean *"some run with these inputs passed"* rather than *"this tree passed"*, and
+nothing downstream can tell the difference.
+
+There are four such directories under `node_modules/.cache`, and as of 2026-10-07 two are guarded:
+
+| directory | written by | guarded by |
+|---|---|---|
+| `abuddy-packages-build` | `packages:ensure`, `packages:build` | `withBuildLock` (`@abuddy/host/build/packages-built`) |
+| `abuddy-chain` | `npm run chain` | `holdChainLock` (`scripts/lib/chain-lock.ts`) |
+| `abuddy-unit-pool` | `test:unit:host`, `test:unit:pack`, `test:integration` | `holdPoolLock` (`scripts/lib/unit-pool.ts`), **per pool** |
+| `abuddy-spec-durations` | `npm run spec`, the pools' reporter | nothing, deliberately — see below |
+
+**The unit is the entries, and the directory is only usually the right proxy for them.** The pool stamps are
+locked per *pool*, not per directory, because a stamp's name carries its pool's half and provenance — so two
+pools write disjoint files, and `prunePoolStamps` derives what is live from *every* pool's keys, so one pool's
+prune cannot take another's. Two runs of the **same** pool is the case that collides. `unit-pool.spec.ts`
+asserts that partition rather than assuming it, since it is what licenses the narrower lock.
+
+**`abuddy-spec-durations` is not locked, and should not be.** It holds a ten-run window of measured file
+durations, which informs one column of a report and gates nothing. A lost write loses a data point. Locking
+it would be apparatus around a sample, and `spec-cost.json` — 1,884 lines of band, window, tie rule, machine
+field and two idle floors, to place a spec in one of two config files — is what that costs. If something ever
+*decides* on those numbers, that is the moment to revisit, and the decision is the thing to question first.
+
+**The fix for an unguarded one is three lines**, and it is the same three: `holdExclusiveLock` from
+`@abuddy/host/exclusive-lock` with a lock file beside the stamps, a refusal naming the holder, and a release
+the mechanism already does for you on `exit` and on four interrupts. `scripts/lib/chain-lock.ts` is the
+worked example and is 90 lines including its prose. **Do not write a fourth lock**: that module's header is
+explicit that the mechanism is shared and only the policy — the file's name, the refusal's words — belongs to
+the caller.
+
+**Two traps, both paid for once already.**
+
+The lock file must not end in `.json`. `pruneStamps` (`scripts/chain.ts`) removes every `.json` in the stamp
+directory that is not a live step's stamp, so a lock named that way is deleted by the *next* run while the
+first still holds it, and both then run — the exact failure the lock exists to prevent, arrived at through
+the lock. `chain-lock.spec.ts` asserts the name against `pruneStamps`' own predicate rather than against the
+string, because a case pinning `'chain.lock'` passes while the coupling rots.
+
+A spec for one of these cannot take the real lock. `repo-checks` runs inside `test:integration`, which the
+chain runs, so a case taking `CHAIN_LOCK` is refused by the run that is running it. Take a `file` parameter
+defaulting to the real path — `withBuildLock(label, run, file = LOCK_FILE)` and `runningPackageBuild(file =
+LOCK_FILE)` already do — and assert the real path's *properties* separately.
+
+**What this cost to learn.** Four chain runs on 2026-10-07 produced three failures, none attributable to
+code, while two sessions worked in one checkout. Each guard reported truthfully and none could name the
+writer: `PackagesWentStale` said *"something rebuilt or edited them"*, the classifier said *"contention or a
+flake, not the code"* having removed a variable it never identified, and the freshness sweep filed a step
+whose inputs moved mid-run as a step that will not be cached next time — a caching note over a correctness
+fact, printed after both runs had spent the time. Two hypotheses were investigated and disproven first (tsc
+union ordering; a codegen skip ignoring its own generator), and two fixes were proposed that already existed.
+The lesson is not that a guard was missing. It is that these guards assume one writer, and say nothing useful
+when that assumption is the thing that broke.
+
+**What closed it, and the shape all three took.** Each report held the fact it needed one frame up and printed
+a guess instead, so each now names what it has and says what it could not rule out:
+
+- **`PackagesWentStale` names the writer.** `waitForPackageBuild` already returned the holder it waited for and
+  `ensurePackagesBuilt` discarded it — and that return is the *only* evidence in the ordinary case, because by
+  the time staleness is read the writer has finished, which is what let the run past the wait. So reading the
+  lock at that moment, which this doc used to suggest, answers for almost nothing. `packageWriter` has three
+  arms: the build this run waited for; a lock still on disk, with whether its holder is alive, which covers a
+  crash, a wedge and a writer arriving after the wait; and neither, which means something that does not take
+  the lock did it.
+- **A step whose inputs moved *while it ran* says its result is void**, and `--strict` fails the run on it.
+  Only that reading of `whenChanged` counts: a change *after* the step is the ordinary cache miss, and two of
+  the four readings cannot be placed at all. Proven on a live run where five steps were stale and exactly one
+  was voided.
+- **The classifier claims no cause.** It names the steps `ScheduleResult.peers` recorded beside the failing one
+  — what happened, rather than the admission limit, which was the recorded reason it used to guess — and says
+  it cannot choose between one of those, a writer outside the chain, and the step being nondeterministic.
+
+**The one thing none of them can close** is a writer that records nothing: an editor, a tool that takes no
+lock, another session. All three now say that in the arm where it is the answer, which is the difference
+between a report a reader can act on and one they learn to skip.

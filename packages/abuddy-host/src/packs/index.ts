@@ -7,9 +7,9 @@ export { withModuleBridge } from './module-bridge.ts';
 
 // Discovery
 export {
-  discoverBuiltInPacks, discoverPacks, enabledExternalPacks, installedPacks,
+  discoverPacks, enabledExternalPacks, installedPacks,
 } from './discovery.ts';
-export type { BuiltInPackInfo, DiscoveredPack, InstalledPack, PackManifest } from './discovery.ts';
+export type { DiscoveredPack, InstalledPack, PackManifest } from './discovery.ts';
 
 // Installed packs (JSON file CRUD)
 export {
@@ -31,7 +31,7 @@ export { PACK_LOAD_MESSAGES, packRegistered, packLoadFailed } from './load-messa
 
 // Installer
 export {
-  installPack, installPackFromLocal, installPackFromGitHub,
+  installPack, installPackFromLocal, installPackFromGitHub, installShippedPacks, type ShippedPackInstall,
   uninstallPack, isHostCompatible,
 } from './installer.ts';
 export { recordHostInfo, readHostInfo, type HostInfo } from './host-info.ts';
@@ -46,8 +46,7 @@ export {
   stagePack, verifyPack, readPackIntegrity, isPackLayout,
   packFrontendFiles,
   createPackArchive, extractPackArchive, packArchiveName,
-  publishHostPackOutput,
-  pruneHostPackOutputs,
   getLoadedPackEntries, getPacksWithClientLoadedFrontends,
+  staleBuildOutput,
 } from './layout.ts';
 export type { PackIntegrity, LoadedPackEntry } from './layout.ts';

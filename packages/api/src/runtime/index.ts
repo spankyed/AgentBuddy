@@ -5,15 +5,15 @@ import { _getLmdbPath, _getVolatileLmdbPath } from '@abuddy/sdk/utils';
 import type { EarsEngine } from '@abuddy/ears';
 import type { LmdbStore, WriteFailure } from '@abuddy/ears/lmdb';
 import { assertNoDatabaseWriter, openDatabaseStore } from '@abuddy/host/database';
-import { createPackRegistry, discoverBuiltInPacks, publishHostPackOutput, pruneHostPackOutputs, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
+import { createPackRegistry, installShippedPacks, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import * as path from 'path';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { loadAppPacks, startPacks } from '@abuddy/host/packs/runtime';
 // The app's own features: its registration, and the systems it runs for them
 import {
   APPLICATION_SYSTEM_EVENTS, createApplicationSystem, createPacksSystem, createSettingsSystem, hostRegistration, packsEvents, settingsEvents,
 } from '@abuddy/host/features';
-import { createAppBus, createParticipantClaims, HOST, startEarlySystems } from '@abuddy/host/bus';
+import { createAppBus, createParticipantClaims, HOST } from '@abuddy/host/bus';
 import { createHostRuntime } from '@abuddy/host/services';
 import { forwardSecretsChanges } from '@abuddy/host/secrets';
 import { assertSourceResolution } from '@abuddy/host/build/source-resolution';
@@ -141,49 +141,39 @@ export async function setupBackend(): Promise<void> {
 
   // Before discovery: a pack an interrupted install left only as its moved-aside copy is restored,
   // and abuddy install learns which AgentBuddy uses this data dir
-  prepareHostDataDirs({ userDataDir: appContext.userDataDir, packsDir: appContext.packsDir, hostPacksDir: appContext.hostPacksDir, version: APP_VERSION });
+  prepareHostDataDirs({ userDataDir: appContext.userDataDir, packsDir: appContext.packsDir, version: APP_VERSION });
 
   // API keys: the settings system hears of every change to them
   forwardSecretsChanges(packs);
 
-  // ── Load packs (every built-in pack registers before any external one) ────────────
-  const builtInDir = process.env.BUILT_IN_PACKS_DIR;
-  const { builtIn: builtInInfos, external: externalPacks } = await loadAppPacks(packs, {
-    builtInDir,
-    bundledLoaders: () => import('virtual:built-in-pack-loaders').then(m => m.default),
-  });
-
-  if (builtInDir) {
-    // Pack authors resolve built-in dependencies (types, step build code) from the installed app
-    for (const info of builtInInfos) {
-      try {
-        if (publishHostPackOutput(info.dir, path.join(appContext.hostPacksDir, info.id))) {
-          console.log(`[packs] Published build output for built-in pack ${info.id}`);
-        }
-      } catch (err) {
-        console.warn(`[packs] Could not publish build output for ${info.id}:`, err);
-      }
+  // ── Install the packs the app ships, so every pack is an installed pack ────────────
+  // Before loading, not beside it: a pack has to be in the packs dir to be discovered there. A copy whose
+  // integrity matches this build's is left alone, so only a first boot and a version bump write anything
+  const shippedDir = process.env.SHIPPED_PACKS_DIR;
+  const shippedIds = new Set<string>();
+  if (!shippedDir) {
+    // "This app ships no packs" and "nobody told me where they are" are different answers, and installing
+    // nothing looks the same either way: on a fresh data dir both give an app with no plugins
+    console.warn('[packs] SHIPPED_PACKS_DIR is not set, so no pack the app ships is installed');
+  } else {
+    const results = await installShippedPacks(shippedDir, appContext.packsDir, { hostVersion: APP_VERSION, packFormat: PACK_SNAPSHOT_FORMAT });
+    if (results.length === 0) console.warn(`[packs] ${shippedDir} holds no pack to install`);
+    for (const result of results) {
+      // Shipped whatever the install came to: the app refuses to uninstall it either way, and a pack whose
+      // install failed is one the Packs view reports rather than one it offers to remove
+      shippedIds.add(result.id);
+      if (result.outcome === 'failed') console.error(`[packs] Could not install ${result.id}, which this app ships: ${result.error}`);
+      else if (result.outcome !== 'current') console.log(`[packs] ${result.outcome === 'updated' ? 'Updated' : 'Installed'} ${result.id}, which this app ships`);
     }
-    // A pack this release no longer has leaves its build output behind, which tools would still read as the app's.
-    // Kept by what this build ships, not by what loaded: a pack whose runtime failed this boot still has its own.
-    const stale = pruneHostPackOutputs(appContext.hostPacksDir, discoverBuiltInPacks(builtInDir).map((pack) => pack.id));
-    if (stale.length > 0) console.log(`[packs] Removed build output of built-in pack(s) this app no longer has: ${stale.join(', ')}`);
   }
 
-  // Start the early systems (the logs system must start before anything else)
-  const early = startEarlySystems(packs);
-  for (const { id, actor } of early.actors) actor.subscribe(logErrors(id));
+  // ── Load packs ────────────
+  const { loaded: loadedPacks } = loadAppPacks(packs, shippedIds);
 
   console.log(`[app] AgentBuddy v${APP_VERSION} startupId=${process.env.AGENTBUDDY_STARTUP_ID ?? 'unknown'}`);
 
   // ── Wire shutdown hooks (keyed by pack ID for scoped reload teardown) ──
-  for (const info of packs.builtInPacks()) {
-    const hooks = packs.getPackRegistration(info.id)?.boot;
-    if (hooks?.onShutdown) {
-      packs.registerShutdownHook(hooks.onShutdown, info.id);
-    }
-  }
-  for (const pack of externalPacks) {
+  for (const pack of loadedPacks) {
     if (pack.registration.boot?.onShutdown) {
       packs.registerShutdownHook(pack.registration.boot.onShutdown, pack.origin.id);
     }
@@ -196,7 +186,7 @@ export async function setupBackend(): Promise<void> {
   startPacks(packs);
 
   // ── Start backend actor ──────────────────────────────────────────────
-  backendActor = createActor(createAppBus(packs, early, appClaims), {
+  backendActor = createActor(createAppBus(packs, appClaims), {
     systemId: HOST.bus,
   }).start();
 

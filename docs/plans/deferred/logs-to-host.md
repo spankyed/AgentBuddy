@@ -1,7 +1,7 @@
 # Move `logs` into the host pack
 
 **Status:** deferred — researched, not scheduled
-**Prompted by:** 2026-10-07, [`goal-one-kind-of-pack`](../goals/goal-one-kind-of-pack.md)'s Phase 4
+**Prompted by:** 2026-10-07, [`goal-one-kind-of-pack`](../../archive/goals/goal-one-kind-of-pack.md)'s Phase 4
 
 ## Why it is deferred, and why the research is kept
 
@@ -75,11 +75,17 @@ Phase 4 deleted the pack-facing route to running before hydration, and that is c
 `logs` moves, the host wants it again — to put hydration, `onInit`, migrations and seeding back in the
 viewer, which is the window that deletion gave up.
 
-**Restoring it host-side is cheaper than what was deleted.** A host feature needs no manifest field, no
-schema refinement, no codegen branch and no loader strip — `hostRegistration` writes the
-`PackFeatureSystem` literally, so `early: true` is one property. What has to exist is
-`startEarlySystems` + the registry's filter: whether those survived Phase 4 decides whether this is one
-property or about forty lines. Either way the capability never returns to the pack contract.
+**Restoring it host-side is cheaper than what was deleted, but it is not free: the host mechanism went
+too.** Phase 4 deleted `startEarlySystems`, `EarlySystems`, `createAppBus`'s second parameter, the
+registry's `getEarlySystems` and its two `!system.early` filters, `PackFeatureSystem.early` and
+`packSystem`'s option — about forty lines of source and a 122-line spec — because after the field went
+nothing set `early`, and a mechanism with no caller is one nobody is testing against reality. That is the
+same test Decision 5 applied to `partitionPolicy`.
+
+So this plan has to bring them back, which is a `git revert` of that part of Phase 4's commit rather than a
+design: `hostRegistration` writes its `PackFeatureSystem` literally, so the *declaration* stays one
+property, and what is restored is the plumbing under it. Either way the capability never returns to the
+pack contract — that half is permanent.
 
 ## The migration
 

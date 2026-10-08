@@ -2,10 +2,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { createLogger } from '@abuddy/sdk/logger';
-import { PACK_LAYOUT } from '../layout.ts';
+import { PACK_LAYOUT, packSeedFiles } from '../layout.ts';
 import { recordSeedOutcomes } from '../installed.ts';
 import type { PackSeedManifest } from '@abuddy/sdk/framework';
-import { seedPath, type PackManifest } from '@abuddy/sdk/build';
+import type { PackManifest } from '@abuddy/sdk/build';
 import { appState } from '../../app-state/index.ts';
 import { importCompiledSeeds, type SeedIncludeSet } from '@abuddy/sdk/utils';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
@@ -29,13 +29,13 @@ const logger = createLogger('pack-seed');
  * drives with a preview, a per-key selection and a collision mode — more than a reinstall ever gave, and it
  * leaves this record alone, so asking for the data again does not change what counts as changed.
  */
-export function computePackSeedHash(distDir: string): string {
-  const files = fs.readdirSync(distDir).filter(f => f.endsWith('.json')).sort();
+export function computePackSeedHash(seedsDir: string): string {
+  const files = packSeedFiles(seedsDir);
   if (files.length === 0) return '';
   const hash = crypto.createHash('sha256');
   for (const file of files) {
     hash.update(file);
-    hash.update(fs.readFileSync(path.join(distDir, file)));
+    hash.update(fs.readFileSync(path.join(seedsDir, file)));
   }
   return hash.digest('hex').slice(0, 16);
 }
@@ -60,7 +60,13 @@ function importErrors(result: Record<string, { errors?: string[] }> | undefined)
  */
 export interface PackSeedTarget {
   manifest: Pick<PackManifest, 'id' | 'dependencies'>;
+  /** The pack's own directory; its compiled seeds are at `runtime/seeds` under it */
   dir: string;
+  /**
+   * What the pack asks not to be seeded, and when (`boot.seedManifest.seedPolicy`). Read from its
+   * registration rather than its manifest, since it is the pack's code that declares it.
+   */
+  seedPolicy?: PackSeedManifest['seedPolicy'];
 }
 
 /**
@@ -76,36 +82,40 @@ function dependencyState(dependencies: Record<string, string> | undefined, seede
 }
 
 /**
- * Seed the external packs whose seed could have a different outcome than last time: their compiled data
- * changed, or their last seed failed and something they depend on has seeded since. `packs` arrives in
- * dependency order (`packSeedOrder`), so a pack sees what the packs it depends on seeded in this same run.
+ * Seed the packs whose seed could have a different outcome than last time: their compiled data changed, or
+ * their last seed failed and something they depend on has seeded since. `packs` arrives in dependency order
+ * (`packSeedOrder`), so a pack sees what the packs it depends on seeded in this same run.
+ *
+ * **Every pack, by one rule**, whoever ships it: one hash over the files in its seeds directory, one record
+ * (`AppState.packSeedHashes`), one retry rule, and its own `seedPolicy` honoured if it declares one. Which
+ * directory that is follows from where the pack lives, so a pack does not tell the host
+ * where its compiled data is — the host knows, because it is the host that put the pack there.
  *
  * A pack whose seed reports errors (an invalid flow, say) is a failed seed: the error is recorded as the
  * installed-packs entry's `lastError`, and its hash is stored like a successful seed's, so the same failing
  * data isn't re-imported on every boot. What is stored alongside it is the state its dependencies were in,
  * so the retry happens when that changes rather than never.
  */
-export function importPackSeeds(packs: Iterable<PackSeedTarget>, importSeeds: typeof importCompiledSeeds = importCompiledSeeds): PackImportFailure[] {
+export function seedPacks(packs: Iterable<PackSeedTarget>, importSeeds: typeof importCompiledSeeds = importCompiledSeeds): PackImportFailure[] {
   const failures: PackImportFailure[] = [];
   const outcomes = new Map<string, string | undefined>();
 
   for (const pack of packs) {
     const packId = pack.manifest.id;
-    const distDir = path.join(pack.dir, PACK_LAYOUT.seedsDir);
-    const currentHash = fs.existsSync(distDir) ? computePackSeedHash(distDir) : '';
+    const seedsDir = path.join(pack.dir, PACK_LAYOUT.seedsDir);
+    const currentHash = fs.existsSync(seedsDir) ? computePackSeedHash(seedsDir) : '';
     if (!currentHash) {
       // Nothing to seed: an earlier version's error no longer applies, and neither does what it faced
       outcomes.set(packId, undefined);
-      appState.updatePackEntry('externalSeedDeps', packId, undefined);
+      appState.updatePackEntry('packSeedDeps', packId, undefined);
       continue;
     }
 
     // Read per pack, not once: a pack earlier in this run may be one this pack depends on
     const state = appState.get();
-    // Built-in packs' hashes too — a dependency may be one of them, and they seed before any of these
-    const deps = dependencyState(pack.manifest.dependencies, { ...state.builtInSeedHashes, ...state.externalSeedHashes });
-    const failedAgainst = state.externalSeedDeps[packId];
-    if (state.externalSeedHashes[packId] === currentHash && (failedAgainst === undefined || failedAgainst === deps)) {
+    const deps = dependencyState(pack.manifest.dependencies, state.packSeedHashes);
+    const failedAgainst = state.packSeedDeps[packId];
+    if (state.packSeedHashes[packId] === currentHash && (failedAgainst === undefined || failedAgainst === deps)) {
       logger.info(`Pack seed skipped (unchanged): ${packId}`);
       continue;
     }
@@ -113,19 +123,26 @@ export function importPackSeeds(packs: Iterable<PackSeedTarget>, importSeeds: ty
     logger.info(`Importing seeds for pack: ${packId}`);
     let errors: string[];
     try {
-      errors = importErrors(importSeeds({ compiledDir: distDir, mode: 'replace-on-collision' }));
+      // `include` is how a pack's policy keeps a key out of this run: an empty set skips that seeder.
+      // `replace-on-collision` is what the seeders do by default — they branch only on `keep-existing` and
+      // `wipe-and-replace` — so naming it changes nothing and says what this is
+      errors = importErrors(importSeeds({
+        compiledDir: seedsDir,
+        include: evaluateSeedPolicy(pack.seedPolicy),
+        mode: 'replace-on-collision',
+      }));
     } catch (err) {
       errors = [errorMessage(err)];
     }
-    appState.updatePackEntry('externalSeedHashes', packId, currentHash);
+    appState.updatePackEntry('packSeedHashes', packId, currentHash);
     if (errors.length > 0) {
       logger.error(`Failed to seed pack ${packId}:\n  ${errors.join('\n  ')}`);
-      appState.updatePackEntry('externalSeedDeps', packId, deps);
+      appState.updatePackEntry('packSeedDeps', packId, deps);
       failures.push({ packId, errors });
       outcomes.set(packId, errors.join('\n'));
       continue;
     }
-    appState.updatePackEntry('externalSeedDeps', packId, undefined);
+    appState.updatePackEntry('packSeedDeps', packId, undefined);
     outcomes.set(packId, undefined);
     logger.info(`Pack seeded: ${packId}`);
   }
@@ -134,15 +151,13 @@ export function importPackSeeds(packs: Iterable<PackSeedTarget>, importSeeds: ty
   return failures;
 }
 
-function computeManifestSeedHash(compiledDir: string, seedKeys: string[]): string {
-  const hash = crypto.createHash('sha256');
-  for (const name of seedKeys) {
-    const filePath = seedPath(compiledDir, name);
-    if (fs.existsSync(filePath)) hash.update(fs.readFileSync(filePath));
-  }
-  return hash.digest('hex').slice(0, 16);
-}
-
+/**
+ * The keys a pack's policy keeps out of this seed run, as the `include` filter `importCompiledSeeds` takes:
+ * an empty set for a key means its seeder is skipped. `skipAtBoot` is unconditional — default-setup's
+ * settings are seeded once by its own onboarding rather than restored on every boot — and
+ * `skipAfterOnboarding` applies only once the user has finished onboarding, so first-run data arrives and
+ * does not come back after they have deleted it.
+ */
 function evaluateSeedPolicy(policy?: PackSeedManifest['seedPolicy']): Record<string, SeedIncludeSet> {
   if (!policy) return {};
   const include: Record<string, SeedIncludeSet> = {};
@@ -160,39 +175,4 @@ function evaluateSeedPolicy(policy?: PackSeedManifest['seedPolicy']): Record<str
   }
 
   return include;
-}
-
-/**
- * Seeds a built-in pack's declared boot seed, skipping it when its compiled data hasn't changed since
- * the last run. What was last seeded is recorded per pack: every built-in pack with a `boot.seed` runs
- * through here, so one shared hash would have each pack overwriting the others' and re-seeding forever.
- */
-export function orchestrateDeclarativeSeed(manifest: PackSeedManifest, packId: string): void {
-  const { seedKeys, compiledDir, seedPolicy } = manifest;
-  const storedHash = appState.get().builtInSeedHashes[packId];
-
-  // Reading and hashing the compiled seeds is what decides this, with no cheaper check in front of it:
-  // measured 2026-10-07 over default-setup's seven files (490KB), 0.39ms to hash against 0.07ms to stat them,
-  // so the stat fingerprint this used to keep in `AppState` bought 0.32ms of a boot and a second record that
-  // could disagree with the first.
-  const currentHash = computeManifestSeedHash(compiledDir, seedKeys);
-  if (storedHash === currentHash) {
-    logger.info(`Boot seed skipped for ${packId}: data unchanged`);
-    return;
-  }
-
-  const include = evaluateSeedPolicy(seedPolicy);
-  const counts = importCompiledSeeds({ compiledDir, include });
-  // Seeders report a record they couldn't seed (an invalid flow, say) in its counts rather than throwing
-  const errors = importErrors(counts);
-
-  // Stored even when records failed, as importPackSeeds does: the same failing data isn't re-imported on
-  // every boot, and it's retried as soon as the compiled seeds change
-  appState.updatePackEntry('builtInSeedHashes', packId, currentHash);
-
-  if (errors.length > 0) {
-    logger.error(`Boot seed for ${packId} finished with errors; those records were not seeded and won't be retried until the compiled seeds change:\n  ${errors.join('\n  ')}`);
-    return;
-  }
-  logger.info(`Boot seed completed for ${packId}: ${JSON.stringify(counts)}`);
 }

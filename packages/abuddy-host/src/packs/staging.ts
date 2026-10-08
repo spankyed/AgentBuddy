@@ -1,22 +1,10 @@
-import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { recordHostInfo } from './host-info.ts';
 import { recordIsStale } from '../process-liveness.ts';
-
-export type StagingKind = 'installing' | 'previous' | 'publishing';
-
-/** `.<id>.<kind>-<pid>` or `.<id>.<kind>-<pid>-<random>`: staging owned by a process */
-const OWNED_STAGING_DIR = /^\.(.+)\.(installing|previous|publishing)-(\d+)(?:-[A-Za-z0-9]+)?$/;
-
-/**
- * A hidden staging dir name for pack `id`, unique to this process: a crashed process's leftovers
- * never collide with a later process that reuses its PID.
- */
-export function stagingDirName(id: string, kind: StagingKind): string {
-  return `.${id}.${kind}-${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
-}
+// The naming convention lives with the module that makes one of these directories; this is its reader
+import { OWNED_STAGING_DIR, type StagingKind } from '../replace-dir.ts';
 
 interface StagingEntry { name: string; id: string; kind: StagingKind; stale: boolean }
 
@@ -102,7 +90,7 @@ export function recoverStagingDirs(dir: string): StagingRecovery {
  * reads for `abuddy install` and `abuddy run`, and recovers staging in each packs dir. Failures are logged; boot continues.
  */
 export function prepareHostDataDirs(
-  options: { userDataDir: string; packsDir: string; hostPacksDir?: string; version: string },
+  options: { userDataDir: string; packsDir: string; version: string },
   log: Pick<Console, 'info' | 'warn'> = console,
 ): void {
   try {
@@ -110,8 +98,7 @@ export function prepareHostDataDirs(
   } catch (err) {
     log.warn(`[packs] Could not record the host version in ${options.userDataDir}: ${err}`);
   }
-  for (const dir of [options.packsDir, options.hostPacksDir]) {
-    if (!dir) continue;
+  for (const dir of [options.packsDir]) {
     const { restored, removed, failed } = recoverStagingDirs(dir);
     for (const id of restored) log.info(`[packs] Restored "${id}", whose install was interrupted`);
     for (const name of removed) log.info(`[packs] Removed stale staging dir ${name}`);

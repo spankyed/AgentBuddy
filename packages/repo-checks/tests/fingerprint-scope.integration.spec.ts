@@ -171,8 +171,9 @@ describe('prose costs nothing', () => {
   const CONTENT_IN_A_KEY: Record<string, string> = {
     // A hand-edited report is the one hole the deleted API stamp could not see, so `api:check` keys on them
     'packages/abuddy-sdk/etc/index.api.md': 'api:check',
-    // The same hole in the pack's facade report, which `compile`'s `facade:check` leg compares against
-    'packages/default-setup/etc/pack-types.api.md': 'compile',
+    // The same hole in the pack's facade report, which the `facade:check` step compares against. `compile`
+    // declares it too — the build reads it to warn — but the step that fails on it is the one named here
+    'packages/default-setup/etc/pack-types.api.md': 'facade:check',
     // Seed sources compile into the rows a user gets
     'packages/default-setup/src/seeds/notes/welcome.md': 'compile',
     // The CLI's scaffold, rendered into a new pack and read by the specifier rules

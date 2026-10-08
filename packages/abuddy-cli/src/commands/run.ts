@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { build } from './build';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
+import { reloadPack, type AppPlace, type DevReload } from '../build/dev-reload.ts';
 import { cliDirs, parseAppFlags, resolveDevelopmentApp, type AppTarget } from '../app/app-target';
 import { instanceFor, parseInstanceFlags, removeInstance, INSTANCE_USAGE } from '../app/instances';
 import { copySecretsInto } from '../app/instance-secrets.ts';
@@ -13,7 +14,6 @@ import { resolveAppContext } from '@abuddy/sdk/env';
 import type { AppEnv } from '@abuddy/sdk/env';
 import { readApiEndpoint } from '@abuddy/host/process-liveness';
 import { withoutSourceCondition } from '@abuddy/host/build/source-resolution';
-import { API_HOST, API_TOKEN_HEADER, errorMessage } from '@abuddy/sdk/utils/pure';
 import { installPackFromLocal, readHostInfo } from '@abuddy/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
 
@@ -39,8 +39,6 @@ Note that --app beta reloads by restarting rather than in place: a packaged buil
 pack reload, and publishes no API token for one.
 `.trim();
 
-const reason = (err: unknown) => (errorMessage(err));
-
 /**
  * Which environment an app target runs as. A packaged build stamps its own channel at build time
  * (`_inferElectronAppEnv`), so this reports what the app will decide rather than deciding it: passing
@@ -48,62 +46,6 @@ const reason = (err: unknown) => (errorMessage(err));
  */
 export function appEnv(app: AppTarget): AppEnv {
   return app.kind === 'source' ? 'development' : 'beta';
-}
-
-/**
- * Where an app runs: its environment, and its data dir when an instance overrides the default. Leaving
- * `userDataDir` out is not the same as naming the default one — it lets `ABUDDY_USER_DATA_DIR` from the
- * caller's shell still apply, which is an escape hatch that predates instances.
- */
-export interface AppPlace {
-  env: AppEnv;
-  userDataDir?: string;
-}
-
-/** The running app's API: its URL and the token it requires, from the files the API writes */
-function findAppApi(place: AppPlace): { api: { url: string; token: string } } | { problem: string } {
-  const { apiPortFile, apiTokenFile } = resolveAppContext(place);
-  const endpoint = readApiEndpoint(apiPortFile);
-  if (!endpoint) return { problem: `no running ${place.env} app in ${apiPortFile}` };
-  let token: string;
-  try {
-    token = fs.readFileSync(apiTokenFile, 'utf-8').trim();
-  } catch (err) {
-    return { problem: `couldn't read ${apiTokenFile}: ${reason(err)}` };
-  }
-  if (!token) return { problem: `${apiTokenFile} is empty` };
-  return { api: { url: `http://${API_HOST}:${endpoint.port}`, token } };
-}
-
-/**
- * What a reload came to. `detail` says which of the several ways it went wrong this was, since they need
- * different things of the author: start the app, look at its logs, or check what is holding the port.
- */
-export type DevReload =
-  | { status: 'reloaded' }
-  /** No port or token file to reach an app with */
-  | { status: 'not-running'; detail: string }
-  /** The app answered and refused, or couldn't reload */
-  | { status: 'failed'; detail: string }
-  /** Nothing answered on the port the app published */
-  | { status: 'unreachable'; detail: string };
-
-/** Asks the running app to reload a pack's runtime, with its API token. */
-export async function reloadPack(packId: string, place: AppPlace = { env: 'development' }): Promise<DevReload> {
-  const found = findAppApi(place);
-  if ('problem' in found) return { status: 'not-running', detail: found.problem };
-  try {
-    const res = await fetch(`${found.api.url}/dev/reload`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: found.api.token },
-      body: JSON.stringify({ packId }),
-    });
-    if (res.ok) return { status: 'reloaded' };
-    const body = await res.text().catch(() => '');
-    return { status: 'failed', detail: `${res.status} ${res.statusText}${body.trim() ? `: ${body.trim()}` : ''}` };
-  } catch (err) {
-    return { status: 'unreachable', detail: `${found.api.url}: ${reason(err)}` };
-  }
 }
 
 /** Prints what a reload came to; `what` names the changes (`BE changes`, `changes`) */

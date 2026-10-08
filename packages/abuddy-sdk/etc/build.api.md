@@ -308,7 +308,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     designation: z.ZodOptional<z.ZodString>;
     settings: z.ZodOptional<z.ZodString>;
     typesEntry: z.ZodOptional<z.ZodString>;
-    earlySystem: z.ZodOptional<z.ZodBoolean>;
     system: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
         contract: z.ZodOptional<z.ZodString>;
@@ -353,7 +352,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     designation?: string | undefined;
     settings?: string | undefined;
     typesEntry?: string | undefined;
-    earlySystem?: boolean | undefined;
     system?: {
         entry: string;
         contract?: string | undefined;
@@ -374,7 +372,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     designation?: string | undefined;
     settings?: string | undefined;
     typesEntry?: string | undefined;
-    earlySystem?: boolean | undefined;
     system?: {
         entry: string;
         contract?: string | undefined;
@@ -452,13 +449,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     permissions: z.ZodOptional<z.ZodArray<z.ZodEnum<["ears", "llm", "filesystem", "network", "terminal"]>, "many">>;
     entities: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodString>, Record<string, string>, Record<string, string>>, Record<string, string>, Record<string, string>>>;
     relKinds: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodString>, Record<string, string>, Record<string, string>>>;
-    partitionPolicy: z.ZodOptional<z.ZodObject<{
-        excludedEntityTypes: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
-    }, "strict", z.ZodTypeAny, {
-        excludedEntityTypes?: string[] | undefined;
-    }, {
-        excludedEntityTypes?: string[] | undefined;
-    }>>;
     entityShapes: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
         source: z.ZodString;
         type: z.ZodString;
@@ -474,7 +464,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         designation: z.ZodOptional<z.ZodString>;
         settings: z.ZodOptional<z.ZodString>;
         typesEntry: z.ZodOptional<z.ZodString>;
-        earlySystem: z.ZodOptional<z.ZodBoolean>;
         system: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
             contract: z.ZodOptional<z.ZodString>;
@@ -519,7 +508,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -540,7 +528,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -846,9 +833,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
     entities?: Record<string, string> | undefined;
     relKinds?: Record<string, string> | undefined;
-    partitionPolicy?: {
-        excludedEntityTypes?: string[] | undefined;
-    } | undefined;
     entityShapes?: Record<string, {
         type: string;
         source: string;
@@ -858,7 +842,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -955,9 +938,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
     entities?: Record<string, string> | undefined;
     relKinds?: Record<string, string> | undefined;
-    partitionPolicy?: {
-        excludedEntityTypes?: string[] | undefined;
-    } | undefined;
     entityShapes?: Record<string, {
         type: string;
         source: string;
@@ -967,7 +947,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -1064,9 +1043,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
     entities?: Record<string, string> | undefined;
     relKinds?: Record<string, string> | undefined;
-    partitionPolicy?: {
-        excludedEntityTypes?: string[] | undefined;
-    } | undefined;
     entityShapes?: Record<string, {
         type: string;
         source: string;
@@ -1076,7 +1052,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;
@@ -1173,9 +1148,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
     entities?: Record<string, string> | undefined;
     relKinds?: Record<string, string> | undefined;
-    partitionPolicy?: {
-        excludedEntityTypes?: string[] | undefined;
-    } | undefined;
     entityShapes?: Record<string, {
         type: string;
         source: string;
@@ -1185,7 +1157,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             contract?: string | undefined;

@@ -310,7 +310,6 @@ Other feature fields:
 |---|---|
 | `system.events.incoming` | Event types the app accepts for the system (`sendToSystem`) besides those its machine's transitions name |
 | `typesEntry` | Types module re-exported from `#generated/types`; default `src/features/<id>/be/types` |
-| `earlySystem` | Built-in packs only |
 | `references` | Built-in packs only; ignored for external packs |
 
 A feature that fills a role other packs look up (`getDesignated('<role>')`, or `sendToSystem({ role }, event)`) sets `"designation"` to that role. A role is not a name: a feature `inbox` can play `notes`. `abuddy add feature bookmarks --designation bookmarks` writes it. One feature plays a role: `abuddy validate` reports two features of a pack claiming the same one, and the app refuses a pack claiming a role another pack plays. `abuddy validate` also reports a `settings`, `system.entry` or `plugin.entry` file that doesn't exist.

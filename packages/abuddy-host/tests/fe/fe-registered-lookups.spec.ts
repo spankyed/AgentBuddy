@@ -16,7 +16,7 @@ bindFeHost({ application: {} as never, secrets: {} as never, settings: {} as nev
 const register = (packId: string, registration: Omit<PackFERegistration, 'id'>) => registry.registerPackFE({ id: packId, ...registration });
 const unregister = (packId: string) => registry.unregisterPackFE(packId);
 const plugins = () => registry.getRegisteredPlugins();
-const defaultPlugin = () => registry.getRegisteredDefaultPlugin();
+const defaultPlugin = () => registry.defaultPlugin();
 const appExtension = (slot: string) => registry.getAppExtension(slot);
 
 const packs: string[] = [];

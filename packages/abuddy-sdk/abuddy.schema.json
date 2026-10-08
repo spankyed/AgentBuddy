@@ -118,20 +118,6 @@
         }
       }
     },
-    "partitionPolicy": {
-      "type": "object",
-      "properties": {
-        "excludedEntityTypes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Entity types excluded from persistence (in-memory only)."
-        }
-      },
-      "additionalProperties": false,
-      "description": "Built-in packs only. Ignored for external packs."
-    },
     "entityShapes": {
       "type": "object",
       "additionalProperties": {
@@ -175,10 +161,6 @@
           "typesEntry": {
             "type": "string",
             "description": "Additional types to include in the generated type barrel."
-          },
-          "earlySystem": {
-            "type": "boolean",
-            "description": "Start this feature's system before EARS hydration. Built-in packs only."
           },
           "system": {
             "type": "object",

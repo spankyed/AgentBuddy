@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { APP_ONLY_EXPORTS, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
+import { APP_ONLY_EXPORTS, HOST_RESOLVED_BINARIES, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
 import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';
 import { checkSeedRuntimeLoads } from './seed-runtime-check';
 import type { RecordReads } from './build-reads';
@@ -16,8 +16,14 @@ export interface BundleRuntimeOptions {
   recordReads?: RecordReads;
 }
 
-/** The host-provided packages every pack bundle leaves external; the host loader resolves its own singletons. */
-const HOST_EXTERNALS = [...Object.keys(SHARED_DEPS), ...sharedInstanceExternals()];
+/**
+ * The host-provided packages every pack bundle leaves external; the host loader resolves its own singletons.
+ *
+ * Exported for `tests/build/pack-externals.spec.ts`, which holds these against what the loader actually
+ * provides: an external specifier the loader does not resolve is a pack that loads in this checkout, where
+ * node_modules sits above it, and fails once installed, where nothing does.
+ */
+export const HOST_EXTERNALS = [...Object.keys(SHARED_DEPS), ...sharedInstanceExternals()];
 
 type EsbuildOptions = import('esbuild').BuildOptions;
 
@@ -41,7 +47,7 @@ async function bundlePackSource<T extends EsbuildOptions>(
     format: 'esm',
     platform: 'node',
     target: 'node20',
-    external: HOST_EXTERNALS,
+    external: [...HOST_EXTERNALS, ...HOST_RESOLVED_BINARIES],
     tsconfig: fs.existsSync(tsconfigPath) ? tsconfigPath : undefined,
     plugins,
     minify: options.release ?? false,
@@ -67,9 +73,9 @@ function bundleError(err: unknown): { success: false; error: string } {
 /**
  * Bundle the pack's generated backend entry (src/__generated__/pack-entry.ts) into
  * dist/runtime/index.cjs. It exports `registration` (systems, services, steps,
- * artifacts, blocks, EARS, boot hooks, migrations) and `setCompiledDir`, the same
- * contract built-in packs use. Host-provided and shared-instance packages stay external:
- * the host loader resolves them to its own singletons.
+ * artifacts, blocks, EARS, boot hooks, migrations) and `setCompiledDir`. Host-provided and
+ * shared-instance packages stay external: the host loader resolves them to its own singletons,
+ * whichever pack the bundle is for.
  */
 export async function bundlePackRuntime(
   packDir: string,

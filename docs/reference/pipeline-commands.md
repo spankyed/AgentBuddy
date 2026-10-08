@@ -112,8 +112,9 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          #             whose numbers were in the file. Needs --all and this machine's cores
                          #             as the budget, since it records what this machine costs
                          #   --no-classify  a step failing while the machine is busy is re-run alone, to
-                         #             tell the code apart from contention; the retry never stamps and the
-                         #             chain still exits 1. This turns that off
+                         #             rule the code out — a pass there rules out nothing else, so the line
+                         #             names the steps that overlapped it and claims no cause. The retry
+                         #             never stamps and the chain still exits 1. This turns that off
 ```
 
 ## `npm run measure and measure:loop`

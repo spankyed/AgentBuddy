@@ -19,7 +19,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { diffableStamp, firstChange, freshnessSweep, REPO_ROOT, stampRecord } from '@abuddy/host/build/packages-built';
 import type { UnitSuite } from './lib/unit-suites.ts';
-import { POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, provenanceOf, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool, type Provenance } from './lib/unit-pool.ts';
+import { holdPoolLock, POOLS, poolStampFor, poolUnitFor, projectsThatDidNotRun, provenanceOf, prunePoolStamps, recordRun, recordsVerdict, whyItRuns, type Pool, type Provenance } from './lib/unit-pool.ts';
 import type { ReportedRun } from './lib/spec-durations-reporter.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 import { POOL_SECONDS } from './lib/chain-steps.ts';
@@ -160,6 +160,10 @@ async function main(): Promise<void> {
   // package.json included — fails a dozen specs at that guard rather than running them, and the pool
   // quietly collects 162 fewer tests. It is a stat and a return when nothing is stale.
   execFileSync('npm', ['run', 'packages:ensure'], { stdio: 'inherit' });
+  // One run of this pool at a time, from here on: everything below stamps the projects it runs, and two runs
+  // would each record what the other's vitest was still doing. Released by `exclusive-lock.ts`'s own exit and
+  // interrupt handlers, so a Ctrl-C'd pool leaves no lock behind
+  holdPoolLock(kind);
   prunePoolStamps();
   pruneDurationCache(REPO_ROOT);
   const { half, suites: suitesOf, run } = POOLS[kind];

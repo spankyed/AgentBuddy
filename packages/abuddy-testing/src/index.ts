@@ -7,7 +7,7 @@ import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { resolveName } from '@abuddy/sdk/ids';
-import { installPackFromLocal, PACK_LOAD_MESSAGES } from '@abuddy/host/packs';
+import { installPackFromLocal, PACK_LOAD_MESSAGES, staleBuildOutput } from '@abuddy/host/packs';
 import { appVersion } from './app-version.ts';
 import { appLaunchEnv, pinsViewport } from './launch-env.ts';
 import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
@@ -29,6 +29,8 @@ export interface CreateTestOptions {
   appExecutable?: string;
   screenshotDir?: string;
 }
+
+
 
 /** How the fixture launches AgentBuddy: from a checkout's sources, or a packaged build. */
 type AppLaunch = { kind: 'source'; root: string } | { kind: 'packaged'; executable: string };
@@ -339,7 +341,19 @@ export function createTest(options: CreateTestOptions = {}) {
           // the fixture waits for, the screenshot directory — still comes from PACK_DIR.
           const archive = process.env.PACK_ARCHIVE ? path.resolve(process.env.PACK_ARCHIVE) : undefined;
           if (archive) assertArchiveIsCurrent(archive, packDir);
-          if (!archive) {
+          if (!archive && process.env.ABUDDY_PACK_PREBUILT) {
+            // The caller built it in an earlier step (`abuddy test --prebuilt`), so this installs that build.
+            // **Because rebuilding it here is the expensive half of the step**: with two fixture packs rebuilt
+            // per run, dropping the rebuild took `test:external-pack:app` from 1.3m to 4.4s. It also stopped
+            // the step rebuilding a tree it declares as an input, which made each pack look unbuilt for the
+            // ~20s the rebuild took — a race this suite lost under load rather than a hypothetical, and one
+            // `abuddy build` no longer creates now that it stages its output and renames it into place.
+            //
+            // What the rebuild bought is checked instead of dropped: a build older than the sources it came
+            // from fails here, which is the whole of "a stale build tested silently is worse than no test".
+            const stale = staleBuildOutput(packDir);
+            if (stale) throw new Error(`Pack ${manifest.id} was built before ${stale} changed. Build it (abuddy build) or drop --prebuilt.`);
+          } else if (!archive) {
             // Always rebuild: installing an existing dist would silently test stale code
             const abuddyBin = resolveAbuddyBin(appLaunch, packDir);
             // A release run tests what it ships: without this the rebuild below replaces the release

@@ -7,7 +7,6 @@ import './style.css'
 // highlight.js's stylesheet is global (.hljs, pre code.hljs), so the app owns it: imported from
 // @abuddy/ui it would ship again inside every fe.bundleUi pack and restyle code everywhere.
 import 'highlight.js/styles/github-dark.css'
-import builtInPacks from 'virtual:built-in-packs';
 import { hostFrontend } from '@/views/packs/plugin';
 import { createAppShell } from '@/runtime/shell';
 import { HOST, installFromProtocol, runFrontendMigrations } from '@abuddy/host/fe';
@@ -37,19 +36,10 @@ window.appVersion = __APP_VERSION__;
 console.log(`AgentBuddy v${__APP_VERSION__}`);
 runFrontendMigrations(localStorage, __APP_VERSION__);
 
-const packEntries = Object.entries(builtInPacks);
-const loadedMods = await Promise.all(
-  packEntries.map(async ([packId, loader]) => {
-    try { return await loader(); }
-    catch (err) { console.error(`[boot] Failed to load built-in pack ${packId}:`, err); return null; }
-  })
-);
-for (const mod of loadedMods) {
-  if (mod?.default) fePacks.registerPackFE(mod.default);
-}
-
 // const { inspect } = createBrowserInspector();
 
+// The only frontend registered before the shell starts. Every *pack's* frontend — the one the app ships
+// among them — is loaded by the shell once the bus says which packs are running, through one path.
 fePacks.registerPackFE(hostFrontend);
 
 // The SDK's frontend code (lookups, navigation, sends, the secrets client) reaches this window's app from here on:

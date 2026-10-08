@@ -37,7 +37,7 @@ Semantic search over library documents: documents are split into chunks (whole d
    - decide whether local FastEmbed models stay, or every embedding goes through `services.inference`;
    - unit-test indexing and search on the harness (`@abuddy/testing/harness`), with `mockInference` for the API models.
 5. Ship the native modules in the packaged app. `usearch` and FastEmbed's ONNX runtime load native binaries:
-   - default-setup's backend runtime bundle (`dev-build.mjs`) leaves every package external, so they load from `node_modules` at runtime, and the app ships `node_modules` unpacked (`asar: false` in `electron-builder.mjs`). Check that they're installed where the packaged runtime resolves them.
+   - a pack's backend runtime bundle inlines its npm dependencies, so a package carrying a native binary has to be named in `RESOLVED_AT_RUNTIME` (`abuddy-cli/src/build/be-bundler.ts`) to stay external and resolve from `node_modules`. The app ships `node_modules` unpacked (`asar: false` in `electron-builder.mjs`); check that they're installed where the packaged runtime resolves them.
    - Check that their binaries load under Electron's Node. `build/build.sh` rebuilds only `node-pty` against Electron (`electron-rebuild --only node-pty`); add them there if their prebuilds don't load.
    - Trim their other platforms' prebuilds in `electron-builder.mjs` (`excludePrebuilds`, as for `node-pty`), and add their binaries to the macOS signing check in `build/prod/verify-signing.sh`.
    - Decide how FastEmbed's weights arrive: downloaded to `models-cache/` on first use (`paths.ts`), or shipped with the app (the commented `extraResources` entry in `electron-builder.mjs` names the API's old `local_cache`, which no longer exists).

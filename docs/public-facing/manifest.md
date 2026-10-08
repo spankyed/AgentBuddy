@@ -28,7 +28,6 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
 | `boot` | `PackBootConfig` | no | Boot hooks and seeds; see [Boot configuration](#boot-configuration) |
 | `fe` | `object` | no | FE-only registrations; see [Frontend configuration](#frontend-configuration) |
-| `partitionPolicy` | `{ excludedEntityTypes?: string[] }` | no | Entity types kept in memory only, never persisted. Built-in packs only: the app ignores it for an external pack, with a warning |
 | `entityShapes` | `Record<string, { source, type }>` | no | Entity type -> TS interface mappings |
 | `seedFormats` | `Record<string, SeedFormatConfig>` | no | Named seed formats: how a source becomes records. `boot.seed` entries name them, dependents as `<pack id>:<name>`; see [Seeds](seeds.md#seeding-entities) |
 | `seedHooks` | `Record<string, string>` | no | Seed hooks for entity types this pack declares: the entity type's value in `entities` -> `path#exportName` of a `SeedHooks` object (`find`, `create`, `update`, `remove`, all optional). Every pack seeding that type goes through them; see [Seeds](seeds.md#seed-hooks) |
@@ -71,7 +70,6 @@ The `features` array is the primary way to add functionality. Each entry bundles
 | `services` | `Record<string, string>` | no | Services. Keys are identifiers, the names on `services`; values are `"path#exportName"`: a source file and the name of its export holding the service object (an object literal or class instance, not a factory). See [Services](services-and-data.md#services) |
 | `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Carried by the generated pack entry's registration (the app registers them with its engine) and typed on `repository` from `#generated/repository`. A name is the app's, not the feature's: declaring one twice in a pack, or one a dependency declares, fails the build, since the app refuses to register two packs that share a repository name |
 | `typesEntry` | `string` | no | Additional types to include in the generated type barrel |
-| `earlySystem` | `boolean` | no | Start this feature's system before EARS hydration. Built-in packs only: validation rejects it in an external pack |
 | `references` | `string` | no | Path to the module declaring which of the feature's things are linkable from an editor. Built-in packs only: ignored for external packs |
 
 A feature can have just a system (backend-only), just a plugin (frontend-only), or both.
@@ -171,7 +169,7 @@ export const onShutdown = () => stopProcesses(); // when the pack's backend stop
 | `onInit` | Once per boot, after EARS hydration and before migrations and seeds. Create rows the pack's systems expect to exist here |
 | `onShutdown` | When the pack's backend stops. Release what outlives its actors: processes, timers, listeners |
 
-A system that must start before hydration is a feature with `earlySystem: true`, not a boot hook.
+Every system starts when the bus does, after hydration. There is no way for a feature to ask to start before it.
 
 ### SeedEntryConfig
 

@@ -589,6 +589,17 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
         target: 'es2022',
         cssCodeSplit: false,
         rollupOptions: {
+          /**
+           * **Not `false`, however tempting the saving.** This walk is the phase's whole cost — 6.1s of its
+           * 12.8s of CPU, against 0.3s compiling every SFC — so turning it off for the non-release build
+           * measures -19% (2026-10-08; the profile and the A/B are in `docs/reference/pipeline-lessons.md`).
+           *
+           * What fails is `fe-bundler-host-registry.integration.spec.ts`, and the reason reaches every pack:
+           * a pack's `#generated/ears` pairs the EARS constants with a `#__PURE__`-annotated `defineEars()` call, so
+           * without the shake a frontend importing only a constant carries that call into the renderer and
+           * runs it. Off is a divergence in what *executes* between a dev build and a release, and the dev
+           * build is the one that spec and the E2E suite cover.
+           */
           treeshake: { propertyReadSideEffects: false },
         },
       },

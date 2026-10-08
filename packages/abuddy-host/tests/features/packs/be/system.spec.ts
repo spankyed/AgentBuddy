@@ -13,7 +13,7 @@ import { installPackFromLocal } from '../../../../src/packs/installer.ts';
 import { createPacksSystem, type PackInfo } from '../../../../src/features/packs/be/system.ts';
 import { activatePack } from '../../../../src/packs/runtime/lifecycle.ts';
 import { loadAppPacks } from '../../../../src/packs/runtime/loader.ts';
-import { reloadExternalPack } from '../../../../src/packs/runtime/reload.ts';
+import { reloadPackById } from '../../../../src/packs/runtime/reload.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { createPackArchive, stagePack } from '../../../../src/packs/layout.ts';
 import { PACK_LAYOUT } from '../../../../src/packs/layout.ts';
@@ -128,9 +128,9 @@ describe('installing over a pack that is already running', () => {
 
 // The host and the built-in packs come with the app: no uninstall removes them, and no installed pack takes their id
 describe('a pack that ships with the app', () => {
-  const shipped = { id: PACK_ID, name: 'Shipped', version: '1.0.0', dir: 'host-packs/shipped', builtIn: true };
+  const shipped = { id: PACK_ID, name: 'Shipped', version: '1.0.0', dir: 'packs/shipped', shipped: true };
 
-  it.each([['a built-in pack', PACK_ID], ['the host', 'host']])("can't be uninstalled: %s", async (_what, packId) => {
+  it.each([['a pack the app ships', PACK_ID], ['the host', 'host']])("can't be uninstalled: %s", async (_what, packId) => {
     registry.registerPack({ id: PACK_ID }, shipped);
     const system = runPacksSystem();
     try {
@@ -145,16 +145,45 @@ describe('a pack that ships with the app', () => {
     }
   });
 
-  it("can't have its id taken by an installed pack, which is refused before the built-in stops", async () => {
+  /**
+   * Disabling is the other half of what the Packs view hides for a shipped pack, and it has to be refused
+   * here too: every pack is an installed record now, so nothing in the handler turns one away on its own.
+   * Without this the event tears the pack down and persists `enabled: false`, and the switch that would put
+   * it back is the one the view doesn't draw — so the app boots with no packs and no way out of it.
+   */
+  it("can't be disabled, and is told so with its real state", async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    registry.registerPack({ id: PACK_ID }, shipped);
+    const system = runPacksSystem();
+    try {
+      takeSystemErrors();
+
+      system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
+
+      expect(takeSystemErrors().map(e => e.message)).toEqual([`"${PACK_ID}" is part of AgentBuddy, so it can't be disabled`]);
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
+      expect(emitted(system.sent).find(e => e.type === 'PACK_ENABLED_CHANGED')).toMatchObject({ packId: PACK_ID, enabled: true });
+      expect(readInstalledPacks().find(r => r.id === PACK_ID)?.enabled, 'the record is untouched').not.toBe(false);
+      expect(registry.packOrigin(PACK_ID)).toEqual(shipped);
+    } finally {
+      system.stop();
+    }
+  });
+
+  // Its id is not reserved, which is the half of `shippedWithApp` that had nothing to do with shipping:
+  // installing over an installed pack is how an update lands, and a shipped pack is installed like any
+  // other. What makes the shipped copy authoritative is the next boot, which re-installs it when the
+  // installed one's hashes differ (`tests/packs/shipped-packs.spec.ts`) — not a refusal here.
+  it('is replaced by an installed pack taking its id, and put back at the next boot', async () => {
     registry.registerPack({ id: PACK_ID }, shipped);
     const system = runPacksSystem();
     try {
       system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0'), source: 'local' });
 
-      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED'));
-      expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED')).toMatchObject({ error: expect.stringContaining(`"${PACK_ID}" is a pack AgentBuddy ships`) });
-      expect(registry.packOrigin(PACK_ID)).toEqual(shipped);
-      expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID))).toBe(false);
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_COMPLETE'));
+      const installed = path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'abuddy.json');
+      expect(JSON.parse(fs.readFileSync(installed, 'utf-8')).version).toBe('2.0.0');
+      expect(emitted(system.sent).map(e => e.type)).toContain('PACK_DEACTIVATED');
     } finally {
       system.stop();
     }
@@ -191,7 +220,7 @@ describe('a pack with nothing recorded about it', () => {
 
       const list = emitted(system.sent).find(e => e.type === 'PACKS_LIST');
       expect(list?.packs).toContainEqual(
-        expect.objectContaining({ id: PACK_ID, version: '1.0.0', enabled: true, builtIn: false }),
+        expect.objectContaining({ id: PACK_ID, version: '1.0.0', enabled: true, canUninstall: true }),
       );
     } finally {
       system.stop();
@@ -217,7 +246,7 @@ describe('an installed pack the app could not load', () => {
     await installPackFromLocal(packSource('1.0.0'));
     // A build another abuddy made: what an app update leaves an installed pack as
     fs.writeFileSync(snapshotFile(), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT + 1 }));
-    await loadAppPacks(registry, {});
+    loadAppPacks(registry);
     expect(registry.getPackRegistration(PACK_ID)).toBeNull();
 
     const system = runPacksSystem();
@@ -228,7 +257,7 @@ describe('an installed pack the app could not load', () => {
       });
 
       fs.writeFileSync(snapshotFile(), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
-      await reloadExternalPack(registry, PACK_ID, { send: () => {} } as never);
+      await reloadPackById(registry, PACK_ID, { send: () => {} } as never);
 
       expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();
       expect(listed(system)?.loadProblem).toBeUndefined();
@@ -386,7 +415,7 @@ describe('installing over a pack that is already running', () => {
 describe('what a reinstall does not redo', () => {
   it('leaves the seed hash and migrated version an uninstall did not invalidate', async () => {
     resetTestData();
-    appState.update({ externalSeedHashes: { [PACK_ID]: 'the-hash' }, packVersions: { [PACK_ID]: '1.0.0' } });
+    appState.update({ packSeedHashes: { [PACK_ID]: 'the-hash' }, packVersions: { [PACK_ID]: '1.0.0' } });
     await installPackFromLocal(packSource('1.0.0'));
 
     const system = runPacksSystem();
@@ -396,7 +425,7 @@ describe('what a reinstall does not redo', () => {
         expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_COMPLETE');
       });
 
-      expect(appState.get().externalSeedHashes[PACK_ID]).toBe('the-hash');
+      expect(appState.get().packSeedHashes[PACK_ID]).toBe('the-hash');
       expect(appState.get().packVersions[PACK_ID]).toBe('1.0.0');
     } finally {
       system.stop();
@@ -491,12 +520,14 @@ describe('updating to a release that holds another pack', () => {
 
   const installedVersion = () => JSON.parse(fs.readFileSync(path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'abuddy.json'), 'utf-8')).version;
 
-  it("is refused when that pack is one the app ships, and the installed copy runs again", async () => {
-    registry.registerPack({ id: 'shipped-pack' }, { id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: 'host-packs/shipped-pack', builtIn: true });
+  // Refused for the same reason as any other id, and worded the same: the release is for a different pack
+  // than the one being updated. A shipped pack gets no refusal of its own — it is installed like any other
+  it("is refused the same way when that pack is one the app ships, and the installed copy runs again", async () => {
+    registry.registerPack({ id: 'shipped-pack' }, { id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: 'packs/shipped-pack', shipped: true });
 
     const sent = await updateTo('shipped-pack');
 
-    expect(sent.find(e => e.type === 'PACK_UPDATE_FAILED')).toMatchObject({ error: expect.stringContaining('"shipped-pack" is a pack AgentBuddy ships') });
+    expect(sent.find(e => e.type === 'PACK_UPDATE_FAILED')).toMatchObject({ error: expect.stringContaining('holds the pack "shipped-pack", not "reinstall-pack"') });
     expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', 'shipped-pack'))).toBe(false);
     expect(installedVersion()).toBe('1.0.0');
     expect(sent.map(e => e.type)).toContain('PACK_ACTIVATED');

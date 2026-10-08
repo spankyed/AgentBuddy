@@ -26,6 +26,7 @@
     "./bus": "./src/bus/index.ts",
     "./database": "./src/database/index.ts",
     "./exclusive-lock": "./src/exclusive-lock.ts",
+    "./replace-dir": "./src/replace-dir.ts",
     "./fe": "./src/fe/index.ts",
     "./features": "./src/features/index.ts",
     "./logs": "./src/logs.ts",

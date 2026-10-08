@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   asNumber, citation, conditions, coresBusy, cpuTimes, driftedDuring, driftVerdict, groupBySignature, idleFrom, IDLE_FLOOR,
-  pairedDelta, parseFlags, rateOf, RECORD_IDLE_FLOOR, refusesAsBusy, runOrder, signatureOf, summarise,
-  upperBound,
+  pairedDelta, parseFlags, rateOf, RECORD_IDLE_FLOOR, refusesAsBusy, runOrder, quietestOf,
+  signatureOf, summarise, upperBound,
 } from '../../../scripts/lib/measure.ts';
 
 /**
@@ -413,5 +413,27 @@ describe('whether the body moved or one member did', () => {
     const measured = new Map([['a', 10], ['b', 10], ['c', 10], ['d', 10], ['new', 9999]]);
 
     expect(driftVerdict(steady, measured).kind).toBe('steady');
+  });
+});
+
+/**
+ * **What separates this run's own teardown from a stranger on the box**, which is the question the
+ * `--record` gate asks after a run and got wrong by taking one reading at the moment its own residue peaked.
+ */
+describe('how quiet the box got after a run', () => {
+  it('takes the quietest reading, since anything running only pushes one down', () => {
+    expect(quietestOf([0.91, 0.86, 0.76, 0.94]), 'the ceiling, not the average of the jitter')
+      .toBeCloseTo(0.94, 5);
+  });
+
+  it('is not talked out of a quiet box by one busy sample', () => {
+    expect(quietestOf([0.95, 0.62, 0.94])).toBeCloseTo(0.95, 5);
+  });
+
+  it('stays below the floor while something holds the box, so the caller still refuses', () => {
+    const idle = quietestOf([0.78, 0.77, 0.79, 0.78]);
+
+    expect(idle, 'a stranger caps every sample and jitter cannot lift one').toBeCloseTo(0.79, 5);
+    expect(refusesAsBusy({ idle, floor: RECORD_IDLE_FLOOR, force: false })).toBe(true);
   });
 });

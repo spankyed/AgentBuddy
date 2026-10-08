@@ -38,14 +38,16 @@ import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANG
 import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, poolStepName, STEP_TABLES } from './lib/chain-steps.ts';
 import { stampFor, STAMP_DIR } from './lib/chain-stamps.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
+import { CHAIN_WAIT_MS, ChainLockHeld, chainInvocation, holdChainLock } from './lib/chain-lock.ts';
+import type { ExclusiveLock } from '@abuddy/host/exclusive-lock';
 import { TIMEOUT_MS, timedOutBecause, type TimeoutClass } from './lib/step-timeouts.ts';
 import { box, isMeasuredMachine, machineText, MEASURED_ON, thisMachine, unmetRecordingConditions } from './lib/core-budget.ts';
 import { commandText, rootScripts } from './lib/npm-scripts.ts';
-import { asCount, driftVerdict, idleNow, movedBeyondBand, parseFlags, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
+import { asCount, driftVerdict, idleAfterRun, idleNow, movedBeyondBand, parseFlags, RECORD_IDLE_FLOOR, refusesAsBusy, refusesAsContended } from './lib/measure.ts';
 import { machineLine, recordMachine, recordSeconds } from './lib/record-seconds.ts';
 import { schedule } from './lib/chain-schedule.ts';
 import { driftedSteps, measurementsFrom, outgrownRungs, SECONDS_FLOOR, willNotCache } from './lib/step-timing.ts';
-import { briefly, classifyLine, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
+import { briefly, classifyLine, criticalPathLine, pathSavingsLine, cores, declaredAt, dim, driftReport, outgrownReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from './lib/chain-output.ts';
 import { slowestTests } from './lib/slow-tests.ts';
 import { CHAIN_RUN_ENV, DIAGNOSTIC_RUN_ENV, measureCommandFor, POOLS, poolDurationLines, type Pool } from './lib/unit-pool.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
@@ -342,6 +344,10 @@ async function main(): Promise<void> {
   const noClassify = args.flags.has('no-classify');
   // The E2E suite is a harness for driving the app rather than a gate, so it runs when asked for
   const e2e = args.flags.has('e2e');
+  // A step whose inputs moved while it ran verified nothing, which is always reported; this decides whether
+  // the chain fails on it. Opt-in because the honest answer can be a long list — `api:check` rebuilding
+  // `@abuddy/testing` mid-chain once left twenty passed steps stale, every one of them correctly named
+  const strict = args.flags.has('strict');
   let cached = 0;
 
   // Derived from each step's `needs`, and validated first: an unknown dependency or a cycle fails here rather
@@ -435,6 +441,30 @@ async function main(): Promise<void> {
    * invocation, and when it rebuilds anything its readers must compare against the new bytes rather than the
    * ones this sweep read before it started.
    */
+  /**
+   * One run per checkout from here on, because everything below writes this checkout's stamps — `pruneStamps`
+   * first. Taken after the `--dry` return above, which reads and writes nothing and is documented as the thing
+   * to run on a machine too loaded to time a run on, so it must not be blocked by a run in progress.
+   *
+   * Released on the way out by `exclusive-lock.ts`'s own `exit` and interrupt handlers, so there is no
+   * `finally` here for a chain that throws or is Ctrl-C'd.
+   */
+  let lock: ExclusiveLock;
+  try {
+    lock = await holdChainLock({
+      what: chainInvocation(),
+      waitMs: args.flags.has('wait') ? CHAIN_WAIT_MS : 0,
+      onWait: (holder) => console.log(`waiting for another chain run to finish:\n  ${holder}`),
+    });
+  } catch (err) {
+    // Printed rather than rethrown: a throw reaches the top-level catch, which says "the chain itself
+    // failed", and this is a refusal. Exit 1, because a caller reading 0 would take it for a chain that passed
+    if (!(err instanceof ChainLockHeld)) throw err;
+    console.error(`\n${err.message}`);
+    process.exitCode = 1;
+    return;
+  }
+
   const dispatchSweep = freshnessSweep();
   pruneStamps();
 
@@ -520,10 +550,13 @@ async function main(): Promise<void> {
   const failed = outcome.failed === undefined ? undefined : results.find((r) => r.step === outcome.failed);
   if (failed) {
     const step = steps.find((s) => s.name === failed.step)!;
+    // The names, not just whether there were any: `classifyLine` names them rather than calling the whole
+    // thing contention, and `shouldClassify` wants only the count
+    const beside = [...outcome.peers.get(failed.step) ?? []];
     const classifying = shouldClassify({
       // What the schedule saw, not what the table predicts: `conflictsOf(step).length > 0` stood here and
       // meant "has a mutex partner", which twelve steps do while running beside two dozen others
-      ranAlone: (outcome.peers.get(failed.step)?.size ?? 0) === 0,
+      ranAlone: beside.length === 0,
       timedOut: failed.timedOut === true,
       optedOut: noClassify,
     });
@@ -554,7 +587,7 @@ async function main(): Promise<void> {
       // The verdict reports what the chain cost. The retry is a diagnostic after it, so a 60s re-run must not
       // land on the one number a reader compares between runs.
       classifyMs = retry.ms;
-      console.log(classifyLine(retry, MEASURED_ON));
+      console.log(classifyLine(retry, MEASURED_ON, beside));
     }
   }
 
@@ -574,9 +607,20 @@ async function main(): Promise<void> {
   // Named rather than folded in, so the verdict's number stays comparable between runs and the wall time still
   // adds up — a reader who times the command should not find seconds the chain does not account for.
   const reran = classifyMs > 0 ? ` (+${secs(classifyMs)} re-run)` : '';
-  const verdict = failed ? `chain FAILED at ${failed.step}` : outcome.failed ? `chain FAILED at ${outcome.failed}` : 'chain passed';
+  // `voided` is filled by the stale block below, which runs before this is printed. Kept as a function rather
+  // than a const for that reason: the verdict is composed here and the facts it needs arrive after
+  const verdictText = (): string => {
+    if (failed) return `chain FAILED at ${failed.step}`;
+    if (outcome.failed) return `chain FAILED at ${outcome.failed}`;
+    // Not "at": nothing failed its own check. A step read a tree that changed under it, so what is wrong is
+    // the result rather than the step, and the sentence has to say which
+    if (strict && voided.length > 0) return `chain FAILED: ${voided.join(', ')} ran against a tree that moved`;
+    return 'chain passed';
+  };
   // Something writing into a step's inputs after it ran is why a "15 of 17 cached" chain still paid 34s
   // for a typecheck every time. Asked here, against the sweep taken above.
+  /** Steps whose inputs moved *during* the run, so their pass describes a tree that no longer existed */
+  const voided: string[] = [];
   const uncacheable = willNotCache(
     steps,
     new Set(results.filter((r) => r.code === 0).map((r) => r.step)),
@@ -596,9 +640,15 @@ async function main(): Promise<void> {
     for (const { name, reason } of uncacheable) {
       const step = steps.find((s) => s.name === name)!;
       const unusual = reason === INPUTS_CHANGED ? undefined : reason;
-      for (const line of staleLines({ name, nameWidth, reason: unusual, ...whatMoved(step, steps, sweep) })) console.log(line);
+      // Hoisted out of the `staleLines` call it used to sit in, because the verdict needs it too: `when` is the
+      // only thing in the system that tells a change *during* the run from one after it, and `willNotCache`
+      // cannot see it — it compares fingerprints, which say that something moved and never when
+      const moved = whatMoved(step, steps, sweep);
+      for (const line of staleLines({ name, nameWidth, reason: unusual, ...moved })) console.log(line);
+      if (movedWhileItRan(moved.files)) voided.push(name);
     }
     console.log(dim('  Declare what writes there in that step\'s `outputs`, or stop declaring the tree as an input.'));
+    if (voided.length > 0) console.log(voidedLine(voided, strict));
   }
 
   // The table feeds the kill budget and the floor above, so a number a run has contradicted is worth more
@@ -652,11 +702,14 @@ async function main(): Promise<void> {
       + `${both ? 'them' : 'it'} to change.`);
   }
 
-  console.log(`\n${verdict} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${` on ${cores(budget)}`}${floor}`);
+  console.log(`\n${verdictText()} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${` on ${cores(budget)}`}${floor}`);
   // Not process.exit(): it drops whatever stdout has still to flush, and the failing step's captured output
   // printed just above is the one thing here worth reading. Measured: piped, process.exit() delivers 64KB
   // of a 500KB write, and @app/default-setup's suite output alone is 654KB.
-  process.exitCode = outcome.failed ? 1 : 0;
+  process.exitCode = outcome.failed || (strict && voided.length > 0) ? 1 : 0;
+  // The handlers in `exclusive-lock.ts` would do this on the way out anyway; releasing here frees it for the
+  // next run while this one is still printing, which on a piped run is the longest part of its exit
+  lock.release();
 }
 
 /**
@@ -741,9 +794,18 @@ function recordTheCosts(steps: readonly ChainStep[], measuredMs: ReadonlyMap<str
       + `${machineText(want)} costs at ${cores(want.cores)}, and this ran on ${cores(budget)}.`);
     return;
   }
-  const idle = idleNow();
+  // **Judged once the box has stopped moving, not the instant the run returned.** That instant is when this
+  // run's own residue peaks, and a single reading there cannot tell it from a stranger's load —
+  // `idleWhenSettled` has what that cost. The late check itself stays: it is the only thing that sees a run
+  // disturbed half way through, which is the case the pre-flight at the top of `record` cannot reach.
+  // **The quietest reading over a watched window, not one taken as the run returns.** That instant is when
+  // this run's own residue peaks, and a single 250ms sample there answered for the box — `quietestOf` has
+  // what that cost and why the max is the statistic. The late check itself stays: it is the only thing that
+  // sees a run disturbed half way through, which the pre-flight at the top of `record` cannot reach.
+  const { idle, waitedMs } = idleAfterRun();
+  console.log(`\nwatched the box for ${(waitedMs / 1000).toFixed(1)}s after the run: quietest ${Math.round(idle * 100)}% idle`);
   if (refusesAsBusy({ idle, floor: RECORD_IDLE_FLOOR, force })) {
-    console.log(`\n--record refused: the machine is ${Math.round(idle * 100)}% idle and this needs ${Math.round(RECORD_IDLE_FLOOR * 100)}%.`);
+    console.log(`--record refused: this needs ${Math.round(RECORD_IDLE_FLOOR * 100)}%, and nothing quieter came up in that window.`);
     console.log('  What you would record now is the machine. Wait, or pass --force and know the number is forced.');
     return;
   }

@@ -45,7 +45,10 @@ function entries(): [string, string][] {
   });
 }
 
-fs.mkdirSync(reportFolder, { recursive: true });
+// Only the half that records needs the folder. Unconditional, this was the one write `api:check` made
+// outside `.temp/` — an empty `etc/` created by a check, where the absence of a report is a thing the
+// comparison below has an answer for
+if (local) fs.mkdirSync(reportFolder, { recursive: true });
 let failed = 0;
 /** Reports this run changed: written in --local, or found stale otherwise */
 let changed = 0;

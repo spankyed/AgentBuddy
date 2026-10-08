@@ -291,9 +291,14 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const build = run('node', [CLI, 'build'], pack);
     expect(build.code).not.toBe(0);
     expect(build.output).toMatch(/Unresolved pack dependencies:[\s\S]*nonexistent-pack/);
-    // The failed build left no earlier output behind for abuddy pack to ship
-    expect(fs.existsSync(path.join(pack, 'dist'))).toBe(false);
-    // process: the exit code after a failed build is the assertion
-    expect(run('node', [CLI, 'pack', '--out', path.join(tmp, 'stale-out')], pack).code).not.toBe(0);
+    // The failed build left the previous one where it was: it assembles `dist` aside and renames it into
+    // place, so a reader finds the build before this one rather than nothing
+    expect(fs.existsSync(path.join(pack, 'dist', 'runtime', 'index.cjs'))).toBe(true);
+    // **Which is why `pack` asks whether that build is of these sources**, rather than failing for want of
+    // files as it used to. The manifest edited above is newer than the build, so this is refused and names it
+    // process: the exit code and the message are the assertion
+    const packed = run('node', [CLI, 'pack', '--out', path.join(tmp, 'stale-out')], pack);
+    expect(packed.code).not.toBe(0);
+    expect(packed.output).toMatch(/build is older than abuddy\.json/);
   });
 });

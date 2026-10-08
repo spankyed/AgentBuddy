@@ -11,6 +11,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { holdExclusiveLock, type ExclusiveLock } from '@abuddy/host/exclusive-lock';
 import { diffableStamp, REPO_ROOT, stampedRunAll, type BuildUnit, type StampedUnit } from '@abuddy/host/build/packages-built';
 import { INTEGRATION_SUITES, poolStepName, suiteInputs } from './chain-steps.ts';
 import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-halves.ts';
@@ -242,6 +243,32 @@ export const livePoolStamps = (): Set<string> => new Set(
   (Object.keys(POOLS) as Pool[]).flatMap((name) => POOLS[name].suites().flatMap((suite) =>
     PROVENANCES.map((provenance) => path.basename(poolStampFor(suite, POOLS[name].half, provenance))))),
 );
+
+/**
+ * One run per pool, beside the stamps it writes.
+ *
+ * **Per pool rather than per directory**, which is narrower than *a stamp directory has one writer* and is
+ * the right unit here: a stamp's name carries its pool's half and provenance, so two pools write disjoint
+ * files, and `prunePoolStamps` derives `live` from *every* pool's keys so one pool's prune cannot remove
+ * another's. Two runs of the **same** pool is the case that collides — same filenames, each stamping what the
+ * other's vitest is still running.
+ *
+ * Not `.json`: `prunePoolStamps` removes every `.json` here that no pool would write, so a lock named that
+ * way would be deleted by the next run while this one held it.
+ */
+export const poolLockFor = (pool: Pool): string => path.join(POOL_STAMP_DIR, `${pool}.lock`);
+
+/** Takes a pool's lock, or throws naming the run that holds it */
+export function holdPoolLock(pool: Pool, file = poolLockFor(pool)): ExclusiveLock {
+  return holdExclusiveLock({
+    file,
+    what: `npm run ${poolStepName(pool)}`,
+    refuse: (holder) => new Error(`another ${pool} pool run holds ${path.relative(process.cwd(), file)}: ${holder}\n`
+      + "Both would stamp the projects the other is still running, so neither run's record would describe a\n"
+      + 'run that happened. Wait for it to finish.\n'
+      + `If none is running, delete ${path.relative(process.cwd(), file)} and try again.`),
+  });
+}
 
 /** Drops the stamps no pool would write. Every pool knows every pool's keys, so any run may do it. */
 export function prunePoolStamps(): void {

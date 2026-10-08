@@ -81,7 +81,7 @@ export interface Leg {
   readonly seconds: number;
 }
 
-/** The one ordering constraint: every other leg reads what it builds */
+/** The first ordering constraint: every other job reads what it builds */
 export const ENSURE = 'packages:ensure';
 
 /**
@@ -101,17 +101,17 @@ export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: 'typecheck:sdk', command: 'npm run typecheck:sdk', seconds: 4 },
   { name: 'typecheck:host', command: 'npm run typecheck:host', seconds: 4 },
   { name: 'typecheck:ui', command: 'npm run typecheck:ui', seconds: 5 },
-  { name: 'check:specifiers', command: 'npm run check:specifiers', scope: 'repo', seconds: 5 },
+  { name: 'check:specifiers', command: 'npm run check:specifiers', scope: 'repo', seconds: 7 },
   { name: 'exports:check', command: 'npm run exports:check', seconds: 1 },
   { name: 'schema:check', command: 'npm run schema:check', seconds: 0.5 },
   { name: 'typecheck:scripts', command: 'npm run typecheck:scripts', scope: 'repo', seconds: 7 },
-  { name: 'typecheck:cli', command: 'npm run typecheck:cli', seconds: 5 },
-  { name: 'typecheck:pack', command: 'npm run typecheck:pack', seconds: 7 },
+  { name: 'typecheck:cli', command: 'npm run typecheck:cli', seconds: 7 },
+  { name: 'typecheck:pack', command: 'npm run typecheck:pack', seconds: 10 },
   // Both compile `../../types/**/*.d.ts` through their own tsconfig `include`
   { name: 'typecheck:main', command: 'npm run typecheck:main', alsoReads: ['types'], seconds: 3 },
   { name: 'typecheck:preload', command: 'npm run typecheck:preload', alsoReads: ['types'], seconds: 2 },
   { name: 'check:tiers', command: 'npm run check:tiers', scope: 'repo', seconds: 0.3 },
-  { name: 'lint:check', command: 'npm run lint:check', scope: 'repo', seconds: 3 },
+  { name: 'lint:check', command: 'npm run lint:check', scope: 'repo', seconds: 5 },
 ];
 
 /**

@@ -12,7 +12,7 @@
         <div class="flex items-center gap-2">
           <h2 class="text-base font-medium text-neutral-200 truncate">{{ pack.name }}</h2>
           <span
-            v-if="pack.builtIn"
+            v-if="!pack.canUninstall"
             class="px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 bg-neutral-800 border border-neutral-700/50 rounded cursor-default"
             title="Always active — cannot be disabled or removed"
           >Built-in</span>
@@ -41,7 +41,7 @@
       <p v-if="pack.description" class="text-sm text-neutral-400">{{ pack.description }}</p>
 
       <!-- Status / Controls -->
-      <section v-if="!pack.builtIn" class="flex items-center justify-between px-4 py-3 bg-neutral-800/50 border border-neutral-700/50 rounded-lg">
+      <section v-if="pack.canUninstall" class="flex items-center justify-between px-4 py-3 bg-neutral-800/50 border border-neutral-700/50 rounded-lg">
         <span v-if="pack.loadProblem" class="text-sm text-red-400 min-w-0 mr-3 break-words" data-testid="pack-load-problem">
           Failed to load: {{ pack.loadProblem }}
         </span>

@@ -57,7 +57,6 @@ export interface AppContext {
   appDir: string;
   packsDir: string;
   /** Build-time artifacts (types/, build/) of the app's built-in packs, for pack authors' dependency resolution. */
-  hostPacksDir: string;
   installedPacksFile: string;
   /** Where a running API publishes its port and process id, so local tools find it (`@abuddy/host/process-liveness`) */
   apiPortFile: string;
@@ -121,7 +120,6 @@ export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } 
     userDataDir,
     appDir,
     packsDir: path.join(appDir, 'packs'),
-    hostPacksDir: path.join(appDir, 'host-packs'),
     installedPacksFile: path.join(appDir, 'installed-packs.json'),
     apiPortFile: path.join(appDir, 'api-port'),
     apiTokenFile: path.join(appDir, 'api-token'),

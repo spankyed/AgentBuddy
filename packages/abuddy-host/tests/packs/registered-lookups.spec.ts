@@ -341,7 +341,7 @@ describe('a pack whose registration is refused', () => {
 
   it('leaves no origin behind either', () => {
     add({ id: 'holder-pack', commands: [{ name: 'standup', placeholder: 'Topic' }] });
-    const origin = { id: 'refused-pack', name: 'Refused', version: '1.0.0', dir: '/packs/refused-pack', builtIn: false };
+    const origin = { id: 'refused-pack', name: 'Refused', version: '1.0.0', dir: '/packs/refused-pack', shipped: false };
 
     expect(() => registry.registerPack(
       { id: 'refused-pack', commands: [{ name: 'standup', placeholder: 'Theirs' }] },
@@ -349,7 +349,7 @@ describe('a pack whose registration is refused', () => {
     )).toThrow('Command collision');
 
     expect(registry.packOrigin('refused-pack')).toBeNull();
-    expect(registry.externalPacks().map((o) => o.id)).not.toContain('refused-pack');
+    expect(registry.loadedPacks().map((o) => o.id)).not.toContain('refused-pack');
   });
 });
 

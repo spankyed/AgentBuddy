@@ -11,9 +11,8 @@ Every process resolves its environment and data paths through `resolveAppContext
 
 | Path under the data dir | Contents |
 |---|---|
-| `packs/` | Installed external packs, one directory per pack id |
-| `host-packs/` | Build artifacts of the app's built-in packs, published at boot for pack authors' dependency resolution |
-| `installed-packs.json` | Installed external packs and their `enabled` state |
+| `packs/` | Installed packs, one directory per pack id — every pack, the ones the app ships included |
+| `installed-packs.json` | Installed packs' install state and their `enabled` state |
 | `ears-db/` | Primary LMDB database |
 | `ears-trace/` | Volatile LMDB database (flow execution records) |
 | `secrets.json` | API keys: metadata plain, values encrypted |
@@ -71,14 +70,10 @@ The source directory must be built first: installing a directory with neither a 
 
 0. Opens the app's data and binds the app (`openAppStore()`): it creates the app's registered packs (`createPackRegistry()` from `@abuddy/host/packs`), which the SDK's lookups read once bound, and the rest of the steps register into it.
 1. Registers the host `packs` system.
-2. `prepareHostDataDirs`: records the app version in the data dir (for `abuddy install`) and recovers staging dirs in `packs/` and `host-packs/`.
+2. `prepareHostDataDirs`: records the app version in the data dir (for `abuddy install`) and recovers staging dirs in `packs/`.
 3. `forwardSecretsChanges` (`@abuddy/host/secrets`): every system that takes `SECRETS_CHANGED` hears that API key changes, never their values.
-4. Loads packs. Built-in packs load asynchronously while external packs load and register:
-   - **Built-in:** discovered from `BUILT_IN_PACKS_DIR` (`abuddy.json` with `builtIn: true`). In development each pack's `dist/runtime/index.cjs` is loaded when it exists, falling back to the loaders bundled into the API, which `setup/backend.ts` passes to `loadBuiltInPacks` as `bundledLoaders` (the API build generates them as `virtual:built-in-pack-loaders`); otherwise the bundled loader is used.
-   - **External:** discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed). For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded through the module bridge, and `earlySystem`, `seedManifest` and `partitionPolicy` stripped. Each pack's systems register as `<packId>/<featureId>`.
-   - The registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.
-5. Publishes each built-in pack's build output into `host-packs/<id>/`.
-6. Starts the early systems (`system.early`: default-setup's logs system), outside the bus; the host delivers them the messages sent to their refs and each client connection, as the bus does for the others.
+4. Installs the packs the app ships into `packs/<id>`, each being a directory under `SHIPPED_PACKS_DIR` that holds an `abuddy.json`. It installs one only when its files differ from the installed copy's, so a first boot and a version bump write and every other boot writes nothing; a differing copy also covers one something changed on disk. This is before loading, not beside it: a pack is loaded from `packs/`, so it has to be there to be found.
+5. Loads packs — one path for all of them, the ones the app ships included. Discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed), the shipped ones ordered first so a pack depending on one finds it registered. For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded from its own installed directory through the module bridge, and `seedManifest` stripped. A pack with no built runtime, or one whose load throws, has a load problem recorded and the rest load. Each pack's systems register as `<packId>/<featureId>`, and the registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.
 7. Wires each pack's `onShutdown` hook, keyed by pack id.
 8. Hydrates the app's engine from LMDB. Every pack's entity types are registered by now, so the partition policy sees them all.
 9. Runs every pack's `onInit`.
@@ -88,7 +83,7 @@ The source directory must be built first: installing a directory with neither a 
 
 ### Frontend boot
 
-Built-in packs' frontends are compiled into the renderer (`virtual:built-in-packs` imports each pack's `__generated__/pack-entry-fe.ts`). External packs load at runtime:
+Every pack's frontend is loaded at runtime, the ones the app ships included. A dev server serves a local pack's from its source instead (`virtual:dev-pack-frontends`), which is what lets a component edit patch in place:
 
 1. Each time this window's bus subscription is established, the application actor queries the loaded packs (`trpc.packs.loaded`), which lists each loaded external pack's `feEntry` and `feStyles` — the pack's `runtime/fe.js` and `runtime/fe.css`, when it has them. It loads only the packs it hasn't loaded yet, so a query that fails leaves them to the next connection and a pack is never loaded twice.
 2. For each external pack, the shell loads its frontend (`createPackFrontends(io, packs).load` in `@abuddy/host/fe`, over the window's `importModule` and stylesheet I/O):
@@ -106,7 +101,7 @@ The `packs` system handles install, uninstall, enable/disable and update from th
 
 - **Activate** (after install or update, or on enable): reads the pack's manifest, loads and registers it, registers `onShutdown`, runs `onInit`, then the pack's pending migrations and its seeds (skipped when its compiled seeds are unchanged), sends the bus `PACK_CHANGED` so running systems refresh what they read from packs, then `ACTIVATE_PACK` to spawn its systems. The renderer hears `PACK_ACTIVATED` and asks the application actor to load the frontends it hasn't, the new pack's included. The bus asks a pack's systems to publish right away only for a pack without frontend code; otherwise it waits for `packClientReady`. An install or update that activated but failed to seed reports the seed error.
 - **Teardown** (before uninstall or update, or on disable): runs the pack's shutdown hooks, unregisters it (registration keeps the event types `bus.send` accepts current), clears its modules from the require cache, and sends the bus `TEARDOWN_PACK` to stop its systems. The renderer hears `PACK_DEACTIVATED`, unregisters the pack's FE extensions, removes its stylesheets and unloads its plugins.
-- **Reload** (development, `POST /dev/reload` on the API from `abuddy run` or a built-in pack's watch build; a development or test app takes it only with the API token, handled by `reloadExternalPack`/`reloadBuiltInPack` in `@abuddy/host/packs/runtime`): loads and registers the rebuilt runtime before shutting the running one down. If the fresh runtime fails to load or register, the running pack is re-registered and stays as it was. Otherwise the old shutdown hooks run, the new `onShutdown` registers, `onInit` runs, external packs run their pending migrations and re-seed, and the bus `RELOAD_PACK` stops the old and new system ids and starts those still registered, then sends them `CLIENT_CONNECTED` and asks them to publish; `PACK_CHANGED` and its ask follow for every running system. Teardown (disable, uninstall) sends it too, after stopping the pack's systems.
+- **Reload** (development, `POST /dev/reload` on the API from `abuddy run` or a built-in pack's watch build; a development or test app takes it only with the API token, handled by `reloadPackById` in `@abuddy/host/packs/runtime`, which asks the registry which directory the pack came from): loads and registers the rebuilt runtime before shutting the running one down. If the fresh runtime fails to load or register, the running pack is re-registered and stays as it was. Otherwise the old shutdown hooks run, the new `onShutdown` registers, `onInit` runs, external packs run their pending migrations and re-seed, and the bus `RELOAD_PACK` stops the old and new system ids and starts those still registered, then sends them `CLIENT_CONNECTED` and asks them to publish; `PACK_CHANGED` and its ask follow for every running system. Teardown (disable, uninstall) sends it too, after stopping the pack's systems.
 
 An external pack's migrations run at boot, on activation and on reload, each against the pack's own version; the app's run at boot and after a reset or backup import.
 
@@ -121,7 +116,7 @@ export const registration: PackRegistration = {
   id: string;
   features?: Record<string, PackFeature>;  // by feature id: { designation?, system?: { machine, receives, early? }, plugin?: { receives }, services?, settings? }
   services?: Record<string, unknown>;
-  ears?: PackEARS;                 // entities, relKinds, partitionPolicy?
+  ears?: PackEARS;                 // entities, relKinds
   boot?: PackBootHooks;            // onInit/onShutdown (boot.hooks), seedManifest (boot.seed, stripped from external packs)
   migrations?: PackMigration[];    // { target, description, up }
   repositories?: Record<string, unknown>;  // features[].repositories, registered with the app's engine
@@ -270,9 +265,9 @@ EARS persists through a sharded router (`makeShardedPersistence`, `@abuddy/ears`
 | Partition | Directory | Holds | Hydrated at boot |
 |---|---|---|---|
 | `primary` | `ears-db/` | Everything not excluded | Yes |
-| `volatileBackup` | `ears-trace/` | Entity types in the partition policy's `excludedEntityTypes` (always the SDK's `TNode`), and relations touching them | No |
+| `volatileBackup` | `ears-trace/` | The SDK's volatile entity types (`TNode`), and relations touching them | No |
 
-The policy (the app's registry's `partitionPolicy`) is the union of the SDK's excluded types and each registered pack's `partitionPolicy.excludedEntityTypes`, and follows packs as they register and unregister. External packs can't set a partition policy; their data goes to `primary`. `services.traceStore` reads `volatileBackup` directly.
+The policy is `appPartitionPolicy()` (`@abuddy/host/database`), a constant over the SDK's volatile types. No pack contributes to it, so every pack's data goes to `primary`. `services.traceStore` reads `volatileBackup` directly.
 
 ## Backups
 
@@ -333,8 +328,6 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 | Services | Yes | Stateless modules |
 | EARS entities/relations | Yes | With collision detection |
 | Migrations | Yes | Targeted at the pack's own version, run at boot |
-| `features[].earlySystem` | No | Starts before external packs load |
-| `partitionPolicy` | No | Security: controls data routing |
 | `boot.seed.settings` | No | Feature defaults go in `features[].settings` |
 | `builtIn` | No | Reserved for the default pack |
 
@@ -345,7 +338,7 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 1. **`file:` path** — the given directory (relative to the pack root or absolute), in any layout. Not cached. A missing snapshot is an error.
 2. **Workspace** — `../<id>`, `../../packages/<id>`, `../../<id>`.
 3. **Configured app** — the built-in packs of the app `abuddy test` is configured for (`ABUDDY_APP`, `ABUDDY_ROOT` or the saved choice).
-4. **Installed apps** — `host-packs/<id>` in each environment's data dir (production, beta, development, test), which the app publishes at boot.
+4. **Installed apps** — `packs/<id>` in each environment's data dir (production, beta, development, test), which is where every pack that app has is installed, the ones it ships included.
 5. **Cache** — `.abuddy/deps/<id>/`, used only when no source on this machine matches and the cached version satisfies the range. `fetch-deps` skips it.
 6. **GitHub releases** — for `github:owner/repo [range]` values: the newest release matching the range, whose `<id>-<version>.tgz` is downloaded with its `.sha256`, checksum-checked, extracted and verified.
 7. **Registry** — a stub for future `api.abuddy.com` resolution. Currently a no-op.

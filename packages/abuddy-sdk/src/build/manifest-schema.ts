@@ -170,7 +170,6 @@ export const FeatureEntrySchema = z.object({
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: z.string().describe('Path to default settings file.').optional(),
   typesEntry: z.string().describe('Additional types to include in the generated type barrel.').optional(),
-  earlySystem: z.boolean().describe('Start this feature\'s system before EARS hydration. Built-in packs only.').optional(),
   system: SystemSchema.describe('Backend system module.').optional(),
   plugin: PluginSchema.describe('Frontend plugin definition.').optional(),
   services: ServicesSchema
@@ -181,10 +180,6 @@ export const FeatureEntrySchema = z.object({
 }).strict();
 
 export const PackPermissionSchema = z.enum(['ears', 'llm', 'filesystem', 'network', 'terminal']);
-
-const PartitionPolicySchema = z.object({
-  excludedEntityTypes: z.array(z.string()).describe('Entity types excluded from persistence (in-memory only).').optional(),
-}).strict().describe('Built-in packs only. Ignored for external packs.');
 
 const EntityShapeSchema = z.object({
   source: z.string().describe('Source file path relative to pack root.'),
@@ -229,7 +224,6 @@ export const ManifestSchema = z.object({
   relKinds: z.record(z.string(), z.string())
     .superRefine(notSdkOwned(SDK_REL_KINDS))
     .describe(`EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines ${Object.keys(SDK_REL_KINDS).join(', ')}.`).optional(),
-  partitionPolicy: PartitionPolicySchema.optional(),
   entityShapes: z.record(z.string(), EntityShapeSchema)
     .describe('Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries.').optional(),
   features: z.array(FeatureEntrySchema)
@@ -254,11 +248,6 @@ export const ManifestSchema = z.object({
   seedHooks: z.record(z.string(), ExportTargetSchema)
     .describe('Seed hooks for entity types this pack declares: entity type → "path#exportName" of a SeedHooks object. Any pack seeding the type uses them.').optional(),
 }).strict().superRefine((manifest, ctx) => {
-  if (!manifest.builtIn) {
-    manifest.features?.forEach((feature, index) => {
-      if (feature.earlySystem) ctx.addIssue({ code: 'custom', path: ['features', index, 'earlySystem'], message: 'An early system starts before EARS hydration, before external packs load, so only built-in packs allowed to have one' });
-    });
-  }
   // Which plugin opens first is one plugin's annotation, so a pack naming two has said nothing
   const claimedDefault = (manifest.features ?? []).filter((feature) => feature.plugin?.default);
   if (claimedDefault.length > 1) {

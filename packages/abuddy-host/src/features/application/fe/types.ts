@@ -25,7 +25,7 @@ export interface ShellNotify {
 /** The I/O the shell is given */
 export interface ShellOptions {
   /** This window's registered pack frontends: the plugins the shell starts with, and its default */
-  packs: Pick<FePackRegistry, 'getRegisteredPlugins' | 'getRegisteredDefaultPlugin'>;
+  packs: Pick<FePackRegistry, 'getRegisteredPlugins' | 'defaultPlugin'>;
   client: ShellClient;
   packFrontends: ShellPackFrontends;
   storage: ShellStorage;
@@ -36,7 +36,7 @@ export interface ShellOptions {
 
 /** What a window's shell starts with */
 export interface ShellParams {
-  /** The plugin a popout opens on; opened once its pack's frontend adds it, if an external pack's */
+  /** The plugin a popout opens on; opened once its pack's frontend has added it */
   initialPluginId?: string;
   /** Whether this is a main window, which opens on the plugin last open and records the one it opens; a popout does neither */
   ownsLastActivePlugin?: boolean;
@@ -94,7 +94,17 @@ export interface ShellContext {
     canvas: boolean;
   };
   activePlugin: Plugin;
-  defaultPlugin: Plugin;
+  /**
+    * The plugin a pack claims as the app's default, or `null` until one has. Every pack's frontend loads
+    * after this window is up, so `null` is the state the app starts in rather than a failure.
+    */
+  defaultPlugin: Plugin | null;
+  /**
+   * Whether to open the default plugin as soon as a pack claims one. True for a window that started with no
+   * default and nothing specific to show; cleared the moment anything else decides what is open — the user
+   * selecting a tab, the host naming the plugin last open, or a request for a particular plugin.
+   */
+  wantsDefaultPlugin: boolean;
   plugins: Plugin[];
   /** Which tabs show, the host's (AppState) */
   pluginVisibility: Record<string, boolean>;
@@ -179,7 +189,7 @@ export type ShellEvent =
   | { type: 'BACKEND_ERROR'; error: ShellFailure }
   | { type: 'BUS_SUBSCRIBED' }
   | { type: 'BUS_CONNECTION_LOST' }
-  /** Load the frontends of the external packs this window hasn't loaded: on connecting, and when a pack activates */
+  /** Load the frontends of the packs this window hasn't loaded: on connecting, and when a pack activates */
   | { type: 'LOAD_PACK_FRONTENDS' }
   /**
    * The loader finished: `loadedPacksError` is why the loaded packs couldn't be read, when they couldn't,

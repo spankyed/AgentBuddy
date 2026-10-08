@@ -376,6 +376,16 @@ The phase proves the generated `ears.ts` is unchanged.
 
 **5. `partitionPolicy` becomes `volatile` on the entity that is volatile, and every pack may use it.**
 
+> **This decision's subject no longer exists.**
+> [`goal-one-kind-of-pack`](../archive/goals/goal-one-kind-of-pack.md)'s Decision 5 deleted `partitionPolicy` outright —
+> the manifest field, `PackEARS.partitionPolicy`, `getRegisteredEARSPolicy` and the registry's policy
+> member. `appPartitionPolicy()` survives as a constant in `abuddy-host/src/database/open.ts` over
+> `SDK_EXCLUDED_ENTITY_TYPES`, and no pack contributes to it. So this is no longer *moving* a capability
+> onto a better declaration; it is **adding** one that nothing has asked for — which is the test the other
+> goal applied in deleting it. The plumbing this paragraph calls "unchanged" is the plumbing that went.
+> Decide it again before implementing it, against an actual volatile entity someone wants.
+
+
 The section goes; the capability moves onto the declaration it describes:
 
 ```jsonc
@@ -720,6 +730,14 @@ the same speculative move as `$manifestVersion`, in a smaller package.
 repo is rebuilt by these phases. A stamp is for skew between a pack and a host that were built apart;
 bumping it here would only mean rebuilding packs that this goal rebuilds anyway. The first bump belongs
 to the first structural change made after a release exists.
+
+> **The subject of this decision's second half no longer exists.** `goal-one-kind-of-pack` deleted
+> `publishHostPackOutput` and `host-packs/` with it: a pack the app ships is *installed*, in the one
+> full pack layout, `integrity.json` included. So the asymmetry below — a partial layout with a
+> `.fingerprint` and no `integrity.json` — is gone rather than undocumented, and the Phase 6 that was
+> to document it has nothing to document. What survives is the decision itself: the stamp stays at `1`.
+> The freshness question `.fingerprint` answered is now `packFileHashes` against `stagedFileHashes`,
+> compared at boot (`packs/installer.ts`).
 
 **The gap, why it does not bite, and why it needs writing down.** A published built-in pack
 (`host-packs/<id>/`) is a *partial* pack layout: `publishHostPackOutput` writes `types/snapshot.json`,

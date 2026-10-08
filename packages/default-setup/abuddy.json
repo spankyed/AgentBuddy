@@ -25,9 +25,6 @@
     "HAS": "has",
     "RELATES_TO": "relates_to"
   },
-  "partitionPolicy": {
-    "excludedEntityTypes": []
-  },
   "features": [
     {
       "id": "threads",
@@ -234,8 +231,7 @@
         "entry": "src/features/logs/fe/plugin.ts",
         "contract": "src/features/logs/fe/contract.ts#Contract"
       },
-      "services": {},
-      "earlySystem": true
+      "services": {}
     }
   ],
   "commands": [

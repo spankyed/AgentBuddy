@@ -1,5 +1,5 @@
 /**
- * Pack layout: the one layout an external pack has everywhere — build output
+ * Pack layout: the one layout every pack has everywhere — build output
  * (dist/), the release archive, and the installed pack directory.
  *
  *   <id>/abuddy.json            the pack's manifest
@@ -19,7 +19,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as tar from 'tar';
 import { _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@abuddy/sdk/build';
-import { stagingDirName } from './staging.ts';
 import type { PackRegistry } from './registry.ts';
 
 export const PACK_LAYOUT_VERSION = 1;
@@ -53,7 +52,11 @@ export interface PackIntegrity {
 }
 
 export function sha256File(filePath: string): string {
-  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+  return sha256(fs.readFileSync(filePath));
+}
+
+function sha256(content: string | Buffer): string {
+  return crypto.createHash('sha256').update(content).digest('hex');
 }
 
 function listFiles(dir: string, base = dir): string[] {
@@ -82,7 +85,6 @@ export interface LoadedPackEntry {
   id: string;
   name: string;
   version: string;
-  builtIn?: boolean;
   /** The pack's runtime/fe.js, when it has one */
   feEntry?: string;
   /** The pack's runtime/fe.css, when it has one */
@@ -103,27 +105,75 @@ export function packFrontendFiles(layoutDir: string): { entry?: string; styles?:
   };
 }
 
-/** The loaded packs the renderer is told about: the built-in packs, then the external packs with frontend files */
-export function getLoadedPackEntries(registry: Pick<PackRegistry, 'builtInPacks' | 'externalPacks'>): LoadedPackEntry[] {
-  return [
-    ...registry.builtInPacks().map(({ id, name, version }) => ({ id, name, version, builtIn: true })),
-    ...registry.externalPacks().flatMap(({ id, name, version, dir }) => {
-      const { entry, styles } = packFrontendFiles(dir);
-      if (!entry && !styles) return [];
-      const feRevision = crypto.createHash('sha256')
-        .update([entry, styles].flatMap((file) => (file ? [sha256File(path.join(dir, file))] : [])).join(':'))
-        .digest('hex').slice(0, 16);
-      return [{ id, name, version, feEntry: entry, feStyles: styles, feRevision }];
-    }),
-  ];
+/**
+ * The loaded packs the renderer is told about, and where to fetch each one's frontend from.
+ *
+ * **Every pack, by the same rule.** The app's own pack is here with its `feEntry` like any other, because
+ * nothing compiles a pack's frontend into the renderer any more: the shell fetches each one over `pack://`
+ * from the bundle that pack's own `abuddy build` wrote. A pack with neither file is still listed — it has
+ * systems the renderer must know are running — and the shell reads that as "no frontend code".
+ */
+export function getLoadedPackEntries(registry: Pick<PackRegistry, 'loadedPacks'>): LoadedPackEntry[] {
+  return registry.loadedPacks().map(({ id, name, version, dir }) => {
+    const { entry, styles } = packFrontendFiles(dir);
+    // A pack with no frontend files at all was left out of this list entirely, and its systems were told
+    // about the client by the bus instead. Listing it keeps one answer to "which packs are running" rather
+    // than two that can disagree
+    if (!entry && !styles) return { id, name, version };
+    const feRevision = crypto.createHash('sha256')
+      .update([entry, styles].flatMap((file) => (file ? [sha256File(path.join(dir, file))] : [])).join(':'))
+      .digest('hex').slice(0, 16);
+    return { id, name, version, feEntry: entry, feStyles: styles, feRevision };
+  });
 }
 
 /**
- * The loaded external packs with frontend code: the renderer loads it after connecting, from the entries
- * above, and their systems wait for that rather than for the client
+ * The loaded packs with frontend code: the renderer loads each after connecting, from the entries above,
+ * and their systems wait for that rather than for the client. The app's own pack is one of them now, its
+ * frontend being fetched over `pack://` like any other.
  */
-export function getPacksWithClientLoadedFrontends(registry: Pick<PackRegistry, 'externalPacks'>): string[] {
-  return registry.externalPacks().filter((p) => packFrontendFiles(p.dir).entry).map((p) => p.id);
+export function getPacksWithClientLoadedFrontends(registry: Pick<PackRegistry, 'loadedPacks'>): string[] {
+  return registry.loadedPacks().filter((pack) => packFrontendFiles(pack.dir).entry).map((pack) => pack.id);
+}
+
+/**
+ * The files a pack layout holds and their hashes, which is what `integrity.json` records — and so is
+ * excluded from it.
+ */
+export function packFileHashes(layoutDir: string): Record<string, string> {
+  const files: Record<string, string> = {};
+  for (const rel of listFiles(layoutDir)) {
+    if (rel === PACK_LAYOUT.integrity) continue;
+    files[rel] = sha256File(path.join(layoutDir, rel));
+  }
+  return files;
+}
+
+/**
+ * The files a staged pack *would* hold and their hashes, computed from the built pack without copying
+ * anything: the sections' files under `dist/`, minus source maps, plus the manifest. Keyed by the path they
+ * take in the staged layout.
+ *
+ * One declaration with `stagePack`, which writes exactly this into `integrity.json`. The boot that installs
+ * the packs the app ships compares it against `packFileHashes` of the installed copy — the files as they
+ * actually are, not as `integrity.json` remembers them, so one comparison answers both "is this a different
+ * build" and "did something change the installed copy".
+ */
+export function stagedFileHashes(packRoot: string): Record<string, string> {
+  const dist = path.join(packRoot, 'dist');
+  const files: Record<string, string> = {};
+  for (const section of SECTIONS) {
+    const from = path.join(dist, section);
+    if (!fs.existsSync(from)) continue;
+    for (const rel of listFiles(from)) {
+      if (rel.endsWith('.map')) continue;
+      files[path.join(section, rel)] = sha256File(path.join(from, rel));
+    }
+  }
+  // The manifest is staged re-serialised, so its hash is of what staging would write rather than of the file
+  const manifest = fs.readFileSync(path.join(packRoot, PACK_LAYOUT.manifest), 'utf-8');
+  files[PACK_LAYOUT.manifest] = sha256(JSON.stringify(JSON.parse(manifest), null, 2) + '\n');
+  return files;
 }
 
 /**
@@ -157,11 +207,7 @@ export function stagePack(
 
   fs.writeFileSync(path.join(stageDir, PACK_LAYOUT.manifest), JSON.stringify(manifest, null, 2) + '\n');
 
-  const files: Record<string, string> = {};
-  for (const rel of listFiles(stageDir)) {
-    if (rel === PACK_LAYOUT.integrity) continue;
-    files[rel] = sha256File(path.join(stageDir, rel));
-  }
+  const files = packFileHashes(stageDir);
   const integrity: PackIntegrity = {
     formatVersion: PACK_LAYOUT_VERSION,
     id: manifest.id,
@@ -174,22 +220,6 @@ export function stagePack(
   fs.writeFileSync(path.join(stageDir, PACK_LAYOUT.integrity), JSON.stringify(integrity, null, 2) + '\n');
   return integrity;
 }
-
-/**
- * Removes the published build output of built-in packs this app no longer has (a pack dropped in a new release), so a
- * tool reading the data dir doesn't keep taking their entity types for the app's. Returns the ids it removed.
- * Hidden staging dirs are left to `recoverStagingDirs`.
- */
-export function pruneHostPackOutputs(hostPacksDir: string, keep: Iterable<string>): string[] {
-  if (!fs.existsSync(hostPacksDir)) return [];
-  const kept = new Set(keep);
-  const stale = fs.readdirSync(hostPacksDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.') && !kept.has(entry.name))
-    .map((entry) => entry.name);
-  for (const id of stale) fs.rmSync(path.join(hostPacksDir, id), { recursive: true, force: true });
-  return stale;
-}
-
 export function readPackIntegrity(dir: string): PackIntegrity {
   const integrityPath = path.join(dir, PACK_LAYOUT.integrity);
   if (!fs.existsSync(integrityPath)) throw new Error(`Not a pack layout: no ${PACK_LAYOUT.integrity} in ${dir}`);
@@ -271,90 +301,53 @@ export async function extractPackArchive(archive: string, destDir: string, expec
   return path.join(destDir, dirs[0].name);
 }
 
-/** A built-in pack's compiled seed files in its dist/ (`*.seed.json`, `seeds.json`, `media/`), relative to it */
-function builtInSeedFiles(distDir: string): string[] {
-  if (!fs.existsSync(distDir)) return [];
-  const top = fs.readdirSync(distDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && (entry.name.endsWith('.seed.json') || entry.name === 'seeds.json'))
-    .map((entry) => entry.name);
-  const mediaDir = path.join(distDir, 'media');
-  const media = fs.existsSync(mediaDir) ? listFiles(mediaDir).map((file) => `media/${file}`) : [];
-  return [...top, ...media].sort();
+/** A pack's compiled seed files, relative to the seeds directory holding them */
+export function packSeedFiles(seedsDir: string): string[] {
+  return fs.existsSync(seedsDir) ? listFiles(seedsDir).sort() : [];
 }
 
 /**
- * In a built-in pack's dist/, the sha256 of the compiled seeds index (seeds.json) its runtime was built
- * beside. The pack's runtime build writes it with runtime/index.cjs; `abuddy build` writes the seeds.
+ * The newest source file a pack's build should have seen, when that file is newer than the build — or
+ * nothing when the build is current.
+ *
+ * **Absence is no longer the signal that a build failed**, which is why this is here rather than in the one
+ * caller it started with. `abuddy build` assembles its output aside and renames it over `dist`, so a failed
+ * build leaves the previous one in place; every reader that took a missing tree to mean "nothing to use" has
+ * to ask this instead. Two do: `abuddy pack`, which would otherwise ship the build before the one that
+ * failed, and `abuddy test --prebuilt`, which trusts a build it did not make.
+ *
+ * Sources are the pack's `src/` and its `abuddy.json`; the build is the oldest of the two files the installer
+ * requires, since a build is only as current as its least finished part. mtimes are what a build leaves
+ * behind, so this is the same question `packages-built.ts` asks of the workspace packages and the same
+ * answer: it can only be wrong in the safe direction, reporting stale for a file touched without being
+ * changed. A rename preserves the mtime of the file as it was written, so staging does not disturb it.
  */
-const BUILT_IN_RUNTIME_SEEDS_HASH = 'runtime/seeds-index.sha256';
+export function staleBuildOutput(packDir: string): string | undefined {
+  // `PACK_LAYOUT` is relative to a layout directory, which for a pack's own build output is `dist`
+  const built = [PACK_LAYOUT.runtimeEntry, PACK_LAYOUT.snapshot].map((file) => path.join(packDir, 'dist', file));
+  const builtAt = built.map((file) => (fs.existsSync(file) ? fs.statSync(file).mtimeMs : 0));
+  // Absent rather than stale: the caller's own "not built" message names the files and the command
+  if (builtAt.some((at) => at === 0)) return undefined;
+  const oldestBuilt = Math.min(...builtAt);
 
-/**
- * Publish a built-in pack's build output in the pack layout (dist/snapshot.json → types/snapshot.json,
- * dist/build/ → build/, dist/runtime/index.cjs → runtime/index.cjs, compiled seeds → runtime/seeds/) so
- * pack authors resolve it as a dependency from the installed app: builds use its types and build
- * code, tests its runtime with the seed data it reads (settings defaults). Returns false when the
- * destination was already current. Throws, publishing nothing, when the runtime wasn't built beside
- * the compiled seeds (seeds compiled again without rebuilding the runtime).
- */
-export function publishHostPackOutput(builtInPackDir: string, destDir: string): boolean {
-  const distDir = path.join(builtInPackDir, 'dist');
-  const snapshot = path.join(distDir, 'snapshot.json');
-  if (!fs.existsSync(snapshot)) return false;
-  const buildDir = path.join(distDir, 'build');
-  const runtimeEntry = path.join(distDir, PACK_LAYOUT.runtimeEntry);
-  const seedsIndex = path.join(distDir, 'seeds.json');
-  if (fs.existsSync(runtimeEntry) && fs.existsSync(seedsIndex)) {
-    const hashFile = path.join(distDir, BUILT_IN_RUNTIME_SEEDS_HASH);
-    const builtBeside = fs.existsSync(hashFile) ? fs.readFileSync(hashFile, 'utf-8').trim() : undefined;
-    if (builtBeside !== sha256File(seedsIndex)) {
-      throw new Error(`${runtimeEntry} wasn't built beside the compiled seeds in ${distDir} (${BUILT_IN_RUNTIME_SEEDS_HASH} doesn't match seeds.json), so it isn't published with them: rebuild the pack's runtime (npm run build in the pack)`);
+  let newest: { file: string; at: number } | undefined;
+  const walk = (dir: string): void => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      // `__generated__` is written by the build itself, so it is output wearing a source file's path
+      if (entry.name === '__generated__' || entry.name === 'node_modules') continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else {
+        const at = fs.statSync(full).mtimeMs;
+        if (!newest || at > newest.at) newest = { file: path.relative(packDir, full), at };
+      }
     }
-  }
-  const seedFiles = fs.existsSync(runtimeEntry) ? builtInSeedFiles(distDir) : [];
+  };
+  const src = path.join(packDir, 'src');
+  if (fs.existsSync(src)) walk(src);
+  const manifest = path.join(packDir, PACK_LAYOUT.manifest);
+  const manifestAt = fs.existsSync(manifest) ? fs.statSync(manifest).mtimeMs : 0;
+  if (manifestAt > (newest?.at ?? 0)) newest = { file: PACK_LAYOUT.manifest, at: manifestAt };
 
-  const sources = [
-    snapshot,
-    ...(fs.existsSync(buildDir) ? listFiles(buildDir).map(f => path.join(buildDir, f)) : []),
-    ...(fs.existsSync(runtimeEntry) ? [runtimeEntry] : []),
-    ...seedFiles.map((file) => path.join(distDir, file)),
-  ];
-  const fingerprint = sources.map(f => `${path.relative(builtInPackDir, f)}:${sha256File(f)}`).join('\n');
-  const fingerprintFile = path.join(destDir, '.fingerprint');
-  if (fs.existsSync(fingerprintFile) && fs.readFileSync(fingerprintFile, 'utf-8') === fingerprint) return false;
-
-  // Hidden, so a crash mid-publish never leaves a directory that looks like a pack id
-  const staging = path.join(path.dirname(destDir), stagingDirName(path.basename(destDir), 'publishing'));
-  fs.rmSync(staging, { recursive: true, force: true });
-  fs.mkdirSync(path.join(staging, PACK_LAYOUT.typesDir), { recursive: true });
-  fs.copyFileSync(snapshot, path.join(staging, PACK_LAYOUT.snapshot));
-  if (fs.existsSync(buildDir)) fs.cpSync(buildDir, path.join(staging, PACK_LAYOUT.buildDir), { recursive: true });
-  if (fs.existsSync(runtimeEntry)) {
-    fs.mkdirSync(path.join(staging, PACK_LAYOUT.runtimeDir), { recursive: true });
-    fs.copyFileSync(runtimeEntry, path.join(staging, PACK_LAYOUT.runtimeEntry));
-    for (const file of seedFiles) {
-      const target = path.join(staging, PACK_LAYOUT.seedsDir, file);
-      fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.copyFileSync(path.join(distDir, file), target);
-    }
-  }
-  fs.writeFileSync(path.join(staging, '.fingerprint'), fingerprint);
-
-  // Move the published copy aside rather than deleting it first, as placePack does: between the delete
-  // and the rename the pack has no published output at all, and anything resolving it then — a pack
-  // build running beside this one — reads a dependency that does not exist.
-  fs.mkdirSync(path.dirname(destDir), { recursive: true });
-  const previous = fs.existsSync(destDir)
-    ? path.join(path.dirname(destDir), stagingDirName(path.basename(destDir), 'previous'))
-    : null;
-  if (previous) fs.renameSync(destDir, previous);
-  try {
-    fs.renameSync(staging, destDir);
-  } catch (err) {
-    if (previous && !fs.existsSync(destDir)) fs.renameSync(previous, destDir);
-    fs.rmSync(staging, { recursive: true, force: true });
-    throw err;
-  }
-  if (previous) fs.rmSync(previous, { recursive: true, force: true });
-  return true;
+  return newest && newest.at > oldestBuilt ? newest.file : undefined;
 }
-

@@ -2,9 +2,14 @@
 // document. The rules around both — which URL, what counts as a registration, what unloading undoes — are the host's
 // (`@abuddy/host/fe`, `fe/packs/frontends.ts`), which takes this as its I/O.
 import type { PackFrontendIO } from '@abuddy/host/fe';
+import devFrontends from 'virtual:dev-pack-frontends';
 
 export const packFrontendIO: PackFrontendIO = {
   importModule: (url) => import(/* @vite-ignore */ url),
+
+  // The packs this dev server serves from source. Empty in a built app, where every pack's frontend is
+  // fetched over `pack://` from the bundle its own build wrote
+  devFrontends,
 
   styles: {
     // A pack whose frontend is only styles reports no plugins, so a later load reaches it again; its stylesheet is

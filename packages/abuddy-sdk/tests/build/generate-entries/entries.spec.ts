@@ -113,17 +113,17 @@ describe('generated backend entry', () => {
   });
 
   // One record, keyed by feature: the app derives every ref, system and plugin from it
-  it('registers each feature once, in manifest order, with its early system and the events the manifest adds', () => {
+  it('registers each feature once, in manifest order, with the events the manifest adds', () => {
     const entry = generate({ features: [
-      { ...system('logs'), earlySystem: true },
+      system('logs'),
       { ...system('inbox'), system: { entry: 'src/features/inbox/be/system.ts', events: { incoming: ['MAIL_ARRIVED'] } } },
       { ...system('config'), designation: 'settings' },
     ] })['src/__generated__/pack-entry.ts'];
-    expect(entry).toContain("system: packSystem(__system_logs, { early: true }),");
+    expect(entry).toContain("system: packSystem(__system_logs),");
     expect(entry).toContain(`system: packSystem(__system_inbox, { incoming: ["MAIL_ARRIVED"] }),`);
     // No role orders the features: a system that needs another's data reads it when it needs it
     expect(entry.indexOf("'logs': {")).toBeLessThan(entry.indexOf("'config': {"));
-    expect(entry).not.toMatch(/systems:|earlySystem|receivedEventTypes|toPackSystemDefs/);
+    expect(entry).not.toMatch(/systems:|earlySystem|early:|receivedEventTypes|toPackSystemDefs/);
   });
 
   it("carries the pack's declared slash commands, so registering it registers them", () => {

@@ -2,7 +2,7 @@ import { app } from 'electron';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import {getAppContext} from '../../app-context.ts';
+import {getAppContext, shippedPacksDir} from '../../app-context.ts';
 
 // API Server Configuration
 export const API_CONFIG = {
@@ -100,9 +100,7 @@ export const getEnvironment = (port: number, options: { apiToken: string; startu
     ABUDDY_API_TOKEN: options.apiToken,
     AGENTBUDDY_STARTUP_ID: options.startupId,
     AGENTBUDDY_LOG_DIR: options.logDir,
-    BUILT_IN_PACKS_DIR: app.isPackaged
-      ? path.join(process.resourcesPath, 'app', 'packages')
-      : path.join(app.getAppPath(), 'packages'),
+    SHIPPED_PACKS_DIR: shippedPacksDir(),
     // Identity for the API process; resolveAppContext() there reads these
     ABUDDY_ENV: getAppContext().env,
     ABUDDY_USER_DATA_DIR: getAppContext().userDataDir,

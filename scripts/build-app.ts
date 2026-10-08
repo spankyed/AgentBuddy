@@ -23,16 +23,13 @@
  * reads another's `dist`. Their outputs are the four disjoint directories `APP_OUTPUTS` names, and the one
  * directory two of them share (`node_modules/.cache/tsbuildinfo/`) takes a distinct filename each.
  *
- * **The one real edge is external and must stay that way.** Two of the four — the renderer and the api —
- * read the built-in pack, and they read more of it than the entry `compile` wrote: each traces a generated
- * entry (`src/__generated__/pack-entry-fe.ts`, `pack-entry.ts`) into the pack's own `src`, so the pack's
- * components are compiled into the renderer bundle and its systems into the api's, and the renderer's
- * Tailwind config reads every file under that `src` for class names. `main` and `preload` name no pack at
- * all. The chain orders `compile` ahead of this step and `build:app` declares the pack's sources
- * (`PACK_SOURCES`, `lib/chain-steps.ts`) because of that. Run before `compile` and the api build *throws*
- * `No built-in packs found`, while the renderer fails **quietly** — its `eligiblePacks` filters to `[]` and
- * it emits an empty pack-loader map. Do not add a fallback here: it would convert the loud failure into the
- * quiet one.
+ * **None of the four reads a pack's sources, and that is what keeps this step's inputs its own.** No pack is
+ * compiled into the app: a pack's backend is loaded at run time from the `dist/runtime/index.cjs` its own
+ * `abuddy build` wrote, and its frontend is fetched over `pack://` from the bundle beside it. So the app's
+ * build reads the app's four workspaces and the built packs' `dist`, and an edit to a pack's `src` reaches
+ * this step only through `compile`, which the chain orders ahead of it. A bundler config here that reached
+ * into a pack's `src` again would make this step's real inputs the whole repo, which is the thing four
+ * attempts at a cheaper chain each failed on.
  *
  * WHAT THIS OWES THE CHECKS THAT READ IT
  *

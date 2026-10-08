@@ -64,7 +64,7 @@ export function fakeShell(start: { plugins: Plugin[]; defaultPlugin?: Plugin }) 
     savePanelSizes: vi.fn((sizes: ShellPanelSizes) => { savedSizes = sizes; }),
   };
   const options: ShellOptions = {
-    packs: { getRegisteredPlugins: () => start.plugins, getRegisteredDefaultPlugin: () => start.defaultPlugin ?? start.plugins[0] },
+    packs: { getRegisteredPlugins: () => start.plugins, defaultPlugin: () => start.defaultPlugin ?? start.plugins[0] },
     client: client.client,
     packFrontends,
     storage,

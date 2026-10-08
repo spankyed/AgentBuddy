@@ -1,20 +1,20 @@
 // The packs' start over hydrated data, as a boot and an app reset (services.appData.reset()) run it
 import { runAppMigrations, runPackMigrations } from '../../migrations/index.ts';
 import type { PackRegistry } from '../registry.ts';
-import { orchestrateDeclarativeSeed, importPackSeeds } from './seed.ts';
+import { seedPacks } from './seed.ts';
 
-/** Each registered pack's onInit, then the app's and the external packs' migrations, then the built-in and external packs' seeds, unless the app's migrations failed */
+/** Each registered pack's onInit, then the app's and the installed packs' migrations, then every pack's seeds, unless the app's migrations failed */
 export function startPacks(registry: PackRegistry): void {
   for (const hooks of registry.getBootHooks()) hooks.onInit?.();
 
   // The versions and seed hashes the packs' migrations and seeds read may only be in place once the app's migrations
   // ran: when one failed, nothing else runs, and the next boot retries
   if (!runAppMigrations(registry)) return;
-  const externalPacks = registry.externalPackTargets();
-  if (externalPacks.length > 0) runPackMigrations(externalPacks);
+  // `runAppMigrations` has already run the shipped packs', against the app version; `packMigrationTargets`
+  // leaves them out, so neither runner repeats the other's work
+  runPackMigrations(registry.packMigrationTargets());
 
-  registry.runRegisteredBootSeeds(orchestrateDeclarativeSeed);
-  if (externalPacks.length > 0) {
-    importPackSeeds(externalPacks);
-  }
+  // One call for every pack, in dependency order, so every pack gets the same treatment: a failed seed is
+  // retried on the next boot, and a pack sees what the packs it depends on seeded in this same run
+  seedPacks(registry.packSeedTargets());
 }

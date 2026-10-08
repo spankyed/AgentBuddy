@@ -66,15 +66,15 @@ describe('where the registry says a pack came from', () => {
     expect(registerExternalPacks(registry, loadExternalPacks())).toHaveLength(1);
 
     const origin = registry.packOrigin(PACK_ID);
-    expect(origin).toMatchObject({ id: PACK_ID, name: 'Declaring Pack', version: '1.0.0', builtIn: false });
+    expect(origin).toMatchObject({ id: PACK_ID, name: 'Declaring Pack', version: '1.0.0', shipped: false });
     expect(origin?.dir).toBe(path.join(_appDirOf(tmpDir), 'packs', PACK_ID));
     expect(origin?.manifest?.id).toBe(PACK_ID);
-    expect(registry.externalPacks().map((o) => o.id)).toContain(PACK_ID);
-    expect(registry.builtInPacks().map((o) => o.id)).not.toContain(PACK_ID);
+    expect(registry.loadedPacks().map((o) => o.id)).toContain(PACK_ID);
+    expect(registry.shippedPacks().map((o) => o.id)).not.toContain(PACK_ID);
 
     registry.unregisterPack(PACK_ID);
     expect(registry.packOrigin(PACK_ID)).toBeNull();
-    expect(registry.externalPacks().map((o) => o.id)).not.toContain(PACK_ID);
+    expect(registry.loadedPacks().map((o) => o.id)).not.toContain(PACK_ID);
   });
 });
 

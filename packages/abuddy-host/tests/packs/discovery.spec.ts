@@ -2,8 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '../../src/build/packages-built.ts';
-import { discoverBuiltInPacks, discoverPacks, enabledExternalPacks, installedPacks } from '../../src/packs/discovery.ts';
+import { discoverPacks, enabledExternalPacks, installedPacks } from '../../src/packs/discovery.ts';
 import { writeInstalledPacks } from '../../src/packs/installed.ts';
 import { _appDirOf } from '@abuddy/sdk/env';
 
@@ -94,35 +93,5 @@ describe('installedPacks', () => {
       manifest: { version: '2.0.0' },
       record: { installedFrom: 'acme/memo-pack', installedAt: '2020-01-01T00:00:00.000Z' },
     }]);
-  });
-});
-
-describe('discoverBuiltInPacks', () => {
-  it('finds a built-in pack in the packaged app layout (abuddy.json + dist, no src)', () => {
-    const dir = writeManifest('default-setup', { id: 'default-setup', name: 'Default Setup', version: '1.2.3', builtIn: true });
-
-    expect(discoverBuiltInPacks(packagesDir)).toEqual([
-      { id: 'default-setup', name: 'Default Setup', version: '1.2.3', dir },
-    ]);
-  });
-
-  it('ignores packages that are not built-in packs', () => {
-    writeManifest('external', { id: 'external', name: 'External' });
-    fs.mkdirSync(path.join(packagesDir, 'api'));
-
-    expect(discoverBuiltInPacks(packagesDir)).toEqual([]);
-  });
-
-  /**
-   * Over this repo, not a fixture. Every other case here writes the tree it then reads, so all of them would
-   * pass against a discovery that cannot read `packages/` at all — and the renderer's Vite and Tailwind configs
-   * call this to decide which built-in packs the app is built with. One returning nothing gives an app with no
-   * built-in packs and no error anywhere.
-   */
-  it('finds this checkout\'s built-in packs', () => {
-    const found = discoverBuiltInPacks(path.join(REPO_ROOT, 'packages'));
-
-    expect(found.map((pack) => pack.id), 'discovery found nothing in this repo, which is not a tree with no packs')
-      .toContain('default-setup');
   });
 });

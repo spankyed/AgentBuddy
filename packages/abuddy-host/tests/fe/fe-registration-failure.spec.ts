@@ -58,7 +58,7 @@ describe('a frontend registration that throws partway', () => {
     const registry = createFePackRegistry();
     expect(() => registry.registerPackFE(registration('default-pack', { features: { first: { plugin: plugin('first'), default: true } }, steps: [unloadable('boom')] }))).toThrow();
 
-    expect(() => registry.getRegisteredDefaultPlugin(), 'it kept the default plugin slot').toThrow();
+    expect(registry.defaultPlugin(), 'it kept the default plugin slot').toBeUndefined();
   });
 });
 

@@ -68,7 +68,7 @@ re-derived:
   (compiled seeds, `dist/types/pack-types.d.ts`, `dist/build/*`) is consumed by dependent packs and by
   seeding, not by someone editing SDK and default-setup together, and costs ~14s.
 - **Nothing rebuilds the built-in pack on an `@abuddy` source change.** The existing trigger stays as it
-  is: default-setup's own sources, through `dev-build.mjs --watch`. Keeping `dist` current means the pack
+  is: default-setup's own sources, through `abuddy build --watch` (`dev-build.mjs` when this was written; `goal-one-kind-of-pack` replaced it with the CLI's own watch, which rebuilds only the runtime). Keeping `dist` current means the pack
   rebuild that does fire consumes a fresh SDK, which is the ordering win without the cost.
 - **Pull-based, not push-based.** No `tsc --watch` or `tsdown --watch` per package: that is three
   long-running toolchains rebuilding on every save whether or not anything consumes the output. The
@@ -109,7 +109,7 @@ re-derived:
 
 - `packages/dev-mode.js` starts the watcher for the life of the session and stops it on shutdown,
   printing what it rebuilt in the same style as the rest of the dev output.
-- It does not touch `dev-build.mjs`: default-setup's watcher keeps its own trigger (Decision 2).
+- It does not touch the pack's own watcher, which keeps its own trigger (Decision 2) — `abuddy build --watch`, forked by `packages/dev-mode.js`.
 - **Done when:** with `npm start` running, editing a `@abuddy/sdk` source rebuilds `packages/abuddy-sdk/dist`
   within a few seconds and prints one line; editing a `@abuddy/ui` source rebuilds only `@abuddy/ui`; the
   built-in pack is not rebuilt by either. Verified by hand and recorded in the Outcome with the observed

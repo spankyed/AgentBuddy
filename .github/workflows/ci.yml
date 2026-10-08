@@ -62,8 +62,8 @@ jobs:
       - name: Schema drift check
         run: npm run schema:check --workspace @abuddy/sdk
 
-      # Compiled seeds, snapshot and build/ (seed compilers, seed runtime): read by the seed parity,
-      # dependent-pack and seed runtime tests. The runtime records the seeds it's built beside, so it's built after
+      # Compiled seeds, snapshot, build/ (seed compilers, seed runtime) and the backend runtime: read by the
+      # seed parity, dependent-pack, SDK bridge drift and seed runtime tests
       - name: Build default-setup pack artifacts
         working-directory: packages/default-setup
         run: npx abuddy build
@@ -72,9 +72,6 @@ jobs:
       # rather than reading what the build above wrote, so the order here is convenience and not a dependency
       - name: Facade types report (default-setup)
         run: npm run facade:check --workspace @app/default-setup
-
-      - name: Build default-setup runtime (for the SDK bridge drift check and dependent-pack tests)
-        run: node packages/default-setup/dev-build.mjs
 
       - name: Unit tests (api)
         run: npm test --workspace @app/api -- --reporter=verbose

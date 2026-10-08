@@ -11,7 +11,7 @@ import type { PackMigration } from '@abuddy/sdk/framework';
 process.env.ABUDDY_ENV = 'test';
 import { registry, TEST_APP_VERSION } from '../packs/runtime/test-host.ts';
 
-const runs = vi.hoisted(() => ({ builtIn: 0, external: 0 }));
+const runs = vi.hoisted(() => ({ shipped: 0, external: 0 }));
 
 /** The app version the runner reads; the test host's unless a test sets one */
 const version = vi.hoisted(() => ({ current: undefined as string | undefined }));
@@ -20,7 +20,7 @@ vi.mock('@abuddy/sdk/env', async (importOriginal) => {
   return { ...actual, getAppVersion: () => version.current ?? actual.getAppVersion() };
 });
 
-import { loadBuiltInPacks, registerExternalPacks, type LoadedPack } from '../../src/packs/runtime/index.ts';
+import { registerExternalPacks, type LoadedPack } from '../../src/packs/runtime/index.ts';
 import type { PackMigrationTarget } from '../../src/migrations/index.ts';
 import { runAppMigrations, runPackMigrations } from '../../src/migrations/index.ts';
 import { appState } from '../../src/app-state/index.ts';
@@ -45,41 +45,45 @@ afterAll(() => {
 });
 
 describe('boot migrations', () => {
-  it("runs a built-in pack's migration and an external pack's migration once each", async () => {
+  it("runs a shipped pack's migration and an installed pack's migration once each", async () => {
     resetTestData();
     appState.update({ version: '0.0.0' });
 
     const registration = {
       id: 'migrations-built-in',
-      migrations: [{ target: TEST_APP_VERSION, description: 'built-in', up: () => { runs.builtIn++; } }],
+      migrations: [{ target: TEST_APP_VERSION, description: 'built-in', up: () => { runs.shipped++; } }],
     };
-    await loadBuiltInPacks(registry, builtInDir, {
-      runtimeEntry: 'never',
-      bundledLoaders: async () => ({ 'migrations-built-in': async () => ({ registration }) }),
-    });
+    // Registered straight into the registry: the subject is the runner, not how a pack's module is loaded.
+    // **With a `manifest`, which is what makes "once" checkable here.** `packMigrationTargets` reads the
+    // origin's manifest, and the loader builds every origin with one — so a fixture without it is a shipped
+    // pack the second runner cannot see, and this case passed while a real one ran its migrations twice.
+    const shippedManifest = { id: 'migrations-built-in', name: 'Built-in', version: TEST_APP_VERSION };
+    registry.registerPack(registration, { ...shippedManifest, dir: builtInDir, shipped: true, manifest: shippedManifest as never });
 
     const externalMigration: PackMigration = { target: TEST_APP_VERSION, description: 'external', up: () => { runs.external++; } };
     const manifest = { id: 'migrations-external', name: 'External', version: TEST_APP_VERSION };
     const external = {
       registration: { id: manifest.id, migrations: [externalMigration] },
-      origin: { ...manifest, dir: builtInDir, builtIn: false, manifest: manifest },
+      origin: { ...manifest, dir: builtInDir, shipped: false, manifest: manifest },
     } satisfies LoadedPack;
     expect(registerExternalPacks(registry, [external])).toHaveLength(1);
     // What the boot passes on: the registry joins each registered pack's origin with its migrations
-    const externalPacks = registry.externalPackTargets();
+    const installedPacks = registry.packMigrationTargets();
+    expect(installedPacks.map((t) => t.manifest.id), 'the shipped pack is not a target: runAppMigrations owns it')
+      .toEqual(['migrations-external']);
 
     // The boot's order (the API's setup/backend.ts)
     runAppMigrations(registry);
-    runPackMigrations(externalPacks);
+    runPackMigrations(installedPacks);
 
-    expect(runs.builtIn).toBe(1);
+    expect(runs.shipped).toBe(1);
     expect(runs.external).toBe(1);
     expect(appState.get()).toMatchObject({ version: TEST_APP_VERSION, packVersions: { 'migrations-external': TEST_APP_VERSION } });
 
     // Recorded: a second run changes nothing
     runAppMigrations(registry);
-    runPackMigrations(externalPacks);
-    expect(runs).toEqual({ builtIn: 1, external: 1 });
+    runPackMigrations(installedPacks);
+    expect(runs).toEqual({ shipped: 1, external: 1 });
   });
 
   it("stops an external pack's migrations at a failure and records its version once they all ran, keeping other packs'", () => {
@@ -131,10 +135,7 @@ describe('which migrations run', () => {
         },
       })),
     };
-    await loadBuiltInPacks(registry, builtInDir, {
-      runtimeEntry: 'never',
-      bundledLoaders: async () => ({ 'migrations-gate': async () => ({ registration }) }),
-    });
+    registry.registerPack(registration, { id: 'migrations-gate', name: 'Gate', version: TEST_APP_VERSION, dir: builtInDir, shipped: true });
   });
 
   beforeEach(() => {

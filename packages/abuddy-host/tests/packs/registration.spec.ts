@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, installEngine, installedEngine, repository } from '@abuddy/ears';
 import { getPackCommands, getPackSettingsDefaults, type PackFeatureSystem, type PackRegistration } from '@abuddy/sdk/framework';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
@@ -16,7 +16,7 @@ const registry = createPackRegistry();
 startTestRuntime({ packs: registry });
 const {
   getPackExtensions, getRegisteredEntityTypes, getRegisteredServices,
-  registerPack, systemIds, pluginIds, runRegisteredBootSeeds, unregisterPack,
+  registerPack, systemIds, pluginIds, unregisterPack,
 } = registry;
 
 const registered: string[] = [];
@@ -283,22 +283,53 @@ describe('registerPack commands', () => {
   });
 });
 
-describe('runRegisteredBootSeeds', () => {
-  it("seeds a pack's declarative seedManifest and ignores any other boot key", () => {
-    const seedManifest = { seedKeys: ['actions'], compiledDir: '/compiled' };
-    const smuggled = vi.fn();
-    registerPack({ id: 'built-in-pack', boot: { seedManifest } } as unknown as PackRegistration);
-    registerPack({ id: 'hooks-pack', boot: { onInit() {}, seed: smuggled } } as unknown as PackRegistration);
-    registered.push('built-in-pack', 'hooks-pack');
+describe('packSeedTargets', () => {
+  const origin = (id: string, shipped: boolean, dependencies?: Record<string, string>) =>
+    ({ id, name: id, version: '1.0.0', dir: `/packs/${id}`, shipped, manifest: { id, name: id, version: '1.0.0', dependencies } } as unknown as Parameters<typeof registerPack>[1]);
 
-    const orchestrate = vi.fn();
-    runRegisteredBootSeeds(orchestrate);
+  // **A pack is seedable because it is somewhere.** Its compiled seeds are files in its directory, which the
+  // origin knows and a registration does not, so a pack never has to tell the host where its compiled data
+  // is: a registration claiming a `compiledDir` is not enough to be seeded from.
+  it('leaves out a pack with no origin, having nowhere to read seeds from', () => {
+    registerPack({ id: 'nowhere-pack', boot: { seedManifest: { seedKeys: ['actions'], compiledDir: '/compiled' } } } as unknown as PackRegistration);
+    registered.push('nowhere-pack');
 
-    expect(orchestrate).toHaveBeenCalledTimes(1);
-    // With the pack it belongs to, so each pack's boot seed is tracked under its own id
-    expect(orchestrate).toHaveBeenCalledWith(seedManifest, 'built-in-pack');
-    expect(smuggled).not.toHaveBeenCalled();
-    expect(getPackExtensions('built-in-pack')?.bootHooks).toEqual(['seedManifest']);
-    expect(getPackExtensions('hooks-pack')?.bootHooks).toEqual(['onInit']);
+    expect(registry.packSeedTargets().map((t) => t.manifest.id)).not.toContain('nowhere-pack');
+    // Still reported as a boot hook the pack declares, which is a different question
+    expect(getPackExtensions('nowhere-pack')?.bootHooks).toEqual(['seedManifest']);
+  });
+
+  it("carries each pack's own id, directory and declared policy, whoever ships it", () => {
+    const seedPolicy = { skipAtBoot: ['settings'] };
+    registerPack({ id: 'shipped-pack', boot: { seedManifest: { seedKeys: ['actions'], compiledDir: '/c', seedPolicy } } } as unknown as PackRegistration,
+      origin('shipped-pack', true));
+    registerPack({ id: 'installed-pack' } as PackRegistration, origin('installed-pack', false));
+    registered.push('shipped-pack', 'installed-pack');
+
+    const targets = registry.packSeedTargets();
+    expect(targets.find((t) => t.manifest.id === 'shipped-pack'))
+      .toEqual({ manifest: { id: 'shipped-pack', dependencies: undefined }, dir: '/packs/shipped-pack', seedPolicy });
+    // No policy declared. Nothing in a seed target says which app shipped the pack: every pack's seeds are
+    // read from `runtime/seeds` under its own directory
+    expect(targets.find((t) => t.manifest.id === 'installed-pack'))
+      .toEqual({ manifest: { id: 'installed-pack', dependencies: undefined }, dir: '/packs/installed-pack' });
+  });
+
+  // The order seeds run in, so a pack's seeds can reference what the packs it depends on seeded
+  it('orders a pack after the packs it depends on', () => {
+    registerPack({ id: 'base-pack' } as PackRegistration, origin('base-pack', true));
+    registerPack({ id: 'dependent-pack' } as PackRegistration, origin('dependent-pack', false, { 'base-pack': '*' }));
+    registered.push('base-pack', 'dependent-pack');
+
+    const ids = registry.packSeedTargets().map((t) => t.manifest.id);
+    expect(ids.indexOf('base-pack')).toBeLessThan(ids.indexOf('dependent-pack'));
+  });
+
+  it('narrows to the packs it is given, which is what activating or reloading one seeds', () => {
+    registerPack({ id: 'one-pack' } as PackRegistration, origin('one-pack', false));
+    registerPack({ id: 'two-pack' } as PackRegistration, origin('two-pack', false));
+    registered.push('one-pack', 'two-pack');
+
+    expect(registry.packSeedTargets(['two-pack']).map((t) => t.manifest.id)).toEqual(['two-pack']);
   });
 });

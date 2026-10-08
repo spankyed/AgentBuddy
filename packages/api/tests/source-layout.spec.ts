@@ -16,8 +16,8 @@ const SRC = path.resolve(__dirname, '..', 'src');
 /** The jobs this package does, one folder each */
 const JOBS = ['adapters', 'boot', 'runtime', 'transport'];
 
-/** What may sit at the root of src/: the entry node runs, the types entry, and the virtual modules' declarations */
-const ROOT_FILES = ['server.ts', 'types.ts', 'env.d.ts'];
+/** What may sit at the root of src/: the entry node runs, and the types entry */
+const ROOT_FILES = ['server.ts', 'types.ts'];
 
 const entries = () => fs.readdirSync(SRC, { withFileTypes: true }).filter((e) => !e.name.startsWith('.'));
 
@@ -28,7 +28,7 @@ describe('packages/api/src', () => {
     expect(folders, 'app runtime belongs in @abuddy/host; a new folder here is a new job').toEqual(JOBS);
   });
 
-  it('keeps at its root only the entry, the types entry and the virtual modules it declares', () => {
+  it('keeps at its root only the entry and the types entry', () => {
     const files = entries().filter((e) => e.isFile()).map((e) => e.name).sort();
 
     expect(files).toEqual([...ROOT_FILES].sort());

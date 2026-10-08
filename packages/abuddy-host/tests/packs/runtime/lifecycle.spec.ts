@@ -161,7 +161,7 @@ describe('activating and tearing down a pack at runtime', () => {
 
     expect(activatePack(registry, PACK_ID, bus as never)).toBe(true);
     expect(runs).toEqual(['migration', 'seed']);
-    expect(appState.get()).toMatchObject({ packVersions: { [PACK_ID]: '1.0.0' }, externalSeedHashes: { [PACK_ID]: expect.any(String) } });
+    expect(appState.get()).toMatchObject({ packVersions: { [PACK_ID]: '1.0.0' }, packSeedHashes: { [PACK_ID]: expect.any(String) } });
 
     // Disabled, then enabled again
     teardownPack(registry, PACK_ID, bus as never);
@@ -321,15 +321,15 @@ describe('FE pack deregistration', () => {
     expect(removedAgain).toHaveLength(0);
   });
 
-  // A built-in pack's registration carries its id like any other, so it comes out the same way
-  it('takes a built-in pack\'s frontend back out like any other pack\'s', async () => {
+  // A shipped pack's registration carries its id like any other, so it comes out the same way
+  it('takes a shipped pack\'s frontend back out like any other pack\'s', async () => {
     const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
-    const builtIn = { label: 'Built-in', id: 'default-setup/main' } as unknown as Plugin;
+    const shipped = { label: 'Built-in', id: 'default-setup/main' } as unknown as Plugin;
 
     registerPackFE({ id: 'default-setup', features: { main: { plugin: { label: 'Built-in' } as PluginDefinition } } });
-    expect(getRegisteredPlugins()).toEqual([builtIn]);
+    expect(getRegisteredPlugins()).toEqual([shipped]);
 
-    expect(unregisterPackFE('default-setup')).toEqual([builtIn]);
+    expect(unregisterPackFE('default-setup')).toEqual([shipped]);
     expect(getRegisteredPlugins()).toEqual([]);
   });
 

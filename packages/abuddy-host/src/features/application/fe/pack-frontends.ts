@@ -26,7 +26,7 @@ export function packFrontendLoader(client: ShellClient, packFrontends: ShellPack
     client.loadedPacks().then(async (loadedPacks) => {
       for (const pack of loadedPacks) {
         if (stopped) return;
-        if (pack.builtIn || input.loadedPackIds.includes(pack.id)) continue;
+        if (input.loadedPackIds.includes(pack.id)) continue;
         try {
           // null: the pack has no frontend code, so there's nothing to merge or ask startup data for
           const plugins = await packFrontends.load(pack);
@@ -50,9 +50,9 @@ export function packFrontendLoader(client: ShellClient, packFrontends: ShellPack
 }
 
 /**
- * Asks a pack's systems for their startup data. A connection's CLIENT_CONNECTED skips the systems of external packs
- * with frontend code, which loads after it; each is asked for once its load finished, whether it added plugins or
- * not, so its systems without plugins get it too.
+ * Asks a pack's systems for their startup data. A connection's CLIENT_CONNECTED skips the systems of every pack
+ * with frontend code, the ones the app ships included, since that frontend loads after it; each is asked for once
+ * its load finished, whether it added plugins or not, so its systems without plugins get it too.
  */
 export function announcePackClientReady(client: ShellClient, packId: string): void {
   client.packClientReady(packId).catch((err: unknown) => {

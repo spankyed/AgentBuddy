@@ -1,9 +1,8 @@
-import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPackArchive, publishHostPackOutput, stagePack } from '@abuddy/host/packs';
+import { createPackArchive, installPackFromLocal, stagePack } from '@abuddy/host/packs';
 import { resolveDepFiles } from '../../src/commands/fetch-deps';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { _appDirOf } from '@abuddy/sdk/env';
@@ -13,7 +12,7 @@ let tmp: string;
 const saved = { env: process.env.ABUDDY_ENV, dir: process.env.ABUDDY_USER_DATA_DIR, root: process.env.ABUDDY_ROOT };
 
 beforeEach(() => {
-  tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'host-output-'));
+  tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'installed-app-deps-'));
   process.env.ABUDDY_USER_DATA_DIR = path.join(tmp, 'userdata');
   delete process.env.ABUDDY_ROOT;
 });
@@ -30,78 +29,36 @@ function builtInPack(snapshot: object = { types: { entities: {}, relKinds: {} },
   // Deliberately not a sibling/workspace path of the author pack, so only the installed-app source can find it
   const dir = path.join(tmp, 'app-bundle', 'resources', 'default-pack-source');
   fs.mkdirSync(path.join(dir, 'dist', 'build'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'dist', 'snapshot.json'), JSON.stringify(snapshot));
+  fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.typesDir), { recursive: true });
+  // The manifest beside `dist/`, as the app ships a pack and as installing one requires
+  const version = (snapshot as { manifest?: { version?: string } }).manifest?.version ?? '1.0.0';
+  fs.writeFileSync(path.join(dir, PACK_LAYOUT.manifest), JSON.stringify({ id: 'base-pack', name: 'Base Pack', version }));
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify(snapshot));
   fs.writeFileSync(path.join(dir, 'dist', 'build', 'steps.build.mjs'), 'export const steps = [];');
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "base-pack" };');
-  // Compiled seeds at the top of a built-in pack's dist, beside files that aren't seeds
-  fs.writeFileSync(path.join(dir, 'dist', 'settings.seed.json'), '{"theme":"dark"}');
-  fs.writeFileSync(path.join(dir, 'dist', 'seeds.json'), '{"version":1,"seeds":[]}');
-  builtBeside(dir);
-  fs.mkdirSync(path.join(dir, 'dist', 'media', 'library'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'dist', 'media', 'library', 'pic.png'), 'PNG');
+  // Compiled seeds at the top of a shipped pack's dist, beside files that aren't seeds
+  // Compiled seeds, where `abuddy build` writes them for every pack
+  fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir, 'settings.seed.json'), '{"theme":"dark"}');
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir, 'seeds.json'), '{"version":1,"seeds":[]}');
+  fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir, 'media', 'library'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir, 'media', 'library', 'pic.png'), 'PNG');
   fs.mkdirSync(path.join(dir, 'dist', 'defs'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'defs', 'actions.d.ts'), '');
   return dir;
 }
 
-/** Records the compiled seeds index the runtime was built beside, as the pack's runtime build does */
-function builtBeside(dir: string) {
-  const hash = crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, 'dist', 'seeds.json'))).digest('hex');
-  fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'seeds-index.sha256'), hash);
-}
-
-describe('publishHostPackOutput', () => {
-  it('publishes types/, build/ and runtime/index.cjs once and republishes only when they change', () => {
-    const src = builtInPack();
-    const dest = path.join(_appDirOf(tmp), 'host-packs', 'base-pack');
-
-    expect(publishHostPackOutput(src, dest)).toBe(true);
-    expect(fs.readFileSync(path.join(dest, PACK_LAYOUT.snapshot), 'utf-8')).toContain('base-pack');
-    expect(fs.existsSync(path.join(dest, 'build', 'steps.build.mjs'))).toBe(true);
-    expect(fs.readFileSync(path.join(dest, 'runtime', 'index.cjs'), 'utf-8')).toContain('registration');
-    // The compiled seeds its runtime reads (settings defaults), and nothing else from dist
-    expect(fs.readdirSync(path.join(dest, 'runtime', 'seeds')).sort()).toEqual(['media', 'seeds.json', 'settings.seed.json']);
-    expect(fs.existsSync(path.join(dest, 'runtime', 'seeds', 'media', 'library', 'pic.png'))).toBe(true);
-    expect(publishHostPackOutput(src, dest)).toBe(false);
-
-    fs.writeFileSync(path.join(src, 'dist', 'settings.seed.json'), '{"theme":"light"}');
-    expect(publishHostPackOutput(src, dest)).toBe(true);
-    expect(fs.readFileSync(path.join(dest, 'runtime', 'seeds', 'settings.seed.json'), 'utf-8')).toContain('light');
-
-    fs.writeFileSync(path.join(src, 'dist', 'build', 'steps.build.mjs'), 'export const steps = [1];');
-    expect(publishHostPackOutput(src, dest)).toBe(true);
-    expect(fs.readFileSync(path.join(dest, 'build', 'steps.build.mjs'), 'utf-8')).toContain('[1]');
-
-    fs.writeFileSync(path.join(src, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "base-pack", v: 2 };');
-    expect(publishHostPackOutput(src, dest)).toBe(true);
-    expect(fs.readFileSync(path.join(dest, 'runtime', 'index.cjs'), 'utf-8')).toContain('v: 2');
-  });
-
-  it("refuses to publish a runtime with seeds compiled after it, and publishes once the runtime is rebuilt beside them", () => {
-    const src = builtInPack();
-    const dest = path.join(_appDirOf(tmp), 'host-packs', 'base-pack');
-    publishHostPackOutput(src, dest);
-
-    // abuddy build compiled the seeds again; the runtime wasn't rebuilt
-    fs.writeFileSync(path.join(src, 'dist', 'seeds.json'), '{"version":1,"seeds":[{"key":"notes"}]}');
-    expect(() => publishHostPackOutput(src, dest)).toThrow(/runtime\/index\.cjs wasn't built beside the compiled seeds .*rebuild the pack's runtime/);
-    expect(fs.readFileSync(path.join(dest, 'runtime', 'seeds', 'seeds.json'), 'utf-8')).not.toContain('notes');
-
-    // A runtime never recorded as built beside any seeds isn't published with them either
-    fs.rmSync(path.join(src, 'dist', 'runtime', 'seeds-index.sha256'));
-    expect(() => publishHostPackOutput(src, dest)).toThrow(/wasn't built beside the compiled seeds/);
-
-    builtBeside(src);
-    expect(publishHostPackOutput(src, dest)).toBe(true);
-    expect(fs.readFileSync(path.join(dest, 'runtime', 'seeds', 'seeds.json'), 'utf-8')).toContain('notes');
-  });
-});
-
 describe('dependency resolution from an installed app', () => {
-  it('resolves a built-in dependency (snapshot, step build code, runtime) the app published, and caches it in the pack', async () => {
-    const hostPacks = path.join(_appDirOf(path.join(tmp, 'userdata')), 'host-packs');
-    publishHostPackOutput(builtInPack(), path.join(hostPacks, 'base-pack'));
+  /** The app's packs dir, where an installed pack is — the ones the app ships among them */
+  const packsDir = () => {
+    const dir = path.join(_appDirOf(path.join(tmp, 'userdata')), 'packs');
+    fs.mkdirSync(dir, { recursive: true });
+    return dir;
+  };
+
+  it('resolves a shipped dependency (snapshot, step build code, runtime) from the installed app, and caches it in the pack', async () => {
+    await installPackFromLocal(builtInPack(), packsDir());
 
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot, { recursive: true });
@@ -117,37 +74,35 @@ describe('dependency resolution from an installed app', () => {
   });
 
   it('reports where the dependency resolved from, and reports nothing for a later cache hit', async () => {
-    const hostPacks = path.join(_appDirOf(path.join(tmp, 'userdata')), 'host-packs');
-    publishHostPackOutput(builtInPack(), path.join(hostPacks, 'base-pack'));
+    await installPackFromLocal(builtInPack(), packsDir());
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot, { recursive: true });
 
     expect((await resolveDepFiles(packRoot, 'base-pack', '*'))?.resolvedFrom).toMatch(/^installed app \(/);
 
     // Once the app's copy is gone the cache stands in, and it records no provenance
-    fs.rmSync(path.join(hostPacks, 'base-pack'), { recursive: true });
+    fs.rmSync(path.join(packsDir(), 'base-pack'), { recursive: true });
     const cached = await resolveDepFiles(packRoot, 'base-pack', '*');
     expect(cached?.snapshot.manifest.id).toBe('base-pack');
     expect(cached?.resolvedFrom).toBeUndefined();
   });
 
   it("drops a cached runtime when the dependency stops shipping one", async () => {
-    const hostPacks = path.join(_appDirOf(path.join(tmp, 'userdata')), 'host-packs');
     const src = builtInPack();
-    publishHostPackOutput(src, path.join(hostPacks, 'base-pack'));
+    await installPackFromLocal(src, packsDir());
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot, { recursive: true });
     expect((await resolveDepFiles(packRoot, 'base-pack', '*'))?.runtimeEntry).toBeDefined();
 
-    fs.rmSync(path.join(src, 'dist', 'runtime'), { recursive: true });
-    fs.rmSync(path.join(hostPacks, 'base-pack'), { recursive: true });
-    publishHostPackOutput(src, path.join(hostPacks, 'base-pack'));
+    // The installed copy loses its runtime — an install cannot produce a pack without one, so this is the
+    // state an update to a pack that dropped its backend leaves, read from the app rather than written by it
+    fs.rmSync(path.join(packsDir(), 'base-pack', 'runtime'), { recursive: true });
     const artifacts = await resolveDepFiles(packRoot, 'base-pack', '*');
     expect(artifacts?.runtimeEntry).toBeUndefined();
     expect(fs.existsSync(path.join(packRoot, '.abuddy', 'deps', 'base-pack', 'runtime'))).toBe(false);
   });
 
-  it('resolves a built-in dependency from the app configured for abuddy test, before the app has run', async () => {
+  it('resolves a shipped dependency from the app configured for abuddy test, before the app has run', async () => {
     const checkout = path.join(tmp, 'AgentBuddy');
     fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
     fs.renameSync(builtInPack(), path.join(checkout, 'packages', 'base-pack'));
@@ -159,18 +114,21 @@ describe('dependency resolution from an installed app', () => {
     const artifacts = await resolveDepFiles(packRoot, 'base-pack', '*');
     expect(artifacts?.snapshot.manifest.id).toBe('base-pack');
     expect(fs.existsSync(path.join(artifacts!.buildDir!, 'steps.build.mjs'))).toBe(true);
-    // A checkout's built-in pack: dist/runtime/index.cjs, as default-setup's build writes it
+    // A checkout's shipped pack: dist/runtime/index.cjs, as default-setup's build writes it
     expect(fs.readFileSync(artifacts!.runtimeEntry!, 'utf-8')).toContain('registration');
   });
 
-  /** A built-in pack's snapshot; `fields` overrides any of it, `format: undefined` included */
+  /** A shipped pack's snapshot; `fields` overrides any of it, `format: undefined` included */
   const snapshotOf = (version: string, fields: object = {}) =>
     ({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version }, format: PACK_SNAPSHOT_FORMAT, ...fields });
 
-  function publishInstalled(version: string, steps = 'export const steps = [];', fields: object = {}) {
+  /** The pack installed in an app's data dir, as the app's boot leaves it */
+  async function publishInstalled(version: string, steps = 'export const steps = [];', fields: object = {}) {
     const src = builtInPack(snapshotOf(version, fields));
     fs.writeFileSync(path.join(src, 'dist', 'build', 'steps.build.mjs'), steps);
-    publishHostPackOutput(src, path.join(_appDirOf(path.join(tmp, 'userdata')), 'host-packs', 'base-pack'));
+    const dir = path.join(_appDirOf(path.join(tmp, 'userdata')), 'packs');
+    fs.mkdirSync(dir, { recursive: true });
+    await installPackFromLocal(src, dir);
   }
 
   function authorPack(): string {
@@ -181,10 +139,10 @@ describe('dependency resolution from an installed app', () => {
 
   it('refreshes the cached dependency when the app provides a new version', async () => {
     const packRoot = authorPack();
-    publishInstalled('1.0.0', 'export const steps = ["v1"];');
+    await publishInstalled('1.0.0', 'export const steps = ["v1"];');
     expect((await resolveDepFiles(packRoot, 'base-pack', '*'))?.snapshot.manifest.version).toBe('1.0.0');
 
-    publishInstalled('2.0.0', 'export const steps = ["v2"];');
+    await publishInstalled('2.0.0', 'export const steps = ["v2"];');
     const artifacts = await resolveDepFiles(packRoot, 'base-pack', '*');
     expect(artifacts?.snapshot.manifest.version).toBe('2.0.0');
     expect(fs.readFileSync(path.join(artifacts!.buildDir!, 'steps.build.mjs'), 'utf-8')).toContain('v2');
@@ -192,7 +150,7 @@ describe('dependency resolution from an installed app', () => {
 
   it('only accepts a dependency version that satisfies the declared range, cached or not', async () => {
     const packRoot = authorPack();
-    publishInstalled('1.0.0');
+    await publishInstalled('1.0.0');
     expect(await resolveDepFiles(packRoot, 'base-pack', '*')).not.toBeNull(); // now cached
 
     expect(await resolveDepFiles(packRoot, 'base-pack', '>=2.0.0')).toBeNull();
@@ -200,7 +158,7 @@ describe('dependency resolution from an installed app', () => {
   });
 
   it('prefers the app configured for abuddy test over an installed app', async () => {
-    publishInstalled('1.0.0');
+    await publishInstalled('1.0.0');
     const checkout = path.join(tmp, 'AgentBuddy');
     fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
     fs.renameSync(
@@ -213,7 +171,7 @@ describe('dependency resolution from an installed app', () => {
   });
 
   it("resolves a dependency from the checkout a pack sits in at any depth, before an installed app's copy", async () => {
-    publishInstalled('1.0.0');
+    await publishInstalled('1.0.0');
     const checkout = path.join(tmp, 'AgentBuddy');
     fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
     fs.renameSync(
@@ -233,7 +191,7 @@ describe('dependency resolution from an installed app', () => {
    */
   describe('the snapshot format', () => {
     it('passes over a nearer build in another format for one in the format this CLI reads', async () => {
-      publishInstalled('1.0.0');
+      await publishInstalled('1.0.0');
       const checkout = path.join(tmp, 'AgentBuddy');
       fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
       fs.renameSync(builtInPack(snapshotOf('3.0.0', { format: undefined })), path.join(checkout, 'packages', 'base-pack'));
@@ -243,12 +201,12 @@ describe('dependency resolution from an installed app', () => {
     });
 
     it('refuses a dependency found only in another format, naming where and which side is older', async () => {
-      publishInstalled('1.0.0', undefined, { format: undefined, sdkVersion: '0.3.14' });
+      await publishInstalled('1.0.0', undefined, { format: undefined, sdkVersion: '0.3.14' });
       await expect(resolveDepFiles(authorPack(), 'base-pack', '*')).rejects.toThrow(
         `Dependency "base-pack" has no build this CLI can use:\n  - installed app (production): its snapshot is format (none), written by an older abuddy CLI (SDK 0.3.14); this CLI reads format ${PACK_SNAPSHOT_FORMAT}`,
       );
 
-      publishInstalled('1.0.0', undefined, { format: PACK_SNAPSHOT_FORMAT + 1 });
+      await publishInstalled('1.0.0', undefined, { format: PACK_SNAPSHOT_FORMAT + 1 });
       await expect(resolveDepFiles(authorPack(), 'base-pack', '*')).rejects.toThrow(
         `its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer abuddy CLI; this CLI reads format ${PACK_SNAPSHOT_FORMAT}`,
       );
@@ -256,9 +214,9 @@ describe('dependency resolution from an installed app', () => {
 
     it('never serves a cached snapshot in another format', async () => {
       const packRoot = authorPack();
-      publishInstalled('1.0.0');
+      await publishInstalled('1.0.0');
       expect(await resolveDepFiles(packRoot, 'base-pack', '*')).not.toBeNull(); // now cached
-      fs.rmSync(path.join(_appDirOf(path.join(tmp, 'userdata')), 'host-packs', 'base-pack'), { recursive: true });
+      fs.rmSync(path.join(_appDirOf(path.join(tmp, 'userdata')), 'packs', 'base-pack'), { recursive: true });
       fs.writeFileSync(path.join(packRoot, '.abuddy', 'deps', 'base-pack', 'snapshot.json'), JSON.stringify(snapshotOf('1.0.0', { format: undefined })));
 
       await expect(resolveDepFiles(packRoot, 'base-pack', '*')).rejects.toThrow('the .abuddy/deps cache: its snapshot is format (none)');

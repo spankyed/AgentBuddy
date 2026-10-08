@@ -10,7 +10,7 @@ A seed passes through four, and each has its own vocabulary. **A seed is a noun 
 | Stage | What happens | Named |
 |---|---|---|
 | **author** | you write the sources | `src/seeds/`, `boot.seed`, `seedFormats`, `seedHooks`, `seedPolicy` |
-| **compile** | `abuddy build` turns them into records and hashes each one | `dist/*.seed.json`, `seeds.json`, `sourceHash` |
+| **compile** | `abuddy build` turns them into records and hashes each one | `dist/runtime/seeds/*.seed.json`, `seeds.json`, `sourceHash` |
 | **import** | the app writes those records into the database | `importSeeds()`, `ImportMode`, `ImportCounts`, a `Seeder`'s `apply()` |
 | **record** | each row remembers where it came from, so your edits survive the next import | `seedKey`, `seededFields`, `seededGraph` |
 

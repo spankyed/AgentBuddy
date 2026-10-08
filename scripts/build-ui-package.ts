@@ -17,9 +17,12 @@ import { createRequire } from 'node:module';
 import { BareImports, assertExportTargetsBuilt, isDeclaration, rewriteDeclarationExtensions, walk } from './lib/published-imports.ts';
 import { computeExports, findComponentsWithoutEntry, missingEntriesMessage, pkgDir } from '../packages/abuddy-ui/scripts/exports.ts';
 import { runPackageBuild } from '@abuddy/host/build/packages-built';
+import { replaceDir } from '@abuddy/host/replace-dir';
 import { stagePublishTree } from '@abuddy/host/build/published-manifest';
 
 const outDir = path.join(pkgDir, 'dist');
+/** Built here and renamed over `dist` at the end; `scripts/build-package.ts` says why, and `.temp/` is ignored */
+const stagedDir = path.join(pkgDir, '.temp', 'build');
 const require = createRequire(import.meta.url);
 const run = (bin: string, args: string[]) => execFileSync(process.execPath, [bin, ...args], { stdio: 'inherit', cwd: pkgDir });
 
@@ -30,31 +33,35 @@ async function main(): Promise<void> {
   if (!isDeepStrictEqual(pkg.exports, computeExports())) {
     throw new Error('packages/abuddy-ui/package.json exports are out of date with src/. Run: npm run exports:update -w @abuddy/ui');
   }
-  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.rmSync(stagedDir, { recursive: true, force: true });
+  fs.mkdirSync(stagedDir, { recursive: true });
 
-  run(path.join(path.dirname(require.resolve('tsdown/package.json')), 'dist', 'run.mjs'), ['--config', 'tsdown.config.ts', '--log-level', 'warn']);
+  // Both compilers take their output directory from a config file, and both let a flag override it
+  run(path.join(path.dirname(require.resolve('tsdown/package.json')), 'dist', 'run.mjs'),
+    ['--config', 'tsdown.config.ts', '--log-level', 'warn', '--out-dir', stagedDir]);
 
   // Typechecks the SFCs and emits declarations for them and the .ts modules
-  run(require.resolve('vue-tsc/bin/vue-tsc.js'), ['-p', 'tsconfig.package.json']);
+  run(require.resolve('vue-tsc/bin/vue-tsc.js'), ['-p', 'tsconfig.package.json', '--outDir', stagedDir]);
   // vue-tsc names SFC declarations X.vue.d.ts. TypeScript resolves an import of './X.vue' inside
   // another declaration file to X.d.vue.ts under node16/nodenext, so use that name.
-  for (const file of walk(outDir).filter((f) => f.endsWith('.vue.d.ts'))) {
+  for (const file of walk(stagedDir).filter((f) => f.endsWith('.vue.d.ts'))) {
     fs.renameSync(file, file.replace(/\.vue\.d\.ts$/, '.d.vue.ts'));
   }
 
   // rewriteRelativeImportExtensions rewrites the emitted JS but not the declarations beside it
-  rewriteDeclarationExtensions(outDir);
+  rewriteDeclarationExtensions(stagedDir);
 
   // Every package the compiled modules import must be installable by a pack that uses them —
   // declarations included, since a type-only import is erased from the JS and would ship unseen
-  const bareImports = new BareImports(outDir);
-  for (const file of walk(outDir).filter((f) => f.endsWith('.js') || isDeclaration(f))) {
+  const bareImports = new BareImports(stagedDir);
+  for (const file of walk(stagedDir).filter((f) => f.endsWith('.js') || isDeclaration(f))) {
     const contents = fs.readFileSync(file, 'utf-8');
     if (isDeclaration(file)) bareImports.fromDeclaration(contents, file);
     else await bareImports.fromModule(contents, 'js', path.dirname(file), file);
   }
   bareImports.assertDeclared(pkg, 'packages/abuddy-ui/package.json');
-  assertExportTargetsBuilt(pkgDir, pkg.exports);
+  assertExportTargetsBuilt(pkgDir, pkg.exports, stagedDir);
+  replaceDir(stagedDir, outDir);
   // What npm publishes: the derived manifest and a copy of what `files` names, checked against itself
   const treeDir = stagePublishTree(pkgDir, pkg);
   console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`
