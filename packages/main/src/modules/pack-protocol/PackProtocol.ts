@@ -76,16 +76,21 @@ class PackProtocol implements AppModule {
       {
         scheme: 'pack',
         privileges: {
-          // A standard scheme, so a module served from `pack://` resolves like one served over http: relative
-          // specifiers against the module's own URL, and bare ones through the document's import map. Without
-          // it a pack bundle that emits more than one chunk cannot reliably load its own siblings, and nothing
-          // external can be shared by resolution rather than through a global.
+          // **A real origin per pack**, which is the whole of what this buys. Measured in Electron 37,
+          // 2026-10-08: with it, `new URL('pack://p/x').origin` is `pack://p`; without it, `"null"`.
+          // Everything a module needs is identical either way — relative specifiers inside a `pack://`
+          // module, bare ones through the document's import map, dot-segment normalisation, `fetch`,
+          // `import.meta.url` — so nothing about loading a pack's bundle rests on this, and a claim that
+          // something does can be checked by taking the flag off and watching it still pass.
           //
-          // It changes how the *renderer* parses `pack://` — a standard scheme lowercases the host and
-          // normalises the path — so what the pack-id guard receives is not what it received before.
-          // `packRequestTarget`'s cases cannot see that: they run under Node's parser. The pack E2E suites
-          // are the ones that do. `local-file` in `../media-protocol/MediaProtocol.ts` already ships this
-          // combination.
+          // The origin is latent today: only modules are loaded at `pack://`, never a document, so nothing
+          // partitions storage or consults it. It becomes load-bearing the day a pack's UI runs in its own
+          // document (`docs/plans/pack-fault-isolation.md`).
+          //
+          // **The one behaviour it does change is the host's case**: a standard scheme lowercases it, so
+          // `pack://My-Pack/x` reaches the `my-pack` pack rather than being refused. That is what http does
+          // with hosts, and `PACK_ID` still refuses everything that is not a plain segment.
+          // `local-file` in `../media-protocol/MediaProtocol.ts` already ships this combination.
           standard: true,
           secure: true,
           supportFetchAPI: true,

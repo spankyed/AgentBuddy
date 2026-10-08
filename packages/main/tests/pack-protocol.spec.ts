@@ -47,9 +47,13 @@ describe('PackProtocol MIME types', () => {
 // compares against, so a host that is not a plain segment moves the root rather than being refused by it.
 //
 // **These cases pin the guard against Node's parse, and that is not Chromium's.** They run under vitest, so
-// `new URL` here is Node's and an Electron scheme privilege cannot reach it — registering `pack` as a
-// standard scheme changes how the *renderer* parses `pack://`, which only a run in Electron can see. So
-// these hold the guard against a parse that is stable and nearby; the pack E2E suites are what hold it
+// `new URL` here is Node's and an Electron scheme privilege cannot reach it. The two differ in exactly one
+// way that matters here, measured 2026-10-08: `pack` is a standard scheme, so the renderer **lowercases the
+// host** where Node preserves it. `pack://My-Pack/x` is therefore refused by this guard under Node and
+// reaches the `my-pack` pack in the renderer — which is what http does with hosts, and why it is not in the
+// list below. Everything else below parses the same in both.
+//
+// So these hold the guard against a parse that is stable and nearby; the pack E2E suites are what hold it
 // against the one that actually serves.
 describe('which pack a request addresses', () => {
   it('takes the pack id from the host and the file from the path', () => {
@@ -63,7 +67,7 @@ describe('which pack a request addresses', () => {
 
   // The case the guard exists for: `..` as a host would resolve the pack dir to the data dir itself
   it('refuses a host that is not a plain pack id', () => {
-    for (const url of ['pack://../x', 'pack://a%2F..%2Fb/x', 'pack://My-Pack/x', 'pack://1pack/x', 'pack://-pack/x', 'pack://pack_x/y']) {
+    for (const url of ['pack://../x', 'pack://a%2F..%2Fb/x', 'pack://1pack/x', 'pack://-pack/x', 'pack://pack_x/y']) {
       expect(packRequestTarget(url), url).toBeNull();
     }
   });
