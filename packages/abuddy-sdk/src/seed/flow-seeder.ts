@@ -9,7 +9,7 @@ import { isFlowConfig, type FlowDSL } from '../build/compilers/flow-types.ts';
 import { EARS } from '../types/entities.ts';
 import type { ActionEntity, FlowEntity } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
-import { childSeedKey, defineSeedKey, hashValues, recordApplied, removedByUser, SEED_KEY, seedKeyPrefix } from './seeder.ts';
+import { childSeedKey, defineSeedKey, hashValues, recordApplied, removedByUser, SEED_KEY, seedKeyPrefix, SOURCE_HASH } from './seeder.ts';
 import { seedPackId } from '../utils/seed.ts';
 
 /** What the seeder wrote for a flow: its row's fields, each node's fields, the relation kinds between them, and a hash of their stored state */
@@ -277,7 +277,7 @@ export function createFlowSeeder(): Seeder {
           const seedKey = flowSeedKey(packId, name);
           untypedTx(flowId).update(SEED_KEY, seedKey);
           const parts = stampSeededGraph(flowId, compiled);
-          const sourceHash = ears().getAttr(flowId, 'sourceHash' as EARS.AttrKind);
+          const sourceHash = ears().getAttr(flowId, SOURCE_HASH);
           recordApplied(ctx, seedKey, {
             entityType: EARS.Entity.Flow,
             ...(typeof sourceHash === 'string' && { sourceHash }),

@@ -1,8 +1,8 @@
-export { createSeeder, driftedFieldParts, markSeededRowUnedited, type SeederOptions } from './seeder.ts';
+export { createSeeder, markSeededRowUnedited, type SeederOptions } from './seeder.ts';
 export { recordLabel } from '../build/seeds/records.ts';
 export { _seedHookRegistry, type SeedHookRegistry, type SeedHooks, type SeedHookContext, type SeedHookMatch } from './hooks.ts';
 export type { SeedRecord } from '../build/seeds/records.ts';
-export { createFlowSeeder, driftedGraphParts } from './flow-seeder.ts';
+export { createFlowSeeder } from './flow-seeder.ts';
 export { previewPackSeeds } from './preview.ts';
 export type { PackSeedsPreview, PackSeedPreviewItem } from './preview.ts';
 

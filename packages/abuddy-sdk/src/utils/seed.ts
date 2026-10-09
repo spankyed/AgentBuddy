@@ -38,23 +38,19 @@ export interface AppliedItem {
   parts: Record<string, string>;
 }
 
-/**
- * What this import wrote, by content key, for whoever asked it to keep a record. A caller allocates one and
- * reads it back; an import given none reports nothing, as with `SeedKeyRecord`.
- *
- * It holds only the items this run **wrote** — an item it skipped keeps whatever the last run recorded, which
- * is the caller's to carry forward.
- */
-export interface AppliedReport {
-  written: Map<string, AppliedItem>;
-}
-
 export interface ImportContext {
   compiledDir: string;
   include?: SeedIncludeSet;
   mode?: ImportMode;
   keyRecord?: SeedKeyRecord;
-  applied?: AppliedReport;
+  /**
+   * What this import wrote, by content key, for a caller that asked it to keep a record: it allocates the map
+   * and reads it back, as with `keyRecord`. An import given none records nothing.
+   *
+   * It holds only the items the run **wrote** — one it skipped keeps whatever the last run recorded, which is
+   * the caller's to carry forward.
+   */
+  applied?: Map<string, AppliedItem>;
   log: (...args: unknown[]) => void;
 }
 
@@ -94,7 +90,7 @@ export function importCompiledSeeds(options: {
   include?: Record<string, SeedIncludeSet | undefined>;
   mode?: ImportMode;
   keyRecord?: SeedKeyRecord;
-  applied?: AppliedReport;
+  applied?: Map<string, AppliedItem>;
   verbose?: boolean;
 }): Record<string, ImportCounts> {
   const log = options.verbose ? console.log.bind(console) : () => {};

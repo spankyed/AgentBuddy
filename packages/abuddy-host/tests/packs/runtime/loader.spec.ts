@@ -10,7 +10,7 @@ import { appliedContent, appState } from '../../../src/app-state/index.ts';
 import { getLoadedPackEntries } from '../../../src/packs/layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
 import { PACK_SNAPSHOT_FORMAT, seedFile } from '@abuddy/sdk/build';
-import type { AppliedReport, SeedKeyRecord } from '@abuddy/sdk/utils';
+import type { AppliedItem, SeedKeyRecord } from '@abuddy/sdk/utils';
 import { _appDirOf } from '@abuddy/sdk/env';
 import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
@@ -599,8 +599,8 @@ describe('seedPacks: failures', () => {
 
   /** A seeder that reports having written the given items, as the real writers report what they stamped */
   const seedWriting = (items: Record<string, Record<string, string>>, counts = { created: 1, updated: 0, skipped: 0 }) =>
-    (options: { applied?: AppliedReport }) => {
-      for (const [key, parts] of Object.entries(items)) options.applied?.written.set(key, { entityType: 'Note', parts });
+    (options: { applied?: Map<string, AppliedItem> }) => {
+      for (const [key, parts] of Object.entries(items)) options.applied?.set(key, { entityType: 'Note', parts });
       return { notes: counts };
     };
 
@@ -710,7 +710,7 @@ describe('seedPacks', () => {
       compiledDir: path.join(pack.dir, 'runtime', 'seeds'),
       mode: 'replace-on-collision',
       keyRecord: { before: new Set(), defined: new Set() },
-      applied: { written: new Map() },
+      applied: new Map(),
     });
   });
 

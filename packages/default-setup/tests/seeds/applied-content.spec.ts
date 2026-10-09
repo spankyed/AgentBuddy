@@ -8,10 +8,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { driftedFieldParts, driftedGraphParts } from '@abuddy/sdk/seed';
-import { importCompiledSeeds, type AppliedItem, type AppliedReport } from '@abuddy/sdk/utils';
+import { importCompiledSeeds, type AppliedItem } from '@abuddy/sdk/utils';
 import { SEED_INDEX_FILE } from '@abuddy/sdk/build';
-import { untypedQx as qx, untypedTx as tx, type EARS } from '@abuddy/ears';
+import { untypedQx as qx, type EARS } from '@abuddy/ears';
 import { PACK_DIR, keyRecordAfter } from './harness.ts';
 
 /** This pack's compiled seeds, as its build wrote them */
@@ -27,33 +26,40 @@ const dirs: string[] = [];
 /** The copies, made once: a spec file's tests share them, and only the database is per test */
 const made = new Map<string, string>();
 
+interface Variant {
+  /** Every `sourceHash` made different, so a re-apply has something to write */
+  bump?: boolean;
+  /** One field of the first action, given a new value */
+  change?: [field: string, value: string];
+}
+
 /**
- * The built artifacts in a scratch directory, optionally with one entry's `sourceHash`es bumped so a re-apply
- * has something to do. Copied rather than compiled: `compilePack` would run esbuild once per action and once
- * per prompt for content the build has already produced.
+ * The built artifacts in a scratch directory, in a given variant. Copied rather than compiled: `compilePack`
+ * would run esbuild once per action and once per prompt for content the build has already produced.
  */
-function compiledDir({ bump = false } = {}): string {
-  const memo = made.get(String(bump));
+function compiledDir(variant: Variant = {}): string {
+  const memo = made.get(JSON.stringify(variant));
   if (memo) return memo;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'applied-content-'));
-  made.set(String(bump), dir);
+  made.set(JSON.stringify(variant), dir);
   dirs.push(dir);
   for (const file of fs.readdirSync(BUILT)) {
     const body = fs.readFileSync(path.join(BUILT, file), 'utf-8');
-    fs.writeFileSync(path.join(dir, file), bump && file !== SEED_INDEX_FILE ? bumpHashes(body) : body);
+    fs.writeFileSync(path.join(dir, file), file === SEED_INDEX_FILE ? body : vary(file, body, variant));
   }
   return dir;
 }
 
-/** Every `sourceHash` in a compiled artifact, at any depth, made different without changing anything else */
-function bumpHashes(body: string): string {
-  return JSON.stringify(JSON.parse(body), (key, value) =>
-    key === 'sourceHash' && typeof value === 'string' ? `${value}-bumped` : value);
+function vary(file: string, body: string, { bump, change }: Variant): string {
+  const parsed = JSON.parse(body) as { records?: Array<Record<string, unknown>> };
+  if (change && file === 'actions.seed.json' && parsed.records?.[0]) parsed.records[0][change[0]] = change[1];
+  return JSON.stringify(parsed, (key, value) =>
+    bump && key === 'sourceHash' && typeof value === 'string' ? `${value}-bumped` : value);
 }
 
 function apply(dir: string, before: ReadonlySet<string> = new Set()) {
   const keyRecord = keyRecordAfter(before);
-  const applied: AppliedReport = { written: new Map() };
+  const applied = new Map<string, AppliedItem>();
   const counts = importCompiledSeeds({ compiledDir: dir, mode: 'replace-on-collision', keyRecord, applied });
   return { keyRecord, applied, counts };
 }
@@ -68,8 +74,19 @@ const attr = <T,>(id: EARS.EntityId, name: string): T | null =>
   (qx([id]).pickAll()[0] as Record<string, unknown> | undefined)?.[name] as T | null ?? null;
 
 const isFlow = (item: AppliedItem) => item.entityType === 'Flow';
-const drifted = (item: AppliedItem, id: EARS.EntityId) =>
-  isFlow(item) ? driftedGraphParts(item, id) : driftedFieldParts(item, id);
+
+/** The parts whose hash differs between two runs' records of the same item */
+function moved(before: Map<string, AppliedItem>, after: Map<string, AppliedItem>): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [key, item] of after) {
+    const was = before.get(key);
+    if (!was) continue;
+    const parts = [...new Set([...Object.keys(item.parts), ...Object.keys(was.parts)])]
+      .filter((path) => item.parts[path] !== was.parts[path]).sort();
+    if (parts.length > 0) out[key] = parts;
+  }
+  return out;
+}
 
 let first: ReturnType<typeof apply>;
 
@@ -94,8 +111,8 @@ describe('the applied content over this pack’s real content', () => {
     expect(entries.map((entry) => entry.key).sort(), 'the pack stopped seeding a key this spec covers')
       .toEqual(['actions', 'flows', 'library', 'notes', 'prompts']);
     expect(declared, 'the index declares nothing, so every case here would pass over nothing').toBeGreaterThan(50);
-    expect(first.applied.written.size, 'an entry per declared item').toBe(declared);
-    expect([...first.applied.written].filter(([, item]) => Object.keys(item.parts).length === 0), 'an entry with no parts')
+    expect(first.applied.size, 'an entry per declared item').toBe(declared);
+    expect([...first.applied].filter(([, item]) => Object.keys(item.parts).length === 0), 'an entry with no parts')
       .toEqual([]);
   });
 
@@ -105,7 +122,7 @@ describe('the applied content over this pack’s real content', () => {
    * anything is skipped, which the re-apply case below shows.
    */
   it('wrote an item for every key the content defined', () => {
-    expect(new Set(first.applied.written.keys())).toEqual(first.keyRecord.defined);
+    expect(new Set(first.applied.keys())).toEqual(first.keyRecord.defined);
   });
 
   /**
@@ -116,7 +133,7 @@ describe('the applied content over this pack’s real content', () => {
   it('covers the same fields seededFields does, for every item that has one', () => {
     const disagree: Record<string, { parts: string[]; seededFields: string[] }> = {};
     let compared = 0;
-    for (const [key, item] of first.applied.written) {
+    for (const [key, item] of first.applied) {
       if (isFlow(item)) continue;
       const id = entityFor(key, item);
       const seeded = id && attr<{ fields: string[] }>(id, 'seededFields');
@@ -133,7 +150,7 @@ describe('the applied content over this pack’s real content', () => {
 
   /** And for a flow, against the three lists `seededGraph` keeps */
   it("covers the same nodes seededGraph does, for every flow", () => {
-    const flows = [...first.applied.written].filter(([, item]) => isFlow(item));
+    const flows = [...first.applied].filter(([, item]) => isFlow(item));
     expect(flows.length, 'no flow was recorded').toBeGreaterThan(0);
 
     for (const [key, item] of flows) {
@@ -146,39 +163,28 @@ describe('the applied content over this pack’s real content', () => {
     }
   });
 
-  /** Nothing reads as the user's the moment it was written, or every case above would pass over noise */
-  it('agrees with the database it just wrote', () => {
-    const stale: Record<string, string[]> = {};
-    const missing: string[] = [];
-    let compared = 0;
-    for (const [key, item] of first.applied.written) {
-      const id = entityFor(key, item);
-      if (!id) { missing.push(key); continue; }
-      compared++;
-      const parts = drifted(item, id);
-      if (parts.length > 0) stale[key] = parts;
-    }
-    expect(missing, 'an entry names an entity nothing can find by its content key').toEqual([]);
-    expect(compared, 'nothing was compared, so this case proves nothing').toBe(first.applied.written.size);
-    expect(stale, 'an item drifted from the database the same run wrote').toEqual({});
+  /**
+   * **The same content applied twice records the same parts.** Only `sourceHash` differs between the two
+   * runs, so every item is written again over values that did not change — and a derivation that read the
+   * wrong thing, or read it unstably, would show up here as a part that moved.
+   */
+  it('records the same parts for the same content, applied twice', () => {
+    const again = apply(compiledDir({ bump: true }), first.keyRecord.defined);
+
+    expect(again.applied.size, 'the bumped hashes did not cause a rewrite').toBe(first.applied.size);
+    expect(moved(first.applied, again.applied), 'a part moved for content that did not').toEqual({});
   });
 
   /**
-   * **The one thing the parts do that the digest cannot: say which piece moved.** `seededFields` can only
-   * report that something in the item changed, which is what freezes a whole flow over one edited field.
+   * **And exactly one part moves when exactly one field's content does** — which is the whole of what the
+   * parts add over the digest on the entity, which can only say that something in the item changed.
    */
-  it('names the one field the user changed, where seededFields only says something moved', () => {
-    const [key, item] = [...first.applied.written].find(([, candidate]) => !isFlow(candidate)
-      && Object.keys(candidate.parts).length > 2)!;
-    const id = entityFor(key, item)!;
-    const field = Object.keys(item.parts).find((part) => typeof attr(id, part) === 'string')!;
-    const digestBefore = attr<{ hash: string }>(id, 'seededFields')!.hash;
+  it('moves one part when one field of the content changes', () => {
+    const again = apply(compiledDir({ bump: true, change: ['description', 'rewritten upstream'] }), first.keyRecord.defined);
 
-    tx(id).update(field, 'what the user typed instead');
-
-    expect(drifted(item, id), 'exactly the edited field').toEqual([field]);
-    expect(attr<{ hash: string }>(id, 'seededFields')!.hash, 'the digest is stored, so it has not moved')
-      .toBe(digestBefore);
+    const changes = moved(first.applied, again.applied);
+    expect(Object.keys(changes), 'one item changed, so one item has a moved part').toHaveLength(1);
+    expect(Object.values(changes)[0], 'and only the field that changed').toEqual(['description']);
   });
 
   /**
@@ -189,6 +195,6 @@ describe('the applied content over this pack’s real content', () => {
     const again = apply(compiledDir(), first.keyRecord.defined);
 
     expect(again.keyRecord.defined, 'every key is defined again').toEqual(first.keyRecord.defined);
-    expect(again.applied.written.size, 'an unchanged apply wrote nothing').toBe(0);
+    expect(again.applied.size, 'an unchanged apply wrote nothing').toBe(0);
   });
 });

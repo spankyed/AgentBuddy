@@ -27,7 +27,7 @@ const DEFAULT_REL_KIND = 'contains';
 const SEEDED_FIELDS = 'seededFields' as EARS.AttrKind;
 /** Which record a seeded row came from, independent of fields a user can change (a renamed row keeps it) */
 export const SEED_KEY = 'seedKey' as EARS.AttrKind;
-const SOURCE_HASH = 'sourceHash' as EARS.AttrKind;
+export const SOURCE_HASH = 'sourceHash' as EARS.AttrKind;
 const MEDIA_LINK_RE = /!\[([^\]]*)\]\((media\/([^)]+))\)/g;
 
 interface SeededFields {
@@ -98,16 +98,13 @@ export const seedKeyPrefix = (packId: string) => `${packId}:`;
 export const defineSeedKey = (ctx: ImportContext, key: string): void => { ctx.keyRecord?.defined.add(key); };
 
 /**
- * Records what this run wrote for one item (`AppliedReport`, `@abuddy/sdk/utils`).
+ * Records what this run wrote for one item (`ImportContext.applied`).
  *
  * **Only for an item the run actually wrote.** An item it skipped keeps whatever the last run recorded, and
  * carrying that forward is the caller's — so this is not the counterpart of `defineSeedKey`, which fires for
  * every key the content defines whatever the outcome.
  */
-export const recordApplied = (ctx: ImportContext, key: string, item: AppliedItem): void => { ctx.applied?.written.set(key, item); };
-
-/** Forgets what this run recorded for an item, for a create that fails after it was recorded */
-export const forgetApplied = (ctx: ImportContext, key: string): void => { ctx.applied?.written.delete(key); };
+export const recordApplied = (ctx: ImportContext, key: string, item: AppliedItem): void => { ctx.applied?.set(key, item); };
 
 /**
  * **Did the user delete the row this key names?** Asked where a seeder found no row: a key the last run
@@ -313,7 +310,7 @@ export function createSeeder(options: SeederOptions): Seeder {
            * where this is a no-op. The edit that makes it fire is a statement added after `stamp`, or a
            * `remove` hook that throws; mutate it by moving `stamp` one line earlier.
            */
-          forgetApplied(ctx, seedKey);
+          ctx.applied?.delete(seedKey);
           throw err;
         }
         return id;

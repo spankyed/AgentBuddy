@@ -120,9 +120,9 @@ export function seedPacks(packs: Iterable<PackSeedTarget>, importSeeds: typeof i
     // seeding is the only import that carries them, which is what makes a row it cannot find the user's
     // deletion rather than a request for the data back (`removedByUser`, the SDK's `seed/seeder.ts`)
     const keyRecord = { before: new Set(state.packSeedKeys[packId] ?? []), defined: new Set<string>() };
-    // What this run writes, by content key. `appliedContent.record` keeps the entry of every item it does not
-    // touch, since the entity still holds what the last run wrote
-    const applied = { written: new Map<string, AppliedItem>() };
+    // What this run writes, by content key; `appliedContent.record` keeps the entry of every item it leaves
+    // alone, since the entity still holds what the last run wrote
+    const applied = new Map<string, AppliedItem>();
     try {
       // `replace-on-collision` is what the seeders do by default — they branch only on `keep-existing` and
       // `wipe-and-replace` — so naming it changes nothing and says what this is
@@ -137,15 +137,14 @@ export function seedPacks(packs: Iterable<PackSeedTarget>, importSeeds: typeof i
     }
     appState.updatePackEntry('packSeedHashes', packId, currentHash);
     /**
-     * **Recorded whether or not the run succeeded, because an item it wrote is written either way.** A run
-     * that imported fifty items and then failed on one has changed fifty entities, and `packSeedHashes` above
-     * has already moved, so nothing will re-import them until the content changes again. Leaving them out of
-     * the record would make a later apply read all fifty as the user's and never update them.
-     *
-     * What a failure does not do is move `packSeedKeys`: its `defined` set is incomplete, so recording it
-     * would read as the pack having dropped every key the failed run never reached.
+     * **Recorded whether or not the run succeeded, because what it wrote is written either way.** A run that
+     * imported fifty items and failed on the next has changed fifty entities, and `packSeedHashes` above has
+     * already moved — so nothing re-imports them until the content changes again, and leaving them out would
+     * make a later apply read all fifty as the user's. `packSeedKeys` is the opposite case below: a failed
+     * run's set of defined keys is incomplete, so recording it would read as the pack having dropped every
+     * key the run never reached.
      */
-    appliedContent.record(packId, { revision: currentHash, wrote: applied.written });
+    appliedContent.record(packId, { revision: currentHash, wrote: applied });
     if (errors.length > 0) {
       logger.error(`Failed to seed pack ${packId}:\n  ${errors.join('\n  ')}`);
       appState.updatePackEntry('packSeedDeps', packId, deps);

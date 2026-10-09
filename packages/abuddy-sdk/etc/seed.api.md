@@ -13,12 +13,6 @@ export function createFlowSeeder(): Seeder;
 export function createSeeder(options: SeederOptions): Seeder;
 
 // @public
-export function driftedFieldParts(item: AppliedItem, id: EARS.EntityId): string[];
-
-// @public
-export function driftedGraphParts(item: AppliedItem, flowId: EARS.EntityId): string[];
-
-// @public
 export function markSeededRowUnedited(id: EARS.EntityId): void;
 
 // @public

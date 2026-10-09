@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEarsEngine, findRelations, installEngine, installedEngine, untypedTx } from '@abuddy/ears';
-import type { AppliedReport } from '../../src/utils/index.ts';
+import type { AppliedItem } from '../../src/utils/index.ts';
 
 const { createFlowSeeder } = await import('../../src/seed/flow-seeder.ts');
 const { startTestRuntime, testPacks } = await import('../../src/testing/index.ts');
@@ -53,10 +53,10 @@ describe('flow seeder', () => {
    */
   it('records the flow, a part per node, and the wiring', async () => {
     const { createFlowSeeder: make } = await import('../../src/seed/flow-seeder.ts');
-    const applied: AppliedReport = { written: new Map() };
+    const applied = new Map<string, AppliedItem>();
     make().apply({ compiledDir: compiledFlows('Demo Flow'), mode: 'replace-on-collision', applied, log: () => {} });
 
-    const [[, item]] = [...applied.written];
+    const [[, item]] = [...applied];
     const paths = Object.keys(item.parts).sort();
     expect(paths.filter((p) => !p.startsWith('node:'))).toEqual(['edges', 'fields']);
     expect(paths.filter((p) => p.startsWith('node:')).length, 'a part per compiled node').toBeGreaterThan(0);
@@ -70,9 +70,9 @@ describe('flow seeder', () => {
   it('moves only `edges` when the wiring changes', async () => {
     const { createFlowSeeder: make } = await import('../../src/seed/flow-seeder.ts');
     const { driftedGraphParts } = await import('../../src/seed/flow-seeder.ts');
-    const applied: AppliedReport = { written: new Map() };
+    const applied = new Map<string, AppliedItem>();
     make().apply({ compiledDir: compiledFlows('Demo Flow'), mode: 'replace-on-collision', applied, log: () => {} });
-    const [[, item]] = [...applied.written];
+    const [[, item]] = [...applied];
     const flowId = flows('Demo Flow')[0].id as never;
 
     const nodeId = findRelations({ sourceEntity: flowId, relationType: 'contains' as never })[0].targetEntity;
@@ -89,10 +89,10 @@ describe('flow seeder', () => {
   it('records parts that agree with the database it just wrote', async () => {
     const { createFlowSeeder: make } = await import('../../src/seed/flow-seeder.ts');
     const { driftedGraphParts } = await import('../../src/seed/flow-seeder.ts');
-    const applied: AppliedReport = { written: new Map() };
+    const applied = new Map<string, AppliedItem>();
     make().apply({ compiledDir: compiledFlows('Demo Flow'), mode: 'replace-on-collision', applied, log: () => {} });
 
-    const [[, item]] = [...applied.written];
+    const [[, item]] = [...applied];
     expect(driftedGraphParts(item, flows('Demo Flow')[0].id as never)).toEqual([]);
   });
 

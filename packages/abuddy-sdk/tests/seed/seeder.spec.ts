@@ -8,7 +8,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { dropAttribute, resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { createSeeder, driftedFieldParts, markSeededRowUnedited } from '../../src/seed/seeder.ts';
 import type { SeedHooks } from '../../src/seed/hooks.ts';
-import { _getMediaPath, type AppliedReport, type ImportMode, type SeedKeyRecord } from '../../src/utils/index.ts';
+import { _getMediaPath, type AppliedItem, type ImportMode, type SeedKeyRecord } from '../../src/utils/index.ts';
 import type { SeedRecord } from '../../src/build/seeds/records.ts';
 import type { EARS } from '../../src/types/entities.ts';
 
@@ -45,10 +45,10 @@ function compiled(packId: string, records: Array<{ name: string; body: string; v
 }
 
 const seeder = createSeeder({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'] });
-const seed = (dir: string, keyRecord?: SeedKeyRecord, mode: ImportMode = 'replace-on-collision', applied?: AppliedReport) =>
+const seed = (dir: string, keyRecord?: SeedKeyRecord, mode: ImportMode = 'replace-on-collision', applied?: Map<string, AppliedItem>) =>
   seeder.apply({ compiledDir: dir, mode, keyRecord, applied, log: () => {} });
 /** An apply's record of what it wrote, as `seedPacks` builds it */
-const report = (): AppliedReport => ({ written: new Map() });
+const report = () => new Map<string, AppliedItem>();
 /** A boot seed's key record, as `seedPacks` builds it: what the last run defined, and a set for this one */
 const keyRecordAfter = (defined: ReadonlySet<string> = new Set()): SeedKeyRecord =>
   ({ before: defined, defined: new Set<string>() });
@@ -63,7 +63,7 @@ describe('the applied content a run records', () => {
     const applied = report();
     seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), undefined, 'replace-on-collision', applied);
 
-    const [[key, item]] = [...applied.written];
+    const [[key, item]] = [...applied];
     expect(key, 'the entry is keyed by the content key').toBe([...keyRecordAfter().defined, key][0]);
     expect(Object.keys(item.parts).sort()).toEqual(memo('Intro').seededFields!.fields);
     expect(item).toMatchObject({ entityType: 'Memo', sourceHash: 'Intro-v1' });
@@ -77,7 +77,7 @@ describe('the applied content a run records', () => {
   it('moves only the part of the field that changed', () => {
     const applied = report();
     seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), undefined, 'replace-on-collision', applied);
-    const item = applied.written.get([...applied.written.keys()][0])!;
+    const item = applied.get([...applied.keys()][0])!;
 
     edit('Intro', { mood: 'mine' });
 
@@ -91,7 +91,7 @@ describe('the applied content a run records', () => {
     const applied = report();
     seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), undefined, 'replace-on-collision', applied);
 
-    expect([...applied.written.keys()], 'an unchanged item was written again').toEqual([]);
+    expect([...applied.keys()], 'an unchanged item was written again').toEqual([]);
   });
 
   it('records nothing for an item it skipped as user-owned', () => {
@@ -101,7 +101,7 @@ describe('the applied content a run records', () => {
     const applied = report();
     seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), undefined, 'replace-on-collision', applied);
 
-    expect([...applied.written.keys()]).toEqual([]);
+    expect([...applied.keys()]).toEqual([]);
   });
 });
 
