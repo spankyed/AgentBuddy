@@ -21,9 +21,11 @@ export interface ApplyResult {
 /**
  * The same shape, named for the other operation.
  *
- * Two names for one shape on purpose: what a function hands back is what says which operation it performs,
- * so the name in its return annotation is what `the-verbs.spec.ts` reads — `apply` converges the database
- * toward what a pack declares, `import` puts a pack's content back because the user asked.
+ * Two names for one shape on purpose, and the shape is all they are: this is an alias, so the compiler
+ * cannot tell them apart and nothing checks which one a signature names. It is a label for the reader —
+ * `apply` converges the database toward what a pack declares, `import` puts a pack's content back because
+ * the user asked — and what actually separates the two operations is the record (`ApplyRecord`), which an
+ * apply carries and an import does not.
  */
 export type ImportResult = ApplyResult;
 

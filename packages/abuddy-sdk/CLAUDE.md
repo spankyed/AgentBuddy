@@ -101,8 +101,9 @@ The user-facing rules (change tracking, import modes, content writers) are in `d
 stages" section is the vocabulary: **a content item is a noun — the content, its identity, its shape and its configuration —
 and the verb is `import`.** So `contentKey`, `content.formats`, `ContentItem` and `ContentIndex` name content, while
 `importCompiledContent`, `ImportMode`, `ApplyResult` and a `ContentApplier`'s `apply()` name the act, what it needs and what it
-produces. `tests/utils/import-is-the-verb.spec.ts` holds the line: nothing returning `ApplyResult` may be named
-`content*`.
+produces. Nothing checks this: a spec scanned signatures for it until the rename finished, and was deleted
+with it — `ImportResult` is an alias of `ApplyResult`, so which one a signature names is a label for the
+reader rather than a fact a check can read.
 
 Three functions import, in a caller relationship, and each name says its scope: `importCompiledContent({ compiledDir })`
 here runs the registered appliers over one already-compiled directory; `@abuddy/host`'s `applyPacks(packs)`
