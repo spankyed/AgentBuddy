@@ -21,6 +21,9 @@
       @toggle="(id) => actor.send({ type: 'UI.TOGGLE_ENABLED', packId: id })"
       @uninstall="(id) => actor.send({ type: 'UI.CONFIRM_UNINSTALL', packId: id })"
       @update="(id) => actor.send({ type: 'UI.UPDATE', packId: id })"
+      @restore-content="(key) => actor.send({ type: 'UI.RESTORE_CONTENT', packId: selectedPack!.id, key })"
+      @dismiss-offer="(key) => actor.send({ type: 'UI.DISMISS_OFFER', packId: selectedPack!.id, key })"
+      @delete-content="(key) => actor.send({ type: 'UI.DELETE_CONTENT', packId: selectedPack!.id, key })"
     />
 
     <!-- List view -->

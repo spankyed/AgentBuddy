@@ -46,9 +46,15 @@ describe('flow applier', () => {
   const flows = (label: string) =>
     installedEngine().findWhere<{ id: string; label: string }>('Flow' as never, 'label', label);
 
-  /** One apply, with the record `applyPacks` builds; with none it is an import */
+  /**
+   * One apply, with the record `applyPacks` builds; with none it is an import.
+   *
+   * It declares `onUserEdit: 'offer'`, as the `flows` entry of every pack in this repo does: a flow is the
+   * pack's, customised, so the user still wants its fixes. What the flag changes is only whether a decision
+   * is recorded — the write is the same either way, which the forked case below is the other half of.
+   */
   const apply = (dir: string, record?: ApplyRecord) =>
-    createFlowApplier().apply({ compiledDir: dir, mode: 'replace-on-collision', ...(record && { applied: record }), log: () => {} });
+    createFlowApplier({ onUserEdit: 'offer' }).apply({ compiledDir: dir, mode: 'replace-on-collision', ...(record && { applied: record }), log: () => {} });
 
   /** The record the next apply reads, as `appliedContent.record` merges it (see `applier.spec.ts`'s `after`) */
   const after = (previous: ApplyRecord): ApplyRecord => {
@@ -186,7 +192,22 @@ describe('flow applier', () => {
     const counts = apply(compiledFlows('Demo Flow', 'v2'), second);
 
     expect(counts).toMatchObject({ created: 0, updated: 0, skipped: 1 });
-    expect([...second.conflicts.values()]).toEqual([['fields']]);
+    expect([...second.offers.values()]).toEqual([{ kind: 'update', parts: ['fields'], contentHash: expect.any(String) }]);
+  });
+
+  /** And a `flows` entry that forks records none of it: the user's version stays, and nothing asks them */
+  it('records no decision for a forked flows entry the user edited', () => {
+    const first = applyRecord();
+    const forking = (dir: string, record?: ApplyRecord) =>
+      createFlowApplier().apply({ compiledDir: dir, mode: 'replace-on-collision', ...(record && { applied: record }), log: () => {} });
+    forking(compiledFlows('Demo Flow'), first);
+    untypedTx(flows('Demo Flow')[0]!.id as never).update('description' as never, 'mine');
+
+    const second = after(first);
+    forking(compiledFlows('Demo Flow', 'v2'), second);
+
+    expect([...second.offers]).toEqual([]);
+    expect(flows('Demo Flow').length).toBe(1);
   });
 
   /**
@@ -238,7 +259,7 @@ describe('flow applier', () => {
     const fourth = after(third);
     apply(emptied, fourth);
     expect(flows('Demo Flow').length, 'a flow the user edited was removed with the content').toBe(1);
-    expect([...fourth.flagged.values()]).toEqual([['fields']]);
+    expect([...fourth.offers.values()]).toEqual([{ kind: 'removed', parts: ['fields'] }]);
     fs.rmSync(emptied, { recursive: true, force: true });
   });
 

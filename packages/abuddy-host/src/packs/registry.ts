@@ -12,6 +12,7 @@ import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeat
 import type { PackManifest } from '@abuddy/sdk/build';
 import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { HostServices } from '@abuddy/sdk/services';
+import type { ContentOffer } from '@abuddy/sdk/utils';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
@@ -119,6 +120,35 @@ export interface PackInfo extends PackExtensions {
   updateCheckError?: string;
   /** Why this installed pack isn't running although it is enabled: the app skipped it or failed to load it */
   loadProblem?: string;
+  /**
+   * The decisions the last apply left the user about this pack's content, in the order the view draws them.
+   *
+   * It is derived from the pack's `AppliedContent` on every list rather than kept anywhere else, so the
+   * answer is whatever the record holds now: a pack applied between two lists simply lists differently.
+   */
+  contentOffers: PackContentOffer[];
+  /**
+   * The items the user kept their own version of, which is where "reset to factory" is offered.
+   *
+   * It is the items carrying a `dismissed` hash, so it is **the ones we know about** rather than every item
+   * the user has ever edited: a forked entry's edit is recorded nowhere, by design, and an unresolved offer
+   * is in `contentOffers` instead. Restoring one is the same call as taking an offered version — one item,
+   * written over — differing only in what prompted it.
+   */
+  contentKept: Array<{ key: string; label: string }>;
+}
+
+/**
+ * One decision about one content item, as the Packs view draws it: what the item is, which parts moved, and
+ * which kind of decision it is (`ContentOffer`).
+ *
+ * `label` is the item rendered from its own key (`describeContentKey`), because the key already holds the
+ * entity type and the identity that names it — nothing has to be stored beside it to say what an item is.
+ */
+export interface PackContentOffer extends ContentOffer {
+  /** The content key, which is what resolving it names */
+  key: string;
+  label: string;
 }
 
 /** What a plugin's sends are checked against: the event types it receives */

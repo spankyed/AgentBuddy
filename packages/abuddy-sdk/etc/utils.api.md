@@ -26,8 +26,10 @@ export function _appDataPaths(userDataDir: string): _AppDataPaths;
 export interface AppliedItem {
     // (undocumented)
     contentHash?: string;
+    dismissed?: string;
     // (undocumented)
     entityType?: string;
+    offer?: ContentOffer;
     // (undocumented)
     parts: Record<string, string>;
 }
@@ -37,6 +39,7 @@ export interface ApplyContext {
     applied?: ApplyRecord;
     // (undocumented)
     compiledDir: string;
+    force?: boolean;
     // (undocumented)
     include?: ContentSelection;
     // (undocumented)
@@ -48,11 +51,9 @@ export interface ApplyContext {
 // @public
 export interface ApplyRecord {
     before: ReadonlyMap<string, AppliedItem>;
-    // (undocumented)
-    conflicts: Map<string, string[]>;
     defined: Set<string>;
     // (undocumented)
-    flagged: Map<string, string[]>;
+    offers: Map<string, ContentOffer>;
     // (undocumented)
     removed: Set<string>;
     // (undocumented)
@@ -122,6 +123,14 @@ export interface ContentApplier {
     apply(ctx: ApplyContext): ApplyResult;
     // (undocumented)
     key: string;
+}
+
+// @public
+export interface ContentOffer {
+    contentHash?: string;
+    // (undocumented)
+    kind: 'update' | 'removed';
+    parts: string[];
 }
 
 // @public (undocumented)
@@ -216,6 +225,7 @@ export function importCompiledContent(options: {
     include?: Record<string, ContentSelection | undefined>;
     mode?: ImportMode;
     applied?: ApplyRecord;
+    force?: boolean;
     verbose?: boolean;
 }): Record<string, ImportResult>;
 

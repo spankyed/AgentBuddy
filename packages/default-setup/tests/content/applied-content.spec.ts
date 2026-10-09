@@ -175,7 +175,7 @@ describe('the applied content over this pack’s real content', () => {
 
     expect(again.record.written.size, 'the bumped hashes did not cause a rewrite').toBe(first.record.written.size);
     expect(moved(first.record.written, again.record.written), 'a part moved for content that did not').toEqual({});
-    expect(again.record.conflicts.size, 'nothing was edited, so nothing conflicts').toBe(0);
+    expect(again.record.offers.size, 'nothing was edited, so nobody has a decision to take').toBe(0);
   });
 
   /**
@@ -212,8 +212,10 @@ describe('the applied content over this pack’s real content', () => {
 
     const again = apply(compiledDir({ bump: true }), first.record);
 
-    expect(Object.fromEntries(again.record.conflicts), 'the edited item, and the part that differs')
-      .toEqual({ [key]: ['description'] });
+    // The item is an action, whose entry declares `onUserEdit: 'offer'`, so the edit is a decision to put
+    // to the user rather than their own writing — which is what makes it appear here at all
+    expect(Object.fromEntries(again.record.offers), 'the edited item, and the part that differs')
+      .toEqual({ [key]: { kind: 'update', parts: ['description'], contentHash: expect.any(String) } });
     expect(attr<string>(id, 'description'), 'the user’s value was overwritten').toBe('mine');
     expect(again.record.written.size, 'the rest of the pack was held back by one edit')
       .toBe(first.record.written.size - 1);
@@ -228,14 +230,14 @@ describe('the applied content over this pack’s real content', () => {
     const upgrade = apply(compiledDir({ bump: true }));
 
     expect(upgrade.record.written.size, 'every item was written again').toBe(first.record.written.size);
-    expect(upgrade.record.conflicts.size, 'nothing can conflict with a record that holds nothing').toBe(0);
+    expect(upgrade.record.offers.size, 'nothing can conflict with a record that holds nothing').toBe(0);
     expect(moved(first.record.written, upgrade.record.written), 'and the parts are the same content').toEqual({});
 
     // Recorded now, so the next apply sees the user's edit rather than adopting over it
     const [key, item] = [...upgrade.record.written].find(([, value]) => !isFlow(value) && 'description' in value.parts)!;
     untypedTx(entityFor(key, item)!).update('description' as string, 'mine');
     const again = apply(compiledDir({ bump: 'again' }), upgrade.record);
-    expect([...again.record.conflicts.keys()]).toEqual([key]);
+    expect([...again.record.offers.keys()]).toEqual([key]);
   });
 
   /**

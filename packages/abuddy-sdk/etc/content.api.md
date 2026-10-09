@@ -19,6 +19,12 @@ export interface ContentItem {
 }
 
 // @public
+export function contentKeySelection(key: string): {
+    entryKey: string;
+    label: string;
+} | undefined;
+
+// @public
 export interface ContentMatch {
     // (undocumented)
     contentHash?: unknown;
@@ -57,7 +63,7 @@ export interface ContentWriterRegistry {
 export const _contentWriterRegistry: ContentWriterRegistry;
 
 // @public (undocumented)
-export function createFlowApplier(): ContentApplier;
+export function createFlowApplier(options?: FlowApplierOptions): ContentApplier;
 
 // @public
 export function createFormatApplier(options: FormatApplierOptions): ContentApplier;
@@ -66,12 +72,18 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
 export function describeContentKey(key: string): string;
 
 // @public (undocumented)
+export interface FlowApplierOptions {
+    onUserEdit?: ContentEditPolicy;
+}
+
+// @public (undocumented)
 export interface FormatApplierOptions {
     entities: string[];
     identity?: string[];
     // (undocumented)
     key: string;
     media?: boolean;
+    onUserEdit?: ContentEditPolicy;
     relKind?: string;
 }
 

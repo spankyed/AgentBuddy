@@ -40,6 +40,86 @@
       <!-- Description -->
       <p v-if="pack.description" class="text-sm text-neutral-400">{{ pack.description }}</p>
 
+      <!--
+        Content decisions. One section per item the user has to decide about, and one list of the items they
+        have already decided to keep — the two halves of what the applied content says is outstanding. The
+        pane on the left is what they changed; the one on the right is the pack's version, which is taken
+        whole, because an item is the unit of writing and a part only says where it moved.
+      -->
+      <section v-if="pack.contentOffers.length" class="space-y-3" data-testid="pack-content-offers">
+        <SectionHeader label="Your changes to this pack's content" :count="pack.contentOffers.length" />
+        <div
+          v-for="offer in pack.contentOffers"
+          :key="offer.key"
+          class="px-4 py-3 bg-neutral-800/50 border border-neutral-700/50 rounded-lg space-y-3"
+          data-testid="pack-content-offer"
+        >
+          <div>
+            <p class="text-sm text-neutral-200">{{ offer.label }}</p>
+            <p class="text-xs text-neutral-400 mt-0.5">
+              {{ offer.kind === 'update'
+                ? `You changed this, and ${pack.name} v${pack.version} ships a newer version.`
+                : `You changed this, and ${pack.name} no longer ships it.` }}
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="min-w-0">
+              <p class="text-neutral-500 mb-1">Yours</p>
+              <ul class="space-y-0.5">
+                <li v-for="part in offer.parts" :key="part" class="font-mono text-neutral-300 truncate" :title="part">{{ part }}</li>
+                <li v-if="!offer.parts.length" class="text-neutral-500">changed</li>
+              </ul>
+            </div>
+            <div class="min-w-0">
+              <p class="text-neutral-500 mb-1">{{ offer.kind === 'update' ? `${pack.name} v${pack.version}` : 'The pack' }}</p>
+              <p class="text-neutral-400">
+                {{ offer.kind === 'update'
+                  ? 'Replaces the whole item, your changes included.'
+                  : 'Ships this item no longer.' }}
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button
+              v-if="offer.kind === 'update'"
+              class="px-2.5 py-1 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded hover:bg-emerald-500/20 transition-colors"
+              data-testid="offer-take"
+              @click="$emit('restoreContent', offer.key)"
+            >Take the new version</button>
+            <button
+              class="px-2.5 py-1 text-xs font-medium text-neutral-300 bg-neutral-700/50 border border-neutral-600/50 rounded hover:bg-neutral-700 transition-colors"
+              data-testid="offer-keep"
+              @click="$emit('dismissOffer', offer.key)"
+            >Keep mine</button>
+            <button
+              v-if="offer.kind === 'removed'"
+              class="text-neutral-500 hover:text-red-400 transition-colors text-xs"
+              data-testid="offer-delete"
+              @click="$emit('deleteContent', offer.key)"
+            >Delete it</button>
+          </div>
+        </div>
+      </section>
+
+      <section v-if="pack.contentKept.length" class="space-y-2" data-testid="pack-content-kept">
+        <SectionHeader label="Items you keep your own version of" :count="pack.contentKept.length" />
+        <div
+          v-for="kept in pack.contentKept"
+          :key="kept.key"
+          class="flex items-center justify-between gap-3 px-4 py-2 bg-neutral-800/30 border border-neutral-700/40 rounded-lg"
+          data-testid="pack-content-kept-item"
+        >
+          <span class="text-xs text-neutral-300 min-w-0 truncate" :title="kept.label">{{ kept.label }}</span>
+          <button
+            class="px-2.5 py-1 text-xs text-neutral-400 hover:text-neutral-200 transition-colors flex-shrink-0"
+            data-testid="kept-reset"
+            @click="$emit('restoreContent', kept.key)"
+          >Reset to factory</button>
+        </div>
+      </section>
+
       <!-- Status / Controls -->
       <section v-if="pack.canUninstall" class="flex items-center justify-between px-4 py-3 bg-neutral-800/50 border border-neutral-700/50 rounded-lg">
         <span v-if="pack.loadProblem" class="text-sm text-red-400 min-w-0 mr-3 break-words" data-testid="pack-load-problem">
@@ -270,6 +350,12 @@ defineEmits<{
   toggle: [packId: string];
   uninstall: [packId: string];
   update: [packId: string];
+  /** One content item, by content key: write the pack's version over whatever is there */
+  restoreContent: [key: string];
+  /** Keep the user's version of this item, against the version they were shown */
+  dismissOffer: [key: string];
+  /** Delete an item the pack no longer ships */
+  deleteContent: [key: string];
 }>();
 
 const entityEntries = computed(() => Object.entries(props.pack.entities));

@@ -33,5 +33,5 @@ export {
   loadJSON, selectsAll, filterBySelection,
   registeredContentKeys, applyRecord,
 } from './apply.ts';
-export type { ApplyResult, ImportResult, ContentSelection, ImportMode, ApplyContext, AppliedItem, ApplyRecord, ContentApplier } from './apply.ts';
+export type { ApplyResult, ImportResult, ContentSelection, ImportMode, ApplyContext, AppliedItem, ContentOffer, ApplyRecord, ContentApplier } from './apply.ts';
 

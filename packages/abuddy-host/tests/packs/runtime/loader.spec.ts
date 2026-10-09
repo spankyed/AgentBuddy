@@ -621,7 +621,7 @@ describe('applyPacks: failures', () => {
     applyPacks([pack], seedDefining(['flagged:notes/a']));
     fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
     applyPacks([pack], (options: { applied?: ApplyRecord }) => {
-      options.applied?.flagged.set('flagged:notes/a', ['title']);
+      options.applied?.offers.set('flagged:notes/a', { kind: 'removed', parts: ['title'] });
       return { notes: { created: 0, updated: 0, skipped: 0 } };
     });
 
@@ -678,7 +678,7 @@ describe('applyPacks: failures', () => {
 
     try {
       applyPacks([pack], (options: { applied?: ApplyRecord }) => {
-        options.applied?.conflicts.set(key, ['actionFn', 'inputs']);
+        options.applied?.offers.set(key, { kind: 'update', parts: ['actionFn', 'inputs'], contentHash: 'echo-v2' });
         return { actions: { created: 0, updated: 0, skipped: 1 } };
       });
     } finally {
@@ -688,7 +688,10 @@ describe('applyPacks: failures', () => {
     const entry = logged.find((event) => event.message.includes('have your edits'));
     expect(entry?.message, 'the item, by name, with the parts that differ')
       .toBe('1 of conflicted\'s items have your edits and a newer version waiting:\n  actions / Action "Echo" (actionFn, inputs)');
-    expect(entry?.meta).toMatchObject({ packId: 'conflicted', items: { [key]: ['actionFn', 'inputs'] } });
+    expect(entry?.meta).toMatchObject({
+      packId: 'conflicted',
+      items: { [key]: { kind: 'update', parts: ['actionFn', 'inputs'], contentHash: 'echo-v2' } },
+    });
   });
 
   /**
@@ -788,7 +791,7 @@ describe('applyPacks', () => {
       mode: 'replace-on-collision',
       applied: {
         before: new Map(), defined: new Set(), written: new Map(),
-        removed: new Set(), flagged: new Map(), conflicts: new Map(),
+        removed: new Set(), offers: new Map(),
       },
     });
   });

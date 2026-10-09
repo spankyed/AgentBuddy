@@ -10,6 +10,7 @@ import { contentPackId } from '../utils/apply.ts';
 import { RECORD_KEYS, itemLabel, type CompiledContentFile, type ContentItem } from '../build/content/items.ts';
 import { _contentWriterRegistry, type ContentWriteContext, type ContentMatch, type ContentWriter } from './writers.ts';
 import { errorMessage } from '../utils/shared.ts';
+import type { ContentEditPolicy } from '../build/manifest-schema.ts';
 
 export interface FormatApplierOptions {
   key: string;
@@ -21,6 +22,8 @@ export interface FormatApplierOptions {
   relKind?: string;
   /** The entry copies media: `media/<file>` links are rewritten to `media://<id>/<file>` */
   media?: boolean;
+  /** The entry's `onUserEdit`; see `ContentSourceSchema`. `fork` (the default) raises no offer */
+  onUserEdit?: ContentEditPolicy;
 }
 
 const DEFAULT_REL_KIND = 'contains';
@@ -99,6 +102,30 @@ export function describeContentKey(key: string): string {
       return segment;
     }
   }).join(' / ');
+}
+
+/**
+ * The entry a content key belongs to and the label of its top-level item — what asking for that one item
+ * back takes (`importCompiledContent`'s `include`, which names an entry key and the labels under it).
+ *
+ * It reads the same two things `describeContentKey` renders, from the same two writers
+ * (`childContentKey`, `contentKeyPrefix`), and is total for the same reason: a key it cannot take apart is
+ * one nothing can be selected from, which it says by handing back nothing.
+ *
+ * **The label is the *top-level* item's**, which is the whole of what a selection can address: a selection
+ * filters the compiled file's own records, and a child is written by the walk under whichever parent it
+ * belongs to. So restoring a child restores the item it is part of, which is what an item is.
+ */
+export function contentKeySelection(key: string): { entryKey: string; label: string } | undefined {
+  const colon = key.indexOf(':');
+  const [entryKey, firstChild] = (colon === -1 ? key : key.slice(colon + 1)).split('/');
+  if (!entryKey || !firstChild) return undefined;
+  try {
+    const [, label] = JSON.parse(decodeURIComponent(firstChild)) as unknown[];
+    return typeof label === 'string' ? { entryKey, label } : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -333,11 +360,13 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
               ...(deleted === true && { trashed: true }),
               ...(reused === true && { foreignContainer: true }),
             };
-            const { resolution, parts } = resolve({
+            const { resolution, parts, offer } = resolve({
               applied,
               ...(record.contentHash !== undefined && { incoming: record.contentHash }),
               ...(live !== undefined && { live }),
               ...(ctx.mode !== undefined && { mode: ctx.mode }),
+              ...(options.onUserEdit !== undefined && { onUserEdit: options.onUserEdit }),
+              ...(ctx.force === true && { force: true }),
               drifted: () => (applied && existing ? driftedFieldParts(applied, existing.id) : []),
             });
 
@@ -378,7 +407,12 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
             } else {
               counts.skipped++;
               if (resolution === 'conflict') {
-                ctx.applied?.conflicts.set(contentKey, parts ?? []);
+                if (offer) {
+                  ctx.applied?.offers.set(contentKey, {
+                    kind: 'update', parts: parts ?? [],
+                    ...(record.contentHash !== undefined && { contentHash: record.contentHash }),
+                  });
+                }
                 ctx.log(`  ${key} skipped (edited: ${(parts ?? []).join(', ')}): ${label}`);
               } else if (resolution === 'user-owned') {
                 ctx.log(`  ${key} skipped (untracked): ${label}`);
@@ -448,6 +482,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
             ...resolveRemoval({
               applied: item,
               ...(live !== undefined && { live }),
+              ...(options.onUserEdit !== undefined && { onUserEdit: options.onUserEdit }),
               drifted: () => (entity ? driftedFieldParts(item, entity.id) : []),
             }),
           };
@@ -461,7 +496,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
         const keptUnder = (itemKey: string) => verdicts.some((v) => v.resolution !== 'remove' && v.itemKey.startsWith(`${itemKey}/`));
         for (const verdict of verdicts) {
           if (verdict.resolution === 'removed-but-edited') {
-            record.flagged.set(verdict.itemKey, verdict.parts ?? []);
+            if (verdict.offer) record.offers.set(verdict.itemKey, { kind: 'removed', parts: verdict.parts ?? [] });
             ctx.log(`  ${key} kept (dropped from the content, and edited): ${verdict.itemKey}`);
             continue;
           }

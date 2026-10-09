@@ -1,5 +1,37 @@
 # A pack's content is applied, and the user may come to own it
 
+> **Done and closed** (branch `AS/pack-content-apply`). Phase 1 `2a638c8b5`/`b980a2835`/`02ebfc1d4`,
+> Phase 2 `4ea7b2c67` with its review fixes in `c126260ec`, Phase 3 `431c3b036`, Phase 4 after it. The text
+> below is the plan as written; five things the work found are corrections to it:
+>
+> - **`find` was not dropped from a content writer** (Decision 11's list). The applied content cannot answer
+>   identity matching: a writer still has to find the user's entity by name before anything can be said about
+>   whose it is, so `find` and `container` both stayed on `ContentWriter`.
+> - **`conflicts` and `flagged` became one container**, `ApplyRecord.offers`, with a `kind` of `update` or
+>   `removed`. They are reached by the same rule and differ only in what resolving one means, so two maps
+>   were two accounts of one fact. They stayed on the record rather than being copied onto the result, for
+>   the same reason.
+> - **Two destructive bugs the first Phase 2 cut had**, both found in review and fixed in `c126260ec`: a flow
+>   that failed validation and an item whose writer hook threw each left their keys undeclared, so the
+>   removal pass read them as content the pack had dropped and deleted the user's data. Both writers now
+>   declare every key the compiled file holds *before* writing anything, which is why
+>   `ApplyRecord.defined` is derived from the content and never from the walk.
+> - **Removal is per entry key**, which Decision 9 does not say: each writer diffs only the keys under its own
+>   prefix, so content whose *whole entry* a pack stops declaring has no writer left to remove it, and a
+>   renamed entry key orphans what the old one wrote.
+> - **"Merge" — the third choice of Decision 8 — is not built, and could not be as specified.** It is
+>   described as opening the editor "with both", and Decision 3 keeps hashes rather than values, so what the
+>   pack previously shipped cannot be rendered at all. What is left of it, opening the user's own item to
+>   edit by hand, needs a route from an entity type to the plugin that edits it, which no pack declares: the
+>   manifest has no such key and nothing in the app maps one. So the offer has two writing choices (take the
+>   new version, keep mine) plus, per Decision 5, **Reset to factory** on an item the user kept their own
+>   version of. A `content.sources` key naming the plugin that edits an entry's items is the change that
+>   would make Merge possible, and it is a manifest addition rather than a UI one.
+>
+> One thing the plan asks for that is only partly available: **Reset to factory is offered on the items the
+> app knows the user kept** — the entries carrying a `dismissed` hash — rather than on every item they have
+> ever edited. A forked entry's edit is recorded nowhere by design, so there is no list of those to draw.
+
 Compiled 2026-10-08 on `master`, at `46de706f2`. **The design is settled; the phases are not started.**
 Phase 1 is deliberately read-only — it writes the new applied content and reads nothing from it — so the model is
 validated against real content before anything depends on it.

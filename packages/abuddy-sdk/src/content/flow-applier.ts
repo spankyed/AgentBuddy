@@ -8,6 +8,7 @@ import { validate } from '../build/compilers/flow-dsl-validator.ts';
 import { isFlowConfig, type FlowDSL } from '../build/compilers/flow-types.ts';
 import { EARS } from '../types/entities.ts';
 import type { ActionEntity, FlowEntity } from '../types/sdk-entities.ts';
+import type { ContentEditPolicy } from '../build/manifest-schema.ts';
 import { childContentKey, defineKey, hashValues, recordApplied, CONTENT_KEY, contentKeyPrefix, CONTENT_HASH } from './format-applier.ts';
 import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
 import { contentPackId } from '../utils/apply.ts';
@@ -89,7 +90,12 @@ function buildLabelMap(entities: Array<{ label: string; id: EARS.EntityId }>): M
   return new Map(entities.map((e) => [e.label, e.id]));
 }
 
-export function createFlowApplier(): ContentApplier {
+export interface FlowApplierOptions {
+  /** The `flows` entry's `onUserEdit`; see `ContentSourceSchema` */
+  onUserEdit?: ContentEditPolicy;
+}
+
+export function createFlowApplier(options: FlowApplierOptions = {}): ContentApplier {
   return {
     key: 'flows',
     apply(ctx: ApplyContext): ApplyResult {
@@ -177,18 +183,25 @@ export function createFlowApplier(): ContentApplier {
         const applied = ctx.applied?.before.get(contentKey);
         // A flow is destroyed rather than trashed (`flowRepository.deleteFlow`), so there is no trashed case
         // here: no flow means no flow, and what says whether the user removed it is the record
-        const { resolution, parts } = resolve({
+        const { resolution, parts, offer } = resolve({
           applied,
           ...(compiledHash !== undefined && { incoming: compiledHash as string }),
           ...(existing !== undefined && { live: { contentHash: existing.contentHash } as LiveEntity }),
           ...(ctx.mode !== undefined && { mode: ctx.mode }),
+          ...(options.onUserEdit !== undefined && { onUserEdit: options.onUserEdit }),
+          ...(ctx.force === true && { force: true }),
           drifted: () => (applied && existing ? driftedGraphParts(applied, existing.id) : []),
         });
 
         if (resolution !== 'create' && resolution !== 'fast-forward') {
           counts.skipped++;
           if (resolution === 'conflict') {
-            ctx.applied?.conflicts.set(contentKey, parts ?? []);
+            if (offer) {
+              ctx.applied?.offers.set(contentKey, {
+                kind: 'update', parts: parts ?? [],
+                ...(typeof compiledHash === 'string' && { contentHash: compiledHash }),
+              });
+            }
             ctx.log(`  flow skipped (edited: ${(parts ?? []).join(', ')}): ${key}`);
           } else if (resolution === 'absent-by-deletion') {
             ctx.log(`  flow skipped (removed): ${key}`);
@@ -264,13 +277,14 @@ export function createFlowApplier(): ContentApplier {
         for (const itemKey of [...record.before.keys()].filter((k) => k.startsWith(prefix) && !record.defined.has(k))) {
           const item = record.before.get(itemKey)!;
           const flow = ears().findAll<FlowEntity>(EARS.Entity.Flow).find((f) => ears().getAttr(f.id, CONTENT_KEY) === itemKey);
-          const { resolution, parts } = resolveRemoval({
+          const { resolution, parts, offer } = resolveRemoval({
             applied: item,
             ...(flow !== undefined && { live: { contentHash: flow.contentHash } as LiveEntity }),
+            ...(options.onUserEdit !== undefined && { onUserEdit: options.onUserEdit }),
             drifted: () => (flow ? driftedGraphParts(item, flow.id) : []),
           });
           if (resolution === 'removed-but-edited') {
-            record.flagged.set(itemKey, parts ?? []);
+            if (offer) record.offers.set(itemKey, { kind: 'removed', parts: parts ?? [] });
             ctx.log(`  flow kept (dropped from the content, and edited): ${itemKey}`);
             continue;
           }

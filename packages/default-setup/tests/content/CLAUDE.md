@@ -34,7 +34,7 @@ vocabulary — *seed* is the content, *import* is the act — and `src/content/C
 
 **Two ways to run the content, and a spec has to pick the right one** (`harness.ts`). `seed()` is an
 **import** — no record, which is the user asking for the pack's content back — and it is what the goldens are
-recorded through, because a scenario that content one fixture version over another is about the import modes.
+recorded through, because a scenario that applies one fixture version over another is about the import modes.
 `applyContent()` is an **apply**, carrying forward what the last one wrote, which is how the app's boot runs it:
 a spec about what the user's edit survives needs that record, because an apply with no entry for an item
 *adopts* it. Using `seed()` for an edit case is the mistake to watch for — it passes for the wrong reason,

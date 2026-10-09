@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { importCompiledContent, type ContentApplier, type ApplyContext } from '../../src/utils/index.ts';
+import { applyRecord, importCompiledContent, type ApplyRecord, type ContentApplier, type ApplyContext } from '../../src/utils/index.ts';
 import { startTestRuntime, testPacks } from '../../src/testing/index.ts';
 
 // The registered packs' appliers (a registration's `appliers`): the stand-in's, which the specs fill. The host's
@@ -58,5 +58,28 @@ describe('importCompiledContent', () => {
 
   it('refuses a directory that names no pack', () => {
     expect(() => importCompiledContent({ compiledDir: compiledDir() })).toThrow("doesn't name the pack that compiled these seeds");
+  });
+
+  /**
+   * **`force` belongs to an import and is out of an apply's reach by construction**, which is the point of
+   * checking it here rather than remembering it: an apply hands over what the last one wrote, so a record
+   * with anything in `before` *is* an apply, and a run that both converges toward the pack and overwrites
+   * the user is the one combination nothing is allowed to be.
+   *
+   * A restore passes a write-only record, which is also what a pack applying for the first time has — and
+   * that case overwrites nothing of anyone's, since there is nothing recorded to overwrite.
+   */
+  it('refuses to overwrite the user on a run that reads what the last apply wrote', () => {
+    const applier = recording('notes', 1);
+    registerAppliers('pack-a', [applier]);
+    const dir = compiledDir('pack-a');
+    const applied: ApplyRecord = applyRecord(new Map([['pack-a:notes/x', { parts: {} }]]));
+
+    expect(() => importCompiledContent({ compiledDir: dir, force: true, applied }))
+      .toThrow('force overwrites the user');
+    expect(applier.seen, 'and nothing ran').toEqual([]);
+
+    importCompiledContent({ compiledDir: dir, force: true, applied: applyRecord() });
+    expect(applier.seen, 'a write-only record is a restore, which is what force is for').toEqual([dir]);
   });
 });

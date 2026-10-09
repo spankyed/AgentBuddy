@@ -13,6 +13,8 @@ const verdict = (input: {
   incoming?: string;
   live?: { contentHash?: unknown; trashed?: boolean; foreignContainer?: boolean };
   mode?: ImportMode;
+  onUserEdit?: 'fork' | 'offer';
+  force?: boolean;
   drifted?: string[];
 }): Resolution => resolve({ ...input, drifted: () => input.drifted ?? [] }).resolution;
 
@@ -35,6 +37,14 @@ describe('an item the content declares', () => {
     ['ours, the content moved, nothing drifted', { applied: ours, incoming: 'v2', live: { contentHash: 'v1' }, drifted: [] }, 'fast-forward'],
     ['ours, the content moved, a part drifted', { applied: ours, incoming: 'v2', live: { contentHash: 'v1' }, drifted: ['body'] }, 'conflict'],
     ['ours with no recorded parts: adopted once', { incoming: 'v2', live: { contentHash: 'v1' } }, 'fast-forward'],
+    // `force` is the user asking for the pack's version of this one item, so it overrides every branch that
+    // exists to protect them — and none of the two that protect somebody else
+    ['forced over the user’s edit', { applied: ours, incoming: 'v2', live: { contentHash: 'v1' }, drifted: ['body'], force: true }, 'fast-forward'],
+    ['forced over an entity that was never ours', { live: {}, force: true }, 'fast-forward'],
+    ['forced over keep-existing', { applied: ours, incoming: 'v2', live: { contentHash: 'v1' }, mode: 'keep-existing', force: true }, 'fast-forward'],
+    ['forced over an entity the user trashed', { applied: ours, live: { contentHash: 'v1', trashed: true }, force: true }, 'fast-forward'],
+    ['forced, but the entity is another item’s container', { live: { contentHash: 'v1', foreignContainer: true }, force: true }, 'foreign-container'],
+    ['forced, with nothing there to overwrite', { applied: ours, incoming: 'v2', force: true }, 'create'],
   ];
 
   it.each(cases)('%s', (_name, input, expected) => {
@@ -49,6 +59,23 @@ describe('an item the content declares', () => {
     for (const outcome of unreachable) {
       expect(reached.has(outcome), `${outcome} is a removal's verdict and must not be reachable here`).toBe(false);
     }
+  });
+
+  /**
+   * **Whether a conflict is a decision to put to the user is a second answer, not a resolution.** The
+   * database outcome is the same either way — nothing is written — so what `onUserEdit` and `dismissed`
+   * decide is only whether anyone is told.
+   */
+  it('offers a conflict only where the entry offers and the user has not already declined it', () => {
+    const conflicting = { applied: ours, incoming: 'v2', live: { contentHash: 'v1' }, drifted: () => ['body'] };
+
+    expect(resolve(conflicting).offer, 'fork is the default, and says nothing').toBeUndefined();
+    expect(resolve({ ...conflicting, onUserEdit: 'fork' }).offer).toBeUndefined();
+    expect(resolve({ ...conflicting, onUserEdit: 'offer' }).offer, 'an offering entry').toBe(true);
+    expect(resolve({ ...conflicting, onUserEdit: 'offer', applied: { ...ours, dismissed: 'v2' } }).offer,
+      'the version they declined').toBeUndefined();
+    expect(resolve({ ...conflicting, onUserEdit: 'offer', applied: { ...ours, dismissed: 'v1' } }).offer,
+      'and a version they have not seen asks again').toBe(true);
   });
 
   it('names the parts that differ, and only for a conflict', () => {
@@ -89,5 +116,17 @@ describe('an item the content no longer declares', () => {
   it('is kept when it is a container holding another item’s entities', () => {
     expect(resolveRemoval({ applied: ours, live: { contentHash: 'v1', foreignContainer: true }, drifted: () => [] }))
       .toEqual({ resolution: 'foreign-container' });
+  });
+
+  /**
+   * **A forked item the user edited is kept without telling anyone**, which is the same rule as a conflict's:
+   * the write is identical either way — it stays — and the entry's policy decides only whether the user is
+   * given something to decide.
+   */
+  it('offers the keep only where the entry offers', () => {
+    const edited = { applied: ours, live: { contentHash: 'v1' }, drifted: () => ['body'] };
+    expect(resolveRemoval(edited).offer, 'fork is the default').toBeUndefined();
+    expect(resolveRemoval({ ...edited, onUserEdit: 'offer' }).offer).toBe(true);
+    expect(resolveRemoval({ ...edited, onUserEdit: 'offer' }).resolution, 'and it is kept either way').toBe('removed-but-edited');
   });
 });

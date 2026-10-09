@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import { SPECIALTY_CONTENT_KEYS } from '../manifest-schema.ts';
 import { SEED_COMPILERS_FILE, type PackManifest, type ContentFormatConfig } from '../manifest.ts';
+import type { ContentEditPolicy } from '../manifest-schema.ts';
 
 /** What resolving a dependency's formats needs: its manifest, and its build dir for compiler modules */
 export interface ContentDependency {
@@ -18,10 +19,11 @@ export interface ContentCompilerModuleRef {
 
 /** A `content.sources` entry with its format's settings */
 export type ResolvedContentSource =
-  | { kind: 'specialty'; path: string }
+  | { kind: 'specialty'; path: string; onUserEdit?: ContentEditPolicy }
   | { kind: 'applier'; applier: string }
   | {
     kind: 'format';
+    onUserEdit?: ContentEditPolicy;
     /** Source path, relative to the seeding pack */
     path: string;
     /** The format reference as written: `name` or `pack:name` */
@@ -51,7 +53,7 @@ export function resolveContentSources(
     if (SPECIALTY_CONTENT_KEYS.includes(key)) {
       const sourcePath = typeof entry === 'string' ? entry : entry.path;
       if (!sourcePath) throw new Error(`Content "${key}": give its source as a path`);
-      resolved[key] = { kind: 'specialty', path: sourcePath };
+      resolved[key] = { kind: 'specialty', path: sourcePath, ...(typeof entry === 'object' && entry.onUserEdit && { onUserEdit: entry.onUserEdit }) };
     } else if (typeof entry === 'string') {
       throw new Error(`Unknown content key "${key}": only ${SPECIALTY_CONTENT_KEYS.join(', ')} take a path`);
     } else if (entry.applier && entry.path === undefined && entry.format === undefined) {
@@ -73,6 +75,7 @@ export function resolveContentSources(
       }
       resolved[key] = {
         kind: 'format', path: entry.path, formatRef: entry.format,
+        ...(entry.onUserEdit && { onUserEdit: entry.onUserEdit }),
         ...found,
         ...(entry.applier && { applier: entry.applier }),
       };

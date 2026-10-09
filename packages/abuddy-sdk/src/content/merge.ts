@@ -7,6 +7,7 @@
 // content existed, and the corner none of them covered — *which part* of an item the user changed — is why
 // editing one field of a flow froze all thirty of its entities against every later version.
 import type { AppliedItem, ImportMode } from '../utils/apply.ts';
+import type { ContentEditPolicy } from '../build/manifest-schema.ts';
 
 /**
  * What an apply decided about one item. Three of them write (`create`, `fast-forward`, `remove`), five
@@ -52,6 +53,10 @@ export interface MergeInput {
   /** The entity this item names now; absent means none */
   live?: LiveEntity;
   mode?: ImportMode;
+  /** The entry's `onUserEdit`; `fork` (the default) reaches no decision the user has to take */
+  onUserEdit?: ContentEditPolicy;
+  /** Overwrite whatever is there (`ApplyContext.force`): the user asked for the pack's version */
+  force?: boolean;
   /**
    * The parts of `applied` whose stored value is no longer what we wrote. A callback rather than a list,
    * because reading them means walking the entity the way the writer that wrote it walks one, and because
@@ -64,6 +69,14 @@ export interface Merge {
   resolution: Resolution;
   /** For `conflict` and `removed-but-edited`: the parts whose stored value is no longer what we wrote */
   parts?: string[];
+  /**
+   * The user has a decision to take about this item, so the run records one (`ApplyRecord.offers`).
+   *
+   * It is a second answer rather than a resolution of its own, because the *database* outcome is the same
+   * either way — nothing is written — and an offer only decides whether anyone is told. `fork` entries and
+   * an offer the user has already dismissed both reach `conflict` and set this to nothing.
+   */
+  offer?: boolean;
 }
 
 /**
@@ -84,19 +97,40 @@ export function resolve(input: MergeInput): Merge {
 
   if (!live) {
     // `wipe-and-replace` removed the entities itself a moment ago, so every key would read as deleted
-    if (applied && mode !== 'wipe-and-replace') return { resolution: 'absent-by-deletion' };
+    if (applied && mode !== 'wipe-and-replace' && !input.force) return { resolution: 'absent-by-deletion' };
     return { resolution: 'create' };
   }
 
   if (live.foreignContainer) return { resolution: 'foreign-container' };
-  if (live.trashed) return { resolution: 'absent-by-deletion' };
+  if (live.trashed) return input.force ? { resolution: 'fast-forward' } : { resolution: 'absent-by-deletion' };
+  /**
+   * **`force` is read before the three branches that protect the user, and after the two that protect
+   * someone else.** What the user asked for is their own item back, so a container another item wrote and
+   * an entity that is simply not there are still not this one's to write — the first belongs to another
+   * item, and the second has nothing to overwrite, so it is created above like any missing item.
+   */
+  if (input.force) return { resolution: 'fast-forward' };
   if (mode === 'keep-existing') return { resolution: 'kept' };
   if (!live.contentHash) return { resolution: 'user-owned' };
   if (incoming !== undefined && live.contentHash === incoming) return { resolution: 'unchanged' };
   if (!applied) return { resolution: 'fast-forward' };
 
   const parts = input.drifted();
-  return parts.length > 0 ? { resolution: 'conflict', parts } : { resolution: 'fast-forward' };
+  if (parts.length === 0) return { resolution: 'fast-forward' };
+  return { resolution: 'conflict', parts, ...(offersUpdate(input, applied) && { offer: true }) };
+}
+
+/**
+ * Whether this conflict is a decision to put to the user.
+ *
+ * Two reasons it is not. The entry **forks**, so the edit made the item theirs and there is nothing to
+ * decide. Or they have already decided, against this very version: `dismissed` holds the hash they were
+ * offered, so a later release that leaves this item alone offers nothing again and one that changes it
+ * offers afresh.
+ */
+function offersUpdate(input: MergeInput, applied: AppliedItem): boolean {
+  if (input.onUserEdit !== 'offer') return false;
+  return input.incoming === undefined || applied.dismissed !== input.incoming;
 }
 
 /**
@@ -110,10 +144,13 @@ export function resolveRemoval(input: {
   /** Required, unlike `resolve`'s: a removal is only ever about an item the applied content holds */
   applied: AppliedItem;
   live?: LiveEntity;
+  /** The entry's `onUserEdit`; a forked item the user edited is kept without telling anyone */
+  onUserEdit?: ContentEditPolicy;
   drifted: () => string[];
 }): Merge {
   if (!input.live) return { resolution: 'remove' };
   if (input.live.foreignContainer) return { resolution: 'foreign-container' };
   const parts = input.drifted();
-  return parts.length > 0 ? { resolution: 'removed-but-edited', parts } : { resolution: 'remove' };
+  if (parts.length === 0) return { resolution: 'remove' };
+  return { resolution: 'removed-but-edited', parts, ...(input.onUserEdit === 'offer' && { offer: true }) };
 }

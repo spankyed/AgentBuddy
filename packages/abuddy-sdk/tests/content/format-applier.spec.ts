@@ -47,11 +47,22 @@ function compiled(packId: string, records: Array<{ name: string; body: string; v
 const applier = createFormatApplier({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'] });
 
 /**
+ * The same entry declaring `onUserEdit: 'offer'`: the user's edit is a decision to put to them rather than
+ * their own writing. It is a second applier because the default is `fork` and the default is what most of
+ * these cases are about — what an offer adds is the record, never a different write.
+ */
+const offering = createFormatApplier({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'], onUserEdit: 'offer' });
+
+/**
  * One run. With a record it is an **apply** — the three-way merge the app's boot runs; with none it is an
  * **import**, which is the user asking for the pack's data back and reads nothing of what we wrote before.
  */
 const seed = (dir: string, record?: ApplyRecord, mode: ImportMode = 'replace-on-collision') =>
   applier.apply({ compiledDir: dir, mode, ...(record && { applied: record }), log: () => {} });
+
+/** The same run for the offering entry */
+const seedOffering = (dir: string, record?: ApplyRecord, mode: ImportMode = 'replace-on-collision') =>
+  offering.apply({ compiledDir: dir, mode, ...(record && { applied: record }), log: () => {} });
 
 /**
  * The record the next apply reads, from what the last one left: its entries with what the run wrote over
@@ -124,6 +135,26 @@ describe('the applied content a run records', () => {
    */
   it('names an item with the user’s edit and a newer version, and the parts that differ', () => {
     const first = applyRecord();
+    seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
+    edit('Intro', { mood: 'mine' });
+
+    const second = after(first);
+    const counts = seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', mood: 'calm', version: 'v2' }]), second);
+
+    expect(counts).toEqual({ created: 0, updated: 0, skipped: 1 });
+    expect(Object.fromEntries(second.offers)).toEqual({
+      [[...first.defined][0]!]: { kind: 'update', parts: ['mood'], contentHash: 'Intro-v2' },
+    });
+    expect(memo('Intro').body, 'and nothing of the new version was written').toBe('Hello');
+  });
+
+  /**
+   * **A forked entry's edit is the user's writing, and nothing asks them about it.** The write is identical
+   * either way — their version stays — so the only thing `onUserEdit` decides is whether a decision is
+   * recorded for anyone to draw. A note never produces one.
+   */
+  it('records no decision for a forked entry the user edited', () => {
+    const first = applyRecord();
     seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
     edit('Intro', { mood: 'mine' });
 
@@ -131,8 +162,50 @@ describe('the applied content a run records', () => {
     const counts = seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', mood: 'calm', version: 'v2' }]), second);
 
     expect(counts).toEqual({ created: 0, updated: 0, skipped: 1 });
-    expect(Object.fromEntries(second.conflicts)).toEqual({ [[...first.defined][0]]: ['mood'] });
-    expect(memo('Intro').body, 'and nothing of the new version was written').toBe('Hello');
+    expect([...second.offers], 'theirs forever, and silent about it').toEqual([]);
+    expect(memo('Intro').body).toBe('Hello');
+  });
+
+  /**
+   * **An offer the user declined does not come back for that version.** `dismissed` holds the hash they were
+   * shown, so a release that leaves this item alone is silent — and the next case is the other half, that a
+   * release which does change it asks again.
+   */
+  it('does not offer a version the user has already declined, and offers the next one', () => {
+    const first = applyRecord();
+    seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
+    edit('Intro', { mood: 'mine' });
+    const key = [...first.defined][0]!;
+
+    const declined = after(first);
+    declined.before.get(key)!.dismissed = 'Intro-v2';
+    seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', mood: 'calm', version: 'v2' }]), declined);
+    expect([...declined.offers], 'the version they declined').toEqual([]);
+
+    const changedAgain = after(declined);
+    seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello once more', mood: 'calm', version: 'v3' }]), changedAgain);
+    expect([...changedAgain.offers.keys()], 'and the one after it').toEqual([key]);
+  });
+
+  /**
+   * **`force` is the one write that overwrites the user, and it is what taking an offered version does.**
+   * Every mode skips an edited item, so the flag rather than a mode is what makes "give me the pack's
+   * version of this one item" expressible at all.
+   */
+  it('writes the pack’s version over the user’s edit when the user asked for it', () => {
+    const first = applyRecord();
+    seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
+    edit('Intro', { mood: 'mine' });
+
+    const forced = applyRecord();
+    const counts = offering.apply({
+      compiledDir: compiled('pack-a', [{ name: 'Intro', body: 'Hello again', mood: 'calm', version: 'v2' }]),
+      mode: 'replace-on-collision', force: true, applied: forced, log: () => {},
+    });
+
+    expect(counts).toEqual({ created: 0, updated: 1, skipped: 0 });
+    expect(memo('Intro')).toMatchObject({ body: 'Hello again', mood: 'calm' });
+    expect([...forced.offers], 'and nothing is left to decide').toEqual([]);
   });
 
   /**
@@ -328,10 +401,10 @@ describe('content the pack has dropped', () => {
     edit('Extra', { body: 'mine' });
 
     const second = after(first);
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
+    seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
 
     expect(memo('Extra').body).toBe('mine');
-    expect(Object.fromEntries(second.flagged)).toEqual({ [extraKey]: ['body'] });
+    expect(Object.fromEntries(second.offers)).toEqual({ [extraKey]: { kind: 'removed', parts: ['body'] } });
     expect([...second.removed]).toEqual([]);
   });
 
@@ -580,12 +653,13 @@ describe("a folder another pack seeded", () => {
     fs.writeFileSync(path.join(emptied, 'seeds.json'), JSON.stringify({ version: 1, packId: 'pack-a', seeds: [] }));
     fs.writeFileSync(path.join(emptied, 'memos.seed.json'), JSON.stringify({ records: [] }));
     const second = after(first);
-    seed(emptied, second);
+    // The offering entry, so the one item that is kept is also named as a decision the user has to take
+    seedOffering(emptied, second);
 
     expect(memo('guide.md').body, 'the item the user rewrote').toBe('mine');
     expect(ears().findByIdRaw(folderId), 'the folder it is in went with the content').toBeTruthy();
     expect(contents(folders()[0]), "the sibling nobody touched is gone, and the edited one isn't").toEqual(['guide.md']);
-    expect([...second.flagged.keys()].map((key) => key.includes('guide')), 'the edited item is flagged').toEqual([true]);
+    expect([...second.offers.keys()].map((key) => key.includes('guide')), 'the edited item is offered').toEqual([true]);
   });
 
   /** And the same for a subtree under an item the user threw away, which the walk also stops at */

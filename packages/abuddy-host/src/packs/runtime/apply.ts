@@ -8,6 +8,7 @@ import type { PackManifest } from '@abuddy/sdk/build';
 import { appliedContent, appState } from '../../app-state/index.ts';
 import { applyRecord, importCompiledContent } from '@abuddy/sdk/utils';
 import { describeContentKey } from '@abuddy/sdk/content';
+import type { ContentOffer } from '@abuddy/sdk/utils';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('pack-seed');
@@ -76,8 +77,15 @@ function dependencyState(dependencies: Record<string, string> | undefined): stri
   return Object.keys(dependencies ?? {}).sort().map((id) => `${id}:${appliedContent.get(id).revision}`).join('|');
 }
 
+/** What each kind of offer says, in the one log line that reports them */
+const OFFER_SENTENCE: Record<ContentOffer['kind'], string> = {
+  update: 'have your edits and a newer version waiting',
+  removed: 'you edited and the pack no longer ships',
+};
+
 /**
- * One line per item the user now has a decision about, so the freeze is visible before any UI draws it.
+ * One line per kind of decision the user now has, so an apply says what it left outstanding even when
+ * nobody opens the Packs view.
  *
  * Named rather than keyed, because a content key is `%5B%22Action%22...` and nobody reads that: the key
  * holds the entity type and the item's identity, and `describeContentKey` is what renders them. The keys
@@ -87,13 +95,16 @@ function dependencyState(dependencies: Record<string, string> | undefined): stri
  * Logs plugin, which shows what `onLog` delivers from the moment the bus starts it. An apply on a reload
  * or an activation reaches both.
  */
-function reportUnresolved(packId: string, kind: string, items: ReadonlyMap<string, string[]>): void {
-  if (items.size === 0) return;
-  const named = [...items].map(([key, parts]) => `${describeContentKey(key)} (${parts.join(', ')})`);
-  logger.warn(`${items.size} of ${packId}'s items ${kind}:\n  ${named.join('\n  ')}`, {
-    packId,
-    items: Object.fromEntries(items),
-  });
+function reportOffers(packId: string, offers: ReadonlyMap<string, ContentOffer>): void {
+  for (const kind of Object.keys(OFFER_SENTENCE) as ContentOffer['kind'][]) {
+    const of = [...offers].filter(([, offer]) => offer.kind === kind);
+    if (of.length === 0) continue;
+    const named = of.map(([key, offer]) => `${describeContentKey(key)} (${offer.parts.join(', ')})`);
+    logger.warn(`${of.length} of ${packId}'s items ${OFFER_SENTENCE[kind]}:\n  ${named.join('\n  ')}`, {
+      packId,
+      items: Object.fromEntries(of),
+    });
+  }
 }
 
 /**
@@ -168,9 +179,14 @@ export function applyPacks(packs: Iterable<PackContentTarget>, importContent: ty
      * a revision recorded without the items it describes, or the other way round, is the state in which
      * every item of a pack reads as the user's.
      */
-    appliedContent.record(packId, { revision: currentHash, wrote: record.written, dropped: record.removed });
-    reportUnresolved(packId, 'have your edits and a newer version waiting', record.conflicts);
-    reportUnresolved(packId, 'you edited and the pack no longer ships', record.flagged);
+    appliedContent.record(packId, {
+      revision: currentHash,
+      wrote: record.written,
+      dropped: record.removed,
+      offers: record.offers,
+      reached: record.defined,
+    });
+    reportOffers(packId, record.offers);
     if (errors.length > 0) {
       logger.error(`Failed to seed pack ${packId}:\n  ${errors.join('\n  ')}`);
       appState.updatePackEntry('failedAgainst', packId, deps);

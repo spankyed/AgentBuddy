@@ -7,7 +7,7 @@
 // partition is what `exportDatabase` copies, and a new entity type lands there by default.
 import { untypedTx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
-import type { AppliedItem } from '@abuddy/sdk/utils';
+import type { AppliedItem, ContentOffer } from '@abuddy/sdk/utils';
 
 /** The entity type the host declares for a pack's applied content */
 export const APPLIED_CONTENT_ENTITY = 'AppliedContent';
@@ -43,6 +43,22 @@ function stored(packId: string): Partial<AppliedContent> | undefined {
   return untypedQx(idOf(packId)).pickOne([...FIELDS]) as Partial<AppliedContent> | undefined ?? undefined;
 }
 
+/**
+ * What resolving one item's offer does to its entry, and the three are the whole of it.
+ *
+ * `taken` and `deleted` are what the write left behind: the apply (or the delete) has already changed the
+ * database, so the entry's offer is simply gone — a taken item is re-stamped by the write itself and a
+ * deleted one has nothing left to describe. `dismissed` is the one that stores something: the hash the user
+ * declined, which is what keeps a later release from offering the same version again.
+ */
+export type OfferResolution =
+  /** The user took the pack's version; the write re-stamped the entry, so only the offer has to go */
+  | { choice: 'taken' }
+  /** The user kept theirs, against the version they were shown */
+  | { choice: 'dismissed'; contentHash?: string }
+  /** The user deleted an item the pack had dropped: the entry describes nothing now */
+  | { choice: 'deleted' };
+
 export const appliedContent = {
   /** A pack's applied content; nothing recorded reads as no revision and no items */
   get: (packId: string): AppliedContent => {
@@ -67,13 +83,51 @@ export const appliedContent = {
     revision?: string;
     wrote: ReadonlyMap<string, AppliedItem>;
     dropped?: Iterable<string>;
+    /** The decisions this run left the user (`ApplyRecord.offers`), by content key */
+    offers?: ReadonlyMap<string, ContentOffer>;
+    /**
+     * Every key the run's content declared (`ApplyRecord.defined`): the keys whose offer this run **answers
+     * for**, so one it did not raise again is cleared.
+     *
+     * Without it an offer would outlive the drift it describes — the user edits an action, takes the new
+     * version, and the entry still says they have a decision to take. A key the run never reached (an entry
+     * whose compiled file would not load) is in neither list and keeps whatever it held, which is the same
+     * rule the removals follow.
+     */
+    reached?: Iterable<string>;
   }): void => {
     const items = { ...appliedContent.get(packId).items, ...Object.fromEntries(next.wrote) };
+    for (const key of next.reached ?? []) {
+      const item = items[key];
+      if (item?.offer) items[key] = { ...item, offer: undefined };
+    }
+    for (const [key, offer] of next.offers ?? []) {
+      const item = items[key];
+      if (item) items[key] = { ...item, offer };
+    }
     for (const key of next.dropped ?? []) delete items[key];
     const write = stored(packId) === undefined
       ? untypedTx(idOf(packId), true).put('entityType', APPLIED_CONTENT_ENTITY)
       : untypedTx(idOf(packId));
     if (next.revision !== undefined) write.update('revision', next.revision);
     write.update('items', items);
+  },
+
+  /**
+   * Records what the user decided about one item's offer.
+   *
+   * It writes no entity: taking a version and deleting an item are both done by whoever called this, and
+   * what is left is the record of the decision. An unknown key is a no-op — the pack may have been applied
+   * again between the view drawing the offer and the user clicking it.
+   */
+  resolveOffer: (packId: string, key: string, resolution: OfferResolution): void => {
+    const current = appliedContent.get(packId);
+    const item = current.items[key];
+    if (!item) return;
+    const items = { ...current.items };
+    if (resolution.choice === 'deleted') delete items[key];
+    else if (resolution.choice === 'taken') items[key] = { ...item, offer: undefined };
+    else items[key] = { ...item, offer: undefined, ...(resolution.contentHash !== undefined && { dismissed: resolution.contentHash }) };
+    untypedTx(idOf(packId)).update('items', items);
   },
 };

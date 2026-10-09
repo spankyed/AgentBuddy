@@ -43,6 +43,37 @@ export interface AppliedItem {
   entityType?: string;
   contentHash?: string;
   parts: Record<string, string>;
+  /**
+   * The decision the user has about this item, from the last apply that found one. An entry carries one only
+   * while it is unresolved: the next apply clears it when the item is the pack's again, and resolving it
+   * either writes the item (and so re-stamps the entry) or drops the offer.
+   */
+  offer?: ContentOffer;
+  /**
+   * The `contentHash` the user was offered and kept their own version against (`update` offers only). The
+   * offer is keyed to the item rather than to a pack version, so a release that leaves this item alone is
+   * silent and the offer comes back by itself once the item itself changes.
+   */
+  dismissed?: string;
+}
+
+/**
+ * A decision the user has about one item, of which there are two kinds and no third.
+ *
+ * `update` is "you changed this and a newer version ships"; `removed` is "you changed this and the pack no
+ * longer ships it". Both are reached the same way — the item was ours, a part of it is no longer what we
+ * wrote — and they differ in what resolving them means, which is why the kind is a field rather than two
+ * containers.
+ *
+ * Only an entry whose `onUserEdit` is `offer` produces one. A forked entry's edit is the user's writing and
+ * is never the subject of a badge.
+ */
+export interface ContentOffer {
+  kind: 'update' | 'removed';
+  /** The parts whose stored value is no longer what we wrote: what the UI labels */
+  parts: string[];
+  /** The hash of the version being offered; absent for a `removed` offer, which offers no version */
+  contentHash?: string;
 }
 
 /**
@@ -59,10 +90,13 @@ export interface AppliedItem {
  * - `written` — the items it wrote. One it skipped keeps whatever `before` holds, which is the caller's to
  *   carry forward, so this is deliberately not every item the content declares.
  * - `removed` — items the content no longer declares whose entity it deleted. Their entries are dropped.
- * - `flagged` — items the content no longer declares that the user has edited, with the parts that differ:
- *   kept, because they are the user's now.
- * - `conflicts` — items whose content moved and whose entity the user has edited, with the parts that
- *   differ. Nothing was written for them.
+ * - `offers` — the decisions the run left the user: an item whose content moved and whose entity they have
+ *   edited (`update`, nothing written), and an item they edited that the content no longer declares
+ *   (`removed`, kept rather than deleted). One container rather than two, because the two are reached by the
+ *   same rule and differ only in what resolving one means.
+ *
+ * **An item the user edited under a `fork` entry reaches none of these.** It is theirs, the apply says so in
+ * its log, and there is nothing for anyone to decide.
  */
 export interface ApplyRecord {
   /** What the last apply wrote, by content key */
@@ -71,8 +105,7 @@ export interface ApplyRecord {
   defined: Set<string>;
   written: Map<string, AppliedItem>;
   removed: Set<string>;
-  flagged: Map<string, string[]>;
-  conflicts: Map<string, string[]>;
+  offers: Map<string, ContentOffer>;
 }
 
 /** An empty record, for a caller that wants one without writing out five containers */
@@ -82,8 +115,7 @@ export function applyRecord(before: ReadonlyMap<string, AppliedItem> = new Map()
     defined: new Set(),
     written: new Map(),
     removed: new Set(),
-    flagged: new Map(),
-    conflicts: new Map(),
+    offers: new Map(),
   };
 }
 
@@ -93,6 +125,14 @@ export interface ApplyContext {
   mode?: ImportMode;
   /** The applied content, for an apply; absent for an import, which reads none and records none */
   applied?: ApplyRecord;
+  /**
+   * Write the pack's version over whatever is there, the user's edits included.
+   *
+   * **The one place in the app the user's work is overwritten**, and it is only ever reached from something
+   * they clicked: taking a newer version they were offered, or asking for the shipped item back. An apply
+   * never passes it, which `importCompiledContent` refuses rather than leaves to be remembered.
+   */
+  force?: boolean;
   log: (...args: unknown[]) => void;
 }
 
@@ -132,11 +172,23 @@ export function importCompiledContent(options: {
   include?: Record<string, ContentSelection | undefined>;
   mode?: ImportMode;
   applied?: ApplyRecord;
+  /** Overwrite the user's edits; see `ApplyContext.force` */
+  force?: boolean;
   verbose?: boolean;
 }): Record<string, ImportResult> {
   const log = options.verbose ? console.log.bind(console) : () => {};
   const result: Record<string, ImportResult> = {};
   const packId = contentPackId(options.compiledDir);
+  /**
+   * **`force` is structurally out of an apply's reach.** An apply hands over what the last one wrote, so a
+   * record with anything in `before` is an apply by construction — and a run that both converges toward the
+   * pack and overwrites the user is the one combination nothing here is allowed to be. A restore passes a
+   * write-only record, which is also what a pack applying for the first time has, and that case writes
+   * nothing of anyone's.
+   */
+  if (options.force && (options.applied?.before.size ?? 0) > 0) {
+    throw new Error('force overwrites the user\'s edits and so belongs to an import; an apply reads what it last wrote and must not pass it');
+  }
 
   for (const applier of boundHost().packs.appliers(packId)) {
     const inc = options.include?.[applier.key];
@@ -150,6 +202,7 @@ export function importCompiledContent(options: {
       include: inc,
       mode: options.mode,
       applied: options.applied,
+      ...(options.force === true && { force: true }),
       log,
     });
   }

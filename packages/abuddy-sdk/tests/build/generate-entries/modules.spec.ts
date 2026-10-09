@@ -189,17 +189,19 @@ describe('generated appliers', () => {
           help: { compiler: 'src/content/compilers/help.ts' },
         },
         sources: {
-          actions: 'src/content/actions',
+          actions: { path: 'src/content/actions', onUserEdit: 'offer' },
           flows: { path: 'src/content/flows' },
-          memos: { path: 'src/content/memos', format: 'memos' },
+          memos: { path: 'src/content/memos', format: 'memos', onUserEdit: 'offer' },
         },
         artifacts: { help: { path: 'src/content/help', format: 'help' } },
       },
     });
     const appliers = files['src/__generated__/appliers.ts'];
-    expect(appliers).toContain(`export const appliers: ContentApplier[] = [\n  createFormatApplier({ key: 'actions', entities: ['Action'], identity: ['label'] }),`);
+    // `onUserEdit` reaches the applier for a specialty key and a format entry alike, which is what makes the
+    // policy the manifest's rather than a property of whichever compiler writes the entry
+    expect(appliers).toContain(`export const appliers: ContentApplier[] = [\n  createFormatApplier({"key":"actions","entities":["Action"],"identity":["label"],"onUserEdit":"offer"}),`);
     expect(appliers).toContain('  createFlowApplier(),');
-    expect(appliers).toContain('  createFormatApplier({"key":"memos","entities":["Memo"],"identity":["title","parent"],"relKind":"has_memo","media":true}),');
+    expect(appliers).toContain('  createFormatApplier({"key":"memos","entities":["Memo"],"identity":["title","parent"],"relKind":"has_memo","media":true,"onUserEdit":"offer"}),');
     expect(appliers).not.toContain('help');
   });
 

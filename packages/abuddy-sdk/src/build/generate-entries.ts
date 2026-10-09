@@ -183,11 +183,15 @@ export type AllEntities = EARS.Entity;
 `;
 }
 
-/** The SDK appliers of the specialty seed keys */
-const SPECIALTY_APPLIERS: Record<string, { factory: string; args: string }> = {
-  actions: { factory: 'createFormatApplier', args: `{ key: 'actions', entities: ['Action'], identity: ['label'] }` },
-  prompts: { factory: 'createFormatApplier', args: `{ key: 'prompts', entities: ['Prompt'], identity: ['label'] }` },
-  flows: { factory: 'createFlowApplier', args: '' },
+/**
+ * The SDK appliers of the specialty content keys, each as the factory to call and the options it is given
+ * besides the entry's own `onUserEdit` — which the caller merges in, since it is the manifest's to say and
+ * not this table's.
+ */
+const SPECIALTY_APPLIERS: Record<string, { factory: string; options: Record<string, unknown> }> = {
+  actions: { factory: 'createFormatApplier', options: { key: 'actions', entities: ['Action'], identity: ['label'] } },
+  prompts: { factory: 'createFormatApplier', options: { key: 'prompts', entities: ['Prompt'], identity: ['label'] } },
+  flows: { factory: 'createFlowApplier', options: {} },
 };
 
 const COMPILED_DIR_ACCESSORS = `let _compiledDir = '';
@@ -1349,9 +1353,11 @@ export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from 
       }
 
       if (source.kind === 'specialty') {
-        const specialty = SPECIALTY_APPLIERS[key];
+        const specialty = SPECIALTY_APPLIERS[key]!;
         applierImports.add(specialty.factory);
-        registrations.push(`${specialty.factory}(${specialty.args})`);
+        const options = { ...specialty.options, ...(source.onUserEdit && { onUserEdit: source.onUserEdit }) };
+        // `createFlowApplier()` takes no options at all when the entry declares none, which is most packs
+        registrations.push(`${specialty.factory}(${Object.keys(options).length > 0 ? JSON.stringify(options) : ''})`);
         continue;
       }
 
@@ -1373,6 +1379,7 @@ export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from 
         ...(format.identity && { identity: format.identity }),
         ...(format.tree?.relKind && { relKind: format.tree.relKind }),
         ...(format.media && { media: true }),
+        ...(source.onUserEdit && { onUserEdit: source.onUserEdit }),
       };
       registrations.push(`createFormatApplier(${JSON.stringify(options)})`);
     }

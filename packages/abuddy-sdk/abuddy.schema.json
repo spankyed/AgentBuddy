@@ -331,6 +331,14 @@
                   "applier": {
                     "type": "string",
                     "description": "A pack module exporting apply(ctx), used instead of the format applier. Alone, the build compiles nothing for the source and the module brings its own data; with \"path\" and \"format\", the module writes the compiled items."
+                  },
+                  "onUserEdit": {
+                    "type": "string",
+                    "enum": [
+                      "fork",
+                      "offer"
+                    ],
+                    "description": "What an apply does about an item the user has edited: \"fork\" leaves it theirs for good (the default), \"offer\" records the newer version so they can take it."
                   }
                 },
                 "additionalProperties": false
@@ -359,6 +367,14 @@
               "applier": {
                 "type": "string",
                 "description": "A pack module exporting apply(ctx), used instead of the format applier. Alone, the build compiles nothing for the source and the module brings its own data; with \"path\" and \"format\", the module writes the compiled items."
+              },
+              "onUserEdit": {
+                "type": "string",
+                "enum": [
+                  "fork",
+                  "offer"
+                ],
+                "description": "What an apply does about an item the user has edited: \"fork\" leaves it theirs for good (the default), \"offer\" records the newer version so they can take it."
               }
             },
             "additionalProperties": false

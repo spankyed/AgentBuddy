@@ -168,15 +168,21 @@ Every system starts when the bus does, after hydration. There is no way for a fe
 
 ### ContentSourceConfig
 
-`actions`, `prompts` and `flows` accept a path or `{ "path": … }`. Any other key is one of:
+`actions`, `prompts` and `flows` accept a path, or `{ "path": …, "onUserEdit"?: … }`. Any other key is one of:
 
 | Shape | Description |
 |---|---|
 | `{ "path", "format" }` | `path`: source directory or file, relative to the pack root. `format`: a name in this pack's `content.formats`, or `"<dependency id>:<name>"` for a dependency's; that dependency must be declared in `dependencies` |
-| `{ "path", "format", "applier" }` | Compiled with the format, and written by the pack module's `seed(ctx)` instead of the format applier |
-| `{ "applier" }` | A pack module exporting `seed(ctx)`, used instead of a format and the format applier |
+| `{ "path", "format", "applier" }` | Compiled with the format, and written by the pack module's `apply(ctx)` instead of the format applier |
+| `{ "applier" }` | A pack module exporting `apply(ctx)`, used instead of a format and the format applier |
 
-An entry can't carry format settings, and an unknown key given a path string fails validation. See [Content](content.md#writing-entities) for examples.
+Every shape also takes `onUserEdit`, which decides what happens about an item the user has edited:
+
+| Field | Type | Description |
+|---|---|---|
+| `onUserEdit` | `"fork" \| "offer"` | `fork` (the default): their edit makes the item theirs for good, and the app never mentions it again. `offer`: the app records that a newer version is waiting and the Packs view lets them take it or keep theirs. See [Content](content.md#fork-or-offer-what-happens-to-an-item-the-user-edited) |
+
+An entry can't carry format settings, and an unknown key given a path string fails validation. A `content.artifacts` entry takes no `onUserEdit`: nothing of an artefact is written, so there is no edit of the user's for a policy to be about. See [Content](content.md#writing-entities) for examples.
 
 ### ContentFormatConfig
 

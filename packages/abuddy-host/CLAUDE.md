@@ -66,11 +66,20 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 - Only host code reads and writes it, through `appState` (`get()` fills defaults; `update()` creates the row on the first write): the migrations runners, pack writing (`packs/runtime/apply.ts`, `lifecycle.ts`, `reload.ts`, the API's boot), `createAppBus()` (the application plugin's `CLIENT_CONNECTED` carries `hasOnboarded`, the tabs' visibility and the plugin last open), the host `application` system (`features/application/be/system.ts`, which records `SET_PLUGIN_VISIBILITY` and `SET_LAST_ACTIVE_PLUGIN` and sends `PLUGIN_VISIBILITY_UPDATED` on a change and whenever it is asked to publish) and `services.appData` (`hasOnboarded()`, `completeOnboarding()`, which default-setup's onboarding calls).
 - **Beside it, one `AppliedContent` row per pack** (`AppliedContent-<packId>`, `app-state/applied-content.ts`):
   `revision`, the compiled content it was applied from, and `items`, one entry per content item the pack has
-  written — its entity type, its `contentHash`, and a hash per **part** (a field's name for an entity;
-  `fields`, `node:<id>` and `edges` for a flow). `applyPacks` records it after every apply, failed or not,
+  written — its entity type, its `contentHash`, a hash per **part** (a field's name for an entity;
+  `fields`, `node:<id>` and `edges` for a flow), and, while one is outstanding, the **offer** the last apply
+  left the user plus the version they have `dismissed`. `applyPacks` records it after every apply, failed or not,
   since what a run wrote is written either way, and keeps the entry of every item an apply left alone. It is
   in the primary partition so a backup carries it: without it a restore would make every entity read as the
   user's own or as one they deleted.
+- **An offer is a decision the user has about one item, and the record is where it waits.** An apply raises
+  one for an item whose content moved and whose entity the user has edited (`update`), and for an item they
+  edited that the content no longer declares (`removed`) — only where the entry's `onUserEdit` is `offer`,
+  since a forked item's edit is their own writing. The next apply that reaches the key clears it; the user
+  resolves one by taking the pack's version (`RESTORE_CONTENT_ITEM`, the one write in the app that overwrites
+  their work, and the same call as "reset to factory"), keeping theirs (`DISMISS_CONTENT_OFFER`, which stores
+  the hash they declined so only a later *change* asks again) or deleting the item
+  (`DELETE_CONTENT_ITEM`). The Packs view draws them from `PackInfo.contentOffers` and `contentKept`.
 - **It is what the merge reads, and the revision is also the skip gate.** Deciding what to do with one item
   is a three-way question — what we applied last, what the pack declares now, what the database holds — and
   this is the only record of the first of those, which is why the revision lives with the items rather than
@@ -79,7 +88,7 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
   the user changed, and without it a digest over a whole item can say no more than that something in it
   moved — which is a freeze on everything else in it with nothing to explain it. The merge is one function
   (`@abuddy/sdk/content`'s `resolve`), and every verdict in the app is reached through it;
-  [`pack-content-apply.md`](../../docs/plans/pack-content-apply.md) has what the partial records it replaced
+  [`pack-content-apply.md`](../../docs/archive/plans/pack-content-apply.md) has what the partial records it replaced
   each cost.
 - Packs never read it, and their settings don't hold it: resetting settings leaves it alone (`default-setup/tests/settings-reset-app-state.spec.ts`). `appData.reset()` clears it with the rest of the database; the migrations the reset runs record the version again.
 - Before 0.3.15 it lived in default-setup's Settings row (`data.internal`); the host's 0.3.15 app migration moves it (`migrations/app/0.3.15.ts`, `tests/migrations/app-state-0.3.15.spec.ts`).

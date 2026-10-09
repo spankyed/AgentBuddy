@@ -92,13 +92,33 @@ export const ContentFormatSchema = z.object({
   }
 });
 
+/**
+ * What an apply does about an item of this entry that the user has edited, and the line is whether editing
+ * it meant adoption or customisation.
+ *
+ * **`fork` is the default, because it is the quiet one.** Where the pack ships a starting point for the
+ * user's own writing, their first edit makes it theirs: never updated again, and never the subject of a
+ * badge about their own prose. Where it ships something of the pack's that the user has customised — a
+ * flow, an action, a prompt — they still want its bug fixes, so `offer` records what changed and lets them
+ * decide. The dangerous option is the one someone has to type.
+ */
+export const CONTENT_EDIT_POLICIES = ['fork', 'offer'] as const;
+export type ContentEditPolicy = (typeof CONTENT_EDIT_POLICIES)[number];
+
+const ON_USER_EDIT = z.enum(CONTENT_EDIT_POLICIES)
+  .describe('What an apply does about an item the user has edited: "fork" leaves it theirs for good (the default), "offer" records the newer version so they can take it.');
+
 /** A `content.sources` entry: a source and the format that compiles it, a pack applier module, or both */
 export const ContentSourceSchema = z.object({
   path: z.string().describe('Source directory or file, relative to the pack root.').optional(),
   format: z.string().regex(CONTENT_FORMAT_REF, 'Must be a content.formats name, or "<dependency id>:<name>"')
     .describe('The format compiling `path`: a name in this pack\'s content.formats, or "<dependency id>:<name>" for a dependency\'s.').optional(),
   applier: z.string().describe('A pack module exporting apply(ctx), used instead of the format applier. Alone, the build compiles nothing for the source and the module brings its own data; with "path" and "format", the module writes the compiled items.').optional(),
+  onUserEdit: ON_USER_EDIT.optional(),
 }).strict();
+
+/** The fields a specialty key's object form may carry: it is the SDK that compiles it, so it names no format */
+const SPECIALTY_FIELDS = new Set(['path', 'onUserEdit']);
 
 // Content keys name files and folders in the compiled output (<key>.seed.json, media/<key>) and generated identifiers
 const CONTENT_KEY_SCHEMA = z.string().regex(CONTENT_NAME, 'Must be a lowercase letter, then lowercase letters, digits and hyphens');
@@ -106,8 +126,8 @@ const CONTENT_KEY_SCHEMA = z.string().regex(CONTENT_NAME, 'Must be a lowercase l
 const ContentSourcesSchema = z.record(CONTENT_KEY_SCHEMA, z.union([z.string(), ContentSourceSchema])).superRefine((sources, ctx) => {
   for (const [key, entry] of Object.entries(sources)) {
     if (SPECIALTY_CONTENT_KEYS.includes(key)) {
-      if (typeof entry === 'object' && (!entry.path || Object.keys(entry).some((field) => field !== 'path'))) {
-        ctx.addIssue({ code: 'custom', path: [key], message: `"${key}" is compiled by the SDK: give its source as a path or { "path": … }` });
+      if (typeof entry === 'object' && (!entry.path || Object.keys(entry).some((field) => !SPECIALTY_FIELDS.has(field)))) {
+        ctx.addIssue({ code: 'custom', path: [key], message: `"${key}" is compiled by the SDK: give its source as a path or { "path": …, "onUserEdit"?: … }` });
       }
     } else if (typeof entry === 'string') {
       ctx.addIssue({ code: 'custom', path: [key], message: `Unknown content key "${key}": only ${SPECIALTY_CONTENT_KEYS.join(', ')} take a path; other sources are { "path", "format" } or { "applier" }` });
@@ -130,6 +150,10 @@ const ContentArtifactsSchema = z.record(CONTENT_KEY_SCHEMA, ContentSourceSchema)
   for (const [key, entry] of Object.entries(artifacts)) {
     if (!entry.path || !entry.format || entry.applier) {
       ctx.addIssue({ code: 'custom', path: [key], message: `Artifact "${key}" must be { "path", "format" }: it is compiled and never written, so it takes no applier` });
+    }
+    // Nothing of an artefact reaches the database, so there is no edit of the user's for a policy to be about
+    if (entry.onUserEdit) {
+      ctx.addIssue({ code: 'custom', path: [key], message: `Artifact "${key}" is never written, so "onUserEdit" decides nothing: drop it` });
     }
   }
 });
