@@ -65,8 +65,8 @@ export interface AppliedItem {
  * wrote — and they differ in what resolving them means, which is why the kind is a field rather than two
  * containers.
  *
- * Only an entry whose `onUserEdit` is `offer` produces one. A forked entry's edit is the user's writing and
- * is never the subject of a badge.
+ * Only an entry whose `onUserEdit` is `offer` produces one. Under `theirs` the edit is the user's own
+ * writing and is never the subject of a badge.
  */
 export interface ContentOffer {
   kind: 'update' | 'removed';
@@ -95,7 +95,7 @@ export interface ContentOffer {
  *   (`removed`, kept rather than deleted). One container rather than two, because the two are reached by the
  *   same rule and differ only in what resolving one means.
  *
- * **An item the user edited under a `fork` entry reaches none of these.** It is theirs, the apply says so in
+ * **An item the user edited under a `theirs` entry reaches none of these.** It is theirs, the apply says so in
  * its log, and there is nothing for anyone to decide.
  */
 export interface ApplyRecord {

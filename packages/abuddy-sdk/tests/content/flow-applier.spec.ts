@@ -51,7 +51,7 @@ describe('flow applier', () => {
    *
    * It declares `onUserEdit: 'offer'`, as the `flows` entry of every pack in this repo does: a flow is the
    * pack's, customised, so the user still wants its fixes. What the flag changes is only whether a decision
-   * is recorded — the write is the same either way, which the forked case below is the other half of.
+   * is recorded — the write is the same either way, which the `theirs` case below is the other half of.
    */
   const apply = (dir: string, record?: ApplyRecord) =>
     createFlowApplier({ onUserEdit: 'offer' }).apply({ compiledDir: dir, mode: 'replace-on-collision', ...(record && { applied: record }), log: () => {} });
@@ -195,16 +195,16 @@ describe('flow applier', () => {
     expect([...second.offers.values()]).toEqual([{ kind: 'update', parts: ['fields'], contentHash: expect.any(String) }]);
   });
 
-  /** And a `flows` entry that forks records none of it: the user's version stays, and nothing asks them */
-  it('records no decision for a forked flows entry the user edited', () => {
+  /** And a `theirs` flows entry records none of it: the user's version stays, and nothing asks them */
+  it('records no decision for a `theirs` flows entry the user edited', () => {
     const first = applyRecord();
-    const forking = (dir: string, record?: ApplyRecord) =>
+    const theirs = (dir: string, record?: ApplyRecord) =>
       createFlowApplier().apply({ compiledDir: dir, mode: 'replace-on-collision', ...(record && { applied: record }), log: () => {} });
-    forking(compiledFlows('Demo Flow'), first);
+    theirs(compiledFlows('Demo Flow'), first);
     untypedTx(flows('Demo Flow')[0]!.id as never).update('description' as never, 'mine');
 
     const second = after(first);
-    forking(compiledFlows('Demo Flow', 'v2'), second);
+    theirs(compiledFlows('Demo Flow', 'v2'), second);
 
     expect([...second.offers]).toEqual([]);
     expect(flows('Demo Flow').length).toBe(1);

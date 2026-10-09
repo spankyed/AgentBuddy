@@ -16,6 +16,10 @@
 >   removal pass read them as content the pack had dropped and deleted the user's data. Both writers now
 >   declare every key the compiled file holds *before* writing anything, which is why
 >   `ApplyRecord.defined` is derived from the content and never from the walk.
+> - **The policy's quiet value is `theirs`, not Decision 7's `fork`.** Under it there is one entity — the
+>   user's — and the pack's version is only compiled content nobody applies, so "fork" promised a second
+>   copy that never exists. The pair also had to stop reading as if `offer` overwrites: neither value does,
+>   and what differs is whether the pack goes on offering. `onUserEdit: 'theirs' | 'offer'`.
 > - **Removal is per entry key**, which Decision 9 does not say: each writer diffs only the keys under its own
 >   prefix, so content whose *whole entry* a pack stops declaring has no writer left to remove it, and a
 >   renamed entry key orphans what the old one wrote.

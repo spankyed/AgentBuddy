@@ -96,17 +96,21 @@ export const ContentFormatSchema = z.object({
  * What an apply does about an item of this entry that the user has edited, and the line is whether editing
  * it meant adoption or customisation.
  *
- * **`fork` is the default, because it is the quiet one.** Where the pack ships a starting point for the
- * user's own writing, their first edit makes it theirs: never updated again, and never the subject of a
- * badge about their own prose. Where it ships something of the pack's that the user has customised — a
+ * **`theirs` is the default, because it is the quiet one.** Where the pack ships a starting point for the
+ * user's own writing, their first edit makes the item theirs: never updated again, and never the subject of
+ * a badge about their own prose. Where it ships something of the pack's that the user has customised — a
  * flow, an action, a prompt — they still want its bug fixes, so `offer` records what changed and lets them
  * decide. The dangerous option is the one someone has to type.
+ *
+ * **Neither value ever overwrites the user**, which is why the pair is named for whose the item is rather
+ * than for what happens to their edit: under both, what they wrote stays. What differs is whether the pack
+ * goes on offering its own version, and nothing here makes a second copy of anything.
  */
-export const CONTENT_EDIT_POLICIES = ['fork', 'offer'] as const;
+export const CONTENT_EDIT_POLICIES = ['theirs', 'offer'] as const;
 export type ContentEditPolicy = (typeof CONTENT_EDIT_POLICIES)[number];
 
 const ON_USER_EDIT = z.enum(CONTENT_EDIT_POLICIES)
-  .describe('What an apply does about an item the user has edited: "fork" leaves it theirs for good (the default), "offer" records the newer version so they can take it.');
+  .describe('What an apply does about an item the user has edited: "theirs" leaves it theirs for good (the default), "offer" records the newer version so they can take it. Neither overwrites their edit.');
 
 /** A `content.sources` entry: a source and the format that compiles it, a pack applier module, or both */
 export const ContentSourceSchema = z.object({

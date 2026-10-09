@@ -13,7 +13,7 @@ const verdict = (input: {
   incoming?: string;
   live?: { contentHash?: unknown; trashed?: boolean; foreignContainer?: boolean };
   mode?: ImportMode;
-  onUserEdit?: 'fork' | 'offer';
+  onUserEdit?: 'theirs' | 'offer';
   force?: boolean;
   drifted?: string[];
 }): Resolution => resolve({ ...input, drifted: () => input.drifted ?? [] }).resolution;
@@ -69,8 +69,8 @@ describe('an item the content declares', () => {
   it('offers a conflict only where the entry offers and the user has not already declined it', () => {
     const conflicting = { applied: ours, incoming: 'v2', live: { contentHash: 'v1' }, drifted: () => ['body'] };
 
-    expect(resolve(conflicting).offer, 'fork is the default, and says nothing').toBeUndefined();
-    expect(resolve({ ...conflicting, onUserEdit: 'fork' }).offer).toBeUndefined();
+    expect(resolve(conflicting).offer, 'theirs is the default, and says nothing').toBeUndefined();
+    expect(resolve({ ...conflicting, onUserEdit: 'theirs' }).offer).toBeUndefined();
     expect(resolve({ ...conflicting, onUserEdit: 'offer' }).offer, 'an offering entry').toBe(true);
     expect(resolve({ ...conflicting, onUserEdit: 'offer', applied: { ...ours, dismissed: 'v2' } }).offer,
       'the version they declined').toBeUndefined();
@@ -119,13 +119,13 @@ describe('an item the content no longer declares', () => {
   });
 
   /**
-   * **A forked item the user edited is kept without telling anyone**, which is the same rule as a conflict's:
+   * **An item the user edited under a `theirs` entry is kept without telling anyone**, the same rule as a conflict's:
    * the write is identical either way — it stays — and the entry's policy decides only whether the user is
    * given something to decide.
    */
   it('offers the keep only where the entry offers', () => {
     const edited = { applied: ours, live: { contentHash: 'v1' }, drifted: () => ['body'] };
-    expect(resolveRemoval(edited).offer, 'fork is the default').toBeUndefined();
+    expect(resolveRemoval(edited).offer, 'theirs is the default').toBeUndefined();
     expect(resolveRemoval({ ...edited, onUserEdit: 'offer' }).offer).toBe(true);
     expect(resolveRemoval({ ...edited, onUserEdit: 'offer' }).resolution, 'and it is kept either way').toBe('removed-but-edited');
   });

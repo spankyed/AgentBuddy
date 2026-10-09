@@ -330,17 +330,17 @@ export const ContentSourceSchema: z.ZodObject<{
     path: z.ZodOptional<z.ZodString>;
     format: z.ZodOptional<z.ZodString>;
     applier: z.ZodOptional<z.ZodString>;
-    onUserEdit: z.ZodOptional<z.ZodEnum<["fork", "offer"]>>;
+    onUserEdit: z.ZodOptional<z.ZodEnum<["theirs", "offer"]>>;
 }, "strict", z.ZodTypeAny, {
     path?: string | undefined;
     format?: string | undefined;
     applier?: string | undefined;
-    onUserEdit?: "fork" | "offer" | undefined;
+    onUserEdit?: "theirs" | "offer" | undefined;
 }, {
     path?: string | undefined;
     format?: string | undefined;
     applier?: string | undefined;
-    onUserEdit?: "fork" | "offer" | undefined;
+    onUserEdit?: "theirs" | "offer" | undefined;
 }>;
 
 // @public (undocumented)
@@ -697,53 +697,53 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path: z.ZodOptional<z.ZodString>;
             format: z.ZodOptional<z.ZodString>;
             applier: z.ZodOptional<z.ZodString>;
-            onUserEdit: z.ZodOptional<z.ZodEnum<["fork", "offer"]>>;
+            onUserEdit: z.ZodOptional<z.ZodEnum<["theirs", "offer"]>>;
         }, "strict", z.ZodTypeAny, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }>]>>, Record<string, string | {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }>, Record<string, string | {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }>>>;
         artifacts: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodObject<{
             path: z.ZodOptional<z.ZodString>;
             format: z.ZodOptional<z.ZodString>;
             applier: z.ZodOptional<z.ZodString>;
-            onUserEdit: z.ZodOptional<z.ZodEnum<["fork", "offer"]>>;
+            onUserEdit: z.ZodOptional<z.ZodEnum<["theirs", "offer"]>>;
         }, "strict", z.ZodTypeAny, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }>>, Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }>, Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }>>>;
         formats: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
             format: z.ZodOptional<z.ZodEnum<["markdown-tree", "json"]>>;
@@ -848,13 +848,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         artifacts?: Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         formats?: Record<string, {
             format?: "markdown-tree" | "json" | undefined;
@@ -879,13 +879,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         artifacts?: Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         formats?: Record<string, {
             format?: "markdown-tree" | "json" | undefined;
@@ -1079,13 +1079,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         artifacts?: Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         formats?: Record<string, {
             format?: "markdown-tree" | "json" | undefined;
@@ -1192,13 +1192,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         artifacts?: Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         formats?: Record<string, {
             format?: "markdown-tree" | "json" | undefined;
@@ -1305,13 +1305,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         artifacts?: Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         formats?: Record<string, {
             format?: "markdown-tree" | "json" | undefined;
@@ -1418,13 +1418,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         artifacts?: Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
-            onUserEdit?: "fork" | "offer" | undefined;
+            onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
         formats?: Record<string, {
             format?: "markdown-tree" | "json" | undefined;

@@ -665,7 +665,7 @@ Rows without a stored `contentHash` (rows users created) stay user-owned, in eve
 
 **An entity deleted outright is not written again either, because the app remembers writing it.** Nothing is left of it, so what answers for it is the pack's record of what it wrote: a key it wrote with no entity behind it now is one the user removed. The rule holds whatever your feature's delete does — a trashed entity is read directly, a destroyed one through the record.
 
-### Fork or offer: what happens to an item the user edited
+### Theirs or offer: what happens to an item the user edited
 
 Every outcome above leaves the user's edit alone. What `onUserEdit` decides is whether anyone is **told** — and the line is whether editing the item meant adoption or customisation.
 
@@ -680,10 +680,12 @@ Every outcome above leaves the user's edit alone. What `onUserEdit` decides is w
 }
 ```
 
-- **`fork`** (the default) — the item is theirs from the first edit, and the app never mentions it again. Where your content is a starting point for the user's own writing, this is what you want: no badge about their own prose.
+- **`theirs`** (the default) — the item is the user's from the first edit, and the app never mentions it again. Where your content is a starting point for their own writing, this is what you want: no badge about their own prose.
 - **`offer`** — the item is yours, customised. The app records that a newer version is waiting, and the Packs view puts it to the user with the parts they changed. They still get your bug fixes if they want them.
 
 The default is the conservative one, so the option that interrupts someone is the one you have to type. default-setup declares `offer` for its `actions`, `prompts` and `flows`, and nothing else.
+
+Neither value overwrites what the user wrote, and neither makes a second copy of anything — there is one entity either way. The pair is named for whose the item is, because the only thing that differs is whether your pack goes on offering its version.
 
 **What an offer looks like to the user.** Packs → the pack → *Your changes to this pack's content*, one row per item: what it is, which parts of it they changed, and what the pack's version would do. Two choices for a newer version —
 
@@ -700,7 +702,7 @@ An item the user kept their own version of also gets **Reset to factory**, which
 
 Three things it will not do. A content key whose compiled file it could not read contributes no removals, because a key that said nothing cannot be diffed against. A removal follows the parent chain, so keeping an edited child keeps the rows above it. And a `container` another pack's rows (or the user's) are filed under is never removed, since removing the folder would take their content with it.
 
-An edited item you stopped shipping is kept, and under an `offer` entry it is named: the user is asked whether to keep it or delete it. Under `fork` it is simply kept, which is what forking means.
+An edited item you stopped shipping is kept, and under an `offer` entry it is named: the user is asked whether to keep it or delete it. Under `theirs` it is simply kept, which is what `theirs` means.
 
 **Removal is per entry key.** Each entry diffs only the keys under its own prefix, so content whose *whole entry* you stop declaring has no writer left to remove it — and renaming an entry key orphans what the old one wrote, leaving the new key's rows beside them.
 

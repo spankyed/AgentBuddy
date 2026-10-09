@@ -335,10 +335,10 @@
                   "onUserEdit": {
                     "type": "string",
                     "enum": [
-                      "fork",
+                      "theirs",
                       "offer"
                     ],
-                    "description": "What an apply does about an item the user has edited: \"fork\" leaves it theirs for good (the default), \"offer\" records the newer version so they can take it."
+                    "description": "What an apply does about an item the user has edited: \"theirs\" leaves it theirs for good (the default), \"offer\" records the newer version so they can take it. Neither overwrites their edit."
                   }
                 },
                 "additionalProperties": false
@@ -371,10 +371,10 @@
               "onUserEdit": {
                 "type": "string",
                 "enum": [
-                  "fork",
+                  "theirs",
                   "offer"
                 ],
-                "description": "What an apply does about an item the user has edited: \"fork\" leaves it theirs for good (the default), \"offer\" records the newer version so they can take it."
+                "description": "What an apply does about an item the user has edited: \"theirs\" leaves it theirs for good (the default), \"offer\" records the newer version so they can take it. Neither overwrites their edit."
               }
             },
             "additionalProperties": false

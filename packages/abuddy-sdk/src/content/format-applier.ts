@@ -22,7 +22,7 @@ export interface FormatApplierOptions {
   relKind?: string;
   /** The entry copies media: `media/<file>` links are rewritten to `media://<id>/<file>` */
   media?: boolean;
-  /** The entry's `onUserEdit`; see `ContentSourceSchema`. `fork` (the default) raises no offer */
+  /** The entry's `onUserEdit`; see `ContentSourceSchema`. `theirs` (the default) raises no offer */
   onUserEdit?: ContentEditPolicy;
 }
 

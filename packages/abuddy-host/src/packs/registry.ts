@@ -131,7 +131,7 @@ export interface PackInfo extends PackExtensions {
    * The items the user kept their own version of, which is where "reset to factory" is offered.
    *
    * It is the items carrying a `dismissed` hash, so it is **the ones we know about** rather than every item
-   * the user has ever edited: a forked entry's edit is recorded nowhere, by design, and an unresolved offer
+   * the user has ever edited: an edit under a `theirs` entry is recorded nowhere, by design, and an unresolved offer
    * is in `contentOffers` instead. Restoring one is the same call as taking an offered version — one item,
    * written over — differing only in what prompted it.
    */

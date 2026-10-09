@@ -53,7 +53,7 @@ export interface MergeInput {
   /** The entity this item names now; absent means none */
   live?: LiveEntity;
   mode?: ImportMode;
-  /** The entry's `onUserEdit`; `fork` (the default) reaches no decision the user has to take */
+  /** The entry's `onUserEdit`; `theirs` (the default) reaches no decision the user has to take */
   onUserEdit?: ContentEditPolicy;
   /** Overwrite whatever is there (`ApplyContext.force`): the user asked for the pack's version */
   force?: boolean;
@@ -73,8 +73,8 @@ export interface Merge {
    * The user has a decision to take about this item, so the run records one (`ApplyRecord.offers`).
    *
    * It is a second answer rather than a resolution of its own, because the *database* outcome is the same
-   * either way — nothing is written — and an offer only decides whether anyone is told. `fork` entries and
-   * an offer the user has already dismissed both reach `conflict` and set this to nothing.
+   * either way — nothing is written — and an offer only decides whether anyone is told. A `theirs` entry
+   * and an offer the user has already dismissed both reach `conflict` and set this to nothing.
    */
   offer?: boolean;
 }
@@ -123,8 +123,8 @@ export function resolve(input: MergeInput): Merge {
 /**
  * Whether this conflict is a decision to put to the user.
  *
- * Two reasons it is not. The entry **forks**, so the edit made the item theirs and there is nothing to
- * decide. Or they have already decided, against this very version: `dismissed` holds the hash they were
+ * Two reasons it is not. The entry is **`theirs`**, so the edit made the item the user's and there is
+ * nothing to decide. Or they have already decided, against this very version: `dismissed` holds the hash they were
  * offered, so a later release that leaves this item alone offers nothing again and one that changes it
  * offers afresh.
  */
@@ -144,7 +144,7 @@ export function resolveRemoval(input: {
   /** Required, unlike `resolve`'s: a removal is only ever about an item the applied content holds */
   applied: AppliedItem;
   live?: LiveEntity;
-  /** The entry's `onUserEdit`; a forked item the user edited is kept without telling anyone */
+  /** The entry's `onUserEdit`; under `theirs` an item the user edited is kept without telling anyone */
   onUserEdit?: ContentEditPolicy;
   drifted: () => string[];
 }): Merge {

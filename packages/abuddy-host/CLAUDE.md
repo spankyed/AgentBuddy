@@ -75,7 +75,7 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 - **An offer is a decision the user has about one item, and the record is where it waits.** An apply raises
   one for an item whose content moved and whose entity the user has edited (`update`), and for an item they
   edited that the content no longer declares (`removed`) — only where the entry's `onUserEdit` is `offer`,
-  since a forked item's edit is their own writing. The next apply that reaches the key clears it; the user
+  since under `theirs` the edit is their own writing. The next apply that reaches the key clears it; the user
   resolves one by taking the pack's version (`RESTORE_CONTENT_ITEM`, the one write in the app that overwrites
   their work, and the same call as "reset to factory"), keeping theirs (`DISMISS_CONTENT_OFFER`, which stores
   the hash they declined so only a later *change* asks again) or deleting the item

@@ -48,8 +48,8 @@ const applier = createFormatApplier({ key: 'memos', entities: ['Memo', 'Folder']
 
 /**
  * The same entry declaring `onUserEdit: 'offer'`: the user's edit is a decision to put to them rather than
- * their own writing. It is a second applier because the default is `fork` and the default is what most of
- * these cases are about — what an offer adds is the record, never a different write.
+ * their own writing. It is a second applier because the default is `theirs` and the default is what most
+ * of these cases are about — what an offer adds is the record, never a different write.
  */
 const offering = createFormatApplier({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'], onUserEdit: 'offer' });
 
@@ -149,11 +149,11 @@ describe('the applied content a run records', () => {
   });
 
   /**
-   * **A forked entry's edit is the user's writing, and nothing asks them about it.** The write is identical
-   * either way — their version stays — so the only thing `onUserEdit` decides is whether a decision is
-   * recorded for anyone to draw. A note never produces one.
+   * **Under `theirs` the edit is the user's own writing, and nothing asks them about it.** The write is
+   * identical either way — their version stays — so the only thing `onUserEdit` decides is whether a
+   * decision is recorded for anyone to draw. A note never produces one.
    */
-  it('records no decision for a forked entry the user edited', () => {
+  it('records no decision for a `theirs` entry the user edited', () => {
     const first = applyRecord();
     seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
     edit('Intro', { mood: 'mine' });
