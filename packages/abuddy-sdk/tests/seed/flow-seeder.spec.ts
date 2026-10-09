@@ -82,6 +82,31 @@ describe('flow seeder', () => {
   });
 
   /**
+   * **A node added or removed is drift too**, which is why the comparison is over both sides' part paths and
+   * not only the recorded ones: a node the user added has a path the record has never seen, and one they
+   * removed has a recorded path the database no longer answers for.
+   */
+  it('reports a node the user added, and one they removed', async () => {
+    const { createFlowSeeder: make } = await import('../../src/seed/flow-seeder.ts');
+    const { driftedGraphParts } = await import('../../src/seed/flow-seeder.ts');
+    const applied = new Map<string, AppliedItem>();
+    make().apply({ compiledDir: compiledFlows('Demo Flow'), mode: 'replace-on-collision', applied, log: () => {} });
+    const [[, item]] = [...applied];
+    const flowId = flows('Demo Flow')[0].id as never;
+    const nodeId = findRelations({ sourceEntity: flowId, relationType: 'contains' as never })[0].targetEntity;
+
+    const added = installedEngine().createEntityWithDefaults('Node' as never, { label: 'mine' }).id;
+    untypedTx(flowId).link('contains' as never, added as never);
+    // Both, and that is right: a node arrives with the `contains` edge that holds it, so the wiring moved too
+    expect(driftedGraphParts(item, flowId), 'a node the user added').toEqual(['edges', `node:${added}`]);
+
+    untypedTx(flowId).unlinkIf('contains' as never, added as never);
+    untypedTx(flowId).unlinkIf('contains' as never, nodeId as never);
+    expect(driftedGraphParts(item, flowId), 'a node the user removed, and the wiring that named it')
+      .toEqual(['edges', `node:${nodeId}`]);
+  });
+
+  /**
    * **A flow a seeder wrote agrees with itself**: every part it recorded still matches what the entity holds,
    * so nothing reads as the user's the moment it was written. The companion of the two cases above — without
    * it they would both pass for a derivation that reported constants.

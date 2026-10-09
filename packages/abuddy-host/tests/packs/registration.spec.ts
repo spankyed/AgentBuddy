@@ -198,6 +198,7 @@ describe('registerPack entities', () => {
 
   it.each([
     [{ AppState: 'AppState' }, {}, 'entity type "AppState"'],
+    [{ AppliedContent: 'AppliedContent' }, {}, 'entity type "AppliedContent"'],
     [{ Flow: 'Flow' }, {}, 'entity type "Flow"'],
     [{}, { CONTAINS: 'contains' }, 'relation kind "CONTAINS": "contains"'],
     [{}, { HOLDS: 'contains' }, 'relation kind "HOLDS": "contains"'],
