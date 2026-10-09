@@ -247,8 +247,8 @@ export function compile(dsl: FlowDSL, options: CompileOptions = {}): CompiledRow
       ctx,
     );
 
-    const sourceHash = isFlowConfig(entry) ? entry.sourceHash : undefined;
-    entities.push(sourceHash ? { ...flowEntity, sourceHash } : flowEntity);
+    const contentHash = isFlowConfig(entry) ? entry.contentHash : undefined;
+    entities.push(contentHash ? { ...flowEntity, contentHash } : flowEntity);
     entities.push(...nodeEntities);
     relations.push(...flowRelations);
     roles.push(...flowRoles);

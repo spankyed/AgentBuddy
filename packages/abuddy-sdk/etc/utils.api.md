@@ -23,6 +23,58 @@ export interface _AppDataPaths {
 export function _appDataPaths(userDataDir: string): _AppDataPaths;
 
 // @public
+export interface AppliedItem {
+    // (undocumented)
+    contentHash?: string;
+    dismissed?: string;
+    // (undocumented)
+    entityType?: string;
+    offer?: ContentOffer;
+    // (undocumented)
+    parts: Record<string, string>;
+}
+
+// @public (undocumented)
+export interface ApplyContext {
+    applied?: ApplyRecord;
+    // (undocumented)
+    compiledDir: string;
+    force?: boolean;
+    // (undocumented)
+    include?: ContentSelection;
+    // (undocumented)
+    log: (...args: unknown[]) => void;
+    // (undocumented)
+    mode?: ImportMode;
+}
+
+// @public
+export interface ApplyRecord {
+    before: ReadonlyMap<string, AppliedItem>;
+    defined: Set<string>;
+    // (undocumented)
+    offers: Map<string, ContentOffer>;
+    // (undocumented)
+    removed: Set<string>;
+    // (undocumented)
+    written: Map<string, AppliedItem>;
+}
+
+// @public
+export function applyRecord(before?: ReadonlyMap<string, AppliedItem>): ApplyRecord;
+
+// @public
+export interface ApplyResult {
+    // (undocumented)
+    created: number;
+    errors?: string[];
+    // (undocumented)
+    skipped: number;
+    // (undocumented)
+    updated: number;
+}
+
+// @public
 export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 
 // @public (undocumented)
@@ -64,6 +116,25 @@ export type ChangeBlock<T = unknown> = {
 
 // @public (undocumented)
 export function compareVersions(a: string, b: string): number;
+
+// @public (undocumented)
+export interface ContentApplier {
+    // (undocumented)
+    apply(ctx: ApplyContext): ApplyResult;
+    // (undocumented)
+    key: string;
+}
+
+// @public
+export interface ContentOffer {
+    contentHash?: string;
+    // (undocumented)
+    kind: 'update' | 'removed';
+    parts: string[];
+}
+
+// @public (undocumented)
+export type ContentSelection = true | ReadonlySet<string>;
 
 // @public
 export function copyFlatMedia(mediaFilenameMap: Map<string, string>, outputDir: string): number;
@@ -118,7 +189,7 @@ export function extractMediaRefs(markdown: string): MediaRef[];
 export function extractValueByPath(source: unknown, path: string): unknown;
 
 // @public (undocumented)
-export function filterByInclude<T>(items: T[], getKey: (item: T) => string, inc: SeedIncludeSet | undefined): T[];
+export function filterBySelection<T>(items: T[], getKey: (item: T) => string, inc: ContentSelection | undefined): T[];
 
 // @internal
 export const _getLmdbPath: () => string;
@@ -149,41 +220,20 @@ export interface ImagePart {
 }
 
 // @public
-export function importCompiledSeeds(options: {
+export function importCompiledContent(options: {
     compiledDir: string;
-    include?: Record<string, SeedIncludeSet | undefined>;
+    include?: Record<string, ContentSelection | undefined>;
     mode?: ImportMode;
-    keyRecord?: SeedKeyRecord;
+    applied?: ApplyRecord;
+    force?: boolean;
     verbose?: boolean;
-}): Record<string, ImportCounts>;
-
-// @public (undocumented)
-export interface ImportContext {
-    // (undocumented)
-    compiledDir: string;
-    // (undocumented)
-    include?: SeedIncludeSet;
-    // (undocumented)
-    keyRecord?: SeedKeyRecord;
-    // (undocumented)
-    log: (...args: unknown[]) => void;
-    // (undocumented)
-    mode?: ImportMode;
-}
-
-// @public (undocumented)
-export interface ImportCounts {
-    // (undocumented)
-    created: number;
-    errors?: string[];
-    // (undocumented)
-    skipped: number;
-    // (undocumented)
-    updated: number;
-}
+}): Record<string, ImportResult>;
 
 // @public (undocumented)
 export type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace';
+
+// @public
+export type ImportResult = ApplyResult;
 
 // @public
 export const isPlainObject: (val: unknown) => val is Record<string, unknown>;
@@ -252,7 +302,7 @@ export function redactSecrets<T>(value: T): T;
 export function redactSecretText(text: string): string;
 
 // @public
-export function registeredSeedKeys(packId: string): string[];
+export function registeredContentKeys(packId: string): string[];
 
 // @public (undocumented)
 export type Rename = {
@@ -290,26 +340,7 @@ export function restoreMarkdownMediaRefs(content: string, newEntityId: string, r
 export function rewriteMediaUrls(markdown: string, mediaFilenameMap: Map<string, string>): string;
 
 // @public (undocumented)
-export interface Seeder {
-    // (undocumented)
-    apply(ctx: ImportContext): ImportCounts;
-    // (undocumented)
-    key: string;
-}
-
-// @public (undocumented)
-export type SeedIncludeSet = true | ReadonlySet<string>;
-
-// @public
-export interface SeedKeyRecord {
-    // (undocumented)
-    before: ReadonlySet<string>;
-    // (undocumented)
-    defined: Set<string>;
-}
-
-// @public (undocumented)
-export function shouldImportAll(inc: SeedIncludeSet | undefined): boolean;
+export function selectsAll(inc: ContentSelection | undefined): boolean;
 
 // @public
 export function stripInternalFields<T extends object>(items: T[]): Record<string, unknown>[];

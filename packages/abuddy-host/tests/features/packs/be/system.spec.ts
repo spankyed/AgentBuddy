@@ -8,7 +8,7 @@ import { _appDirOf, resolveAppContext } from '@abuddy/sdk/env';
 import { resetTestData, takeSystemErrors, testRootEvents } from '@abuddy/sdk/testing';
 import { readInstalledPacks } from '../../../../src/packs/installed.ts';
 import { registry } from '../../../packs/runtime/test-host.ts';
-import { appState } from '../../../../src/app-state/index.ts';
+import { appliedContent, appState } from '../../../../src/app-state/index.ts';
 import { installPackFromLocal } from '../../../../src/packs/installer.ts';
 import { createPacksSystem, type PackInfo } from '../../../../src/features/packs/be/system.ts';
 import { activatePack } from '../../../../src/packs/runtime/lifecycle.ts';
@@ -17,6 +17,9 @@ import { reloadPackById } from '../../../../src/packs/runtime/reload.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { createPackArchive, stagePack } from '../../../../src/packs/layout.ts';
 import { PACK_LAYOUT } from '../../../../src/packs/layout.ts';
+import { applyPacks } from '../../../../src/packs/runtime/apply.ts';
+import { createFormatApplier } from '@abuddy/sdk/content';
+import { untypedQx, untypedTx } from '@abuddy/ears';
 
 const PACK_ID = 'reinstall-pack';
 
@@ -50,7 +53,7 @@ function packSource(version: string, { failsImport = false, id = PACK_ID } = {})
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)} } };`);
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   if (failsImport) {
-    // Compiled data with no seeds.json: the seeder can't tell whose records these are, so seeding fails
+    // Compiled data with no seeds.json: the applier can't tell whose records these are, so seeding fails
     fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'seeds'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'seeds', 'flows.seed.json'), '[]');
   }
@@ -425,9 +428,10 @@ describe('installing over a pack that is already running', () => {
 // uninstall removes packs/<id> and nothing in the database. Running a reinstalled pack's migrations
 // again over rows they have already moved is the failure this avoids.
 describe('what a reinstall does not redo', () => {
-  it('leaves the seed hash and migrated version an uninstall did not invalidate', async () => {
+  it('leaves the applied content and migrated version an uninstall did not invalidate', async () => {
     resetTestData();
-    appState.update({ packSeedHashes: { [PACK_ID]: 'the-hash' }, packVersions: { [PACK_ID]: '1.0.0' } });
+    appState.update({ packVersions: { [PACK_ID]: '1.0.0' } });
+    appliedContent.record(PACK_ID, { revision: 'the-revision', wrote: new Map([['k', { parts: {} }]]) });
     await installPackFromLocal(packSource('1.0.0'));
 
     const system = runPacksSystem();
@@ -437,7 +441,7 @@ describe('what a reinstall does not redo', () => {
         expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_COMPLETE');
       });
 
-      expect(appState.get().packSeedHashes[PACK_ID]).toBe('the-hash');
+      expect(appliedContent.get(PACK_ID)).toEqual({ revision: 'the-revision', items: { k: { parts: {} } } });
       expect(appState.get().packVersions[PACK_ID]).toBe('1.0.0');
     } finally {
       system.stop();
@@ -454,7 +458,7 @@ describe('what a reinstall does not redo', () => {
 // accident, through the file times that were once in the seed hash: the seed failed again and wrote the error
 // back. Seeds are keyed on content now, so the same pack installed again is the same bytes and nothing is
 // re-imported — and what keeps this honest is `recordInstalled` preserving `lastError`, which belongs to the
-// seed outcome (`recordSeedOutcomes`) and is not an install's to clear. `activationProblem` reads it, so the
+// seed outcome (`recordApplyOutcomes`) and is not an install's to clear. `activationProblem` reads it, so the
 // install still says the pack's data failed to seed, which is what the user needs to know.
 describe('reinstalling a pack whose data did not seed', () => {
   const outcomes = (sent: AnyEventObject[]) =>
@@ -552,5 +556,233 @@ describe('updating to a release that holds another pack', () => {
     expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', 'other-pack'))).toBe(false);
     expect(installedVersion()).toBe('1.0.0');
     expect(sent.map(e => e.type)).toContain('PACK_ACTIVATED');
+  });
+});
+
+/**
+ * **An import is write-only, which is what makes it an import and not an apply.** It reads nothing of what
+ * the last apply wrote — so no verdict here can be reached from it — and it records what it wrote, because
+ * an import that rewrote entities and recorded nothing would leave the applied content describing the
+ * version before it, which the next boot's apply would read as the user's edits.
+ */
+describe('importing a pack’s content', () => {
+  /** A compiled directory the real generic applier can read, with one memo item */
+  function compiledMemos(): string {
+    const dir = path.join(tmpDir, 'compiled');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({
+      version: 1, packId: PACK_ID, seeds: [{ key: 'memos', seeded: true, count: 1 }],
+    }));
+    fs.writeFileSync(path.join(dir, 'memos.seed.json'), JSON.stringify({
+      records: [{ entity: 'Memo', name: 'Intro', body: 'Hello', contentHash: 'intro-v1' }],
+    }));
+    return dir;
+  }
+
+  it('records what it wrote and leaves the revision where it is', async () => {
+    const { startTestRuntime, testPacks } = await import('@abuddy/sdk/testing');
+    const { createFormatApplier } = await import('@abuddy/sdk/content');
+    resetTestData();
+    startTestRuntime({ entityTypes: ['Memo'] });
+    appliedContent.record(PACK_ID, { revision: 'the-revision', wrote: new Map() });
+    testPacks.appliers.set(PACK_ID, [createFormatApplier({ key: 'memos', entities: ['Memo'], identity: ['name'] })]);
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'IMPORT_PACK_CONTENT', directory: compiledMemos(), mode: 'replace-on-collision' });
+      await vi.waitFor(() => {
+        expect(emitted(system.sent).map((e) => e.type)).toContain('PACK_CONTENT_IMPORTED');
+      });
+
+      const content = appliedContent.get(PACK_ID);
+      expect(Object.values(content.items), 'the item the import wrote, with a part per field')
+        .toEqual([{ entityType: 'Memo', contentHash: 'intro-v1', parts: { body: expect.any(String), name: expect.any(String) } }]);
+      expect(content.revision, 'asking for the data again is not a change to what the pack declares')
+        .toBe('the-revision');
+
+      /**
+       * **And the record it wrote is not one it reads.** The user destroys the entity and asks for the
+       * pack's content back: an apply would read the entry it just wrote and leave the deletion alone,
+       * which is exactly not what was asked for.
+       */
+      const { untypedQx, untypedTx } = await import('@abuddy/ears');
+      const memos = () => untypedQx('Memo' as never).pickAll();
+      untypedTx(memos()[0]!.id).destroy();
+      expect(memos(), 'a destroyed entity leaves nothing behind, which is the premise').toEqual([]);
+
+      system.send({ type: 'IMPORT_PACK_CONTENT', directory: compiledMemos(), mode: 'replace-on-collision' });
+      await vi.waitFor(() => {
+        expect(memos(), 'the content the user asked for was not put back').toHaveLength(1);
+      });
+    } finally {
+      testPacks.appliers.delete(PACK_ID);
+      system.stop();
+    }
+  });
+});
+
+/**
+ * **The three answers a user gives to one content item**, which are the only requests in the app that write
+ * a pack's content over what the user has made of it, or remove it.
+ *
+ * The fixture is two entries over two SDK entity types, which is default-setup's own shape: one that offers
+ * and one that does not. Two entries rather than one because the thing most worth holding here is what a
+ * request about *one* item does to everything else — the answer was "overwrites all of it", and nothing
+ * could have said so with a single entry.
+ */
+describe('a user answering for one of a pack’s content items', () => {
+  const CONTENT_PACK = 'content-pack';
+  const ACTION_KEY = `${CONTENT_PACK}:actions/${encodeURIComponent(JSON.stringify(['Action', 'Echo']))}`;
+  const PROMPT_KEY = `${CONTENT_PACK}:prompts/${encodeURIComponent(JSON.stringify(['Prompt', 'Greet']))}`;
+
+  /**
+   * The pack as installed, in the data dir's packs directory — which is where the restore looks, because
+   * the host put it there and a pack never says where its compiled content is.
+   */
+  function contentPack(version: 'v1' | 'v2'): string {
+    const dir = path.join(_appDirOf(tmpDir), 'packs', CONTENT_PACK);
+    const seeds = path.join(dir, PACK_LAYOUT.seedsDir);
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.mkdirSync(seeds, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id: CONTENT_PACK, name: 'Content Pack', version: '1.0.0' }));
+    fs.writeFileSync(path.join(seeds, 'seeds.json'), JSON.stringify({ version: 1, packId: CONTENT_PACK, seeds: [] }));
+    fs.writeFileSync(path.join(seeds, 'actions.seed.json'), JSON.stringify({
+      records: [{ entity: 'Action', label: 'Echo', description: `theirs ${version}`, contentHash: `echo-${version}` }],
+    }));
+    fs.writeFileSync(path.join(seeds, 'prompts.seed.json'), JSON.stringify({
+      records: [{ entity: 'Prompt', label: 'Greet', description: `theirs ${version}`, contentHash: `greet-${version}` }],
+    }));
+    return dir;
+  }
+
+  /** The prompt's writer records its removal instead of destroying, as a pack's own delete does */
+  const removed: string[] = [];
+
+  function registerContentPack(): void {
+    registry.registerPack({
+      id: CONTENT_PACK,
+      appliers: [
+        createFormatApplier({ key: 'actions', entities: ['Action'], identity: ['label'], onUserEdit: 'offer' }),
+        createFormatApplier({ key: 'prompts', entities: ['Prompt'], identity: ['label'], onUserEdit: 'offer' }),
+      ],
+      contentWriters: {
+        Prompt: {
+          remove(id) {
+            removed.push(id);
+            untypedTx(id).update('deleted' as never, true);
+          },
+        },
+      },
+    });
+  }
+
+  const describedBy = (id: string) => untypedQx(id as never).pickOne(['description'])?.description as string | undefined;
+
+  let dir: string;
+  beforeEach(() => {
+    resetTestData();
+    removed.length = 0;
+    dir = contentPack('v1');
+    registerContentPack();
+    // The apply that writes both items and records what it wrote, which is what makes the rest an answer
+    applyPacks([{ manifest: { id: CONTENT_PACK }, dir }]);
+  });
+
+  afterEach(() => {
+    if (registry.getPackExtensions(CONTENT_PACK)) registry.unregisterPack(CONTENT_PACK);
+  });
+
+  const entityOf = (key: string, entity: 'Action' | 'Prompt') =>
+    (untypedQx(entity as never).where('contentKey', key).pickAll()[0] as { id: string } | undefined)?.id;
+
+  /**
+   * **One item restored leaves every other entry alone**, which is the whole of what makes this request
+   * safe to put behind a button. A selection naming one entry says nothing about the others, and a run
+   * that read it as "everything else too" would write the pack's version over every item the user had
+   * edited under every other entry — on a click that asked for one.
+   */
+  it('writes the item the user asked for, and nothing of any other entry', () => {
+    const prompt = entityOf(PROMPT_KEY, 'Prompt')!;
+    untypedTx(prompt as never).update('description' as never, 'mine');
+    fs.rmSync(dir, { recursive: true, force: true });
+    contentPack('v2');
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'RESTORE_CONTENT_ITEM', packId: CONTENT_PACK, key: ACTION_KEY });
+
+      expect(describedBy(entityOf(ACTION_KEY, 'Action')!), 'the item they asked for').toBe('theirs v2');
+      expect(describedBy(prompt), 'and the one they did not, which they had edited').toBe('mine');
+      expect(takeSystemErrors()).toEqual([]);
+    } finally {
+      system.stop();
+    }
+  });
+
+  /**
+   * **Deleting goes through the owner's own delete.** The entity types a pack writes are removed by whoever
+   * declared them — a flow through its repository, which takes its nodes and wiring with it, and anything
+   * with a `remove` writer the way that pack removes one. Destroying the entity here would orphan the first
+   * and skip the second, which for a note is the user's undo.
+   */
+  it('removes a deleted item through its pack’s own writer', () => {
+    const prompt = entityOf(PROMPT_KEY, 'Prompt')!;
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'DELETE_CONTENT_ITEM', packId: CONTENT_PACK, key: PROMPT_KEY });
+
+      expect(removed, 'the writer that owns the entity type').toEqual([prompt]);
+      expect(appliedContent.get(CONTENT_PACK).items[PROMPT_KEY], 'and nothing is left for a later apply to describe').toBeUndefined();
+    } finally {
+      system.stop();
+    }
+  });
+
+  /**
+   * **An offer the restore could not answer stays open.** A run that wrote nothing for the item has changed
+   * nothing about it, and clearing the offer anyway would mean the user is never asked again about a
+   * version they never received.
+   */
+  it('keeps the offer when the restore wrote nothing for that item', () => {
+    const offer = { kind: 'update' as const, parts: ['description'], contentHash: 'echo-v2' };
+    appliedContent.record(CONTENT_PACK, { wrote: new Map(), offers: new Map([[ACTION_KEY, offer]]) });
+    // The content no longer holds an item under that label, so the selection matches no record
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.seedsDir, 'actions.seed.json'), JSON.stringify({ records: [] }));
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'RESTORE_CONTENT_ITEM', packId: CONTENT_PACK, key: ACTION_KEY });
+
+      expect(appliedContent.get(CONTENT_PACK).items[ACTION_KEY]?.offer, 'still outstanding').toEqual(offer);
+    } finally {
+      system.stop();
+    }
+  });
+
+  /** "Keep mine" records the version they declined, and the list then offers to reset it instead */
+  it('records the version the user declined, and lists the item as one they keep', () => {
+    appliedContent.record(CONTENT_PACK, {
+      wrote: new Map(),
+      offers: new Map([[ACTION_KEY, { kind: 'update', parts: ['description'], contentHash: 'echo-v2' }]]),
+    });
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'DISMISS_CONTENT_OFFER', packId: CONTENT_PACK, key: ACTION_KEY });
+
+      const item = appliedContent.get(CONTENT_PACK).items[ACTION_KEY];
+      expect(item?.dismissed, 'the version they were shown').toBe('echo-v2');
+      expect(item?.offer, 'and the decision is taken').toBeUndefined();
+
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      const lists = emitted(system.sent).filter((e) => e.type === 'PACKS_LIST');
+      const listed = lists[lists.length - 1]?.packs as PackInfo[];
+      const pack = listed.find(p => p.id === CONTENT_PACK);
+      expect(pack?.contentOffers, 'nothing outstanding').toEqual([]);
+      expect(pack?.contentKept.map(k => k.key), 'and an item to reset to factory').toEqual([ACTION_KEY]);
+    } finally {
+      system.stop();
+    }
   });
 });

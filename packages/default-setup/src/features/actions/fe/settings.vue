@@ -87,7 +87,7 @@
                 Import failed
               </h4>
               <ul class="text-sm text-neutral-400 list-disc list-inside">
-                <li v-for="(error, idx) in importErrors" :key="idx">{{ error }}</li>
+                <li v-for="(error, idx) in applyErrors" :key="idx">{{ error }}</li>
               </ul>
             </div>
           </div>
@@ -231,7 +231,7 @@ const actionsActor: ActionsState = usePlugin()
 // Import state
 const isImporting = useSelector(actionsActor, (state) => state.context.actionsImport.status === 'importing')
 const importStatus = useSelector(actionsActor, (state) => state.context.actionsImport.status)
-const importErrors = useSelector(actionsActor, (state) => state.context.actionsImport.errors)
+const applyErrors = useSelector(actionsActor, (state) => state.context.actionsImport.errors)
 const importedCount = useSelector(actionsActor, (state) => state.context.actionsImport.importedCount)
 
 // Export state

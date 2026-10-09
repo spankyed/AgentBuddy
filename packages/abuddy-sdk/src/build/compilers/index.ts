@@ -4,7 +4,7 @@ export {
   promptsCompiler,
   flowsCompiler,
   SPECIALTY_COMPILERS,
-  type CompiledSeedEntry,
+  type CompiledContentEntry,
 } from './standard.ts';
 
 // Build utilities used by compilers (useful for custom compilers too)

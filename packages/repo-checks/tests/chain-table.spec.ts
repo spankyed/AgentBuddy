@@ -456,7 +456,7 @@ describe("the chain runs every artifact's check", () => {
   const NOT_RUN_BY_THE_CHAIN: Record<string, string> = {
     // These are commands over a rule a spec already asserts, so the artifact is checked and the script is
     // a way to ask by hand.
-    'seed-parity:check': 'a wrapper for `npm test -- tests/seeds`; those specs run in test:unit:pack',
+    'seed-parity:check': 'a wrapper for `npm test -- tests/content`; those specs run in test:unit:pack',
     'sdk-modules:check': 'a wrapper for `sdk-bridge-drift.spec.ts`, which compares the generated file against a fresh render; it runs in test:unit:host',
     'flow-export:check': 'a wrapper for `npm test -- tests/extensions/steps/export-example.spec.ts`; that spec runs in test:unit:pack, where it compares the flow DSL example rather than recording it',
   };

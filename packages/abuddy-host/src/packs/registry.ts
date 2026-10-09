@@ -12,6 +12,7 @@ import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeat
 import type { PackManifest } from '@abuddy/sdk/build';
 import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { HostServices } from '@abuddy/sdk/services';
+import type { ContentOffer } from '@abuddy/sdk/utils';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { SDK_ENTITIES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
@@ -19,10 +20,10 @@ import { HOST_SYSTEM_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events'
 import { HOST_PACK_ID, resolveName, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { registerRepository, unregisterRepository } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
-import { discoverPacks, packSeedOrder } from './discovery.ts';
-import type { PackSeedTarget } from './runtime/seed.ts';
+import { discoverPacks, packContentOrder } from './discovery.ts';
+import type { PackContentTarget } from './runtime/apply.ts';
 import { addContributions, createDefinitionStore, createDesignationStore, createStepStore, definitions, type Contribution, type UndoLog } from './extensions.ts';
-import { createCommandStore, createHelpStore, createSeedHookStore, createSeederStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
+import { createCommandStore, createHelpStore, createContentWriterStore, createApplierStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
@@ -119,6 +120,35 @@ export interface PackInfo extends PackExtensions {
   updateCheckError?: string;
   /** Why this installed pack isn't running although it is enabled: the app skipped it or failed to load it */
   loadProblem?: string;
+  /**
+   * The decisions the last apply left the user about this pack's content, in the order the view draws them.
+   *
+   * It is derived from the pack's `AppliedContent` on every list rather than kept anywhere else, so the
+   * answer is whatever the record holds now: a pack applied between two lists simply lists differently.
+   */
+  contentOffers: PackContentOffer[];
+  /**
+   * The items the user kept their own version of, which is where "reset to factory" is offered.
+   *
+   * It is the items carrying a `dismissed` hash, so it is **the ones we know about** rather than every item
+   * the user has ever edited: an edit under a `theirs` entry is recorded nowhere, by design, and an unresolved offer
+   * is in `contentOffers` instead. Restoring one is the same call as taking an offered version — one item,
+   * written over — differing only in what prompted it.
+   */
+  contentKept: Array<{ key: string; label: string }>;
+}
+
+/**
+ * One decision about one content item, as the Packs view draws it: what the item is, which parts moved, and
+ * which kind of decision it is (`ContentOffer`).
+ *
+ * `label` is the item rendered from its own key (`describeContentKey`), because the key already holds the
+ * entity type and the identity that names it — nothing has to be stored beside it to say what an item is.
+ */
+export interface PackContentOffer extends ContentOffer {
+  /** The content key, which is what resolving it names */
+  key: string;
+  label: string;
 }
 
 /** What a plugin's sends are checked against: the event types it receives */
@@ -223,19 +253,19 @@ export interface PackRegistry extends PackRegistryView {
    * a seed is keyed on is its own compiled data. Migrations are two, because what a migration is keyed on
    * is a version, and a shipped pack's version is the app's.
    *
-   * In dependency order (`packSeedOrder`), so a pack's migrations run after those of the packs it depends
+   * In dependency order (`packContentOrder`), so a pack's migrations run after those of the packs it depends
    * on. Registration order, which decides who wins a designation or a plugin id, is a different order and
    * is not this.
    */
   packMigrationTargets(packIds?: Iterable<string>): Array<{ manifest: PackManifest; migrations?: PackMigration[] }>;
   /**
-   * Every registered pack as `seedPacks` takes it, in dependency order: where its seeds are and what it
+   * Every registered pack as `applyPacks` takes it, in dependency order: where its seeds are and what it
    * depends on. With `packIds`, only those — activation and reload seed the one pack they handled.
    *
    * A pack the app ships is in here beside an installed one: one seed path, one freshness record, one
    * policy mechanism.
    */
-  packSeedTargets(packIds?: Iterable<string>): PackSeedTarget[];
+  packSeedTargets(packIds?: Iterable<string>): PackContentTarget[];
   getPackExtensions(packId: string): PackExtensions | null;
   /** Registers a hook run when the pack `key` stops, or, without a key, when the app exits */
   registerShutdownHook(hook: () => void, key?: string): void;
@@ -287,8 +317,8 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
   const steps = createStepStore();
   const artifacts = createDefinitionStore<ArtifactDefinition>();
   const blocks = createDefinitionStore<BlockDefinition>();
-  const seedHooks = createSeedHookStore();
-  const seeders = createSeederStore();
+  const contentWriters = createContentWriterStore();
+  const appliers = createApplierStore();
   const settingsDefaults = createSettingsDefaultsStore();
   const help = createHelpStore();
   const commands = createCommandStore();
@@ -343,7 +373,7 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
    * cycle between two others.
    */
   const orderedPacks = derived((): PackOrigin[] =>
-    packSeedOrder(
+    packContentOrder(
       [...origins.values()]
         .filter((o) => o.manifest)
         // The dependencies are the manifest's, not the origin's own: spreading the origin would leave every
@@ -363,7 +393,7 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
    * agree.
    *
    * The undos are recorded as the work happens, not returned at the end, because an entry can throw partway
-   * through its own items: the seed hooks of one pack are refused one entity at a time. And they undo what
+   * through its own items: the content writers of one pack are refused one entity at a time. And they undo what
    * the `add` did rather than re-reading the registration, because a pack refused for a step collision must
    * not unregister the step it collided with.
    */
@@ -386,10 +416,10 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     definitions(blocks, (reg) => reg.blocks),
     (reg, undo) => {
       // Registered one entity at a time and refused the same way, so the undo is in place before the first
-      undo(() => seedHooks.unregisterAll(reg.id));
-      for (const [entity, hooks] of Object.entries(reg.seedHooks ?? {})) seedHooks.register(entity, hooks, reg.id);
+      undo(() => contentWriters.unregisterAll(reg.id));
+      for (const [entity, hooks] of Object.entries(reg.contentWriters ?? {})) contentWriters.register(entity, hooks, reg.id);
     },
-    (reg, undo) => { undo(() => seeders.unregister(reg.id)); seeders.register(reg.id, reg.seeders ?? []); },
+    (reg, undo) => { undo(() => appliers.unregister(reg.id)); appliers.register(reg.id, reg.appliers ?? []); },
     (reg, undo) => { undo(() => commands.unregister(reg.id)); commands.register(reg.id, reg.commands ?? []); },
     (reg, undo) => {
       undo(() => help.unregister(reg.id));
@@ -602,7 +632,7 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
       // Dependency order over every pack. A pack the app ships declares no dependencies — it is what others
       // depend on — so it sorts ahead of them, which is the order the two separate paths used to produce by
       // running one after the other
-      const ordered = packSeedOrder([...origins.values()]
+      const ordered = packContentOrder([...origins.values()]
         .filter((origin) => !wanted || wanted.has(origin.id))
         .map((origin) => ({ id: origin.id, dependencies: origin.manifest?.dependencies, origin })));
       return ordered.map(({ origin }) => ({
@@ -642,8 +672,8 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     artifacts: artifacts.all,
     block: blocks.get,
     blocks: blocks.all,
-    seedHooks: seedHooks.get,
-    seeders: seeders.get,
+    contentWriters: contentWriters.get,
+    appliers: appliers.get,
     settingsDefaults: settingsDefaults.get,
     onSettingsDefaultsChanged: settingsDefaults.onChanged,
     featuresWithSettings,

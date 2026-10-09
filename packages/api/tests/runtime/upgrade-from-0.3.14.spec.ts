@@ -23,7 +23,7 @@ const { loadAppPacks } = await import('@abuddy/host/packs/runtime');
 const { installShippedPacks } = await import('@abuddy/host/packs');
 const { resolveAppContext } = await import('@abuddy/sdk/env');
 const { runAppMigrations } = await import('@abuddy/host/migrations');
-const { appState } = await import('@abuddy/host/app-state');
+const { appliedContent, appState } = await import('@abuddy/host/app-state');
 const { untypedTx, untypedQx } = await import('@abuddy/ears');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
@@ -100,10 +100,12 @@ describe("0.3.15's migrations over 0.3.14's data", () => {
     expect(appState.get()).toMatchObject({
       hasOnboarded: true,
       version: '0.3.15',
-      packSeedHashes: { 'default-setup': 'boot-hash' },
       lastActivePlugin: 'default-setup/code',
     });
     // Only the tab the user changed from 0.3.14's defaults
     expect(appState.get().pluginVisibility).toEqual({ 'default-setup/library': true });
+    // 0.3.14's record of what it seeded is dropped rather than carried: what says a pack's content has been
+    // applied is the per-item record only an apply can write, so the first boot after this applies once
+    expect(appliedContent.get('default-setup').revision).toBe('');
   });
 });

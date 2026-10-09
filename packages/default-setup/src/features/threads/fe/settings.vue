@@ -586,8 +586,8 @@
                 <h4 class="text-sm font-medium text-emerald-400 mb-1">
                   Successfully imported {{ importedCount }} thread{{ importedCount !== 1 ? 's' : '' }}
                 </h4>
-                <ul v-if="importErrors.length" class="text-sm text-neutral-400 list-disc list-inside">
-                  <li v-for="(error, idx) in importErrors" :key="idx">{{ error }}</li>
+                <ul v-if="applyErrors.length" class="text-sm text-neutral-400 list-disc list-inside">
+                  <li v-for="(error, idx) in applyErrors" :key="idx">{{ error }}</li>
                 </ul>
               </div>
             </div>
@@ -602,7 +602,7 @@
                   Import failed
                 </h4>
                 <ul class="text-sm text-neutral-400 list-disc list-inside">
-                  <li v-for="(error, idx) in importErrors" :key="idx">{{ error }}</li>
+                  <li v-for="(error, idx) in applyErrors" :key="idx">{{ error }}</li>
                 </ul>
               </div>
             </div>
@@ -1033,7 +1033,7 @@ const threadsActor: ThreadsState = usePlugin()
 // Import state
 const isImporting = useSelector(threadsActor, (state) => state.context.threadsImport.status === 'importing')
 const importStatus = useSelector(threadsActor, (state) => state.context.threadsImport.status)
-const importErrors = useSelector(threadsActor, (state) => state.context.threadsImport.errors)
+const applyErrors = useSelector(threadsActor, (state) => state.context.threadsImport.errors)
 const importedCount = useSelector(threadsActor, (state) => state.context.threadsImport.importedCount)
 
 // Export state

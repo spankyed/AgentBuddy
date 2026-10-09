@@ -37,13 +37,13 @@ function pack(stepInFlow: string): string {
   write('abuddy.json', JSON.stringify({
     id: 'registry-pack', name: 'Registry pack', version: '1.0.0', builtIn: true,
     steps: { register: 'src/steps.mjs', build: 'src/steps.mjs', definitions: [] },
-    boot: { seed: { flows: 'src/seeds/flows' } },
+    content: { sources: { flows: 'src/content/flows' } },
   }));
   write('src/steps.mjs', `export const steps = [
     { type: 'listener', kind: 'trigger', trigger: { trackField: 'event', compile: () => ({}), decompile: () => ({}) } },
     { type: 'note', kind: 'step', build: { compile: () => ({ entity: {}, relations: [] }), validate: () => [], getLabel: () => 'Note' } },
   ];\n`);
-  write('src/seeds/flows/main.ts', `export default { Main: [{ event: 'flow.entry', exits: [[{ type: '${stepInFlow}' }]] }] };\n`);
+  write('src/content/flows/main.ts', `export default { Main: [{ event: 'flow.entry', exits: [[{ type: '${stepInFlow}' }]] }] };\n`);
   return root;
 }
 
@@ -54,7 +54,7 @@ function pack(stepInFlow: string): string {
  * fail here for want of installed dependencies — the facade gate needs `@abuddy/sdk` resolvable from the pack
  * — and phase 4, the one this file is about, has already run by then. The compiled seed used to be read from
  * `dist` in place; a build assembles that tree aside and removes it when it fails, so what survives a failed
- * build is what it printed. `result.seeds` is the count behind that line, so the line is the count.
+ * build is what it printed. `result.counts` is the count behind that line, so the line is the count.
  */
 async function compiledSeeds(root: string): Promise<string> {
   const cwd = process.cwd();

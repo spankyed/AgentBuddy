@@ -1,7 +1,7 @@
 // The packs' start over hydrated data, as a boot and an app reset (services.appData.reset()) run it
 import { runAppMigrations, runPackMigrations } from '../../migrations/index.ts';
 import type { PackRegistry } from '../registry.ts';
-import { seedPacks } from './seed.ts';
+import { applyPacks } from './apply.ts';
 
 /** Each registered pack's onInit, then the app's and the installed packs' migrations, then every pack's seeds, unless the app's migrations failed */
 export function startPacks(registry: PackRegistry): void {
@@ -16,5 +16,5 @@ export function startPacks(registry: PackRegistry): void {
 
   // One call for every pack, in dependency order, so every pack gets the same treatment: a failed seed is
   // retried on the next boot, and a pack sees what the packs it depends on seeded in this same run
-  seedPacks(registry.packSeedTargets());
+  applyPacks(registry.packSeedTargets());
 }

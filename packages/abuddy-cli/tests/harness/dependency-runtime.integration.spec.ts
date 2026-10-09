@@ -45,7 +45,7 @@ export default definePackTestConfig({ dataDirPrefix: 'dependent-runtime-' });`);
 import { setupPackTests } from '@abuddy/testing/harness';
 import { memos } from './memos-system';
 await setupPackTests({
-  seedRuntime: { id: 'dependent-pack', entities: {}, relKinds: {}, repositories: {}, seedHooks: {} },
+  contentRuntime: { id: 'dependent-pack', entities: {}, relKinds: {}, repositories: {}, contentWriters: {} },
   registration: {
     id: 'dependent-pack',
     features: {

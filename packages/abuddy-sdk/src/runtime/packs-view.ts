@@ -5,8 +5,8 @@ import type { FeatureRef } from '../ids/refs.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
-import type { SeedHooks } from '../seed/hooks.ts';
-import type { Seeder } from '../utils/seed.ts';
+import type { ContentWriter } from '../content/writers.ts';
+import type { ContentApplier } from '../utils/apply.ts';
 import type { PackSettingsDefaults } from '../framework/pack-settings.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
 import type { HelpEntry } from '../framework/pack-help.ts';
@@ -40,10 +40,10 @@ export interface PackRegistryView extends PackExtensionsView {
   systemIds(): readonly FeatureRef[];
   /** The refs of every registered plugin, the host's included */
   pluginIds(): readonly FeatureRef[];
-  /** The seed hooks registered for an entity type */
-  seedHooks(entity: string): SeedHooks | undefined;
-  /** A registered pack's seeders */
-  seeders(packId: string): readonly Seeder[];
+  /** The content writers registered for an entity type */
+  contentWriters(entity: string): ContentWriter | undefined;
+  /** A registered pack's appliers */
+  appliers(packId: string): readonly ContentApplier[];
   /** Every registered pack's feature settings, merged */
   settingsDefaults(): PackSettingsDefaults;
   /** Calls `listener` whenever the feature settings defaults change; returns the unsubscribe */

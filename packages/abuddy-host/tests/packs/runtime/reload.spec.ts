@@ -12,11 +12,11 @@ import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 const { registerPack, unregisterPack, getPackRegistration, registerShutdownHook, removeShutdownHooksForKey } = registry;
 const { reloadPackById } = await import('../../../src/packs/runtime/reload.ts');
 const { loadAppPacks } = await import('../../../src/packs/runtime/loader.ts');
-const { seedPacks } = await import('../../../src/packs/runtime/seed.ts');
+const { applyPacks } = await import('../../../src/packs/runtime/apply.ts');
 const { resolveAppContext } = await import('@abuddy/sdk/env');
 // The test host's logger reports through its root event bus, so a test can read what the code under test logged
 const { testRootEvents: rootEvents, resetTestData, testPacks } = await import('@abuddy/sdk/testing');
-const { appState } = await import('../../../src/app-state/index.ts');
+const { appliedContent, appState } = await import('../../../src/app-state/index.ts');
 const { readInstalledPacks } = await import('../../../src/packs/installed.ts');
 
 const PACK_ID = 'reload-pack';
@@ -70,7 +70,7 @@ afterEach(() => {
     try { unregisterPack(id); } catch { /* not registered */ }
   }
   removeShutdownHooksForKey(PACK_ID);
-  testPacks.seeders.delete('built-in-pack');
+  testPacks.appliers.delete('built-in-pack');
   for (const [key, value] of [['ABUDDY_ENV', origEnv.env], ['ABUDDY_USER_DATA_DIR', origEnv.userDataDir]] as const) {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
@@ -100,7 +100,7 @@ describe('reloading a pack the app ships', () => {
       let compiledDir = '';
       module.exports = {
         setCompiledDir(dir) { compiledDir = dir; },
-        // Like a pack's generated seeders: the value is only there once the loader has set it
+        // Like a pack's generated appliers: the value is only there once the loader has set it
         getCompiledDir() {
           if (!compiledDir) throw new Error('compiledDir not initialized — pack loader must call setCompiledDir()');
           return compiledDir;
@@ -124,13 +124,13 @@ describe('reloading a pack the app ships', () => {
     fs.writeFileSync(path.join(seedsDir, 'actions.seed.json'), content);
   }
 
-  /** The pack as `seedPacks` takes it: a pack the app ships, with the policy its registration declares */
+  /** The pack as `applyPacks` takes it: a pack the app ships, with the policy its registration declares */
   const seedTarget = (packId: string = SHIPPED_ID) =>
     ({ manifest: { id: packId }, dir: path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID) });
 
-  /** Records a seeder reports for the next seed instead of importing them (an invalid flow, say) */
+  /** Records an applier reports for the next seed instead of importing them (an invalid flow, say) */
   let recordsThatFail: string[] = [];
-  /** Makes the seeder itself throw, as a rebuild removing its files mid-reload would */
+  /** Makes the applier itself throw, as a rebuild removing its files mid-reload would */
   let seedFailure: Error | undefined;
   /** What the code under test logged at error level */
   const loggedErrors: string[] = [];
@@ -149,10 +149,10 @@ describe('reloading a pack the app ships', () => {
     });
     // AppState, where the boot seed records what it last seeded, starts empty
     resetTestData();
-    // The seeders the built-in pack's registration carries
-    testPacks.seeders.set(SHIPPED_ID, [{
+    // The appliers the built-in pack's registration carries
+    testPacks.appliers.set(SHIPPED_ID, [{
       key: 'actions',
-      // A seeder reports the records it couldn't seed in its counts; it doesn't throw
+      // An applier reports the records it couldn't seed in its counts; it doesn't throw
       apply: ({ compiledDir }) => {
         if (seedFailure) throw seedFailure;
         seeded.push(compiledDir);
@@ -188,7 +188,7 @@ describe('reloading a pack the app ships', () => {
     writeShipped();
     loadAppPacks(registry, new Set([SHIPPED_ID]));
     // Boot's own seeding, which the reload picks up from
-    seedPacks([seedTarget()]);
+    applyPacks([seedTarget()]);
     expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir)]);
 
     // A reload after a code-only rebuild leaves the data alone
@@ -205,41 +205,41 @@ describe('reloading a pack the app ships', () => {
   it("records what it seeded per pack, so a second shipped pack's boot seed doesn't re-run this one", async () => {
     writeShipped();
     loadAppPacks(registry, new Set([SHIPPED_ID]));
-    seedPacks([seedTarget()]);
+    applyPacks([seedTarget()]);
     expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir)]);
 
-    // Another pack the app ships seeds its own data, recorded in the same AppState row
+    // Another pack the app ships applies its own content, recorded in its own entity
     seeded.length = 0;
-    seedPacks([seedTarget('other-pack')]);
-    expect(Object.keys(appState.get().packSeedHashes).sort()).toEqual([SHIPPED_ID, 'other-pack'].sort());
+    applyPacks([seedTarget('other-pack')]);
+    expect([SHIPPED_ID, 'other-pack'].map((id) => appliedContent.get(id).revision).every(Boolean)).toBe(true);
 
     // ...and this pack's own seed is still recorded, so it isn't seeded again
     seeded.length = 0;
-    seedPacks([seedTarget()]);
+    applyPacks([seedTarget()]);
     expect(seeded).toEqual([]);
   });
 
-  it('reports the records a seeder could not seed, and still records the hash so they are retried on the next change', async () => {
+  it('reports the records an applier could not seed, and still records the hash so they are retried on the next change', async () => {
     writeShipped();
     loadAppPacks(registry, new Set([SHIPPED_ID]));
     recordsThatFail = ['Flow "Broken": step 2 names no action'];
-    seedPacks([seedTarget()]);
+    applyPacks([seedTarget()]);
 
     // The failure is reported, not swallowed behind "Boot seed completed"
     expect(loggedErrors.join('\n')).toContain('Flow "Broken": step 2 names no action');
-    // The hash is stored anyway, as importPackSeeds does: the same failing data isn't re-imported every boot
-    expect(appState.get().packSeedHashes[SHIPPED_ID]).toBeTruthy();
+    // The revision is recorded anyway: the same failing data isn't re-applied every boot
+    expect(appliedContent.get(SHIPPED_ID).revision).toBeTruthy();
 
     // ...and the next seed of unchanged data doesn't retry it
     seeded.length = 0;
-    seedPacks([seedTarget()]);
+    applyPacks([seedTarget()]);
     expect(seeded).toEqual([]);
 
     // ...while recompiled seeds do
     writeSeeds('[{ "label": "second" }]');
     recordsThatFail = [];
     loggedErrors.length = 0;
-    seedPacks([seedTarget()]);
+    applyPacks([seedTarget()]);
     expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir)]);
     expect(loggedErrors).toEqual([]);
   });
@@ -249,7 +249,7 @@ describe('reloading a pack the app ships', () => {
     loadAppPacks(registry, new Set([SHIPPED_ID]));
     bus.send.mockClear();
 
-    // A rebuild running again mid-reload takes the compiled seeds out from under the seeder
+    // A rebuild running again mid-reload takes the compiled seeds out from under the applier
     seedFailure = new Error("ENOENT: no such file or directory, open 'actions.seed.json'");
     await reloadPackById(registry, SHIPPED_ID, bus as never);
 
@@ -307,7 +307,7 @@ describe('reloading a pack', () => {
   it("records a first-time pack's seed failure", async () => {
     resetTestData();
     writeRebuild(runtime());
-    // Compiled seeds from a pack built by an older CLI: importCompiledSeeds refuses them, which is a failed seed
+    // Compiled seeds from a pack built by an older CLI: importCompiledContent refuses them, which is a failed seed
     fs.writeFileSync(
       path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'runtime', 'seeds', 'seeds.json'),
       JSON.stringify({ version: 1, seeds: [] }),

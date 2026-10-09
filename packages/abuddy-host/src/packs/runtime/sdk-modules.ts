@@ -5,6 +5,7 @@ import * as _abuddy_sdk from '@abuddy/sdk';
 import * as _abuddy_sdk_artifacts from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_blocks from '@abuddy/sdk/blocks';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
+import * as _abuddy_sdk_content from '@abuddy/sdk/content';
 import * as _abuddy_sdk_cron from '@abuddy/sdk/cron';
 import * as _abuddy_sdk_database_console from '@abuddy/sdk/database-console';
 import * as _abuddy_sdk_designations from '@abuddy/sdk/designations';
@@ -17,7 +18,6 @@ import * as _abuddy_sdk_logger from '@abuddy/sdk/logger';
 import * as _abuddy_sdk_models from '@abuddy/sdk/models';
 import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
 import * as _abuddy_sdk_runtime from '@abuddy/sdk/runtime';
-import * as _abuddy_sdk_seed from '@abuddy/sdk/seed';
 import * as _abuddy_sdk_services from '@abuddy/sdk/services';
 import * as _abuddy_sdk_steps from '@abuddy/sdk/steps';
 import * as _abuddy_sdk_templates from '@abuddy/sdk/templates';
@@ -33,6 +33,7 @@ export const SHARED_INSTANCE_MODULES: Readonly<Record<string, unknown>> = {
   '@abuddy/sdk/artifacts': _abuddy_sdk_artifacts,
   '@abuddy/sdk/blocks': _abuddy_sdk_blocks,
   '@abuddy/sdk/build': _abuddy_sdk_build,
+  '@abuddy/sdk/content': _abuddy_sdk_content,
   '@abuddy/sdk/cron': _abuddy_sdk_cron,
   '@abuddy/sdk/database-console': _abuddy_sdk_database_console,
   '@abuddy/sdk/designations': _abuddy_sdk_designations,
@@ -45,7 +46,6 @@ export const SHARED_INSTANCE_MODULES: Readonly<Record<string, unknown>> = {
   '@abuddy/sdk/models': _abuddy_sdk_models,
   '@abuddy/sdk/repositories': _abuddy_sdk_repositories,
   '@abuddy/sdk/runtime': _abuddy_sdk_runtime,
-  '@abuddy/sdk/seed': _abuddy_sdk_seed,
   '@abuddy/sdk/services': _abuddy_sdk_services,
   '@abuddy/sdk/steps': _abuddy_sdk_steps,
   '@abuddy/sdk/templates': _abuddy_sdk_templates,

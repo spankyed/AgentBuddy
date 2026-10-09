@@ -113,15 +113,15 @@ export interface PackExtensionsView {
 
 // @public
 export interface PackRegistryView extends PackExtensionsView {
+    appliers(packId: string): readonly ContentApplier[];
     commands(): PackCommand[];
+    contentWriters(entity: string): ContentWriter | undefined;
     earsNames(): EarsNames;
     featuresWithSettings(): readonly FeatureRef[];
     getRegisteredServices(): Record<string, unknown>;
     help(): HelpEntry[];
     onSettingsDefaultsChanged(listener: () => void): () => void;
     pluginIds(): readonly FeatureRef[];
-    seeders(packId: string): readonly Seeder[];
-    seedHooks(entity: string): SeedHooks | undefined;
     settingsDefaults(): PackSettingsDefaults;
     systemIds(): readonly FeatureRef[];
 }

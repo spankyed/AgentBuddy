@@ -54,7 +54,7 @@ is sequenced yet.
 **What cannot be lazy, and must be said out loud:** migrations and seeds. A pack's stored data has to be
 current before anything reads it, and a lazily-activated pack would migrate at an arbitrary moment. Either
 they stay eager (likely correct, and they are already hash-skipped so an unchanged pack costs a comparison)
-or they move behind the same predicate and the ordering guarantees in `seedPacks` have to be re-established.
+or they move behind the same predicate and the ordering guarantees in `applyPacks` have to be re-established.
 **This is the hard part of the plan, not the activation itself.**
 
 ## Depends on

@@ -1,11 +1,11 @@
 // The memos system under the app's bus: its startup data on connect, and a memo added from the client
 import { describe, expect, it } from 'vitest';
-import { importSeeds, startApp } from '@abuddy/testing/harness';
+import { importContent, startApp } from '@abuddy/testing/harness';
 import { repository } from '#generated/repository.ts';
 
 describe('memos system', () => {
   it('sends the seeded memos when a client connects', async () => {
-    await importSeeds();
+    await importContent();
     const app = await startApp({ systems: ['memos'] });
     await app.connect();
     const connected = await app.nextEmit('memos', 'MEMOS_CONNECTED');

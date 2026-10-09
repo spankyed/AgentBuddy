@@ -15,7 +15,7 @@ export const libraryCommands = {
     tags: string[],
     collectionId?: EARS.EntityId,
     id?: string,
-    sourceHash?: string,
+    contentHash?: string,
   ): DocumentDTO {
     const now = Date.now()
 
@@ -36,7 +36,7 @@ export const libraryCommands = {
       shortCode,
       displayOrder,
       tags, // Store tags directly as string array
-      ...(sourceHash && { sourceHash }),
+      ...(contentHash && { contentHash }),
       createdAt: now,
       updatedAt: now,
     })
@@ -64,7 +64,7 @@ export const libraryCommands = {
     content: ContentSection[],
     tags: string[],
     collectionId?: EARS.EntityId,
-    sourceHash?: string,
+    contentHash?: string,
   ): DocumentDTO {
     const documentId = id
     const now = Date.now()
@@ -72,7 +72,7 @@ export const libraryCommands = {
     tx(documentId).updateBatch({
       name,
       content,
-      ...(sourceHash && { sourceHash }),
+      ...(contentHash && { contentHash }),
       updatedAt: now,
     })
       
@@ -138,7 +138,7 @@ export const libraryCommands = {
     description?: string,
     parentId?: EARS.EntityId,
     id?: string,
-    sourceHash?: string,
+    contentHash?: string,
   ): CollectionDTO {
     // Create collection entity
     const builder = id ? tx(id as EARS.EntityId, true) : tx(EARS.Entity.Collection)
@@ -151,7 +151,7 @@ export const libraryCommands = {
     const attrs: Record<string, any> = {
       name,
       displayOrder,
-      ...(sourceHash && { sourceHash }),
+      ...(contentHash && { contentHash }),
       createdAt: now,
       updatedAt: now,
     }
@@ -185,14 +185,14 @@ export const libraryCommands = {
     id: EARS.EntityId,
     name: string,
     description?: string,
-    sourceHash?: string,
+    contentHash?: string,
   ): CollectionDTO {
     const collectionId = id
     const now = Date.now()
 
     const attrs: Record<string, any> = {
       name,
-      ...(sourceHash && { sourceHash }),
+      ...(contentHash && { contentHash }),
       updatedAt: now,
     }
 

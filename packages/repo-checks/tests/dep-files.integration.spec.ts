@@ -397,8 +397,8 @@ describe('abuddy build says what it read', () => {
     const phases = new Set(built.flatMap((packDir) => Object.keys(buildReads.readsOf(packDir)?.phases ?? {})));
     expect([...phases].sort(), 'a phase gone from here is a bundler that stopped reporting; a new one is a '
       + 'bundle that started').toEqual([
-      'dslDefs', 'fe', 'flowHelperTypes', 'flowHelpersModule',
-      'runtime', 'seedCompilers', 'seedRuntime', 'stepBuild', 'types',
+      'contentRuntime', 'dslDefs', 'fe', 'flowHelperTypes', 'flowHelpersModule',
+      'runtime', 'seedCompilers', 'stepBuild', 'types',
     ]);
   });
 

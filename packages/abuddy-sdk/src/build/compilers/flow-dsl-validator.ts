@@ -1,4 +1,4 @@
-import type { ValidationError, ValidationResult } from '../seed-compiler.ts';
+import type { ValidationError, ValidationResult } from '../content-compiler.ts';
 import { isFlowConfig, resolveTracks, type FlowConfig, type Track } from './flow-types.ts';
 import { stepLookup } from './step-lookup.ts';
 import type { StepDefinition, StepBuildFacet, StepValidationContext } from '../../steps/types.ts';
@@ -38,7 +38,7 @@ export interface ValidateOptions {
   actions?: string[];
   prompts?: string[];
   /**
-   * The flows a `subflow` may name, when that is more than the bundle being validated. The seeder validates one
+   * The flows a `subflow` may name, when that is more than the bundle being validated. The applier validates one
    * flow at a time, so without this every reference to a sibling flow would be reported as missing.
    */
   flowNames?: string[];

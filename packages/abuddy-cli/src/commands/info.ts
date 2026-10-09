@@ -12,16 +12,16 @@ export async function info(_args: string[]) {
   const deps = manifest.dependencies ? Object.keys(manifest.dependencies).length : 0;
   const hasDist = fs.existsSync(path.join(root, 'dist'));
 
-  const seedDir = path.join(root, 'src', 'seeds');
+  const contentDir = path.join(root, 'src', 'content');
   let actions = 0, prompts = 0, flows = 0;
-  if (fs.existsSync(path.join(seedDir, 'actions'))) {
-    actions = countFiles(path.join(seedDir, 'actions'), '.ts');
+  if (fs.existsSync(path.join(contentDir, 'actions'))) {
+    actions = countFiles(path.join(contentDir, 'actions'), '.ts');
   }
-  if (fs.existsSync(path.join(seedDir, 'prompts'))) {
-    prompts = countFiles(path.join(seedDir, 'prompts'), '.ts');
+  if (fs.existsSync(path.join(contentDir, 'prompts'))) {
+    prompts = countFiles(path.join(contentDir, 'prompts'), '.ts');
   }
-  if (fs.existsSync(path.join(seedDir, 'flows'))) {
-    flows = countFiles(path.join(seedDir, 'flows'), '.ts');
+  if (fs.existsSync(path.join(contentDir, 'flows'))) {
+    flows = countFiles(path.join(contentDir, 'flows'), '.ts');
   }
 
   console.log(`
@@ -32,7 +32,7 @@ export async function info(_args: string[]) {
   Features:   ${features}
   Steps:      ${steps}
   Services:   ${packServices}
-  Seeds:      ${actions} actions, ${prompts} prompts, ${flows} flows
+  Content:    ${actions} actions, ${prompts} prompts, ${flows} flows
   Deps:       ${deps}
 
   Built:      ${hasDist ? 'yes' : 'no'}

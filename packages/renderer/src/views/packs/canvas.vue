@@ -21,6 +21,9 @@
       @toggle="(id) => actor.send({ type: 'UI.TOGGLE_ENABLED', packId: id })"
       @uninstall="(id) => actor.send({ type: 'UI.CONFIRM_UNINSTALL', packId: id })"
       @update="(id) => actor.send({ type: 'UI.UPDATE', packId: id })"
+      @restore-content="(key) => actor.send({ type: 'UI.RESTORE_CONTENT', packId: selectedPack!.id, key })"
+      @dismiss-offer="(key) => actor.send({ type: 'UI.DISMISS_OFFER', packId: selectedPack!.id, key })"
+      @delete-content="(key) => actor.send({ type: 'UI.DELETE_CONTENT', packId: selectedPack!.id, key })"
     />
 
     <!-- List view -->
@@ -128,6 +131,7 @@
                 <p v-if="pack.loadProblem" class="text-xs text-red-400 mt-1 break-words" data-testid="pack-load-problem">
                   Failed to load: {{ pack.loadProblem }}
                 </p>
+                <ContentOfferNotice :count="pack.contentOffers.length" />
               </div>
               <div class="flex items-center gap-3 flex-shrink-0" @click.stop>
                 <button
@@ -180,6 +184,7 @@
                   <span class="text-xs text-neutral-500">UI</span>
                 </template>
               </div>
+              <ContentOfferNotice :count="pack.contentOffers.length" />
             </div>
             <span class="text-xs text-neutral-600 flex-shrink-0">Always active</span>
           </div>
@@ -196,6 +201,7 @@ import { usePlugin } from '@abuddy/sdk/fe';
 import { Package as PackageIcon, X } from 'lucide-vue-next';
 import type { PacksState } from '@abuddy/host/fe';
 import PackDetail from './PackDetail.vue';
+import ContentOfferNotice from './ContentOfferNotice.vue';
 
 const actor = usePlugin<PacksState>();
 

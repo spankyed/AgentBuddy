@@ -161,6 +161,7 @@ export interface PackMigration {
 
 // @public (undocumented)
 export interface PackRegistration {
+    appliers?: ContentApplier[];
     // (undocumented)
     artifacts?: ArtifactDefinition[];
     // (undocumented)
@@ -168,6 +169,7 @@ export interface PackRegistration {
     // (undocumented)
     boot?: PackBootHooks;
     commands?: PackCommand[];
+    contentWriters?: Record<string, ContentWriter>;
     // (undocumented)
     ears?: PackEARS;
     features?: Record<string, PackFeature>;
@@ -177,8 +179,6 @@ export interface PackRegistration {
     // (undocumented)
     migrations?: PackMigration[];
     repositories?: Record<string, unknown>;
-    seeders?: Seeder[];
-    seedHooks?: Record<string, SeedHooks>;
     // (undocumented)
     services?: Record<string, unknown>;
     settingsSections?: () => Record<string, unknown>;

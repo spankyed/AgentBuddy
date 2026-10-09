@@ -101,7 +101,7 @@ export interface MessageReferences {
  *
  * Consumers MUST narrow before using the value, and each narrows where it
  * reads it rather than through a shared parser. Approval is the worked
- * example: `CC: Route Response` (seeds/actions/claude-code/route-response.ts)
+ * example: `CC: Route Response` (content/actions/claude-code/route-response.ts)
  * counts a response as a deny only when it says so —
  * `approved === false || cancelled === true` — having already established
  * that it answers the pending control request it is routing.

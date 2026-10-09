@@ -10,15 +10,18 @@ import { forgetPack, packRecord, recordInstalled, recordUpdateInstalled, setPack
 import { reportError } from '@abuddy/sdk/logger';
 import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub } from '../../../packs/installer.ts';
 import type { PackExtensions, PackInfo, PackRegistry } from '../../../packs/registry.ts';
-import { packFrontendFiles } from '../../../packs/layout.ts';
+import { packFrontendFiles, PACK_LAYOUT } from '../../../packs/layout.ts';
 import { installedPacks, type InstalledPack } from '../../../packs/discovery.ts';
 import { checkForUpdates } from '../../../packs/updater.ts';
 import { teardownPack, activatePack } from '../../../packs/runtime/lifecycle.ts';
 import { activationProblem } from '../../../packs/runtime/activation-outcome.ts';
 import { HOST } from '../../../refs.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
-import { importCompiledSeeds, type SeedIncludeSet } from '@abuddy/sdk/utils';
-import { previewPackSeeds } from '@abuddy/sdk/seed';
+import { applyRecord, importCompiledContent, registeredContentKeys, type ContentSelection } from '@abuddy/sdk/utils';
+import { appliedContent } from '../../../app-state/index.ts';
+import { contentKeySelection, describeContentKey, previewPackContent, removeContentEntity } from '@abuddy/sdk/content';
+import { untypedQx } from '@abuddy/ears';
+import type { EARS } from '@abuddy/sdk';
 
 export type { PackInfo };
 
@@ -26,9 +29,9 @@ export const packsSpec = defineSystem<Contract>();
 
 /**
  * Convert the JSON-safe include shape from the frontend (`null = all items, [] = skip, string[] = filter`)
- * into the `SeedInclude` structure `importCompiledSeeds` consumes.
+ * into the `SeedInclude` structure `importCompiledContent` consumes.
  */
-function toSeedInclude(include: Record<string, string[] | null>): Record<string, SeedIncludeSet | undefined> {
+function toSeedInclude(include: Record<string, string[] | null>): Record<string, ContentSelection | undefined> {
   return Object.fromEntries(Object.entries(include).map(([key, items]) => [key, items === null ? true : new Set(items)]));
 }
 
@@ -52,6 +55,33 @@ function mergeExtensions(base: Omit<PackInfo, keyof PackExtensions>, contrib: Pa
  * installs the packs it ships. So every pack's version comes from its own manifest and every one has an
  * install date — a second list built from the registry could give neither.
  */
+/**
+ * The decisions the last apply left the user about this pack's content, oldest key first so the list is
+ * stable between asks.
+ *
+ * Derived from the pack's `AppliedContent` on every list, rather than kept anywhere a second time: the
+ * record is where an unresolved offer lives, and an apply between two lists is why one of them is shorter.
+ */
+/**
+ * Where a pack's compiled content is: under the directory it is installed in, which the host put it in.
+ *
+ * A pack does not say where its data is, here as in `applyPacks`, so restoring one item reads the same
+ * directory the apply that wrote it read.
+ */
+function compiledDirOf(packId: string): string {
+  const pack = installedPacks().find((installed) => installed.record.id === packId);
+  if (!pack?.dir) throw new Error(`Pack "${packId}" isn't installed`);
+  return path.join(pack.dir, PACK_LAYOUT.seedsDir);
+}
+
+function contentOffersOf(packId: string): Pick<PackInfo, 'contentOffers' | 'contentKept'> {
+  const items = Object.entries(appliedContent.get(packId).items).sort(([a], [b]) => a.localeCompare(b));
+  return {
+    contentOffers: items.flatMap(([key, item]) => (item.offer ? [{ key, label: describeContentKey(key), ...item.offer }] : [])),
+    contentKept: items.flatMap(([key, item]) => (item.dismissed && !item.offer ? [{ key, label: describeContentKey(key) }] : [])),
+  };
+}
+
 function toPackInfoList(registry: PackRegistry, packs: InstalledPack[], canUninstall: (packId: string) => boolean): PackInfo[] {
   return packs.map(({ manifest, dir, record }) => {
     const entities = manifest.entities ?? {};
@@ -74,6 +104,7 @@ function toPackInfoList(registry: PackRegistry, packs: InstalledPack[], canUnins
       availableVersion: record.availableVersion,
       updateCheckError: record.updateCheckError,
       loadProblem: registry.loadProblem(record.id),
+      ...contentOffersOf(record.id),
     }, contrib);
   });
 }
@@ -100,34 +131,142 @@ export function createPacksSystem(registry: PackRegistry) {
     actions: packsSpec.actions({
     // Both answer the settings plugin, which is where the seed UI is drawn. The work is this system's; the
     // view is not, and a system sends whichever plugin's inbox declares the event.
-    previewPackSeeds: ({ event }) => {
-      const ev = packsSpec.typeOf('PREVIEW_PACK_SEEDS', event);
+    previewPackContent: ({ event }) => {
+      const ev = packsSpec.typeOf('PREVIEW_PACK_CONTENT', event);
       try {
-        broadcastToPlugin('settings', { type: 'PACK_SEEDS_PREVIEW', preview: previewPackSeeds(ev.directory) });
+        broadcastToPlugin('settings', { type: 'PACK_CONTENT_PREVIEW', preview: previewPackContent(ev.directory) });
       } catch (err) {
-        broadcastToPlugin('settings', { type: 'PACK_SEEDS_PREVIEW_FAILED', error: errorMessage(err) });
+        broadcastToPlugin('settings', { type: 'PACK_CONTENT_PREVIEW_FAILED', error: errorMessage(err) });
       }
     },
 
-    importPackSeeds: ({ event }) => {
-      const ev = packsSpec.typeOf('IMPORT_PACK_SEEDS', event);
+    importPackContent: ({ event }) => {
+      const ev = packsSpec.typeOf('IMPORT_PACK_CONTENT', event);
       try {
         const include = ev.include ? toSeedInclude(ev.include) : undefined;
         // Read first: a directory that can't name its pack fails before anything is imported
-        const { packId } = previewPackSeeds(ev.directory);
-        const result = importCompiledSeeds({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
-        // Seeders report records they couldn't seed in their counts rather than throwing
+        const { packId } = previewPackContent(ev.directory);
+        /**
+         * **Write-only, which is what makes this an import and not an apply.** `before` is empty, so no
+         * verdict here can be reached from what a previous apply wrote: nothing is read as the user's
+         * deletion, nothing is read as their edit, and no item is removed for having left the content.
+         * Putting a pack's data back is the request, and the modes are the whole of the policy.
+         *
+         * **What it does write is what it wrote**, and it has to: an import that rewrote fifty entities and
+         * recorded nothing would leave the applied content describing the version before it, which the next
+         * boot's apply would read as fifty edits by the user. The revision is left where it is, so asking
+         * for the data again does not change what counts as changed.
+         */
+        const record = applyRecord();
+        const result = importCompiledContent({ compiledDir: ev.directory, include, mode: ev.mode, applied: record, verbose: true });
+        appliedContent.record(packId, { wrote: record.written });
+        // Appliers report records they couldn't seed in their counts rather than throwing
         const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
-        broadcastToPlugin('settings', { type: 'PACK_SEEDS_IMPORTED', result, errors });
+        broadcastToPlugin('settings', { type: 'PACK_CONTENT_IMPORTED', result, errors });
         // The running systems read what the seeds changed (the chat's slash commands, the library's documents)
         sendToSystem('bus', { type: 'PACK_CHANGED', packId });
         if (ev.restartBrain) sendToSystem({ role: 'brain' }, { type: 'RESTART_BRAIN' });
       } catch (err) {
-        broadcastToPlugin('settings', { type: 'PACK_SEEDS_IMPORT_FAILED', error: errorMessage(err) });
+        broadcastToPlugin('settings', { type: 'PACK_CONTENT_IMPORT_FAILED', error: errorMessage(err) });
       }
     },
 
       sendPacksList: () => {
+        emitPacksList(registry, canUninstall);
+      },
+
+      /**
+       * **Write the pack's version of one item over whatever is there.** The one act in the app that
+       * overwrites the user's own work, reached only from something they clicked: taking a newer version
+       * they were offered, or asking for the shipped item back.
+       *
+       * It is an **import** of exactly one item — `force`, a selection of that item alone, and a write-only
+       * record — which is what makes it structurally incapable of being an apply (`importCompiledContent`
+       * refuses `force` beside anything the last apply wrote). The write re-stamps the item's entry, so the
+       * offer is answered by the write rather than by a second bookkeeping step.
+       */
+      restoreContentItem: ({ event }) => {
+        const ev = packsSpec.typeOf('RESTORE_CONTENT_ITEM', event);
+        const selection = contentKeySelection(ev.key);
+        if (!selection) {
+          reportError({ source: 'packs', operation: 'restoreContentItem', severity: 'error', error: new Error(`Can't restore "${ev.key}": it doesn't name an item of a pack's content`) });
+          return;
+        }
+        try {
+          const dir = compiledDirOf(ev.packId);
+          /**
+           * **Every other entry is named and given nothing**, because an entry the map omits is not
+           * excluded — `selectsAll` reads an absent selection as *all of its items*, and only an empty set
+           * means skip. With `force` beside it, a map naming one entry would write every item of every
+           * other entry over whatever the user had made of them, which is the one thing this request must
+           * not do: they asked for one item back.
+           */
+          const include = Object.fromEntries(registeredContentKeys(ev.packId)
+            .map((key) => [key, key === selection.entryKey ? new Set([selection.label]) : new Set<string>()]));
+          if (!(selection.entryKey in include)) {
+            reportError({ source: 'packs', operation: 'restoreContentItem', severity: 'error', error: new Error(`Can't restore ${describeContentKey(ev.key)}: "${ev.packId}" has no content entry "${selection.entryKey}"`) });
+            return;
+          }
+          const record = applyRecord();
+          const result = importCompiledContent({
+            compiledDir: dir,
+            include,
+            mode: 'replace-on-collision',
+            force: true,
+            applied: record,
+            verbose: true,
+          });
+          appliedContent.record(ev.packId, { wrote: record.written });
+          const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
+          if (errors.length > 0) {
+            reportError({ source: 'packs', operation: 'restoreContentItem', severity: 'error', error: new Error(`Couldn't restore ${describeContentKey(ev.key)}:\n  ${errors.join('\n  ')}`) });
+          }
+          /**
+           * **Only an item that was written has been decided**, which is why this reads the record rather
+           * than the absence of an error: a run that could not write this item has changed nothing about
+           * it, and clearing its offer would stop the user ever being asked again about a version they
+           * never received. The write itself re-stamps the entry, so this is what answers an offer the
+           * write happened to leave in place.
+           */
+          if (record.written.has(ev.key)) appliedContent.resolveOffer(ev.packId, ev.key, { choice: 'taken' });
+          // The running systems read what the write changed (the brain's flows, the chat's slash commands)
+          sendToSystem('bus', { type: 'PACK_CHANGED', packId: ev.packId });
+        } catch (err) {
+          reportError({ source: 'packs', operation: 'restoreContentItem', severity: 'error', error: err });
+        }
+        emitPacksList(registry, canUninstall);
+      },
+
+      /** "Keep mine": the item stays as the user wrote it, and this version is not offered again */
+      dismissContentOffer: ({ event }) => {
+        const ev = packsSpec.typeOf('DISMISS_CONTENT_OFFER', event);
+        const offer = appliedContent.get(ev.packId).items[ev.key]?.offer;
+        appliedContent.resolveOffer(ev.packId, ev.key, {
+          choice: 'dismissed',
+          ...(offer?.contentHash !== undefined && { contentHash: offer.contentHash }),
+        });
+        emitPacksList(registry, canUninstall);
+      },
+
+      /**
+       * "Delete it": the other answer to an item the pack stopped shipping. The entity goes and so does its
+       * entry, which is what makes the decision final — there is nothing left for a later apply to describe.
+       */
+      deleteContentItem: ({ event }) => {
+        const ev = packsSpec.typeOf('DELETE_CONTENT_ITEM', event);
+        try {
+          const item = appliedContent.get(ev.packId).items[ev.key];
+          const id = item?.entityType
+            ? (untypedQx(item.entityType as EARS.Entity).where('contentKey', ev.key).pickAll()[0] as { id: EARS.EntityId } | undefined)?.id
+            : undefined;
+          // Through the owner's own delete: a flow's nodes and wiring go with it, and an entity type whose
+          // pack registered a `remove` writer is removed the way that pack removes one
+          if (id) removeContentEntity(item!.entityType!, id);
+          appliedContent.resolveOffer(ev.packId, ev.key, { choice: 'deleted' });
+          sendToSystem('bus', { type: 'PACK_CHANGED', packId: ev.packId });
+        } catch (err) {
+          reportError({ source: 'packs', operation: 'deleteContentItem', severity: 'error', error: err });
+        }
         emitPacksList(registry, canUninstall);
       },
 
@@ -449,11 +588,20 @@ export function createPacksSystem(registry: PackRegistry) {
           UPDATE_PACK: {
             actions: 'updatePack',
           },
-          PREVIEW_PACK_SEEDS: {
-            actions: 'previewPackSeeds',
+          PREVIEW_PACK_CONTENT: {
+            actions: 'previewPackContent',
           },
-          IMPORT_PACK_SEEDS: {
-            actions: 'importPackSeeds',
+          IMPORT_PACK_CONTENT: {
+            actions: 'importPackContent',
+          },
+          RESTORE_CONTENT_ITEM: {
+            actions: 'restoreContentItem',
+          },
+          DISMISS_CONTENT_OFFER: {
+            actions: 'dismissContentOffer',
+          },
+          DELETE_CONTENT_ITEM: {
+            actions: 'deleteContentItem',
           },
           CHECK_FOR_UPDATES: {
             actions: 'checkForPackUpdates',
@@ -472,6 +620,9 @@ export const packsEvents = new Set([
   'GET_INSTALLED_PACKS',
   'UPDATE_PACK',
   'CHECK_FOR_UPDATES',
-  'PREVIEW_PACK_SEEDS',
-  'IMPORT_PACK_SEEDS',
+  'PREVIEW_PACK_CONTENT',
+  'IMPORT_PACK_CONTENT',
+  'RESTORE_CONTENT_ITEM',
+  'DISMISS_CONTENT_OFFER',
+  'DELETE_CONTENT_ITEM',
 ]);

@@ -15,9 +15,9 @@ import { getDesignated, hasDesignation } from '../../src/designations/index.ts';
 import { stepRegistry } from '../../src/steps/registry.ts';
 import { artifactRegistry } from '../../src/artifacts/registry.ts';
 import { blockRegistry } from '../../src/blocks/registry.ts';
-import { _seedHookRegistry } from '../../src/seed/hooks.ts';
+import { _contentWriterRegistry } from '../../src/content/writers.ts';
 import { getPackCommands, getPackSettingsDefaults, onPackSettingsDefaultsChanged } from '../../src/framework/index.ts';
-import { importCompiledSeeds, registeredSeedKeys } from '../../src/utils/seed.ts';
+import { importCompiledContent, registeredContentKeys } from '../../src/utils/apply.ts';
 import { getDslTypes } from '../../src/fe/dsl-types.ts';
 import { tiptapPluginRegistry } from '../../src/fe/tiptap-plugins.ts';
 import { testPacksView } from '../../src/testing/packs.ts';
@@ -95,9 +95,9 @@ describe('with no app bound', () => {
       expect(use, name).toThrow(/bindHost\(runtime\).*\(the renderer with bindFeHost\(runtime\)\)/);
     }
     const backendLookups: Array<[string, () => unknown]> = [
-      ['_seedHookRegistry.get', () => _seedHookRegistry.get('Memo')],
-      ['importCompiledSeeds', () => importCompiledSeeds({ compiledDir: seedsDir })],
-      ['registeredSeedKeys', () => registeredSeedKeys('memo-pack')],
+      ['_contentWriterRegistry.get', () => _contentWriterRegistry.get('Memo')],
+      ['importCompiledContent', () => importCompiledContent({ compiledDir: seedsDir })],
+      ['registeredContentKeys', () => registeredContentKeys('memo-pack')],
       ['getPackSettingsDefaults', () => getPackSettingsDefaults()],
       ['onPackSettingsDefaultsChanged', () => onPackSettingsDefaultsChanged(() => {})],
       ['getPackCommands', () => getPackCommands()],

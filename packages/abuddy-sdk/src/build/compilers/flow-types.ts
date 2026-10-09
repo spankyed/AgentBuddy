@@ -16,7 +16,7 @@ export type FlowDSL = Record<string, Track[] | FlowConfig>;
 export interface FlowConfig {
   tracks: Track[];
   root?: boolean;
-  sourceHash?: string;
+  contentHash?: string;
 }
 
 export interface Track {

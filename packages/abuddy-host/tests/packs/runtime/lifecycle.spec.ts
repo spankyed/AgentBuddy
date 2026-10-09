@@ -6,7 +6,7 @@ import type { Plugin, PluginDefinition } from '@abuddy/sdk/fe';
 
 import { resetTestData } from '@abuddy/sdk/testing';
 import { registry } from './test-host.ts';
-import { appState } from '../../../src/app-state/index.ts';
+import { appliedContent, appState } from '../../../src/app-state/index.ts';
 import { createFePackRegistry } from '../../../src/fe/pack-store.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { _appDirOf } from '@abuddy/sdk/env';
@@ -115,12 +115,12 @@ describe('activating and tearing down a pack at runtime', () => {
       features: [{ id: 'main', system: { entry: 'src/features/main/be/system.ts' } }],
       commands: [{ name: 'activate-memo', placeholder: 'Text' }],
     });
-    // The runtime carries what generate-entries writes from the manifest, commands and seeders included
+    // The runtime carries what generate-entries writes from the manifest, commands and appliers included
     writeBuild(
       sourceDir,
       PACK_ID,
       `{ main: { system: { machine: { id: 'activate-pack-system' }, receives: [] } } }, commands: [{ name: 'activate-memo', placeholder: 'Text' }], `
-        + "seeders: [{ key: 'memos', apply: () => { globalThis.activatePackRuns.push('seed'); return { created: 1, updated: 0, skipped: 0 }; } }], "
+        + "appliers: [{ key: 'memos', apply: () => { globalThis.activatePackRuns.push('apply'); return { created: 1, updated: 0, skipped: 0 }; } }], "
         + "migrations: [{ target: '1.0.0', description: 'memos', up: () => { globalThis.activatePackRuns.push('migration'); } }]",
       {
         'runtime/seeds/memos.seed.json': '[]',
@@ -130,7 +130,7 @@ describe('activating and tearing down a pack at runtime', () => {
     await installPackFromLocal(sourceDir, packsDir());
   }
 
-  /** What the pack's migration and seeder did, in order */
+  /** What the pack's migration and applier did, in order */
   const runs: string[] = [];
   beforeEach(() => {
     resetTestData();
@@ -160,31 +160,32 @@ describe('activating and tearing down a pack at runtime', () => {
     const { activatePack, teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
 
     expect(activatePack(registry, PACK_ID, bus as never)).toBe(true);
-    expect(runs).toEqual(['migration', 'seed']);
-    expect(appState.get()).toMatchObject({ packVersions: { [PACK_ID]: '1.0.0' }, packSeedHashes: { [PACK_ID]: expect.any(String) } });
+    expect(runs).toEqual(['migration', 'apply']);
+    expect(appState.get()).toMatchObject({ packVersions: { [PACK_ID]: '1.0.0' } });
+    expect(appliedContent.get(PACK_ID).revision).toEqual(expect.any(String));
 
     // Disabled, then enabled again
     teardownPack(registry, PACK_ID, bus as never);
     expect(activatePack(registry, PACK_ID, bus as never)).toBe(true);
-    expect(runs).toEqual(['migration', 'seed']);
+    expect(runs).toEqual(['migration', 'apply']);
   });
 
-  it('drops its commands and seeders when torn down, and tells the systems still running after stopping its own', async () => {
+  it('drops its commands and appliers when torn down, and tells the systems still running after stopping its own', async () => {
     await install();
     const { activatePack, teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
     const { getPackCommands } = await import('@abuddy/sdk/framework');
-    const { importCompiledSeeds } = await import('@abuddy/sdk/utils');
+    const { importCompiledContent } = await import('@abuddy/sdk/utils');
     activatePack(registry, PACK_ID, bus as never);
     const compiledDir = path.join(tmpDir, 'compiled-seeds');
     fs.mkdirSync(compiledDir);
     fs.writeFileSync(path.join(compiledDir, 'seeds.json'), JSON.stringify({ version: 1, packId: PACK_ID, seeds: [] }));
-    expect(Object.keys(importCompiledSeeds({ compiledDir }))).toEqual(['memos']);
+    expect(Object.keys(importCompiledContent({ compiledDir }))).toEqual(['memos']);
     bus.send.mockReset();
 
     teardownPack(registry, PACK_ID, bus as never);
 
     expect(getPackCommands()).toEqual([]);
-    expect(importCompiledSeeds({ compiledDir })).toEqual({});
+    expect(importCompiledContent({ compiledDir })).toEqual({});
     expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK', 'PACK_CHANGED']);
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
   });

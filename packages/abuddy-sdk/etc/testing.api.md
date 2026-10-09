@@ -40,6 +40,20 @@ export function answerTo<E extends {
 }>(call: string, event: E): E;
 
 // @public
+export interface ContentRuntime {
+    // (undocumented)
+    contentWriters: Record<string, ContentWriter>;
+    // (undocumented)
+    entities: Record<string, string>;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    relKinds: Record<string, string>;
+    // (undocumented)
+    repositories: Record<string, unknown>;
+}
+
+// @public
 export function dropAttribute(id: EARS.EntityId, kind: string): void;
 
 // @public
@@ -148,24 +162,10 @@ export function population<T>(what: string, xs: readonly T[], opts?: {
 }): readonly T[];
 
 // @public
-export function registerSeedRuntime(runtime: SeedRuntime): void;
+export function registerContentRuntime(runtime: ContentRuntime): void;
 
 // @public
 export function resetTestData(): void;
-
-// @public
-export interface SeedRuntime {
-    // (undocumented)
-    entities: Record<string, string>;
-    // (undocumented)
-    id: string;
-    // (undocumented)
-    relKinds: Record<string, string>;
-    // (undocumented)
-    repositories: Record<string, unknown>;
-    // (undocumented)
-    seedHooks: Record<string, SeedHooks>;
-}
 
 // @public
 export function startFeTestRuntime(options?: FeTestRuntimeOptions): () => void;
@@ -184,18 +184,18 @@ export type TestOnboarding = Pick<AppDataService, 'hasOnboarded' | 'completeOnbo
 
 // @public
 export interface TestPacks {
+    readonly appliers: Map<string, ContentApplier[]>;
     readonly artifacts: Map<string, ArtifactDefinition>;
     readonly blocks: Map<string, BlockDefinition>;
     clear(): void;
     readonly commands: Map<string, PackCommand[]>;
+    readonly contentWriters: Map<string, ContentWriter>;
     readonly designations: Map<string, string>;
     readonly earsEntities: Map<string, string>;
     readonly earsRelKinds: Map<string, string>;
     // (undocumented)
     readonly help: Map<string, HelpEntry[]>;
     readonly plugins: Set<string>;
-    readonly seeders: Map<string, Seeder[]>;
-    readonly seedHooks: Map<string, SeedHooks>;
     readonly services: Map<string, unknown>;
     readonly steps: Map<string, StepDefinition>;
     readonly systems: Set<string>;

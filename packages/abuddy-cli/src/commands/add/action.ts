@@ -26,10 +26,10 @@ export async function addAction(args: string[], root: string) {
   const manifest = readManifest(root);
   const category = parseFlag(args, '--category') || manifest.id;
   const label = toLabel(name);
-  const filePath = path.join(root, 'src', 'seeds', 'actions', category, `${name}.ts`);
+  const filePath = path.join(root, 'src', 'content', 'actions', category, `${name}.ts`);
 
   const created: string[] = [];
-  if (writeIfNotExists(filePath, renderTemplate('pack/src/seeds/actions/action.ts', { LABEL: label, CATEGORY: category }))) {
+  if (writeIfNotExists(filePath, renderTemplate('pack/src/content/actions/action.ts', { LABEL: label, CATEGORY: category }))) {
     created.push(filePath);
   }
 

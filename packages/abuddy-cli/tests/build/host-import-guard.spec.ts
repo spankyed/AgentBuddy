@@ -30,9 +30,9 @@ describe('abuddy build rejects @abuddy/host imports', () => {
   });
 
   it('in step build code and seed compiler modules', async () => {
-    const dir = pack({ 'src/steps/build.ts': HOST_IMPORT, 'src/seeds/compilers/memos.ts': `${HOST_IMPORT}export default () => [];\n` });
+    const dir = pack({ 'src/steps/build.ts': HOST_IMPORT, 'src/content/compilers/memos.ts': `${HOST_IMPORT}export default () => [];\n` });
     expect((await bundlePackStepBuild(dir, path.join(dir, 'dist'), 'src/steps/build.ts')).error).toMatch(HOST_ERROR);
-    expect((await bundlePackSeedCompilers(dir, path.join(dir, 'dist'), { memos: 'src/seeds/compilers/memos.ts' })).error).toMatch(HOST_ERROR);
+    expect((await bundlePackSeedCompilers(dir, path.join(dir, 'dist'), { memos: 'src/content/compilers/memos.ts' })).error).toMatch(HOST_ERROR);
   });
 
   it('in the frontend bundle', async () => {

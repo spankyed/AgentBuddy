@@ -14,7 +14,7 @@ const registered: PackRegistryView = {
   step: (type) => (type === 'note' ? registeredNote : undefined),
   steps: () => [registeredNote],
   getRegisteredServices: () => ({ memos: 'registered' }),
-  seeders: (packId) => (packId === 'memo-pack' ? [{ key: 'memos', apply: () => ({ created: 0, updated: 0, skipped: 0 }) }] : []),
+  appliers: (packId) => (packId === 'memo-pack' ? [{ key: 'memos', apply: () => ({ created: 0, updated: 0, skipped: 0 }) }] : []),
   commands: () => [{ name: 'standup', placeholder: 'Topic' }],
 };
 afterEach(() => testPacks.clear());
@@ -25,7 +25,7 @@ describe('testPacksView', () => {
     expect(view.designation('brain')).toBe('test/brain');
     expect(view.steps()).toEqual([registeredNote]);
     expect(view.getRegisteredServices()).toEqual({ memos: 'registered' });
-    expect(view.seeders('memo-pack').map((s) => s.key)).toEqual(['memos']);
+    expect(view.appliers('memo-pack').map((s) => s.key)).toEqual(['memos']);
   });
 
   it('finds what the test put first, and the rest of the registry after it', () => {
@@ -35,7 +35,7 @@ describe('testPacksView', () => {
     testPacks.steps.set('tick', ownTick);
     testPacks.designations.set('brain', 'test-brain');
     testPacks.services.set('memos', 'mocked');
-    testPacks.seeders.set('memo-pack', []);
+    testPacks.appliers.set('memo-pack', []);
     testPacks.commands.set('test-pack', [{ name: 'digest', placeholder: 'Week' }]);
 
     const view = testPacksView(registered);
@@ -43,7 +43,7 @@ describe('testPacksView', () => {
     expect(view.steps()).toEqual([ownNote, ownTick]);
     expect(view.designation('brain')).toBe('test-brain');
     expect(view.getRegisteredServices()).toEqual({ memos: 'mocked' });
-    expect(view.seeders('memo-pack')).toEqual([]);
+    expect(view.appliers('memo-pack')).toEqual([]);
     expect(view.commands().map((c) => c.name)).toEqual(['standup', 'digest']);
 
     testPacks.clear();

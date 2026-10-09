@@ -20,10 +20,10 @@ export async function addPrompt(args: string[], root: string) {
   validateName(name, 'Prompt');
 
   const label = toLabel(name);
-  const filePath = path.join(root, 'src', 'seeds', 'prompts', `${name}.ts`);
+  const filePath = path.join(root, 'src', 'content', 'prompts', `${name}.ts`);
 
   const created: string[] = [];
-  if (writeIfNotExists(filePath, renderTemplate('pack/src/seeds/prompts/prompt.ts', { LABEL: label }))) {
+  if (writeIfNotExists(filePath, renderTemplate('pack/src/content/prompts/prompt.ts', { LABEL: label }))) {
     created.push(filePath);
   }
 

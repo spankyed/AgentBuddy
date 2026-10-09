@@ -5,12 +5,12 @@ import * as path from 'path';
 import * as os from 'os';
 import { loadAppPacks, loadExternalPacks, type LoadedPack } from '../../../src/packs/runtime/loader.ts';
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import { seedPacks, computePackSeedHash, type PackSeedTarget } from '../../../src/packs/runtime/seed.ts';
-import { appState } from '../../../src/app-state/index.ts';
+import { applyPacks, contentRevision, type PackContentTarget } from '../../../src/packs/runtime/apply.ts';
+import { appliedContent, appState } from '../../../src/app-state/index.ts';
 import { getLoadedPackEntries } from '../../../src/packs/layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
 import { PACK_SNAPSHOT_FORMAT, seedFile } from '@abuddy/sdk/build';
-import type { SeedKeyRecord } from '@abuddy/sdk/utils';
+import type { ApplyRecord } from '@abuddy/sdk/utils';
 import { _appDirOf } from '@abuddy/sdk/env';
 import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
@@ -277,19 +277,19 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(mod.compiledDirSeen).toBe(path.join(dir, 'runtime', 'seeds'));
   });
 
-  it("registers the runtime's seed hooks and feature settings with the pack", async () => {
+  it("registers the runtime's content writers and feature settings with the pack", async () => {
     const { registerExternalPacks } = await import('../../../src/packs/runtime/loader.ts');
     const { getPackSettingsDefaults } = await import('@abuddy/sdk/framework');
-    const { _seedHookRegistry } = await import('@abuddy/sdk/seed');
+    const { _contentWriterRegistry } = await import('@abuddy/sdk/content');
     makeBundledPack('settings-pack', registration('settings-pack', `
-      seedHooks: { Widget: { find() { return undefined; } } },
+      contentWriters: { Widget: { find() { return undefined; } } },
       features: { widget: { system: { machine, receives: ['PING'] }, settings: { visible: false, plugins: { widget: { size: 3 } } } } },
     `));
 
     const [pack] = loadExternalPacks();
     expect(registerExternalPacks(registry, [pack])).toEqual([pack]);
     try {
-      expect(_seedHookRegistry.get('Widget')).toEqual({ find: expect.any(Function) });
+      expect(_contentWriterRegistry.get('Widget')).toEqual({ find: expect.any(Function) });
       expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'settings-pack/widget': { size: 3 } } });
       expect(getPackSettingsDefaults().visibility).toEqual({ 'settings-pack/widget': false });
     } finally {
@@ -309,7 +309,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(exported.boot?.onInit).toBeDefined();
   });
 
-  // A pack's seeds are files the host reads with the seeders that pack *registered*; a function the pack
+  // A pack's seeds are files the host reads with the appliers that pack *registered*; a function the pack
   // puts on `boot` is not a door into seeding, and never was
   it("seeds a pack from its compiled files, never from a function its boot hooks export", async () => {
     const { registerExternalPacks } = await import('../../../src/packs/runtime/loader.ts');
@@ -323,7 +323,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(registerExternalPacks(registry, packs)).toEqual(packs);
     try {
       const applyFn = vi.fn(() => ({}));
-      seedPacks(registry.packSeedTargets(['smuggle-pack']), applyFn);
+      applyPacks(registry.packSeedTargets(['smuggle-pack']), applyFn);
 
       const mod = require(path.join(dir, 'runtime', 'index.cjs'));
       expect(mod.bootSeedCalls, 'the pack smuggled a seed function onto boot and it was called').toBeUndefined();
@@ -380,13 +380,13 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
 
 });
 
-describe('seedPacks: failures', () => {
+describe('applyPacks: failures', () => {
   function installedPack(id: string) {
     const dir = path.join(_appDirOf(tmpDir), 'packs', id);
     fs.mkdirSync(path.join(dir, 'runtime', 'seeds'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'runtime', 'index.cjs'), '');
     fs.writeFileSync(path.join(dir, 'runtime', 'seeds', 'flows.seed.json'), '{}');
-    return { manifest: { id }, dir } satisfies PackSeedTarget;
+    return { manifest: { id }, dir } satisfies PackContentTarget;
   }
   function registryEntry(id: string) {
     const registry = JSON.parse(fs.readFileSync(path.join(_appDirOf(tmpDir), 'installed-packs.json'), 'utf-8'));
@@ -404,7 +404,7 @@ describe('seedPacks: failures', () => {
     const pack = installedPack('bad-flows');
     writeRegistry(['bad-flows']);
 
-    const failures = seedPacks([pack], failingSeed);
+    const failures = applyPacks([pack], failingSeed);
 
     expect(failures).toEqual([{ packId: 'bad-flows', errors: ['flows: Flow "X" is invalid: missing event'] }]);
     expect(registryEntry('bad-flows').lastError).toBe('flows: Flow "X" is invalid: missing event');
@@ -415,8 +415,8 @@ describe('seedPacks: failures', () => {
     writeRegistry(['bad-flows']);
     const applyFn = vi.fn(failingSeed);
 
-    seedPacks([pack], applyFn);
-    seedPacks([pack], applyFn);
+    applyPacks([pack], applyFn);
+    applyPacks([pack], applyFn);
 
     expect(applyFn).toHaveBeenCalledTimes(1);
     expect(registryEntry('bad-flows').lastError).toBe('flows: Flow "X" is invalid: missing event');
@@ -428,11 +428,11 @@ describe('seedPacks: failures', () => {
     const seedsDir = path.join(pack.dir, 'runtime', 'seeds');
     const applyFn = vi.fn(() => ({}));
 
-    seedPacks([pack], applyFn); // v1 seeds
+    applyPacks([pack], applyFn); // v1 seeds
     fs.writeFileSync(path.join(seedsDir, 'flows.seed.json'), '{"v2": {}}');
-    seedPacks([pack], failingSeed); // v2 fails
+    applyPacks([pack], failingSeed); // v2 fails
     fs.writeFileSync(path.join(seedsDir, 'flows.seed.json'), '{}');
-    seedPacks([pack], applyFn); // back to v1's data
+    applyPacks([pack], applyFn); // back to v1's data
 
     expect(applyFn).toHaveBeenCalledTimes(2);
     expect(registryEntry('rollback')).not.toHaveProperty('lastError');
@@ -445,13 +445,13 @@ describe('seedPacks: failures', () => {
     const pack = { ...installedPack('records'), manifest: { id: 'records', dependencies: { provider: '^1.0.0' } } };
     writeRegistry(['records']);
 
-    seedPacks([pack], failingSeed);
-    expect(appState.get().packSeedDeps).toEqual({ records: 'provider:' });
+    applyPacks([pack], failingSeed);
+    expect(appState.get().failedAgainst).toEqual({ records: 'provider:' });
 
     fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"fixed": {}}');
-    seedPacks([pack], () => ({}));
+    applyPacks([pack], () => ({}));
 
-    expect(appState.get().packSeedDeps).toEqual({});
+    expect(appState.get().failedAgainst).toEqual({});
   });
 
   // The failure this is all for: pack B's seeds reference what pack A seeds, B seeded first and failed, and
@@ -463,15 +463,15 @@ describe('seedPacks: failures', () => {
     const applyFn = vi.fn(() => ({}));
 
     // The dependency isn't installed yet, so the dependent seeds against nothing and fails
-    seedPacks([dependent], failingSeed);
+    applyPacks([dependent], failingSeed);
     expect(registryEntry('consumer').lastError).toBeTruthy();
 
     // Its own data is unchanged, so on its own it is still skipped
-    seedPacks([dependent], applyFn);
+    applyPacks([dependent], applyFn);
     expect(applyFn).not.toHaveBeenCalled();
 
     // ...until the pack it depends on seeds, which is the thing that could change the outcome
-    seedPacks([dependency, dependent], applyFn);
+    applyPacks([dependency, dependent], applyFn);
 
     expect(applyFn).toHaveBeenCalledTimes(2);
     expect(registryEntry('consumer')).not.toHaveProperty('lastError');
@@ -483,11 +483,11 @@ describe('seedPacks: failures', () => {
     writeRegistry(['steady', 'flaky']);
     const applyFn = vi.fn(failingSeed);
 
-    seedPacks([dependency, dependent], applyFn);
+    applyPacks([dependency, dependent], applyFn);
     const attempts = applyFn.mock.calls.length;
 
     // Nothing has changed since: not the pack's data, and not what it failed against
-    seedPacks([dependency, dependent], applyFn);
+    applyPacks([dependency, dependent], applyFn);
 
     expect(applyFn).toHaveBeenCalledTimes(attempts);
     expect(registryEntry('flaky').lastError).toBeTruthy();
@@ -496,13 +496,13 @@ describe('seedPacks: failures', () => {
   it('forgets what a failed seed faced once the pack has no seed data to retry', () => {
     const pack = { ...installedPack('withdrawn'), manifest: { id: 'withdrawn', dependencies: { provider: '^1.0.0' } } };
     writeRegistry(['withdrawn']);
-    seedPacks([pack], failingSeed);
-    expect(appState.get().packSeedDeps).toHaveProperty('withdrawn');
+    applyPacks([pack], failingSeed);
+    expect(appState.get().failedAgainst).toHaveProperty('withdrawn');
 
     fs.rmSync(path.join(pack.dir, 'runtime', 'seeds'), { recursive: true });
-    seedPacks([pack], vi.fn());
+    applyPacks([pack], vi.fn());
 
-    expect(appState.get().packSeedDeps).toEqual({});
+    expect(appState.get().failedAgainst).toEqual({});
   });
 
   it("clears an earlier version's lastError when the pack no longer has seed data", () => {
@@ -512,14 +512,14 @@ describe('seedPacks: failures', () => {
       packs: [{ id: 'no-more-seeds', name: 'n', version: '1.0.1', dir: '', enabled: true, installedAt: '', lastError: 'v1.0.0 failure' }],
     }));
 
-    seedPacks([pack], vi.fn());
+    applyPacks([pack], vi.fn());
 
     expect(registryEntry('no-more-seeds')).not.toHaveProperty('lastError');
   });
 
   // No seed key is the host's: a pack's `settings` seed is its own data, like any other key
-  it('runs every seeder the pack registered, a settings seeder included', async () => {
-    const { importCompiledSeeds } = await import('@abuddy/sdk/utils');
+  it('runs every applier the pack registered, a settings applier included', async () => {
+    const { importCompiledContent } = await import('@abuddy/sdk/utils');
     const { testPacks } = await import('@abuddy/sdk/testing');
     const pack = installedPack('with-settings');
     writeRegistry(['with-settings']);
@@ -527,23 +527,23 @@ describe('seedPacks: failures', () => {
     const settingsSeed = vi.fn(() => ({ created: 0, updated: 1, skipped: 0 }));
     const actionsSeed = vi.fn(() => ({ created: 1, updated: 0, skipped: 0 }));
     fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'seeds.json'), JSON.stringify({ version: 1, packId: 'with-settings', seeds: [] }));
-    // The seeders its registration carries
-    testPacks.seeders.set('with-settings', [{ key: 'settings', apply: settingsSeed }, { key: 'actions', apply: actionsSeed }]);
+    // The appliers its registration carries
+    testPacks.appliers.set('with-settings', [{ key: 'settings', apply: settingsSeed }, { key: 'actions', apply: actionsSeed }]);
 
     try {
-      seedPacks([pack], importCompiledSeeds);
+      applyPacks([pack], importCompiledContent);
     } finally {
-      testPacks.seeders.delete('with-settings');
+      testPacks.appliers.delete('with-settings');
     }
 
     expect(actionsSeed).toHaveBeenCalledOnce();
     expect(settingsSeed).toHaveBeenCalledOnce();
   });
 
-  it('records a thrown seeder as a failure too', () => {
+  it('records a thrown applier as a failure too', () => {
     const pack = installedPack('throws');
     writeRegistry(['throws']);
-    const failures = seedPacks([pack], () => { throw new Error('boom'); });
+    const failures = applyPacks([pack], () => { throw new Error('boom'); });
     expect(failures).toEqual([{ packId: 'throws', errors: ['boom'] }]);
     expect(registryEntry('throws').lastError).toBe('boom');
   });
@@ -553,52 +553,202 @@ describe('seedPacks: failures', () => {
     fs.writeFileSync(path.join(_appDirOf(tmpDir), 'installed-packs.json'), JSON.stringify({
       packs: [{ id: 'recovered', name: 'r', version: '1.0.0', dir: '', enabled: true, installedAt: '', lastError: 'old failure' }],
     }));
-    const failures = seedPacks([pack], () => ({ flows: { created: 1, updated: 0, skipped: 0 } }));
+    const failures = applyPacks([pack], () => ({ flows: { created: 1, updated: 0, skipped: 0 } }));
     expect(failures).toEqual([]);
     expect(registryEntry('recovered')).not.toHaveProperty('lastError');
   });
 
-  /** A seeder that defines the given keys and reports what it was told to */
+  /** A writer that declares the given keys, writes them, and reports what it was told to */
   const seedDefining = (keys: string[], counts = { created: 1, updated: 0, skipped: 0 }) =>
-    (options: { keyRecord?: SeedKeyRecord }) => {
-      seenBefore.push([...(options.keyRecord?.before ?? [])]);
-      for (const key of keys) options.keyRecord?.defined.add(key);
+    (options: { applied?: ApplyRecord }) => {
+      seenBefore.push([...(options.applied?.before.keys() ?? [])]);
+      for (const key of keys) {
+        options.applied?.defined.add(key);
+        options.applied?.written.set(key, { entityType: 'Note', parts: { title: key } });
+      }
       return { notes: counts };
     };
   let seenBefore: string[][] = [];
   beforeEach(() => { seenBefore = []; });
 
   /**
-   * **The record of what a pack's content defined is what makes a destroyed row stay deleted**, so what
-   * belongs here are the two halves `seedPacks` owns: a run is handed what the last one defined, and what
-   * this one defined is what gets recorded. What a seeder then does with it is default-setup's seed specs.
+   * **What the last apply wrote is what the next one is handed**, which is the half `applyPacks` owns: the
+   * writers decide what to do about an item, and this decides what they get to decide it from. It is
+   * deliberately what was *written* rather than what the content *declared*: those are different questions,
+   * and only the first answers "did we ever put this in the database" — a declared key whose create failed
+   * never did.
    */
-  it('hands a run the keys the last one defined, and records the keys this one did', () => {
+  it('hands a run what the last one wrote', () => {
     const pack = installedPack('keys');
     writeRegistry(['keys']);
 
-    seedPacks([pack], seedDefining(['keys:notes/a', 'keys:notes/b']));
-    // Changed seed data, or the second run is skipped on its hash
+    applyPacks([pack], seedDefining(['keys:notes/a', 'keys:notes/b']));
+    // Changed content, or the second run is skipped on its revision
     fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
-    seedPacks([pack], seedDefining(['keys:notes/a']));
+    applyPacks([pack], seedDefining(['keys:notes/a', 'keys:notes/b']));
 
     expect(seenBefore).toEqual([[], ['keys:notes/a', 'keys:notes/b']]);
-    // What this run defined, not the union: a key the content dropped stops being recorded rather than
-    // counting as deleted for good
-    expect(appState.get().packSeedKeys).toEqual({ keys: ['keys:notes/a'] });
   });
 
-  it('records no keys for a run that failed, so a row it never created is not taken for a deleted one', () => {
-    const pack = installedPack('keys-failed');
-    writeRegistry(['keys-failed']);
+  /**
+   * **An entry stays until the removal pass drops it**, not until the content stops declaring its key: the
+   * writer is what decides whether the entity goes, and it reports that as `removed`. An entry dropped here
+   * on the strength of the key alone would make a removal indistinguishable from content never shipped.
+   */
+  it('drops the entry of an item the run reports having removed, and keeps the rest', () => {
+    const pack = installedPack('dropped');
+    writeRegistry(['dropped']);
 
-    seedPacks([pack], seedDefining(['keys-failed:notes/a'], { created: 0, updated: 0, skipped: 1, errors: ['nope'] } as never));
+    applyPacks([pack], seedDefining(['dropped:notes/a', 'dropped:notes/b']));
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
+    applyPacks([pack], (options: { applied?: ApplyRecord }) => {
+      options.applied?.defined.add('dropped:notes/a');
+      options.applied?.removed.add('dropped:notes/b');
+      return { notes: { created: 0, updated: 0, skipped: 0 } };
+    });
 
-    expect(appState.get().packSeedKeys).toEqual({});
+    expect(Object.keys(appliedContent.get('dropped').items)).toEqual(['dropped:notes/a']);
+  });
+
+  /**
+   * **An item the content no longer declares that the user edited keeps its entry**, since the entity is
+   * still there holding what we wrote: that is what Phase 4 draws the flag from.
+   */
+  it('keeps the entry of an item the run flagged rather than removed', () => {
+    const pack = installedPack('flagged');
+    writeRegistry(['flagged']);
+
+    applyPacks([pack], seedDefining(['flagged:notes/a']));
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
+    applyPacks([pack], (options: { applied?: ApplyRecord }) => {
+      options.applied?.offers.set('flagged:notes/a', { kind: 'removed', parts: ['title'] });
+      return { notes: { created: 0, updated: 0, skipped: 0 } };
+    });
+
+    expect(Object.keys(appliedContent.get('flagged').items)).toEqual(['flagged:notes/a']);
+  });
+
+  /** A writer that reports having written the given items, as the real writers report what they stamped */
+  const seedWriting = (items: Record<string, Record<string, string>>, counts = { created: 1, updated: 0, skipped: 0 }) =>
+    (options: { applied?: ApplyRecord }) => {
+      for (const [key, parts] of Object.entries(items)) options.applied?.written.set(key, { entityType: 'Note', parts });
+      return { notes: counts };
+    };
+
+  it('records the revision it applied from, which is the hash the skip gate reads', () => {
+    const pack = installedPack('rev');
+    writeRegistry(['rev']);
+
+    applyPacks([pack], seedWriting({ 'rev:notes/a': { title: 'h1' } }));
+
+    expect(appliedContent.get('rev').revision).toBe(contentRevision(path.join(pack.dir, 'runtime', 'seeds')));
+  });
+
+  /**
+   * **The revision is the skip gate, which is why it lives with the items it describes.** A revision
+   * recorded without them, or the other way round, is the state in which every item of a pack reads as the
+   * user's — so the two move in one write.
+   */
+  it('skips a pack whose recorded revision is what its content hashes to', () => {
+    const pack = installedPack('gate');
+    writeRegistry(['gate']);
+    const applyFn = vi.fn(seedWriting({ 'gate:notes/a': { title: 'h1' } }));
+
+    applyPacks([pack], applyFn);
+    applyPacks([pack], applyFn);
+    expect(applyFn, 'the content has not moved, so there is nothing to decide again').toHaveBeenCalledOnce();
+
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
+    applyPacks([pack], applyFn);
+    expect(applyFn).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * **The conflict is this phase's whole user-visible value**, so an apply that found one says so: a line
+   * per item with the parts that differ, and the content keys in the event's meta for whoever is tracing
+   * one. Named rather than keyed — a content key is `%5B%22Action%22...`, which nobody reads.
+   */
+  it('logs the items with the user’s edits, named, and the keys in the meta', async () => {
+    const { onLog } = await import('@abuddy/sdk/logger');
+    const pack = installedPack('conflicted');
+    writeRegistry(['conflicted']);
+    const key = `${'conflicted'}:actions/${encodeURIComponent(JSON.stringify(['Action', 'Echo']))}`;
+    const logged: Array<{ message: string; meta?: unknown }> = [];
+    const stop = onLog((event) => { logged.push({ message: event.message, ...(event.meta !== undefined && { meta: event.meta }) }); });
+
+    try {
+      applyPacks([pack], (options: { applied?: ApplyRecord }) => {
+        options.applied?.offers.set(key, { kind: 'update', parts: ['actionFn', 'inputs'], contentHash: 'echo-v2' });
+        return { actions: { created: 0, updated: 0, skipped: 1 } };
+      });
+    } finally {
+      stop();
+    }
+
+    const entry = logged.find((event) => event.message.includes('have your edits'));
+    expect(entry?.message, 'the item, by name, with the parts that differ')
+      .toBe('1 of conflicted\'s items have your edits and a newer version waiting:\n  actions / Action "Echo" (actionFn, inputs)');
+    expect(entry?.meta).toMatchObject({
+      packId: 'conflicted',
+      items: { [key]: { kind: 'update', parts: ['actionFn', 'inputs'], contentHash: 'echo-v2' } },
+    });
+  });
+
+  /**
+   * **An item a run did not write keeps the entry the last one gave it**, because the entity still holds what
+   * that run wrote. Without the carry-forward the record would describe only the latest run's writes, which
+   * is not what it claims to be.
+   */
+  it('keeps the entry of an item this run did not write', () => {
+    const pack = installedPack('carry');
+    writeRegistry(['carry']);
+
+    applyPacks([pack], seedWriting({ 'carry:notes/a': { title: 'h1' }, 'carry:notes/b': { title: 'h2' } }));
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
+    applyPacks([pack], seedWriting({ 'carry:notes/a': { title: 'h1-changed' } }));
+
+    expect(appliedContent.get('carry').items).toEqual({
+      'carry:notes/a': { entityType: 'Note', parts: { title: 'h1-changed' } },
+      'carry:notes/b': { entityType: 'Note', parts: { title: 'h2' } },
+    });
+  });
+
+  /**
+   * **A run that failed still wrote whatever it got through**, and the revision has already moved with them,
+   * so nothing will re-import those items until the content changes again. Leaving them out would make a
+   * later apply read every one of them as the user's.
+   */
+  it('records what a failed run wrote, since its writes landed anyway', () => {
+    const pack = installedPack('partial');
+    writeRegistry(['partial']);
+
+    applyPacks([pack], seedWriting({ 'partial:notes/a': { title: 'h1' } }, { created: 1, updated: 0, skipped: 1, errors: ['the next one failed'] } as never));
+
+    expect(appliedContent.get('partial').items).toEqual({ 'partial:notes/a': { entityType: 'Note', parts: { title: 'h1' } } });
+  });
+
+  it('records nothing for a pack with no seed data', () => {
+    const pack = installedPack('empty');
+    fs.rmSync(path.join(pack.dir, 'runtime', 'seeds'), { recursive: true });
+    writeRegistry(['empty']);
+
+    applyPacks([pack], vi.fn());
+
+    expect(appliedContent.get('empty')).toEqual({ revision: '', items: {} });
+  });
+
+  /** A pack id holds a dash, and an entity's type is the text before its first one */
+  it('records a pack whose id holds a dash', () => {
+    const pack = installedPack('default-setup');
+    writeRegistry(['default-setup']);
+
+    applyPacks([pack], seedWriting({ 'default-setup:notes/a': { title: 'h1' } }));
+
+    expect(Object.keys(appliedContent.get('default-setup').items)).toEqual(['default-setup:notes/a']);
   });
 });
 
-describe('seedPacks', () => {
+describe('applyPacks', () => {
   function makePackWithSeeds(
     packsDir: string,
     id: string,
@@ -630,16 +780,19 @@ describe('seedPacks', () => {
 
     const applyFn = vi.fn().mockReturnValue({});
 
-    seedPacks([pack], applyFn);
+    applyPacks([pack], applyFn);
 
     expect(applyFn).toHaveBeenCalledOnce();
-    // No `include`: every key a pack seeds is imported. What a seed leaves alone it decides from the rows —
-    // an unchanged hash, an edited row, one the user trashed — and from the keys the last run defined, for
-    // a row deleted outright; never from a policy naming keys
+    // No `include`: every key a pack declares is applied. What an apply leaves alone it decides from the
+    // merge over what it last wrote, what the content says now and what the database holds; never from a
+    // policy naming keys
     expect(applyFn).toHaveBeenCalledWith({
       compiledDir: path.join(pack.dir, 'runtime', 'seeds'),
       mode: 'replace-on-collision',
-      keyRecord: { before: new Set(), defined: new Set() },
+      applied: {
+        before: new Map(), defined: new Set(), written: new Map(),
+        removed: new Set(), offers: new Map(),
+      },
     });
   });
 
@@ -657,23 +810,22 @@ describe('seedPacks', () => {
     } as any;
 
     const applyFn = vi.fn().mockReturnValue({});
-    seedPacks([pack], applyFn);
+    applyPacks([pack], applyFn);
 
     expect(applyFn).not.toHaveBeenCalled();
   });
 
-  it('skips packs whose seed hash has not changed', () => {
+  it('skips packs whose recorded revision has not changed', () => {
     const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const pack = makePackWithSeeds(packsDir, 'cached-pack', {
       [seedFile('actions')]: [{ label: 'cached' }],
     });
 
     const distDir = path.join(pack.dir, 'runtime', 'seeds');
-    const hash = computePackSeedHash(distDir);
-    appState.update({ packSeedHashes: { 'cached-pack': hash } });
+    appliedContent.record('cached-pack', { revision: contentRevision(distDir), wrote: new Map() });
 
     const applyFn = vi.fn().mockReturnValue({});
-    seedPacks([pack], applyFn);
+    applyPacks([pack], applyFn);
 
     expect(applyFn).not.toHaveBeenCalled();
   });
@@ -684,16 +836,16 @@ describe('seedPacks', () => {
       [seedFile('actions')]: [{ label: 'v1' }],
     });
 
-    appState.update({ packSeedHashes: { 'updated-pack': 'old-hash', 'disabled-pack': 'its-hash' } });
+    appliedContent.record('updated-pack', { revision: 'old-hash', wrote: new Map() });
+    appliedContent.record('disabled-pack', { revision: 'its-hash', wrote: new Map() });
     const applyFn = vi.fn().mockReturnValue({});
 
-    seedPacks([pack], applyFn);
+    applyPacks([pack], applyFn);
 
     expect(applyFn).toHaveBeenCalledOnce();
-    const { packSeedHashes } = appState.get();
-    expect(packSeedHashes['updated-pack']).toBe(computePackSeedHash(path.join(pack.dir, 'runtime', 'seeds')));
-    // A pack not loaded this boot (disabled) keeps its hash, so enabling it doesn't import its seeds again
-    expect(packSeedHashes['disabled-pack']).toBe('its-hash');
+    expect(appliedContent.get('updated-pack').revision).toBe(contentRevision(path.join(pack.dir, 'runtime', 'seeds')));
+    // A pack not loaded this boot (disabled) keeps its revision, so enabling it doesn't re-apply its content
+    expect(appliedContent.get('disabled-pack').revision).toBe('its-hash');
   });
 
   it('continues seeding other packs when one fails', () => {
@@ -712,19 +864,20 @@ describe('seedPacks', () => {
       return {};
     });
 
-    seedPacks([pack1, pack2], applyFn);
+    applyPacks([pack1, pack2], applyFn);
 
     expect(applyFn).toHaveBeenCalledTimes(2);
-    // A failed seed's hash is stored too, so the same failing data isn't retried every boot
-    expect(appState.get().packSeedHashes).toEqual({ 'fail-pack': expect.any(String), 'ok-pack': expect.any(String) });
+    // A failed seed's revision is recorded too, so the same failing data isn't retried every boot
+    expect(appliedContent.get('fail-pack').revision).toEqual(expect.any(String));
+    expect(appliedContent.get('ok-pack').revision).toEqual(expect.any(String));
   });
 });
 
-describe('computePackSeedHash', () => {
+describe('contentRevision', () => {
   it('returns empty string for a directory with no seed files', () => {
     const emptyDir = path.join(tmpDir, 'empty-dist');
     fs.mkdirSync(emptyDir, { recursive: true });
-    expect(computePackSeedHash(emptyDir)).toBe('');
+    expect(contentRevision(emptyDir)).toBe('');
   });
 
   it('returns the same hash for files nothing has touched', () => {
@@ -732,8 +885,8 @@ describe('computePackSeedHash', () => {
     fs.mkdirSync(distDir, { recursive: true });
     fs.writeFileSync(path.join(distDir, seedFile('actions')), '[]');
 
-    const hash1 = computePackSeedHash(distDir);
-    const hash2 = computePackSeedHash(distDir);
+    const hash1 = contentRevision(distDir);
+    const hash2 = contentRevision(distDir);
 
     expect(hash1).toBe(hash2);
     expect(hash1).not.toBe('');
@@ -746,31 +899,31 @@ describe('computePackSeedHash', () => {
     const distDir = path.join(tmpDir, 'hash-renamed');
     fs.mkdirSync(distDir, { recursive: true });
     fs.writeFileSync(path.join(distDir, seedFile('actions')), '[{"label":"same"}]');
-    const before = computePackSeedHash(distDir);
+    const before = contentRevision(distDir);
 
     fs.rmSync(path.join(distDir, seedFile('actions')));
     fs.writeFileSync(path.join(distDir, seedFile('prompts')), '[{"label":"same"}]');
 
-    expect(computePackSeedHash(distDir)).not.toBe(before);
+    expect(contentRevision(distDir)).not.toBe(before);
   });
 
   // **The hash is content, so a rewrite with the same bytes is not a change.** It used to be: file times were in
   // here so that reinstalling a pack would re-seed it, since `placePack` replaces every file. That made a `touch`
   // re-seed too, and made every `abuddy run` backend rebuild re-import every seed, because that loop reinstalls.
-  // Asking for a pack's data to be put back is `IMPORT_PACK_SEEDS` now, which says so.
+  // Asking for a pack's data to be put back is `IMPORT_PACK_CONTENT` now, which says so.
   it('returns the same hash when the same bytes are put back in new files', () => {
     const distDir = path.join(tmpDir, 'hash-replaced');
     fs.mkdirSync(distDir, { recursive: true });
     const file = path.join(distDir, seedFile('actions'));
     fs.writeFileSync(file, '[{"label":"same"}]');
-    const before = computePackSeedHash(distDir);
+    const before = contentRevision(distDir);
 
     // What placePack leaves behind: the same content, in a file that wasn't there a moment ago
     fs.writeFileSync(file, '[{"label":"same"}]');
     const replaced = new Date(Date.now() + 5_000);
     fs.utimesSync(file, replaced, replaced);
 
-    expect(computePackSeedHash(distDir)).toBe(before);
+    expect(contentRevision(distDir)).toBe(before);
   });
 
   // The same property through a real install, which is the one that used to carry the old contract: `placePack`
@@ -788,21 +941,21 @@ describe('computePackSeedHash', () => {
     const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const { dir } = await installPackFromLocal(source, packsDir);
     const seeds = path.join(dir, 'runtime', 'seeds');
-    const before = computePackSeedHash(seeds);
+    const before = contentRevision(seeds);
 
     await installPackFromLocal(source, packsDir);
 
-    expect(computePackSeedHash(seeds), 'a reinstall of identical bytes read as changed data').toBe(before);
+    expect(contentRevision(seeds), 'a reinstall of identical bytes read as changed data').toBe(before);
   });
 
   it('returns different hash when content changes', () => {
     const distDir = path.join(tmpDir, 'hash-change');
     fs.mkdirSync(distDir, { recursive: true });
     fs.writeFileSync(path.join(distDir, seedFile('actions')), '[{"label":"v1"}]');
-    const hash1 = computePackSeedHash(distDir);
+    const hash1 = contentRevision(distDir);
 
     fs.writeFileSync(path.join(distDir, seedFile('actions')), '[{"label":"v2"}]');
-    const hash2 = computePackSeedHash(distDir);
+    const hash2 = contentRevision(distDir);
 
     expect(hash1).not.toBe(hash2);
   });
@@ -812,7 +965,7 @@ describe('computePackSeedHash', () => {
     fs.mkdirSync(distDir, { recursive: true });
     fs.writeFileSync(path.join(distDir, 'compiled-widgets.json'), '[{"id":"w1"}]');
 
-    const hash = computePackSeedHash(distDir);
+    const hash = contentRevision(distDir);
     expect(hash).not.toBe('');
   });
 
@@ -822,19 +975,19 @@ describe('computePackSeedHash', () => {
   it('hashes every file under the seeds directory, media and all', () => {
     const seedsDir = path.join(tmpDir, 'with-media');
     fs.mkdirSync(seedsDir, { recursive: true });
-    expect(computePackSeedHash(seedsDir), 'an empty directory has nothing to seed').toBe('');
+    expect(contentRevision(seedsDir), 'an empty directory has nothing to seed').toBe('');
 
     fs.writeFileSync(path.join(seedsDir, 'notes.seed.json'), '[]');
-    const withoutMedia = computePackSeedHash(seedsDir);
+    const withoutMedia = contentRevision(seedsDir);
     expect(withoutMedia).not.toBe('');
 
     fs.mkdirSync(path.join(seedsDir, 'media', 'notes'), { recursive: true });
     fs.writeFileSync(path.join(seedsDir, 'media', 'notes', 'diagram.png'), 'first');
-    const withMedia = computePackSeedHash(seedsDir);
+    const withMedia = contentRevision(seedsDir);
     expect(withMedia, 'a media file is seed data').not.toBe(withoutMedia);
 
     fs.writeFileSync(path.join(seedsDir, 'media', 'notes', 'diagram.png'), 'second');
-    expect(computePackSeedHash(seedsDir), "a media file's content is seed data").not.toBe(withMedia);
+    expect(contentRevision(seedsDir), "a media file's content is seed data").not.toBe(withMedia);
   });
 });
 

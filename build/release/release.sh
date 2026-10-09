@@ -111,7 +111,7 @@ if [ "$DRY_RUN" = true ]; then
   if [[ "$NEW_VERSION" == *-beta* ]]; then
     MIGRATION_STATUS="skipped (beta shares production migrations)"
   elif [ -n "$LAST_TAG" ]; then
-    SETTINGS_CHANGED=$(git diff --name-only "$LAST_TAG"..HEAD -- packages/default-setup/src/seeds/default-settings.ts)
+    SETTINGS_CHANGED=$(git diff --name-only "$LAST_TAG"..HEAD -- packages/default-setup/src/content/default-settings.ts)
     if [ -n "$SETTINGS_CHANGED" ]; then
       # Extract the release version (strip prerelease suffix) for migration file lookup
       RELEASE_VERSION="${NEW_VERSION%%-*}"
@@ -161,7 +161,7 @@ else
   if [ -z "$LAST_TAG" ]; then
     echo -e "${GREEN}✓${NC} No previous release tag found, skipping check"
   else
-    SETTINGS_CHANGED=$(git diff --name-only "$LAST_TAG"..HEAD -- packages/default-setup/src/seeds/default-settings.ts)
+    SETTINGS_CHANGED=$(git diff --name-only "$LAST_TAG"..HEAD -- packages/default-setup/src/content/default-settings.ts)
     if [ -n "$SETTINGS_CHANGED" ]; then
       RELEASE_VERSION="${NEW_VERSION%%-*}"
       MIGRATION_FILE="packages/default-setup/src/migrations/$RELEASE_VERSION.ts"

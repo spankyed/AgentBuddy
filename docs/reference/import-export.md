@@ -149,24 +149,25 @@ Import uses upsert logic: existing items (matched by label) are updated, new ite
 
 Flows import via a compiled DSL JSON file. The DSL is validated against available action/prompt labels before import. Invalid references cause the flow to be skipped.
 
-## Import Pack Seeds
+## Import Pack Content
 
-Settings → General → "Import Pack Seeds" imports a pack's compiled seeds from a directory (any pack's `runtime/seeds/` — `dist/runtime/seeds/` in a workspace pack after `npm run compile`). The settings system previews it with `previewPackSeeds(dir)` (`@abuddy/sdk/seed`), then calls `importCompiledSeeds({ compiledDir, include, mode })` (`@abuddy/sdk/utils`), which runs the pack's registered seeder for each `<key>.seed.json` listed in `seeds.json` (actions, prompts, flows, library, notes, …), with media from `media/`.
+Settings → General → "Import Pack Content" imports a pack's compiled content from a directory (any pack's `runtime/seeds/` — `dist/runtime/seeds/` in a workspace pack after `npm run compile`). The settings system previews it with `previewPackContent(dir)` (`@abuddy/sdk/content`), then calls `importCompiledContent({ compiledDir, include, mode })` (`@abuddy/sdk/utils`), which runs the pack's registered applier for each `<key>.seed.json` listed in `seeds.json` (actions, prompts, flows, library, notes, …), with media from `media/`.
 
-## Seed pipeline
+## Content pipeline
 
-At boot, the host seeds every pack's compiled seeds (`seedPacks`, `@abuddy/host/packs/runtime`) from its
-`runtime/seeds` directory, in dependency order so a pack's seeds can reference what the packs it depends on
-seeded. A SHA-256 hash of those files is stored per pack in the app's state (`AppState.packSeedHashes`). If
-it matches on the next startup, seeding is skipped; changed data triggers a re-seed. A pack whose last seed
-failed is retried when a pack it depends on has seeded since (`AppState.packSeedDeps` holds what that attempt
-faced). The keys the pack's content defined are passed in and recorded too (`AppState.packSeedKeys`), which
-is what tells a later run that a row it cannot find was deleted by the user rather than never imported.
-Every key a pack declares is imported: there is no policy saying otherwise, because `boot.seed` holds only
-entries that import rows, and the seeder itself leaves alone a row the user trashed — or, through that
-record, one they destroyed.
+At boot, the host content every pack's compiled content (`applyPacks`, `@abuddy/host/packs/runtime`) from its
+`runtime/seeds` directory, in dependency order so a pack's content can reference what the packs it depends on
+seeded. A SHA-256 hash of those files is recorded per pack as its applied content's revision
+(`appliedContent`, `@abuddy/host/app-state`). If it matches on the next startup, writing is skipped; changed
+data triggers a re-apply. A pack whose last seed failed is retried when a pack it depends on has seeded since
+(`AppState.failedAgainst` holds what that attempt faced). Beside the revision, that record holds one entry per
+row the pack has written — a hash per part of what was written — which is what makes a boot apply a three-way
+merge: it tells a later run that a row it cannot find was deleted by the user rather than never imported,
+which parts of a row the user has since changed, and which rows the pack has stopped shipping.
+Every key a pack declares is imported: there is no policy saying otherwise, because `content.sources` holds only
+entries that import rows, and what a run leaves alone it decides from that merge.
 
-**The hash is over content alone** — the bytes and the file names holding them. File times are not in them: a pack's files are replaced wholesale by every install (`placePack` renames a fresh directory into place), so hashing their mtimes made a reinstall of the identical pack read as changed data, and a `touch` re-seed. Putting a pack's data back on purpose is `IMPORT_PACK_SEEDS`, which the Settings view drives with a preview, a per-key selection and a collision mode.
+**The hash is over content alone** — the bytes and the file names holding them. File times are not in them: a pack's files are replaced wholesale by every install (`placePack` renames a fresh directory into place), so hashing their mtimes made a reinstall of the identical pack read as changed data, and a `touch` re-apply. Putting a pack's data back on purpose is `IMPORT_PACK_CONTENT`, which the Settings view drives with a preview, a per-key selection and a collision mode.
 
 ## Media handling
 
@@ -195,5 +196,5 @@ JSON exports preserve the entity-based structure: `media/{entityId}/{filename}`.
 | `parseFrontmatter(content)` | `library/be/utils.ts` | Extract `{ tags, name?, description?, body }` |
 | `parseMarkdownSections(body)` | `library/be/utils.ts` | Parse `<!-- section:TYPE -->` markers into `ContentSection[]` |
 | `serializeContentToMarkdown(sections)` | `library/be/utils.ts` | `ContentSection[]` → markdown with section markers |
-| `importCompiledSeeds(options)` | `@abuddy/sdk/utils` (`utils/seed.ts`) | Run the registered seeders over a compiled seeds directory |
-| `computeManifestSeedHash(dir, artifacts)` | `@abuddy/host/packs/runtime` (`seed.ts`, internal) | SHA-256 hash of a boot seed's compiled files |
+| `importCompiledContent(options)` | `@abuddy/sdk/utils` (`utils/apply.ts`) | Run the registered appliers over a compiled content directory |
+| `computeManifestSeedHash(dir, artifacts)` | `@abuddy/host/packs/runtime` (`apply.ts`, internal) | SHA-256 hash of a boot apply's compiled files |

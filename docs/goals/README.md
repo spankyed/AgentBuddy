@@ -223,7 +223,7 @@ phantom off a value), not the identifier that used to carry it.
 
 The archive was swept once, on 2026-09-24, against the 31 goals then in it. Every criterion that is an invariant
 had a guard — `findCrossFeatureImports`, `findContractLeafImports`, `findRepositoryCasts`, `findUpwardImports`,
-`no-pack-seed-specifics.spec.ts`, `no-phantom-contract.spec.ts`, the host's `HOST_ENTITY_TYPES`, the fixture packs'
+`no-pack-content-specifics.spec.ts`, `no-phantom-contract.spec.ts`, the host's `HOST_ENTITY_TYPES`, the fixture packs'
 `@ts-expect-error` cases. The criteria with no guard were all of the deleted-identifier kind above
 (`registerHostModule`, `sendsTo`, `usePluginSettings`, `pluginAccepts`), and stay that way on purpose: the property
 each protected is guarded, the name is not.

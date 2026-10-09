@@ -4,7 +4,7 @@
     <div class="mb-8">
       <h2 class="text-xl font-semibold text-white mb-2">Application</h2>
       <p class="text-sm text-neutral-500">
-        Import pack seeds, configure hotkeys, and manage app data.
+        Import pack content, configure hotkeys, and manage app data.
       </p>
     </div>
 
@@ -63,11 +63,11 @@
       <div class="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6">
         <div class="flex items-center gap-2 mb-4">
           <PackageOpen class="w-4 h-4 text-neutral-400" />
-          <h3 class="text-sm font-medium text-neutral-300 uppercase tracking-wider">Import Pack Seeds</h3>
+          <h3 class="text-sm font-medium text-neutral-300 uppercase tracking-wider">Import Pack Content</h3>
         </div>
 
         <p class="text-sm text-neutral-500 mb-4">
-          Import compiled actions, prompts, flows, library docs, and notes from a pack's compiled seed directory.
+          Import compiled actions, prompts, flows, library docs, and notes from a pack's compiled content directory.
         </p>
 
         <!-- Idle / previewing: show the select-directory button -->
@@ -86,7 +86,7 @@
         </button>
 
         <!-- Selecting: show the picker -->
-        <ImportPackSeedsPicker
+        <ImportPackContentPicker
           v-else-if="status === 'selecting' || status === 'importing'"
           :preview="preview!"
           :selection="selection"
@@ -107,18 +107,18 @@
         <div
           v-if="status === 'success' && importResult"
           class="mt-4 p-3 rounded-lg border"
-          :class="importErrors.length ? 'bg-amber-900/20 border-amber-800/50' : 'bg-green-900/20 border-green-800/50'"
+          :class="applyErrors.length ? 'bg-amber-900/20 border-amber-800/50' : 'bg-green-900/20 border-green-800/50'"
         >
-          <p class="text-sm font-medium mb-2" :class="importErrors.length ? 'text-amber-400' : 'text-green-400'">
-            {{ importErrors.length ? `Import finished with ${importErrors.length} error${importErrors.length === 1 ? '' : 's'}` : 'Import complete' }}
+          <p class="text-sm font-medium mb-2" :class="applyErrors.length ? 'text-amber-400' : 'text-green-400'">
+            {{ applyErrors.length ? `Import finished with ${applyErrors.length} error${applyErrors.length === 1 ? '' : 's'}` : 'Import complete' }}
           </p>
           <div class="text-xs text-green-500/80 space-y-0.5">
             <p v-for="(counts, key) in importResult" :key="key">
               <span class="capitalize">{{ key }}</span> — {{ counts.created }} created, {{ counts.updated }} updated, {{ counts.skipped }} skipped
             </p>
           </div>
-          <ul v-if="importErrors.length" class="mt-2 text-xs text-amber-400/90 space-y-0.5 list-disc pl-4">
-            <li v-for="(error, index) in importErrors" :key="index" class="break-words">{{ error }}</li>
+          <ul v-if="applyErrors.length" class="mt-2 text-xs text-amber-400/90 space-y-0.5 list-disc pl-4">
+            <li v-for="(error, index) in applyErrors" :key="index" class="break-words">{{ error }}</li>
           </ul>
           <button
             @click="onReset"
@@ -183,15 +183,15 @@ import { usePlugin } from '@abuddy/sdk/fe'
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { HardDrive, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
-import ImportPackSeedsPicker from './ImportPackSeedsPicker.vue'
+import ImportPackContentPicker from './ImportPackContentPicker.vue'
 import Hotkeys from './Hotkeys.vue'
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 import type { SettingsEvents, SettingsState } from '@abuddy/host/fe'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { SettingUpdate } from '@abuddy/sdk/fe'
 
-/** The modes the Settings machine takes for a seed import, so a widened string cannot reach its event */
-type SeedImportMode = Extract<SettingsEvents, { type: 'PACK_SEEDS.SET_MODE' }>['mode']
+/** The modes the Settings machine takes for a content import, so a widened string cannot reach its event */
+type ContentImportMode = Extract<SettingsEvents, { type: 'PACK_CONTENT.SET_MODE' }>['mode']
 
 /** The `application` slice this form draws; it passes the hotkeys on to the Hotkeys form */
 interface Props {
@@ -213,18 +213,18 @@ function onHotkeyUpdate(event: SettingUpdate) {
 
 const actor: SettingsState = usePlugin()
 
-const packSeedsImport = useSelector(actor, (state) => state.context.packSeedsImport)
+const packContentImport = useSelector(actor, (state) => state.context.packContentImport)
 const resetting = useSelector(actor, (state) => state.context.resetting)
 
-const status = computed(() => packSeedsImport.value?.status ?? 'idle')
-const preview = computed(() => packSeedsImport.value?.preview ?? null)
-const selection = computed(() => packSeedsImport.value?.selection)
-const expanded = computed(() => packSeedsImport.value?.expanded)
-const importMode = computed(() => packSeedsImport.value?.importMode ?? 'replace-on-collision')
-const restartBrainFlag = computed(() => packSeedsImport.value?.restartBrain ?? false)
-const importResult = computed(() => packSeedsImport.value?.result)
-const importErrors = computed<string[]>(() => packSeedsImport.value?.errors ?? [])
-const importError = computed(() => packSeedsImport.value?.error)
+const status = computed(() => packContentImport.value?.status ?? 'idle')
+const preview = computed(() => packContentImport.value?.preview ?? null)
+const selection = computed(() => packContentImport.value?.selection)
+const expanded = computed(() => packContentImport.value?.expanded)
+const importMode = computed(() => packContentImport.value?.importMode ?? 'replace-on-collision')
+const restartBrainFlag = computed(() => packContentImport.value?.restartBrain ?? false)
+const importResult = computed(() => packContentImport.value?.result)
+const applyErrors = computed<string[]>(() => packContentImport.value?.errors ?? [])
+const importError = computed(() => packContentImport.value?.error)
 
 const confirmingClearAppCache = ref(false)
 const appCacheStatus = ref<{ kind: 'success' | 'error'; message: string } | null>(null)
@@ -248,39 +248,39 @@ async function selectDirectory() {
   // `string | string[] | null` whatever the options, and this wants one directory, as Projects.vue does
   const result = await window.electronAPI?.fileUtils?.selectDirectory?.()
   if (!result) return
-  actor.send({ type: 'PACK_SEEDS.PREVIEW', directory: result })
+  actor.send({ type: 'PACK_CONTENT.PREVIEW', directory: result })
 }
 
 function onToggleExpand(key: string) {
-  actor.send({ type: 'PACK_SEEDS.TOGGLE_EXPAND', key })
+  actor.send({ type: 'PACK_CONTENT.TOGGLE_EXPAND', key })
 }
 
 function onToggleTypeAll(key: string) {
-  actor.send({ type: 'PACK_SEEDS.TOGGLE_TYPE_ALL', key })
+  actor.send({ type: 'PACK_CONTENT.TOGGLE_TYPE_ALL', key })
 }
 
 function onToggleItem(payload: { key: string; item: string }) {
-  actor.send({ type: 'PACK_SEEDS.TOGGLE_ITEM', key: payload.key, item: payload.item })
+  actor.send({ type: 'PACK_CONTENT.TOGGLE_ITEM', key: payload.key, item: payload.item })
 }
 
-function onSetMode(mode: SeedImportMode) {
-  actor.send({ type: 'PACK_SEEDS.SET_MODE', mode })
+function onSetMode(mode: ContentImportMode) {
+  actor.send({ type: 'PACK_CONTENT.SET_MODE', mode })
 }
 
 function onToggleRestartBrain() {
-  actor.send({ type: 'PACK_SEEDS.TOGGLE_RESTART_BRAIN' })
+  actor.send({ type: 'PACK_CONTENT.TOGGLE_RESTART_BRAIN' })
 }
 
 function onConfirm() {
-  actor.send({ type: 'PACK_SEEDS.CONFIRM_IMPORT' })
+  actor.send({ type: 'PACK_CONTENT.CONFIRM_IMPORT' })
 }
 
 function onCancel() {
-  actor.send({ type: 'PACK_SEEDS.CANCEL' })
+  actor.send({ type: 'PACK_CONTENT.CANCEL' })
 }
 
 function onReset() {
-  actor.send({ type: 'PACK_SEEDS.RESET_STATUS' })
+  actor.send({ type: 'PACK_CONTENT.RESET_STATUS' })
 }
 
 // Reset App

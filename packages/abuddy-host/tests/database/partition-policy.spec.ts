@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { appPartitionPolicy } from '../../src/database/open.ts';
 import { SDK_ENTITIES } from '@abuddy/sdk/types';
+import { APPLIED_CONTENT_ENTITY } from '../../src/app-state/index.ts';
 
 const policy = appPartitionPolicy();
 
@@ -12,6 +13,9 @@ describe('the app partition policy', () => {
     expect(policy.routeEntity(`${SDK_ENTITIES.TNode}-1`)).toBe('volatileBackup');
     expect(policy.routeEntity('Note-1')).toBe('primary');
     expect(policy.routeEntity(`${SDK_ENTITIES.Flow}-1`)).toBe('primary');
+    // What a restore rests on: without the applied content a backup brings back, every entity would read
+    // as the user's own or as one they deleted
+    expect(policy.routeEntity(`${APPLIED_CONTENT_ENTITY}-default-setup`)).toBe('primary');
   });
 
   it('follows a relation to the volatile partition when either end is volatile', () => {

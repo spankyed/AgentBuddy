@@ -34,7 +34,7 @@ async function validateDeps(root: string): Promise<string[]> {
 }
 
 /**
- * The checks code generation makes (seed formats' entities, dependency formats, seed hook and service
+ * The checks code generation makes (content formats' entities, dependency formats, content writer and service
  * exports, …), run in memory without writing. Skipped while a dependency is unresolved: validateDeps
  * reports that, and these checks need the dependency's manifest. Types that don't resolve (the pack's
  * `@abuddy/sdk` not installed) are a warning, not the pack's error.

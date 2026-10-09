@@ -1,4 +1,4 @@
-import type { ResolvedSeed } from './seeds/resolve.ts';
+import type { ResolvedContentSource } from './content/resolve.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
@@ -13,8 +13,8 @@ export interface PackBuildDefinitions {
 /** A pack's seed sources, as `compilePack` compiles them (built from abuddy.json by buildPackConfigFromManifest) */
 export interface PackConfig {
   name: string;
-  /** `boot.seed`, each entry resolved to its path, seeder, or format settings */
-  seeds: Record<string, ResolvedSeed>;
+  /** `content.sources`, each entry resolved to its path, applier, or format settings */
+  sources: Record<string, ResolvedContentSource>;
   /** Loads the definitions compiling validates against, such as the step types flows use */
   loadDefinitions?: () => Promise<PackBuildDefinitions>;
 }
@@ -32,7 +32,7 @@ export interface CompilePackOptions {
 }
 
 export interface CompilePackResult {
-  /** Items compiled per seed key */
-  seeds: Record<string, number>;
+  /** Items compiled per content key */
+  counts: Record<string, number>;
   warnings: string[];
 }

@@ -26,7 +26,7 @@ export interface CompiledEntry {
   label: string;
   description?: string;
   category?: string;
-  sourceHash: string;
+  contentHash: string;
   [key: string]: unknown;
 }
 
@@ -402,12 +402,12 @@ async function compileSourceFile(
     ...(meta[config.fields.output] && { [config.fields.output]: meta[config.fields.output] }),
   };
 
-  const sourceHash = crypto.createHash('sha256')
+  const contentHash = crypto.createHash('sha256')
     .update(JSON.stringify(compiled))
     .digest('hex')
     .slice(0, 16);
 
-  return { entry: { ...compiled, sourceHash } as CompiledEntry, errors: [], warnings };
+  return { entry: { ...compiled, contentHash } as CompiledEntry, errors: [], warnings };
 }
 
 // --- Pure compilation (returns results, no file I/O for output) ---
@@ -441,7 +441,7 @@ export async function compileSourceDir(
   return { entries, warnings: allWarnings, errors: allErrors };
 }
 
-export function sourceHash(data: object): string {
+export function contentHash(data: object): string {
   return crypto.createHash('sha256')
     .update(JSON.stringify(data))
     .digest('hex')

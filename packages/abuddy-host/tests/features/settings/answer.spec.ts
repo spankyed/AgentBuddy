@@ -50,7 +50,7 @@ describe('the outcome of a settings write', () => {
   /**
    * The fallback, and the reason it is reply-*or*-broadcast rather than reply-*and*-broadcast.
    *
-   * A write can arrive from code nobody asked on behalf of — a seeder, a migration, a timer. The Settings view
+   * A write can arrive from code nobody asked on behalf of — an applier, a migration, a timer. The Settings view
    * has to hear it either way, so the broadcast stays as the answer for an ask that named nobody.
    */
   it('tells every Settings view when nobody asked', () => {

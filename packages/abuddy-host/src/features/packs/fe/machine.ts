@@ -43,6 +43,13 @@ type PacksEvent =
   | { type: 'UI.REFRESH' }
   | { type: 'UI.UPDATE'; packId: string }
   | { type: 'UI.CHECK_UPDATES' }
+  /**
+   * The three ways the view resolves one content offer, each passed straight to the `packs` system: the view
+   * decides nothing about them, and the system is where the user's data is written.
+   */
+  | { type: 'UI.RESTORE_CONTENT'; packId: string; key: string }
+  | { type: 'UI.DISMISS_OFFER'; packId: string; key: string }
+  | { type: 'UI.DELETE_CONTENT'; packId: string; key: string }
 
 const typeOf = safeEvents<PacksEvent>();
 
@@ -162,6 +169,21 @@ const packsState = setup({
     sendRefresh: () => {
       sendToSystem('packs', { type: 'GET_INSTALLED_PACKS' });
     },
+
+    sendRestoreContent: ({ event }) => {
+      const ev = typeOf('UI.RESTORE_CONTENT', event);
+      sendToSystem('packs', { type: 'RESTORE_CONTENT_ITEM', packId: ev.packId, key: ev.key });
+    },
+
+    sendDismissOffer: ({ event }) => {
+      const ev = typeOf('UI.DISMISS_OFFER', event);
+      sendToSystem('packs', { type: 'DISMISS_CONTENT_OFFER', packId: ev.packId, key: ev.key });
+    },
+
+    sendDeleteContent: ({ event }) => {
+      const ev = typeOf('UI.DELETE_CONTENT', event);
+      sendToSystem('packs', { type: 'DELETE_CONTENT_ITEM', packId: ev.packId, key: ev.key });
+    },
   },
 }).createMachine({
   id: HOST.packs,
@@ -201,6 +223,9 @@ const packsState = setup({
         'UI.REFRESH': { actions: 'sendRefresh' },
         'UI.UPDATE': { actions: ['setUpdating', 'sendUpdate'] },
         'UI.CHECK_UPDATES': { actions: 'sendCheckUpdates' },
+        'UI.RESTORE_CONTENT': { actions: 'sendRestoreContent' },
+        'UI.DISMISS_OFFER': { actions: 'sendDismissOffer' },
+        'UI.DELETE_CONTENT': { actions: 'sendDeleteContent' },
       },
     },
   },

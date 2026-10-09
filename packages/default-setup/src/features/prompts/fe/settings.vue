@@ -87,7 +87,7 @@
                 Import failed
               </h4>
               <ul class="text-sm text-neutral-400 list-disc list-inside">
-                <li v-for="(error, idx) in importErrors" :key="idx">{{ error }}</li>
+                <li v-for="(error, idx) in applyErrors" :key="idx">{{ error }}</li>
               </ul>
             </div>
           </div>
@@ -231,7 +231,7 @@ const promptsActor: PromptsState = usePlugin()
 // Import state
 const isImporting = useSelector(promptsActor, (state) => state.context.promptsImport.status === 'importing')
 const importStatus = useSelector(promptsActor, (state) => state.context.promptsImport.status)
-const importErrors = useSelector(promptsActor, (state) => state.context.promptsImport.errors)
+const applyErrors = useSelector(promptsActor, (state) => state.context.promptsImport.errors)
 const importedCount = useSelector(promptsActor, (state) => state.context.promptsImport.importedCount)
 
 // Export state

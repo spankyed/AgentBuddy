@@ -6,8 +6,8 @@ import type { StepDefinition } from '../steps/types.ts';
 import { _mergeStepDefinitions } from '../steps/merge.ts';
 import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
-import type { SeedHooks } from '../seed/hooks.ts';
-import type { Seeder } from '../utils/seed.ts';
+import type { ContentWriter } from '../content/writers.ts';
+import type { ContentApplier } from '../utils/apply.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
 import type { HelpEntry } from '../framework/pack-help.ts';
 import type { PackSettingsDefaults } from '../framework/pack-settings.ts';
@@ -29,10 +29,10 @@ export interface TestPacks {
   readonly blocks: Map<string, BlockDefinition>;
   /** Services by name, over the registered packs' */
   readonly services: Map<string, unknown>;
-  /** Seed hooks by entity type */
-  readonly seedHooks: Map<string, SeedHooks>;
-  /** Seeders by pack id */
-  readonly seeders: Map<string, Seeder[]>;
+  /** Content writers by entity type */
+  readonly contentWriters: Map<string, ContentWriter>;
+  /** Appliers by pack id */
+  readonly appliers: Map<string, ContentApplier[]>;
   /** Declared commands by pack id, after the registered packs' */
   readonly commands: Map<string, PackCommand[]>;
   readonly help: Map<string, HelpEntry[]>;
@@ -53,8 +53,8 @@ function createTestPacks(): TestPacks {
     artifacts: new Map<string, ArtifactDefinition>(),
     blocks: new Map<string, BlockDefinition>(),
     services: new Map<string, unknown>(),
-    seedHooks: new Map<string, SeedHooks>(),
-    seeders: new Map<string, Seeder[]>(),
+    contentWriters: new Map<string, ContentWriter>(),
+    appliers: new Map<string, ContentApplier[]>(),
     commands: new Map<string, PackCommand[]>(),
     help: new Map<string, HelpEntry[]>(),
     earsEntities: new Map<string, string>(),
@@ -103,8 +103,8 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     // A test names a ref as it likes, as it does a role's
     systemIds: () => [...new Set([...(registered?.systemIds() ?? []), ...testPacks.systems])] as FeatureRef[],
     pluginIds: () => [...new Set([...(registered?.pluginIds() ?? []), ...testPacks.plugins])] as FeatureRef[],
-    seedHooks: (entity) => testPacks.seedHooks.get(entity) ?? registered?.seedHooks(entity),
-    seeders: (packId) => testPacks.seeders.get(packId) ?? registered?.seeders(packId) ?? [],
+    contentWriters: (entity) => testPacks.contentWriters.get(entity) ?? registered?.contentWriters(entity),
+    appliers: (packId) => testPacks.appliers.get(packId) ?? registered?.appliers(packId) ?? [],
     settingsDefaults: () => registered?.settingsDefaults() ?? noSettings,
     onSettingsDefaultsChanged: (listener) => registered?.onSettingsDefaultsChanged(listener) ?? (() => {}),
     featuresWithSettings: () => registered?.featuresWithSettings() ?? [],

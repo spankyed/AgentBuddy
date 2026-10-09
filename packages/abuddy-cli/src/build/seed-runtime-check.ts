@@ -33,10 +33,10 @@ const LOAD_SCRIPT = `
 import { register } from 'node:module';
 const [hook, bundle, blocked] = JSON.parse(process.env.ABUDDY_SEED_RUNTIME_CHECK);
 register(hook, { data: { blocked } });
-const { registerSeedRuntime, startTestRuntime } = await import('@abuddy/sdk/testing');
+const { registerContentRuntime, startTestRuntime } = await import('@abuddy/sdk/testing');
 startTestRuntime();
-const { seedRuntime } = await import(bundle);
-registerSeedRuntime(seedRuntime);
+const { contentRuntime } = await import(bundle);
+registerContentRuntime(contentRuntime);
 `;
 
 /** @abuddy/sdk's optional peer dependencies a dependent's unit tests may not have, as the pack resolves the SDK */
@@ -106,7 +106,7 @@ export async function checkSeedRuntimeLoads(
     const reason = output.trim() || `the load exited with code ${code} (timed out after ${LOAD_TIMEOUT_MS / 1000}s?)`;
     return {
       success: false,
-      error: `${path.relative(packDir, bundleFile)} doesn't load outside the app. Packs depending on this one load it in their unit tests with only @abuddy/sdk installed, so repositories and seed hooks can't use native modules or @abuddy/sdk's optional peers (${blocked.join(', ')}).\n${reason}`,
+      error: `${path.relative(packDir, bundleFile)} doesn't load outside the app. Packs depending on this one load it in their unit tests with only @abuddy/sdk installed, so repositories and content writers can't use native modules or @abuddy/sdk's optional peers (${blocked.join(', ')}).\n${reason}`,
     };
   } finally {
     fs.rmSync(dataDir, { recursive: true, force: true });

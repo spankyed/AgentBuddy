@@ -14,7 +14,7 @@ export type { DiscoveredPack, InstalledPack, PackManifest } from './discovery.ts
 // Installed packs (JSON file CRUD)
 export {
   readInstalledPacks, writeInstalledPacks, packRecord, packRecords, disabledPackIds,
-  recordInstalled, setPackEnabled, recordUpdateCheck, recordUpdateInstalled, recordSeedOutcomes, forgetPack,
+  recordInstalled, setPackEnabled, recordUpdateCheck, recordUpdateInstalled, recordApplyOutcomes, forgetPack,
 } from './installed.ts';
 export type { PackRecord } from './installed.ts';
 

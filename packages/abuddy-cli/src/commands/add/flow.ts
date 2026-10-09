@@ -32,10 +32,10 @@ export async function addFlow(args: string[], root: string) {
   }
 
   const label = toLabel(name);
-  const filePath = path.join(root, 'src', 'seeds', 'flows', `${name}.ts`);
+  const filePath = path.join(root, 'src', 'content', 'flows', `${name}.ts`);
 
   const created: string[] = [];
-  if (writeIfNotExists(filePath, renderTemplate('pack/src/seeds/flows/flow.ts', { LABEL: label }))) {
+  if (writeIfNotExists(filePath, renderTemplate('pack/src/content/flows/flow.ts', { LABEL: label }))) {
     created.push(filePath);
   }
 

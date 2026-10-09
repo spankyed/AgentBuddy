@@ -170,14 +170,14 @@ describe('generated backend entry', () => {
 
 describe('generated registrations', () => {
   // Everything a pack contributes arrives in its registration: no generated module registers anything when imported
-  it("carry the pack's seeders and DSL types, which their modules only export", () => {
+  it("carry the pack's appliers and DSL types, which their modules only export", () => {
     const files = generate({
       features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }],
-      boot: { seed: { actions: 'src/seeds/actions' } },
+      boot: { seed: { actions: 'src/content/actions' } },
       dsl: { memo: { entry: 'src/defs/memo.ts', targets: ['monaco'], prefix: 'memo:', globals: { memos: 'typeof _dsl.memos' } } },
     });
-    expect(files['src/__generated__/pack-entry.ts']).toContain('\n  seeders,\n');
-    expect(files['src/__generated__/seeders.ts']).toContain('export const seeders: Seeder[] = [');
+    expect(files['src/__generated__/pack-entry.ts']).toContain('\n  appliers,\n');
+    expect(files['src/__generated__/appliers.ts']).toContain('export const appliers: ContentApplier[] = [');
     expect(files['src/__generated__/pack-entry-fe.ts']).toContain("import { dslTypes } from './dsl-types-fe.ts';");
     expect(files['src/__generated__/pack-entry-fe.ts']).toContain('\n  dslTypes,\n');
     expect(files['src/__generated__/dsl-types-fe.ts']).toContain([
@@ -193,9 +193,9 @@ describe('generated registrations', () => {
     }
   });
 
-  it('carry no seeders or DSL types for a pack without them', () => {
+  it('carry no appliers or DSL types for a pack without them', () => {
     const files = generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
-    expect(files['src/__generated__/seeders.ts']).toContain('export const seeders: Seeder[] = [];');
+    expect(files['src/__generated__/appliers.ts']).toContain('export const appliers: ContentApplier[] = [];');
     expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('dslTypes');
     expect(files).not.toHaveProperty(['src/__generated__/dsl-types-fe.ts']);
   });

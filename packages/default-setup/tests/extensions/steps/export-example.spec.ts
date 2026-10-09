@@ -6,7 +6,7 @@
 // and no check could have said so. This is the same artifact derived from the exporter instead: what
 // `exportFlowsToDSL` writes for a flow using every step this pack registers.
 //
-// A golden and not an assertion on selected fields, for the reason `tests/seeds/CLAUDE.md` gives: what a
+// A golden and not an assertion on selected fields, for the reason `tests/content/CLAUDE.md` gives: what a
 // reader needs from an example is the whole shape, and a diff of the whole file is what says it moved.
 //
 // Its own file rather than a case in `export-fidelity.spec.ts`, which shares that fixture: that spec's second
@@ -95,7 +95,7 @@ describe('the flow DSL export example', () => {
       return
     }
 
-    // Asserted rather than left to a missing-file write, for the reason tests/seeds/CLAUDE.md records: vitest's
+    // Asserted rather than left to a missing-file write, for the reason tests/content/CLAUDE.md records: vitest's
     // own snapshot mode writes a missing snapshot and passes, and this repo's CI is off, so that mode would
     // silently record whatever the first run produced
     expect(fs.existsSync(GOLDEN), `missing golden ${path.relative(process.cwd(), GOLDEN)} — record it with `

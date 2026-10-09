@@ -3,7 +3,7 @@ import type { SettingsService } from '../services/settings.ts';
 // @abuddy/testing's harness drives it; it lives in the SDK so tests share the pack's SDK instance
 // (its query, repository and seed-hook registries) instead of a copy.
 import { createEarsEngine, installEngine, type EarsEngine } from '@abuddy/ears';
-import type { SeedHooks } from '../seed/hooks.ts';
+import type { ContentWriter } from '../content/writers.ts';
 import { SDK_ENTITIES } from '../types/sdk-entities.ts';
 import type { EARS } from '../types/entities.ts';
 import type { PackRegistryView } from '../runtime/packs-view.ts';
@@ -23,16 +23,16 @@ export { answerTo } from './answers.ts';
 
 /**
  * What a pack's seeding needs outside the app: its entity types and relation kinds, its repositories
- * and its seed hooks. `abuddy generate-entries` writes it as `seedRuntime` in
- * `src/__generated__/seed-runtime.ts`; `abuddy build` bundles it into `build/seed-runtime.mjs` for
+ * and its content writers. `abuddy generate-entries` writes it as `contentRuntime` in
+ * `src/__generated__/content-runtime.ts`; `abuddy build` bundles it into `build/seed-runtime.mjs` for
  * packs that depend on this one.
  */
-export interface SeedRuntime {
+export interface ContentRuntime {
   id: string;
   entities: Record<string, string>;
   relKinds: Record<string, string>;
   repositories: Record<string, unknown>;
-  seedHooks: Record<string, SeedHooks>;
+  contentWriters: Record<string, ContentWriter>;
 }
 
 /** What `startTestRuntime` starts the in-memory app with */
@@ -102,11 +102,11 @@ export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
   bindTestRuntime({ engine: testEngine, resetData: resetTestData, ...started });
 }
 
-/** Registers a pack's seed runtime: its entity types, its repositories (with the engine) and its seed hooks (in `testPacks`) */
-export function registerSeedRuntime(runtime: SeedRuntime): void {
+/** Registers a pack's seed runtime: its entity types, its repositories (with the engine) and its content writers (in `testPacks`) */
+export function registerContentRuntime(runtime: ContentRuntime): void {
   startTestRuntime({ entityTypes: Object.values(runtime.entities) });
   for (const [name, repo] of Object.entries(runtime.repositories)) testEngine().query.registerRepository(name, repo);
-  for (const [entity, hooks] of Object.entries(runtime.seedHooks)) testPacks.seedHooks.set(entity, hooks);
+  for (const [entity, hooks] of Object.entries(runtime.contentWriters)) testPacks.contentWriters.set(entity, hooks);
 }
 
 /**

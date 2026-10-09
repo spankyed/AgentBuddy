@@ -8,7 +8,7 @@ import {
   entitiesWithoutShapes,
   SEED_COMPILERS_FILE,
   _buildProvenance,
-  type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type SeedDependency,
+  type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type ContentDependency,
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { abuddyScope, dslInputsHash, feInputsHash, typesInputsHash, filesUnder, readStamps, reuseProblem, takeForward, writeStamps, type PhaseStamp } from '../build/phase-cache';
@@ -30,7 +30,7 @@ import { resolveDepFiles } from './fetch-deps';
 import { generateEntries, warnStaleDepTypes } from './generate-entries';
 import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
 
-/** Loads a pack's seed compiler module, which may be TypeScript */
+/** Loads a pack's content compiler module, which may be TypeScript */
 async function importPackModule(file: string): Promise<Record<string, unknown>> {
   const { tsImport } = await import('tsx/esm/api');
   return tsImport(file, import.meta.url) as Promise<Record<string, unknown>>;
@@ -126,7 +126,7 @@ async function buildIntoStaging(args: string[]) {
   const manifest = readValidManifest(root);
 
   // What each bundling phase read, for the chain step that builds this pack to be checked against. The
-  // phases with no bundler to ask — codegen, the seed compilation, feature settings, the pack rules — are
+  // phases with no bundler to ask — codegen, the content compilation, feature settings, the pack rules — are
   // absent from the record rather than guessed at
   const reads = buildReads(root);
   // What the last build left reusable, and what this one leaves for the next
@@ -159,9 +159,9 @@ async function buildIntoStaging(args: string[]) {
   let packConfig: PackConfig | null = null;
 
   // Dependencies' step build code, so this pack's flows validate against real step definitions,
-  // and their manifests and build dirs, so entries naming their seed formats compile with them
+  // and their manifests and build dirs, so entries naming their content formats compile with them
   const dependencyStepModules: string[] = [];
-  const dependencies = new Map<string, SeedDependency>();
+  const dependencies = new Map<string, ContentDependency>();
   const depSnapshots = new Map<string, PackSnapshot>();
   for (const [depId, depValue] of Object.entries(manifest.dependencies ?? {})) {
     const artifacts = await resolveDepFiles(root, depId, depValue);
@@ -173,11 +173,11 @@ async function buildIntoStaging(args: string[]) {
   }
   warnStaleDepTypes(root, new Map([...dependencies].map(([depId, dep]) => [depId, dep.manifest.version])));
 
-  const seeds = manifest.boot?.seed;
-  if (seeds && Object.keys(seeds).length > 0) {
+  const content = { ...manifest.content?.sources, ...manifest.content?.artifacts };
+  if (Object.keys(content).length > 0) {
     packConfig = await buildPackConfigFromManifest(manifest, root, { dependencyStepModules, dependencies });
   } else {
-    console.log('No boot.seed in manifest. Skipping seed compilation.');
+    console.log('No content.sources or content.artifacts in manifest. Skipping content compilation.');
   }
 
   const packDir = root;
@@ -186,10 +186,10 @@ async function buildIntoStaging(args: string[]) {
   const seedsOutputDir = path.join(outputDir, PACK_LAYOUT.seedsDir);
   const snapshotPath = path.join(outputDir, PACK_LAYOUT.snapshot);
 
-  let result: { seeds: Record<string, number>; warnings: string[] } | null = null;
+  let result: { counts: Record<string, number>; warnings: string[] } | null = null;
 
   if (packConfig) {
-    // What the seeds compile with (the dependencies' steps and the pack's), in this build's own registry: a registry
+    // What the content compiles with (the dependencies' steps and the pack's), in this build's own registry: a registry
     // the process has bound (an app's, a test's) is never touched
     const registry = createPackRegistry();
     registry.registerPack({ id: manifest.id, ...await packConfig.loadDefinitions?.() });
@@ -209,7 +209,7 @@ async function buildIntoStaging(args: string[]) {
   // Seed compiler modules, for dependents' entries naming this pack's formats. A pack whose formats
   // dependents can't compile with isn't built: fail before the snapshot that advertises them
   const seedCompilers = Object.fromEntries(
-    Object.entries(manifest.seedFormats ?? {}).flatMap(([name, format]) => (format.compiler ? [[name, format.compiler]] : [])),
+    Object.entries(manifest.content?.formats ?? {}).flatMap(([name, format]) => (format.compiler ? [[name, format.compiler]] : [])),
   );
   const seedCompilersBundled = Object.keys(seedCompilers).length > 0;
   if (seedCompilersBundled) {
@@ -309,7 +309,7 @@ async function buildIntoStaging(args: string[]) {
 
   console.log(`\nBuild complete:`);
   if (result) {
-    for (const [type, count] of Object.entries(result.seeds)) {
+    for (const [type, count] of Object.entries(result.counts)) {
       if (count > 0) console.log(`  ${type}: ${count}`);
     }
 
@@ -338,11 +338,11 @@ async function buildIntoStaging(args: string[]) {
   }
 
   // ── Seed runtime (for dependents' unit tests) ─────────────────────────
-  const seedRuntime = await bundlePackSeedRuntime(root, outputDir, { release, recordReads: reads?.forPhase('seedRuntime') });
-  if (seedRuntime.success) {
+  const contentRuntime = await bundlePackSeedRuntime(root, outputDir, { release, recordReads: reads?.forPhase('contentRuntime') });
+  if (contentRuntime.success) {
     console.log(`  seed runtime: dist/${PACK_LAYOUT.buildDir}/${SEED_RUNTIME_FILE}`);
   } else {
-    fail(`Seed runtime bundle failed: ${seedRuntime.error}`);
+    fail(`Seed runtime bundle failed: ${contentRuntime.error}`);
   }
 
   if (seedCompilersBundled) console.log(`  seed compilers: dist/${PACK_LAYOUT.buildDir}/${SEED_COMPILERS_FILE}`);

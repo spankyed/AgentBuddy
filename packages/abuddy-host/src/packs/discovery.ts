@@ -106,7 +106,7 @@ export interface PackDependents {
  * the packs in one are still returned, in an order that is arbitrary but deterministic, and the cycle is
  * logged. Stable otherwise: packs with nothing between them come back as they went in.
  */
-export function packSeedOrder<T extends PackDependents>(packs: readonly T[]): T[] {
+export function packContentOrder<T extends PackDependents>(packs: readonly T[]): T[] {
   const byId = new Map(packs.map((pack) => [pack.id, pack]));
   const state = new Map<string, 'visiting' | 'done'>();
   const ordered: T[] = [];

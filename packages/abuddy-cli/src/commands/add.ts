@@ -18,9 +18,9 @@ Entities:
   step <type>        Flow step definition
   artifact <type>    Artifact viewer
   block <type>       Message block component
-  action <name>      Action seed
-  prompt <name>      Prompt seed
-  flow <name>        Flow seed
+  action <name>      An action
+  prompt <name>      A prompt
+  flow <name>        A flow
   service <name>     Service module
   migration          Version-targeted migration
 

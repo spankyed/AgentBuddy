@@ -51,48 +51,50 @@
     "default-setup": "*"
   },
   "permissions": [],
-  "seedFormats": {
-    "memos": {
-      "format": "markdown-tree",
-      "entity": "Memo",
-      "identity": [
-        "title"
-      ],
-      "fields": {
-        "title": {
-          "from": "frontmatter.title",
-          "default": "filename",
-          "type": "string"
-        },
-        "text": {
-          "from": "body"
-        }
-      }
-    },
-    "quick-memos": {
-      "compiler": "src/seeds/compilers/quick-memos.ts",
-      "entity": "Memo",
-      "identity": [
-        "title"
-      ]
-    }
-  },
   "boot": {
-    "hooks": "src/features/hooks.ts",
-    "seed": {
-      "actions": "src/seeds/actions",
-      "flows": "src/seeds/flows",
+    "hooks": "src/features/hooks.ts"
+  },
+  "content": {
+    "sources": {
+      "actions": "src/content/actions",
+      "flows": "src/content/flows",
       "memos": {
-        "path": "src/seeds/memos",
+        "path": "src/content/memos",
         "format": "memos"
       },
       "quick-memos": {
-        "path": "src/seeds/quick-memos.txt",
+        "path": "src/content/quick-memos.txt",
         "format": "quick-memos"
       },
       "library": {
-        "path": "src/seeds/library",
+        "path": "src/content/library",
         "format": "default-setup:library"
+      }
+    },
+    "formats": {
+      "memos": {
+        "format": "markdown-tree",
+        "entity": "Memo",
+        "identity": [
+          "title"
+        ],
+        "fields": {
+          "title": {
+            "from": "frontmatter.title",
+            "default": "filename",
+            "type": "string"
+          },
+          "text": {
+            "from": "body"
+          }
+        }
+      },
+      "quick-memos": {
+        "compiler": "src/content/compilers/quick-memos.ts",
+        "entity": "Memo",
+        "identity": [
+          "title"
+        ]
       }
     }
   }

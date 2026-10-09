@@ -118,7 +118,7 @@
                 Import failed
               </h4>
               <ul class="text-sm text-neutral-400 list-disc list-inside">
-                <li v-for="(error, idx) in importErrors" :key="idx">{{ error }}</li>
+                <li v-for="(error, idx) in applyErrors" :key="idx">{{ error }}</li>
               </ul>
             </div>
           </div>
@@ -237,7 +237,7 @@ const rootFlowId = useSelector(flowsActor, (state) => state.context.rootFlowId)
 const selectedRootFlowId = ref<string>(rootFlowId.value || '')
 const isImporting = useSelector(flowsActor, (state) => state.context.dslImport.status === 'importing')
 const importStatus = useSelector(flowsActor, (state) => state.context.dslImport.status)
-const importErrors = useSelector(flowsActor, (state) => state.context.dslImport.errors)
+const applyErrors = useSelector(flowsActor, (state) => state.context.dslImport.errors)
 const importedFlowNames = useSelector(flowsActor, (state) => state.context.dslImport.importedFlowNames)
 
 // Export state

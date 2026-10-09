@@ -50,8 +50,8 @@ describe('pack CLI: init', () => {
     expect(fs.existsSync(path.join(packDir, 'package.json'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'tsconfig.json'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, '.gitignore'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'src', 'seeds', 'actions'))).toBe(true);
-    expect(fs.existsSync(path.join(packDir, 'src', 'seeds', 'flows'))).toBe(true);
+    expect(fs.existsSync(path.join(packDir, 'src', 'content', 'actions'))).toBe(true);
+    expect(fs.existsSync(path.join(packDir, 'src', 'content', 'flows'))).toBe(true);
     // Features come from `abuddy add feature`; the pack id (kebab-case) is not a valid feature id
     expect(fs.existsSync(path.join(packDir, '.github', 'workflows', 'release.yml'))).toBe(true);
     expect(fs.existsSync(path.join(packDir, 'src', '__generated__', 'pack-entry-fe.ts'))).toBe(true);
@@ -63,9 +63,9 @@ describe('pack CLI: init', () => {
     expect(manifest.id).toBe('test-pack');
     expect(manifest.name).toBe('Test Pack');
     expect(manifest.version).toBe('0.1.0');
-    expect(manifest.boot?.seed).toBeDefined();
-    expect(manifest.boot.seed.actions).toBe('src/seeds/actions');
-    expect(manifest.boot.seed.flows).toBe('src/seeds/flows');
+    expect(manifest.content?.sources).toBeDefined();
+    expect(manifest.content.sources.actions).toBe('src/content/actions');
+    expect(manifest.content.sources.flows).toBe('src/content/flows');
   });
 
   it('rejects invalid pack names', async () => {

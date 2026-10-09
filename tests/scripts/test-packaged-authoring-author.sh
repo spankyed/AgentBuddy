@@ -110,7 +110,7 @@ node -e '
   m.dependencies = { "default-setup": "*" };
   fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
 '
-cat > src/seeds/flows/notes-heartbeat.ts <<'EOF'
+cat > src/content/flows/notes-heartbeat.ts <<'EOF'
 import { entry, keepAlive } from '#generated/flow-helpers.ts';
 
 export default {
@@ -121,35 +121,35 @@ export default {
 EOF
 
 step "2. Seeds from abuddy.json: a format with a .ts compiler module, and default-setup's notes and library formats"
-mkdir -p src/seeds/glossary src/seeds/notes
-printf -- '---\nterm: Pack\n---\nA bundle of features.\n' > src/seeds/glossary/pack.md
-mkdir -p src/seeds/compilers
-cat > src/seeds/compilers/glossary.ts <<'TS'
-import { compileMarkdownTree, type SeedCompileContext, type SeedRecord } from '@abuddy/sdk/build';
+mkdir -p src/content/glossary src/content/notes
+printf -- '---\nterm: Pack\n---\nA bundle of features.\n' > src/content/glossary/pack.md
+mkdir -p src/content/compilers
+cat > src/content/compilers/glossary.ts <<'TS'
+import { compileMarkdownTree, type ContentCompileContext, type ContentItem } from '@abuddy/sdk/build';
 
-export default function compileGlossary({ path }: SeedCompileContext): SeedRecord[] {
+export default function compileGlossary({ path }: ContentCompileContext): ContentItem[] {
   return compileMarkdownTree(path).map((item) => ({ entity: 'DemoPack', term: String(item.frontmatter.term), definition: item.body.trim() }));
 }
 TS
-printf -- '---\ntitle: Demo notes\n---\nSeeded by demo-pack.\n' > src/seeds/notes/demo.md
-mkdir -p src/seeds/library/guides
-printf -- '---\nname: Demo guides\n---\n' > src/seeds/library/guides/_meta.md
-printf -- '---\nname: Getting started\ntags: [demo]\n---\n<!-- section:text -->\nInstall demo-pack.\n' > src/seeds/library/guides/start.md
+printf -- '---\ntitle: Demo notes\n---\nSeeded by demo-pack.\n' > src/content/notes/demo.md
+mkdir -p src/content/library/guides
+printf -- '---\nname: Demo guides\n---\n' > src/content/library/guides/_meta.md
+printf -- '---\nname: Getting started\ntags: [demo]\n---\n<!-- section:text -->\nInstall demo-pack.\n' > src/content/library/guides/start.md
 # demo-notes and demo-library use default-setup's formats, compiled from this pack's markdown through the built
 # dependency; the library format's compiler module comes from default-setup's dist/build/seed-compilers.mjs
 node -e '
   const fs = require("fs");
   const m = JSON.parse(fs.readFileSync("abuddy.json", "utf8"));
-  m.seedFormats = { ...m.seedFormats, glossary: { compiler: "src/seeds/compilers/glossary.ts", entity: "DemoPack", identity: ["term"] } };
-  m.boot.seed.glossary = { path: "src/seeds/glossary", format: "glossary" };
-  m.boot.seed["demo-notes"] = { path: "src/seeds/notes", format: "default-setup:notes" };
-  m.boot.seed["demo-library"] = { path: "src/seeds/library", format: "default-setup:library" };
+  m.content.formats = { ...m.content.formats, glossary: { compiler: "src/content/compilers/glossary.ts", entity: "DemoPack", identity: ["term"] } };
+  m.content.sources.glossary = { path: "src/content/glossary", format: "glossary" };
+  m.content.sources["demo-notes"] = { path: "src/content/notes", format: "default-setup:notes" };
+  m.content.sources["demo-library"] = { path: "src/content/library", format: "default-setup:library" };
   fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
 '
 
 step "2. An llm flow on default-setup's brain, and a service calling services.inference"
 "$ABUDDY" add prompt summarize-note >/dev/null
-cat > src/seeds/prompts/summarize-note.ts <<'TS'
+cat > src/content/prompts/summarize-note.ts <<'TS'
 import type { PromptMeta } from '@abuddy/sdk/build';
 
 export const meta: PromptMeta = {
@@ -163,7 +163,7 @@ export function template(params: Record<string, any>) {
   return `Summarize this note: ${params.text}`;
 }
 TS
-cat > src/seeds/flows/notes-summary.ts <<'TS'
+cat > src/content/flows/notes-summary.ts <<'TS'
 import { entry, keepAlive, on, llm } from '#generated/flow-helpers.ts';
 
 export default {
@@ -197,7 +197,7 @@ TS
 node -e '
   const fs = require("fs");
   const m = JSON.parse(fs.readFileSync("abuddy.json", "utf8"));
-  m.boot.seed = { prompts: "src/seeds/prompts", ...m.boot.seed };
+  m.content.sources = { prompts: "src/content/prompts", ...m.content.sources };
   fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
 '
 # The digest service imports the AI SDK's pure pieces (Output); mockInference runs the AI SDK in tests
@@ -212,7 +212,7 @@ node -e '
   if (term?.entity !== "DemoPack" || term.term !== "Pack" || term.definition !== "A bundle of features.") throw new Error("glossary: " + JSON.stringify(term));
   const [note] = read("demo-notes");
   // A record carries only what its source sets: defaults are applied when the row is created, so they are not tracked as seeded
-  if (note?.entity !== "Note" || note.title !== "Demo notes" || "noteType" in note || "favorite" in note || !note.sourceHash) throw new Error("demo-notes: " + JSON.stringify(note));
+  if (note?.entity !== "Note" || note.title !== "Demo notes" || "noteType" in note || "favorite" in note || !note.contentHash) throw new Error("demo-notes: " + JSON.stringify(note));
   // Sections and the _meta.md name come from the library compiler module of default-setup, not the generic walker
   const [guides] = read("demo-library");
   const [doc] = guides?.children ?? [];
@@ -224,23 +224,23 @@ step "4. Unit tests through the harness, with default-setup's runtime"
 # A spec's path mirrors the source it covers, which is the layout `abuddy init` scaffolds and the one a
 # pack author reads about (docs/public-facing/testing.md). These three cover the seeds, a feature's service
 # and a seeded flow, so they go where those live.
-mkdir -p tests/seeds/flows tests/features/notes/be/services
-cat > tests/seeds/demo-notes.spec.ts <<'TS'
+mkdir -p tests/content/flows tests/features/notes/be/services
+cat > tests/content/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
-import { importSeeds } from '@abuddy/testing/harness';
+import { importContent } from '@abuddy/testing/harness';
 import { findAll } from '#generated/ears.ts';
 import { findRelations } from '@abuddy/ears';
 
 describe('demo notes', () => {
   it("seeds notes with default-setup's format and hooks", async () => {
-    expect(await importSeeds({ keys: ['demo-notes'] })).toEqual({ 'demo-notes': { created: 1, updated: 0, skipped: 0 } });
+    expect(await importContent({ keys: ['demo-notes'] })).toEqual({ 'demo-notes': { created: 1, updated: 0, skipped: 0 } });
     const [note] = findAll('Note');
     expect(note).toMatchObject({ title: 'Demo notes', noteType: 'document', lastSeen: 0 });
     expect(note.shortCode).toMatch(/^NOTE-\d+$/);
   });
 
   it("seeds a library with default-setup's bundled compiler module and hooks", async () => {
-    expect(await importSeeds({ keys: ['demo-library'] })).toEqual({ 'demo-library': { created: 2, updated: 0, skipped: 0 } });
+    expect(await importContent({ keys: ['demo-library'] })).toEqual({ 'demo-library': { created: 2, updated: 0, skipped: 0 } });
     const [guides] = findAll('Collection');
     const [doc] = findAll('Document');
     expect(guides).toMatchObject({ name: 'Demo guides' });
@@ -262,14 +262,14 @@ describe('digest service', () => {
   });
 });
 TS
-cat > tests/seeds/flows/notes-summary.spec.ts <<'TS'
+cat > tests/content/flows/notes-summary.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
-import { importFlows, mockInference, importSeeds, startApp } from '@abuddy/testing/harness';
+import { importFlows, mockInference, importContent, startApp } from '@abuddy/testing/harness';
 import { entry, keepAlive, subflow } from '#generated/flow-helpers.ts';
 
 describe('notes summary flow', () => {
   it("runs on default-setup's brain and llm step with inference mocked", async () => {
-    await importSeeds({ keys: ['prompts', 'flows'] });
+    await importContent({ keys: ['prompts', 'flows'] });
     const inference = mockInference('Buy milk');
     // A root flow hosting the pack's flow, as the app's root flow hosts long-running flows
     importFlows({ 'Root Flow': { root: true, tracks: [entry([subflow('Notes Summary')], [keepAlive()])] } });

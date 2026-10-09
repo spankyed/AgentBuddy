@@ -23,11 +23,11 @@ vi.mock('../../src/migrations/index.ts', () => ({
   runAppMigrations: () => { order.push('migrations'); return appMigrations.succeed; },
   runPackMigrations: (packs: Array<{ manifest: { id: string } }>) => { order.push(`pack migrations (${packs.map((p) => p.manifest.id)})`); },
 }));
-vi.mock('../../src/packs/runtime/seed.ts', async (importOriginal) => ({
-  ...await importOriginal<typeof import('../../src/packs/runtime/seed.ts')>(),
+vi.mock('../../src/packs/runtime/apply.ts', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../src/packs/runtime/apply.ts')>(),
   // Sorted: which packs are in the one call is this file's claim, where their order among themselves is
-  // `packSeedOrder`'s and is held by the registry's own spec
-  seedPacks: (packs: Array<{ manifest: { id: string } }>) => { order.push(`pack seeds (${packs.map((p) => p.manifest.id).sort()})`); return []; },
+  // `packContentOrder`'s and is held by the registry's own spec
+  applyPacks: (packs: Array<{ manifest: { id: string } }>) => { order.push(`pack seeds (${packs.map((p) => p.manifest.id).sort()})`); return []; },
 }));
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'host-runtime-'));

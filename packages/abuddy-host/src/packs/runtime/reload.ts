@@ -8,7 +8,7 @@ import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import type { PackManifest } from '../discovery.ts';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
-import { seedPacks } from './seed.ts';
+import { applyPacks } from './apply.ts';
 
 const logger = createLogger('pack-reload');
 
@@ -144,7 +144,7 @@ export async function reloadPackById(
       onInit: pack.registration.boot?.onInit,
       afterRegister: () => {
         runPackMigrations(registry.packMigrationTargets([packId]));
-        seedPacks(registry.packSeedTargets([packId]));
+        applyPacks(registry.packSeedTargets([packId]));
       },
     };
   }, packDir);

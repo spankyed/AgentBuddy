@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { pathToFileURL } from 'url';
-import type { ValidationResult } from '../seed-compiler.ts';
+import type { ValidationResult } from '../content-compiler.ts';
 import { isFlowConfig, type FlowConfig, type FlowDSL } from './flow-types.ts';
 import { validate } from './flow-dsl-validator.ts';
 
@@ -64,11 +64,11 @@ export function hashFlows(merged: FlowDSL): Record<string, object> {
   const hashed: Record<string, object> = {};
   for (const [name, entry] of Object.entries(merged)) {
     const config = isFlowConfig(entry) ? entry : { tracks: entry };
-    const sourceHash = crypto.createHash('sha256')
+    const contentHash = crypto.createHash('sha256')
       .update(JSON.stringify({ tracks: config.tracks, root: (config as FlowConfig).root }))
       .digest('hex')
       .slice(0, 16);
-    hashed[name] = { ...config, sourceHash };
+    hashed[name] = { ...config, contentHash };
   }
   return hashed;
 }

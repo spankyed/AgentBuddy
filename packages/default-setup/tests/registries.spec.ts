@@ -24,17 +24,17 @@ describe('registries/services — feature services assembly', () => {
   });
 });
 
-describe('core/seed — seeders', () => {
-  it("default-setup's registration carries all built-in seeders, which importCompiledSeeds runs for its compiled seeds", async () => {
-    const { importCompiledSeeds } = await import('@abuddy/sdk/utils');
+describe('core/seed — appliers', () => {
+  it("default-setup's registration carries all built-in appliers, which importCompiledContent runs for its compiled seeds", async () => {
+    const { importCompiledContent } = await import('@abuddy/sdk/utils');
     const fs = await import('fs');
     const os = await import('os');
     const path = await import('path');
 
-    // A compiled seeds directory of default-setup's with no seed files: every seeder runs and finds nothing
+    // A compiled seeds directory of default-setup's with no seed files: every applier runs and finds nothing
     const compiledDir = fs.mkdtempSync(path.join(os.tmpdir(), 'default-setup-seeds-'));
     fs.writeFileSync(path.join(compiledDir, 'seeds.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
-    const result = importCompiledSeeds({ compiledDir });
+    const result = importCompiledContent({ compiledDir });
     fs.rmSync(compiledDir, { recursive: true, force: true });
 
     const keys = Object.keys(result);
@@ -43,14 +43,14 @@ describe('core/seed — seeders', () => {
     expect(keys).toContain('flows');
     expect(keys).toContain('library');
     expect(keys).toContain('notes');
-    // No `settings` seeder: the app's default settings are this pack's own source, imported by
+    // No `settings` applier: the app's default settings are this pack's own source, imported by
     // `src/app-settings/`, and nothing about settings is written to the database by seeding
     expect(keys).not.toContain('settings');
   });
 
   it('exports preview function', async () => {
-    const { previewPackSeeds } = await import('@abuddy/sdk/seed');
+    const { previewPackContent } = await import('@abuddy/sdk/content');
 
-    expect(typeof previewPackSeeds).toBe('function');
+    expect(typeof previewPackContent).toBe('function');
   });
 });

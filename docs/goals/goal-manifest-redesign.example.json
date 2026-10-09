@@ -448,7 +448,7 @@
         }
       },
       "library": {
-        "compiler": "src/seeds/_compilers/library.ts",
+        "compiler": "src/content/_compilers/library.ts",
         "entity": [
           "Collection",
           "Document"
@@ -459,37 +459,37 @@
         "media": "media"
       },
       "faqs": {
-        "compiler": "src/seeds/_compilers/faqs.ts"
+        "compiler": "src/content/_compilers/faqs.ts"
       },
       "settings": {
-        "compiler": "src/seeds/_compilers/settings.ts"
+        "compiler": "src/content/_compilers/settings.ts"
       }
     },
     "hooks": {
-      "Collection": "src/seeds/hooks/library.ts#collectionSeedHooks",
-      "Document": "src/seeds/hooks/library.ts#documentSeedHooks",
-      "Note": "src/seeds/hooks/notes.ts#noteSeedHooks"
+      "Collection": "src/content/writers/library.ts#collectionWriter",
+      "Document": "src/content/writers/library.ts#documentWriter",
+      "Note": "src/content/writers/notes.ts#noteWriter"
     },
     "sources": {
-      "actions": "src/seeds/actions",
-      "prompts": "src/seeds/prompts",
-      "flows": "src/seeds/flows",
+      "actions": "src/content/actions",
+      "prompts": "src/content/prompts",
+      "flows": "src/content/flows",
       "library": {
-        "path": "src/seeds/library",
+        "path": "src/content/library",
         "format": "library"
       },
       "notes": {
-        "path": "src/seeds/notes",
+        "path": "src/content/notes",
         "format": "notes"
       },
       "faqs": {
-        "path": "src/seeds/faqs",
+        "path": "src/content/faqs",
         "format": "faqs"
       },
       "settings": {
-        "path": "src/seeds/default-settings.ts",
+        "path": "src/content/default-settings.ts",
         "format": "settings",
-        "seeder": "src/seeds/settings/seeder.ts"
+        "applier": "src/content/settings/applier.ts"
       }
     },
     "policy": {

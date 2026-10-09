@@ -203,11 +203,11 @@ describe('what --full adds', () => {
     expect(matched.every((f) => path.basename(String(f)).includes('pack'))).toBe(true);
   });
 
-  // `seeder` is the discriminator: one file's stem is exactly that, and flow-seeder.spec.ts merely contains it
+  // `envelope` is the discriminator: one file's stem is exactly that, and shell-envelope-parity.spec.ts merely contains it
   it('prefers the file whose stem is the name over the ones that merely contain it', () => {
-    const { runs } = planTargets(['seeder'], [], REPO_ROOT);
+    const { runs } = planTargets(['envelope'], [], REPO_ROOT);
     expect(runs).toHaveLength(1);
-    expect(runs[0]!.args).toEqual(['test', '--', 'tests/seed/seeder.spec.ts']);
+    expect(runs[0]!.args).toEqual(['test', '--', 'tests/events/envelope.spec.ts']);
   });
 
   // The narrowest thing that could fail is the point, so a name wide enough to be a search is answered with the
@@ -316,7 +316,7 @@ describe('a change set a spec could not cover', () => {
    * may be a `.md`. Naming one as a target says what covers it, so a change set holding one must not answer
    * "nothing a spec could cover" — the two routes would contradict each other about the same file.
    */
-  it.each(['packages/default-setup/abuddy.json', 'packages/default-setup/src/seeds/notes/welcome.md'])(
+  it.each(['packages/default-setup/abuddy.json', 'packages/default-setup/src/content/notes/welcome.md'])(
     'runs the pack suite for %s, which no extension test would call coverable', (changed) => {
       expect(planChanged([changed], [], REPO_ROOT).runs.map((r) => r.label))
         .toEqual([ENSURE_LABEL, 'packages/default-setup: (changed)']);
@@ -563,11 +563,11 @@ describe("the package's CLAUDE.md names what is here", () => {
  * A pack's specs import what `abuddy build` produced, never the source that produced it, so the edge runs
  * `src` -> build -> artifact -> spec and `related` reports the same emptiness it reports for a file nothing
  * covers. Those are opposite facts and until these routes existed they got the same sentence: a seed source
- * was told *"No spec covers …"*, which `tests/seeds/` refutes.
+ * was told *"No spec covers …"*, which `tests/content/` refutes.
  */
 describe('a pack file whose specs sit behind a build', () => {
   const PACK = 'default-setup';
-  const SEED = `packages/${PACK}/src/seeds/actions/claude-code/answer-question.ts`;
+  const SEED = `packages/${PACK}/src/content/actions/claude-code/answer-question.ts`;
   const MANIFEST = `packages/${PACK}/abuddy.json`;
   /**
    * The pack's build inputs, derived from what `packBuildEdge` routes at the pack's own top level rather
@@ -600,7 +600,7 @@ describe('a pack file whose specs sit behind a build', () => {
   it('sends a seed source to the specs that read what building it produces', () => {
     const edge = packBuildEdge(SEED, REPO_ROOT);
     expect(edge?.suite.workspace).toBe('@app/default-setup');
-    expect(edge?.specs, 'the seed goldens, not the whole suite').toEqual(['tests/seeds']);
+    expect(edge?.specs, 'the seed goldens, not the whole suite').toEqual(['tests/content']);
   });
 
   /**
@@ -616,20 +616,20 @@ describe('a pack file whose specs sit behind a build', () => {
 
   it('leaves every other file in the pack alone', () => {
     expect(packBuildEdge(`packages/${PACK}/src/features/brain/be/system.ts`, REPO_ROOT)).toBeUndefined();
-    expect(packBuildEdge(`packages/${PACK}/tests/seeds/seed-parity.spec.ts`, REPO_ROOT)).toBeUndefined();
+    expect(packBuildEdge(`packages/${PACK}/tests/content/seed-parity.spec.ts`, REPO_ROOT)).toBeUndefined();
     expect(packBuildEdge('packages/abuddy-sdk/src/index.ts', REPO_ROOT), 'and every file outside a pack').toBeUndefined();
   });
 
   // The seed half is offered only where the pack has both halves, so a pack with sources and no goldens is
   // not routed at a directory that is not there
   it('offers the seed route only where the specs exist', () => {
-    expect(packBuildEdge(`packages/${PACK}/src/seeds/x.ts`, path.join(REPO_ROOT, 'packages')),
-      'a root where that pack has no tests/seeds').toBeUndefined();
+    expect(packBuildEdge(`packages/${PACK}/src/content/x.ts`, path.join(REPO_ROOT, 'packages')),
+      'a root where that pack has no tests/content').toBeUndefined();
   });
 
   /**
    * Beside the walk, not instead of it. A seed *helper* is imported by specs directly — measured, 3 for
-   * `_helpers/thread-context.ts` — and routing every `src/seeds/**` file at the build would throw that
+   * `_helpers/thread-context.ts` — and routing every `src/content/**` file at the build would throw that
    * answer away to recommend a build instead. So the walk is still planned and carries what it cannot see.
    */
   it.each([SEED, ...BUILD_INPUTS])('still walks the pack graph for %s, carrying what the walk cannot see', (target) => {
@@ -683,15 +683,15 @@ describe('a pack file whose specs sit behind a build', () => {
     expect(planned.runs.map((r) => r.args.join(' '))).toEqual([
       'run packages:ensure',
       'run build -w @app/default-setup',
-      'test -- tests/seeds',
+      'test -- tests/content',
     ]);
   });
 
   // One build and one run for two seed sources: the edge is the pack's, not the file's
   it('plans one build however many of a pack\'s files are named', () => {
-    const planned = planTargets([SEED, `packages/${PACK}/src/seeds/prompts/index.ts`], [], REPO_ROOT, { full: true });
+    const planned = planTargets([SEED, `packages/${PACK}/src/content/prompts/index.ts`], [], REPO_ROOT, { full: true });
     expect(planned.runs.filter((r) => r.args.includes('build'))).toHaveLength(1);
-    expect(planned.runs.filter((r) => r.args.includes('tests/seeds'))).toHaveLength(1);
+    expect(planned.runs.filter((r) => r.args.includes('tests/content'))).toHaveLength(1);
   });
 
   // The manifest route runs the suite in full, so `covers` must say so or `--full` plans it twice — once here
@@ -902,7 +902,7 @@ describe('a source file whose specs sit behind a second config', () => {
 describe('what the plan would list', () => {
   const SPEC = 'packages/repo-checks/tests/spec-plan.spec.ts';
   const PACK = 'default-setup';
-  const SEED = `packages/${PACK}/src/seeds/actions/claude-code/answer-question.ts`;
+  const SEED = `packages/${PACK}/src/content/actions/claude-code/answer-question.ts`;
 
   // Every `covers` is derived from UNIT_SUITES, so this cannot fire — and a skipped one is a whole suite
   // dropped from the answer in silence
@@ -913,7 +913,7 @@ describe('what the plan would list', () => {
   // `Run.specs` promises spec files. A producer that hands it a directory is making a claim about files
   // nobody enumerated, and the caller prints this as "the specs that would run"
   it('refuses a path that is not a spec file', () => {
-    expect(() => checkedSpecs([`packages/${PACK}/tests/seeds`])).toThrow(/not a spec file/);
+    expect(() => checkedSpecs([`packages/${PACK}/tests/content`])).toThrow(/not a spec file/);
   });
 
   /**
@@ -928,7 +928,7 @@ describe('what the plan would list', () => {
     const suiteRun = planTargets([SEED], [], REPO_ROOT, { full: true }).runs
       .find((run) => run.specs !== undefined)!;
 
-    expect(suiteRun.specs, 'the directory was expanded').not.toContain(`packages/${PACK}/tests/seeds`);
+    expect(suiteRun.specs, 'the directory was expanded').not.toContain(`packages/${PACK}/tests/content`);
     expect(suiteRun.specs!.length, 'every golden under it').toBeGreaterThan(10);
     expect(checkedSpecs([...suiteRun.specs!].sort()), 'and every one of them is a spec file')
       .toHaveLength(suiteRun.specs!.length);

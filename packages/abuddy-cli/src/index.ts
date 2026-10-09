@@ -8,7 +8,7 @@ abuddy - AgentBuddy Pack CLI
 
 Commands:
   init [name]         Scaffold a new pack
-  add <entity>        Add a feature, step, seed, etc.
+  add <entity>        Add a feature, step, action, etc.
   generate-entries    Generate __generated__/ files from manifest
   fetch-deps          Fetch dependency type manifests
   build [--skip-generate]  Compile the pack to dist/

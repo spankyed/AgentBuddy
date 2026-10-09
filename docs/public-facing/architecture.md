@@ -50,7 +50,7 @@ Packs import `@abuddy/sdk`, `@abuddy/ears` and `@abuddy/ui`, never `@abuddy/host
     index.cjs          # Backend: exports `registration` and `setCompiledDir`
     fe.js              # Frontend entry
     fe.css             # Extracted styles
-    seeds/             # Compiled seed data
+    content/             # Compiled content
   build/               # Build-time code dependents load (step build facets, seed runtime)
   types/
     snapshot.json      # Types, manifest, SDK version, flow helpers for dependents' codegen
@@ -66,7 +66,7 @@ The source directory must be built first: installing a directory with neither a 
 
 ### Backend boot
 
-`setupBackend()` in `packages/api/src/setup/backend.ts` runs, in order. The API holds only transport, process boot and this composition: the app runtime it calls lives in `@abuddy/host` (pack loading, lifecycle, reload and seeding in `@abuddy/host/packs/runtime`, the migrations runners in `@abuddy/host/migrations`, the bus in `@abuddy/host/bus`).
+`setupBackend()` in `packages/api/src/setup/backend.ts` runs, in order. The API holds only transport, process boot and this composition: the app runtime it calls lives in `@abuddy/host` (pack loading, lifecycle, reload and writing in `@abuddy/host/packs/runtime`, the migrations runners in `@abuddy/host/migrations`, the bus in `@abuddy/host/bus`).
 
 0. Opens the app's data and binds the app (`openAppStore()`): it creates the app's registered packs (`createPackRegistry()` from `@abuddy/host/packs`), which the SDK's lookups read once bound, and the rest of the steps register into it.
 1. Registers the host `packs` system.
@@ -78,7 +78,7 @@ The source directory must be built first: installing a directory with neither a 
 8. Hydrates the app's engine from LMDB. Every pack's entity types are registered by now, so the partition policy sees them all.
 9. Runs every pack's `onInit`.
 10. Runs app migrations (`runAppMigrations`: the host's own, then the built-in packs', against the app version), then external pack migrations (`runPackMigrations`, each against its own pack version).
-11. Seeds: each built-in pack's declarative `boot.seed`, then external packs' compiled seeds, skipped when a pack's seed hash hasn't changed.
+11. Content: each built-in pack's declarative `content.sources`, then external packs' compiled content, skipped when a pack's content revision hasn't changed.
 12. Starts the bus actor (`createAppBus(registry)` from `@abuddy/host/bus`), which spawns every registered system.
 
 ### Frontend boot
@@ -99,9 +99,9 @@ A connection's own `CLIENT_CONNECTED` skips the systems of external packs with f
 
 The `packs` system handles install, uninstall, enable/disable and update from the Packs view:
 
-- **Activate** (after install or update, or on enable): reads the pack's manifest, loads and registers it, registers `onShutdown`, runs `onInit`, then the pack's pending migrations and its seeds (skipped when its compiled seeds are unchanged), sends the bus `PACK_CHANGED` so running systems refresh what they read from packs, then `ACTIVATE_PACK` to spawn its systems. The renderer hears `PACK_ACTIVATED` and asks the application actor to load the frontends it hasn't, the new pack's included. The bus asks a pack's systems to publish right away only for a pack without frontend code; otherwise it waits for `packClientReady`. An install or update that activated but failed to seed reports the seed error.
+- **Activate** (after install or update, or on enable): reads the pack's manifest, loads and registers it, registers `onShutdown`, runs `onInit`, then the pack's pending migrations and its content (skipped when its compiled content are unchanged), sends the bus `PACK_CHANGED` so running systems refresh what they read from packs, then `ACTIVATE_PACK` to spawn its systems. The renderer hears `PACK_ACTIVATED` and asks the application actor to load the frontends it hasn't, the new pack's included. The bus asks a pack's systems to publish right away only for a pack without frontend code; otherwise it waits for `packClientReady`. An install or update that activated but failed to apply reports the content error.
 - **Teardown** (before uninstall or update, or on disable): runs the pack's shutdown hooks, unregisters it (registration keeps the event types `bus.send` accepts current), clears its modules from the require cache, and sends the bus `TEARDOWN_PACK` to stop its systems. The renderer hears `PACK_DEACTIVATED`, unregisters the pack's FE extensions, removes its stylesheets and unloads its plugins.
-- **Reload** (development, `POST /dev/reload` on the API from `abuddy run` or a built-in pack's watch build; a development or test app takes it only with the API token, handled by `reloadPackById` in `@abuddy/host/packs/runtime`, which asks the registry which directory the pack came from): loads and registers the rebuilt runtime before shutting the running one down. If the fresh runtime fails to load or register, the running pack is re-registered and stays as it was. Otherwise the old shutdown hooks run, the new `onShutdown` registers, `onInit` runs, external packs run their pending migrations and re-seed, and the bus `RELOAD_PACK` stops the old and new system ids and starts those still registered, then sends them `CLIENT_CONNECTED` and asks them to publish; `PACK_CHANGED` and its ask follow for every running system. Teardown (disable, uninstall) sends it too, after stopping the pack's systems.
+- **Reload** (development, `POST /dev/reload` on the API from `abuddy run` or a built-in pack's watch build; a development or test app takes it only with the API token, handled by `reloadPackById` in `@abuddy/host/packs/runtime`, which asks the registry which directory the pack came from): loads and registers the rebuilt runtime before shutting the running one down. If the fresh runtime fails to load or register, the running pack is re-registered and stays as it was. Otherwise the old shutdown hooks run, the new `onShutdown` registers, `onInit` runs, external packs run their pending migrations and re-apply, and the bus `RELOAD_PACK` stops the old and new system ids and starts those still registered, then sends them `CLIENT_CONNECTED` and asks them to publish; `PACK_CHANGED` and its ask follow for every running system. Teardown (disable, uninstall) sends it too, after stopping the pack's systems.
 
 An external pack's migrations run at boot, on activation and on reload, each against the pack's own version; the app's run at boot and after a reset or backup import.
 
@@ -123,15 +123,15 @@ export const registration: PackRegistration = {
   steps?: StepDefinition[];
   artifacts?: ArtifactDefinition[];
   blocks?: BlockDefinition[];
-  seedHooks?: Record<string, SeedHooks>;  // abuddy.json `seedHooks`, keyed by entity type
-  seeders?: Seeder[];              // one per seeded boot.seed key, which seeding the pack's compiled seeds runs
+  content.writers?: Record<string, ContentWriter>;  // abuddy.json `content.writers`, keyed by entity type
+  appliers?: ContentApplier[];              // one per content.sources key, which applying the pack's compiled content runs
   commands?: PackCommand[];        // abuddy.json `commands`
 };
 ```
 
 The app runs each feature at `<packId>/<featureId>` and derives everything else from `features`: the systems it starts (an `early` one before hydration, outside the bus), the events each system accepts (`receives`: its machine's, plus the manifest's `system.events.incoming`, put there by `packSystem` when `abuddy build` generates the entry), the plugins and the events each receives, and the roles.
 
-The runtime bundle also exports `setCompiledDir(dir)`, which the host calls with the directory of the pack's compiled seeds.
+The runtime bundle also exports `setCompiledDir(dir)`, which the host calls with the directory of the pack's compiled content.
 
 ### Frontend entry (`PackFERegistration`)
 
@@ -151,7 +151,7 @@ export default {
 } satisfies PackFERegistration;
 ```
 
-Both entry files are auto-generated by `generate-entries`. You don't write them by hand. Everything your pack contributes arrives in these two registrations, seeders and DSL types included: the SDK has no registry for pack code to write to, and its lookups (`getDesignated`, `stepRegistry`, `getPackCommands`, `getDslTypes`, `services`, …) read what the app registered.
+Both entry files are auto-generated by `generate-entries`. You don't write them by hand. Everything your pack contributes arrives in these two registrations, appliers and DSL types included: the SDK has no registry for pack code to write to, and its lookups (`getDesignated`, `stepRegistry`, `getPackCommands`, `getDslTypes`, `services`, …) read what the app registered.
 
 ### Collision detection
 
@@ -163,12 +163,12 @@ Both entry files are auto-generated by `generate-entries`. You don't write them 
 | Entity types, relation kinds | Other packs' (names the SDK owns are dropped from a pack's own first) |
 | Service keys | Other packs' keys and the host's own services (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`) |
 | Designations | Other packs' roles |
-| Seed hooks | Another pack's hooks for the same entity type |
-| Seeders | Two seeders for one seed key in the pack |
+| Content writers | Another pack's hooks for the same entity type |
+| ContentAppliers | Two appliers for one content key in the pack |
 | Commands | Other packs' command names |
 | Feature settings | A feature setting anything but its own plugin's settings |
 
-Steps, artifacts, blocks, seed hooks, seeders, commands and feature settings register one at a time; if one fails, those already registered in the call are unregistered. A step type another registration defines is merged facet by facet (build, runtime, frontend); a later artifact or block of a registered type replaces it.
+Steps, artifacts, blocks, content writers, appliers, commands and feature settings register one at a time; if one fails, those already registered in the call are unregistered. A step type another registration defines is merged facet by facet (build, runtime, frontend); a later artifact or block of a registered type replaces it.
 
 ## The `pack://` protocol
 
@@ -246,7 +246,7 @@ The pack test harness uses the same bridge with the pack's own SDK instance.
 
 ## Host services
 
-The SDK reaches the running app through one typed port, `HostRuntime` (`@abuddy/sdk/runtime`), bound once per process with `bindHost`: the app's event bus (`transport.rootEvents`), its EARS engine, the registered packs, the app version, and the five services packs call that the app implements: `appData` (reset, backup export/import, onboarding), `traceStore` (the volatile trace store), `inference` (model calls), `secrets` (API key metadata) and `filesystem` (files and folders on disk). Their contracts live in `@abuddy/sdk/services`; the implementations live in `@abuddy/host/services`, whose `createHostRuntime(...)` assembles the runtime. `openAppStore()` in `packages/api/src/setup/backend.ts`, which `setupBackend()` calls first, opens the LMDB store and binds that runtime over it. `appData.reset()` resets the whole app as a fresh boot leaves it: it empties the stores and keys, then runs each pack's `onInit` and boot seed, then the app migrations.
+The SDK reaches the running app through one typed port, `HostRuntime` (`@abuddy/sdk/runtime`), bound once per process with `bindHost`: the app's event bus (`transport.rootEvents`), its EARS engine, the registered packs, the app version, and the five services packs call that the app implements: `appData` (reset, backup export/import, onboarding), `traceStore` (the volatile trace store), `inference` (model calls), `secrets` (API key metadata) and `filesystem` (files and folders on disk). Their contracts live in `@abuddy/sdk/services`; the implementations live in `@abuddy/host/services`, whose `createHostRuntime(...)` assembles the runtime. `openAppStore()` in `packages/api/src/setup/backend.ts`, which `setupBackend()` calls first, opens the LMDB store and binds that runtime over it. `appData.reset()` resets the whole app as a fresh boot leaves it: it empties the stores and keys, then runs each pack's `onInit` and boot apply, then the app migrations.
 
 Sends, logging and error reports are SDK code over the bound bus: `sendToSystem` emits an incoming event, `broadcastToPlugin` (and `services.emitter.broadcastToPlugin`) goes through the bus actor, which drops it until a client connects, like a system's `emit`, and `createLogger` emits log events, which the API prints once and streams to the logs plugin (with nothing bound, as in the CLI, a logger writes to the console). In the renderer, `bindFeHost` binds the application actor, the secrets client behind `secretsClient` (the Settings → Secrets procedures) and a transport that sends to systems over the API client. Using the port with nothing bound throws, naming `bindHost` or `bindFeHost`.
 
@@ -278,7 +278,7 @@ The policy is `appPartitionPolicy()` (`@abuddy/host/database`), a constant over 
 
 - **Export** (`exportBackup(targetPath, name?, databases?)`): copies the chosen databases (`lmdb`, `volatileLmdb`; default `lmdb`) into `<targetPath>/<name>` (default `agentbuddy-backup-<timestamp>`), with a `metadata.json` and, when `lmdb` is included, `media/`.
 - **Import** (`importBackup(path)`): requires `metadata.json`; restores only databases the app has. It copies the current files aside, closes persistence, replaces the files and media, reopens LMDB and reloads memory. On failure the previous files are put back and reloaded.
-- **Reset** (`reset()`): clears the engine's memory, deletes both LMDB databases and reopens them, clears the stored API keys, then runs each pack's `onInit` and boot seed and the app migrations, leaving the app as a fresh boot does.
+- **Reset** (`reset()`): clears the engine's memory, deletes both LMDB databases and reopens them, clears the stored API keys, then runs each pack's `onInit` and boot apply and the app migrations, leaving the app as a fresh boot does.
 
 ## Generated files
 
@@ -286,7 +286,7 @@ The policy is `appPartitionPolicy()` (`@abuddy/host/database`), a constant over 
 
 | File | Contents |
 |---|---|
-| `pack-entry.ts` | BE registration: systems, services, repositories, steps, artifacts, blocks, EARS, boot hooks, migrations, seed hooks, seeders, commands, features |
+| `pack-entry.ts` | BE registration: systems, services, repositories, steps, artifacts, blocks, EARS, boot hooks, migrations, content writers, appliers, commands, features |
 | `pack-entry-fe.ts` | FE registration: plugins keyed by feature (the host registers each at its address), the default plugin and designations by feature, step/artifact/block FE, tiptap, app extensions, DSL types |
 | `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types), `PackShapes`, and the typed `qx`/`find*`/`createEntity` facade |
 | `ref.ts` | `ref(name)`: the ref (`<packId>/<featureId>`) a name in this pack's code stands for, its own features by id and any other by ref, bound to the pack so its code never passes its own pack id |
@@ -301,8 +301,8 @@ The policy is `appPartitionPolicy()` (`@abuddy/host/database`), a constant over 
 | `deps/<id>.d.ts` | Each dependency's facade types, from its snapshot. Its header names the version (`// <id>@<version> facade types`); `abuddy build` warns when the dependency it builds with is another version |
 | `deps/<id>.flow-helpers.js`, `.d.ts` | Each dependency's flow helpers module and declarations, from its snapshot |
 | `references.ts` | Reference type aggregation: which things are linkable from an editor |
-| `seeders.ts` | `seeders`, one per seeded key, which `pack-entry.ts` puts in the registration, and the compiled data path accessors (`setCompiledDir`, `getCompiledDir`) |
-| `seed-runtime.ts` | The pack's seed runtime (entity types, relation kinds, repositories, seed hooks). The pack's tests import it; `abuddy build` bundles it into `dist/build/seed-runtime.mjs` for dependents' tests |
+| `appliers.ts` | `appliers`, one per content key, which `pack-entry.ts` puts in the registration, and the compiled data path accessors (`setCompiledDir`, `getCompiledDir`) |
+| `seed-runtime.ts` | The pack's seed runtime (entity types, relation kinds, repositories, content writers). The pack's tests import it; `abuddy build` bundles it into `dist/build/seed-runtime.mjs` for dependents' tests |
 | `flow-helpers.ts` | Typed DSL helpers for each step definition, with dependencies' |
 | `step-types.ts` | Re-exports DSL/compiled node types from step definitions |
 | `dsl-types-fe.ts` | `dslTypes` for the Monaco editor, from the definitions `abuddy build` writes to `dist/defs/monaco/`, which `pack-entry-fe.ts` puts in the frontend registration |
@@ -326,17 +326,17 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 | Capability | Available? | Reason |
 |---|---|---|
 | Systems, plugins | Yes | Core feature mechanism |
-| Seeds (actions, prompts, flows) | Yes | Hash-checked per pack |
+| Content (actions, prompts, flows) | Yes | Hash-checked per pack |
 | Steps, artifacts, blocks | Yes | Extension points |
 | Services | Yes | Stateless modules |
 | EARS entities/relations | Yes | With collision detection |
 | Migrations | Yes | Targeted at the pack's own version, run at boot |
-| `boot.seed.settings` | No | Feature defaults go in `features[].settings` |
+| `content.sources.settings` | No | Feature defaults go in `features[].settings` |
 | `builtIn` | No | Reserved for the default pack |
 
 ## Build-time dependency resolution
 
-`abuddy generate-entries`, `abuddy validate`, `abuddy build` and `abuddy fetch-deps` resolve each dependency in `abuddy.json` to its artifacts: `types/snapshot.json`, plus `build/` and `runtime/index.cjs` with its compiled seeds when it ships them (dependents' tests load the runtime). Sources, in order:
+`abuddy generate-entries`, `abuddy validate`, `abuddy build` and `abuddy fetch-deps` resolve each dependency in `abuddy.json` to its artifacts: `types/snapshot.json`, plus `build/` and `runtime/index.cjs` with its compiled content when it ships them (dependents' tests load the runtime). Sources, in order:
 
 1. **`file:` path** — the given directory (relative to the pack root or absolute), in any layout. Not cached. A missing snapshot is an error.
 2. **Workspace** — `../<id>`, `../../packages/<id>`, `../../<id>`.

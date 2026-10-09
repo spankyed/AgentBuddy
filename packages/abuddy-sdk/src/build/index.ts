@@ -2,18 +2,18 @@
 export type { PackConfig, PackBuildDefinitions, CompilePackOptions, CompilePackResult } from './types.ts';
 
 // Seed compiler framework
-export { _clearCompiledSeeds, compilePack, SEED_INDEX_FILE } from './seed-compiler.ts';
-export { compileMarkdownTree, parseMarkdownFile, toDisplayName, type MarkdownItem, type MarkdownTreeOptions } from './seeds/markdown-tree.ts';
+export { _clearCompiledContent, compilePack, SEED_INDEX_FILE } from './content-compiler.ts';
+export { compileMarkdownTree, parseMarkdownFile, toDisplayName, type MarkdownItem, type MarkdownTreeOptions } from './content/markdown-tree.ts';
 export {
-  compileBuiltinFormat, checkRecordEntities, recordLabel, formatEntities, withSourceHashes, defaultSourceHash, RECORD_KEYS,
-  type SeedRecord, type CompiledSeedFile, type SeedFieldSource, type SeedFieldSpec, type SeedTreeSpec,
-  type SeedCompileContext, type SeedCompilerModule,
-} from './seeds/records.ts';
-export { resolveSeeds, type ResolvedSeed, type SeedDependency, type SeedCompilerModuleRef } from './seeds/resolve.ts';
-export type { SpecialtyCompiler, SpecialtyCompileContext, CompilationContext, ValidationError, ValidationResult, SeedIndex, SeedIndexEntry } from './seed-compiler.ts';
+  compileBuiltinFormat, checkRecordEntities, itemLabel, formatEntities, withContentHashes, defaultSourceHash, RECORD_KEYS,
+  type ContentItem, type CompiledContentFile, type ContentFieldSource, type ContentFieldSpec, type ContentTreeSpec,
+  type ContentCompileContext, type ContentCompilerModule,
+} from './content/items.ts';
+export { resolveContentSources, type ResolvedContentSource, type ContentDependency, type ContentCompilerModuleRef } from './content/resolve.ts';
+export type { SpecialtyCompiler, SpecialtyCompileContext, CompilationContext, ValidationError, ValidationResult, SeedIndex, SeedIndexEntry } from './content-compiler.ts';
 
 // Compile utilities
-export { compileSourceDir, bundleFile, sourceHash } from './compile-utils.ts';
+export { compileSourceDir, bundleFile, contentHash } from './compile-utils.ts';
 export type { CompileConfig, CompiledEntry, CompileResult } from './compile-utils.ts';
 
 // Compilers: standard instances, build utilities, types
@@ -27,11 +27,11 @@ export {
 } from './compilers/index.ts';
 export type {
   FlowDSL, FlowConfig, Track, DSLNodeBase, DSLStepNode,
-  CompilerContext, CompiledRows, ExportFlowsOptions, CompiledSeedEntry,
+  CompilerContext, CompiledRows, ExportFlowsOptions, CompiledContentEntry,
 } from './compilers/index.ts';
 
 // Pack preview types
-export type { PackSeedsPreview, PackSeedPreviewItem } from './preview.ts';
+export type { PackContentPreview, PackContentPreviewItem } from './preview.ts';
 
 // Manifest bridge
 export { buildPackConfigFromManifest } from './manifest-bridge.ts';
@@ -41,7 +41,7 @@ export type {
   PackManifest, PackTypeManifest, PackSnapshot, PackFlowHelpers, PackPermission,
   PackProvenance, ProvenanceKind, ProvenanceManifest, ProvenanceSource,
   PackSystemEntry, PackPluginEntry,
-  PackFeatureEntry, PackBootConfig, SeedEntryConfig, SeedFormatConfig,
+  PackFeatureEntry, PackBootConfig, ContentSourceConfig, ContentFormatConfig,
   StepEntry, StepDSLMeta,
 } from './manifest.ts';
 export { seedFile, seedPath, SEED_COMPILERS_FILE, PROVENANCE_KINDS, PACK_SNAPSHOT_FORMAT, _snapshotFormatMismatch, _cliFormatMismatchMessage, type SnapshotFormatMismatch, _mergeProvenance, _buildProvenance, _provenanceRecord } from './manifest.ts';
@@ -68,7 +68,7 @@ export type { ManifestValidation } from './validate.ts';
 // Manifest schema (Zod — single source of truth for types, validation, and JSON schema generation)
 export {
   ManifestSchema, FeatureEntrySchema, FEATURE_ID_PATTERN,
-  BootConfigSchema, SeedEntryConfigSchema, SeedFormatSchema, StepEntrySchema, StepDSLMetaSchema,
+  BootConfigSchema, ContentSourceSchema, ContentFormatSchema, StepEntrySchema, StepDSLMetaSchema,
   DslEntrySchema, PackPermissionSchema,
 } from './manifest-schema.ts';
 

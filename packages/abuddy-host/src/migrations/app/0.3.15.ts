@@ -24,12 +24,6 @@ interface LegacyInternal {
   hasOnboarded?: boolean;
   version?: string;
   packVersions?: Record<string, string>;
-  packSeedHashes?: Record<string, string>;
-  /** The one built-in pack boot seed's hash, before it was recorded per pack */
-  seedHash?: string;
-  seedStatFingerprint?: string;
-  seedHashes?: Record<string, string>;
-  seedStatFingerprints?: Record<string, string>;
 }
 
 /** The settings row's data as stored, read untyped: it's in the shape from before 0.3.15 */
@@ -40,15 +34,6 @@ function storedSettings(): { internal?: LegacyInternal; plugins?: Record<string,
 function legacyInternal(): LegacyInternal | undefined {
   return storedSettings()?.internal;
 }
-
-/**
- * Every built-in pack: the single pre-0.3.15 seed hash stood for all of them, so the hash is filed under each.
- *
- * **Narrowing this to the packs that declare a `boot.seed` would change which data this migration touches**,
- * which is the one thing a migration may not do quietly. It reads like the obvious improvement, and is not.
- */
-const bootSeedPacks = (registry: Pick<PackRegistry, 'shippedPacks'>): string[] =>
-  registry.shippedPacks().map(({ id }) => id);
 
 /** A per-pack record with the stored one's entries it lacks */
 const withMissing = (current: Record<string, string>, legacy: Record<string, string> | undefined) => ({ ...legacy, ...current });
@@ -67,10 +52,11 @@ const installedOnDisk: InstalledManifests = () => discoverPacks(resolveAppContex
  */
 export const migration = (registry: MigrationRegistry, installed: InstalledManifests = installedOnDisk): PackMigration => ({
   target: '0.3.15',
-  description: "Move the app's state (onboarding, versions, seed hashes) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, and every pack's plugin settings onto their plugins' refs",
+  description: "Move the app's state (onboarding and versions) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, every pack's plugin settings onto their plugins' refs and every written entity's content key and hash onto their names; drop the seed records each pack's applied content replaced",
   up: () => {
     renameSeedRecords();
-    moveAppState(registry);
+    renameContentAttributes();
+    moveAppState();
     const owners = ownersIn(registry, installed());
     moveShellState(owners);
     // Every pack's plugin settings too, the built-in packs' included, before any pack's migration reads them
@@ -79,36 +65,89 @@ export const migration = (registry: MigrationRegistry, installed: InstalledManif
 });
 
 /**
- * Every name a per-pack seed record has been stored under, onto the one pair that carries them now.
- * `appState` reads only the names it knows, so a record under any other name is invisible to it and the app
- * would re-import that pack's seeds once.
+ * Every name a per-pack seed record has been stored under, onto the one that carries one now.
+ * `appState` reads only the names it knows, so a record under any other name is invisible to it.
  *
- * **Three names reach `packSeedHashes`**, because the app kept a record per kind of pack and now keeps one.
- * `seedHashes` was the shipped pack's boot seed; `builtInSeedHashes` and `externalSeedHashes` are what an
- * earlier run of *this* migration wrote, and 0.3.15 has not shipped — so a data dir holding them is a
- * developer's, and dropping them would re-import every pack's seeds on the next boot. Each merges with
- * `withMissing`, so a record already on the field keeps its values.
+ * **One name is left to carry**, because the record of what a pack's content last applied is no longer in
+ * `AppState` at all: it is the pack's `AppliedContent.revision`, beside the per-item account that makes an
+ * apply a three-way merge (`../../app-state/applied-content.ts`). There is nothing to move a bare hash onto
+ * — an entry with a revision and no items would read as a pack that wrote nothing — so the three old hash
+ * records are dropped and the first boot after this applies each pack's content once, which is what writes
+ * the record. That costs an adoption: an item the user edited before anything recorded *which part* they
+ * edited is taken as ours and overwritten. That is the merge's rule for an item it has no parts for
+ * (`@abuddy/sdk/content`'s `resolve`), and the alternative is freezing every such item for good.
  *
- * **`packSeedHashes` and `packSeedDeps` are deliberately not in here.** They are the names the row carries
- * *now*, so `appState` already reads them: an entry for either would read the attribute, write it back
- * unchanged and then `drop` it, which deletes the record this migration exists to preserve.
+ * **`failedAgainst` is deliberately not in here.** It is the name the row carries *now*, so `appState`
+ * already reads it: an entry would read the attribute, write it back unchanged and then `drop` it, which
+ * deletes the record this migration exists to preserve.
  */
 const RENAMED_SEED_RECORDS = {
-  seedHashes: 'packSeedHashes',
-  externalSeedHashes: 'packSeedHashes',
-  externalSeedDeps: 'packSeedDeps',
-  builtInSeedHashes: 'packSeedHashes',
+  externalSeedDeps: 'failedAgainst',
+  packSeedDeps: 'failedAgainst',
 } as const satisfies Record<string, keyof AppState>;
 
 /**
- * Records the row stops carrying, under either name they have had.
+ * Records the row stops carrying, under every name they have had.
  *
- * `seedStatFingerprints` held each built-in pack's seed files' mtimes and sizes, as a fast path in front of the
- * content hash — which measures 0.39ms over default-setup's 490KB against 0.07ms to stat the same files, so it
- * saved a third of a millisecond of a boot and cost a second record that could disagree with the first. An
- * earlier run of this migration moved it to `builtInSeedFingerprints`, so both names are dropped.
+ * `packSeedHashes`, `seedHashes`, `builtInSeedHashes` and `externalSeedHashes` were what each kind of pack
+ * last seeded, under the four names that record has had; what says it now is each pack's
+ * `AppliedContent.revision`, which only an apply can write.
+ *
+ * `seedStatFingerprints` held each built-in pack's seed files' mtimes and sizes, as a fast path in front of
+ * the content hash — which measures 0.39ms over default-setup's 490KB against 0.07ms to stat the same
+ * files, so it saved a third of a millisecond of a boot and cost a second record that could disagree with
+ * the first. An earlier run of this migration moved it to `builtInSeedFingerprints`, so both names are
+ * dropped. `packSeedKeys` is the same shape: the keys a pack's content defined, which the applied content's
+ * items answer per item rather than as a list.
  */
-const DROPPED_SEED_RECORDS = ['seedStatFingerprints', 'builtInSeedFingerprints'] as const;
+const DROPPED_SEED_RECORDS = [
+  'packSeedHashes', 'seedHashes', 'builtInSeedHashes', 'externalSeedHashes',
+  'seedStatFingerprints', 'builtInSeedFingerprints', 'packSeedKeys',
+] as const;
+
+/**
+ * The two attributes an apply stamps on every entity it writes, under the names they have had.
+ *
+ * They are the app's, not any one pack's: every pack's content carries them, and which entity types exist
+ * is something only the registry knows — which is why this is a host migration rather than a line in each
+ * pack's. `seed` left the vocabulary, and `source` meant "the authored file" here while it means a logger
+ * or an event source everywhere else in the app.
+ */
+const RENAMED_CONTENT_ATTRIBUTES = { seedKey: 'contentKey', sourceHash: 'contentHash' } as const;
+
+/**
+ * Renames them on **every entity in the database**, which is what `qx()` with no start gives.
+ *
+ * Not a walk over the registered entity types, which is what this was and which misses exactly the
+ * entities nobody can fix later: a pack disabled or failing to load at this boot registers no types, its
+ * types are not types as far as the engine is concerned (`isEntityType`), so `qx(type)` reads the name as
+ * an id and finds nothing — and the migration records its version and never runs again. The pack's items
+ * would carry the old names for good, which the next apply reads as entities carrying no hash of ours:
+ * user-owned, left alone, never updated again. That is the freeze this release exists to end, kept alive
+ * for whichever pack happened to be off.
+ *
+ * Asking every entity costs no more than asking each registered type, since that visited every entity of
+ * every type; it simply stops the population being a question.
+ *
+ * Idempotent, and in the safe order for a run that dies half way: the new name is written before the old
+ * one is dropped, so an interrupted run leaves an entity carrying both and the next pass finishes it. An
+ * entity that already holds the new name is left alone, which is what makes a second run free.
+ */
+function renameContentAttributes(): void {
+  let moved = 0;
+  // Untyped and unstarted: these are attributes the app stamps, not fields any pack declares, so which
+  // entity types exist decides nothing about where they are
+  for (const row of untypedQx().pickAll() as Array<Record<string, unknown>>) {
+    const id = row.id as EARS.EntityId;
+    for (const [from, to] of Object.entries(RENAMED_CONTENT_ATTRIBUTES)) {
+      if (row[from] == null || row[to] != null) continue;
+      untypedTx(id).update(to, row[from]);
+      untypedTx(id).drop(from);
+      moved++;
+    }
+  }
+  if (moved > 0) console.log(`[migration 0.3.15] renamed ${moved} content attribute(s)`);
+}
 
 /** Moves each old-named record onto its new field, keeping what the new one already holds, and drops the ones this
  *  version no longer keeps. Idempotent: every name is removed as it is handled, so a second run finds nothing. */
@@ -124,13 +163,13 @@ function renameSeedRecords(): void {
     const value = row[from];
     // `drop` leaves the attribute as null rather than removing the key, so null is "already moved"
     if (value == null) continue;
-    // Over what this loop has already moved, not only over what the row holds: several old names reach
-    // `packSeedHashes`, and reading `current` each time would have the last one win
+    // Over what this loop has already moved, not only over what the row holds: two old names may reach one
+    // field, and reading `current` each time would have the last one win
     moved[to] = withMissing(moved[to] ?? current[to], value);
     tx.drop(from);
   }
-  // Dropped rather than moved: nothing reads them, so carrying them forward would leave the row holding a record
-  // whose only reader was deleted
+  // Dropped rather than moved: nothing reads them, so carrying them forward would leave the row holding a
+  // record with no reader
   for (const gone of DROPPED_SEED_RECORDS) {
     if (row[gone] == null) continue;
     tx.drop(gone);
@@ -138,23 +177,13 @@ function renameSeedRecords(): void {
   if (Object.keys(moved).length > 0) appState.update(moved);
 }
 
-function moveAppState(registry: MigrationRegistry): void {
+function moveAppState(): void {
   const internal = legacyInternal();
   if (!internal) return;
   const current = appState.get();
 
-  // What a single seed hash recorded belongs to the built-in packs with a boot seed; without it the app would
-  // forget it ever seeded and import the whole boot seed again. The stat fingerprint beside it is not carried
-  // over: nothing reads one since 2026-10-07 (see `DROPPED_SEED_RECORDS`)
-  const seedHashes = { ...internal.seedHashes };
-  for (const packId of bootSeedPacks(registry)) {
-    if (internal.seedHash && !seedHashes[packId]) seedHashes[packId] = internal.seedHash;
-  }
-
   const moved: Partial<AppState> = {
     packVersions: withMissing(current.packVersions, internal.packVersions),
-    // Both of the old row's seed records reach the one field: the installed packs' and the shipped pack's
-    packSeedHashes: withMissing(withMissing(current.packSeedHashes, internal.packSeedHashes), seedHashes),
     // Onboarding, once finished, stays finished
     ...(internal.hasOnboarded && !current.hasOnboarded && { hasOnboarded: true }),
     // The version the data was migrated to decides which migrations still run: kept unless one is recorded
