@@ -52,9 +52,9 @@ const installedOnDisk: InstalledManifests = () => discoverPacks(resolveAppContex
  */
 export const migration = (registry: MigrationRegistry, installed: InstalledManifests = installedOnDisk): PackMigration => ({
   target: '0.3.15',
-  description: "Move the app's state (onboarding and versions) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, every pack's plugin settings onto their plugins' refs and every written entity's content key and hash onto their names; drop the seed records each pack's applied content replaced",
+  description: "Move the app's state (onboarding and versions) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, every pack's plugin settings onto their plugins' refs and every written entity's content key and hash onto their names; drop the records each pack's applied content replaced",
   up: () => {
-    renameSeedRecords();
+    renameStateRecords();
     renameContentAttributes();
     moveAppState();
     const owners = ownersIn(registry, installed());
@@ -65,7 +65,15 @@ export const migration = (registry: MigrationRegistry, installed: InstalledManif
 });
 
 /**
- * Every name a per-pack seed record has been stored under, onto the one that carries one now.
+ * **The one place in the tree that still says `seed`, and it has to.** Every string below is a key the data
+ * on a user's disk was written under, so each is the thing this migration exists to find: renaming one
+ * would make it match nothing and the record it moves would be lost. Nothing else here keeps the word —
+ * the constants, the function and the prose are named for what they do.
+ *
+ * **It goes when this migration goes** (`../CLAUDE.md`: delete it with the others once 0.3.15 is below the
+ * oldest version upgrades are supported from), and the last `seed` in the repo goes with it.
+ *
+ * Every name a per-pack record of an apply has been stored under, onto the one that carries one now.
  * `appState` reads only the names it knows, so a record under any other name is invisible to it.
  *
  * **One name is left to carry**, because the record of what a pack's content last applied is no longer in
@@ -81,26 +89,26 @@ export const migration = (registry: MigrationRegistry, installed: InstalledManif
  * already reads it: an entry would read the attribute, write it back unchanged and then `drop` it, which
  * deletes the record this migration exists to preserve.
  */
-const RENAMED_SEED_RECORDS = {
+const RENAMED_STATE_RECORDS = {
   externalSeedDeps: 'failedAgainst',
   packSeedDeps: 'failedAgainst',
 } as const satisfies Record<string, keyof AppState>;
 
 /**
- * Records the row stops carrying, under every name they have had.
+ * Records the row stops carrying, under every stored name they have had.
  *
  * `packSeedHashes`, `seedHashes`, `builtInSeedHashes` and `externalSeedHashes` were what each kind of pack
  * last applied, under the four names that record has had; what says it now is each pack's
  * `AppliedContent.revision`, which only an apply can write.
  *
- * `seedStatFingerprints` held each built-in pack's seed files' mtimes and sizes, as a fast path in front of
+ * `seedStatFingerprints` held each built-in pack's compiled files' mtimes and sizes, as a fast path in front of
  * the content hash — which measures 0.39ms over default-setup's 490KB against 0.07ms to stat the same
  * files, so it saved a third of a millisecond of a boot and cost a second record that could disagree with
  * the first. An earlier run of this migration moved it to `builtInSeedFingerprints`, so both names are
  * dropped. `packSeedKeys` is the same shape: the keys a pack's content defined, which the applied content's
  * items answer per item rather than as a list.
  */
-const DROPPED_SEED_RECORDS = [
+const DROPPED_STATE_RECORDS = [
   'packSeedHashes', 'seedHashes', 'builtInSeedHashes', 'externalSeedHashes',
   'seedStatFingerprints', 'builtInSeedFingerprints', 'packSeedKeys',
 ] as const;
@@ -151,15 +159,15 @@ function renameContentAttributes(): void {
 
 /** Moves each old-named record onto its new field, keeping what the new one already holds, and drops the ones this
  *  version no longer keeps. Idempotent: every name is removed as it is handled, so a second run finds nothing. */
-function renameSeedRecords(): void {
-  const old = [...Object.keys(RENAMED_SEED_RECORDS), ...DROPPED_SEED_RECORDS];
+function renameStateRecords(): void {
+  const old = [...Object.keys(RENAMED_STATE_RECORDS), ...DROPPED_STATE_RECORDS];
   const row = untypedQx(APP_STATE_ID).pickOne(old) as Record<string, Record<string, string> | null | undefined> | undefined;
   if (!row) return;
 
   const current = appState.get();
   const moved: Partial<AppState> = {};
   const tx = untypedTx(APP_STATE_ID);
-  for (const [from, to] of Object.entries(RENAMED_SEED_RECORDS)) {
+  for (const [from, to] of Object.entries(RENAMED_STATE_RECORDS)) {
     const value = row[from];
     // `drop` leaves the attribute as null rather than removing the key, so null is "already moved"
     if (value == null) continue;
@@ -170,7 +178,7 @@ function renameSeedRecords(): void {
   }
   // Dropped rather than moved: nothing reads them, so carrying them forward would leave the row holding a
   // record with no reader
-  for (const gone of DROPPED_SEED_RECORDS) {
+  for (const gone of DROPPED_STATE_RECORDS) {
     if (row[gone] == null) continue;
     tx.drop(gone);
   }
@@ -236,7 +244,7 @@ function ownersIn(registry: MigrationRegistry, installed: ReturnType<InstalledMa
 
 /**
  * The refs of the features a manifest on disk lists. Read as data, not trusted as a manifest: a malformed one lists
- * none rather than throwing, because a thrown migration stops every boot's migrations and seeds until it is fixed, and
+ * none rather than throwing, because a thrown migration stops every boot's migrations and content until it is fixed, and
  * one broken pack on disk mustn't do that to the app. Its keys stay as they are.
  */
 function declaredFeatureRefs(manifest: { id?: unknown; features?: unknown }): string[] {

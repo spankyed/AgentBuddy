@@ -99,7 +99,7 @@ goal's phase said:
 
 The first three go in the unreleased `0.3.15` app migration
 (`abuddy-host/src/migrations/app/0.3.15.ts`), which already moves plugin settings onto refs and has
-`addressPluginKeys` and the `RENAMED_SEED_RECORDS` idiom to copy. A `RENAMED_PLUGIN_REFS` constant and a
+`addressPluginKeys` and the `RENAMED_STATE_RECORDS` idiom to copy. A `RENAMED_PLUGIN_REFS` constant and a
 `renamePluginRefs()` step **after `moveShellState` and `movePluginSettings`** — those two produce
 `default-setup/logs` from pre-0.3.15 data, so the rename runs on their output. Idempotent by the file's own
 rule: remove the old key as you handle it, write only on a real change.
