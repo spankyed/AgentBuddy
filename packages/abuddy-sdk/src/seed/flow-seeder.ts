@@ -142,6 +142,16 @@ export function createFlowSeeder(): Seeder {
       const validFlowDSL: Record<string, any> = {};
       const replacedLabels = new Set<string>();
 
+      /**
+       * **Every flow this content declares, before anything is written.** The loop below stops at a flow it
+       * means to keep in half a dozen ways — an entry that fails to validate, one the mode skips, one the
+       * user owns, one whose ids collide — and a key the loop never reached is still a key the pack ships.
+       * Reading "not reached" as "no longer shipped" would have `removals` delete exactly the flow each of
+       * those branches exists to protect, an invalid entry most of all: ship one broken flow and the user
+       * loses the flow they had.
+       */
+      for (const name of Object.keys(flowsDSL as Record<string, unknown>)) defineKey(ctx, flowSeedKey(packId, name));
+
       for (const [key, entry] of Object.entries(flowsDSL as Record<string, any>)) {
         if (!shouldImportAll(ctx.include) && !(ctx.include as ReadonlySet<string>).has(key)) {
           continue;
@@ -164,7 +174,6 @@ export function createFlowSeeder(): Seeder {
         const existing = lookupSeeded(existingFlows, key);
         const compiledHash = isFlowConfig(entry) ? (entry as any).sourceHash : undefined;
         const seedKey = flowSeedKey(packId, key);
-        defineKey(ctx, seedKey);
         const applied = ctx.applied?.before.get(seedKey);
         // A flow is destroyed rather than trashed (`flowRepository.deleteFlow`), so there is no trashed case
         // here: no flow means no flow, and what says whether the user removed it is the record
@@ -245,11 +254,12 @@ export function createFlowSeeder(): Seeder {
       /**
        * The flows this apply wrote that the content no longer declares: removed while they are still ours,
        * kept and flagged once the user has edited one. The conditions are the generic writer's
-       * (`seeder.ts`'s `removals`), and for the same reasons.
+       * (`seeder.ts`'s `removals`), and for the same reasons: a file that did not load reaches none of
+       * this, and an import carries no record.
        */
       const removals = () => {
         const record = ctx.applied;
-        if (!record || !shouldImportAll(ctx.include)) return;
+        if (!record) return;
         const prefix = `${seedKeyPrefix(packId)}flows/`;
         for (const itemKey of [...record.before.keys()].filter((k) => k.startsWith(prefix) && !record.defined.has(k))) {
           const item = record.before.get(itemKey)!;

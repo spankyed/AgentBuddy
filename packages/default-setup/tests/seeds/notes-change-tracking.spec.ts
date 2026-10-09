@@ -55,6 +55,13 @@ function reset(): void {
   resetDatabase();
   applied = undefined;
 }
+
+/**
+ * The record's lifetime is the database's, so it is cleared where the harness empties the database. Without
+ * this a case that did not reset first would read a record describing entities the last test left behind,
+ * and every item would resolve as one the user had deleted.
+ */
+beforeEach(() => { applied = undefined; });
 function seedNotes(
   sources: 'v1' | 'v2' | 'default-setup',
   options: { mode?: ImportMode; include?: SeedIncludeSet; unrecorded?: boolean } = {},

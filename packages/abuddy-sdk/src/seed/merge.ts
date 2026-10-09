@@ -106,9 +106,14 @@ export function resolve(input: MergeInput): Merge {
  * touched it. An entity already gone needs nothing done and its entry is dropped, which is what stops the
  * removal being recomputed on every later apply.
  */
-export function resolveRemoval(input: Pick<MergeInput, 'applied' | 'live' | 'drifted'>): Merge {
+export function resolveRemoval(input: {
+  /** Required, unlike `resolve`'s: a removal is only ever about an item the applied content holds */
+  applied: AppliedItem;
+  live?: LiveEntity;
+  drifted: () => string[];
+}): Merge {
   if (!input.live) return { resolution: 'remove' };
   if (input.live.foreignContainer) return { resolution: 'foreign-container' };
-  const parts = input.applied ? input.drifted() : [];
+  const parts = input.drifted();
   return parts.length > 0 ? { resolution: 'removed-but-edited', parts } : { resolution: 'remove' };
 }

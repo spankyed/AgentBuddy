@@ -6,7 +6,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { dropAttribute, resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
-import { createSeeder, driftedFieldParts } from '../../src/seed/seeder.ts';
+import { childSeedKey, createSeeder, describeContentKey, driftedFieldParts, seedKeyPrefix } from '../../src/seed/seeder.ts';
 import type { SeedHooks } from '../../src/seed/hooks.ts';
 import { _getMediaPath, applyRecord, type ApplyRecord, type ImportMode } from '../../src/utils/index.ts';
 import type { SeedRecord } from '../../src/build/seeds/records.ts';
@@ -154,6 +154,27 @@ describe('the applied content a run records', () => {
     expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello v3', mood: 'calm', version: 'v3' }]), third))
       .toEqual({ created: 0, updated: 1, skipped: 0 });
     expect(memo('Intro').body).toBe('Hello v3');
+  });
+});
+
+describe('a content key as something to show someone', () => {
+  /**
+   * **The subject is a key `childSeedKey` built**, not a string written here: the two are one declaration,
+   * and a change to the format that this reader did not follow shows up as a key rendered raw.
+   */
+  it('names the entry, the entity type and the identity of every level', () => {
+    const root = `${seedKeyPrefix('default-setup')}actions`;
+    const action = childSeedKey(root, { entity: 'Action', label: 'CDX: Start Server' } as SeedRecord, ['label']);
+
+    expect(describeContentKey(action)).toBe('actions / Action "CDX: Start Server"');
+    expect(describeContentKey(childSeedKey(action, { entity: 'Note', title: 'Archive' } as SeedRecord, ['title', 'parent'])))
+      .toBe('actions / Action "CDX: Start Server" / Note "Archive"');
+  });
+
+  /** Its callers are diagnostics, so a segment it cannot take apart is shown rather than thrown over */
+  it('shows a segment it cannot take apart, and never throws', () => {
+    expect(describeContentKey('pack:notes/not-encoded')).toBe('notes / not-encoded');
+    expect(describeContentKey('')).toBe('');
   });
 });
 
@@ -330,22 +351,42 @@ describe('content the pack has dropped', () => {
   });
 
   /**
-   * **A partial selection declares only what was selected**, so every unselected item would read as dropped.
-   * The guard is the whole reason a per-key import cannot delete the rest of a pack's content.
+   * **What a run was asked to write is a different question from what the pack declares.** An item left out
+   * of a selection is one this run is not writing, not one the pack has dropped — so the keys come off the
+   * compiled file rather than off the filtered set, and a per-key import cannot delete the rest of a pack's
+   * content.
    */
-  it('is not removed by a run that was given a selection', () => {
+  it('is not removed because a selection left it out', () => {
     const first = applyRecord();
     seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
 
     const second = after(first);
     seeder.apply({
-      compiledDir: compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]),
+      compiledDir: compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]),
       include: new Set(['Intro']),
       applied: second,
       log: () => {},
     });
 
     expect(memo('Extra').body, 'the unselected item was removed').toBe('Bye');
+    expect([...second.removed]).toEqual([]);
+  });
+
+  /**
+   * **And an item an error stopped the run on is not removed either.** A hook that throws reports the item
+   * and the run moves on, so a key the walk never finished with is still a key the pack ships.
+   */
+  it('is not removed because a hook threw on it', () => {
+    const first = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
+    // The walk reaches it (the keyed lookup finds the entity) and then throws part way through writing it
+    registerHooks('Memo', { update: () => { throw new Error('boom'); } });
+
+    const second = after(first);
+    const counts = seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), second);
+
+    expect(counts.errors).toEqual(['Memo "Intro": boom']);
+    expect(memo('Intro').body, 'the item the error was about').toBe('Hello');
     expect([...second.removed]).toEqual([]);
   });
 
@@ -504,9 +545,12 @@ describe("a folder another pack seeded", () => {
 
   /**
    * **A key the walk did not reach is still a key the content declares.** The walk stops at an item it is
-   * leaving alone — the mode says to keep what is there, or the user deleted it — and without declaring the
-   * subtree below it, every child would read as content the pack had dropped and be removed: exactly the
-   * subtree the walk was being careful of.
+   * leaving alone — the mode says to keep what is there, or the user deleted it — and a subtree read as
+   * content the pack had dropped would be removed: exactly the subtree the walk was being careful of.
+   *
+   * `declare` walking the compiled file is what makes that impossible rather than guarded, so this and the
+   * two below fire on an edit to *it*: have it skip `record.children`, or take the filtered `records`
+   * instead of `file.records`, and all three fail.
    */
   it('is not removed because the walk stopped at the item above it', () => {
     registerHooks('Folder', { container: false });
@@ -518,6 +562,30 @@ describe("a folder another pack seeded", () => {
 
     expect([...second.removed], 'a child under an item the mode skipped').toEqual([]);
     expect(second.defined, 'every key the content declares, whatever the walk did about it').toEqual(first.defined);
+  });
+
+  /**
+   * **Removal follows the parent chain, so keeping an edited child keeps the entities above it.** Both the
+   * folder and its memos leave the content, and the memo the user rewrote is theirs now — deleting the
+   * folder it is in would take it with it.
+   */
+  it('is not removed while it holds an item the user edited', () => {
+    const first = applyRecord();
+    seed(tree('pack-a', ['welcome.md', 'guide.md']), first);
+    const folderId = folders()[0].id;
+    edit('guide.md', { body: 'mine' });
+
+    const emptied = fs.mkdtempSync(path.join(os.tmpdir(), 'seeder-chain-'));
+    dirs.push(emptied);
+    fs.writeFileSync(path.join(emptied, 'seeds.json'), JSON.stringify({ version: 1, packId: 'pack-a', seeds: [] }));
+    fs.writeFileSync(path.join(emptied, 'memos.seed.json'), JSON.stringify({ records: [] }));
+    const second = after(first);
+    seed(emptied, second);
+
+    expect(memo('guide.md').body, 'the item the user rewrote').toBe('mine');
+    expect(ears().findByIdRaw(folderId), 'the folder it is in went with the content').toBeTruthy();
+    expect(contents(folders()[0]), "the sibling nobody touched is gone, and the edited one isn't").toEqual(['guide.md']);
+    expect([...second.flagged.keys()].map((key) => key.includes('guide')), 'the edited item is flagged').toEqual([true]);
   });
 
   /** And the same for a subtree under an item the user threw away, which the walk also stops at */

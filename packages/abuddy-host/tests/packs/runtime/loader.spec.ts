@@ -664,6 +664,34 @@ describe('seedPacks: failures', () => {
   });
 
   /**
+   * **The conflict is this phase's whole user-visible value**, so an apply that found one says so: a line
+   * per item with the parts that differ, and the content keys in the event's meta for whoever is tracing
+   * one. Named rather than keyed — a content key is `%5B%22Action%22...`, which nobody reads.
+   */
+  it('logs the items with the user’s edits, named, and the keys in the meta', async () => {
+    const { onLog } = await import('@abuddy/sdk/logger');
+    const pack = installedPack('conflicted');
+    writeRegistry(['conflicted']);
+    const key = `${'conflicted'}:actions/${encodeURIComponent(JSON.stringify(['Action', 'Echo']))}`;
+    const logged: Array<{ message: string; meta?: unknown }> = [];
+    const stop = onLog((event) => { logged.push({ message: event.message, ...(event.meta !== undefined && { meta: event.meta }) }); });
+
+    try {
+      seedPacks([pack], (options: { applied?: ApplyRecord }) => {
+        options.applied?.conflicts.set(key, ['actionFn', 'inputs']);
+        return { actions: { created: 0, updated: 0, skipped: 1 } };
+      });
+    } finally {
+      stop();
+    }
+
+    const entry = logged.find((event) => event.message.includes('have your edits'));
+    expect(entry?.message, 'the item, by name, with the parts that differ')
+      .toBe('1 of conflicted\'s items have your edits and a newer version waiting:\n  actions / Action "Echo" (actionFn, inputs)');
+    expect(entry?.meta).toMatchObject({ packId: 'conflicted', items: { [key]: ['actionFn', 'inputs'] } });
+  });
+
+  /**
    * **An item a run did not write keeps the entry the last one gave it**, because the entity still holds what
    * that run wrote. Without the carry-forward the record would describe only the latest run's writes, which
    * is not what it claims to be.

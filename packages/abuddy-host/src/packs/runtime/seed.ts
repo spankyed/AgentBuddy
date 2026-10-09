@@ -7,6 +7,7 @@ import { recordSeedOutcomes } from '../installed.ts';
 import type { PackManifest } from '@abuddy/sdk/build';
 import { appliedContent, appState } from '../../app-state/index.ts';
 import { applyRecord, importCompiledSeeds } from '@abuddy/sdk/utils';
+import { describeContentKey } from '@abuddy/sdk/seed';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('pack-seed');
@@ -75,10 +76,20 @@ function dependencyState(dependencies: Record<string, string> | undefined): stri
   return Object.keys(dependencies ?? {}).sort().map((id) => `${id}:${appliedContent.get(id).revision}`).join('|');
 }
 
-/** One line per item the user now has a decision about, so the freeze is visible before any UI draws it */
+/**
+ * One line per item the user now has a decision about, so the freeze is visible before any UI draws it.
+ *
+ * Named rather than keyed, because a content key is `%5B%22Action%22...` and nobody reads that: the key
+ * holds the entity type and the item's identity, and `describeContentKey` is what renders them. The keys
+ * are in the event's meta for whoever is tracing one.
+ *
+ * **Boot seeding runs before the bus starts**, so this reaches stdout and the app's log file and not the
+ * Logs plugin, which shows what `onLog` delivers from the moment the bus starts it. An apply on a reload
+ * or an activation reaches both.
+ */
 function reportUnresolved(packId: string, kind: string, items: ReadonlyMap<string, string[]>): void {
   if (items.size === 0) return;
-  const named = [...items].map(([key, parts]) => `${key} (${parts.join(', ')})`);
+  const named = [...items].map(([key, parts]) => `${describeContentKey(key)} (${parts.join(', ')})`);
   logger.warn(`${items.size} of ${packId}'s items ${kind}:\n  ${named.join('\n  ')}`, {
     packId,
     items: Object.fromEntries(items),

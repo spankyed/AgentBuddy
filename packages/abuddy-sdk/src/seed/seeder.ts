@@ -77,13 +77,37 @@ export function childSeedKey(parentKey: string, record: SeedRecord, identity: re
 export const seedKeyPrefix = (packId: string) => `${packId}:`;
 
 /**
+ * A content key as something to show someone — `actions / Action "CDX: Start Server"`.
+ *
+ * The key already holds everything a reader needs: each level after the entry key is the entity type and
+ * the identity values that name the item, which is why nothing has to be stored beside it to say what an
+ * item *is*. This is the one reader of that format, so `childSeedKey` above and this stay together.
+ *
+ * **Total by construction**, because its callers are diagnostics: a segment it cannot take apart is shown
+ * as it is rather than throwing in the middle of a log line.
+ */
+export function describeContentKey(key: string): string {
+  const colon = key.indexOf(':');
+  return (colon === -1 ? key : key.slice(colon + 1)).split('/').map((segment, index) => {
+    if (index === 0) return segment;
+    try {
+      // `childSeedKey` writes `[entity, ...identity values]`, and an absent value as null
+      const [entity, ...values] = JSON.parse(decodeURIComponent(segment)) as unknown[];
+      const named = values.map((value) => (typeof value === 'string' ? `"${value}"` : JSON.stringify(value)));
+      return [entity, ...named].filter((part) => part !== null).join(' ');
+    } catch {
+      return segment;
+    }
+  }).join(' / ');
+}
+
+/**
  * Records that this run's content declares `key` (`ApplyRecord.defined`, `@abuddy/sdk/utils`).
  *
- * Every writer does this for every item it reaches, whatever the outcome: the item is what this pack's
- * content declares, not what it wrote, so a key skipped as the user's or as deleted stays in it. That is
- * what makes the removals computable — a key the last apply wrote and this one never declared is one the
- * pack dropped. The one entity not to claim is a container another item owns: this run did not declare it,
- * and claiming it would make that pack's entity disappearing read as the user deleting ours.
+ * **It is the content that declares a key, never the walk.** A writer calls this over everything its
+ * compiled file holds, before it writes anything, because what the removals are computed from is the
+ * difference between the keys the last apply wrote and the keys this pack ships — and the walk is full of
+ * decisions that stop it short of an item it means to keep.
  */
 export const defineKey = (ctx: ImportContext, key: string): void => { ctx.applied?.defined.add(key); };
 
@@ -123,10 +147,10 @@ export function createSeeder(options: SeederOptions): Seeder {
         return counts;
       }
       const packId = seedPackId(ctx.compiledDir);
+      const rootKey = `${seedKeyPrefix(packId)}${key}`;
       const records = shouldImportAll(ctx.include)
         ? file.records
         : file.records.filter((record) => (ctx.include as ReadonlySet<string>).has(recordLabel(record, identity)));
-      if (records.length === 0 && !shouldImportAll(ctx.include)) return counts;
 
       if (ctx.mode === 'wipe-and-replace') {
         wipe(entities, file.records);
@@ -276,12 +300,16 @@ export function createSeeder(options: SeederOptions): Seeder {
       };
 
       /**
-       * Declares every key under these items without doing anything else.
+       * **Every key this entry's content declares, derived from the content and not from the walk.**
        *
-       * **A key the walk did not reach is still a key the content declares**, and conflating the two is what
-       * makes the removal pass wrong: the walk stops at an item it is leaving alone (the mode says to keep
-       * what is there, or the user deleted it), and its children would then read as content the pack had
-       * dropped and be removed — the subtree the walk was being careful of.
+       * It has to be the content: the walk reaches an item and then decides, and several of those decisions
+       * stop it — the mode says to keep what is there, the user deleted the item, an entry failed to
+       * validate, a hook threw. A key the walk never reached is still a key the pack ships, and reading
+       * "not reached" as "no longer shipped" is how the removal pass below would delete the very subtree
+       * each of those branches exists to protect.
+       *
+       * So this runs once, over every item in the file, before anything is written. A selection is not
+       * excluded either: what a run was asked to write is a different question from what the pack declares.
        */
       const declare = (items: SeedRecord[] | undefined, parentKey: string) => {
         for (const record of items ?? []) {
@@ -299,7 +327,6 @@ export function createSeeder(options: SeederOptions): Seeder {
           const seedKey = childSeedKey(parentKey, record, identity);
           try {
             const { match: existing, reused, deleted } = find(record, seedKey, context, hooks);
-            if (!reused) defineKey(ctx, seedKey);
             const applied = ctx.applied?.before.get(seedKey);
             const live: LiveEntity | undefined = existing && {
               sourceHash: existing.sourceHash,
@@ -334,14 +361,12 @@ export function createSeeder(options: SeederOptions): Seeder {
              */
             if (resolution === 'absent-by-deletion') {
               counts.skipped++;
-              declare(record.children, seedKey);
               ctx.log(`  ${key} skipped (${existing ? 'deleted' : 'removed'}): ${label}`);
               return;
             }
             // The mode says to leave whatever is there alone, which includes its subtree
             if (resolution === 'kept') {
               counts.skipped++;
-              declare(record.children, seedKey);
               ctx.log(`  ${key} skipped (existing): ${label}`);
               return;
             }
@@ -370,8 +395,6 @@ export function createSeeder(options: SeederOptions): Seeder {
             const message = errorMessage(err);
             errors.push(`${record.entity ?? key} "${label}": ${message}`);
             counts.skipped++;
-            // The walk stopped here, so nothing below it was reached — but the content still declares it
-            declare(record.children, seedKey);
           }
         });
       };
@@ -398,15 +421,14 @@ export function createSeeder(options: SeederOptions): Seeder {
        * kept and flagged once the user has edited one.
        *
        * **A content key whose file did not load contributes none**, which is structural rather than checked:
-       * `apply` returns above before reaching this, so a key that said nothing is never diffed against. A
-       * partial selection is excluded for the same reason — `defined` then holds only what was selected, so
-       * every unselected item would read as dropped. And an import carries no record at all, so asking for a
-       * pack's data back never removes anything.
+       * `apply` returns above before reaching this, so a key that said nothing is never diffed against. And
+       * an import carries no record at all, so asking for a pack's data back never removes anything —
+       * which is the whole of what makes removal an apply's act.
        */
       const removals = () => {
         const record = ctx.applied;
-        if (!record || !shouldImportAll(ctx.include)) return;
-        const prefix = `${seedKeyPrefix(packId)}${key}/`;
+        if (!record) return;
+        const prefix = `${rootKey}/`;
         // A parent's key is a prefix of its children's, so sorted is parents first
         const gone = [...record.before.keys()].filter((k) => k.startsWith(prefix) && !record.defined.has(k)).sort();
         const verdicts = gone.map((itemKey) => {
@@ -430,7 +452,12 @@ export function createSeeder(options: SeederOptions): Seeder {
             }),
           };
         });
-        // Removal follows the parent chain, so keeping a child keeps the parents that hold it
+        /**
+         * Removal follows the parent chain, so keeping a child keeps the entities above it.
+         *
+         * Looking only within `gone` is complete: `declare` walks the content's tree, so a declared child
+         * implies a declared parent, and a key in `gone` therefore has no declared descendants.
+         */
         const keptUnder = (itemKey: string) => verdicts.some((v) => v.resolution !== 'remove' && v.itemKey.startsWith(`${itemKey}/`));
         for (const verdict of verdicts) {
           if (verdict.resolution === 'removed-but-edited') {
@@ -460,7 +487,8 @@ export function createSeeder(options: SeederOptions): Seeder {
         }
       };
 
-      visit(records, undefined, `${seedKeyPrefix(packId)}${key}`);
+      declare(file.records, rootKey);
+      visit(records, undefined, rootKey);
       removals();
       if (errors.length > 0) counts.errors = errors;
       return counts;

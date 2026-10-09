@@ -27,8 +27,8 @@ const dirs: string[] = [];
 const made = new Map<string, string>();
 
 interface Variant {
-  /** Every `sourceHash` made different, so a re-apply has something to write */
-  bump?: boolean;
+  /** Every `sourceHash` made different, so a re-apply has something to write; a string names the suffix */
+  bump?: true | string;
   /** One field of the first action, given a new value */
   change?: [field: string, value: string];
   /** One content key emptied of its items, as a pack dropping that content would leave it */
@@ -57,7 +57,9 @@ function vary(file: string, body: string, { bump, change, drop }: Variant): stri
   if (drop && file === `${drop}.seed.json`) return JSON.stringify({ records: [] });
   if (change && file === 'actions.seed.json' && parsed.records?.[0]) parsed.records[0][change[0]] = change[1];
   return JSON.stringify(parsed, (key, value) =>
-    bump && key === 'sourceHash' && typeof value === 'string' ? `${value}-bumped` : value);
+    bump && key === 'sourceHash' && typeof value === 'string'
+      ? `${value}-${bump === true ? 'bumped' : bump}`
+      : value);
 }
 
 function apply(dir: string, previous?: ApplyRecord) {
@@ -215,6 +217,25 @@ describe('the applied content over this pack’s real content', () => {
     expect(attr<string>(id, 'description'), 'the user’s value was overwritten').toBe('mine');
     expect(again.record.written.size, 'the rest of the pack was held back by one edit')
       .toBe(first.record.written.size - 1);
+  });
+
+  /**
+   * **An upgrade from a version that recorded no parts adopts this pack's whole content, once.** This is
+   * the path every existing install takes on the boot after the record arrives: nothing is known about any
+   * of the 80-odd items, so each is written again and recorded, and edits are honoured from the next apply.
+   */
+  it('adopts every item on an apply whose record has never seen this pack', () => {
+    const upgrade = apply(compiledDir({ bump: true }));
+
+    expect(upgrade.record.written.size, 'every item was written again').toBe(first.record.written.size);
+    expect(upgrade.record.conflicts.size, 'nothing can conflict with a record that holds nothing').toBe(0);
+    expect(moved(first.record.written, upgrade.record.written), 'and the parts are the same content').toEqual({});
+
+    // Recorded now, so the next apply sees the user's edit rather than adopting over it
+    const [key, item] = [...upgrade.record.written].find(([, value]) => !isFlow(value) && 'description' in value.parts)!;
+    untypedTx(entityFor(key, item)!).update('description' as string, 'mine');
+    const again = apply(compiledDir({ bump: 'again' }), upgrade.record);
+    expect([...again.record.conflicts.keys()]).toEqual([key]);
   });
 
   /**

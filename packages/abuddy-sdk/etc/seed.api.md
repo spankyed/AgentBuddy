@@ -13,6 +13,9 @@ export function createFlowSeeder(): Seeder;
 export function createSeeder(options: SeederOptions): Seeder;
 
 // @public
+export function describeContentKey(key: string): string;
+
+// @public
 export interface PackSeedPreviewItem {
     childCount?: number;
     // (undocumented)

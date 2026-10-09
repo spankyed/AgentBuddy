@@ -189,6 +189,33 @@ describe('flow seeder', () => {
     expect([...second.conflicts.values()]).toEqual([['fields']]);
   });
 
+  /**
+   * **A flow the pack still ships is never removed, however the run ended up skipping it.** An entry that
+   * fails to validate is the worst case: the loop reports the error and moves on, and if the key it never
+   * reached read as content the pack had dropped, shipping one broken flow would delete the user's copy of
+   * exactly that flow.
+   */
+  it('keeps a flow whose new version fails to validate', () => {
+    const first = applyRecord();
+    apply(compiledFlows('Demo Flow'), first);
+    const flowId = flows('Demo Flow')[0].id;
+
+    const broken = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-seeder-broken-'));
+    fs.writeFileSync(path.join(broken, 'seeds.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
+    fs.writeFileSync(seedPath(broken, 'flows'), JSON.stringify({
+      'Demo Flow': { sourceHash: 'Demo Flow-v2', tracks: [{ event: 'flow.entry', label: 'Flow Entry', exits: [[{ type: 'no_such_step' }]] }] },
+    }));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const second = after(first);
+    const counts = apply(broken, second);
+
+    expect(counts.errors).toEqual([expect.stringMatching(/^Flow "Demo Flow" is invalid: /)]);
+    expect(flows('Demo Flow').map((flow) => flow.id), 'the flow the user had').toEqual([flowId]);
+    expect([...second.removed], 'a flow the content still declares was removed').toEqual([]);
+    fs.rmSync(broken, { recursive: true, force: true });
+  });
+
   /** Content the pack dropped: removed while it is ours, kept and flagged once the user has edited it */
   it('removes a flow the content no longer declares, unless the user edited it', () => {
     const first = applyRecord();
