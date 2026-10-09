@@ -5,9 +5,9 @@
 // `ImportResult` means it says `import`.
 //
 // It guards the property rather than any particular name — a new `writeStuff(): ApplyResult` fails here
-// whichever word someone reached for — and it is the one check that can see the hole the old rule could
-// not: that rule only refused the leaving noun (`content*`), so `applyPacks`, which returns failures, was
-// invisible to it in both directions.
+// whichever word someone reached for — and it is the one check that can see what a rule over names cannot:
+// `applyPacks` hands back the packs that failed rather than either result, so a rule reading only names
+// would have been blind to it in both directions.
 //
 // **Not extended to "no identifier contains both a noun and a verb stem"**, which the same audit proposed:
 // a scan cannot tell a verb stem from a noun, so it reports false findings for no gain this rule does not
@@ -29,6 +29,12 @@ function tsFiles(dir: string): string[] {
   });
 }
 
+/** Each root's sources, read once: both rules below are over the same text */
+const SOURCES = ROOTS.flatMap((root) =>
+  tsFiles(path.join(PACKAGES, root))
+    .map((file) => ({ file: path.relative(PACKAGES, file), text: fs.readFileSync(file, 'utf-8') })),
+);
+
 /** The identifier a signature belongs to: walk back over its parameter list to the name before it */
 function nameBefore(source: string, openParen: number): string | null {
   let depth = 0;
@@ -48,7 +54,7 @@ const VERBS = { ApplyResult: 'apply', ImportResult: 'import' } as const;
 type Verb = (typeof VERBS)[keyof typeof VERBS];
 
 /** Every function or method in `source` whose return type mentions one of them, by name and by verb */
-export function verbsIn(source: string): Array<{ name: string; verb: Verb }> {
+function verbsIn(source: string): Array<{ name: string; verb: Verb }> {
   const found: Array<{ name: string; verb: Verb }> = [];
   for (const [type, verb] of Object.entries(VERBS)) {
     for (const m of source.matchAll(new RegExp(String.raw`\)\s*:\s*([^{;=\n]*\b${type}\b[^{;=\n]*)`, 'g'))) {
@@ -59,12 +65,14 @@ export function verbsIn(source: string): Array<{ name: string; verb: Verb }> {
   return found;
 }
 
+/** Every exported function, const or type in `source`, by name */
+function exportsIn(source: string): string[] {
+  return [...source.matchAll(/^export\s+(?:async\s+)?(?:function|const|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/gm)]
+    .map((m) => m[1]!);
+}
+
 describe('a function says which operation it performs', () => {
-  const found = ROOTS.flatMap((root) =>
-    tsFiles(path.join(PACKAGES, root)).flatMap((file) =>
-      verbsIn(fs.readFileSync(file, 'utf-8')).map((hit) => ({ ...hit, file: path.relative(PACKAGES, file) })),
-    ),
-  );
+  const found = SOURCES.flatMap(({ file, text }) => verbsIn(text).map((hit) => ({ ...hit, file })));
 
   it('finds both kinds, so neither rule below is checking nothing', () => {
     for (const verb of ['apply', 'import'] as const) {
@@ -78,7 +86,10 @@ describe('a function says which operation it performs', () => {
     expect(offenders.map((o) => `${o.file}: ${o.name} returns the ${o.verb} result`)).toEqual([]);
   });
 
-  /** And the noun that left the vocabulary is not in either of their names */
+  /**
+   * **And not after the noun that left**, which the rule below does not reach: that one reads exported
+   * names, and this reads signatures, so a local function or an object-literal method is caught only here.
+   */
   it('names none of them after the noun that left', () => {
     const offenders = found.filter((f) => /seed/i.test(f.name));
     expect(offenders.map((o) => `${o.file}: ${o.name}`)).toEqual([]);
@@ -86,38 +97,23 @@ describe('a function says which operation it performs', () => {
 });
 
 /**
- * **The half a return type cannot reach.** `applyPacks` hands back the packs that failed, so the rule above
- * is blind to it in both directions — and that is exactly the function the noun used to be in. So the
- * second rule is over names: no export carries `seed`.
+ * **The noun these operations replaced is in no export's name.** A scan over one word is a rule that can
+ * exist, where "is this a verb" is a judgement a scan makes wrongly: `seed` either appears or it does not.
  *
- * It is a scan over one word rather than over verb stems, which is why it can exist: `seed` either appears
- * or it does not, where "is this a verb" is a judgement a scan makes wrongly.
- *
- * **There are no exceptions, and the list that held them is gone.** It kept the names of files a built pack
- * holds on disk — `seeds.json`, `<key>.seed.json`, `seed-compilers.mjs` — on the reasoning that a file owns
- * its name. Those are build artifacts that `abuddy build` regenerates, so they were renamed with everything
- * else, and the three uses of the word that remain in this repo are a require cache, a terminal's
- * scrollback and a component's state, none of which an export of these packages reaches.
+ * **It has no exception list, and must not grow one.** The word survives in this repo in four places and an
+ * export of these three packages is none of them: this spec and the goal that records the rename, which
+ * have to name it to be about it; the stored `AppState` keys the 0.3.15 migration moves away from, which
+ * name data on disk; four identifiers that contain the four letters across a word boundary
+ * (`baseEditorOptions`, `elseEdge`); and the emoji picker's search keywords, since 🌱 is found by typing it.
  */
-
-/** Every exported function, const or type in `source`, by name */
-function exportsIn(source: string): string[] {
-  return [...source.matchAll(/^export\s+(?:async\s+)?(?:function|const|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/gm)]
-    .map((m) => m[1]!);
-}
-
 describe('the noun that left', () => {
-  const exported = ROOTS.flatMap((root) =>
-    tsFiles(path.join(PACKAGES, root)).flatMap((file) =>
-      exportsIn(fs.readFileSync(file, 'utf-8')).map((name) => ({ name, file: path.relative(PACKAGES, file) })),
-    ),
-  );
+  const exported = SOURCES.flatMap(({ file, text }) => exportsIn(text).map((name) => ({ name, file })));
 
   it('reads a population, so the rule below is checking something', () => {
     expect(exported.length, 'no exports were found — the scan is broken').toBeGreaterThan(200);
   });
 
-  it('is in no export\u2019s name', () => {
+  it('is in no export’s name', () => {
     const offenders = exported.filter((e) => /seed/i.test(e.name));
     expect(offenders.map((o) => `${o.file}: ${o.name}`)).toEqual([]);
   });
