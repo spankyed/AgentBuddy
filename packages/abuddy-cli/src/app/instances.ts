@@ -2,7 +2,7 @@
  * Instances: a data dir you can throw away.
  *
  * `abuddy run` launches into the one shared `development` data dir, so every run inherits what the last
- * one left — seeded packs, half-migrated rows, settings from a pack you have since deleted. An instance
+ * one left — applied content, half-migrated rows, settings from a pack you have since deleted. An instance
  * is that dir, somewhere else, created on demand and disposable.
  *
  * **It is a data dir and nothing more.** `appName` stays `APP_NAMES[env]`, so the environment, the

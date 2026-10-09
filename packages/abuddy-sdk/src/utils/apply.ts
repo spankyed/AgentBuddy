@@ -141,12 +141,12 @@ export interface ContentApplier {
   apply(ctx: ApplyContext): ApplyResult;
 }
 
-/** The seed keys a registered pack has appliers for (its registration's `appliers`): the only keys an import of its seeds can touch */
+/** The content keys a registered pack has appliers for (its registration's `appliers`): the only keys an import of its seeds can touch */
 export function registeredContentKeys(packId: string): string[] {
   return boundHost().packs.appliers(packId).map((applier) => applier.key);
 }
 
-/** The index compilePack writes next to a pack's compiled seeds */
+/** The index compilePack writes next to a pack's compiled content */
 export const SEED_INDEX_FILE = 'seeds.json';
 
 /**
@@ -166,7 +166,7 @@ export function indexPackId(index: { packId?: string } | null, indexFile: string
   return index.packId;
 }
 
-/** Seeds a pack's compiled seeds directory with the appliers of the registered pack its seeds.json names */
+/** Seeds a pack's compiled content directory with the appliers of the registered pack its seeds.json names */
 export function importCompiledContent(options: {
   compiledDir: string;
   include?: Record<string, ContentSelection | undefined>;

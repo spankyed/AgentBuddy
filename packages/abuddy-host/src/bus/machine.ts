@@ -23,7 +23,7 @@ export type ActivatePackEvent = { type: 'ACTIVATE_PACK'; packId: string; systemI
 export type PackClientConnectedEvent = { type: 'PACK_CLIENT_CONNECTED'; packId: string };
 /**
  * A pack was activated, reloaded or torn down while the app runs, or its seeds were imported: what it
- * registers (its slash commands) and the data it seeded may differ, so every running system can refresh
+ * registers (its slash commands) and the content it applied may differ, so every running system can refresh
  * what it reads. Raised once the change is complete. Boot raises nothing: the systems start after it.
  */
 export type PackChangedEvent = { type: 'PACK_CHANGED'; packId: string };

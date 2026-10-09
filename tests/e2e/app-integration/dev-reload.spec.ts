@@ -1,5 +1,5 @@
 // `abuddy run` and the built-in pack's watcher rebuild a pack and then POST /dev/reload. The reload has to
-// leave the pack as a boot would: its runtime pointed at the compiled seeds, and seed data a rebuild changed
+// leave the pack as a boot would: its runtime pointed at the compiled content, and seed data a rebuild changed
 // imported. This drives the real endpoint against the running app, and the library's index is what shows it.
 import * as fs from 'node:fs';
 import * as path from 'node:path';

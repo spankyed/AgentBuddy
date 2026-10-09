@@ -209,7 +209,7 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
       .rejects.toThrow(/declares an entity, so it is content — declare it under content\.sources instead/);
   });
 
-  it('compiles seed keys named like PackConfig fields as seeds', async () => {
+  it('compiles content keys named like PackConfig fields as seeds', async () => {
     write('seeds/name.json', JSON.stringify([{ entity: 'Item', label: 'a' }]));
     write('seeds/setup.json', JSON.stringify([{ entity: 'Item', label: 'b' }]));
     // Through abuddy.json alone, as compilePack reads it without a packConfig

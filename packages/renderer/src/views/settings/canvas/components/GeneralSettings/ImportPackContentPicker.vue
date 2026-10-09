@@ -5,7 +5,7 @@
       {{ preview.directory }}
     </p>
 
-    <!-- Seeded keys no installed applier imports -->
+    <!-- Keys no installed applier imports -->
     <p v-if="preview.unavailable.length" class="text-xs text-amber-400/80">
       Not importable ({{ preview.unavailable.map(labelOf).join(', ') }}): pack "{{ preview.packId }}" registers no applier for {{ preview.unavailable.length === 1 ? 'it' : 'them' }}.
     </p>
@@ -219,7 +219,7 @@ interface Row {
   isEmpty: boolean
 }
 
-// Seed keys the pack's compiled seeds.json lists; known keys get an icon and hint, any other key a generic row
+// Seed keys the pack's compiled content.json lists; known keys get an icon and hint, any other key a generic row
 const KEY_META: Record<string, { icon: Component; hint?: string }> = {
   actions: { icon: Zap },
   prompts: { icon: MessageSquare },

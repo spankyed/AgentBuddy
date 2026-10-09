@@ -521,7 +521,7 @@ describe("two packs' records with the same entry key and identity", () => {
     expect(memos('Welcome').map((row) => row.body).sort()).toEqual(['From A', 'From B, revised']);
   });
 
-  it('fail with a rebuild error when the compiled seeds name no pack', () => {
+  it('fail with a rebuild error when the compiled content name no pack', () => {
     const dir = compiled('pack-a', [{ name: 'Welcome', body: 'From A' }]);
     fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, seeds: [] }));
     expect(() => seed(dir)).toThrow(/doesn't name the pack that compiled these seeds: rebuild the pack/);

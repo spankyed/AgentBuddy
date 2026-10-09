@@ -199,7 +199,7 @@ describe('a flow whose name another flow already has', () => {
     const before = graph('Codex');
     const counts = seedFlows(compiled(['Codex'], 'other', { only: ['Codex'], packId: 'other-pack' }));
     expect(counts).toMatchObject({ created: 0, updated: 0 });
-    expect(counts.errors).toEqual(['Flow "Codex": a flow with this name already exists (seeded by default-setup)']);
+    expect(counts.errors).toEqual(['Flow "Codex": a flow with this name already exists (written by default-setup)']);
     expect(graph('Codex')).toEqual(before);
     // default-setup still owns and updates its flow
     expect(seedFlows(compiled(['Codex']))).toMatchObject({ updated: 1 });

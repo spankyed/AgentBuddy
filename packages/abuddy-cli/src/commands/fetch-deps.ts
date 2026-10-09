@@ -43,7 +43,7 @@ export interface DepFiles {
   buildDir?: string;
   /** The dependency's backend runtime (runtime/index.cjs), if present: what a dependent's tests load. */
   runtimeEntry?: string;
-  /** The compiled seeds its runtime reads (runtime/seeds/, or a built-in pack's dist/), with the runtime */
+  /** The compiled content its runtime reads (runtime/seeds/, or a built-in pack's dist/), with the runtime */
   seedsDir?: string;
 }
 
@@ -77,7 +77,7 @@ export function findDepFiles(dir: string): DepFiles | null {
 function withBuildAndRuntime(snapshot: PackSnapshot, root: string): DepFiles {
   const buildDir = path.join(root, PACK_LAYOUT.buildDir);
   const runtimeEntry = path.join(root, PACK_LAYOUT.runtimeEntry);
-  // One place for every pack's compiled seeds, named by its index
+  // One place for every pack's compiled content, named by its index
   const seedsDir = path.join(root, PACK_LAYOUT.seedsDir);
   const hasSeeds = fs.existsSync(path.join(seedsDir, SEED_INDEX_FILE));
   const hasRuntime = fs.existsSync(runtimeEntry);
@@ -346,7 +346,7 @@ function cacheDep(root: string, depId: string, artifacts: DepFiles): void {
     fs.rmSync(cachedBuild, { recursive: true, force: true });
   }
 
-  // The backend runtime entry and the compiled seeds it reads; a dependency's FE bundle isn't used
+  // The backend runtime entry and the compiled content it reads; a dependency's FE bundle isn't used
   const cachedRuntime = path.join(depDir, PACK_LAYOUT.runtimeEntry);
   if (runtimeEntry && path.resolve(runtimeEntry) !== path.resolve(cachedRuntime)) {
     fs.rmSync(path.join(depDir, PACK_LAYOUT.runtimeDir), { recursive: true, force: true });

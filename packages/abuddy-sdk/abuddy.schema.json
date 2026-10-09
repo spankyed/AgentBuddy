@@ -264,12 +264,12 @@
     "help": {
       "type": "string",
       "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
-      "description": "Help entries this pack answers with, listed under Help in the app's Settings view. \"path#exportName\" of a function returning them; it is called the first time the list is read, so a pack may read its compiled seeds then."
+      "description": "Help entries this pack answers with, listed under Help in the app's Settings view. \"path#exportName\" of a function returning them; it is called the first time the list is read, so a pack may read its compiled content then."
     },
     "settingsSections": {
       "type": "string",
       "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
-      "description": "Sections of the app settings this pack owns, with their defaults, beside the \"plugins\" section the app keeps itself. \"path#exportName\" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled seeds then."
+      "description": "Sections of the app settings this pack owns, with their defaults, beside the \"plugins\" section the app keeps itself. \"path#exportName\" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled content then."
     },
     "commands": {
       "type": "array",

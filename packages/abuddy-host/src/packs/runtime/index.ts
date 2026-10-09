@@ -1,4 +1,4 @@
-// The pack runtime the app runs: loading, lifecycle, reload, seeding and the host packs system.
+// The pack runtime the app runs: loading, lifecycle, reload, applying content and the host packs system.
 // The @abuddy/host/packs barrel (which the CLI imports) never imports this.
 export {
   loadAppPacks, loadExternalPacks, loadSingleExternalPack, registerExternalPacks, clearPackRequireCache,

@@ -52,7 +52,7 @@ export type OutgoingSettingsEvents =
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
   // The four seed events are sent by the `packs` system, not this one: the work is pack-level and lives
   // there, while the view that draws it is the settings plugin, whose inbox this type is.
-  /** `errors` lists the records that couldn't be seeded (`<key>: <error>`); the rest were imported */
+  /** `errors` lists the items that couldn't be written (`<key>: <error>`); the rest were imported */
   | { type: 'PACK_CONTENT_IMPORTED'; result: Record<string, ApplyResult>; errors: string[] }
   | { type: 'PACK_CONTENT_IMPORT_FAILED'; error: string }
   | { type: 'PACK_CONTENT_PREVIEW'; preview: PackContentPreview }

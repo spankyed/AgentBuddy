@@ -25,14 +25,14 @@ export function createContentWriterStore() {
   };
 }
 
-/** Each pack's appliers: two packs may declare the same seed key with different appliers */
+/** Each pack's appliers: two packs may declare the same content key with different appliers */
 export function createApplierStore() {
   const byPack = new Map<string, readonly ContentApplier[]>();
   return {
     register(packId: string, appliers: readonly ContentApplier[]): void {
       const keys = new Set<string>();
       for (const { key } of appliers) {
-        if (keys.has(key)) throw new Error(`Pack "${packId}" registers two appliers for seed key "${key}"`);
+        if (keys.has(key)) throw new Error(`Pack "${packId}" registers two appliers for content key "${key}"`);
         keys.add(key);
       }
       if (appliers.length > 0) byPack.set(packId, appliers);
@@ -167,7 +167,7 @@ export function createShutdownHooks() {
 }
 
 /**
- * Each pack's help entries, read the first time the list is (a pack's may come from its compiled seeds), in the
+ * Each pack's help entries, read the first time the list is (a pack's may come from its compiled content), in the
  * order the packs were first registered. Unlike commands, two packs may answer the same question: the Settings
  * view lists them all, so there is nothing to collide over.
  */

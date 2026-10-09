@@ -1,5 +1,5 @@
-// How library rows are seeded, for any pack that seeds Collection or Document rows: through
-// libraryCommands, so seeded documents get shortCodes and display order, and collections nest with
+// How library entities are written, for any pack whose content declares Collection or Document: through
+// libraryCommands, so written documents get shortCodes and display order, and collections nest with
 // PARENT_OF and hold documents with contains, like rows created in the app. Rows match by name
 // within their folder, as the library itself names them.
 import type { ContentWriter, ContentItem } from '@abuddy/sdk/content';
@@ -55,7 +55,7 @@ export const documentWriter: ContentWriter<DocumentItem> = {
 };
 
 export const collectionWriter: ContentWriter<CollectionItem> = {
-  // A folder holds other packs' documents too, so one another pack seeded is seeded into, not copied
+  // A folder holds other packs' documents too, so one another pack wrote is written into, not copied
   container: true,
 
   find(record, { parentId }) {

@@ -413,7 +413,7 @@ describe('the help entries the Settings view shows', () => {
   // The list is read in the action that sends the Settings view all of its data, so a pack that threw reading its
   // own help took the whole view down with it: no settings, no secrets, no hotkeys, and no error to say why
   it("loads the view when an installed pack can't read its own help", async () => {
-    registerPack({ id: 'broken-pack', features: {}, help: () => { throw new Error('no compiled seeds'); } });
+    registerPack({ id: 'broken-pack', features: {}, help: () => { throw new Error('no compiled content'); } });
     try {
       const app = await startApp({ systems: ['host/settings'] });
       await app.connect();

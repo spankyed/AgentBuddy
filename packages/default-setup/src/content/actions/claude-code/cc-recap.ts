@@ -99,7 +99,7 @@ async function generateRecap(
   const recapSystemPrompt = services.prompt.usePrompt('Recap System', {});
 
   if (!recapSystemPrompt) {
-    return 'Recap prompt not found. Please ensure the "Recap" prompt template is seeded.';
+    return 'Recap prompt not found. Please ensure the "Recap" prompt template has been applied.';
   }
 
   const handle = await services.cli.claudeCode.query({

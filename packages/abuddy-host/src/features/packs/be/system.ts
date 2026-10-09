@@ -31,7 +31,7 @@ export const packsSpec = defineSystem<Contract>();
  * Convert the JSON-safe include shape from the frontend (`null = all items, [] = skip, string[] = filter`)
  * into the `SeedInclude` structure `importCompiledContent` consumes.
  */
-function toSeedInclude(include: Record<string, string[] | null>): Record<string, ContentSelection | undefined> {
+function toContentSelection(include: Record<string, string[] | null>): Record<string, ContentSelection | undefined> {
   return Object.fromEntries(Object.entries(include).map(([key, items]) => [key, items === null ? true : new Set(items)]));
 }
 
@@ -143,7 +143,7 @@ export function createPacksSystem(registry: PackRegistry) {
     importPackContent: ({ event }) => {
       const ev = packsSpec.typeOf('IMPORT_PACK_CONTENT', event);
       try {
-        const include = ev.include ? toSeedInclude(ev.include) : undefined;
+        const include = ev.include ? toContentSelection(ev.include) : undefined;
         // Read first: a directory that can't name its pack fails before anything is imported
         const { packId } = previewPackContent(ev.directory);
         /**

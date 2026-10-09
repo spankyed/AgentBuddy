@@ -1,4 +1,4 @@
-// Notes through the generic seed pipeline: markdown compiled into records, seeded by the SDK's
+// Notes through the generic seed pipeline: markdown compiled into records, written by the SDK's
 // generic applier through default-setup's Note content writers.
 // - Fresh seeds must produce the same notes rows as the goldens (first recorded from the pre-generic pipeline).
 // - Re-seeds follow goal-generic-seed-compiler Decision 10: notes carry a contentHash, an unchanged or
@@ -235,7 +235,7 @@ describe('notes seeding (generic pipeline)', () => {
    * **A note the user deleted is not seeded again.** Notes delete softly (`trash.move` marks the row and keeps
    * its `contentKey`), so the record of the deletion is on the row the applier searches for — but the applier used
    * a finder that hides deleted rows, missed it, missed it again by identity, and created a second note beside
-   * the one in the trash. The lookup seeing deleted rows is what makes the rule hold for every seed key,
+   * the one in the trash. The lookup seeing deleted rows is what makes the rule hold for every content key,
    * rather than for whichever key someone noticed the symptom on.
    *
    * The assertion is that no *second* row appears: `snapshot()` reads with an unfiltered `qx`, so the trashed

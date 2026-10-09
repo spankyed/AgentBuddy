@@ -256,7 +256,7 @@ function captureOutput(app: ElectronApplication, logFile?: string): void {
 /**
  * Waits for the pack under test to have been loaded and registered by the app's backend.
  *
- * Nothing else in this fixture observes the backend: seeding reports only its own failures, and the
+ * Nothing else in this fixture observes the backend: an apply reports only its own failures, and the
  * plugin wait below covers a pack with a frontend. A backend-only pack whose systems never registered
  * — an incompatible hostVersion, an unsupported layout, a throw in its runtime — would otherwise pass
  * its whole suite while dead, because every test it runs asks the app about something else.
@@ -528,9 +528,9 @@ export function createTest(options: CreateTestOptions = {}) {
       if (process.env.PACK_DIR) {
         const manifest = getPackManifest();
         // Seeding runs before the backend accepts connections, so its outcome is final by now
-        const seedError = manifest && readPackLastError(manifest.id, userDataDirs.get(electronApp)!);
-        if (seedError) {
-          throw describeFailure(`Pack ${manifest!.id} failed to seed its data:\n${seedError}`, electronApp, rendererErrors);
+        const applyError = manifest && readPackLastError(manifest.id, userDataDirs.get(electronApp)!);
+        if (applyError) {
+          throw describeFailure(`Pack ${manifest!.id} failed to apply its content:\n${applyError}`, electronApp, rendererErrors);
         }
         if (manifest) await waitForPackBackend(electronApp, manifest.id);
         if (manifest && manifest.pluginIds.length > 0) {

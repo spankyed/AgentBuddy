@@ -1,6 +1,6 @@
 // Help entries are a contribution, like commands and blocks: the app's Settings view lists what every pack
 // answers with, so any pack can add help. They are read the first time the list is read, not at registration,
-// because a pack's may come from its compiled seeds — which exist only after it is built.
+// because a pack's may come from its compiled content — which exist only after it is built.
 import { describe, expect, it, vi } from 'vitest';
 import type { HelpEntry, PackRegistration } from '@abuddy/sdk/framework';
 import { createPackRegistry } from '../../src/packs/registry.ts';
@@ -56,7 +56,7 @@ describe('the help entries registered packs contribute', () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     const registry = createPackRegistry();
     registry.registerPack(pack('first', () => [entry('a')]));
-    registry.registerPack(pack('broken', () => { throw new Error('no compiled seeds'); }));
+    registry.registerPack(pack('broken', () => { throw new Error('no compiled content'); }));
     registry.registerPack(pack('last', () => [entry('b')]));
 
     expect(registry.help().map((e) => e.id)).toEqual(['a', 'b']);

@@ -63,7 +63,7 @@ function filesUnder(dir: string): string[] {
     .map((entry) => path.join(entry.parentPath, entry.name));
 }
 
-test('previews a compiled seeds directory by its seeds.json and imports the selected items', async ({ app, appPage, electronApp }) => {
+test('previews a compiled content directory by its seeds.json and imports the selected items', async ({ app, appPage, electronApp }) => {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-import-seeds-'));
   try {
     const directory = await compileSeeds(work);

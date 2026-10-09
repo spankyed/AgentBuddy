@@ -14,7 +14,7 @@ import { errorMessage } from '@abuddy/sdk/utils/pure';
 const logger = createLogger('pack-seed');
 
 /**
- * What a pack's compiled seeds are: their bytes, and the names of the files holding them. **Content only.**
+ * What a pack's compiled content is: their bytes, and the names of the files holding them. **Content only.**
  *
  * The names as well as the bytes, so a seed moved between files, added or dropped counts — the same reason
  * `fingerprintUnit` hashes a unit's declared paths beside its contents.
@@ -22,7 +22,7 @@ const logger = createLogger('pack-seed');
  * **File times are deliberately not in here, and used to be.** `placePack` copies into a fresh directory and
  * renames it over the old one, so every install leaves new files whatever they contain; hashing their mtimes
  * made a reinstall of the identical pack look like changed data, which was the point — reinstalling was how
- * you got a pack's data put back. It also made a `touch` re-seed, and made every `abuddy run` backend rebuild
+ * you got a pack's data put back. It also made a `touch` re-apply, and made every `abuddy run` backend rebuild
  * re-import every seed, since that loop reinstalls. Content is what "changed" means here, as it does
  * everywhere else in this repo that compares a tree against a record.
  *
@@ -52,16 +52,16 @@ function applyErrors(result: Record<string, { errors?: string[] }> | undefined):
 
 
 /**
- * What seeding a pack needs: which pack, where its compiled seeds are, and what it depends on.
+ * What applying a pack's content needs: which pack, where its compiled content is, and what it depends on.
  *
  * The manifest fields are `Pick`ed from `PackManifest` rather than restated, so this can't drift from what
  * a manifest actually holds — `dependencies` is optional here because a pack with none declares none, not
  * because a caller may leave it out. It is what the retry rule reads: a seed that failed is run again once
- * one of these has seeded.
+ * one of these has applied.
  */
 export interface PackContentTarget {
   manifest: Pick<PackManifest, 'id' | 'dependencies'>;
-  /** The pack's own directory; its compiled seeds are at `runtime/seeds` under it */
+  /** The pack's own directory; its compiled content is at `runtime/seeds` under it */
   dir: string;
 }
 
@@ -91,7 +91,7 @@ const OFFER_SENTENCE: Record<ContentOffer['kind'], string> = {
  * holds the entity type and the item's identity, and `describeContentKey` is what renders them. The keys
  * are in the event's meta for whoever is tracing one.
  *
- * **Boot seeding runs before the bus starts**, so this reaches stdout and the app's log file and not the
+ * **The boot apply runs before the bus starts**, so this reaches stdout and the app's log file and not the
  * Logs plugin, which shows what `onLog` delivers from the moment the bus starts it. An apply on a reload
  * or an activation reaches both.
  */
@@ -109,8 +109,8 @@ function reportOffers(packId: string, offers: ReadonlyMap<string, ContentOffer>)
 
 /**
  * Seed the packs whose seed could have a different outcome than last time: their compiled data changed, or
- * their last seed failed and something they depend on has seeded since. `packs` arrives in dependency order
- * (`packContentOrder`), so a pack sees what the packs it depends on seeded in this same run.
+ * their last apply failed and something they depend on has applied since. `packs` arrives in dependency order
+ * (`packContentOrder`), so a pack sees what the packs it depends on applied in this same run.
  *
  * **Every pack, by one rule**, whoever ships it: one hash over the files in its seeds directory, one record
  * (`appliedContent`) and one retry rule. Which
@@ -131,7 +131,7 @@ export function applyPacks(packs: Iterable<PackContentTarget>, importContent: ty
     const seedsDir = path.join(pack.dir, PACK_LAYOUT.seedsDir);
     const currentHash = fs.existsSync(seedsDir) ? contentRevision(seedsDir) : '';
     if (!currentHash) {
-      // Nothing to seed: an earlier version's error no longer applies, and neither does what it faced
+      // Nothing to apply: an earlier version's error no longer applies, and neither does what it faced
       outcomes.set(packId, undefined);
       appState.updatePackEntry('failedAgainst', packId, undefined);
       continue;
@@ -142,11 +142,11 @@ export function applyPacks(packs: Iterable<PackContentTarget>, importContent: ty
     const deps = dependencyState(pack.manifest.dependencies);
     const failedAgainst = appState.get().failedAgainst[packId];
     if (applied.revision === currentHash && (failedAgainst === undefined || failedAgainst === deps)) {
-      logger.info(`Pack seed skipped (unchanged): ${packId}`);
+      logger.info(`Pack apply skipped (unchanged): ${packId}`);
       continue;
     }
 
-    logger.info(`Importing seeds for pack: ${packId}`);
+    logger.info(`Applying content for pack: ${packId}`);
     let errors: string[];
     /**
      * The record that makes this an apply rather than an import: what the last one wrote per item, the keys
@@ -188,7 +188,7 @@ export function applyPacks(packs: Iterable<PackContentTarget>, importContent: ty
     });
     reportOffers(packId, record.offers);
     if (errors.length > 0) {
-      logger.error(`Failed to seed pack ${packId}:\n  ${errors.join('\n  ')}`);
+      logger.error(`Failed to apply pack ${packId}:\n  ${errors.join('\n  ')}`);
       appState.updatePackEntry('failedAgainst', packId, deps);
       failures.push({ packId, errors });
       outcomes.set(packId, errors.join('\n'));
@@ -196,7 +196,7 @@ export function applyPacks(packs: Iterable<PackContentTarget>, importContent: ty
     }
     appState.updatePackEntry('failedAgainst', packId, undefined);
     outcomes.set(packId, undefined);
-    logger.info(`Pack seeded: ${packId}`);
+    logger.info(`Pack applied: ${packId}`);
   }
 
   recordApplyOutcomes(outcomes);

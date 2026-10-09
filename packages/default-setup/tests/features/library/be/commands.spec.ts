@@ -13,7 +13,7 @@ import { repository } from '#generated/repository.ts'
 import { services } from '#generated/services.ts'
 import manifest from '../../../../abuddy.json'
 
-/** Where `abuddy build` writes this pack's compiled seeds */
+/** Where `abuddy build` writes this pack's compiled content */
 const DIST = path.resolve(import.meta.dirname, '../../../../dist', 'runtime', 'seeds')
 
 const commandNames = (event: unknown) => ((event as { commands: Array<{ name: string }> }).commands).map((command) => command.name)

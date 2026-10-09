@@ -249,7 +249,7 @@ export const databaseSystem = setup({
       try {
         logger.info('Starting database reset...');
 
-        // The host resets the whole app: fresh stores, then each pack's onInit and boot seed (the seeded root flow), then migrations
+        // The host resets the whole app: fresh stores, then each pack's onInit and its content (the root flow among it), then migrations
         await services.appData.reset();
 
         // Restart the brain with the new root flow

@@ -117,7 +117,7 @@ describe('reloading a pack the app ships', () => {
     return packDir;
   }
 
-  /** A pack's compiled seeds, where an installed pack holds them */
+  /** A pack's compiled content, where an installed pack holds them */
   function writeSeeds(content: string): void {
     const seedsDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir);
     fs.mkdirSync(seedsDir, { recursive: true });
@@ -161,7 +161,7 @@ describe('reloading a pack the app ships', () => {
     }]);
   });
 
-  it('points the rebuilt runtime at its compiled seeds, so onInit can read them', async () => {
+  it('points the rebuilt runtime at its compiled content, so onInit can read them', async () => {
     writeShipped();
     loadAppPacks(registry, new Set([SHIPPED_ID]));
 
@@ -196,7 +196,7 @@ describe('reloading a pack the app ships', () => {
     await reloadPackById(registry, SHIPPED_ID, bus as never);
     expect(seeded).toEqual([]);
 
-    // A reload carrying recompiled seeds imports them
+    // A reload carrying recompiled content imports them
     writeSeeds('[{ "label": "second" }]');
     await reloadPackById(registry, SHIPPED_ID, bus as never);
     expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir)]);
@@ -235,7 +235,7 @@ describe('reloading a pack the app ships', () => {
     applyPacks([seedTarget()]);
     expect(seeded).toEqual([]);
 
-    // ...while recompiled seeds do
+    // ...while recompiled content do
     writeSeeds('[{ "label": "second" }]');
     recordsThatFail = [];
     loggedErrors.length = 0;
@@ -249,7 +249,7 @@ describe('reloading a pack the app ships', () => {
     loadAppPacks(registry, new Set([SHIPPED_ID]));
     bus.send.mockClear();
 
-    // A rebuild running again mid-reload takes the compiled seeds out from under the applier
+    // A rebuild running again mid-reload takes the compiled content out from under the applier
     seedFailure = new Error("ENOENT: no such file or directory, open 'actions.seed.json'");
     await reloadPackById(registry, SHIPPED_ID, bus as never);
 

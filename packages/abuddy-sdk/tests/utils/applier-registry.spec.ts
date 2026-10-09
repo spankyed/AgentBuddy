@@ -16,7 +16,7 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-/** A compiled seeds directory whose seeds.json names `packId` */
+/** A compiled content directory whose seeds.json names `packId` */
 function compiledDir(packId?: string): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'seed-registry-'));
   dirs.push(dir);

@@ -25,13 +25,13 @@ describe('registries/services — feature services assembly', () => {
 });
 
 describe('core/seed — appliers', () => {
-  it("default-setup's registration carries all built-in appliers, which importCompiledContent runs for its compiled seeds", async () => {
+  it("default-setup's registration carries all built-in appliers, which importCompiledContent runs for its compiled content", async () => {
     const { importCompiledContent } = await import('@abuddy/sdk/utils');
     const fs = await import('fs');
     const os = await import('os');
     const path = await import('path');
 
-    // A compiled seeds directory of default-setup's with no seed files: every applier runs and finds nothing
+    // A compiled content directory of default-setup's with no seed files: every applier runs and finds nothing
     const compiledDir = fs.mkdtempSync(path.join(os.tmpdir(), 'default-setup-seeds-'));
     fs.writeFileSync(path.join(compiledDir, 'seeds.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
     const result = importCompiledContent({ compiledDir });

@@ -181,8 +181,8 @@ async function buildIntoStaging(args: string[]) {
   }
 
   const packDir = root;
-  // One place for a pack's compiled seeds, whoever ships it: `dist/runtime/seeds/`, which staging and
-  // publishing carry to `runtime/seeds/` in the installed layout. The app's seeding reads that one path
+  // One place for a pack's compiled content, whoever ships it: `dist/runtime/seeds/`, which staging and
+  // publishing carry to `runtime/seeds/` in the installed layout. The app's apply reads that one path
   const seedsOutputDir = path.join(outputDir, PACK_LAYOUT.seedsDir);
   const snapshotPath = path.join(outputDir, PACK_LAYOUT.snapshot);
 

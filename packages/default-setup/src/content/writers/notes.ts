@@ -1,4 +1,4 @@
-// How notes are seeded, for any pack that seeds Note rows: through noteCommands, so seeded notes get
+// How notes are written, for any pack whose content declares Note: through noteCommands, so written notes get
 // shortCodes, display order and REFERENCES links like notes created in the app.
 import type { ContentWriter, ContentItem } from '@abuddy/sdk/content';
 import { EARS, findWhere, qx } from '#generated/ears.ts';

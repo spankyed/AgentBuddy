@@ -6,7 +6,7 @@ import type { ContentFormatConfig } from '../manifest.ts';
 
 /**
  * One item a seed entry seeds: an entity row's fields, tagged with its entity type, plus its
- * children for trees. `contentHash` decides whether a re-seed updates an existing row.
+ * children for trees. `contentHash` decides whether a re-apply updates an existing entity.
  */
 export interface ContentItem {
   entity?: string;
@@ -15,7 +15,7 @@ export interface ContentItem {
   [field: string]: unknown;
 }
 
-/** The compiled form of a generically seeded entry: `<key>.seed.json` */
+/** The compiled form of a generic content entry: `<key>.seed.json` */
 export interface CompiledContentFile {
   records: ContentItem[];
 }
@@ -34,7 +34,7 @@ export interface ContentCompileContext {
   key: string;
   /** Absolute path of the entry's `path` */
   path: string;
-  /** The pack seeding the entry (a dependency's format still compiles the seeding pack's sources) */
+  /** The pack writing the entry (a dependency's format still compiles the writing pack's sources) */
   packDir: string;
   format: ContentFormatConfig;
 }

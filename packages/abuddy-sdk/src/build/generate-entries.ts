@@ -1246,7 +1246,7 @@ ${entries.map(([name]) => `  ${name}: __repo_${name},`).join('\n')}
   }
 
   /**
-   * The pack's seed runtime (entity types, relation kinds, repositories, content writers), what seeding its
+   * The pack's seed runtime (entity types, relation kinds, repositories, content writers), what applying its
    * entity types needs outside the app. \`abuddy build\` bundles it into dist/build/seed-runtime.mjs for
    * dependents' unit tests; the pack's own tests import it from #generated/content-runtime.
    */
@@ -1394,7 +1394,7 @@ import { importCompiledContent, type ContentApplier, type ApplyResult, type Cont
 ${packImports.join('\n')}
 
 ${COMPILED_DIR_ACCESSORS}
-/** The pack's appliers, one per seeded key, which its registration carries */
+/** The pack's appliers, one per content key, which its registration carries */
 export const appliers: ContentApplier[] = [
 ${registrations.map((registration) => `  ${registration},`).join('\n')}
 ];

@@ -162,7 +162,7 @@ describe('appliers', () => {
     for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  /** A compiled seeds directory whose seeds.json names `packId` */
+  /** A compiled content directory whose seeds.json names `packId` */
   function compiledDir(packId: string): string {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'registered-appliers-'));
     dirs.push(dir);
@@ -171,7 +171,7 @@ describe('appliers', () => {
   }
   const applier = (key: string, created: number): ContentApplier => ({ key, apply: () => ({ created, updated: 0, skipped: 0 }) });
 
-  it("run for their pack's compiled seeds while it's registered, each pack's apart", () => {
+  it("run for their pack's compiled content while it's registered, each pack's apart", () => {
     add({ id: 'pack-a', appliers: [applier('library', 1)] });
     add({ id: 'pack-b', appliers: [applier('library', 2), applier('notes', 3)] });
     expect(importCompiledContent({ compiledDir: compiledDir('pack-a') })).toEqual({ library: { created: 1, updated: 0, skipped: 0 } });
@@ -183,7 +183,7 @@ describe('appliers', () => {
 
   it("refuse two appliers for one key in a pack, registering none of the pack", () => {
     expect(() => add({ id: 'pack-a', steps: [noteStep], appliers: [applier('notes', 1), applier('notes', 2)] }))
-      .toThrow('Pack "pack-a" registers two appliers for seed key "notes"');
+      .toThrow('Pack "pack-a" registers two appliers for content key "notes"');
     expect(importCompiledContent({ compiledDir: compiledDir('pack-a') })).toEqual({});
     expect(stepRegistry.has('note')).toBe(false);
   });
@@ -289,7 +289,7 @@ describe('two packs naming the same feature', () => {
 describe('a pack whose registration is refused', () => {
   const scratch: string[] = [];
   afterEach(() => { for (const dir of scratch.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
-  /** A compiled seeds directory whose seeds.json names `packId` */
+  /** A compiled content directory whose seeds.json names `packId` */
   const seedsOf = (packId: string) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'refused-rollback-'));
     scratch.push(dir);

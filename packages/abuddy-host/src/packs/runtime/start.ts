@@ -15,6 +15,6 @@ export function startPacks(registry: PackRegistry): void {
   runPackMigrations(registry.packMigrationTargets());
 
   // One call for every pack, in dependency order, so every pack gets the same treatment: a failed seed is
-  // retried on the next boot, and a pack sees what the packs it depends on seeded in this same run
-  applyPacks(registry.packSeedTargets());
+  // retried on the next boot, and a pack sees what the packs it depends on applied in this same run
+  applyPacks(registry.packContentTargets());
 }

@@ -25,9 +25,9 @@ export interface PackContentImport {
   status: 'idle' | 'previewing' | 'selecting' | 'importing' | 'success' | 'error';
   directory: string | null;
   preview: PackContentPreview | null;
-  /** Per seed key (as the preview lists them): the item keys currently ticked. */
+  /** Per content key (as the preview lists them): the item keys currently ticked. */
   selection: Record<string, string[]>;
-  /** Which seed key rows are currently expanded in the UI. */
+  /** Which content key rows are currently expanded in the UI. */
   expanded: Record<string, boolean>;
   importMode: ImportMode;
   restartBrain: boolean;
@@ -38,7 +38,7 @@ export interface PackContentImport {
 }
 
 
-function freshPackSeeds(): PackContentImport {
+function freshContentImport(): PackContentImport {
   return {
     status: 'idle',
     directory: null,
@@ -272,7 +272,7 @@ export function createSettingsMachine(io: SettingsIO) {
       };
     }),
 
-    setPackSeedsPreview: assign(({ context, event }) => {
+    setContentPreview: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_CONTENT_PREVIEW'; preview: PackContentPreview };
       const selection = Object.fromEntries(Object.entries(ev.preview.content).map(([key, items]) => [key, items.map(i => i.key)]));
       return {
@@ -289,7 +289,7 @@ export function createSettingsMachine(io: SettingsIO) {
       };
     }),
 
-    setPackSeedsPreviewFailed: assign(({ context, event }) => {
+    setContentPreviewFailed: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_CONTENT_PREVIEW_FAILED'; error: string };
       return {
         packContentImport: {
@@ -303,7 +303,7 @@ export function createSettingsMachine(io: SettingsIO) {
       };
     }),
 
-    togglePackSeedsExpand: assign(({ context, event }) => {
+    toggleContentExpand: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_CONTENT.TOGGLE_EXPAND'; key: string };
       return {
         packContentImport: {
@@ -316,7 +316,7 @@ export function createSettingsMachine(io: SettingsIO) {
       };
     }),
 
-    togglePackSeedsTypeAll: assign(({ context, event }) => {
+    toggleContentTypeAll: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_CONTENT.TOGGLE_TYPE_ALL'; key: string };
       const preview = context.packContentImport.preview;
       if (!preview) return {};
@@ -334,7 +334,7 @@ export function createSettingsMachine(io: SettingsIO) {
       };
     }),
 
-    togglePackSeedsItem: assign(({ context, event }) => {
+    toggleContentItem: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_CONTENT.TOGGLE_ITEM'; key: string; item: string };
       const current = context.packContentImport.selection[ev.key] ?? [];
       const next = current.includes(ev.item)
@@ -351,7 +351,7 @@ export function createSettingsMachine(io: SettingsIO) {
       };
     }),
 
-    confirmPackSeedsImport: assign(({ context }) => {
+    confirmContentImport: assign(({ context }) => {
       const { directory, preview, selection, importMode, restartBrain } = context.packContentImport;
       if (!directory || !preview) return {};
 
@@ -383,11 +383,11 @@ export function createSettingsMachine(io: SettingsIO) {
       };
     }),
 
-    cancelPackSeeds: assign(() => ({
-      packContentImport: freshPackSeeds(),
+    cancelContentImport: assign(() => ({
+      packContentImport: freshContentImport(),
     })),
 
-    setPackSeedsImported: assign(({ context, event }) => {
+    setContentImported: assign(({ context, event }) => {
       const ev = event as Extract<SettingsEvents, { type: 'PACK_CONTENT_IMPORTED' }>;
       return {
         packContentImport: {
@@ -400,7 +400,7 @@ export function createSettingsMachine(io: SettingsIO) {
       };
     }),
 
-    setPackSeedsImportFailed: assign(({ context, event }) => {
+    setContentImportFailed: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_CONTENT_IMPORT_FAILED'; error: string };
       return {
         packContentImport: {
@@ -413,8 +413,8 @@ export function createSettingsMachine(io: SettingsIO) {
       };
     }),
 
-    resetPackSeedsStatus: assign(() => ({
-      packContentImport: freshPackSeeds(),
+    resetContentImportStatus: assign(() => ({
+      packContentImport: freshContentImport(),
     })),
   },
   }).createMachine({
@@ -427,7 +427,7 @@ export function createSettingsMachine(io: SettingsIO) {
     secrets: [],
     secretsStatus: null,
     cliTestResults: {},
-    packContentImport: freshPackSeeds(),
+    packContentImport: freshContentImport(),
     activeTab: 'general',
     generalNavItem: 'application',
     selectedPluginId: null as string | null,
@@ -497,13 +497,13 @@ export function createSettingsMachine(io: SettingsIO) {
           actions: 'previewPackContent',
         },
         'PACK_CONTENT.TOGGLE_EXPAND': {
-          actions: 'togglePackSeedsExpand',
+          actions: 'toggleContentExpand',
         },
         'PACK_CONTENT.TOGGLE_TYPE_ALL': {
-          actions: 'togglePackSeedsTypeAll',
+          actions: 'toggleContentTypeAll',
         },
         'PACK_CONTENT.TOGGLE_ITEM': {
-          actions: 'togglePackSeedsItem',
+          actions: 'toggleContentItem',
         },
         'PACK_CONTENT.SET_MODE': {
           actions: assign(({ context, event }) => ({
@@ -522,25 +522,25 @@ export function createSettingsMachine(io: SettingsIO) {
           })),
         },
         'PACK_CONTENT.CONFIRM_IMPORT': {
-          actions: 'confirmPackSeedsImport',
+          actions: 'confirmContentImport',
         },
         'PACK_CONTENT.CANCEL': {
-          actions: 'cancelPackSeeds',
+          actions: 'cancelContentImport',
         },
         'PACK_CONTENT.RESET_STATUS': {
-          actions: 'resetPackSeedsStatus',
+          actions: 'resetContentImportStatus',
         },
         PACK_CONTENT_PREVIEW: {
-          actions: 'setPackSeedsPreview',
+          actions: 'setContentPreview',
         },
         PACK_CONTENT_PREVIEW_FAILED: {
-          actions: 'setPackSeedsPreviewFailed',
+          actions: 'setContentPreviewFailed',
         },
         PACK_CONTENT_IMPORTED: {
-          actions: 'setPackSeedsImported',
+          actions: 'setContentImported',
         },
         PACK_CONTENT_IMPORT_FAILED: {
-          actions: 'setPackSeedsImportFailed',
+          actions: 'setContentImportFailed',
         },
         'APP.RESET': {
           guard: ({ context }) => !context.resetting,

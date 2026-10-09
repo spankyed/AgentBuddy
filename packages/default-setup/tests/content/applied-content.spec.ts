@@ -13,7 +13,7 @@ import { SEED_INDEX_FILE } from '@abuddy/sdk/build';
 import { untypedQx as qx, untypedTx, type EARS } from '@abuddy/ears';
 import { PACK_DIR, applyAfter } from './harness.ts';
 
-/** This pack's compiled seeds, as its build wrote them */
+/** This pack's compiled content, as its build wrote them */
 const BUILT = path.join(PACK_DIR, 'dist', 'runtime', 'seeds');
 
 interface IndexEntry { key: string; seeded?: boolean; count?: number }

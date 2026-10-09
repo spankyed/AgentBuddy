@@ -386,7 +386,7 @@ export function orderedSteps(given: readonly ChainStep[] = CHAIN_STEPS): readonl
  * `packages/renderer/dist` moved aside. Its Playwright half needs the app.
  *
  * `test:packaged-authoring` needs the app whole. It is a linear scenario rather than two halves: step 8
- * needs the archive step 6 produced and step 9 reads the data step 8's app seeded, so it takes a mode rather
+ * needs the archive step 6 produced and step 9 reads the content step 8's app applied, so it takes a mode rather
  * than a split (Phase 2 of the goal).
  */
 /**
@@ -687,7 +687,7 @@ const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name
  * Without it the pool skips the project while the thing it checks moves — see `EVERY_SOURCE`.
  */
 export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: true }> = {
-  // `pretest: ensure-packages-built`, `@abuddy/testing`'s bundle, and its own compiled seeds under `dist/`
+  // `pretest: ensure-packages-built`, `@abuddy/testing`'s bundle, and its own compiled content under `dist/`
   'default-setup': { packages: true, pack: true },
   // `pretest: ensure-packages-built`; it packs and installs the published packages, and `dependency-runtime`
   // builds a fixture pack against default-setup's `dist`

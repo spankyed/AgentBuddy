@@ -99,7 +99,7 @@ export interface PackDependents {
  *
  * Only edges between the packs given, so a dependency on a pack that is not in the list is not an edge:
  * either the caller is not acting on it, or it is not installed, which is reported when the pack that
- * declares it is installed. Callers that want every edge honoured pass every pack — `packSeedTargets`
+ * declares it is installed. Callers that want every edge honoured pass every pack — `packContentTargets`
  * does, which is how a pack depending on one the app ships seeds after it.
  *
  * A cycle has no order that satisfies it, and a pack-authoring mistake must not stop an app booting, so
@@ -130,7 +130,7 @@ export function packContentOrder<T extends PackDependents>(packs: readonly T[]):
 
   for (const pack of packs) visit(pack, []);
   if (cycles.length > 0) {
-    logger.warn(`Packs depend on each other, so no order satisfies them all; seeding them anyway: ${cycles.join(', ')}`);
+    logger.warn(`Packs depend on each other, so no order satisfies them all; applying them anyway: ${cycles.join(', ')}`);
   }
   return ordered;
 }

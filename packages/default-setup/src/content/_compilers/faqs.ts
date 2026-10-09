@@ -1,6 +1,6 @@
 // Compiles src/content/faqs (the `faqs` seed entry in abuddy.json) for the Help tab: each file's first
 // `# heading` is the question and the rest the answer, ordered by frontmatter `order`. Compiled, not
-// seeded: loadFaqs reads faqs.seed.json.
+// written: loadFaqs reads faqs.seed.json.
 import { compileMarkdownTree, type ContentCompileContext, type ContentItem } from '@abuddy/sdk/build';
 import type { FAQItem } from '#app-settings/types.ts';
 

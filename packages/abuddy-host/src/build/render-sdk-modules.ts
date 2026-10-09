@@ -8,8 +8,8 @@ import {
 
 /** Shared-instance exports the app doesn't bridge: pack runtime code never requires them */
 export const APP_UNBRIDGED: Readonly<Record<string, string>> = {
-  // Inlined into seed action strings at compile time; the sandbox that runs them has no module loader
-  '@abuddy/sdk/actions': 'compile-time only, inlined into seed strings',
+  // Inlined into compiled action bodies at compile time; the sandbox that runs them has no module loader
+  '@abuddy/sdk/actions': 'compile-time only, inlined into compiled action bodies',
   // A pack's unit tests (through @abuddy/testing) load it, never a pack's runtime in the app
   '@abuddy/sdk/testing': 'unit-test runtime only',
   // A pack directory on disk, for the specs whose subject is pack tooling. Source-only: the entry has no

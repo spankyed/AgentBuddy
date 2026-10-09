@@ -17,7 +17,7 @@ export interface PackMigration {
  * The pack's boot hooks: code the app runs for it, and nothing else.
  *
  * **A registration carries code; the manifest and the compiled artifacts carry facts.** So nothing here
- * describes a pack's seeding: which keys it seeds is `seeds.json`'s, where its compiled seeds are follows
+ * describes a pack's content: which keys it writes is `seeds.json`'s, where its compiled content is follows
  * from where the pack is installed, and what a seed leaves alone the applier decides from the rows — an
  * unchanged hash, an edited row, one the user deleted. A fact put here is a second account of one of those.
  */
@@ -78,7 +78,7 @@ export interface PackRegistration {
   blocks?: import('../blocks/types.ts').BlockDefinition[];
   /** Content writers for the entity types this pack owns (abuddy.json `contentWriters`) */
   contentWriters?: Record<string, import('../content/writers.ts').ContentWriter>;
-  /** The pack's appliers, one per seeded key (abuddy.json `content.sources`), which `importCompiledContent` runs for the pack's compiled seeds */
+  /** The pack's appliers, one per content key (abuddy.json `content.sources`), which `importCompiledContent` runs for the pack's compiled content */
   appliers?: import('../utils/apply.ts').ContentApplier[];
   /** The slash commands this pack adds to the chat (abuddy.json `commands`) */
   commands?: import('./pack-commands.ts').PackCommand[];
@@ -93,7 +93,7 @@ export interface PackRegistration {
    * section is the pack's, and whoever registers one owns its shape — the app stores, merges and diffs it without
    * knowing what is in it.
    *
-   * Called the first time the defaults are read, so a pack whose defaults come from its compiled seeds can read
+   * Called the first time the defaults are read, so a pack whose defaults come from its compiled content can read
    * them then rather than at registration.
    */
   settingsSections?: () => Record<string, unknown>;

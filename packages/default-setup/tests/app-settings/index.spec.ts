@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { assertNoPluginSlice, getBaseSettings, settingsSections } from '#app-settings/index.ts';
 
 describe('the base settings', () => {
-  it('are this pack\'s own source, with no compiled seeds on disk to read', () => {
+  it('are this pack\'s own source, with no compiled content on disk to read', () => {
     const base = getBaseSettings();
     expect(Object.keys(base)).toContain('general');
     expect(Object.keys(base)).toContain('assistant');

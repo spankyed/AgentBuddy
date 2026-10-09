@@ -90,7 +90,7 @@ const RENAMED_SEED_RECORDS = {
  * Records the row stops carrying, under every name they have had.
  *
  * `packSeedHashes`, `seedHashes`, `builtInSeedHashes` and `externalSeedHashes` were what each kind of pack
- * last seeded, under the four names that record has had; what says it now is each pack's
+ * last applied, under the four names that record has had; what says it now is each pack's
  * `AppliedContent.revision`, which only an apply can write.
  *
  * `seedStatFingerprints` held each built-in pack's seed files' mtimes and sizes, as a fast path in front of

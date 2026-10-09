@@ -77,7 +77,7 @@ export function childContentKey(parentKey: string, record: ContentItem, identity
   return `${parentKey}/${encodeURIComponent(JSON.stringify([record.entity ?? null, ...values]))}`;
 }
 
-/** A seed key names the seeding pack before the entry key */
+/** A content key names the writing pack before the entry key */
 export const contentKeyPrefix = (packId: string) => `${packId}:`;
 
 /**
@@ -153,7 +153,7 @@ export const recordApplied = (ctx: ApplyContext, key: string, item: AppliedItem)
  * and walks children under their parent row.
  * - `keep-existing` skips an existing row and its subtree.
  * - Otherwise a row with no stored hash is user-owned and left alone. A row whose stored hash matches
- *   the record's is left alone. A row whose hash differs is updated when its seeded fields still hold
+ *   the record's is left alone. A row whose hash differs is updated when the fields we wrote still hold
  *   what the applier wrote, and left alone when they don't, or weren't recorded (edited). Children are
  *   still visited.
  * - `wipe-and-replace` first removes every row of the entry's entity types, whoever created it (other
@@ -189,10 +189,10 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
       const errors: string[] = [];
 
       /**
-       * The row seeded from this record, however it's been renamed since; otherwise a row without a seed
+       * The entity written from this item, however it's been renamed since; otherwise one without a content
        * key that matches by identity (a user's row with its name), so a seed never adds a copy beside it.
-       * A container another record seeded (another pack's, or another entry's) is reused as a parent
-       * (`reused`): its children are seeded under it and the row itself is left alone.
+       * A container another item wrote (another pack's, or another entry's) is reused as a parent
+       * (`reused`): its children are written under it and the row itself is left alone.
        */
       const find = (record: ContentItem, contentKey: string, context: ContentWriteContext, hooks?: ContentWriter): { match?: ContentMatch; reused?: boolean; deleted?: boolean } => {
         /**
@@ -201,10 +201,10 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
          * so `findWhere` here hid exactly the row that answers "did the user delete this" — a soft-deleted
          * row keeps the `contentKey` this is searching for. With it hidden, `findByIdentity` missed too (same
          * filter) and the record was created again: a fresh copy beside the one in the trash, every time the
-         * pack's compiled seeds changed.
+         * pack's compiled content changed.
          *
          * **It reaches only as far as the feature's delete does.** A row destroyed rather than trashed leaves
-         * nothing carrying a seed key, so the record is created again and nothing here can tell that it ever
+         * nothing carrying a content key, so the record is created again and nothing here can tell that it ever
          * existed — the entity's own delete is what decides which it is (`trash.move` against `destroy()`).
          */
         const keyed = record.entity
@@ -218,7 +218,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
         if (owner === null) return { match };
         // The keyed lookup missed, so the row is another record's: a container holds this record's children too
         if (hooks?.container) return { match, reused: true };
-        // A row carrying another record's seed key (or another pack's) isn't this record's, whatever its name
+        // A row carrying another record's content key (or another pack's) isn't this record's, whatever its name
         return {};
       };
 
@@ -576,7 +576,7 @@ function isInside(root: string, file: string): boolean {
 /**
  * Copies media a record links to into the row's media folder and rewrites the links. A link whose file
  * would resolve outside the compiled media folder, or be written outside the row's, is left as it is:
- * a compiled seeds directory can come from anywhere (Settings → Import pack seeds).
+ * a compiled content directory can come from anywhere (Settings → Import pack seeds).
  */
 function restoreMedia(
   record: ContentItem,

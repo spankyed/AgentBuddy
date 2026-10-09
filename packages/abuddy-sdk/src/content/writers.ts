@@ -20,15 +20,15 @@ export interface ContentMatch {
 }
 
 /**
- * How rows of one entity type are found, created, updated and removed when seeded. The pack that
- * owns the entity type declares them (abuddy.json `contentWriters`), so any pack seeding that type goes
+ * How entities of one type are found, created, updated and removed when content is applied. The pack that
+ * owns the entity type declares them (abuddy.json `contentWriters`), so any pack writing that type goes
  * through its repository. Without hooks, the generic applier writes rows directly.
  */
 export interface ContentWriter<R extends ContentItem = ContentItem> {
   /**
    * The entity holds other records rather than being one of them (a folder), so a row another pack
-   * seeded is reused as a parent: the record's children are seeded under it and the row itself is
-   * left as its own pack seeded it. Without this a row another pack's seed claimed is never matched,
+   * wrote is reused as a parent: the item's children are written under it and the entity itself is
+   * left as its own pack wrote it. Without this an entity another pack's content claimed is never matched,
    * and the record seeds a second row beside it.
    */
   container?: boolean;

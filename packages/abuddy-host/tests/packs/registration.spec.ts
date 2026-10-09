@@ -284,32 +284,32 @@ describe('registerPack commands', () => {
   });
 });
 
-describe('packSeedTargets', () => {
+describe('packContentTargets', () => {
   const origin = (id: string, shipped: boolean, dependencies?: Record<string, string>) =>
     ({ id, name: id, version: '1.0.0', dir: `/packs/${id}`, shipped, manifest: { id, name: id, version: '1.0.0', dependencies } } as unknown as Parameters<typeof registerPack>[1]);
 
-  // **A pack is seedable because it is somewhere.** Its compiled seeds are files in its directory, which the
+  // **A pack is seedable because it is somewhere.** Its compiled content is files in its directory, which the
   // origin knows and a registration does not, so a pack never has to tell the host where its compiled data
   // is: a registration claiming a `compiledDir` is not enough to be seeded from.
   it('leaves out a pack with no origin, having nowhere to read seeds from', () => {
     registerPack({ id: 'nowhere-pack', boot: { onInit() {} } } as unknown as PackRegistration);
     registered.push('nowhere-pack');
 
-    expect(registry.packSeedTargets().map((t) => t.manifest.id)).not.toContain('nowhere-pack');
+    expect(registry.packContentTargets().map((t) => t.manifest.id)).not.toContain('nowhere-pack');
     // Still reported as a boot hook the pack declares, which is a different question
     expect(getPackExtensions('nowhere-pack')?.bootHooks).toEqual(['onInit']);
   });
 
   /**
    * A seed target is where a pack's seeds are and what it depends on, and nothing else: what a seed leaves
-   * alone the applier decides from the rows, so nothing about a pack's seeding travels on its registration.
+   * alone the applier decides from the rows, so nothing about a pack's content travels on its registration.
    */
   it("carries each pack's own id and directory, whoever ships it", () => {
     registerPack({ id: 'shipped-pack' } as PackRegistration, origin('shipped-pack', true));
     registerPack({ id: 'installed-pack' } as PackRegistration, origin('installed-pack', false));
     registered.push('shipped-pack', 'installed-pack');
 
-    const targets = registry.packSeedTargets();
+    const targets = registry.packContentTargets();
     expect(targets.find((t) => t.manifest.id === 'shipped-pack'))
       .toEqual({ manifest: { id: 'shipped-pack', dependencies: undefined }, dir: '/packs/shipped-pack' });
     // Nothing in a seed target says which app shipped the pack: every pack's seeds are read from
@@ -324,7 +324,7 @@ describe('packSeedTargets', () => {
     registerPack({ id: 'dependent-pack' } as PackRegistration, origin('dependent-pack', false, { 'base-pack': '*' }));
     registered.push('base-pack', 'dependent-pack');
 
-    const ids = registry.packSeedTargets().map((t) => t.manifest.id);
+    const ids = registry.packContentTargets().map((t) => t.manifest.id);
     expect(ids.indexOf('base-pack')).toBeLessThan(ids.indexOf('dependent-pack'));
   });
 
@@ -333,6 +333,6 @@ describe('packSeedTargets', () => {
     registerPack({ id: 'two-pack' } as PackRegistration, origin('two-pack', false));
     registered.push('one-pack', 'two-pack');
 
-    expect(registry.packSeedTargets(['two-pack']).map((t) => t.manifest.id)).toEqual(['two-pack']);
+    expect(registry.packContentTargets(['two-pack']).map((t) => t.manifest.id)).toEqual(['two-pack']);
   });
 });

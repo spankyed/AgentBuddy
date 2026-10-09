@@ -1,5 +1,5 @@
 // A pack depending on default-setup runs default-setup's systems in its unit tests: the harness loads
-// the dependency's cached runtime (runtime/index.cjs, with its compiled seeds) on the pack's SDK.
+// the dependency's cached runtime (runtime/index.cjs, with its compiled content) on the pack's SDK.
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -34,7 +34,7 @@ function dependentPack(spec: string): string {
   fs.mkdirSync(path.join(dep, 'runtime'), { recursive: true });
   fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.snapshot), path.join(dep, 'snapshot.json'));
   fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, 'runtime', 'index.cjs'), path.join(dep, 'runtime', 'index.cjs'));
-  // Its compiled seeds, from the one place every pack's build writes them, into the one place the harness
+  // Its compiled content, from the one place every pack's build writes them, into the one place the harness
   // reads a dependency's from
   fs.cpSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.seedsDir), path.join(dep, PACK_LAYOUT.seedsDir), { recursive: true });
   // As `abuddy init` scaffolds it: one call, so this fixture stays what a real pack has

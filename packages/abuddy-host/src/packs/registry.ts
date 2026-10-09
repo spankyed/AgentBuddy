@@ -249,7 +249,7 @@ export interface PackRegistry extends PackRegistryView {
    * own version, would run each one twice and record a second version for the same pack. Excluding them
    * where the list is built rather than at each of the four callers is what keeps that true for the fifth.
    *
-   * **The contrast with `packSeedTargets` is deliberate**: seeds are one path for every pack, because what
+   * **The contrast with `packContentTargets` is deliberate**: seeds are one path for every pack, because what
    * a seed is keyed on is its own compiled data. Migrations are two, because what a migration is keyed on
    * is a version, and a shipped pack's version is the app's.
    *
@@ -265,7 +265,7 @@ export interface PackRegistry extends PackRegistryView {
    * A pack the app ships is in here beside an installed one: one seed path, one freshness record, one
    * policy mechanism.
    */
-  packSeedTargets(packIds?: Iterable<string>): PackContentTarget[];
+  packContentTargets(packIds?: Iterable<string>): PackContentTarget[];
   getPackExtensions(packId: string): PackExtensions | null;
   /** Registers a hook run when the pack `key` stops, or, without a key, when the app exits */
   registerShutdownHook(hook: () => void, key?: string): void;
@@ -627,7 +627,7 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     getBootHooks: () => [...registrations.values()].flatMap((reg) => (reg.boot ? [reg.boot] : [])),
     getPackRegistration: (packId) => registrations.get(packId) ?? null,
 
-    packSeedTargets(packIds) {
+    packContentTargets(packIds) {
       const wanted = packIds && new Set(packIds);
       // Dependency order over every pack. A pack the app ships declares no dependencies — it is what others
       // depend on — so it sorts ahead of them, which is the order the two separate paths used to produce by

@@ -24,7 +24,7 @@ export type ResolvedContentSource =
   | {
     kind: 'format';
     onUserEdit?: ContentEditPolicy;
-    /** Source path, relative to the seeding pack */
+    /** Source path, relative to the writing pack */
     path: string;
     /** The format reference as written: `name` or `pack:name` */
     formatRef: string;

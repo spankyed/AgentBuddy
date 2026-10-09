@@ -60,7 +60,7 @@ async function reloadPack(
     registry.registerShutdownHook(fresh.onShutdown, packId);
   }
   fresh.onInit?.();
-  // Side work once the swap is done (seeding, publishing build output, the loaded-pack list). By here the old
+  // Side work once the swap is done (applying content, publishing build output, the loaded-pack list). By here the old
   // registration is gone and its shutdown hooks have run, so the systems must be restarted whatever this
   // does: a throw that escaped would leave the fresh registration live, the old actors running but already
   // torn down, and nothing ever stopped or respawned.
@@ -144,7 +144,7 @@ export async function reloadPackById(
       onInit: pack.registration.boot?.onInit,
       afterRegister: () => {
         runPackMigrations(registry.packMigrationTargets([packId]));
-        applyPacks(registry.packSeedTargets([packId]));
+        applyPacks(registry.packContentTargets([packId]));
       },
     };
   }, packDir);

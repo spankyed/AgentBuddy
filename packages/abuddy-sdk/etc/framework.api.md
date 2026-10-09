@@ -252,7 +252,7 @@ export type SystemEvents =
 }
 /**
 * A pack was activated, reloaded or torn down while the app runs, or its seeds were imported: what it
-* registers (its slash commands) and the data it seeded may differ. Sent once the change is complete.
+* registers (its slash commands) and the content it applied may differ. Sent once the change is complete.
 */
 | {
     type: 'PACK_CHANGED';

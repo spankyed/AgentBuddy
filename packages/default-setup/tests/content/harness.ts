@@ -26,7 +26,7 @@ export const applyAfter = (previous?: ApplyRecord): ApplyRecord => {
   return applyRecord(items);
 };
 
-/** The seed keys the parity gate covers */
+/** The content keys the parity gate covers */
 export const PARITY_KEYS = ['actions', 'prompts', 'library', 'notes'] as const;
 const SNAPSHOT_TYPES = ['Action', 'Prompt', 'Document', 'Collection', 'Note'];
 

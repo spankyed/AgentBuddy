@@ -43,7 +43,7 @@ export interface DependencyRuntime {
 
 /**
  * Requires a dependency's runtime with the pack's shared modules bridged and packages the pack doesn't
- * install stubbed, points it at its compiled seeds, and returns its registration.
+ * install stubbed, points it at its compiled content, and returns its registration.
  */
 export async function loadDependencyRuntime(packDir: string, depId: string, runtimeEntry: string, seedsDir: string | undefined): Promise<DependencyRuntime> {
   shared ??= sharedModules(packDir);

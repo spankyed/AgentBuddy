@@ -1,7 +1,7 @@
 /**
  * The help entries registered packs declare (abuddy.json `help`). The app's Settings view lists them under Help,
  * so any pack can answer a question there — which is why they are a contribution like commands or blocks rather
- * than something the view reads from one pack's compiled seeds.
+ * than something the view reads from one pack's compiled content.
  *
  * A pack's entries are read the first time the list is, not at registration, so a pack whose help is compiled with
  * its seeds can read them then.

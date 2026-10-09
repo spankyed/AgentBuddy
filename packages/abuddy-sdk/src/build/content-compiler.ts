@@ -38,7 +38,7 @@ export interface SpecialtyCompileContext {
   packDir: string;
 }
 
-/** The SDK's compiler for a specialty seed key (actions, prompts, flows) */
+/** The SDK's compiler for a specialty content key (actions, prompts, flows) */
 export interface SpecialtyCompiler<T = unknown> {
   compile(sourcePath: string, context: SpecialtyCompileContext): Promise<T>;
   /**
@@ -55,17 +55,17 @@ export interface SpecialtyCompiler<T = unknown> {
   items(data: T): PackContentPreviewItem[];
 }
 
-/** `seeds.json` in the compiled directory: what each seed key holds */
+/** `seeds.json` in the compiled directory: what each content key holds */
 export interface SeedIndex {
   version: 1;
-  /** The pack that compiled the seeds: seeded rows' seed keys name it, so two packs' records never share a row */
+  /** The pack that compiled the content: the content keys it writes name it, so two packs' items never share an entity */
   packId: string;
   seeds: SeedIndexEntry[];
 }
 
 export interface SeedIndexEntry {
   key: string;
-  /** Seeded into the database (a compile-only entry is read by pack code instead) */
+  /** Written into the database (a compile-only entry is read by pack code instead) */
   seeded: boolean;
   /** Fields that name a record: include sets and previews use the first */
   identity?: string[];

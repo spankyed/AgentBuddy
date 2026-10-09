@@ -312,8 +312,8 @@ const ownSuiteFor = (rel: string): UnitSuite | undefined => {
 };
 
 /** A pack's seed sources, and the specs that read what building them produces */
-const SEED_SOURCES = 'src/content';
-const SEED_SPECS = 'tests/content';
+const CONTENT_SOURCES = 'src/content';
+const CONTENT_SPECS = 'tests/content';
 
 /**
  * The files a pack's build reads, each of which every spec in the pack ends up resolving through.
@@ -346,8 +346,8 @@ export function packBuildEdge(rel: string, root: string): { suite: UnitSuite; sp
   if (suite === undefined) return undefined;
   const inPack = path.relative(path.join('packages', suite.dir), rel);
   if (BUILD_INPUTS.includes(inPack)) return { suite, specs: [] };
-  const hasSeedSpecs = fs.existsSync(path.join(root, 'packages', suite.dir, SEED_SPECS));
-  return inPack.startsWith(`${SEED_SOURCES}/`) && hasSeedSpecs ? { suite, specs: [SEED_SPECS] } : undefined;
+  const hasSeedSpecs = fs.existsSync(path.join(root, 'packages', suite.dir, CONTENT_SPECS));
+  return inPack.startsWith(`${CONTENT_SOURCES}/`) && hasSeedSpecs ? { suite, specs: [CONTENT_SPECS] } : undefined;
 }
 
 /** What covers a build-edge target, in the words the note and the `--full` label both use */

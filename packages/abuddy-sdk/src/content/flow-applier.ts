@@ -83,7 +83,7 @@ export function driftedGraphParts(item: AppliedItem, flowId: EARS.EntityId): str
     .sort();
 }
 
-/** A DSL entry's seed key: the seeding pack, then the entry key and the flow's name in the source */
+/** A DSL entry's content key: the writing pack, then the entry key and the flow's name in the source */
 const flowContentKey = (packId: string, name: string) => `${contentKeyPrefix(packId)}${childContentKey('flows', { entity: EARS.Entity.Flow, label: name }, ['label'])}`;
 
 function buildLabelMap(entities: Array<{ label: string; id: EARS.EntityId }>): Map<string, string> {
@@ -116,10 +116,10 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
       }
 
       /**
-       * The flow seeded from this DSL entry, however it's been renamed; otherwise a flow without a seed key
+       * The flow written from this DSL entry, however it's been renamed; otherwise a flow without a content key
        * that has its label (a user's flow), so a seed never adds a copy beside it.
        */
-      const lookupSeeded = (flows: FlowEntity[], name: string): FlowEntity | undefined => {
+      const lookupWritten = (flows: FlowEntity[], name: string): FlowEntity | undefined => {
         const contentKey = flowContentKey(packId, name);
         return flows.find((flow) => ears().getAttr(flow.id, CONTENT_KEY) === contentKey)
           ?? flows.find((flow) => flow.label === name && ears().getAttr(flow.id, CONTENT_KEY) === null);
@@ -142,7 +142,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
         if (!taken) return undefined;
         const flowId = findRelations({ targetEntity: taken as EARS.EntityId, relationType: EARS.RelKind.CONTAINS })[0]?.sourceEntity ?? taken;
         const contentKey = ears().getAttr(flowId as EARS.EntityId, CONTENT_KEY) as string | null;
-        return contentKey ? `seeded by ${contentKey.slice(0, contentKey.indexOf(':'))}` : 'created by the user';
+        return contentKey ? `written by ${contentKey.slice(0, contentKey.indexOf(':'))}` : 'created by the user';
       };
 
       const validFlowDSL: Record<string, any> = {};
@@ -177,7 +177,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
           continue;
         }
 
-        const existing = lookupSeeded(existingFlows, key);
+        const existing = lookupWritten(existingFlows, key);
         const compiledHash = isFlowConfig(entry) ? (entry as any).contentHash : undefined;
         const contentKey = flowContentKey(packId, key);
         const applied = ctx.applied?.before.get(contentKey);
@@ -242,24 +242,24 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
 
       /**
        * The flows a subflow step can name that this seed doesn't (re)import, such as an unchanged flow
-       * or a dependency's. A flow this pack's seed defines is its seeded flow, found by seed key however
-       * it's been renamed, never another flow with its label. When it has no seeded flow (the seed left
+       * or a dependency's. A flow this pack's content declares is the flow it wrote, found by content key however
+       * it's been renamed, never another flow with its label. When it wrote no flow (the apply left
        * a user's or another pack's flow with that name alone), the name runs that flow; other names
        * resolve by label.
        */
       const subflowTargets = (): Map<string, string> => {
         const flows = ears().findAll<FlowEntity>(EARS.Entity.Flow);
-        const seededIds = new Set<string>();
+        const writtenIds = new Set<string>();
         const targets = new Map<string, string>();
         for (const name of Object.keys(flowsDSL)) {
           const contentKey = flowContentKey(packId, name);
-          const seeded = flows.find((flow) => ears().getAttr(flow.id, CONTENT_KEY) === contentKey);
-          if (!seeded) continue;
-          targets.set(name, seeded.id);
-          seededIds.add(seeded.id);
+          const written = flows.find((flow) => ears().getAttr(flow.id, CONTENT_KEY) === contentKey);
+          if (!written) continue;
+          targets.set(name, written.id);
+          writtenIds.add(written.id);
         }
         for (const flow of flows) {
-          if (!seededIds.has(flow.id) && !targets.has(flow.label)) targets.set(flow.label, flow.id);
+          if (!writtenIds.has(flow.id) && !targets.has(flow.label)) targets.set(flow.label, flow.id);
         }
         return targets;
       };

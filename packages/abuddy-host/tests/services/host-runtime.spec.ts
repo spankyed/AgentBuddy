@@ -82,7 +82,7 @@ describe('createHostRuntime', () => {
     // An external pack the app loaded, holding something open between its onInit and onShutdown
     const boot = { onInit: () => order.push(`onInit (${secretsStore.list().length} keys)`), onShutdown: () => order.push('onShutdown') };
     packs.registerPack({ id: 'reset-pack', boot }, externalOrigin('reset-pack', 'Reset'));
-    // A pack the app ships, with a seed policy — seeded by the same call as the installed one
+    // A pack the app ships, with a seed policy — written by the same call as the installed one
     packs.registerPack({ id: 'seeded-pack' },
       { id: 'seeded-pack', name: 'Seeded', version: '1.0.0', dir: '/packs/seeded-pack', shipped: true } as never);
     packs.registerShutdownHook(boot.onShutdown, 'reset-pack');

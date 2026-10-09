@@ -110,9 +110,9 @@ export function activatePack(
   boot?.onInit?.();
   // The pack is registered by now, so its migrations and seeds are read from the registry like a boot's
   runPackMigrations(registry.packMigrationTargets([packId]));
-  applyPacks(registry.packSeedTargets([packId]));
+  applyPacks(registry.packContentTargets([packId]));
 
-  // The running systems read what the pack registered and seeded (the chat's slash commands, say). Sent
+  // The running systems read what the pack registered and applied (the chat's slash commands, say). Sent
   // before its own systems start: they send their startup data when they do
   busActor.send({ type: 'PACK_CHANGED', packId });
 

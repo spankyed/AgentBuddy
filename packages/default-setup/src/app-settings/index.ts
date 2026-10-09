@@ -1,5 +1,5 @@
 // What this pack contributes to the app's settings: the sections it owns, with their defaults, and the help it
-// answers with. The help comes from this pack's compiled seeds, so it is read the first time the app asks
+// answers with. The help comes from this pack's compiled content, so it is read the first time the app asks
 // rather than at registration; the base settings are this pack's own source, imported directly.
 import { seedPath } from '@abuddy/sdk/build';
 import { getCompiledDir } from '#generated/appliers.ts';

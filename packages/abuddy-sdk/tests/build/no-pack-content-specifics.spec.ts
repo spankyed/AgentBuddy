@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 const SRC = path.resolve(import.meta.dirname, '../../src');
 const SCANNED = ['build', 'content'];
 
-/** Library, notes and FAQ entity types, their shapes, compiled seed formats, repositories and seed keys */
+/** Library, notes and FAQ entity types, their shapes, compiled seed formats, repositories and content keys */
 const FORBIDDEN = /\b(Document|Collection|Note|Symlink|FAQ|DocumentEntity|CollectionEntity|NoteEntity|ContentSection|FieldContent|ListContent|MarkdownContent|TextContent|CodeContent|DocumentShortCode|Exported(Item|Document|Collection|Symlink|Library|Note|Notes)|CompiledFAQ|library(Commands|Queries)|note(Commands|Queries)|(compile|import)(Library|Notes|Faq)\w*|create(Library|Notes)ContentApplier|parseMarkdownSections|library|notes|faqs?)\b/gi;
 
 /** `file:line` substrings that name one of them for another reason */
@@ -42,7 +42,7 @@ function findPackSeedSpecifics(root: string = SRC): string[] {
 }
 
 describe('SDK build and seed modules', () => {
-  it("name no library, notes or FAQ types, formats, repositories or seed keys", () => {
+  it("name no library, notes or FAQ types, formats, repositories or content keys", () => {
     expect(findPackSeedSpecifics()).toEqual([]);
   });
 

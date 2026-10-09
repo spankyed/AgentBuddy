@@ -136,9 +136,9 @@ function changeRecord(id: string, change: (record: PackRecord) => PackRecord | u
  *
  * **`lastError` is not an install's to drop.** It says what the pack's seed data came to, which only
  * `recordApplyOutcomes` sets and clears, and a seed that was skipped as unchanged has nothing to say — so a
- * reinstall that replaces this record without it erases the only sign that a pack's data never seeded. That
- * stayed hidden while a reinstall re-seeded by accident, through the file times once in the seed hash: the
- * seed failed again and wrote the error back. It does not re-seed now, so this has to keep it.
+ * reinstall that replaces this record without it erases the only sign that a pack's content never applied. That
+ * stayed hidden while a reinstall re-applied by accident, through the file times once in the seed hash: the
+ * seed failed again and wrote the error back. It does not re-apply now, so this has to keep it.
  */
 export function recordInstalled(id: string, installedFrom?: string): boolean {
   return changeRecord(id, previous => ({
@@ -166,9 +166,9 @@ export function recordUpdateInstalled(id: string): boolean {
 }
 
 /**
- * Records what each seeded pack's seed came to.
+ * Records what each pack's apply came to.
  *
- * A row appears only when there is something to say: a pack that seeded cleanly and has no row keeps
+ * A row appears only when there is something to say: a pack that applied cleanly and has no row keeps
  * none, and one whose row carries an error from before has it cleared.
  */
 export function recordApplyOutcomes(outcomes: ReadonlyMap<string, string | undefined>): boolean {

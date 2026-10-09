@@ -298,7 +298,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
   });
 
   // Nothing is taken off an installed pack's registration: its boot hooks reach the host as the pack wrote
-  // them, like a shipped pack's, both being loaded and seeded by one path
+  // them, like a shipped pack's, both being loaded and written by one path
   it("keeps the pack's registration as the pack wrote it", () => {
     const dir = makeBundledPack('intact-pack', registration('intact-pack'));
 
@@ -323,7 +323,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(registerExternalPacks(registry, packs)).toEqual(packs);
     try {
       const applyFn = vi.fn(() => ({}));
-      applyPacks(registry.packSeedTargets(['smuggle-pack']), applyFn);
+      applyPacks(registry.packContentTargets(['smuggle-pack']), applyFn);
 
       const mod = require(path.join(dir, 'runtime', 'index.cjs'));
       expect(mod.bootSeedCalls, 'the pack smuggled a seed function onto boot and it was called').toBeUndefined();
@@ -517,7 +517,7 @@ describe('applyPacks: failures', () => {
     expect(registryEntry('no-more-seeds')).not.toHaveProperty('lastError');
   });
 
-  // No seed key is the host's: a pack's `settings` seed is its own data, like any other key
+  // No content key is the host's: a pack's `settings` seed is its own data, like any other key
   it('runs every applier the pack registered, a settings applier included', async () => {
     const { importCompiledContent } = await import('@abuddy/sdk/utils');
     const { testPacks } = await import('@abuddy/sdk/testing');
@@ -772,7 +772,7 @@ describe('applyPacks', () => {
     } as any;
   }
 
-  it('calls applyFn for packs with compiled seeds in runtime/seeds', () => {
+  it('calls applyFn for packs with compiled content in runtime/seeds', () => {
     const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const pack = makePackWithSeeds(packsDir, 'data-pack', {
       [seedFile('actions')]: [{ label: 'test-action', actionFn: 'return true' }],

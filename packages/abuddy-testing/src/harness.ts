@@ -1,7 +1,7 @@
 // Unit tests for a pack without the app, on the pack's own @abuddy/sdk (registrations are the ones
 // the pack's code sees). Two tiers:
 // - data: the pack's seeds, repositories and content writers against an in-memory EARS, with its
-//   dependencies' seeding behaviour (their seed runtimes);
+//   dependencies' content behaviour (their seed runtimes);
 // - runtime (with `registration`): also its systems, services and steps, and its dependencies' full
 //   runtimes, run under the app's bus core with `startApp`.
 //

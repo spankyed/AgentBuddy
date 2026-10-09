@@ -455,7 +455,7 @@ describe('what a reinstall does not redo', () => {
 // and took away the only sign that it hadn't.
 //
 // **What makes the report true changed on 2026-10-07, and this case did not.** A reinstall used to re-seed by
-// accident, through the file times that were once in the seed hash: the seed failed again and wrote the error
+// accident, through the file times that were once in the seed hash: the apply failed again and wrote the error
 // back. Seeds are keyed on content now, so the same pack installed again is the same bytes and nothing is
 // re-imported — and what keeps this honest is `recordInstalled` preserving `lastError`, which belongs to the
 // seed outcome (`recordApplyOutcomes`) and is not an install's to clear. `activationProblem` reads it, so the
