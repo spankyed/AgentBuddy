@@ -687,7 +687,7 @@ The default is the conservative one, so the option that interrupts someone is th
 
 Neither value overwrites what the user wrote, and neither makes a second copy of anything — there is one entity either way. The pair is named for whose the item is, because the only thing that differs is whether your pack goes on offering its version.
 
-**What an offer looks like to the user.** Packs → the pack → *Your changes to this pack's content*, one row per item: what it is, which parts of it they changed, and what the pack's version would do. Two choices for a newer version —
+**What an offer looks like to the user.** The pack's row in the Packs list carries a count of the items waiting on them; opening it gives *Your changes to this pack's content*, one row per item: what it is, which parts of it they changed, and what the pack's version would do. Two choices for a newer version —
 
 - **Take the new version**, which writes the pack's item over theirs. There is nothing stored to restore from, and the button says so.
 - **Keep mine**, which records the version they declined. A later release that leaves this item alone is then silent, and one that changes the item asks again.

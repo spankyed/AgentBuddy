@@ -79,7 +79,7 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
   resolves one by taking the pack's version (`RESTORE_CONTENT_ITEM`, the one write in the app that overwrites
   their work, and the same call as "reset to factory"), keeping theirs (`DISMISS_CONTENT_OFFER`, which stores
   the hash they declined so only a later *change* asks again) or deleting the item
-  (`DELETE_CONTENT_ITEM`). The Packs view draws them from `PackInfo.contentOffers` and `contentKept`.
+  (`DELETE_CONTENT_ITEM`). The Packs view draws them from `PackInfo.contentOffers` and `contentKept` — a count on the pack's row in the list, the rows themselves in its detail.
 - **It is what the merge reads, and the revision is also the skip gate.** Deciding what to do with one item
   is a three-way question — what we applied last, what the pack declares now, what the database holds — and
   this is the only record of the first of those, which is why the revision lives with the items rather than

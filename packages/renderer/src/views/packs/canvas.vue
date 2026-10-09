@@ -112,6 +112,7 @@
                     class="w-2 h-2 rounded-full bg-emerald-400"
                     :title="`v${pack.availableVersion} available`"
                   />
+                  <ContentOfferBadge :count="pack.contentOffers.length" />
                 </div>
                 <div class="flex items-center gap-1.5 mt-1">
                   <span class="text-xs text-neutral-500">{{ pack.id }}</span>
@@ -171,6 +172,7 @@
               <div class="flex items-center gap-2">
                 <span class="text-sm text-neutral-200">{{ pack.name }}</span>
                 <span class="text-xs text-neutral-600">v{{ pack.version }}</span>
+                <ContentOfferBadge :count="pack.contentOffers.length" />
               </div>
               <div class="flex items-center gap-1.5 mt-1">
                 <span class="text-xs text-neutral-500">{{ pack.id }}</span>
@@ -199,6 +201,7 @@ import { usePlugin } from '@abuddy/sdk/fe';
 import { Package as PackageIcon, X } from 'lucide-vue-next';
 import type { PacksState } from '@abuddy/host/fe';
 import PackDetail from './PackDetail.vue';
+import ContentOfferBadge from './ContentOfferBadge.vue';
 
 const actor = usePlugin<PacksState>();
 
