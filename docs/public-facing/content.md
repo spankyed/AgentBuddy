@@ -9,7 +9,7 @@ A pack's content passes through four, and each has its own vocabulary. **The con
 | Stage | What happens | Named |
 |---|---|---|
 | **author** | you write the sources | `src/content/`, `content.sources`, `content.formats`, `content.writers` |
-| **compile** | `abuddy build` turns them into items and hashes each one | `dist/runtime/seeds/*.seed.json`, `seeds.json`, `contentHash` |
+| **compile** | `abuddy build` turns them into items and hashes each one | `dist/runtime/content/*.content.json`, `content.json`, `contentHash` |
 | **apply** | the app writes those items into the database, and converges them on every upgrade | `applyPacks()`, a `ContentApplier`'s `apply()`, `ApplyResult` |
 | **import** | the user asks for the content back, which reads none of the record below | `importContent()`, `ImportMode`, `ImportResult` |
 | **record** | the app remembers what it last wrote, part by part, so your edits survive the next import | `contentKey`, the pack's applied content |
@@ -19,7 +19,7 @@ Three things follow from the split that are easy to conflate. Editing a content 
 the content still reaches every user who has not edited that entity. **Apply and import are different operations**:
 an apply never overwrites the user's work, and an import is the user asking for the content back and does. And this
 repo's `seed-parity` goldens record what an apply *produces*: re-recording them
-(`npm run seed-parity:update -w @app/default-setup`) rewrites a test expectation and no user data.
+(`npm run content-parity:update -w @app/default-setup`) rewrites a test expectation and no user data.
 
 The SDK compiles three content keys itself:
 
@@ -443,11 +443,11 @@ Point your manifest at the content directories:
 }
 ```
 
-A specialty key takes its path as a string or `{ "path": … }`; any other key is a [content source](#writing-entities). `abuddy build` compiles each key into `<key>.seed.json` (media into `media/<key>/`) and writes `seeds.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Content. Writing runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. The hash covers every seeded key's compiled file, so changing one key's source re-runs the pack's boot apply, its other rows still being skipped by their own hashes. At boot, packs seed in dependency order, so a pack's content can reference what a pack it declares a dependency on seeded. A seed that reports errors fails: an external pack's error is recorded on its installed-packs entry, and the same output isn't retried until it changes — or until one of the packs it depends on content, since that is the other thing that can change the outcome. Installing the pack again is also a fresh attempt, even at the version already installed: an install replaces the compiled files, and what was last seeded is remembered as the files and not only their contents.
+A specialty key takes its path as a string or `{ "path": … }`; any other key is a [content source](#writing-entities). `abuddy build` compiles each key into `<key>.content.json` (media into `media/<key>/`) and writes `content.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Content. Writing runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. The hash covers every seeded key's compiled file, so changing one key's source re-runs the pack's boot apply, its other rows still being skipped by their own hashes. At boot, packs seed in dependency order, so a pack's content can reference what a pack it declares a dependency on seeded. A seed that reports errors fails: an external pack's error is recorded on its installed-packs entry, and the same output isn't retried until it changes — or until one of the packs it depends on content, since that is the other thing that can change the outcome. Installing the pack again is also a fresh attempt, even at the version already installed: an install replaces the compiled files, and what was last seeded is remembered as the files and not only their contents.
 
 ### Include sets
 
-ContentAppliers take an include set per key (`ContentSelection = true | ReadonlySet<string>`, from `@abuddy/sdk/utils`). `true` or no entry content every item; a set content only the top-level items it names, and an empty set skips the key. The boot apply includes every key; Import Pack Content builds them from the items the user picks. Items are named as `seeds.json` lists them:
+ContentAppliers take an include set per key (`ContentSelection = true | ReadonlySet<string>`, from `@abuddy/sdk/utils`). `true` or no entry content every item; a set content only the top-level items it names, and an empty set skips the key. The boot apply includes every key; Import Pack Content builds them from the items the user picks. Items are named as `content.json` lists them:
 
 | Key | Item name |
 |---|---|
@@ -539,13 +539,13 @@ export default function compileGlossary({ path, format }: ContentCompileContext)
 "content": { "sources": { "glossary": { "path": "src/content/glossary", "format": "glossary" } } }
 ```
 
-The build loads TypeScript compiler modules itself, and bundles every compiler module your formats name into `dist/build/seed-compilers.mjs` so packs depending on yours can use those formats. A record's `contentHash` defaults to a hash of its fields (and its children's hashes); set it yourself to decide what counts as a change. A format without `entity` is compiled but not written: pack code reads `<key>.seed.json` (default-setup's FAQs work this way).
+The build loads TypeScript compiler modules itself, and bundles every compiler module your formats name into `dist/build/content-compilers.mjs` so packs depending on yours can use those formats. A record's `contentHash` defaults to a hash of its fields (and its children's hashes); set it yourself to decide what counts as a change. A format without `entity` is compiled but not written: pack code reads `<key>.content.json` (default-setup's FAQs work this way).
 
 ### ContentApplier modules
 
 An entry `{ "applier": "src/content/custom.ts" }` (no `path` or `format`) replaces the format and the format applier with the module's named export `apply`, which the generated `appliers.ts` puts in the pack's registration under the content key. The build compiles nothing for it, so the module brings its own data.
 
-An entry with all three, `{ "path", "format", "applier" }`, is compiled with the format, and the module's `seed` content the compiled `<key>.seed.json` instead of the format applier, even when the format names no entity — for content whose rows the format applier cannot place, where the compiler still does the reading.
+An entry with all three, `{ "path", "format", "applier" }`, is compiled with the format, and the module's `seed` content the compiled `<key>.content.json` instead of the format applier, even when the format names no entity — for content whose rows the format applier cannot place, where the compiler still does the reading.
 
 ```typescript
 // src/content/custom.ts
@@ -643,7 +643,7 @@ Parts rather than one hash per item is what keeps an edit from spreading. A thir
 
 When a changed item no longer sets a field the last apply set (the source dropped `completed: true`), updating the entity resets that field: without hooks the applier drops it from the row, and an `update` hook gets it in `clearedFields` to reset (default-setup's Note hooks reset it to a new note's value). A field no apply of the entity ever set, like a user's favorite, isn't touched.
 
-Written entities also store a `contentKey`: the writing pack's id, the entry key and the record's identity in the source (for a tree, its ancestors' too). A seed finds a row by its `contentKey` first, so a row the user renamed is still found, left as renamed (a renamed row is edited), and not written again as a copy. Two packs' records with the same entry key and identity seed a row each. A row without a `contentKey` that matches a record's identity (a user's row with the same name) isn't seeded again beside it. The pack id comes from `seeds.json`, which `abuddy build` writes; writing compiled content without it fails until the pack is rebuilt.
+Written entities also store a `contentKey`: the writing pack's id, the entry key and the record's identity in the source (for a tree, its ancestors' too). A seed finds a row by its `contentKey` first, so a row the user renamed is still found, left as renamed (a renamed row is edited), and not written again as a copy. Two packs' records with the same entry key and identity seed a row each. A row without a `contentKey` that matches a record's identity (a user's row with the same name) isn't seeded again beside it. The pack id comes from `content.json`, which `abuddy build` writes; writing compiled content without it fails until the pack is rebuilt.
 
 Flows follow the same rules, with the parts above: its row's fields, each node's values, and its wiring (independent of the relations' order). Editing a node marks that node, adding or removing one marks it and the wiring, and renaming the flow marks its fields. Moving nodes in the editor doesn't mark anything.
 

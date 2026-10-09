@@ -69,8 +69,8 @@ describe('previewPackContent', () => {
     }
   });
 
-  it('fails for a directory without seeds.json', () => {
+  it('fails for a directory without content.json', () => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'seed-preview-'));
-    expect(() => previewPackContent(root!)).toThrow(/has no seeds\.json/);
+    expect(() => previewPackContent(root!)).toThrow(/has no content\.json/);
   });
 });

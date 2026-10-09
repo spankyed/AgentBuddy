@@ -1,7 +1,7 @@
 # Content parity (`tests/content/`)
 
 **`npm run spec` knows these specs cover `src/content/`.** The edge runs `src` -> `abuddy build` ->
-`dist/*.seed.json` -> the goldens here, which no module graph can see, so it is a declared route
+`dist/*.content.json` -> the goldens here, which no module graph can see, so it is a declared route
 (`packBuildEdge`, `scripts/lib/spec-plan.ts`): naming a content item source prints what covers it, and
 `npm run spec:full -- <that file>` builds the pack and runs this directory. A seed *helper* that specs
 import directly is still answered by the walk, with these named beside it.
@@ -83,8 +83,8 @@ Any change to what writing *produces*: a new or removed action, a renamed label,
 schema, a change to the applier or a format.
 
 ```bash
-npm run seed-parity:check  -w @app/default-setup    # compare
-npm run seed-parity:update -w @app/default-setup    # re-record, deliberately
+npm run content-parity:check  -w @app/default-setup    # compare
+npm run content-parity:update -w @app/default-setup    # re-record, deliberately
 ```
 
 Re-recording rewrites a **test expectation**. It changes no user data and needs no migration. What reaches users is
@@ -97,7 +97,7 @@ content does.
 
 ## Why the goldens are hand-rolled, and stay that way
 
-`checkGolden` reads and writes the files itself, switched by `UPDATE_SEED_GOLDEN`. Vitest's own
+`checkGolden` reads and writes the files itself, switched by `UPDATE_CONTENT_GOLDEN`. Vitest's own
 `toMatchFileSnapshot` + `-u` would replace that, and was considered and declined. The reasons, so it isn't
 re-raised:
 
@@ -116,5 +116,5 @@ re-raised:
   switch.
 
 One inconsistency is real and forced: the four sibling artifacts take a CLI flag (`--check`, `--local`) and this one
-takes an environment variable, because vitest owns `argv`. `seed-parity:update` hides that, so the flag convention
+takes an environment variable, because vitest owns `argv`. `content-parity:update` hides that, so the flag convention
 holds at the script level where it is read.

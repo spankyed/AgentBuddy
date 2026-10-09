@@ -1238,7 +1238,7 @@ export interface StampedUnit {
  * projects, and fingerprinting each one as its own stamp was written measured the units after the first
  * against a tree the run had already begun touching. Nothing writes into a unit's inputs today, so the
  * readings were identical — correct by luck rather than by construction. The day a suite rewrites something
- * under its own `tests/` or `etc/` while it runs (a `seed-parity:update`, a recorded snapshot), a later unit
+ * under its own `tests/` or `etc/` while it runs (a `content-parity:update`, a recorded snapshot), a later unit
  * would stamp a fingerprint of the output instead of the input and read fresh next time when it was not.
  */
 export async function stampedRunAll(

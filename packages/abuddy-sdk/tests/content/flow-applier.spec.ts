@@ -12,7 +12,7 @@ const { listenerTrigger, actionStep } = await import('../build/helpers/test-step
 startTestRuntime();
 testPacks.steps.set(listenerTrigger.type, listenerTrigger);
 testPacks.steps.set(actionStep.type, actionStep);
-const { seedPath } = await import('../../src/build/manifest.ts');
+const { contentPath } = await import('../../src/build/manifest.ts');
 
 let tmp: string | undefined;
 // The applier reads and writes the installed engine: a fresh one per test
@@ -30,9 +30,9 @@ describe('flow applier', () => {
   /** A pack's compiled flows, one valid flow whose `contentHash` is its version */
   function compiledFlows(name: string, version = 'v1'): string {
     tmp ??= fs.mkdtempSync(path.join(os.tmpdir(), 'flow-applier-'));
-    const file = seedPath(tmp, 'flows');
+    const file = contentPath(tmp, 'flows');
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(path.join(tmp, 'seeds.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
+    fs.writeFileSync(path.join(tmp, 'content.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
     fs.writeFileSync(file, JSON.stringify({
       [name]: {
         contentHash: `${name}-${version}`,
@@ -222,8 +222,8 @@ describe('flow applier', () => {
     const flowId = flows('Demo Flow')[0].id;
 
     const broken = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-applier-broken-'));
-    fs.writeFileSync(path.join(broken, 'seeds.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
-    fs.writeFileSync(seedPath(broken, 'flows'), JSON.stringify({
+    fs.writeFileSync(path.join(broken, 'content.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
+    fs.writeFileSync(contentPath(broken, 'flows'), JSON.stringify({
       'Demo Flow': { contentHash: 'Demo Flow-v2', tracks: [{ event: 'flow.entry', label: 'Flow Entry', exits: [[{ type: 'no_such_step' }]] }] },
     }));
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -244,8 +244,8 @@ describe('flow applier', () => {
     const [key] = [...first.written.keys()];
 
     const emptied = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-applier-none-'));
-    fs.writeFileSync(path.join(emptied, 'seeds.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
-    fs.writeFileSync(seedPath(emptied, 'flows'), JSON.stringify({}));
+    fs.writeFileSync(path.join(emptied, 'content.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
+    fs.writeFileSync(contentPath(emptied, 'flows'), JSON.stringify({}));
 
     const second = after(first);
     apply(emptied, second);
@@ -272,7 +272,7 @@ describe('flow applier', () => {
   it('filters the wiring to the relation kinds a compiled flow holds', async () => {
     const { GRAPH_REL_KINDS } = await import('../../src/content/flow-applier.ts');
     const { compile } = await import('../../src/build/compilers/flow-compiler.ts');
-    const dsl = JSON.parse(fs.readFileSync(seedPath(compiledFlows('Demo Flow'), 'flows'), 'utf-8')) as Record<string, never>;
+    const dsl = JSON.parse(fs.readFileSync(contentPath(compiledFlows('Demo Flow'), 'flows'), 'utf-8')) as Record<string, never>;
 
     const compiled = compile(dsl, { actions: new Map(), prompts: new Map() });
     const kinds = [...new Set(compiled.relation.map((relation) => relation.kind))];
@@ -283,9 +283,9 @@ describe('flow applier', () => {
 
   it('reports an invalid flow as a seed error instead of skipping it silently', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-applier-'));
-    const file = seedPath(tmp, 'flows');
+    const file = contentPath(tmp, 'flows');
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(path.join(tmp, 'seeds.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
+    fs.writeFileSync(path.join(tmp, 'content.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
     fs.writeFileSync(file, JSON.stringify({
       'Broken Flow': { tracks: [{ event: 'flow.entry', label: 'Flow Entry', exits: [[{ type: 'no_such_step' }]] }] },
     }));

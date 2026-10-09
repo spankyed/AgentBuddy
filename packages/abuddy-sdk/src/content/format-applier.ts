@@ -5,7 +5,7 @@ import type { EARS } from '../types/entities.ts';
 import { destroyEntity, findRelations, installedEngine as ears, untypedTx, untypedQx as qx } from '@abuddy/ears';
 import { _getMediaPath, loadJSON, selectsAll, type ContentApplier, type ApplyContext, type ApplyResult, type AppliedItem } from '../utils/index.ts';
 import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
-import { seedPath } from '../build/manifest.ts';
+import { contentPath } from '../build/manifest.ts';
 import { contentPackId } from '../utils/apply.ts';
 import { RECORD_KEYS, itemLabel, type CompiledContentFile, type ContentItem } from '../build/content/items.ts';
 import { _contentWriterRegistry, type ContentWriteContext, type ContentMatch, type ContentWriter } from './writers.ts';
@@ -149,7 +149,7 @@ export const defineKey = (ctx: ApplyContext, key: string): void => { ctx.applied
 export const recordApplied = (ctx: ApplyContext, key: string, item: AppliedItem): void => { ctx.applied?.written.set(key, item); };
 
 /**
- * Seeds `<key>.seed.json` records: finds each record's existing row, creates, updates or skips it,
+ * Seeds `<key>.content.json` records: finds each record's existing row, creates, updates or skips it,
  * and walks children under their parent row.
  * - `keep-existing` skips an existing row and its subtree.
  * - Otherwise a row with no stored hash is user-owned and left alone. A row whose stored hash matches
@@ -169,7 +169,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
     key,
     apply(ctx: ApplyContext): ApplyResult {
       const counts: ApplyResult = { created: 0, updated: 0, skipped: 0 };
-      const file = loadJSON<CompiledContentFile>(seedPath(ctx.compiledDir, key));
+      const file = loadJSON<CompiledContentFile>(contentPath(ctx.compiledDir, key));
       if (!file) {
         ctx.log(`  ${key} file not found, skipping`);
         return counts;

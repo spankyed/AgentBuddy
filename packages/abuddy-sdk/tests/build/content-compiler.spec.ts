@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { compilePack, SEED_INDEX_FILE } from '../../src/build/content-compiler.ts';
+import { compilePack, CONTENT_INDEX_FILE } from '../../src/build/content-compiler.ts';
 import type { CompilePackOptions } from '../../src/build/types.ts';
 import type { PackManifest } from '../../src/build/manifest.ts';
 import { buildPackConfigFromManifest } from '../../src/build/manifest-bridge.ts';
@@ -62,12 +62,12 @@ describe('compilePack', () => {
     write('seeds/memos/media/pic.png', 'PNG');
     const result = await compile({ memos: memosFormat }, { memos: { path: 'seeds/memos', format: 'memos' } });
 
-    const { records } = read('memos.seed.json');
+    const { records } = read('memos.content.json');
     expect(records.map((r: { title: string }) => r.title)).toEqual(['2024', 'Group']);
     expect(records[0]).toMatchObject({ entity: 'Memo', title: '2024', pinned: true, body: 'Hello ![pic](media/pic.png)\n', contentHash: expect.stringMatching(/^[0-9a-f]{16}$/) });
     expect(records[1].children).toEqual([expect.objectContaining({ entity: 'Memo', title: 'child memo', pinned: false })]);
     expect(fs.readFileSync(path.join(out, 'media/memos/pic.png'), 'utf-8')).toBe('PNG');
-    expect(read(SEED_INDEX_FILE)).toEqual({ version: 1, packId: 'demo', seeds: [{ key: 'memos', seeded: true, identity: ['title', 'parent'], count: 3, items: [{ key: '2024' }, { key: 'Group', childCount: 1 }] }] });
+    expect(read(CONTENT_INDEX_FILE)).toEqual({ version: 1, packId: 'demo', seeds: [{ key: 'memos', seeded: true, identity: ['title', 'parent'], count: 3, items: [{ key: '2024' }, { key: 'Group', childCount: 1 }] }] });
     expect(result.counts).toEqual({ memos: 3 });
   });
 
@@ -75,7 +75,7 @@ describe('compilePack', () => {
     write('seeds/memos/blank.md', '---\ntitle:\npinned:\n---\nBlank\n');
     write('seeds/memos/empty-string.md', '---\ntitle: ""\n---\nEmpty\n');
     await compile({ memos: memosFormat }, { memos: { path: 'seeds/memos', format: 'memos' } });
-    const { records } = read('memos.seed.json');
+    const { records } = read('memos.content.json');
     expect(records.map((r: { title: string; pinned: boolean }) => [r.title, r.pinned])).toEqual([['blank', false], ['empty string', false]]);
   });
 
@@ -85,21 +85,21 @@ describe('compilePack', () => {
     write('seeds/memos/assets/pic.png', 'PNG');
     write('seeds/memos/assets/stray.md', 'Not a memo\n');
     await compile({ memos: { ...memosFormat, media: 'assets' } }, { memos: { path: 'seeds/memos', format: 'memos' } });
-    const { records } = read('memos.seed.json');
+    const { records } = read('memos.content.json');
     expect(records.map((r: { title: string; children?: Array<{ title: string }> }) => [r.title, r.children?.map((c) => c.title)]))
       .toEqual([['Media notes', ['clip']]]);
     expect(fs.readdirSync(path.join(out, 'media/memos'))).toEqual(['pic.png', 'stray.md']);
 
     // Without a media directory, nothing is skipped
     await compile({ memos: { ...memosFormat, media: undefined } }, { memos: { path: 'seeds/memos', format: 'memos' } });
-    expect(read('memos.seed.json').records.map((r: { title: string }) => r.title)).toEqual(['assets', 'Media notes']);
+    expect(read('memos.content.json').records.map((r: { title: string }) => r.title)).toEqual(['assets', 'Media notes']);
   });
 
   it('reads frontmatter with CRLF line endings or a byte order mark', async () => {
     write('seeds/memos/crlf.md', '---\r\ntitle: Windows\r\npinned: true\r\n---\r\nBody\r\n');
     write('seeds/memos/bom.md', '\uFEFF---\ntitle: Marked\n---\nBody\n');
     await compile({ memos: memosFormat }, { memos: { path: 'seeds/memos', format: 'memos' } });
-    expect(read('memos.seed.json').records.map((r: { title: string; pinned: boolean; body: string }) => [r.title, r.pinned, r.body]))
+    expect(read('memos.content.json').records.map((r: { title: string; pinned: boolean; body: string }) => [r.title, r.pinned, r.body]))
       .toEqual([['Marked', false, 'Body\n'], ['Windows', true, 'Body\r\n']]);
   });
 
@@ -113,7 +113,7 @@ describe('compilePack', () => {
 
     fs.rmSync(path.join(root, 'seeds/memos/media'), { recursive: true });
     await compile({ memos: memosFormat }, { notes: { path: 'seeds/memos', format: 'memos' } });
-    expect(fs.readdirSync(out).sort()).toEqual(['notes.json', 'notes.seed.json', 'runtime', SEED_INDEX_FILE]);
+    expect(fs.readdirSync(out).sort()).toEqual([CONTENT_INDEX_FILE, 'notes.content.json', 'notes.json', 'runtime']);
 
     // A failed compile leaves no seeds from the previous one
     write('seeds/items.json', JSON.stringify([{ entity: 'Other', name: 'x' }]));
@@ -128,7 +128,7 @@ export default ({ path, key }) => fs.readFileSync(path, 'utf-8').trim().split('\
     const importModule = vi.fn((file: string) => import(file));
     await compile({ tags: { compiler: 'compile-tags.mjs', entity: 'Tag', identity: ['name'] } }, { tags: { path: 'seeds/tags.txt', format: 'tags' } }, { importModule });
     expect(importModule).toHaveBeenCalledWith(path.join(root, 'compile-tags.mjs'));
-    expect(read('tags.seed.json').records).toEqual([
+    expect(read('tags.content.json').records).toEqual([
       { entity: 'Tag', name: 'red', key: 'tags', contentHash: expect.stringMatching(/^[0-9a-f]{16}$/) },
       { entity: 'Tag', name: 'blue', key: 'tags', contentHash: expect.stringMatching(/^[0-9a-f]{16}$/) },
     ]);
@@ -137,7 +137,7 @@ export default ({ path, key }) => fs.readFileSync(path, 'utf-8').trim().split('\
   it("compiles this pack's sources with a dependency's format and its bundled compiler export", async () => {
     write('seeds/team/plan.md', '---\ntitle: Plan\n---\nShip\n');
     write('seeds/team.txt', 'red\n');
-    write('deps/base-pack/build/seed-compilers.mjs', `import * as fs from 'node:fs';
+    write('deps/base-pack/build/content-compilers.mjs', `import * as fs from 'node:fs';
 export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\\n').map((name) => ({ entity: 'Tag', name }));`);
     const base = { id: 'base-pack', name: 'Base', version: '1.0.0', content: { formats: { memos: memosFormat, tags: { compiler: 'src/content/compilers/tags.ts', entity: 'Tag', identity: ['name'] } } } } as unknown as PackManifest;
     const dependencies = new Map([['base-pack', { manifest: base, buildDir: path.join(root, 'deps/base-pack/build') }]]);
@@ -147,14 +147,14 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
       colors: { path: 'seeds/team.txt', format: 'base-pack:tags' },
     }, { dependencies, importModule, manifest: { dependencies: { 'base-pack': '*' } } });
 
-    expect(read('team.seed.json').records).toEqual([expect.objectContaining({ entity: 'Memo', title: 'Plan', body: 'Ship\n' })]);
-    expect(importModule).toHaveBeenCalledWith(path.join(root, 'deps/base-pack/build/seed-compilers.mjs'));
-    expect(read('colors.seed.json').records).toEqual([{ entity: 'Tag', name: 'red', contentHash: expect.any(String) }]);
+    expect(read('team.content.json').records).toEqual([expect.objectContaining({ entity: 'Memo', title: 'Plan', body: 'Ship\n' })]);
+    expect(importModule).toHaveBeenCalledWith(path.join(root, 'deps/base-pack/build/content-compilers.mjs'));
+    expect(read('colors.content.json').records).toEqual([{ entity: 'Tag', name: 'red', contentHash: expect.any(String) }]);
   });
 
   it("fails clearly when a dependency's compiler export or build dir is missing", async () => {
     write('seeds/team.txt', 'red\n');
-    write('deps/base-pack/build/seed-compilers.mjs', 'export const other = () => [];');
+    write('deps/base-pack/build/content-compilers.mjs', 'export const other = () => [];');
     const base = { id: 'base-pack', name: 'Base', version: '1.0.0', content: { formats: { tags: { compiler: 'src/tags.ts', entity: 'Tag' } } } } as unknown as PackManifest;
     const seed = { colors: { path: 'seeds/team.txt', format: 'base-pack:tags' } };
     const manifest = { dependencies: { 'base-pack': '*' } };
@@ -162,9 +162,9 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
       .rejects.toThrow(/format "base-pack:tags" has no compiler export "tags"/);
     await expect(compile({}, seed, { manifest, dependencies: new Map([['base-pack', { manifest: base }]]) }))
       .rejects.toThrow(/format "base-pack:tags" compiles with a module, but its pack's build dir wasn't resolved/);
-    // Built before it bundled its seed compilers (or the bundle failed)
+    // Built before it bundled its content compilers (or the bundle failed)
     await expect(compile({}, seed, { manifest, dependencies: new Map([['base-pack', { manifest: base, buildDir: path.join(root, 'deps/unbuilt/build') }]]) }))
-      .rejects.toThrow(/format "base-pack:tags" compiles with base-pack's seed compilers, but .*deps\/unbuilt\/build\/seed-compilers\.mjs doesn't exist: build base-pack first/);
+      .rejects.toThrow(/format "base-pack:tags" compiles with base-pack's content compilers, but .*deps\/unbuilt\/build\/content-compilers\.mjs doesn't exist: build base-pack first/);
   });
 
   it("fails, naming the record, when a compiler module's output isn't an array of records", async () => {
@@ -196,8 +196,8 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
   it('compiles an artifact and indexes it as unseeded', async () => {
     write('seeds/glossary.json', JSON.stringify([{ question: 'Why?' }]));
     await compileArtifacts({ glossary: { format: 'json' } }, { glossary: { path: 'seeds/glossary.json', format: 'glossary' } });
-    expect(read('glossary.seed.json').records).toEqual([{ question: 'Why?', contentHash: expect.any(String) }]);
-    expect(read(SEED_INDEX_FILE).seeds).toEqual([{ key: 'glossary', seeded: false, count: 1, items: [] }]);
+    expect(read('glossary.content.json').records).toEqual([{ question: 'Why?', contentHash: expect.any(String) }]);
+    expect(read(CONTENT_INDEX_FILE).seeds).toEqual([{ key: 'glossary', seeded: false, count: 1, items: [] }]);
   });
 
   /** And the two sections are not interchangeable: each refuses the other's shape rather than compiling it */
@@ -219,23 +219,23 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
     } } }));
     const result = await compilePack({ packDir: root, outputDir: out });
     expect(result.counts).toEqual({ name: 1, setup: 1 });
-    expect(read('name.seed.json').records[0].label).toBe('a');
-    expect(read('setup.seed.json').records[0].label).toBe('b');
+    expect(read('name.content.json').records[0].label).toBe('a');
+    expect(read('setup.content.json').records[0].label).toBe('b');
   });
 
   it('routes specialty keys to their SDK compilers', async () => {
     write('seeds/prompts/greet.ts', `export const meta = { label: 'Greet', description: 'Says hello' };\nexport function template() { return 'Hello'; }\n`);
     await compile({}, { prompts: 'seeds/prompts' });
-    expect(read('prompts.seed.json').records).toEqual([expect.objectContaining({ label: 'Greet' })]);
-    expect(read(SEED_INDEX_FILE).seeds).toEqual([{ key: 'prompts', seeded: true, identity: ['label'], count: 1, items: [{ key: 'Greet', description: 'Says hello' }] }]);
+    expect(read('prompts.content.json').records).toEqual([expect.objectContaining({ label: 'Greet' })]);
+    expect(read(CONTENT_INDEX_FILE).seeds).toEqual([{ key: 'prompts', seeded: true, identity: ['label'], count: 1, items: [{ key: 'Greet', description: 'Says hello' }] }]);
   });
 
   it("indexes a source with a pack applier as seeded, whatever its format writes", async () => {
     write('seeds/theme.json', JSON.stringify([{ name: 'defaults', description: 'Theme defaults', theme: 'dark' }]));
     const formats = { theme: { format: 'json', entity: 'Theme' } };
     await compile(formats, { theme: { path: 'seeds/theme.json', format: 'theme', applier: 'src/content/theme.ts' } });
-    expect(read('theme.seed.json').records).toEqual([expect.objectContaining({ name: 'defaults', theme: 'dark' })]);
-    expect(read(SEED_INDEX_FILE).seeds).toEqual([{ key: 'theme', seeded: true, count: 1, items: [{ key: 'defaults', description: 'Theme defaults' }] }]);
+    expect(read('theme.content.json').records).toEqual([expect.objectContaining({ name: 'defaults', theme: 'dark' })]);
+    expect(read(CONTENT_INDEX_FILE).seeds).toEqual([{ key: 'theme', seeded: true, count: 1, items: [{ key: 'defaults', description: 'Theme defaults' }] }]);
   });
 });
 
@@ -264,7 +264,7 @@ describe('contentHash is content-addressed', () => {
     const manifest = { id: 'demo', name: 'Demo', version: '1.0.0', content: { formats: {}, sources: { actions: 'seeds/actions' } } } as unknown as PackManifest;
     try {
       await compilePack({ packDir: src, outputDir: dist, packConfig: await buildPackConfigFromManifest(manifest, src) });
-      const { records } = JSON.parse(fs.readFileSync(path.join(dist, 'actions.seed.json'), 'utf-8')) as { records: Array<{ contentHash: string }> };
+      const { records } = JSON.parse(fs.readFileSync(path.join(dist, 'actions.content.json'), 'utf-8')) as { records: Array<{ contentHash: string }> };
       return records[0].contentHash;
     } finally {
       fs.rmSync(src, { recursive: true, force: true });

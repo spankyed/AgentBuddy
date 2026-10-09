@@ -30,13 +30,13 @@ const logger = createLogger('pack-seed');
  * drives with a preview, a per-key selection and a collision mode — more than a reinstall ever gave, and it
  * leaves this record alone, so asking for the data again does not change what counts as changed.
  */
-export function contentRevision(seedsDir: string): string {
-  const files = packContentFiles(seedsDir);
+export function contentRevision(contentDir: string): string {
+  const files = packContentFiles(contentDir);
   if (files.length === 0) return '';
   const hash = crypto.createHash('sha256');
   for (const file of files) {
     hash.update(file);
-    hash.update(fs.readFileSync(path.join(seedsDir, file)));
+    hash.update(fs.readFileSync(path.join(contentDir, file)));
   }
   return hash.digest('hex').slice(0, 16);
 }
@@ -61,7 +61,7 @@ function applyErrors(result: Record<string, { errors?: string[] }> | undefined):
  */
 export interface PackContentTarget {
   manifest: Pick<PackManifest, 'id' | 'dependencies'>;
-  /** The pack's own directory; its compiled content is at `runtime/seeds` under it */
+  /** The pack's own directory; its compiled content is at `runtime/content` under it */
   dir: string;
 }
 
@@ -128,8 +128,8 @@ export function applyPacks(packs: Iterable<PackContentTarget>, importContent: ty
 
   for (const pack of packs) {
     const packId = pack.manifest.id;
-    const seedsDir = path.join(pack.dir, PACK_LAYOUT.seedsDir);
-    const currentHash = fs.existsSync(seedsDir) ? contentRevision(seedsDir) : '';
+    const contentDir = path.join(pack.dir, PACK_LAYOUT.contentDir);
+    const currentHash = fs.existsSync(contentDir) ? contentRevision(contentDir) : '';
     if (!currentHash) {
       // Nothing to apply: an earlier version's error no longer applies, and neither does what it faced
       outcomes.set(packId, undefined);
@@ -162,7 +162,7 @@ export function applyPacks(packs: Iterable<PackContentTarget>, importContent: ty
       // `replace-on-collision` is what the appliers do by default — they branch only on `keep-existing` and
       // `wipe-and-replace` — so naming it changes nothing and says what this is
       errors = applyErrors(importContent({
-        compiledDir: seedsDir,
+        compiledDir: contentDir,
         mode: 'replace-on-collision',
         applied: record,
       }));

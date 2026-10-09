@@ -209,7 +209,7 @@ function withNote(dir: string, title: string, fields: Record<string, unknown>): 
   const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'edited-rows-'));
   dirs.push(copy);
   fs.cpSync(dir, copy, { recursive: true });
-  const file = path.join(copy, 'notes.seed.json');
+  const file = path.join(copy, 'notes.content.json');
   const data = JSON.parse(fs.readFileSync(file, 'utf-8')) as { records: NoteRecord[] };
   const change = (records: NoteRecord[]): NoteRecord[] => records.map((record) => record.title === title
     ? { ...record, ...fields, contentHash: `${record.contentHash}+${JSON.stringify(fields, (_key, value) => value === undefined ? null : value)}` }

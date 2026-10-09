@@ -191,7 +191,7 @@ A `content.formats` value, keyed by the format name: a lowercase letter, then lo
 | Field | Type | Description |
 |---|---|---|
 | `format` | `"markdown-tree" \| "json"` | Compile an entry's source with a built-in format: a directory of markdown, or a JSON array of records |
-| `compiler` | `string` | A module in this pack whose default export compiles an entry's source into records. Bundled into `dist/build/seed-compilers.mjs` for dependents |
+| `compiler` | `string` | A module in this pack whose default export compiles an entry's source into records. Bundled into `dist/build/content-compilers.mjs` for dependents |
 | `entity` | `string \| string[]` | Entity types the records seed (the pack's, a dependency's or the SDK's). Omitted, entries are compiled but not written |
 | `identity` | `string[]` | Fields matched to find an existing row (`"parent"` = the tree parent). Ignored when the type's owning pack registers a `find` content writer |
 | `tree` | `{ branch?, branchEntity?, relKind? }` | Walk subdirectories as parent rows: a directory's own file, its entity type, and the parent → child relation (default `contains`) |

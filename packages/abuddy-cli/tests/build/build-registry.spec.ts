@@ -79,7 +79,7 @@ describe('a build', () => {
 
     // The build failed after that, so it published none of it — which is why the claim above is read off the
     // report. `build-output-swap.spec.ts` is where that behaviour is the subject rather than the condition
-    expect(fs.existsSync(path.join(root, 'dist', PACK_LAYOUT.seedsDir, 'flows.seed.json'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'dist', PACK_LAYOUT.contentDir, 'flows.content.json'))).toBe(false);
   });
 
   /**

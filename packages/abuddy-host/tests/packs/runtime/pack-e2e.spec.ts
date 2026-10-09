@@ -17,7 +17,7 @@ import { getPacksWithClientLoadedFrontends } from '../../../src/packs/layout.ts'
 import type { LoadedPack } from '../../../src/packs/runtime/loader.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { _appDirOf } from '@abuddy/sdk/env';
-import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
+import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
 
 /** A loaded pack's system, by feature id */
 const systemOf = (pack: LoadedPack, featureId: string) => pack.registration.features?.[featureId]?.system;
@@ -53,7 +53,7 @@ function installTestPack() {
   }, null, 2));
 
   fs.writeFileSync(path.join(TEST_PACK_DIR, PACK_LAYOUT.integrity), JSON.stringify({
-    formatVersion: 1, id: TEST_PACK_ID, version: '1.0.0', files: {},
+    formatVersion: PACK_LAYOUT_VERSION, id: TEST_PACK_ID, version: '1.0.0', files: {},
   }));
   fs.mkdirSync(path.join(TEST_PACK_DIR, 'types'), { recursive: true });
   fs.writeFileSync(path.join(TEST_PACK_DIR, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));

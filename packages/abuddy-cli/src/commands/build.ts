@@ -6,7 +6,7 @@ import {
   PACK_TYPES_DEF,
   PACK_SNAPSHOT_FORMAT,
   entitiesWithoutShapes,
-  SEED_COMPILERS_FILE,
+  CONTENT_COMPILERS_FILE,
   _buildProvenance,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type ContentDependency,
 } from '@abuddy/sdk/build';
@@ -14,7 +14,7 @@ import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { abuddyScope, dslInputsHash, feInputsHash, typesInputsHash, filesUnder, readStamps, reuseProblem, takeForward, writeStamps, type PhaseStamp } from '../build/phase-cache';
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import { refusePackRuleViolations } from '../build/pack-rules.ts';
-import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
+import { bundlePackRuntime, bundlePackContentCompilers, bundlePackContentRuntime, bundlePackStepBuild, CONTENT_RUNTIME_FILE } from '../build/be-bundler';
 import { buildReads } from '../build/build-reads';
 import { bundleDslDefs } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
@@ -181,9 +181,9 @@ async function buildIntoStaging(args: string[]) {
   }
 
   const packDir = root;
-  // One place for a pack's compiled content, whoever ships it: `dist/runtime/seeds/`, which staging and
-  // publishing carry to `runtime/seeds/` in the installed layout. The app's apply reads that one path
-  const seedsOutputDir = path.join(outputDir, PACK_LAYOUT.seedsDir);
+  // One place for a pack's compiled content, whoever ships it: `dist/runtime/content/`, which staging and
+  // publishing carry to `runtime/content/` in the installed layout. The app's apply reads that one path
+  const contentOutputDir = path.join(outputDir, PACK_LAYOUT.contentDir);
   const snapshotPath = path.join(outputDir, PACK_LAYOUT.snapshot);
 
   let result: { counts: Record<string, number>; warnings: string[] } | null = null;
@@ -195,7 +195,7 @@ async function buildIntoStaging(args: string[]) {
     registry.registerPack({ id: manifest.id, ...await packConfig.loadDefinitions?.() });
     const options: CompilePackOptions = {
       packDir,
-      outputDir: seedsOutputDir,
+      outputDir: contentOutputDir,
       packConfig,
       definitions: { steps: registry.steps(), artifacts: registry.artifacts(), blocks: registry.blocks() },
       importModule: importPackModule,
@@ -203,17 +203,17 @@ async function buildIntoStaging(args: string[]) {
 
     result = await compilePack(options);
   } else {
-    fs.mkdirSync(seedsOutputDir, { recursive: true });
+    fs.mkdirSync(contentOutputDir, { recursive: true });
   }
 
   // Seed compiler modules, for dependents' entries naming this pack's formats. A pack whose formats
   // dependents can't compile with isn't built: fail before the snapshot that advertises them
-  const seedCompilers = Object.fromEntries(
+  const contentCompilers = Object.fromEntries(
     Object.entries(manifest.content?.formats ?? {}).flatMap(([name, format]) => (format.compiler ? [[name, format.compiler]] : [])),
   );
-  const seedCompilersBundled = Object.keys(seedCompilers).length > 0;
-  if (seedCompilersBundled) {
-    const bundled = await bundlePackSeedCompilers(root, outputDir, seedCompilers, { release, recordReads: reads?.forPhase('seedCompilers') });
+  const contentCompilersBundled = Object.keys(contentCompilers).length > 0;
+  if (contentCompilersBundled) {
+    const bundled = await bundlePackContentCompilers(root, outputDir, contentCompilers, { release, recordReads: reads?.forPhase('contentCompilers') });
     if (!bundled.success) throw new Error(`Seed compiler bundle failed: ${bundled.error}`);
   }
 
@@ -338,14 +338,14 @@ async function buildIntoStaging(args: string[]) {
   }
 
   // ── Seed runtime (for dependents' unit tests) ─────────────────────────
-  const contentRuntime = await bundlePackSeedRuntime(root, outputDir, { release, recordReads: reads?.forPhase('contentRuntime') });
+  const contentRuntime = await bundlePackContentRuntime(root, outputDir, { release, recordReads: reads?.forPhase('contentRuntime') });
   if (contentRuntime.success) {
-    console.log(`  seed runtime: dist/${PACK_LAYOUT.buildDir}/${SEED_RUNTIME_FILE}`);
+    console.log(`  seed runtime: dist/${PACK_LAYOUT.buildDir}/${CONTENT_RUNTIME_FILE}`);
   } else {
     fail(`Seed runtime bundle failed: ${contentRuntime.error}`);
   }
 
-  if (seedCompilersBundled) console.log(`  seed compilers: dist/${PACK_LAYOUT.buildDir}/${SEED_COMPILERS_FILE}`);
+  if (contentCompilersBundled) console.log(`  seed compilers: dist/${PACK_LAYOUT.buildDir}/${CONTENT_COMPILERS_FILE}`);
 
   // ── DSL editor definitions ───────────────────────────────────────────
   if (manifest.dsl) {

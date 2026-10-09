@@ -38,9 +38,9 @@ afterAll(() => {
 function compiled(packId: string, records: Array<{ name: string; body: string; version?: string; [field: string]: unknown }>): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-'));
   dirs.push(dir);
-  fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
+  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
   const seedRecords: ContentItem[] = records.map(({ version = 'v1', ...fields }) => ({ entity: 'Memo', ...fields, contentHash: `${fields.name}-${version}` }));
-  fs.writeFileSync(path.join(dir, 'memos.seed.json'), JSON.stringify({ records: seedRecords }));
+  fs.writeFileSync(path.join(dir, 'memos.content.json'), JSON.stringify({ records: seedRecords }));
   return dir;
 }
 
@@ -501,7 +501,7 @@ describe('content the pack has dropped', () => {
 
     const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-none-'));
     dirs.push(empty);
-    fs.writeFileSync(path.join(empty, 'seeds.json'), JSON.stringify({ version: 1, packId: 'pack-a', seeds: [] }));
+    fs.writeFileSync(path.join(empty, 'content.json'), JSON.stringify({ version: 1, packId: 'pack-a', seeds: [] }));
     const second = after(first);
     seed(empty, second);
 
@@ -523,7 +523,7 @@ describe("two packs' records with the same entry key and identity", () => {
 
   it('fail with a rebuild error when the compiled content name no pack', () => {
     const dir = compiled('pack-a', [{ name: 'Welcome', body: 'From A' }]);
-    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, seeds: [] }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, seeds: [] }));
     expect(() => seed(dir)).toThrow(/doesn't name the pack that compiled these seeds: rebuild the pack/);
   });
 });
@@ -537,7 +537,7 @@ describe("a folder another pack seeded", () => {
   function tree(packId: string, memoNames: string[], entryKey = 'memos'): string {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-tree-'));
     dirs.push(dir);
-    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
     const records: ContentItem[] = [{
       entity: 'Folder',
       name: 'internal',
@@ -545,7 +545,7 @@ describe("a folder another pack seeded", () => {
       contentHash: `internal-${packId}`,
       children: memoNames.map((name) => ({ entity: 'Memo', name, body: `from ${packId}`, contentHash: `${name}-v1` })),
     }];
-    fs.writeFileSync(path.join(dir, `${entryKey}.seed.json`), JSON.stringify({ records }));
+    fs.writeFileSync(path.join(dir, `${entryKey}.content.json`), JSON.stringify({ records }));
     return dir;
   }
 
@@ -626,8 +626,8 @@ describe("a folder another pack seeded", () => {
 
     const emptied = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-emptied-'));
     dirs.push(emptied);
-    fs.writeFileSync(path.join(emptied, 'seeds.json'), JSON.stringify({ version: 1, packId: 'pack-a', seeds: [] }));
-    fs.writeFileSync(path.join(emptied, 'memos.seed.json'), JSON.stringify({ records: [] }));
+    fs.writeFileSync(path.join(emptied, 'content.json'), JSON.stringify({ version: 1, packId: 'pack-a', seeds: [] }));
+    fs.writeFileSync(path.join(emptied, 'memos.content.json'), JSON.stringify({ records: [] }));
     const next = after(packA);
     seed(emptied, next);
 
@@ -672,8 +672,8 @@ describe("a folder another pack seeded", () => {
 
     const emptied = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-chain-'));
     dirs.push(emptied);
-    fs.writeFileSync(path.join(emptied, 'seeds.json'), JSON.stringify({ version: 1, packId: 'pack-a', seeds: [] }));
-    fs.writeFileSync(path.join(emptied, 'memos.seed.json'), JSON.stringify({ records: [] }));
+    fs.writeFileSync(path.join(emptied, 'content.json'), JSON.stringify({ version: 1, packId: 'pack-a', seeds: [] }));
+    fs.writeFileSync(path.join(emptied, 'memos.content.json'), JSON.stringify({ records: [] }));
     const second = after(first);
     // The offering entry, so the one item that is kept is also named as a decision the user has to take
     seedOffering(emptied, second);
@@ -709,7 +709,7 @@ describe("a folder another pack seeded", () => {
 
     // A new contentHash on the folder, so the apply reaches the update that throws
     const dir = tree('pack-a', ['welcome.md', 'guide.md']);
-    const file = path.join(dir, 'memos.seed.json');
+    const file = path.join(dir, 'memos.content.json');
     const data = JSON.parse(fs.readFileSync(file, 'utf-8')) as { records: ContentItem[] };
     data.records[0].contentHash = 'internal-pack-a-v2';
     fs.writeFileSync(file, JSON.stringify(data));
@@ -736,7 +736,7 @@ describe("a folder another pack seeded", () => {
     seed(tree('pack-a', ['welcome.md']));
 
     const dir = tree('pack-a', ['welcome.md']);
-    const file = path.join(dir, 'memos.seed.json');
+    const file = path.join(dir, 'memos.content.json');
     const data = JSON.parse(fs.readFileSync(file, 'utf-8')) as { records: ContentItem[] };
     data.records[0].label = 'renamed';
     data.records[0].contentHash = 'internal-pack-a-v2';
@@ -795,7 +795,7 @@ describe('an update hook that fails part way', () => {
     });
     const pinnedRecord = (version: string, pinned: boolean) => {
       const dir = compiled('demo', [{ name: 'Intro', body: `Hello ${version}`, version }]);
-      const file = path.join(dir, 'memos.seed.json');
+      const file = path.join(dir, 'memos.content.json');
       const data = JSON.parse(fs.readFileSync(file, 'utf-8')) as { records: ContentItem[] };
       data.records[0].pinned = pinned;
       fs.writeFileSync(file, JSON.stringify(data));

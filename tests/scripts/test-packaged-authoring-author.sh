@@ -136,7 +136,7 @@ mkdir -p src/content/library/guides
 printf -- '---\nname: Demo guides\n---\n' > src/content/library/guides/_meta.md
 printf -- '---\nname: Getting started\ntags: [demo]\n---\n<!-- section:text -->\nInstall demo-pack.\n' > src/content/library/guides/start.md
 # demo-notes and demo-library use default-setup's formats, compiled from this pack's markdown through the built
-# dependency; the library format's compiler module comes from default-setup's dist/build/seed-compilers.mjs
+# dependency; the library format's compiler module comes from default-setup's dist/build/content-compilers.mjs
 node -e '
   const fs = require("fs");
   const m = JSON.parse(fs.readFileSync("abuddy.json", "utf8"));
@@ -207,7 +207,7 @@ step "3. abuddy build"
 "${BUILD_ENV[@]}" "$ABUDDY" build | tee "$WORK/build.log"
 node -e '
   const fs = require("fs");
-  const read = (key) => JSON.parse(fs.readFileSync(`dist/runtime/seeds/${key}.seed.json`, "utf8")).records;
+  const read = (key) => JSON.parse(fs.readFileSync(`dist/runtime/content/${key}.content.json`, "utf8")).records;
   const [term] = read("glossary");
   if (term?.entity !== "DemoPack" || term.term !== "Pack" || term.definition !== "A bundle of features.") throw new Error("glossary: " + JSON.stringify(term));
   const [note] = read("demo-notes");
@@ -289,7 +289,7 @@ NO_COLOR=1 FORCE_COLOR=0 node_modules/.bin/vitest run 2>&1 | tee "$WORK/unit.log
 grep -qE "Tests +7 passed" "$WORK/unit.log" || fail "unit tests through the harness failed"
 # The build prints a seed-file count even with no flows; check the compiled flow itself
 node -e '
-  const flows = JSON.parse(require("fs").readFileSync("dist/runtime/seeds/flows.seed.json", "utf8"));
+  const flows = JSON.parse(require("fs").readFileSync("dist/runtime/content/flows.content.json", "utf8"));
   const flow = flows["Notes Heartbeat"];
   if (!flow || !JSON.stringify(flow).includes("keep_alive")) throw new Error("the keepAlive flow was not compiled: " + JSON.stringify(flows));
 ' || fail "the keepAlive flow was not compiled"

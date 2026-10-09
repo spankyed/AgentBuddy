@@ -2,7 +2,7 @@ import { flowRepository } from '../repositories/flow-repository.ts';
 import { promptRepository } from '../repositories/prompt-repository.ts';
 import { findRelations, installedEngine as ears, untypedTx } from '@abuddy/ears';
 import { loadJSON, selectsAll, type ContentApplier, type ApplyContext, type ApplyResult, type AppliedItem } from '../utils/index.ts';
-import { seedPath } from '../build/manifest.ts';
+import { contentPath } from '../build/manifest.ts';
 import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
 import { validate } from '../build/compilers/flow-dsl-validator.ts';
 import { isFlowConfig, type FlowDSL } from '../build/compilers/flow-types.ts';
@@ -100,7 +100,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
     key: 'flows',
     apply(ctx: ApplyContext): ApplyResult {
       const counts: ApplyResult = { created: 0, updated: 0, skipped: 0 };
-      const flowsDSL: any = loadJSON(seedPath(ctx.compiledDir, 'flows'));
+      const flowsDSL: any = loadJSON(contentPath(ctx.compiledDir, 'flows'));
       if (!flowsDSL) {
         ctx.log('  flows artifact not found, skipping flows');
         return counts;

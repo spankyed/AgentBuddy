@@ -7,7 +7,7 @@ import * as path from 'node:path';
 import { registry } from './test-host.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { _appDirOf } from '@abuddy/sdk/env';
-import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
+import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
 
 const { registerPack, unregisterPack, getPackRegistration, registerShutdownHook, removeShutdownHooksForKey } = registry;
 const { reloadPackById } = await import('../../../src/packs/runtime/reload.ts');
@@ -30,10 +30,10 @@ const shutdown = vi.fn();
 /** Writes the rebuilt pack: a pack layout whose runtime entry is `runtimeSource` */
 function writeRebuild(runtimeSource: string) {
   const packDir = path.join(_appDirOf(tmpDir), 'packs', PACK_ID);
-  fs.mkdirSync(path.join(packDir, 'runtime', 'seeds'), { recursive: true });
+  fs.mkdirSync(path.join(packDir, 'runtime', 'content'), { recursive: true });
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: PACK_ID, name: PACK_ID, version: '1.0.1' }));
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 1, id: PACK_ID, version: '1.0.1', files: {} }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: PACK_ID, version: '1.0.1', files: {} }));
   fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), runtimeSource);
 }
@@ -91,11 +91,11 @@ describe('reloading a pack the app ships', () => {
     fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: SHIPPED_ID, name: SHIPPED_ID, version: '1.0.0', ...manifest }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 1, id: SHIPPED_ID, version: '1.0.0', files: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: SHIPPED_ID, version: '1.0.0', files: {} }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, types: {} }));
     writeSeeds('[{ "label": "first" }]');
     // The index naming the pack, and the runtime built beside it
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.seedsDir, 'seeds.json'), JSON.stringify({ version: 1, packId: SHIPPED_ID, seeds: [] }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.contentDir, 'content.json'), JSON.stringify({ version: 1, packId: SHIPPED_ID, seeds: [] }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `
       let compiledDir = '';
       module.exports = {
@@ -119,9 +119,9 @@ describe('reloading a pack the app ships', () => {
 
   /** A pack's compiled content, where an installed pack holds them */
   function writeSeeds(content: string): void {
-    const seedsDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir);
-    fs.mkdirSync(seedsDir, { recursive: true });
-    fs.writeFileSync(path.join(seedsDir, 'actions.seed.json'), content);
+    const contentDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir);
+    fs.mkdirSync(contentDir, { recursive: true });
+    fs.writeFileSync(path.join(contentDir, 'actions.content.json'), content);
   }
 
   /** The pack as `applyPacks` takes it: a pack the app ships, with the policy its registration declares */
@@ -169,7 +169,7 @@ describe('reloading a pack the app ships', () => {
 
     const packDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID);
     const reloaded = require(path.join(packDir, 'runtime', 'index.cjs'));
-    expect(reloaded.compiledDirAtInit).toBe(path.join(packDir, PACK_LAYOUT.seedsDir));
+    expect(reloaded.compiledDirAtInit).toBe(path.join(packDir, PACK_LAYOUT.contentDir));
     expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: SHIPPED_ID, systemIds: [`${SHIPPED_ID}/widget`] });
   });
 
@@ -189,7 +189,7 @@ describe('reloading a pack the app ships', () => {
     loadAppPacks(registry, new Set([SHIPPED_ID]));
     // Boot's own seeding, which the reload picks up from
     applyPacks([seedTarget()]);
-    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir)]);
+    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
 
     // A reload after a code-only rebuild leaves the data alone
     seeded.length = 0;
@@ -199,14 +199,14 @@ describe('reloading a pack the app ships', () => {
     // A reload carrying recompiled content imports them
     writeSeeds('[{ "label": "second" }]');
     await reloadPackById(registry, SHIPPED_ID, bus as never);
-    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir)]);
+    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
   });
 
   it("records what it seeded per pack, so a second shipped pack's boot seed doesn't re-run this one", async () => {
     writeShipped();
     loadAppPacks(registry, new Set([SHIPPED_ID]));
     applyPacks([seedTarget()]);
-    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir)]);
+    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
 
     // Another pack the app ships applies its own content, recorded in its own entity
     seeded.length = 0;
@@ -240,7 +240,7 @@ describe('reloading a pack the app ships', () => {
     recordsThatFail = [];
     loggedErrors.length = 0;
     applyPacks([seedTarget()]);
-    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir)]);
+    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
     expect(loggedErrors).toEqual([]);
   });
 
@@ -250,7 +250,7 @@ describe('reloading a pack the app ships', () => {
     bus.send.mockClear();
 
     // A rebuild running again mid-reload takes the compiled content out from under the applier
-    seedFailure = new Error("ENOENT: no such file or directory, open 'actions.seed.json'");
+    seedFailure = new Error("ENOENT: no such file or directory, open 'actions.content.json'");
     await reloadPackById(registry, SHIPPED_ID, bus as never);
 
     // The swap already happened, so the systems have to be restarted whatever the seed did
@@ -309,7 +309,7 @@ describe('reloading a pack', () => {
     writeRebuild(runtime());
     // Compiled seeds from a pack built by an older CLI: importCompiledContent refuses them, which is a failed seed
     fs.writeFileSync(
-      path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'runtime', 'seeds', 'seeds.json'),
+      path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'runtime', 'content', 'content.json'),
       JSON.stringify({ version: 1, seeds: [] }),
     );
 

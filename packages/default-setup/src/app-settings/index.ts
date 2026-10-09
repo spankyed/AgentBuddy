@@ -1,7 +1,7 @@
 // What this pack contributes to the app's settings: the sections it owns, with their defaults, and the help it
 // answers with. The help comes from this pack's compiled content, so it is read the first time the app asks
 // rather than at registration; the base settings are this pack's own source, imported directly.
-import { seedPath } from '@abuddy/sdk/build';
+import { contentPath } from '@abuddy/sdk/build';
 import { getCompiledDir } from '#generated/appliers.ts';
 import { loadJSON } from '@abuddy/sdk/utils';
 import { isPlainObject } from '@abuddy/sdk/utils/pure';
@@ -48,5 +48,5 @@ export function settingsSections(): Record<string, unknown> {
 
 /** This pack's help entries, listed under Help in the app's Settings view */
 export function helpEntries(): HelpEntry[] {
-  return loadJSON<{ records: HelpEntry[] }>(seedPath(getCompiledDir(), 'faqs'))?.records ?? [];
+  return loadJSON<{ records: HelpEntry[] }>(contentPath(getCompiledDir(), 'faqs'))?.records ?? [];
 }

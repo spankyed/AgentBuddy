@@ -14,7 +14,7 @@ import { services } from '#generated/services.ts'
 import manifest from '../../../../abuddy.json'
 
 /** Where `abuddy build` writes this pack's compiled content */
-const DIST = path.resolve(import.meta.dirname, '../../../../dist', 'runtime', 'seeds')
+const DIST = path.resolve(import.meta.dirname, '../../../../dist', 'runtime', 'content')
 
 const commandNames = (event: unknown) => ((event as { commands: Array<{ name: string }> }).commands).map((command) => command.name)
 const commandDocuments = () => repository.libraryQueries.getDocuments().filter((document) => document.collectionPath?.join('/') === 'internal/commands')
@@ -56,8 +56,8 @@ afterAll(() => {
 function dependentPack(records: unknown[]): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dependent-commands-'))
   dependentDirs.push(dir)
-  fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId: 'team-notes', seeds: [] }))
-  fs.writeFileSync(path.join(dir, 'library.seed.json'), JSON.stringify({ records }))
+  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId: 'team-notes', seeds: [] }))
+  fs.writeFileSync(path.join(dir, 'library.content.json'), JSON.stringify({ records }))
   return dir
 }
 
@@ -129,7 +129,7 @@ describe('slash commands from the library commands folder', () => {
     // With every section deselected no applier runs, so nothing else reads the missing pack id
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'unnamed-seeds-'))
     dependentDirs.push(dir)
-    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, seeds: [] }))
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, seeds: [] }))
     const nothing = Object.fromEntries(Object.keys(manifest.content.sources).map((key) => [key, []]))
     const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
     await app.connect()
@@ -144,9 +144,9 @@ describe('slash commands from the library commands folder', () => {
   it("reports the records a seed import couldn't seed, with the counts of the rest", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'failing-seeds-'))
     dependentDirs.push(dir)
-    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId: manifest.id, seeds: [] }))
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId: manifest.id, seeds: [] }))
     const note = (title: string) => ({ entity: 'Note', title, noteType: 'document', content: 'x', contentHash: `hash-${title}` })
-    fs.writeFileSync(path.join(dir, 'notes.seed.json'), JSON.stringify({ records: [note(''), note('kept')] }))
+    fs.writeFileSync(path.join(dir, 'notes.content.json'), JSON.stringify({ records: [note(''), note('kept')] }))
     const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
     await app.connect()
 

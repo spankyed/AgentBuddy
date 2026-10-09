@@ -45,7 +45,7 @@ export interface DependencyRuntime {
  * Requires a dependency's runtime with the pack's shared modules bridged and packages the pack doesn't
  * install stubbed, points it at its compiled content, and returns its registration.
  */
-export async function loadDependencyRuntime(packDir: string, depId: string, runtimeEntry: string, seedsDir: string | undefined): Promise<DependencyRuntime> {
+export async function loadDependencyRuntime(packDir: string, depId: string, runtimeEntry: string, contentDir: string | undefined): Promise<DependencyRuntime> {
   shared ??= sharedModules(packDir);
   const modules = await shared;
   const require = createRequire(runtimeEntry);
@@ -54,6 +54,6 @@ export async function loadDependencyRuntime(packDir: string, depId: string, runt
     setCompiledDir?(dir: string): void;
   };
   if (!mod.registration) throw new Error(`Dependency "${depId}": ${runtimeEntry} exports no registration`);
-  if (seedsDir) mod.setCompiledDir?.(seedsDir);
+  if (contentDir) mod.setCompiledDir?.(contentDir);
   return { registration: mod.registration };
 }

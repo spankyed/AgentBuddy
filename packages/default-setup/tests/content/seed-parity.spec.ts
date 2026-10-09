@@ -6,7 +6,7 @@
 // **If this failed and you are wondering what to do, read `CLAUDE.md` in this folder first.** It says what belongs
 // in a golden and what must not, and why re-recording one is safe. The short version: a golden moves when what
 // seeding produces moves, you re-record it deliberately with
-// `npm run seed-parity:update -w @app/default-setup`, and you never hand-edit one.
+// `npm run content-parity:update -w @app/default-setup`, and you never hand-edit one.
 //
 // The v1/v2 scenarios seed fixture sources (tests/_support/fixtures/seed-parity), so only a change in seeding moves their
 // goldens; default-setup.json follows the pack's own sources, so content moves it too. The goldens were first
@@ -26,7 +26,7 @@ import { compileSeeds, resetDatabase, seed, snapshot, type Snapshot } from './ha
 import type { EARS } from '@abuddy/ears';
 
 const GOLDEN_DIR = path.join(import.meta.dirname, '__golden__');
-const UPDATE = process.env.UPDATE_SEED_GOLDEN === '1';
+const UPDATE = process.env.UPDATE_CONTENT_GOLDEN === '1';
 
 /**
  * Steps where the old pipeline rewrote existing notes (every re-seed, whatever the mode or hash) and
@@ -104,7 +104,7 @@ function checkGolden(scenario: string, steps: Step[]) {
   // The message, not just the diff: a failure here is read without the file header above it, and the object
   // diff on tens of thousands of lines does not say what to do about it.
   expect(actual, `the ${scenario} golden moved. If that is the change you meant, re-record it deliberately —\n`
-    + '  npm run seed-parity:update -w @app/default-setup\n'
+    + '  npm run content-parity:update -w @app/default-setup\n'
     + 'then read the git diff to confirm. See CLAUDE.md in this folder; never hand-edit a golden.').toEqual(golden);
 }
 

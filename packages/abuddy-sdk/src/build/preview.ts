@@ -7,7 +7,7 @@ export interface PackContentPreviewItem {
   childCount?: number;
 }
 
-/** What importing a compiled content directory would write: the keys it writes and their items, from its seeds.json */
+/** What importing a compiled content directory would write: the keys it writes and their items, from its content.json */
 export interface PackContentPreview {
   directory: string;
   /** The pack that compiled the seeds */

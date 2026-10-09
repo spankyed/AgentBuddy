@@ -9,10 +9,10 @@ import { applyPacks, contentRevision, type PackContentTarget } from '../../../sr
 import { appliedContent, appState } from '../../../src/app-state/index.ts';
 import { getLoadedPackEntries } from '../../../src/packs/layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
-import { PACK_SNAPSHOT_FORMAT, seedFile } from '@abuddy/sdk/build';
+import { PACK_SNAPSHOT_FORMAT, contentFile } from '@abuddy/sdk/build';
 import type { ApplyRecord } from '@abuddy/sdk/utils';
 import { _appDirOf } from '@abuddy/sdk/env';
-import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
+import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
 
 
 /** The features of a loaded pack that have a system */
@@ -33,7 +33,7 @@ function makePack(
   const packDir = path.join(packsDir, id);
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify(manifest));
-  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
+  fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id, version: '1.0.0', files: {} }));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
   fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, features: ${featuresSource} } };`);
@@ -230,10 +230,10 @@ describe('loadAppPacks', () => {
 describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
   function makeBundledPack(id: string, registrationSource: string, manifestExtra: Record<string, unknown> = {}) {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', id);
-    fs.mkdirSync(path.join(packDir, 'runtime', 'seeds'), { recursive: true });
+    fs.mkdirSync(path.join(packDir, 'runtime', 'content'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...manifestExtra }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id, version: '1.0.0', files: {} }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), registrationSource);
     return packDir;
@@ -272,9 +272,9 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(pack.registration.ears?.entities).toEqual({ Widget: 'Widget' });
     expect(pack.registration.boot?.onInit).toBeTypeOf('function');
 
-    // seeds live under runtime/seeds for bundled packs
+    // seeds live under runtime/content for bundled packs
     const mod = require(path.join(dir, 'runtime', 'index.cjs'));
-    expect(mod.compiledDirSeen).toBe(path.join(dir, 'runtime', 'seeds'));
+    expect(mod.compiledDirSeen).toBe(path.join(dir, 'runtime', 'content'));
   });
 
   it("registers the runtime's content writers and feature settings with the pack", async () => {
@@ -317,7 +317,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
       'onInit() {},',
       'onInit() {}, seed() { module.exports.bootSeedCalls = (module.exports.bootSeedCalls ?? 0) + 1; },',
     ));
-    fs.writeFileSync(path.join(dir, 'runtime', 'seeds', 'actions.seed.json'), '[]');
+    fs.writeFileSync(path.join(dir, 'runtime', 'content', 'actions.content.json'), '[]');
 
     const packs = loadExternalPacks();
     expect(registerExternalPacks(registry, packs)).toEqual(packs);
@@ -328,7 +328,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
       const mod = require(path.join(dir, 'runtime', 'index.cjs'));
       expect(mod.bootSeedCalls, 'the pack smuggled a seed function onto boot and it was called').toBeUndefined();
       expect(applyFn).toHaveBeenCalledTimes(1);
-      expect(applyFn).toHaveBeenCalledWith(expect.objectContaining({ compiledDir: path.join(dir, 'runtime', 'seeds') }));
+      expect(applyFn).toHaveBeenCalledWith(expect.objectContaining({ compiledDir: path.join(dir, 'runtime', 'content') }));
     } finally {
       registry.unregisterPack('smuggle-pack');
     }
@@ -356,7 +356,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
 
   it('refuses a layout version this host does not support', () => {
     const dir = makeBundledPack('future-format', registration('future-format'));
-    fs.writeFileSync(path.join(dir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 2, id: 'future-format', version: '1.0.0', files: {} }));
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION + 1, id: 'future-format', version: '1.0.0', files: {} }));
     expect(loadExternalPacks()).toEqual([]);
   });
 
@@ -383,9 +383,9 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
 describe('applyPacks: failures', () => {
   function installedPack(id: string) {
     const dir = path.join(_appDirOf(tmpDir), 'packs', id);
-    fs.mkdirSync(path.join(dir, 'runtime', 'seeds'), { recursive: true });
+    fs.mkdirSync(path.join(dir, 'runtime', 'content'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'runtime', 'index.cjs'), '');
-    fs.writeFileSync(path.join(dir, 'runtime', 'seeds', 'flows.seed.json'), '{}');
+    fs.writeFileSync(path.join(dir, 'runtime', 'content', 'flows.content.json'), '{}');
     return { manifest: { id }, dir } satisfies PackContentTarget;
   }
   function registryEntry(id: string) {
@@ -425,13 +425,13 @@ describe('applyPacks: failures', () => {
   it('re-seeds data that matches an earlier successful seed after a failed one (rollback)', () => {
     const pack = installedPack('rollback');
     writeRegistry(['rollback']);
-    const seedsDir = path.join(pack.dir, 'runtime', 'seeds');
+    const contentDir = path.join(pack.dir, 'runtime', 'content');
     const applyFn = vi.fn(() => ({}));
 
     applyPacks([pack], applyFn); // v1 seeds
-    fs.writeFileSync(path.join(seedsDir, 'flows.seed.json'), '{"v2": {}}');
+    fs.writeFileSync(path.join(contentDir, 'flows.content.json'), '{"v2": {}}');
     applyPacks([pack], failingSeed); // v2 fails
-    fs.writeFileSync(path.join(seedsDir, 'flows.seed.json'), '{}');
+    fs.writeFileSync(path.join(contentDir, 'flows.content.json'), '{}');
     applyPacks([pack], applyFn); // back to v1's data
 
     expect(applyFn).toHaveBeenCalledTimes(2);
@@ -448,7 +448,7 @@ describe('applyPacks: failures', () => {
     applyPacks([pack], failingSeed);
     expect(appState.get().failedAgainst).toEqual({ records: 'provider:' });
 
-    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"fixed": {}}');
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'flows.content.json'), '{"fixed": {}}');
     applyPacks([pack], () => ({}));
 
     expect(appState.get().failedAgainst).toEqual({});
@@ -499,7 +499,7 @@ describe('applyPacks: failures', () => {
     applyPacks([pack], failingSeed);
     expect(appState.get().failedAgainst).toHaveProperty('withdrawn');
 
-    fs.rmSync(path.join(pack.dir, 'runtime', 'seeds'), { recursive: true });
+    fs.rmSync(path.join(pack.dir, 'runtime', 'content'), { recursive: true });
     applyPacks([pack], vi.fn());
 
     expect(appState.get().failedAgainst).toEqual({});
@@ -507,7 +507,7 @@ describe('applyPacks: failures', () => {
 
   it("clears an earlier version's lastError when the pack no longer has seed data", () => {
     const pack = installedPack('no-more-seeds');
-    fs.rmSync(path.join(pack.dir, 'runtime', 'seeds'), { recursive: true });
+    fs.rmSync(path.join(pack.dir, 'runtime', 'content'), { recursive: true });
     fs.writeFileSync(path.join(_appDirOf(tmpDir), 'installed-packs.json'), JSON.stringify({
       packs: [{ id: 'no-more-seeds', name: 'n', version: '1.0.1', dir: '', enabled: true, installedAt: '', lastError: 'v1.0.0 failure' }],
     }));
@@ -523,10 +523,10 @@ describe('applyPacks: failures', () => {
     const { testPacks } = await import('@abuddy/sdk/testing');
     const pack = installedPack('with-settings');
     writeRegistry(['with-settings']);
-    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'settings.seed.json'), '{"plugins": {}}');
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'settings.content.json'), '{"plugins": {}}');
     const settingsSeed = vi.fn(() => ({ created: 0, updated: 1, skipped: 0 }));
     const actionsSeed = vi.fn(() => ({ created: 1, updated: 0, skipped: 0 }));
-    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'seeds.json'), JSON.stringify({ version: 1, packId: 'with-settings', seeds: [] }));
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'content.json'), JSON.stringify({ version: 1, packId: 'with-settings', seeds: [] }));
     // The appliers its registration carries
     testPacks.appliers.set('with-settings', [{ key: 'settings', apply: settingsSeed }, { key: 'actions', apply: actionsSeed }]);
 
@@ -584,7 +584,7 @@ describe('applyPacks: failures', () => {
 
     applyPacks([pack], seedDefining(['keys:notes/a', 'keys:notes/b']));
     // Changed content, or the second run is skipped on its revision
-    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'flows.content.json'), '{"v":2}');
     applyPacks([pack], seedDefining(['keys:notes/a', 'keys:notes/b']));
 
     expect(seenBefore).toEqual([[], ['keys:notes/a', 'keys:notes/b']]);
@@ -600,7 +600,7 @@ describe('applyPacks: failures', () => {
     writeRegistry(['dropped']);
 
     applyPacks([pack], seedDefining(['dropped:notes/a', 'dropped:notes/b']));
-    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'flows.content.json'), '{"v":2}');
     applyPacks([pack], (options: { applied?: ApplyRecord }) => {
       options.applied?.defined.add('dropped:notes/a');
       options.applied?.removed.add('dropped:notes/b');
@@ -619,7 +619,7 @@ describe('applyPacks: failures', () => {
     writeRegistry(['flagged']);
 
     applyPacks([pack], seedDefining(['flagged:notes/a']));
-    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'flows.content.json'), '{"v":2}');
     applyPacks([pack], (options: { applied?: ApplyRecord }) => {
       options.applied?.offers.set('flagged:notes/a', { kind: 'removed', parts: ['title'] });
       return { notes: { created: 0, updated: 0, skipped: 0 } };
@@ -641,7 +641,7 @@ describe('applyPacks: failures', () => {
 
     applyPacks([pack], seedWriting({ 'rev:notes/a': { title: 'h1' } }));
 
-    expect(appliedContent.get('rev').revision).toBe(contentRevision(path.join(pack.dir, 'runtime', 'seeds')));
+    expect(appliedContent.get('rev').revision).toBe(contentRevision(path.join(pack.dir, 'runtime', 'content')));
   });
 
   /**
@@ -658,7 +658,7 @@ describe('applyPacks: failures', () => {
     applyPacks([pack], applyFn);
     expect(applyFn, 'the content has not moved, so there is nothing to decide again').toHaveBeenCalledOnce();
 
-    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'flows.content.json'), '{"v":2}');
     applyPacks([pack], applyFn);
     expect(applyFn).toHaveBeenCalledTimes(2);
   });
@@ -704,7 +704,7 @@ describe('applyPacks: failures', () => {
     writeRegistry(['carry']);
 
     applyPacks([pack], seedWriting({ 'carry:notes/a': { title: 'h1' }, 'carry:notes/b': { title: 'h2' } }));
-    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'flows.content.json'), '{"v":2}');
     applyPacks([pack], seedWriting({ 'carry:notes/a': { title: 'h1-changed' } }));
 
     expect(appliedContent.get('carry').items).toEqual({
@@ -729,7 +729,7 @@ describe('applyPacks: failures', () => {
 
   it('records nothing for a pack with no seed data', () => {
     const pack = installedPack('empty');
-    fs.rmSync(path.join(pack.dir, 'runtime', 'seeds'), { recursive: true });
+    fs.rmSync(path.join(pack.dir, 'runtime', 'content'), { recursive: true });
     writeRegistry(['empty']);
 
     applyPacks([pack], vi.fn());
@@ -755,7 +755,7 @@ describe('applyPacks', () => {
     artifacts?: Record<string, any>,
   ) {
     const packDir = path.join(packsDir, id);
-    const distDir = path.join(packDir, 'runtime', 'seeds');
+    const distDir = path.join(packDir, 'runtime', 'content');
     fs.mkdirSync(distDir, { recursive: true });
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({
       id, name: id, version: '1.0.0',
@@ -772,10 +772,10 @@ describe('applyPacks', () => {
     } as any;
   }
 
-  it('calls applyFn for packs with compiled content in runtime/seeds', () => {
+  it('calls applyFn for packs with compiled content in runtime/content', () => {
     const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const pack = makePackWithSeeds(packsDir, 'data-pack', {
-      [seedFile('actions')]: [{ label: 'test-action', actionFn: 'return true' }],
+      [contentFile('actions')]: [{ label: 'test-action', actionFn: 'return true' }],
     });
 
     const applyFn = vi.fn().mockReturnValue({});
@@ -787,7 +787,7 @@ describe('applyPacks', () => {
     // merge over what it last wrote, what the content says now and what the database holds; never from a
     // policy naming keys
     expect(applyFn).toHaveBeenCalledWith({
-      compiledDir: path.join(pack.dir, 'runtime', 'seeds'),
+      compiledDir: path.join(pack.dir, 'runtime', 'content'),
       mode: 'replace-on-collision',
       applied: {
         before: new Map(), defined: new Set(), written: new Map(),
@@ -796,7 +796,7 @@ describe('applyPacks', () => {
     });
   });
 
-  it('skips packs without runtime/seeds', () => {
+  it('skips packs without runtime/content', () => {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', 'no-dist');
     fs.mkdirSync(packDir, { recursive: true });
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({
@@ -818,10 +818,10 @@ describe('applyPacks', () => {
   it('skips packs whose recorded revision has not changed', () => {
     const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const pack = makePackWithSeeds(packsDir, 'cached-pack', {
-      [seedFile('actions')]: [{ label: 'cached' }],
+      [contentFile('actions')]: [{ label: 'cached' }],
     });
 
-    const distDir = path.join(pack.dir, 'runtime', 'seeds');
+    const distDir = path.join(pack.dir, 'runtime', 'content');
     appliedContent.record('cached-pack', { revision: contentRevision(distDir), wrote: new Map() });
 
     const applyFn = vi.fn().mockReturnValue({});
@@ -833,7 +833,7 @@ describe('applyPacks', () => {
   it('re-seeds when pack content changes', () => {
     const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const pack = makePackWithSeeds(packsDir, 'updated-pack', {
-      [seedFile('actions')]: [{ label: 'v1' }],
+      [contentFile('actions')]: [{ label: 'v1' }],
     });
 
     appliedContent.record('updated-pack', { revision: 'old-hash', wrote: new Map() });
@@ -843,7 +843,7 @@ describe('applyPacks', () => {
     applyPacks([pack], applyFn);
 
     expect(applyFn).toHaveBeenCalledOnce();
-    expect(appliedContent.get('updated-pack').revision).toBe(contentRevision(path.join(pack.dir, 'runtime', 'seeds')));
+    expect(appliedContent.get('updated-pack').revision).toBe(contentRevision(path.join(pack.dir, 'runtime', 'content')));
     // A pack not loaded this boot (disabled) keeps its revision, so enabling it doesn't re-apply its content
     expect(appliedContent.get('disabled-pack').revision).toBe('its-hash');
   });
@@ -851,10 +851,10 @@ describe('applyPacks', () => {
   it('continues seeding other packs when one fails', () => {
     const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const pack1 = makePackWithSeeds(packsDir, 'fail-pack', {
-      [seedFile('actions')]: [{ label: 'will-fail' }],
+      [contentFile('actions')]: [{ label: 'will-fail' }],
     });
     const pack2 = makePackWithSeeds(packsDir, 'ok-pack', {
-      [seedFile('actions')]: [{ label: 'will-succeed' }],
+      [contentFile('actions')]: [{ label: 'will-succeed' }],
     });
 
     let callCount = 0;
@@ -883,7 +883,7 @@ describe('contentRevision', () => {
   it('returns the same hash for files nothing has touched', () => {
     const distDir = path.join(tmpDir, 'hash-test');
     fs.mkdirSync(distDir, { recursive: true });
-    fs.writeFileSync(path.join(distDir, seedFile('actions')), '[]');
+    fs.writeFileSync(path.join(distDir, contentFile('actions')), '[]');
 
     const hash1 = contentRevision(distDir);
     const hash2 = contentRevision(distDir);
@@ -898,11 +898,11 @@ describe('contentRevision', () => {
   it('changes when the same bytes move to a different file', () => {
     const distDir = path.join(tmpDir, 'hash-renamed');
     fs.mkdirSync(distDir, { recursive: true });
-    fs.writeFileSync(path.join(distDir, seedFile('actions')), '[{"label":"same"}]');
+    fs.writeFileSync(path.join(distDir, contentFile('actions')), '[{"label":"same"}]');
     const before = contentRevision(distDir);
 
-    fs.rmSync(path.join(distDir, seedFile('actions')));
-    fs.writeFileSync(path.join(distDir, seedFile('prompts')), '[{"label":"same"}]');
+    fs.rmSync(path.join(distDir, contentFile('actions')));
+    fs.writeFileSync(path.join(distDir, contentFile('prompts')), '[{"label":"same"}]');
 
     expect(contentRevision(distDir)).not.toBe(before);
   });
@@ -914,7 +914,7 @@ describe('contentRevision', () => {
   it('returns the same hash when the same bytes are put back in new files', () => {
     const distDir = path.join(tmpDir, 'hash-replaced');
     fs.mkdirSync(distDir, { recursive: true });
-    const file = path.join(distDir, seedFile('actions'));
+    const file = path.join(distDir, contentFile('actions'));
     fs.writeFileSync(file, '[{"label":"same"}]');
     const before = contentRevision(distDir);
 
@@ -931,16 +931,16 @@ describe('contentRevision', () => {
   it('does not change after installing the same pack source over itself', async () => {
     const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
     const source = path.join(tmpDir, 'reinstall-source');
-    fs.mkdirSync(path.join(source, 'dist', 'runtime', 'seeds'), { recursive: true });
+    fs.mkdirSync(path.join(source, 'dist', 'runtime', 'content'), { recursive: true });
     fs.writeFileSync(path.join(source, 'abuddy.json'), JSON.stringify({ id: 'reinstalled', name: 'R', version: '1.0.0' }));
     fs.writeFileSync(path.join(source, 'dist', 'runtime', 'index.cjs'), 'module.exports = {};');
     fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
     fs.writeFileSync(path.join(source, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
-    fs.writeFileSync(path.join(source, 'dist', 'runtime', 'seeds', seedFile('actions')), '[{"label":"same"}]');
+    fs.writeFileSync(path.join(source, 'dist', 'runtime', 'content', contentFile('actions')), '[{"label":"same"}]');
 
     const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const { dir } = await installPackFromLocal(source, packsDir);
-    const seeds = path.join(dir, 'runtime', 'seeds');
+    const seeds = path.join(dir, 'runtime', 'content');
     const before = contentRevision(seeds);
 
     await installPackFromLocal(source, packsDir);
@@ -951,10 +951,10 @@ describe('contentRevision', () => {
   it('returns different hash when content changes', () => {
     const distDir = path.join(tmpDir, 'hash-change');
     fs.mkdirSync(distDir, { recursive: true });
-    fs.writeFileSync(path.join(distDir, seedFile('actions')), '[{"label":"v1"}]');
+    fs.writeFileSync(path.join(distDir, contentFile('actions')), '[{"label":"v1"}]');
     const hash1 = contentRevision(distDir);
 
-    fs.writeFileSync(path.join(distDir, seedFile('actions')), '[{"label":"v2"}]');
+    fs.writeFileSync(path.join(distDir, contentFile('actions')), '[{"label":"v2"}]');
     const hash2 = contentRevision(distDir);
 
     expect(hash1).not.toBe(hash2);
@@ -973,21 +973,21 @@ describe('contentRevision', () => {
   // compiled there and nothing else, so there is no file kind to exclude — and a changed image is changed
   // seed data, which a hash over `.json` alone called unchanged
   it('hashes every file under the seeds directory, media and all', () => {
-    const seedsDir = path.join(tmpDir, 'with-media');
-    fs.mkdirSync(seedsDir, { recursive: true });
-    expect(contentRevision(seedsDir), 'an empty directory has nothing to seed').toBe('');
+    const contentDir = path.join(tmpDir, 'with-media');
+    fs.mkdirSync(contentDir, { recursive: true });
+    expect(contentRevision(contentDir), 'an empty directory has nothing to seed').toBe('');
 
-    fs.writeFileSync(path.join(seedsDir, 'notes.seed.json'), '[]');
-    const withoutMedia = contentRevision(seedsDir);
+    fs.writeFileSync(path.join(contentDir, 'notes.content.json'), '[]');
+    const withoutMedia = contentRevision(contentDir);
     expect(withoutMedia).not.toBe('');
 
-    fs.mkdirSync(path.join(seedsDir, 'media', 'notes'), { recursive: true });
-    fs.writeFileSync(path.join(seedsDir, 'media', 'notes', 'diagram.png'), 'first');
-    const withMedia = contentRevision(seedsDir);
+    fs.mkdirSync(path.join(contentDir, 'media', 'notes'), { recursive: true });
+    fs.writeFileSync(path.join(contentDir, 'media', 'notes', 'diagram.png'), 'first');
+    const withMedia = contentRevision(contentDir);
     expect(withMedia, 'a media file is seed data').not.toBe(withoutMedia);
 
-    fs.writeFileSync(path.join(seedsDir, 'media', 'notes', 'diagram.png'), 'second');
-    expect(contentRevision(seedsDir), "a media file's content is seed data").not.toBe(withMedia);
+    fs.writeFileSync(path.join(contentDir, 'media', 'notes', 'diagram.png'), 'second');
+    expect(contentRevision(contentDir), "a media file's content is seed data").not.toBe(withMedia);
   });
 });
 

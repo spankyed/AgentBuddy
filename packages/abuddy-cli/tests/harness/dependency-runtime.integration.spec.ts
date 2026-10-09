@@ -36,7 +36,7 @@ function dependentPack(spec: string): string {
   fs.copyFileSync(path.join(DEFAULT_SETUP_DIST, 'runtime', 'index.cjs'), path.join(dep, 'runtime', 'index.cjs'));
   // Its compiled content, from the one place every pack's build writes them, into the one place the harness
   // reads a dependency's from
-  fs.cpSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.seedsDir), path.join(dep, PACK_LAYOUT.seedsDir), { recursive: true });
+  fs.cpSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.contentDir), path.join(dep, PACK_LAYOUT.contentDir), { recursive: true });
   // As `abuddy init` scaffolds it: one call, so this fixture stays what a real pack has
   write(root, 'vitest.config.ts', `
 import { definePackTestConfig } from '@abuddy/testing/vitest';

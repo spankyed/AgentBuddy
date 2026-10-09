@@ -135,7 +135,7 @@ function loadBundledRuntime(
   try {
     registration = withHostResolution(() => {
       const mod = esmRequire(runtimeEntry);
-      mod.setCompiledDir?.(path.join(dir, PACK_LAYOUT.seedsDir));
+      mod.setCompiledDir?.(path.join(dir, PACK_LAYOUT.contentDir));
       return mod.registration;
     });
   } catch (err) {

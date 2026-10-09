@@ -31,8 +31,8 @@ function compile(sources: 'v1' | 'v2' | 'default-setup') {
     const records = compileBuiltinFormat('notes', NOTES_FORMAT, source);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-seed-'));
     dirs.push(dir);
-    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
-    fs.writeFileSync(path.join(dir, 'notes.seed.json'), JSON.stringify({ records }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
+    fs.writeFileSync(path.join(dir, 'notes.content.json'), JSON.stringify({ records }));
     compiled.set(sources, { dir, records });
   }
   return compiled.get(sources)!;

@@ -162,11 +162,11 @@ describe('appliers', () => {
     for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  /** A compiled content directory whose seeds.json names `packId` */
+  /** A compiled content directory whose content.json names `packId` */
   function compiledDir(packId: string): string {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'registered-appliers-'));
     dirs.push(dir);
-    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
     return dir;
   }
   const applier = (key: string, created: number): ContentApplier => ({ key, apply: () => ({ created, updated: 0, skipped: 0 }) });
@@ -289,11 +289,11 @@ describe('two packs naming the same feature', () => {
 describe('a pack whose registration is refused', () => {
   const scratch: string[] = [];
   afterEach(() => { for (const dir of scratch.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
-  /** A compiled content directory whose seeds.json names `packId` */
+  /** A compiled content directory whose content.json names `packId` */
   const seedsOf = (packId: string) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'refused-rollback-'));
     scratch.push(dir);
-    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
     return dir;
   };
   const aSeeder = (key: string): ContentApplier => ({ key, apply: () => ({ created: 1, updated: 0, skipped: 0 }) });

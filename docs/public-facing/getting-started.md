@@ -87,10 +87,10 @@ The build pipeline (`abuddy build`):
 2. `abuddy generate` and `abuddy generate-entries` — resolve dependencies, write their EARS types and generate `src/__generated__/`
 3. Checks each feature's settings file sets only its own plugin's settings
 4. Resolves dependencies, warning when the generated dependency types are from a different version
-5. Content compilation — compiles `content.sources` from `src/content/` to `dist/runtime/seeds/`, validating flows with the dependencies' step code
+5. Content compilation — compiles `content.sources` from `src/content/` to `dist/runtime/content/`, validating flows with the dependencies' step code
 6. Facade types — bundles `dist/types/pack-types.d.ts`, the types packs that depend on yours import, and fails unless it type-checks on its own and imports only `@abuddy/*` packages, `@abuddy/sdk`'s peers and Node built-ins. Warns if your committed `etc/pack-types.api.md` has fallen behind it
 7. Snapshot — writes `dist/types/snapshot.json` (types, facade types, flow helpers, manifest) for downstream packs
-8. Build code for dependents — `dist/build/steps.build.mjs` (step build code), `dist/build/seed-runtime.mjs` (your entity types, repositories and content writers, for their unit tests) and `dist/build/seed-compilers.mjs` (your seed formats' compiler modules). The build loads the seed runtime the way their tests do, and fails if it can't: repositories and content writers can't use native modules or optional `@abuddy/sdk` peers such as `@tiptap/pm`
+8. Build code for dependents — `dist/build/steps.build.mjs` (step build code), `dist/build/content-runtime.mjs` (your entity types, repositories and content writers, for their unit tests) and `dist/build/content-compilers.mjs` (your seed formats' compiler modules). The build loads the seed runtime the way their tests do, and fails if it can't: repositories and content writers can't use native modules or optional `@abuddy/sdk` peers such as `@tiptap/pm`
 9. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot hooks, migrations)
 10. FE bundling — bundles `src/__generated__/pack-entry-fe.ts` into `dist/runtime/fe.js` via Vite
 

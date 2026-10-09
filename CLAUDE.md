@@ -106,7 +106,7 @@ be built to reach it. `npm run spec:full` runs both. The pack seam is also why a
 that pack's whole suite rather than a root `related` — nothing in the root projects imports it.
 
 **Two more edges run through a build, and they are inside one pack.** A pack's `src/content/**` compiles to
-`dist/*.seed.json`, which `tests/content/` reads against its goldens; its **build inputs** — `abuddy.json`,
+`dist/*.content.json`, which `tests/content/` reads against its goldens; its **build inputs** — `abuddy.json`,
 which drives codegen into `src/__generated__/`, `package.json`, whose `imports` map is how those generated
 specifiers resolve and whose `prepare` runs the codegen, and `tsconfig.json`, which the build compiles with —
 are what every spec in the pack goes through. Both are `src -> abuddy build -> artifact -> spec`, so a
@@ -139,7 +139,7 @@ Three things the chain cannot work out for you, because they rewrite files you c
   (`scripts/lib/typecheck-legs.ts`'s header says why); `npm run typecheck` borrows the step instead and passes
   `--skip-generate`, having regenerated once ahead of its pool.
 - **a pack's content source (`src/content/`)** — when only `contentHash`/`rowSha256` moved, re-record
-  deliberately with `npm run seed-parity:update -w @app/default-setup`, and never edit a hash by hand.
+  deliberately with `npm run content-parity:update -w @app/default-setup`, and never edit a hash by hand.
   Re-recording rewrites a test expectation, not user data; what reaches users is the new `contentHash`.
   `packages/default-setup/tests/content/CLAUDE.md` has the rule for what a golden records.
 
@@ -178,7 +178,7 @@ is how 99 published paths named files no tarball held. `@app/publish-checks`' `p
 that one.
 **Three kinds of recorded artifact, and the question to ask of a new one is which it is.** A
 **derivation** re-takes its answer on every run and compares (`schema:check`, `exports:check`,
-`facade:check`, `seed-parity:check`, `api:check`) — a missing input cannot happen to one. **Re-taking it
+`facade:check`, `content-parity:check`, `api:check`) — a missing input cannot happen to one. **Re-taking it
 means running whatever produces it**, which is the half that is easy to skip: a check that compares against
 an artifact some earlier command left on disk is a derivation in name only, and goes stale exactly as a proxy
 does while reading like one that cannot. A **proxy**
@@ -631,8 +631,8 @@ npm run schema:update    # Regenerate packages/abuddy-sdk/abuddy.schema.json fro
 npm run schema:check     # Fails if abuddy.schema.json is stale
 
 # Content goldens (-w @app/default-setup)
-npm run seed-parity:check   # Compare written entities against tests/content/__golden__
-npm run seed-parity:update  # Re-record them; deliberate, see "What to run after a change"
+npm run content-parity:check   # Compare written entities against tests/content/__golden__
+npm run content-parity:update  # Re-record them; deliberate, see "What to run after a change"
 
 npm run measure -- "<cmd>"  # Times a command on a quiet machine and prints a number you can quote:
                          # `48.2s median of 5 (45.0s-49.3s), 92% idle, 2026-09-30`. A number without its

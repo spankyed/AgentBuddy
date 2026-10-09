@@ -6,7 +6,7 @@
  *   <id>/integrity.json            format version, versions, source, sha256 per file
  *   <id>/runtime/index.cjs      backend: exports `registration` + `setCompiledDir`
  *   <id>/runtime/fe.js, fe.css  frontend
- *   <id>/runtime/seeds/         compiled seed data
+ *   <id>/runtime/content/         compiled seed data
  *   <id>/build/                 build-time code dependents load (step build facets)
  *   <id>/types/snapshot.json    types + manifest for dependents' codegen
  *
@@ -21,7 +21,14 @@ import * as tar from 'tar';
 import { _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@abuddy/sdk/build';
 import type { PackRegistry } from './registry.ts';
 
-export const PACK_LAYOUT_VERSION = 1;
+/**
+ * The layout's major version, which `verifyPack` refuses a mismatch of.
+ *
+ * **2 because a pack's compiled content moved from `runtime/seeds` to `runtime/content`.** A pack built
+ * at 1 and installed before that would have been read as a pack with no content at all — found, loaded,
+ * and silently applying nothing — where a refusal names the pack and says to rebuild it.
+ */
+export const PACK_LAYOUT_VERSION = 2;
 
 export const PACK_LAYOUT = {
   manifest: 'abuddy.json',
@@ -30,7 +37,7 @@ export const PACK_LAYOUT = {
   runtimeEntry: 'runtime/index.cjs',
   feEntry: 'runtime/fe.js',
   feStyles: 'runtime/fe.css',
-  seedsDir: 'runtime/seeds',
+  contentDir: 'runtime/content',
   buildDir: 'build',
   stepsBuild: 'build/steps.build.mjs',
   typesDir: 'types',
@@ -302,8 +309,8 @@ export async function extractPackArchive(archive: string, destDir: string, expec
 }
 
 /** A pack's compiled seed files, relative to the seeds directory holding them */
-export function packContentFiles(seedsDir: string): string[] {
-  return fs.existsSync(seedsDir) ? listFiles(seedsDir).sort() : [];
+export function packContentFiles(contentDir: string): string[] {
+  return fs.existsSync(contentDir) ? listFiles(contentDir).sort() : [];
 }
 
 /**

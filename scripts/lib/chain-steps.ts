@@ -666,7 +666,7 @@ const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name
  * **This cannot be derived from the spec sources, and a scan of them is not the authority.** `@app/api`'s
  * specs never name the pack's `dist`: they boot the app runtime, and host code resolves the path. Declaring
  * that suite as reading nothing let it run beside `compile` under three lanes, where it failed with
- * "Missing or unreadable settings.seed.json" — after passing serially forever, because `compile` always
+ * "Missing or unreadable settings.content.json" — after passing serially forever, because `compile` always
  * happened to finish first.
  *
  * Ground truth comes from running each suite with the tree moved aside, which is repeatable:
@@ -695,7 +695,7 @@ export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: 
   // `@abuddy/testing`'s bundle; and `sdk-bridge-drift.spec.ts` reads `dist/runtime/index.cjs` when it is
   // there and skips when it is not, so the tree decides whether that check checks anything
   'abuddy-host': { packages: true, pack: true },
-  // Boots the app runtime, which loads the built-in pack: `dist/runtime/index.cjs` and `settings.seed.json`.
+  // Boots the app runtime, which loads the built-in pack: `dist/runtime/index.cjs` and `settings.content.json`.
   // Named by host code rather than by any spec, which is why it has to be measured rather than scanned.
   api: { pack: true },
   // `pretest: ensure-packages-built`; `published-sdk-peers` reads the built `dist` and skips without it.

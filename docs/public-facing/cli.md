@@ -88,10 +88,10 @@ External packs build into `dist/` in the pack layout:
 dist/
   runtime/index.cjs          backend: systems, services, steps, boot hooks, migrations
   runtime/fe.js, fe.css      frontend
-  runtime/seeds/             compiled content
+  runtime/content/             compiled content
   build/steps.build.mjs      step build facets, for dependents' flow validation (with steps.build)
-  build/seed-runtime.mjs     entity types, repositories and content writers, for dependents' unit tests
-  build/seed-compilers.mjs   content format compiler modules (with content.formats[].compiler)
+  build/content-runtime.mjs     entity types, repositories and content writers, for dependents' unit tests
+  build/content-compilers.mjs   content format compiler modules (with content.formats[].compiler)
   types/pack-types.d.ts      facade types for dependents
   types/snapshot.json        types, facade types, flow helpers, manifest, SDK version
   defs/monaco/<name>-defs.d.ts  editor definitions per dsl entry with a monaco target
@@ -104,7 +104,7 @@ Steps:
 3. Runs `generate` + `generate-entries` (skip with `--skip-generate`)
 4. Checks each feature's `settings` file exists and sets only `plugins.<id>` and `visible`
 5. Resolves every dependency (fails if one can't be), and warns when `src/__generated__` holds a dependency's types from a different version than the one the build resolved
-6. Compiles `content.sources` into `runtime/seeds/`, validating flows against the dependencies' step build code
+6. Compiles `content.sources` into `runtime/content/`, validating flows against the dependencies' step build code
 7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@abuddy/*` packages, `@abuddy/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`. Warns, without failing, when a committed `etc/pack-types.api.md` no longer matches what it bundled (`abuddy facade-report`)
 8. Writes `types/snapshot.json`, and notes entity types with no `entityShapes` entry
 9. Bundles `steps.build`, the seed runtime and any seed compilers into `build/`. The seed runtime is then loaded in a fresh Node process with only `@abuddy/sdk`, as a dependent's tests load it; it fails if repositories or content writers need native modules or `@abuddy/sdk`'s optional peers

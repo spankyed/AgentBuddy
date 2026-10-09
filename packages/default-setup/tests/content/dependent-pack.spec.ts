@@ -1,7 +1,7 @@
 // A pack that depends on default-setup seeds Notes and library documents from its own markdown with
 // entries naming default-setup's formats (tests/_support/fixtures/dependent-pack): no field maps, compiler
 // modules or content writers of its own. Its notes go through default-setup's Note hooks and its library
-// through default-setup's bundled compiler module (dist/build/seed-compilers.mjs) and library hooks,
+// through default-setup's bundled compiler module (dist/build/content-compilers.mjs) and library hooks,
 // so it gets the rows default-setup's own entries seed from the same sources: NOTE shortCodes,
 // display order, nesting, REFERENCES links, DOC shortCodes, sections, media and contentHash.
 import * as fs from 'node:fs';

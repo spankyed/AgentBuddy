@@ -56,7 +56,7 @@ function missingSdkPeers(packDir: string): string[] {
  * (a native module, an optional peer, code that needs the app) fails the build instead of a
  * dependent's tests.
  */
-export async function checkSeedRuntimeLoads(
+export async function checkContentRuntimeLoads(
   packDir: string,
   bundleFile: string,
   { tmpDir = os.tmpdir() }: { tmpDir?: string } = {},

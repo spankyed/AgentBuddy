@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
-import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
+import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
 
 /**
  * An installed pack's runtime has no node_modules: every @abuddy/sdk subpath it requires must come
@@ -22,7 +22,7 @@ afterEach(() => {
 describe('external pack runtime', () => {
   it('requires @abuddy/sdk/cron and @abuddy/sdk/utils/compare-versions through the bridge', async () => {
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: 'bridge-pack', name: 'Bridge', version: '1.0.0' }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 1, id: 'bridge-pack', version: '1.0.0', files: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: 'bridge-pack', version: '1.0.0', files: {} }));
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
     fs.mkdirSync(path.join(packDir, 'runtime'));
@@ -50,7 +50,7 @@ describe('external pack runtime', () => {
    */
   it('requires one lazily, after the load that produced it has returned', async () => {
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: 'lazy-pack', name: 'Lazy', version: '1.0.0' }));
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: 1, id: 'lazy-pack', version: '1.0.0', files: {} }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: 'lazy-pack', version: '1.0.0', files: {} }));
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
     fs.mkdirSync(path.join(packDir, 'runtime'));

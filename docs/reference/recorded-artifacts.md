@@ -13,7 +13,7 @@ that built it.
 **Three kinds of recorded artifact, and the question to ask of a new one is which it is.**
 
 A **derivation** re-takes its answer on every run and compares — `schema:check`, `exports:check`,
-`facade:check`, `seed-parity:check`. A missing input is not a thing that can happen to one, so a case
+`facade:check`, `content-parity:check`. A missing input is not a thing that can happen to one, so a case
 perturbing the recorded file would only prove that `!==` works.
 
 **Re-taking the answer means running whatever produces it, and that is the half a derivation loses

@@ -43,7 +43,7 @@ function builtPack(overrides: Record<string, unknown> = {}): string {
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
   write('dist/runtime/index.cjs.map', '{}');
   write('dist/runtime/fe.js', 'export default {};');
-  write('dist/runtime/seeds/actions.seed.json', '[]');
+  write('dist/runtime/content/actions.content.json', '[]');
   write('dist/types/snapshot.json', JSON.stringify({ types: {}, format: PACK_SNAPSHOT_FORMAT }));
   write('src/ignored.ts', 'not part of the pack');
   return root;
@@ -57,9 +57,9 @@ describe('stagePack', () => {
     expect(info).toMatchObject({ formatVersion: PACK_LAYOUT_VERSION, id: 'demo-pack', version: '1.2.3', hostVersion: '>=0.3.0', sdkVersion: '0.1.0', source: { commit: 'abc' } });
     expect(Object.keys(info.files).sort()).toEqual([
       'abuddy.json',
+      'runtime/content/actions.content.json',
       'runtime/fe.js',
       'runtime/index.cjs',
-      'runtime/seeds/actions.seed.json',
       'types/snapshot.json',
     ]);
     expect(info.files['runtime/index.cjs']).toBe(sha256File(path.join(stage, 'runtime/index.cjs')));

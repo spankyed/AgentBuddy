@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { APP_ONLY_EXPORTS, HOST_RESOLVED_BINARIES, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
-import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';
-import { checkSeedRuntimeLoads } from './seed-runtime-check';
+import { CONTENT_COMPILERS_FILE } from '@abuddy/sdk/build';
+import { checkContentRuntimeLoads } from './seed-runtime-check';
 import type { RecordReads } from './build-reads';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
@@ -131,11 +131,11 @@ export async function bundlePackStepBuild(
 }
 
 /**
- * Bundle the compiler modules named in the pack's content.formats into dist/build/seed-compilers.mjs,
+ * Bundle the compiler modules named in the pack's content.formats into dist/build/content-compilers.mjs,
  * one export per format name. Dependent packs' `abuddy build` compiles this pack's formats with it,
  * since the pack's sources aren't installed. Shared-instance and host-shared packages stay external.
  */
-export async function bundlePackSeedCompilers(
+export async function bundlePackContentCompilers(
   packDir: string,
   outputDir: string,
   compilers: Record<string, string>,
@@ -153,7 +153,7 @@ export async function bundlePackSeedCompilers(
   try {
     await bundlePackSource(packDir, options, {
       stdin: { contents, resolveDir: packDir, sourcefile: 'seed-compilers.ts', loader: 'ts' },
-      outfile: path.join(outputDir, 'build', SEED_COMPILERS_FILE),
+      outfile: path.join(outputDir, 'build', CONTENT_COMPILERS_FILE),
     });
     return { success: true };
   } catch (err) {
@@ -189,16 +189,16 @@ export async function bundlePackFlowHelpersModule(
 }
 
 /** The pack's seed runtime bundle in its build dir: what dependents' unit tests register */
-export const SEED_RUNTIME_FILE = 'seed-runtime.mjs';
+export const CONTENT_RUNTIME_FILE = 'content-runtime.mjs';
 
 /**
  * Bundle the pack's seed runtime (src/__generated__/content-runtime.ts: entity types, repositories,
- * content writers) into dist/build/seed-runtime.mjs. Only the shared-instance packages (@abuddy/sdk and
+ * content writers) into dist/build/content-runtime.mjs. Only the shared-instance packages (@abuddy/sdk and
  * @abuddy/ears) stay external, so a dependent's unit tests can load it with just their own installed
  * and share their instances. The
  * build then loads it that way, so a bundle that can't load fails here.
  */
-export async function bundlePackSeedRuntime(
+export async function bundlePackContentRuntime(
   packDir: string,
   outputDir: string,
   options: BundleRuntimeOptions = {},
@@ -207,7 +207,7 @@ export async function bundlePackSeedRuntime(
   if (!fs.existsSync(entryPath)) {
     return { success: false, error: 'No src/__generated__/content-runtime.ts. Run "abuddy generate-entries" first.' };
   }
-  const outfile = path.join(outputDir, 'build', SEED_RUNTIME_FILE);
+  const outfile = path.join(outputDir, 'build', CONTENT_RUNTIME_FILE);
   try {
     await bundlePackSource(packDir, options, {
       entryPoints: [entryPath],
@@ -219,7 +219,7 @@ export async function bundlePackSeedRuntime(
   } catch (err) {
     return bundleError(err);
   }
-  return checkSeedRuntimeLoads(packDir, outfile);
+  return checkContentRuntimeLoads(packDir, outfile);
 }
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');

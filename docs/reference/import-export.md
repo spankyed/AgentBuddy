@@ -151,12 +151,12 @@ Flows import via a compiled DSL JSON file. The DSL is validated against availabl
 
 ## Import Pack Content
 
-Settings → General → "Import Pack Content" imports a pack's compiled content from a directory (any pack's `runtime/seeds/` — `dist/runtime/seeds/` in a workspace pack after `npm run compile`). The settings system previews it with `previewPackContent(dir)` (`@abuddy/sdk/content`), then calls `importCompiledContent({ compiledDir, include, mode })` (`@abuddy/sdk/utils`), which runs the pack's registered applier for each `<key>.seed.json` listed in `seeds.json` (actions, prompts, flows, library, notes, …), with media from `media/`.
+Settings → General → "Import Pack Content" imports a pack's compiled content from a directory (any pack's `runtime/content/` — `dist/runtime/content/` in a workspace pack after `npm run compile`). The settings system previews it with `previewPackContent(dir)` (`@abuddy/sdk/content`), then calls `importCompiledContent({ compiledDir, include, mode })` (`@abuddy/sdk/utils`), which runs the pack's registered applier for each `<key>.content.json` listed in `content.json` (actions, prompts, flows, library, notes, …), with media from `media/`.
 
 ## Content pipeline
 
 At boot, the host content every pack's compiled content (`applyPacks`, `@abuddy/host/packs/runtime`) from its
-`runtime/seeds` directory, in dependency order so a pack's content can reference what the packs it depends on
+`runtime/content` directory, in dependency order so a pack's content can reference what the packs it depends on
 seeded. A SHA-256 hash of those files is recorded per pack as its applied content's revision
 (`appliedContent`, `@abuddy/host/app-state`). If it matches on the next startup, writing is skipped; changed
 data triggers a re-apply. A pack whose last seed failed is retried when a pack it depends on has seeded since

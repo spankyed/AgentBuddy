@@ -39,11 +39,11 @@ function builtInPack(snapshot: object = { types: { entities: {}, relKinds: {} },
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "base-pack" };');
   // Compiled seeds at the top of a shipped pack's dist, beside files that aren't seeds
   // Compiled seeds, where `abuddy build` writes them for every pack
-  fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir, 'settings.seed.json'), '{"theme":"dark"}');
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir, 'seeds.json'), '{"version":1,"seeds":[]}');
-  fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir, 'media', 'library'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.seedsDir, 'media', 'library', 'pic.png'), 'PNG');
+  fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'settings.content.json'), '{"theme":"dark"}');
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'content.json'), '{"version":1,"seeds":[]}');
+  fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'media', 'library'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'media', 'library', 'pic.png'), 'PNG');
   fs.mkdirSync(path.join(dir, 'dist', 'defs'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'defs', 'actions.d.ts'), '');
   return dir;
@@ -69,8 +69,8 @@ describe('dependency resolution from an installed app', () => {
     expect(fs.existsSync(path.join(artifacts!.buildDir!, 'steps.build.mjs'))).toBe(true);
     expect(artifacts?.runtimeEntry).toBe(path.join(packRoot, '.abuddy', 'deps', 'base-pack', 'runtime', 'index.cjs'));
     expect(fs.readFileSync(artifacts!.runtimeEntry!, 'utf-8')).toContain('registration');
-    expect(artifacts?.seedsDir).toBe(path.join(packRoot, '.abuddy', 'deps', 'base-pack', 'runtime', 'seeds'));
-    expect(fs.readdirSync(artifacts!.seedsDir!).sort()).toEqual(['media', 'seeds.json', 'settings.seed.json']);
+    expect(artifacts?.contentDir).toBe(path.join(packRoot, '.abuddy', 'deps', 'base-pack', 'runtime', 'content'));
+    expect(fs.readdirSync(artifacts!.contentDir!).sort()).toEqual(['content.json', 'media', 'settings.content.json']);
   });
 
   it('reports where the dependency resolved from, and reports nothing for a later cache hit', async () => {

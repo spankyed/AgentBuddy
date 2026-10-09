@@ -8,7 +8,7 @@ import { repository } from '#generated/repository.ts'
 import type { LibraryIndex } from '#features/library/be/types.ts'
 
 /** Where `abuddy build` writes this pack's compiled content */
-const DIST = path.resolve(import.meta.dirname, '../../../../dist', 'runtime', 'seeds')
+const DIST = path.resolve(import.meta.dirname, '../../../../dist', 'runtime', 'content')
 
 const indexOf = (event: unknown) => (event as { data: { index: LibraryIndex } }).data.index
 const folderNamed = (name: string) => repository.libraryQueries.getCollections().find((collection) => collection.name === name)!.id

@@ -2,7 +2,7 @@
 export type { PackConfig, PackBuildDefinitions, CompilePackOptions, CompilePackResult } from './types.ts';
 
 // Seed compiler framework
-export { _clearCompiledContent, compilePack, SEED_INDEX_FILE } from './content-compiler.ts';
+export { _clearCompiledContent, compilePack, CONTENT_INDEX_FILE } from './content-compiler.ts';
 export { compileMarkdownTree, parseMarkdownFile, toDisplayName, type MarkdownItem, type MarkdownTreeOptions } from './content/markdown-tree.ts';
 export {
   compileBuiltinFormat, checkRecordEntities, itemLabel, formatEntities, withContentHashes, defaultSourceHash, RECORD_KEYS,
@@ -10,7 +10,7 @@ export {
   type ContentCompileContext, type ContentCompilerModule,
 } from './content/items.ts';
 export { resolveContentSources, type ResolvedContentSource, type ContentDependency, type ContentCompilerModuleRef } from './content/resolve.ts';
-export type { SpecialtyCompiler, SpecialtyCompileContext, CompilationContext, ValidationError, ValidationResult, SeedIndex, SeedIndexEntry } from './content-compiler.ts';
+export type { SpecialtyCompiler, SpecialtyCompileContext, CompilationContext, ValidationError, ValidationResult, ContentIndex, ContentIndexEntry } from './content-compiler.ts';
 
 // Compile utilities
 export { compileSourceDir, bundleFile, contentHash } from './compile-utils.ts';
@@ -44,7 +44,7 @@ export type {
   PackFeatureEntry, PackBootConfig, ContentSourceConfig, ContentFormatConfig,
   StepEntry, StepDSLMeta,
 } from './manifest.ts';
-export { seedFile, seedPath, SEED_COMPILERS_FILE, PROVENANCE_KINDS, PACK_SNAPSHOT_FORMAT, _snapshotFormatMismatch, _cliFormatMismatchMessage, type SnapshotFormatMismatch, _mergeProvenance, _buildProvenance, _provenanceRecord } from './manifest.ts';
+export { contentFile, contentPath, CONTENT_COMPILERS_FILE, PROVENANCE_KINDS, PACK_SNAPSHOT_FORMAT, _snapshotFormatMismatch, _cliFormatMismatchMessage, type SnapshotFormatMismatch, _mergeProvenance, _buildProvenance, _provenanceRecord } from './manifest.ts';
 
 // Flow DSL helpers (track builders)
 export { entry, on } from './flow-helpers.ts';

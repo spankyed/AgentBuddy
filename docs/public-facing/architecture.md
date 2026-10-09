@@ -302,7 +302,7 @@ The policy is `appPartitionPolicy()` (`@abuddy/host/database`), a constant over 
 | `deps/<id>.flow-helpers.js`, `.d.ts` | Each dependency's flow helpers module and declarations, from its snapshot |
 | `references.ts` | Reference type aggregation: which things are linkable from an editor |
 | `appliers.ts` | `appliers`, one per content key, which `pack-entry.ts` puts in the registration, and the compiled data path accessors (`setCompiledDir`, `getCompiledDir`) |
-| `seed-runtime.ts` | The pack's seed runtime (entity types, relation kinds, repositories, content writers). The pack's tests import it; `abuddy build` bundles it into `dist/build/seed-runtime.mjs` for dependents' tests |
+| `seed-runtime.ts` | The pack's seed runtime (entity types, relation kinds, repositories, content writers). The pack's tests import it; `abuddy build` bundles it into `dist/build/content-runtime.mjs` for dependents' tests |
 | `flow-helpers.ts` | Typed DSL helpers for each step definition, with dependencies' |
 | `step-types.ts` | Re-exports DSL/compiled node types from step definitions |
 | `dsl-types-fe.ts` | `dslTypes` for the Monaco editor, from the definitions `abuddy build` writes to `dist/defs/monaco/`, which `pack-entry-fe.ts` puts in the frontend registration |

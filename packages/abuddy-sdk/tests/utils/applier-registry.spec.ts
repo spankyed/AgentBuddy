@@ -16,11 +16,11 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-/** A compiled content directory whose seeds.json names `packId` */
+/** A compiled content directory whose content.json names `packId` */
 function compiledDir(packId?: string): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'seed-registry-'));
   dirs.push(dir);
-  fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, ...(packId && { packId }), seeds: [] }));
+  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, ...(packId && { packId }), seeds: [] }));
   return dir;
 }
 
@@ -45,7 +45,7 @@ describe('importCompiledContent', () => {
     expect(b.seen).toEqual([dirB]);
   });
 
-  it("runs only the appliers of the pack a directory's seeds.json names", () => {
+  it("runs only the appliers of the pack a directory's content.json names", () => {
     const own = recording('notes', 1);
     const other = recording('memos', 1);
     registerAppliers('pack-a', [own]);

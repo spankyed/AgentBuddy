@@ -53,9 +53,9 @@ function packSource(version: string, { failsImport = false, id = PACK_ID } = {})
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)} } };`);
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   if (failsImport) {
-    // Compiled data with no seeds.json: the applier can't tell whose records these are, so seeding fails
-    fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'seeds'), { recursive: true });
-    fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'seeds', 'flows.seed.json'), '[]');
+    // Compiled data with no content.json: the applier can't tell whose records these are, so seeding fails
+    fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'content'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'content', 'flows.content.json'), '[]');
   }
   return dir;
 }
@@ -570,10 +570,10 @@ describe('importing a pack’s content', () => {
   function compiledMemos(): string {
     const dir = path.join(tmpDir, 'compiled');
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({
       version: 1, packId: PACK_ID, seeds: [{ key: 'memos', seeded: true, count: 1 }],
     }));
-    fs.writeFileSync(path.join(dir, 'memos.seed.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, 'memos.content.json'), JSON.stringify({
       records: [{ entity: 'Memo', name: 'Intro', body: 'Hello', contentHash: 'intro-v1' }],
     }));
     return dir;
@@ -641,15 +641,15 @@ describe('a user answering for one of a pack’s content items', () => {
    */
   function contentPack(version: 'v1' | 'v2'): string {
     const dir = path.join(_appDirOf(tmpDir), 'packs', CONTENT_PACK);
-    const seeds = path.join(dir, PACK_LAYOUT.seedsDir);
+    const seeds = path.join(dir, PACK_LAYOUT.contentDir);
     fs.rmSync(dir, { recursive: true, force: true });
     fs.mkdirSync(seeds, { recursive: true });
     fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id: CONTENT_PACK, name: 'Content Pack', version: '1.0.0' }));
-    fs.writeFileSync(path.join(seeds, 'seeds.json'), JSON.stringify({ version: 1, packId: CONTENT_PACK, seeds: [] }));
-    fs.writeFileSync(path.join(seeds, 'actions.seed.json'), JSON.stringify({
+    fs.writeFileSync(path.join(seeds, 'content.json'), JSON.stringify({ version: 1, packId: CONTENT_PACK, seeds: [] }));
+    fs.writeFileSync(path.join(seeds, 'actions.content.json'), JSON.stringify({
       records: [{ entity: 'Action', label: 'Echo', description: `theirs ${version}`, contentHash: `echo-${version}` }],
     }));
-    fs.writeFileSync(path.join(seeds, 'prompts.seed.json'), JSON.stringify({
+    fs.writeFileSync(path.join(seeds, 'prompts.content.json'), JSON.stringify({
       records: [{ entity: 'Prompt', label: 'Greet', description: `theirs ${version}`, contentHash: `greet-${version}` }],
     }));
     return dir;
@@ -748,7 +748,7 @@ describe('a user answering for one of a pack’s content items', () => {
     const offer = { kind: 'update' as const, parts: ['description'], contentHash: 'echo-v2' };
     appliedContent.record(CONTENT_PACK, { wrote: new Map(), offers: new Map([[ACTION_KEY, offer]]) });
     // The content no longer holds an item under that label, so the selection matches no record
-    fs.writeFileSync(path.join(dir, PACK_LAYOUT.seedsDir, 'actions.seed.json'), JSON.stringify({ records: [] }));
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.contentDir, 'actions.content.json'), JSON.stringify({ records: [] }));
 
     const system = runPacksSystem();
     try {

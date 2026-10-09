@@ -50,7 +50,7 @@ describe('writerOf', () => {
   const steps = [{ name: 'compile', outputs: ['packages/demo-pack/generated'] }, { name: 'typecheck' }];
 
   it('names the step whose outputs hold the file', () => {
-    expect(writerOf('packages/demo-pack/generated/library.seed.json', steps)).toBe('compile');
+    expect(writerOf('packages/demo-pack/generated/library.content.json', steps)).toBe('compile');
   });
 
   /** Nobody's output is the interesting answer: an undeclared write is the one there is something to do about */
@@ -233,10 +233,10 @@ describe('staleLines', () => {
   it('names each file with what happened to it, when, and whose output it is', () => {
     expect(under({ files: [
       { file: 'tests/packs/probe.txt', how: 'changed', when: 'while it ran' },
-      { file: 'packages/demo-pack/dist/seeds.json', how: 'added', when: 'since it ran', writer: 'compile' },
+      { file: 'packages/demo-pack/dist/content.json', how: 'added', when: 'since it ran', writer: 'compile' },
     ] })).toEqual([
-        '  typecheck  tests/packs/probe.txt               changed while it ran',
-      "             packages/demo-pack/dist/seeds.json  added since it ran, compile's declared output",
+        '  typecheck  tests/packs/probe.txt                 changed while it ran',
+      "             packages/demo-pack/dist/content.json  added since it ran, compile's declared output",
     ]);
   });
 
@@ -254,10 +254,10 @@ describe('staleLines', () => {
   it('names the file whose mtime moved while its bytes did not', () => {
     expect(under({
       files: [{ file: 'tests/packs/probe.txt', how: 'changed', when: 'while it ran' }],
-      identical: ['packages/demo-pack/dist/library.seed.json', 'packages/demo-pack/dist/notes.seed.json'],
+      identical: ['packages/demo-pack/dist/library.content.json', 'packages/demo-pack/dist/notes.content.json'],
     })).toEqual([
       '  typecheck  tests/packs/probe.txt  changed while it ran',
-      '             · packages/demo-pack/dist/library.seed.json and 1 more — touched during the run, not changed',
+      '             · packages/demo-pack/dist/library.content.json and 1 more — touched during the run, not changed',
     ]);
   });
 

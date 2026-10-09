@@ -331,7 +331,7 @@ const BUILD_INPUTS: readonly string[] = ['abuddy.json', 'package.json', 'tsconfi
  * visible to any module graph — the spec imports the built output, so a *regenerated* tree is covered while
  * editing the source that generates it reaches nothing.
  *
- * - **`src/content/**`** compiles to `dist/*.seed.json`, which `tests/content/` reads against its goldens.
+ * - **`src/content/**`** compiles to `dist/*.content.json`, which `tests/content/` reads against its goldens.
  * - **the pack's build inputs** (`BUILD_INPUTS`) configure what the build emits and how the pack's own
  *   specifiers resolve, which every spec in the pack goes through. So the whole suite covers them, and
  *   nothing narrower is honest.

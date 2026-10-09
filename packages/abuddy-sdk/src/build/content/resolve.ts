@@ -1,18 +1,18 @@
 import * as path from 'node:path';
 import { SPECIALTY_CONTENT_KEYS } from '../manifest-schema.ts';
-import { SEED_COMPILERS_FILE, type PackManifest, type ContentFormatConfig } from '../manifest.ts';
+import { CONTENT_COMPILERS_FILE, type PackManifest, type ContentFormatConfig } from '../manifest.ts';
 import type { ContentEditPolicy } from '../manifest-schema.ts';
 
 /** What resolving a dependency's formats needs: its manifest, and its build dir for compiler modules */
 export interface ContentDependency {
   manifest: PackManifest;
-  /** The dependency's build dir, holding seed-compilers.mjs (absent when only settings are resolved) */
+  /** The dependency's build dir, holding content-compilers.mjs (absent when only settings are resolved) */
   buildDir?: string;
 }
 
 /** Where a format's compiler module loads from, and which export compiles */
 export interface ContentCompilerModuleRef {
-  /** Absolute module path: the pack's own source module, or a dependency's seed-compilers.mjs (unknown without its build dir) */
+  /** Absolute module path: the pack's own source module, or a dependency's content-compilers.mjs (unknown without its build dir) */
   module?: string;
   exportName: string;
 }
@@ -40,7 +40,7 @@ const FORMAT_REF = /^(?:([a-z][a-z0-9-]*):)?([a-z][a-z0-9-]*)$/;
 /**
  * Resolves each `content.sources` entry: specialty keys to their path, pack appliers to their module, and
  * format entries (with their pack applier, if any) to the settings of the format they name, in this pack's `content.formats` or a
- * dependency's. A dependency's compiler module is its bundled seed-compilers.mjs export.
+ * dependency's. A dependency's compiler module is its bundled content-compilers.mjs export.
  */
 export function resolveContentSources(
   manifest: PackManifest,
@@ -105,5 +105,5 @@ function resolveFormat(
   const format = dependency.manifest.content?.formats?.[name];
   if (!format) throw new Error(`Content "${key}": dependency "${pack}" has no format "${name}"`);
   if (!format.compiler) return { format };
-  return { format, compiler: { ...(dependency.buildDir && { module: path.join(dependency.buildDir, SEED_COMPILERS_FILE) }), exportName: name } };
+  return { format, compiler: { ...(dependency.buildDir && { module: path.join(dependency.buildDir, CONTENT_COMPILERS_FILE) }), exportName: name } };
 }

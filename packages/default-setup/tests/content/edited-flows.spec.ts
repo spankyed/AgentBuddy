@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { SEED_INDEX_FILE, seedFile } from '@abuddy/sdk/build';
+import { CONTENT_INDEX_FILE, contentFile } from '@abuddy/sdk/build';
 import { createFlowApplier, createFormatApplier } from '@abuddy/sdk/content';
 import { importCompiledContent, type ApplyRecord } from '@abuddy/sdk/utils';
 import { registerPack, unregisterPack } from '@abuddy/testing/harness';
@@ -38,13 +38,13 @@ afterAll(() => {
 function compiled(changed: string[] = [], version = 'changed', { only, packId = 'default-setup' }: { only?: string[]; packId?: string } = {}): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-seed-'));
   dirs.push(dir);
-  fs.writeFileSync(path.join(dir, SEED_INDEX_FILE), JSON.stringify({ version: 1, packId, seeds: [] }));
-  const seedsDir = path.join(PACK_DIR, 'dist', 'runtime', 'seeds');
-  for (const key of ['actions', 'prompts']) fs.copyFileSync(path.join(seedsDir, seedFile(key)), path.join(dir, seedFile(key)));
-  const all = JSON.parse(fs.readFileSync(path.join(seedsDir, seedFile('flows')), 'utf-8')) as Record<string, { contentHash?: string }>;
+  fs.writeFileSync(path.join(dir, CONTENT_INDEX_FILE), JSON.stringify({ version: 1, packId, seeds: [] }));
+  const contentDir = path.join(PACK_DIR, 'dist', 'runtime', 'content');
+  for (const key of ['actions', 'prompts']) fs.copyFileSync(path.join(contentDir, contentFile(key)), path.join(dir, contentFile(key)));
+  const all = JSON.parse(fs.readFileSync(path.join(contentDir, contentFile('flows')), 'utf-8')) as Record<string, { contentHash?: string }>;
   const flows = only ? Object.fromEntries(only.map((name) => [name, all[name]])) : all;
   for (const name of changed) flows[name] = { ...flows[name], contentHash: `${version}-${flows[name].contentHash}` };
-  fs.writeFileSync(path.join(dir, seedFile('flows')), JSON.stringify(flows));
+  fs.writeFileSync(path.join(dir, contentFile('flows')), JSON.stringify(flows));
   return dir;
 }
 

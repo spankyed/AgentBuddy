@@ -59,23 +59,23 @@ describe('pack full lifecycle: install → discover', () => {
 
     // v1
     writeManifest(sourceDir, { id: 'update-pack', name: 'Update Pack', version: '1.0.0' });
-    writeBuild(sourceDir, 'update-pack', '{}', { 'runtime/seeds/v1.seed.json': '[]' });
+    writeBuild(sourceDir, 'update-pack', '{}', { 'runtime/content/v1.content.json': '[]' });
 
     await installPackFromLocal(sourceDir, packsDir());
 
     const installedDir = path.join(packsDir(), 'update-pack');
-    expect(fs.existsSync(path.join(installedDir, 'runtime', 'seeds', 'v1.seed.json'))).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'runtime', 'content', 'v1.content.json'))).toBe(true);
 
     // v2: new file, old one removed
     writeManifest(sourceDir, { id: 'update-pack', name: 'Update Pack', version: '2.0.0' });
     fs.rmSync(path.join(sourceDir, 'dist'), { recursive: true });
-    writeBuild(sourceDir, 'update-pack', '{}', { 'runtime/seeds/v2.seed.json': '[]' });
+    writeBuild(sourceDir, 'update-pack', '{}', { 'runtime/content/v2.content.json': '[]' });
 
     await installPackFromLocal(sourceDir, packsDir());
 
     // v1 file should be gone (fresh copy)
-    expect(fs.existsSync(path.join(installedDir, 'runtime', 'seeds', 'v1.seed.json'))).toBe(false);
-    expect(fs.existsSync(path.join(installedDir, 'runtime', 'seeds', 'v2.seed.json'))).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'runtime', 'content', 'v1.content.json'))).toBe(false);
+    expect(fs.existsSync(path.join(installedDir, 'runtime', 'content', 'v2.content.json'))).toBe(true);
 
     const manifest = JSON.parse(fs.readFileSync(path.join(installedDir, 'abuddy.json'), 'utf-8'));
     expect(manifest.version).toBe('2.0.0');
@@ -123,8 +123,8 @@ describe('activating and tearing down a pack at runtime', () => {
         + "appliers: [{ key: 'memos', apply: () => { globalThis.activatePackRuns.push('apply'); return { created: 1, updated: 0, skipped: 0 }; } }], "
         + "migrations: [{ target: '1.0.0', description: 'memos', up: () => { globalThis.activatePackRuns.push('migration'); } }]",
       {
-        'runtime/seeds/memos.seed.json': '[]',
-        'runtime/seeds/seeds.json': JSON.stringify({ version: 1, packId: PACK_ID, seeds: [] }),
+        'runtime/content/memos.content.json': '[]',
+        'runtime/content/content.json': JSON.stringify({ version: 1, packId: PACK_ID, seeds: [] }),
       },
     );
     await installPackFromLocal(sourceDir, packsDir());
@@ -178,7 +178,7 @@ describe('activating and tearing down a pack at runtime', () => {
     activatePack(registry, PACK_ID, bus as never);
     const compiledDir = path.join(tmpDir, 'compiled-seeds');
     fs.mkdirSync(compiledDir);
-    fs.writeFileSync(path.join(compiledDir, 'seeds.json'), JSON.stringify({ version: 1, packId: PACK_ID, seeds: [] }));
+    fs.writeFileSync(path.join(compiledDir, 'content.json'), JSON.stringify({ version: 1, packId: PACK_ID, seeds: [] }));
     expect(Object.keys(importCompiledContent({ compiledDir }))).toEqual(['memos']);
     bus.send.mockReset();
 

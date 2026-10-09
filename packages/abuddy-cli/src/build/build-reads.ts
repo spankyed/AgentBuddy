@@ -55,7 +55,7 @@ const optedOut = (): boolean => process.env[OPT_OUT] === '1';
  */
 export const BUILD_PHASES = [
   'types', 'flowHelperTypes', 'flowHelpersModule', 'dslDefs',
-  'seedCompilers', 'contentRuntime', 'stepBuild', 'runtime', 'fe',
+  'contentCompilers', 'contentRuntime', 'stepBuild', 'runtime', 'fe',
 ] as const;
 
 /** One bundle of `abuddy build`. Derived from the list, which is the declaration. */

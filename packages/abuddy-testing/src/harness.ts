@@ -30,7 +30,7 @@ import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
 import { startShell as startShellFor, stopRunningShells, type StartShellOptions, type TestShell } from './shell.ts';
 import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
-import { compileFlowDSL, compilePack, resolveContentSources, SEED_INDEX_FILE, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency, type SeedIndex } from '@abuddy/sdk/build';
+import { compileFlowDSL, compilePack, resolveContentSources, CONTENT_INDEX_FILE, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type ContentDependency, type ContentIndex } from '@abuddy/sdk/build';
 import { actionRepository, flowRepository, promptRepository } from '@abuddy/sdk/repositories';
 import { untypedQx } from '@abuddy/ears';
 import { _getMediaPath, importCompiledContent, type ImportMode, type ImportResult, type ContentApplier } from '@abuddy/sdk/utils';
@@ -136,7 +136,7 @@ export function mockInference(...args: Parameters<typeof fakeInference>): FakeIn
 
 /** Where `abuddy build` caches a dependency's snapshot and build/ in a pack */
 const DEPS_DIR = path.join('.abuddy', 'deps');
-const SEED_RUNTIME_FILE = 'seed-runtime.mjs';
+const CONTENT_RUNTIME_FILE = 'content-runtime.mjs';
 
 export interface PackTestOptions {
   /** The pack's own seed runtime: `import { contentRuntime } from '#generated/content-runtime'` */
@@ -232,7 +232,7 @@ function originOf(manifest: PackManifest, dir: string): PackOrigin {
 }
 
 /** A seed runtime as a registration: its entity types, repositories and content writers, and the pack's appliers */
-function seedRuntimeRegistration(runtime: ContentRuntime, appliers?: ContentApplier[]): PackRegistration {
+function contentRuntimeRegistration(runtime: ContentRuntime, appliers?: ContentApplier[]): PackRegistration {
   return {
     id: runtime.id,
     ears: { entities: runtime.entities, relKinds: runtime.relKinds },
@@ -282,17 +282,17 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
     await registerRuntimes(packDir, manifest, dependencies, options.registration);
   } else {
     for (const [depId, dependency] of dependencies) {
-      const file = dependency.buildDir && path.join(dependency.buildDir, SEED_RUNTIME_FILE);
+      const file = dependency.buildDir && path.join(dependency.buildDir, CONTENT_RUNTIME_FILE);
       if (!file || !fs.existsSync(file)) {
-        throw new Error(`Dependency "${depId}" has no ${SEED_RUNTIME_FILE}; rebuild it, or update AgentBuddy for built-in packs, then run \`abuddy build\` again`);
+        throw new Error(`Dependency "${depId}" has no ${CONTENT_RUNTIME_FILE}; rebuild it, or update AgentBuddy for built-in packs, then run \`abuddy build\` again`);
       }
       const { contentRuntime } = await import(pathToFileURL(file).href) as { contentRuntime: ContentRuntime };
       startTestRuntime({ entityTypes: Object.values(contentRuntime.entities) });
-      registry.registerPack(seedRuntimeRegistration(contentRuntime), originOf(dependency.manifest, dependency.dir));
+      registry.registerPack(contentRuntimeRegistration(contentRuntime), originOf(dependency.manifest, dependency.dir));
       declareFeatures(dependency.manifest);
     }
     startTestRuntime({ entityTypes: Object.values(options.contentRuntime.entities) });
-    registry.registerPack(seedRuntimeRegistration(options.contentRuntime, options.appliers), originOf(manifest, packDir));
+    registry.registerPack(contentRuntimeRegistration(options.contentRuntime, options.appliers), originOf(manifest, packDir));
     declareFeatures(manifest);
     setAppPacks(registry, manifest.id);
   }
@@ -345,8 +345,8 @@ async function registerRuntimes(packDir: string, manifest: PackManifest, depende
     if (!fs.existsSync(runtimeEntry)) {
       throw new Error(`Dependency "${depId}" has no runtime/index.cjs in ${path.relative(packDir, dependency.dir)}; rebuild it, or update AgentBuddy for built-in packs, then run \`abuddy build\` again`);
     }
-    const seedsDir = path.join(dependency.dir, 'runtime', 'seeds');
-    const runtime = await loadDependencyRuntime(packDir, depId, runtimeEntry, fs.existsSync(seedsDir) ? seedsDir : undefined);
+    const contentDir = path.join(dependency.dir, 'runtime', 'content');
+    const runtime = await loadDependencyRuntime(packDir, depId, runtimeEntry, fs.existsSync(contentDir) ? contentDir : undefined);
     startTestRuntime({ entityTypes: Object.values(runtime.registration.ears?.entities ?? {}) });
     registry.registerPack(runtime.registration, originOf(dependency.manifest, dependency.dir));
   }
@@ -388,7 +388,7 @@ export async function importContent(options: ImportContentOptions = {}): Promise
       log: () => {},
     });
     // Registered appliers whose key wasn't compiled find no seed file and skip
-    const index = JSON.parse(fs.readFileSync(path.join(outputDir, SEED_INDEX_FILE), 'utf-8')) as SeedIndex;
+    const index = JSON.parse(fs.readFileSync(path.join(outputDir, CONTENT_INDEX_FILE), 'utf-8')) as ContentIndex;
     const seeded = new Set(index.seeds.filter((seed) => seed.seeded).map((seed) => seed.key));
     const result = importCompiledContent({ compiledDir: outputDir, mode: options.mode });
     return Object.fromEntries(Object.entries(result).filter(([key]) => seeded.has(key)));

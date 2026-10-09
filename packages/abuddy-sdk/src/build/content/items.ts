@@ -15,7 +15,7 @@ export interface ContentItem {
   [field: string]: unknown;
 }
 
-/** The compiled form of a generic content entry: `<key>.seed.json` */
+/** The compiled form of a generic content entry: `<key>.content.json` */
 export interface CompiledContentFile {
   records: ContentItem[];
 }

@@ -24,7 +24,7 @@ export { answerTo } from './answers.ts';
 /**
  * What a pack's content needs outside the app: its entity types and relation kinds, its repositories
  * and its content writers. `abuddy generate-entries` writes it as `contentRuntime` in
- * `src/__generated__/content-runtime.ts`; `abuddy build` bundles it into `build/seed-runtime.mjs` for
+ * `src/__generated__/content-runtime.ts`; `abuddy build` bundles it into `build/content-runtime.mjs` for
  * packs that depend on this one.
  */
 export interface ContentRuntime {

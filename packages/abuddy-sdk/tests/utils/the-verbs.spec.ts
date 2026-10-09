@@ -94,18 +94,18 @@ describe('a function says which operation it performs', () => {
  * or it does not, where "is this a verb" is a judgement a scan makes wrongly.
  */
 const KEEPS_THE_NOUN: Record<string, string> = {
-  seedPath: 'the compiled file `<key>.seed.json`, which a built pack holds on disk',
-  seedFile: 'the same file name, built from a key',
-  SEED_INDEX_FILE: '`seeds.json`, read by every built pack on disk',
-  SEED_COMPILERS_FILE: '`seed-compilers.mjs`, read from a dependency’s built dir',
-  SeedIndex: 'the shape of `seeds.json`, which keeps its name because the file does',
-  SeedIndexEntry: 'one of its rows',
+  contentPath: 'the compiled file `<key>.content.json`, which a built pack holds on disk',
+  contentFile: 'the same file name, built from a key',
+  CONTENT_INDEX_FILE: '`content.json`, read by every built pack on disk',
+  CONTENT_COMPILERS_FILE: '`content-compilers.mjs`, read from a dependency’s built dir',
+  ContentIndex: 'the shape of `content.json`, which keeps its name because the file does',
+  ContentIndexEntry: 'one of its rows',
 };
 
 /**
  * The same keeps for the two packages a scan over `ROOTS` does not cover — `@abuddy/cli`, which writes the
  * built files, is not one of them, so this records that it is where the rest of the noun lives:
- * `SEED_RUNTIME_FILE`, `bundlePackSeedRuntime`, `bundlePackSeedCompilers`, `checkSeedRuntimeLoads`, each
+ * `CONTENT_RUNTIME_FILE`, `bundlePackContentRuntime`, `bundlePackContentCompilers`, `checkContentRuntimeLoads`, each
  * named after a file on disk.
  */
 

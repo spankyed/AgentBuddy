@@ -34,7 +34,7 @@ const list = (dir: string): string[] => fs.existsSync(dir)
   : [];
 
 describe('a build that fails', () => {
-  const PREVIOUS = ['flows.seed.json', 'seeds.json', 'runtime/index.cjs', 'defs/monaco/actions.d.ts'];
+  const PREVIOUS = ['flows.content.json', 'content.json', 'runtime/index.cjs', 'defs/monaco/actions.d.ts'];
 
   it('leaves the whole of the previous build in place, and no staging tree', async () => {
     const dir = previousBuild(PREVIOUS);

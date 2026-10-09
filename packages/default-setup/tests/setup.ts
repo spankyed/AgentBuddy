@@ -31,5 +31,5 @@ import { setCompiledDir } from '../src/__generated__/appliers.ts';
 
 // Where `abuddy build` writes this pack's compiled content, as the app points the pack module at them. Spelled
 // out rather than taken from `PACK_LAYOUT`, which is `@abuddy/host`'s and no pack may import
-setCompiledDir(path.resolve(__dirname, '..', 'dist', 'runtime', 'seeds'));
+setCompiledDir(path.resolve(__dirname, '..', 'dist', 'runtime', 'content'));
 await setupPackTests({ contentRuntime, registration });

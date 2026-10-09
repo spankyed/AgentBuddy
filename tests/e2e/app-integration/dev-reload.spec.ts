@@ -7,7 +7,7 @@ import type { Page } from '@playwright/test';
 import { API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
 import { test, expect } from '@abuddy/testing';
 
-const SEED_FILE = path.resolve(import.meta.dirname, '../../../packages/default-setup/dist/runtime/seeds/library.seed.json');
+const SEED_FILE = path.resolve(import.meta.dirname, '../../../packages/default-setup/dist/runtime/content/library.content.json');
 const SEEDED_DOCUMENT = 'Codex commands';
 const REBUILT_DOCUMENT = 'Codex commands after a rebuild';
 

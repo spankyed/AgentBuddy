@@ -313,7 +313,7 @@ describe('packContentTargets', () => {
     expect(targets.find((t) => t.manifest.id === 'shipped-pack'))
       .toEqual({ manifest: { id: 'shipped-pack', dependencies: undefined }, dir: '/packs/shipped-pack' });
     // Nothing in a seed target says which app shipped the pack: every pack's seeds are read from
-    // `runtime/seeds` under its own directory
+    // `runtime/content` under its own directory
     expect(targets.find((t) => t.manifest.id === 'installed-pack'))
       .toEqual({ manifest: { id: 'installed-pack', dependencies: undefined }, dir: '/packs/installed-pack' });
   });

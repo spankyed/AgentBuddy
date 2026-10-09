@@ -17,7 +17,7 @@ export interface PackMigration {
  * The pack's boot hooks: code the app runs for it, and nothing else.
  *
  * **A registration carries code; the manifest and the compiled artifacts carry facts.** So nothing here
- * describes a pack's content: which keys it writes is `seeds.json`'s, where its compiled content is follows
+ * describes a pack's content: which keys it writes is `content.json`'s, where its compiled content is follows
  * from where the pack is installed, and what a seed leaves alone the applier decides from the rows — an
  * unchanged hash, an edited row, one the user deleted. A fact put here is a second account of one of those.
  */

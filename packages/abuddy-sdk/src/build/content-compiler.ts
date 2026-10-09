@@ -6,8 +6,8 @@ import type { StepDefinition } from '../steps/types.ts';
 import type { PackContentPreviewItem } from './preview.ts';
 import { SPECIALTY_COMPILERS } from './compilers/standard.ts';
 import { buildPackConfigFromManifest } from './manifest-bridge.ts';
-import { seedFile } from './manifest.ts';
-import { SEED_INDEX_FILE } from '../utils/apply.ts';
+import { contentFile } from './manifest.ts';
+import { CONTENT_INDEX_FILE } from '../utils/apply.ts';
 import {
   checkRecordEntities, compileBuiltinFormat, formatEntities, itemLabel, withContentHashes,
   type ContentCompileContext, type ContentCompilerModule, type ContentItem,
@@ -47,7 +47,7 @@ export interface SpecialtyCompiler<T = unknown> {
    */
   collectErrors?(data: T): string[];
   validate?(data: T, context: CompilationContext): ValidationResult;
-  /** What `<key>.seed.json` holds; the compiled data itself when omitted */
+  /** What `<key>.content.json` holds; the compiled data itself when omitted */
   output?(data: T): unknown;
   /** Items compiled, for the build summary */
   count(data: T): number;
@@ -55,15 +55,15 @@ export interface SpecialtyCompiler<T = unknown> {
   items(data: T): PackContentPreviewItem[];
 }
 
-/** `seeds.json` in the compiled directory: what each content key holds */
-export interface SeedIndex {
+/** `content.json` in the compiled directory: what each content key holds */
+export interface ContentIndex {
   version: 1;
   /** The pack that compiled the content: the content keys it writes name it, so two packs' items never share an entity */
   packId: string;
-  seeds: SeedIndexEntry[];
+  seeds: ContentIndexEntry[];
 }
 
-export interface SeedIndexEntry {
+export interface ContentIndexEntry {
   key: string;
   /** Written into the database (a compile-only entry is read by pack code instead) */
   seeded: boolean;
@@ -74,7 +74,7 @@ export interface SeedIndexEntry {
   items: PackContentPreviewItem[];
 }
 
-export { SEED_INDEX_FILE };
+export { CONTENT_INDEX_FILE };
 
 // ============================================================================
 // Orchestrator
@@ -98,7 +98,7 @@ async function loadPackConfig(options: CompilePackOptions): Promise<PackConfig> 
 export function _clearCompiledContent(outputDir: string): void {
   if (!fs.existsSync(outputDir)) return;
   for (const entry of fs.readdirSync(outputDir, { withFileTypes: true })) {
-    if (entry.isFile() && (entry.name.endsWith(seedFile('')) || entry.name === SEED_INDEX_FILE)) {
+    if (entry.isFile() && (entry.name.endsWith(contentFile('')) || entry.name === CONTENT_INDEX_FILE)) {
       fs.rmSync(path.join(outputDir, entry.name));
     }
   }
@@ -125,8 +125,8 @@ function recordShapeProblems(value: unknown, at: string): string[] {
 
 /**
  * Compiles a pack's `content.sources` entries into `outputDir`, with the definitions it's given (or its pack config
- * loads): `<key>.seed.json` for each entry,
- * `media/<key>/` for entries whose format has media, and `seeds.json` indexing them. Earlier
+ * loads): `<key>.content.json` for each entry,
+ * `media/<key>/` for entries whose format has media, and `content.json` indexing them. Earlier
  * output there is removed first, including when compiling fails.
  */
 export async function compilePack(options: CompilePackOptions): Promise<CompilePackResult> {
@@ -142,7 +142,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   fs.mkdirSync(outputDir, { recursive: true });
 
   const specialtyData = new Map<string, unknown>();
-  const compiled: Array<{ key: string; media?: string; output: unknown; index: SeedIndexEntry }> = [];
+  const compiled: Array<{ key: string; media?: string; output: unknown; index: ContentIndexEntry }> = [];
   const errors: string[] = [];
 
   for (const [key, source] of Object.entries(packConfig.sources)) {
@@ -178,7 +178,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
       if (!fs.existsSync(source.compiler.module)) {
         const dependency = source.formatRef.includes(':') ? source.formatRef.split(':')[0] : undefined;
         throw new Error(dependency
-          ? `Content "${key}": format "${source.formatRef}" compiles with ${dependency}'s seed compilers, but ${source.compiler.module} doesn't exist: build ${dependency} first (abuddy build)`
+          ? `Content "${key}": format "${source.formatRef}" compiles with ${dependency}'s content compilers, but ${source.compiler.module} doesn't exist: build ${dependency} first (abuddy build)`
           : `Content "${key}": compiler module ${source.compiler.module} doesn't exist`);
       }
       const mod = await importModule(source.compiler.module);
@@ -235,12 +235,12 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
 
   const mediaRoot = path.join(outputDir, 'media');
   for (const { key, media, output, index } of compiled) {
-    fs.writeFileSync(path.join(outputDir, seedFile(key)), `${JSON.stringify(output, null, 2)}\n`);
+    fs.writeFileSync(path.join(outputDir, contentFile(key)), `${JSON.stringify(output, null, 2)}\n`);
     if (media && fs.existsSync(media)) fs.cpSync(media, path.join(mediaRoot, key), { recursive: true });
     log(`  ${key}: ${index.count}`);
   }
-  const seedIndex: SeedIndex = { version: 1, packId: packConfig.name, seeds: compiled.map(({ index }) => index) };
-  fs.writeFileSync(path.join(outputDir, SEED_INDEX_FILE), `${JSON.stringify(seedIndex, null, 2)}\n`);
+  const seedIndex: ContentIndex = { version: 1, packId: packConfig.name, seeds: compiled.map(({ index }) => index) };
+  fs.writeFileSync(path.join(outputDir, CONTENT_INDEX_FILE), `${JSON.stringify(seedIndex, null, 2)}\n`);
 
   return { counts: Object.fromEntries(compiled.map(({ key, index }) => [key, index.count])), warnings: [] };
 }

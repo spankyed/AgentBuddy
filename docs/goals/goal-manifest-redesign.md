@@ -752,7 +752,7 @@ to the first structural change made after a release exists.
 
 **The gap, why it does not bite, and why it needs writing down.** A published built-in pack
 (`host-packs/<id>/`) is a *partial* pack layout: `publishHostPackOutput` writes `types/snapshot.json`,
-`build/`, `runtime/index.cjs` with `runtime/seeds/`, and a `.fingerprint` — **no `abuddy.json` and no
+`build/`, `runtime/index.cjs` with `runtime/content/`, and a `.fingerprint` — **no `abuddy.json` and no
 `integrity.json`** (its manifest is read from inside `snapshot.json`). An unbuilt source pack has
 neither either. So neither carries the stamp, and skew is impossible for both: a built-in pack ships
 inside the host that reads it, and an unbuilt source pack is built by a CLI its author chose. The one
@@ -940,7 +940,7 @@ and `migrations` is still a root key; no pack re-seeds on the next boot — `con
 (`packs/runtime/apply.ts:28`) and the boot seed's hash cover the compiled `.json` output and never the
 manifest, so byte-identical compiled seeds mean an unchanged hash, which is the same fact the next
 clause checks from the other side; the compiled seeds for default-setup are
-byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/content` passes;
+byte-identical (`dist/*.content.json`, `dist/content.json`); `tests/content` passes;
 `npm run compile`, `npm run test:unit`, `npm run test:external-pack` pass.
 
 ### Phase 4 — features: what they contribute, and where
@@ -1068,7 +1068,7 @@ the regenerated schema committed, `npm run api:update` has been run, and the cha
 
 ## Deferred
 
-- **Splitting the manifest into several files** (a `seeds.json` beside `abuddy.json`, say). One file that
+- **Splitting the manifest into several files** (a `content.json` beside `abuddy.json`, say). One file that
   fits on a screen is the goal; more files is a different trade and not this one.
 - **Replacing JSON with a typed authoring format** (a `abuddy.config.ts` the build imports). It would
   remove the `path#export` strings entirely in favour of real imports, and it changes how the CLI, the

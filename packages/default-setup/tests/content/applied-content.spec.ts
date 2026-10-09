@@ -9,15 +9,15 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { importCompiledContent, type AppliedItem, type ApplyRecord } from '@abuddy/sdk/utils';
-import { SEED_INDEX_FILE } from '@abuddy/sdk/build';
+import { CONTENT_INDEX_FILE } from '@abuddy/sdk/build';
 import { untypedQx as qx, untypedTx, type EARS } from '@abuddy/ears';
 import { PACK_DIR, applyAfter } from './harness.ts';
 
 /** This pack's compiled content, as its build wrote them */
-const BUILT = path.join(PACK_DIR, 'dist', 'runtime', 'seeds');
+const BUILT = path.join(PACK_DIR, 'dist', 'runtime', 'content');
 
 interface IndexEntry { key: string; seeded?: boolean; count?: number }
-const index = (): { seeds: IndexEntry[] } => JSON.parse(fs.readFileSync(path.join(BUILT, SEED_INDEX_FILE), 'utf-8'));
+const index = (): { seeds: IndexEntry[] } => JSON.parse(fs.readFileSync(path.join(BUILT, CONTENT_INDEX_FILE), 'utf-8'));
 
 /** The keys the build says it seeds, and how many items each holds — the declaration this spec derives from */
 const seededEntries = () => index().seeds.filter((entry) => entry.seeded);
@@ -47,15 +47,15 @@ function compiledDir(variant: Variant = {}): string {
   dirs.push(dir);
   for (const file of fs.readdirSync(BUILT)) {
     const body = fs.readFileSync(path.join(BUILT, file), 'utf-8');
-    fs.writeFileSync(path.join(dir, file), file === SEED_INDEX_FILE ? body : vary(file, body, variant));
+    fs.writeFileSync(path.join(dir, file), file === CONTENT_INDEX_FILE ? body : vary(file, body, variant));
   }
   return dir;
 }
 
 function vary(file: string, body: string, { bump, change, drop }: Variant): string {
   const parsed = JSON.parse(body) as { records?: Array<Record<string, unknown>> };
-  if (drop && file === `${drop}.seed.json`) return JSON.stringify({ records: [] });
-  if (change && file === 'actions.seed.json' && parsed.records?.[0]) parsed.records[0][change[0]] = change[1];
+  if (drop && file === `${drop}.content.json`) return JSON.stringify({ records: [] });
+  if (change && file === 'actions.content.json' && parsed.records?.[0]) parsed.records[0][change[0]] = change[1];
   return JSON.stringify(parsed, (key, value) =>
     bump && key === 'contentHash' && typeof value === 'string'
       ? `${value}-${bump === true ? 'bumped' : bump}`

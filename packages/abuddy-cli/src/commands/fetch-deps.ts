@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { satisfies, rcompare, clean } from 'semver';
-import { SEED_INDEX_FILE, _cliFormatMismatchMessage, _snapshotFormatMismatch, type PackSnapshot } from '@abuddy/sdk/build';
+import { CONTENT_INDEX_FILE, _cliFormatMismatchMessage, _snapshotFormatMismatch, type PackSnapshot } from '@abuddy/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
 import { PACK_LAYOUT, extractPackArchive, verifyPack } from '@abuddy/host/packs';
 import { waitForPackBuild } from '../build/build-lock.ts';
@@ -39,12 +39,12 @@ function parseDepValue(value: string): DepSource {
 /** A dependency's files: its snapshot, plus build code and a backend runtime when it ships them. */
 export interface DepFiles {
   snapshot: PackSnapshot;
-  /** Directory with the dependency's build-time code (build/steps.build.mjs, build/seed-compilers.mjs), if present. */
+  /** Directory with the dependency's build-time code (build/steps.build.mjs, build/content-compilers.mjs), if present. */
   buildDir?: string;
   /** The dependency's backend runtime (runtime/index.cjs), if present: what a dependent's tests load. */
   runtimeEntry?: string;
-  /** The compiled content its runtime reads (runtime/seeds/, or a built-in pack's dist/), with the runtime */
-  seedsDir?: string;
+  /** The compiled content its runtime reads (runtime/content/, or a built-in pack's dist/), with the runtime */
+  contentDir?: string;
 }
 
 function tryReadSnapshot(filePath: string): PackSnapshot | null {
@@ -78,14 +78,14 @@ function withBuildAndRuntime(snapshot: PackSnapshot, root: string): DepFiles {
   const buildDir = path.join(root, PACK_LAYOUT.buildDir);
   const runtimeEntry = path.join(root, PACK_LAYOUT.runtimeEntry);
   // One place for every pack's compiled content, named by its index
-  const seedsDir = path.join(root, PACK_LAYOUT.seedsDir);
-  const hasSeeds = fs.existsSync(path.join(seedsDir, SEED_INDEX_FILE));
+  const contentDir = path.join(root, PACK_LAYOUT.contentDir);
+  const hasSeeds = fs.existsSync(path.join(contentDir, CONTENT_INDEX_FILE));
   const hasRuntime = fs.existsSync(runtimeEntry);
   return {
     snapshot,
     ...(fs.existsSync(buildDir) && { buildDir }),
     ...(hasRuntime && { runtimeEntry }),
-    ...(hasRuntime && hasSeeds && { seedsDir }),
+    ...(hasRuntime && hasSeeds && { contentDir }),
   };
 }
 
@@ -325,7 +325,7 @@ async function lookupRegistry(_depId: string): Promise<string | null> {
 
 function cacheDep(root: string, depId: string, artifacts: DepFiles): void {
   const depDir = depCacheDir(root, depId);
-  const { snapshot, buildDir, runtimeEntry, seedsDir } = artifacts;
+  const { snapshot, buildDir, runtimeEntry, contentDir } = artifacts;
   fs.mkdirSync(depDir, { recursive: true });
   fs.writeFileSync(path.join(depDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
 
@@ -352,7 +352,7 @@ function cacheDep(root: string, depId: string, artifacts: DepFiles): void {
     fs.rmSync(path.join(depDir, PACK_LAYOUT.runtimeDir), { recursive: true, force: true });
     fs.mkdirSync(path.dirname(cachedRuntime), { recursive: true });
     fs.copyFileSync(runtimeEntry, cachedRuntime);
-    if (seedsDir) copyContent(seedsDir, path.join(depDir, PACK_LAYOUT.seedsDir));
+    if (contentDir) copyContent(contentDir, path.join(depDir, PACK_LAYOUT.contentDir));
   } else if (!runtimeEntry) {
     fs.rmSync(path.join(depDir, PACK_LAYOUT.runtimeDir), { recursive: true, force: true });
   }
@@ -360,7 +360,7 @@ function cacheDep(root: string, depId: string, artifacts: DepFiles): void {
 
 /**
  * Copies a pack's compiled content. The whole directory, because that is all it holds — it used to pick
- * `*.seed.json`, `seeds.json` and `media/` out of a built-in pack's entire `dist/`, which is not where any
+ * `*.content.json`, `content.json` and `media/` out of a built-in pack's entire `dist/`, which is not where any
  * pack's content is written any more.
  */
 function copyContent(from: string, to: string): void {

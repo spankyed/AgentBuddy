@@ -77,9 +77,9 @@ describe('with no app bound', () => {
   });
 
   it('throws, naming bindHost (or bindFeHost in the frontend), for what packs registered', () => {
-    const seedsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'unbound-seeds-'));
-    fs.writeFileSync(path.join(seedsDir, 'seeds.json'), JSON.stringify({ version: 1, packId: 'memo-pack', seeds: [] }));
-    onTestFinished(() => fs.rmSync(seedsDir, { recursive: true, force: true }));
+    const contentDir = fs.mkdtempSync(path.join(os.tmpdir(), 'unbound-seeds-'));
+    fs.writeFileSync(path.join(contentDir, 'content.json'), JSON.stringify({ version: 1, packId: 'memo-pack', seeds: [] }));
+    onTestFinished(() => fs.rmSync(contentDir, { recursive: true, force: true }));
     const lookups: Array<[string, () => unknown]> = [
       ['getDesignated', () => getDesignated('brain')],
       ['hasDesignation', () => hasDesignation('brain')],
@@ -96,7 +96,7 @@ describe('with no app bound', () => {
     }
     const backendLookups: Array<[string, () => unknown]> = [
       ['_contentWriterRegistry.get', () => _contentWriterRegistry.get('Memo')],
-      ['importCompiledContent', () => importCompiledContent({ compiledDir: seedsDir })],
+      ['importCompiledContent', () => importCompiledContent({ compiledDir: contentDir })],
       ['registeredContentKeys', () => registeredContentKeys('memo-pack')],
       ['getPackSettingsDefaults', () => getPackSettingsDefaults()],
       ['onPackSettingsDefaultsChanged', () => onPackSettingsDefaultsChanged(() => {})],

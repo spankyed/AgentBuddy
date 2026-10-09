@@ -54,7 +54,7 @@ const OLD_SETTINGS = {
     // The stored pre-0.3.15 names: this is data in the old shape, and nothing reads them now
     packSeedHashes: { 'memo-pack': 'memo-hash' },
     seedHash: 'boot-hash',
-    seedStatFingerprint: 'actions.seed.json:1:2',
+    seedStatFingerprint: 'actions.content.json:1:2',
   },
 };
 

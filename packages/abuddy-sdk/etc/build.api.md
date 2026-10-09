@@ -173,6 +173,12 @@ export interface CompileResult {
 export function compileSourceDir(sourceDir: string, config: Omit<CompileConfig, 'sourceDir' | 'outputFile'>): Promise<CompileResult>;
 
 // @public
+export const CONTENT_COMPILERS_FILE = "content-compilers.mjs";
+
+// @public
+export const CONTENT_INDEX_FILE = "content.json";
+
+// @public
 export interface ContentCompileContext {
     // (undocumented)
     format: ContentFormatConfig;
@@ -204,6 +210,9 @@ export type ContentFieldSource = 'body' | 'filename' | 'path' | `frontmatter.${s
 
 // @public (undocumented)
 export type ContentFieldSpec = NonNullable<ContentFormatConfig['fields']>[string];
+
+// @public (undocumented)
+export function contentFile(name: string): string;
 
 // @public (undocumented)
 export type ContentFormatConfig = z.infer<typeof ContentFormatSchema>;
@@ -311,6 +320,26 @@ export const ContentFormatSchema: z.ZodEffects<z.ZodObject<{
 export function contentHash(data: object): string;
 
 // @public
+export interface ContentIndex {
+    packId: string;
+    // (undocumented)
+    seeds: ContentIndexEntry[];
+    // (undocumented)
+    version: 1;
+}
+
+// @public (undocumented)
+export interface ContentIndexEntry {
+    // (undocumented)
+    count: number;
+    identity?: string[];
+    items: PackContentPreviewItem[];
+    // (undocumented)
+    key: string;
+    seeded: boolean;
+}
+
+// @public
 export interface ContentItem {
     // (undocumented)
     [field: string]: unknown;
@@ -321,6 +350,9 @@ export interface ContentItem {
     // (undocumented)
     entity?: string;
 }
+
+// @public (undocumented)
+export function contentPath(compiledDir: string, name: string): string;
 
 // @public (undocumented)
 export type ContentSourceConfig = z.infer<typeof ContentSourceSchema>;
@@ -1699,38 +1731,6 @@ export type ResolvedContentSource = {
 
 // @public (undocumented)
 export function resolveTracks(entry: Track[] | FlowConfig): Track[];
-
-// @public
-export const SEED_COMPILERS_FILE = "seed-compilers.mjs";
-
-// @public
-export const SEED_INDEX_FILE = "seeds.json";
-
-// @public (undocumented)
-export function seedFile(name: string): string;
-
-// @public
-export interface SeedIndex {
-    packId: string;
-    // (undocumented)
-    seeds: SeedIndexEntry[];
-    // (undocumented)
-    version: 1;
-}
-
-// @public (undocumented)
-export interface SeedIndexEntry {
-    // (undocumented)
-    count: number;
-    identity?: string[];
-    items: PackContentPreviewItem[];
-    // (undocumented)
-    key: string;
-    seeded: boolean;
-}
-
-// @public (undocumented)
-export function seedPath(compiledDir: string, name: string): string;
 
 // Warning: (ae-internal-missing-underscore) The name "SnapshotFormatMismatch" should be prefixed with an underscore because the declaration is marked as @internal
 //

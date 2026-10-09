@@ -227,12 +227,12 @@ export interface PackFlowHelpers {
 }
 
 /** The bundle of a pack's seed compiler modules, in its build dir: dependents compile its formats with it */
-export const SEED_COMPILERS_FILE = 'seed-compilers.mjs';
+export const CONTENT_COMPILERS_FILE = 'content-compilers.mjs';
 
-export function seedFile(name: string): string {
-  return `${name}.seed.json`;
+export function contentFile(name: string): string {
+  return `${name}.content.json`;
 }
 
-export function seedPath(compiledDir: string, name: string): string {
-  return path.join(compiledDir, seedFile(name));
+export function contentPath(compiledDir: string, name: string): string {
+  return path.join(compiledDir, contentFile(name));
 }

@@ -124,7 +124,7 @@ export const ContentSourceSchema = z.object({
 /** The fields a specialty key's object form may carry: it is the SDK that compiles it, so it names no format */
 const SPECIALTY_FIELDS = new Set(['path', 'onUserEdit']);
 
-// Content keys name files and folders in the compiled output (<key>.seed.json, media/<key>) and generated identifiers
+// Content keys name files and folders in the compiled output (<key>.content.json, media/<key>) and generated identifiers
 const CONTENT_KEY_SCHEMA = z.string().regex(CONTENT_NAME, 'Must be a lowercase letter, then lowercase letters, digits and hyphens');
 
 const ContentSourcesSchema = z.record(CONTENT_KEY_SCHEMA, z.union([z.string(), ContentSourceSchema])).superRefine((sources, ctx) => {
@@ -143,7 +143,7 @@ const ContentSourcesSchema = z.record(CONTENT_KEY_SCHEMA, z.union([z.string(), C
 
 /**
  * A compiled artefact the pack reads back itself, never written to the database: the build produces
- * `<key>.seed.json` and the pack's own code reads it.
+ * `<key>.content.json` and the pack's own code reads it.
  *
  * It is a key of its own because the alternative was a `content.sources` entry whose format declared no
  * entity: compiled, indexed, given an applier that could only find nothing to do, and a standing

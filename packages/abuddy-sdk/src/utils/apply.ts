@@ -147,14 +147,14 @@ export function registeredContentKeys(packId: string): string[] {
 }
 
 /** The index compilePack writes next to a pack's compiled content */
-export const SEED_INDEX_FILE = 'seeds.json';
+export const CONTENT_INDEX_FILE = 'content.json';
 
 /**
- * The pack that compiled a seeds directory, from its seeds.json. Seed keys start with it, so two
+ * The pack that compiled a seeds directory, from its content.json. Seed keys start with it, so two
  * packs' records with the same entry key and identity seed a row each.
  */
 export function contentPackId(compiledDir: string): string {
-  const indexFile = path.join(compiledDir, SEED_INDEX_FILE);
+  const indexFile = path.join(compiledDir, CONTENT_INDEX_FILE);
   return indexPackId(loadJSON<{ packId?: string }>(indexFile), indexFile);
 }
 
@@ -166,7 +166,7 @@ export function indexPackId(index: { packId?: string } | null, indexFile: string
   return index.packId;
 }
 
-/** Seeds a pack's compiled content directory with the appliers of the registered pack its seeds.json names */
+/** Seeds a pack's compiled content directory with the appliers of the registered pack its content.json names */
 export function importCompiledContent(options: {
   compiledDir: string;
   include?: Record<string, ContentSelection | undefined>;

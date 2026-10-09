@@ -11,7 +11,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /** Where `abuddy build` writes this pack's compiled content */
-const DIST = path.join(path.resolve(import.meta.dirname, '../..'), 'dist', 'runtime', 'seeds');
+const DIST = path.join(path.resolve(import.meta.dirname, '../..'), 'dist', 'runtime', 'content');
 
 /** Parses a body without running it; `AsyncFunction` so `await` inside one is allowed */
 const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor as new (...args: string[]) => unknown;
@@ -20,8 +20,8 @@ const records = (file: string): Record<string, unknown>[] =>
   JSON.parse(fs.readFileSync(path.join(DIST, file), 'utf-8')).records;
 
 describe.each([
-  { what: 'actions', file: 'actions.seed.json', body: 'actionFn', params: ['params', 'services'] },
-  { what: 'prompts', file: 'prompts.seed.json', body: 'templateFn', params: ['inputs'] },
+  { what: 'actions', file: 'actions.content.json', body: 'actionFn', params: ['params', 'services'] },
+  { what: 'prompts', file: 'prompts.content.json', body: 'templateFn', params: ['inputs'] },
 ])('compiled $what', ({ what, file, body, params }) => {
   const all = records(file);
 

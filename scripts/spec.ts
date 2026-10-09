@@ -27,7 +27,7 @@
 // pretest guard (`packages:ensure`) and each vitest config still apply. A root run has no such hook, so the
 // plan puts `packages:ensure` in front of it.
 //
-// **Two more edges run through a build, inside a pack.** `src/content/**` compiles to `dist/*.seed.json`, which
+// **Two more edges run through a build, inside a pack.** `src/content/**` compiles to `dist/*.content.json`, which
 // `tests/content/` reads against its goldens, and `abuddy.json` drives codegen into `src/__generated__/`, which
 // every spec in the pack imports. The walk still runs — a seed helper the specs import directly is answered by
 // it — and carries what it could not see (`Run.beyond`); `npm run spec:full` builds the pack and runs them.

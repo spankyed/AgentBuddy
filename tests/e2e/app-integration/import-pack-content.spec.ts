@@ -1,5 +1,5 @@
 // Settings → Import Pack Content end to end: a seeds directory compiled from default-setup's own seed
-// entries (a notes markdown tree and the library compiler module), previewed from its seeds.json,
+// entries (a notes markdown tree and the library compiler module), previewed from its content.json,
 // imported with an item deselected, then imported again in keep-existing mode. The imported document's image,
 // which the API copies into its media folder, loads through main's media:// protocol.
 import type { PackContentPreview } from '@abuddy/sdk/content';
@@ -63,7 +63,7 @@ function filesUnder(dir: string): string[] {
     .map((entry) => path.join(entry.parentPath, entry.name));
 }
 
-test('previews a compiled content directory by its seeds.json and imports the selected items', async ({ app, appPage, electronApp }) => {
+test('previews a compiled content directory by its content.json and imports the selected items', async ({ app, appPage, electronApp }) => {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-import-seeds-'));
   try {
     const directory = await compileSeeds(work);

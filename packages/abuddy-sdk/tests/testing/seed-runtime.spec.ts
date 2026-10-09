@@ -1,4 +1,4 @@
-// A built pack's seed runtime (dist/build/seed-runtime.mjs) loaded into a bare SDK test runtime: no
+// A built pack's seed runtime (dist/build/content-runtime.mjs) loaded into a bare SDK test runtime: no
 // host, no app. default-setup's is the example: a Note seeded through it gets default-setup's rows.
 import { installedEngine as ears, type EARS } from '@abuddy/ears';
 import * as fs from 'node:fs';
@@ -13,7 +13,7 @@ import { findRelations } from '@abuddy/ears';
 import type { PackManifest } from '../../src/build/manifest.ts';
 
 const DEFAULT_SETUP = path.resolve(import.meta.dirname, '../../../default-setup');
-const FACET = path.join(DEFAULT_SETUP, 'dist', 'build', 'seed-runtime.mjs');
+const FACET = path.join(DEFAULT_SETUP, 'dist', 'build', 'content-runtime.mjs');
 // dist/ is gitignored; CI builds default-setup (abuddy build) and requires the facet
 const built = fs.existsSync(FACET);
 if (!built && process.env.REQUIRE_SEED_RUNTIME) throw new Error(`${FACET} is required (REQUIRE_SEED_RUNTIME) but not built`);
@@ -40,8 +40,8 @@ describe.skipIf(!built)("a built pack's seed runtime", () => {
     fs.writeFileSync(path.join(source, 'plan', 'first.md'), '---\ntype: task\n---\nDo it.\n');
     const compiled = path.join(dir, 'compiled');
     fs.mkdirSync(compiled);
-    fs.writeFileSync(path.join(compiled, 'seeds.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
-    fs.writeFileSync(path.join(compiled, 'notes.seed.json'), JSON.stringify({ records: compileBuiltinFormat('notes', manifest.content!.formats!.notes, source) }));
+    fs.writeFileSync(path.join(compiled, 'content.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
+    fs.writeFileSync(path.join(compiled, 'notes.content.json'), JSON.stringify({ records: compileBuiltinFormat('notes', manifest.content!.formats!.notes, source) }));
 
     const format = manifest.content!.formats!.notes;
     const counts = createFormatApplier({ key: 'notes', entities: ['Note'], identity: format.identity, relKind: format.tree?.relKind }).apply({ compiledDir: compiled, log: () => {} });

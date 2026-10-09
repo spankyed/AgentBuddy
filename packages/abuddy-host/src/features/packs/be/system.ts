@@ -71,7 +71,7 @@ function mergeExtensions(base: Omit<PackInfo, keyof PackExtensions>, contrib: Pa
 function compiledDirOf(packId: string): string {
   const pack = installedPacks().find((installed) => installed.record.id === packId);
   if (!pack?.dir) throw new Error(`Pack "${packId}" isn't installed`);
-  return path.join(pack.dir, PACK_LAYOUT.seedsDir);
+  return path.join(pack.dir, PACK_LAYOUT.contentDir);
 }
 
 function contentOffersOf(packId: string): Pick<PackInfo, 'contentOffers' | 'contentKept'> {

@@ -1247,7 +1247,7 @@ ${entries.map(([name]) => `  ${name}: __repo_${name},`).join('\n')}
 
   /**
    * The pack's seed runtime (entity types, relation kinds, repositories, content writers), what applying its
-   * entity types needs outside the app. \`abuddy build\` bundles it into dist/build/seed-runtime.mjs for
+   * entity types needs outside the app. \`abuddy build\` bundles it into dist/build/content-runtime.mjs for
    * dependents' unit tests; the pack's own tests import it from #generated/content-runtime.
    */
   function generateContentRuntime(): string {
