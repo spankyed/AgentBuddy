@@ -113,7 +113,7 @@ Order: 1 is independent. 2 before 3 and 4. 5 after 2. 6 and 7 independent.
 - **The update offer has no version line to compare.** A shipped pack has no GitHub release, so the offer
   comes from the shipped dir's manifest; and a fork at `0.9.0` against a shipped `0.4.0` makes
   `compareVersions` offer nothing. The offer must read "the app ships X", not "X is newer than yours".
-- **Seeds re-import on every swap.** `packSeedHashes` is keyed by pack id and content-hashed, so installing
+- **Seeds re-import on every swap.** The applied content's revision is keyed by pack id and content-hashed, so installing
   a fork re-seeds and restoring the default re-seeds again, merging the other pack's rows into user data.
   Whether a swap should re-seed is a product call this plan does not make.
 - **Nothing stops a fork that drops a feature the app assumes.** With `canUninstall` gone there is no

@@ -6,7 +6,7 @@ import type { Plugin, PluginDefinition } from '@abuddy/sdk/fe';
 
 import { resetTestData } from '@abuddy/sdk/testing';
 import { registry } from './test-host.ts';
-import { appState } from '../../../src/app-state/index.ts';
+import { appliedContent, appState } from '../../../src/app-state/index.ts';
 import { createFePackRegistry } from '../../../src/fe/pack-store.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { _appDirOf } from '@abuddy/sdk/env';
@@ -161,7 +161,8 @@ describe('activating and tearing down a pack at runtime', () => {
 
     expect(activatePack(registry, PACK_ID, bus as never)).toBe(true);
     expect(runs).toEqual(['migration', 'seed']);
-    expect(appState.get()).toMatchObject({ packVersions: { [PACK_ID]: '1.0.0' }, packSeedHashes: { [PACK_ID]: expect.any(String) } });
+    expect(appState.get()).toMatchObject({ packVersions: { [PACK_ID]: '1.0.0' } });
+    expect(appliedContent.get(PACK_ID).revision).toEqual(expect.any(String));
 
     // Disabled, then enabled again
     teardownPack(registry, PACK_ID, bus as never);

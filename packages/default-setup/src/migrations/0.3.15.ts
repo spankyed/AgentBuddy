@@ -1,7 +1,6 @@
 import type { LogsSettings } from '#generated/types.ts';
 import { services } from '#generated/services.ts';
 import { untypedTx, untypedQx } from '@abuddy/ears';
-import { markSeededRowUnedited } from '@abuddy/sdk/seed';
 import { EARS } from '#generated/ears.ts';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { createLogger } from '@abuddy/sdk/logger';
@@ -18,7 +17,7 @@ const PACK_ID = 'default-setup';
 
 export const migration: PackMigration = {
   target: '0.3.15',
-  description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, unwrap general.projects, point stored link blocks at plugins' refs, and give library rows the short codes and display orders the library used to backfill on every connection",
+  description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, unwrap general.projects, point stored link blocks at plugins' refs, and give library rows the short codes and display orders the library used to backfill on every connection",
   up: () => {
     // ── The app's state (onboarding, versions, seed hashes) is the host's AppState now ──
     // The host's own 0.3.15 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
@@ -28,22 +27,9 @@ export const migration: PackMigration = {
     // The host's own 0.3.15 migration, which runs before any pack's, moved every stored key onto its plugin's ref.
     dropKeysMovedBy0314();
 
-    // ── Rows seeded before the seeder recorded the values it wrote ──
-    // The seeder updates a row whose source changed only while its seeded fields still hold what it
-    // wrote. Rows seeded by an earlier version have nothing recorded, so every one of them would be
-    // skipped as edited from here on, and no built-in action, prompt, flow, document or note would ever
-    // be updated again. Marking them unedited restores that, at the cost of one last overwrite of an
-    // edit made before this ran; edits after it are honoured.
-    let marked = 0;
-    for (const entity of Object.values(EARS.Entity)) {
-      // Untyped: this walks every entity type the pack knows, not one named here
-      for (const row of untypedQx(entity).pickAll() as Array<Record<string, unknown>>) {
-        if (!row.sourceHash || row.seededFields) continue;
-        markSeededRowUnedited(row.id as EARS.EntityId);
-        marked++;
-      }
-    }
-    if (marked > 0) logger.info(`[migration 0.3.15] marked ${marked} seeded row(s) as unedited`);
+    // Entities written before anything recorded which *part* of one we wrote need no migration: an apply
+    // adopts an entity it wrote with no recorded parts and re-stamps it (`seed/merge.ts`'s `resolve`), which
+    // is what a loop here used to do by hand for the entities of one release.
 
     // ── Action logs moved from the shared `log-service` source to `action:<label>` ──
     // Whoever hid `log-service` hid action logs: keep hiding them.

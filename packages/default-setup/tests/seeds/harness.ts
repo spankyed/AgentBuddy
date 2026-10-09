@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { buildPackConfigFromManifest, compilePack } from '@abuddy/sdk/build';
-import { importCompiledSeeds, type ImportMode, type ImportCounts, type SeedIncludeSet, type SeedKeyRecord } from '@abuddy/sdk/utils';
+import { applyRecord, importCompiledSeeds, type ApplyRecord, type AppliedItem, type ImportMode, type ImportCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
 import { untypedQx as qx } from '@abuddy/ears';
 import { entityIds } from '@abuddy/sdk/testing';
 import { resetTestData, testMediaPath } from '@abuddy/testing/harness';
@@ -13,12 +13,18 @@ export const PACK_DIR = path.resolve(import.meta.dirname, '../..');
 export const FIXTURES = path.join(PACK_DIR, 'tests/_support/fixtures/seed-parity');
 
 /**
- * A boot seed's key record: what the last run defined, and an empty set for what this one does. Boot seeding
- * is the only caller that passes one, so a spec that wants the removed-row rule builds it the way
- * `seedPacks` does — and one that doesn't passes nothing, as a user-requested import does.
+ * The record that makes a run an **apply**: what the last one wrote, and the containers this one fills.
+ * `seedPacks` is the only caller that passes one, so a spec that wants the merge's rules about the user's
+ * entities builds it the way that does — and one that passes nothing is an import, which is what asking for
+ * a pack's data back is.
  */
-export const keyRecordAfter = (defined: ReadonlySet<string> = new Set()): SeedKeyRecord =>
-  ({ before: defined, defined: new Set<string>() });
+export const applyAfter = (previous?: ApplyRecord): ApplyRecord => {
+  if (!previous) return applyRecord();
+  const items = new Map<string, AppliedItem>(previous.before);
+  for (const [key, item] of previous.written) items.set(key, item);
+  for (const key of previous.removed) items.delete(key);
+  return applyRecord(items);
+};
 
 /** The seed keys the parity gate covers */
 export const PARITY_KEYS = ['actions', 'prompts', 'library', 'notes'] as const;
@@ -56,9 +62,29 @@ export function resetDatabase(): void {
   resetTestData();
 }
 
+/**
+ * An **import**: no record, which is the user asking for the pack's content back. The modes are the whole of
+ * its policy, and it detects no edit and removes nothing, so it is what the parity goldens are recorded
+ * through — a scenario that seeds one fixture version over another is about the modes, not about a merge.
+ */
 export function seed(compiledDir: string, options: { mode?: ImportMode; include?: Record<string, SeedIncludeSet> } = {}): Record<string, ImportCounts> {
   const result = importCompiledSeeds({ compiledDir, mode: options.mode, include: options.include });
   return Object.fromEntries(PARITY_KEYS.map((key) => [key, result[key]]));
+}
+
+/**
+ * An **apply**, carrying the record forward from the run before, which is how the app's boot runs it. A spec
+ * about what the user's edit survives needs this rather than `seed`: the merge reads what the last apply
+ * wrote, and an apply whose record has never seen an item adopts it.
+ */
+export function applySeeds(
+  compiledDir: string,
+  previous: ApplyRecord | undefined,
+  options: { mode?: ImportMode; include?: Record<string, SeedIncludeSet> } = {},
+): { counts: Record<string, ImportCounts>; record: ApplyRecord } {
+  const record = applyAfter(previous);
+  const result = importCompiledSeeds({ compiledDir, mode: options.mode, include: options.include, applied: record });
+  return { counts: Object.fromEntries(PARITY_KEYS.map((key) => [key, result[key]])), record };
 }
 
 export interface Snapshot {
@@ -69,8 +95,8 @@ export interface Snapshot {
 }
 
 const typeOf = (id: string) => id.slice(0, id.indexOf('-'));
-// Seed bookkeeping: seededFields hashes stored values that hold ids (media links); edited-rows.spec.ts covers it and seedKey
-const DROPPED_FIELDS = new Set(['id', 'createdAt', 'updatedAt', 'seededFields', 'seedKey']);
+// Which item an entity came from, which carries ids a normalized snapshot must not hold; edited-rows.spec.ts covers it
+const DROPPED_FIELDS = new Set(['id', 'createdAt', 'updatedAt', 'seedKey']);
 
 export function snapshot(): Snapshot {
   const ids = entityIds() as string[];

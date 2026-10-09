@@ -19,7 +19,11 @@ export const APPLIED_CONTENT_ENTITY = 'AppliedContent';
 const idOf = (packId: string) => `${APPLIED_CONTENT_ENTITY}-${packId}` as EARS.EntityId;
 
 export interface AppliedContent {
-  /** The compiled content this was applied from — `computePackSeedHash`'s output, as `packSeedHashes` holds */
+  /**
+   * The compiled content this was applied from (`contentRevision`'s output). It is the apply's skip gate:
+   * equal to what the pack's directory holds now, and with nothing outstanding from a failed run, there is
+   * nothing an apply could do differently.
+   */
   revision: string;
   /** One entry per item we have written, by content key */
   items: Record<string, AppliedItem>;
@@ -51,15 +55,25 @@ export const appliedContent = {
    * there, and every other entry is **kept as it was** — the entity still holds what we wrote before, so that
    * is what its entry still describes.
    *
-   * **Nothing is dropped here.** An entry whose key the pack's content no longer defines is how a later apply
-   * knows the pack removed that item; dropping it at this point would make a removal indistinguishable from
-   * content that was never shipped.
+   * **Nothing is dropped unless `dropped` names it.** An entry whose key the pack's content no longer
+   * declares is how a later apply knows the pack removed that item; dropping it on its own would make a
+   * removal indistinguishable from content that was never shipped. What `dropped` carries is the items an
+   * apply *finished* removing — the entity is gone and the content no longer declares it, so there is
+   * nothing left for the entry to describe, and keeping it would have every later apply recompute the same
+   * removal.
    */
-  record: (packId: string, next: { revision: string; wrote: ReadonlyMap<string, AppliedItem> }): void => {
+  record: (packId: string, next: {
+    /** Absent leaves the revision where it is, which an import does: it is not what the pack now declares */
+    revision?: string;
+    wrote: ReadonlyMap<string, AppliedItem>;
+    dropped?: Iterable<string>;
+  }): void => {
     const items = { ...appliedContent.get(packId).items, ...Object.fromEntries(next.wrote) };
+    for (const key of next.dropped ?? []) delete items[key];
     const write = stored(packId) === undefined
       ? untypedTx(idOf(packId), true).put('entityType', APPLIED_CONTENT_ENTITY)
       : untypedTx(idOf(packId));
-    write.update('revision', next.revision).update('items', items);
+    if (next.revision !== undefined) write.update('revision', next.revision);
+    write.update('items', items);
   },
 };

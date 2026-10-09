@@ -8,7 +8,7 @@ import { _appDirOf, resolveAppContext } from '@abuddy/sdk/env';
 import { resetTestData, takeSystemErrors, testRootEvents } from '@abuddy/sdk/testing';
 import { readInstalledPacks } from '../../../../src/packs/installed.ts';
 import { registry } from '../../../packs/runtime/test-host.ts';
-import { appState } from '../../../../src/app-state/index.ts';
+import { appliedContent, appState } from '../../../../src/app-state/index.ts';
 import { installPackFromLocal } from '../../../../src/packs/installer.ts';
 import { createPacksSystem, type PackInfo } from '../../../../src/features/packs/be/system.ts';
 import { activatePack } from '../../../../src/packs/runtime/lifecycle.ts';
@@ -425,9 +425,10 @@ describe('installing over a pack that is already running', () => {
 // uninstall removes packs/<id> and nothing in the database. Running a reinstalled pack's migrations
 // again over rows they have already moved is the failure this avoids.
 describe('what a reinstall does not redo', () => {
-  it('leaves the seed hash and migrated version an uninstall did not invalidate', async () => {
+  it('leaves the applied content and migrated version an uninstall did not invalidate', async () => {
     resetTestData();
-    appState.update({ packSeedHashes: { [PACK_ID]: 'the-hash' }, packVersions: { [PACK_ID]: '1.0.0' } });
+    appState.update({ packVersions: { [PACK_ID]: '1.0.0' } });
+    appliedContent.record(PACK_ID, { revision: 'the-revision', wrote: new Map([['k', { parts: {} }]]) });
     await installPackFromLocal(packSource('1.0.0'));
 
     const system = runPacksSystem();
@@ -437,7 +438,7 @@ describe('what a reinstall does not redo', () => {
         expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_COMPLETE');
       });
 
-      expect(appState.get().packSeedHashes[PACK_ID]).toBe('the-hash');
+      expect(appliedContent.get(PACK_ID)).toEqual({ revision: 'the-revision', items: { k: { parts: {} } } });
       expect(appState.get().packVersions[PACK_ID]).toBe('1.0.0');
     } finally {
       system.stop();
@@ -552,5 +553,67 @@ describe('updating to a release that holds another pack', () => {
     expect(fs.existsSync(path.join(_appDirOf(tmpDir), 'packs', 'other-pack'))).toBe(false);
     expect(installedVersion()).toBe('1.0.0');
     expect(sent.map(e => e.type)).toContain('PACK_ACTIVATED');
+  });
+});
+
+/**
+ * **An import is write-only, which is what makes it an import and not an apply.** It reads nothing of what
+ * the last apply wrote — so no verdict here can be reached from it — and it records what it wrote, because
+ * an import that rewrote entities and recorded nothing would leave the applied content describing the
+ * version before it, which the next boot's apply would read as the user's edits.
+ */
+describe('importing a pack’s content', () => {
+  /** A compiled directory the real generic seeder can read, with one memo item */
+  function compiledMemos(): string {
+    const dir = path.join(tmpDir, 'compiled');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({
+      version: 1, packId: PACK_ID, seeds: [{ key: 'memos', seeded: true, count: 1 }],
+    }));
+    fs.writeFileSync(path.join(dir, 'memos.seed.json'), JSON.stringify({
+      records: [{ entity: 'Memo', name: 'Intro', body: 'Hello', sourceHash: 'intro-v1' }],
+    }));
+    return dir;
+  }
+
+  it('records what it wrote and leaves the revision where it is', async () => {
+    const { startTestRuntime, testPacks } = await import('@abuddy/sdk/testing');
+    const { createSeeder } = await import('@abuddy/sdk/seed');
+    resetTestData();
+    startTestRuntime({ entityTypes: ['Memo'] });
+    appliedContent.record(PACK_ID, { revision: 'the-revision', wrote: new Map() });
+    testPacks.seeders.set(PACK_ID, [createSeeder({ key: 'memos', entities: ['Memo'], identity: ['name'] })]);
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'IMPORT_PACK_SEEDS', directory: compiledMemos(), mode: 'replace-on-collision' });
+      await vi.waitFor(() => {
+        expect(emitted(system.sent).map((e) => e.type)).toContain('PACK_SEEDS_IMPORTED');
+      });
+
+      const content = appliedContent.get(PACK_ID);
+      expect(Object.values(content.items), 'the item the import wrote, with a part per field')
+        .toEqual([{ entityType: 'Memo', sourceHash: 'intro-v1', parts: { body: expect.any(String), name: expect.any(String) } }]);
+      expect(content.revision, 'asking for the data again is not a change to what the pack declares')
+        .toBe('the-revision');
+
+      /**
+       * **And the record it wrote is not one it reads.** The user destroys the entity and asks for the
+       * pack's content back: an apply would read the entry it just wrote and leave the deletion alone,
+       * which is exactly not what was asked for.
+       */
+      const { untypedQx, untypedTx } = await import('@abuddy/ears');
+      const memos = () => untypedQx('Memo' as never).pickAll();
+      untypedTx(memos()[0]!.id).destroy();
+      expect(memos(), 'a destroyed entity leaves nothing behind, which is the premise').toEqual([]);
+
+      system.send({ type: 'IMPORT_PACK_SEEDS', directory: compiledMemos(), mode: 'replace-on-collision' });
+      await vi.waitFor(() => {
+        expect(memos(), 'the content the user asked for was not put back').toHaveLength(1);
+      });
+    } finally {
+      testPacks.seeders.delete(PACK_ID);
+      system.stop();
+    }
   });
 });

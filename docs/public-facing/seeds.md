@@ -12,7 +12,7 @@ A seed passes through four, and each has its own vocabulary. **A seed is a noun 
 | **author** | you write the sources | `src/seeds/`, `boot.seed`, `seedFormats`, `seedHooks` |
 | **compile** | `abuddy build` turns them into records and hashes each one | `dist/runtime/seeds/*.seed.json`, `seeds.json`, `sourceHash` |
 | **import** | the app writes those records into the database | `importSeeds()`, `ImportMode`, `ImportCounts`, a `Seeder`'s `apply()` |
-| **record** | each row remembers where it came from, so your edits survive the next import | `seedKey`, `seededFields`, `seededGraph` |
+| **record** | the app remembers what it last wrote, part by part, so your edits survive the next import | `seedKey`, the pack's applied content |
 
 Two things follow from the split that are easy to conflate. Editing a seed source changes its `sourceHash` at
 **compile**, and that is what makes the next **import** rewrite the row — so a change with no visible effect on the
@@ -636,13 +636,15 @@ export const memoSeedHooks: SeedHooks<SeedRecord & { title: string; text: string
 
 ### Change tracking
 
-Seeded rows store their record's `sourceHash`, and `seededFields`: the names of the record's fields and a hash of the values the seeder wrote to them. A row is edited when those fields no longer hold what the seeder wrote, whatever changed them (the app's editors, the database console, a flow). Fields a record doesn't set aren't tracked: a user can favorite a seeded note and it still takes seed updates.
+Seeded rows store their record's `sourceHash`, and the app keeps, per pack, one entry per row it has written: a hash per **part** of what it wrote. A part is one addressable piece of the row — a field's name for an ordinary row; a flow's own fields, each of its nodes, and its wiring. A part is edited when it no longer holds what the seeder wrote, whatever changed it (the app's editors, the database console, a flow). Fields a record doesn't set aren't parts: a user can favorite a seeded note and it still takes seed updates.
+
+Parts rather than one hash per row is what keeps an edit from spreading. A thirty-step flow has thirty-two parts, so editing one step's description marks that step edited and says so, rather than marking the flow edited with nothing to say what — which used to freeze all thirty of its rows against every later version, silently and for good.
 
 When a changed record no longer sets a field its previous seed set (the source dropped `completed: true`), updating the row resets that field: without hooks the seeder drops it from the row, and an `update` hook gets it in `clearedFields` to reset (default-setup's Note hooks reset it to a new note's value). A field no seed of the row ever set, like a user's favorite, isn't touched.
 
 Seeded rows also store a `seedKey`: the seeding pack's id, the entry key and the record's identity in the source (for a tree, its ancestors' too). A seed finds a row by its `seedKey` first, so a row the user renamed is still found, left as renamed (a renamed row is edited), and not seeded again as a copy. Two packs' records with the same entry key and identity seed a row each. A row without a `seedKey` that matches a record's identity (a user's row with the same name) isn't seeded again beside it. The pack id comes from `seeds.json`, which `abuddy build` writes; seeding compiled seeds without it fails until the pack is rebuilt.
 
-Flows follow the same rules. A seeded flow stores `seededGraph`, a hash of what the seeder wrote for it: its row's fields, its nodes' fields, and the relations between them (independent of their order). Editing, adding or removing a node or transition, or renaming the flow, makes it edited. Moving nodes in the editor doesn't.
+Flows follow the same rules, with the parts above: its row's fields, each node's values, and its wiring (independent of the relations' order). Editing a node marks that node, adding or removing one marks it and the wiring, and renaming the flow marks its fields. Moving nodes in the editor doesn't mark anything.
 
 Unlike other rows, a flow's id and its nodes' ids come from the flow's name, so flows can't share a name: a pack's flow isn't seeded when another pack already seeded a flow with its name, or a user's flow has the ids it would write. The existing flow is left as it is and the seed reports an error (`Flow "X": a flow with this name already exists (seeded by <pack>)`, or `(created by the user)`). A user's flow with the name (and its own ids) is left alone as user-owned, as for other rows.
 
@@ -656,13 +658,23 @@ Re-seeding follows the same rules for every entry:
 | `keep-existing` | Left alone, with its children. |
 | `wipe-and-replace` | Every row of the entry's entity types (its format's `entity`) is removed first, whoever created it: the user's rows and other packs' rows of those types too, even when the entry has no records of a type. Then all records are created. |
 
-Rows without a stored `sourceHash` (rows users created) stay user-owned. A seeded row without `seededFields` (flows: `seededGraph`) can't be checked for edits, so it's left alone like an edited one.
+Rows without a stored `sourceHash` (rows users created) stay user-owned, in every mode. A row the app wrote but has no parts for — one written by a version from before it recorded them — is **adopted**: written once and recorded, after which its edits are honoured. That overwrites an edit made before the record existed, which is the trade for not freezing every such row for good.
 
 **A seeded row the user threw away is not seeded again, and nor are its children.** A seed finds its own row by `seedKey` whether or not the row is marked deleted, so a trashed row (`trash.move`, `deleted: true`) is one the user has taken ownership of: it is left alone, and its children are not visited — they would be created under a deleted parent. This is the same rule as the ones above, and it means a pack needs no policy to say "seed this only on a first run".
 
-**A row deleted outright is not seeded again either, because the keys are recorded.** Nothing is left of the row, so what answers for it is the seed keys your pack's content defined when it last seeded, which the app keeps per pack: a key it has seen with no row now is one the user removed. So the rule holds whatever your feature's delete does — a trashed row is read directly, a destroyed one through the record.
+**A row deleted outright is not seeded again either, because the app remembers writing it.** Nothing is left of the row, so what answers for it is the pack's record of what it wrote: a key it wrote with no row now is one the user removed. The rule holds whatever your feature's delete does — a trashed row is read directly, a destroyed one through the record.
 
-Two things follow. **A key your content stops defining stops being recorded**, so renaming or dropping a record is not remembered as a deletion. And **the rule is boot seeding's**: Settings → Import Pack Seeds carries no record, because asking for a pack's data back is asking for the rows to come back. `wipe-and-replace` is exempt for the same reason — it removes every row of the entry's types first, trashed ones included, and creates them all again.
+### Content you stop shipping
+
+**A record your content no longer holds is removed from the user's database — unless they edited it.** The same rule as everything above: ours to remove while it is still ours, theirs to decide once they have touched it. Nothing has to be declared: the app holds an entry per row it wrote, so the removals are the entries your new content no longer names.
+
+Three things it will not do. A content key whose compiled file it could not read contributes no removals, because a key that said nothing cannot be diffed against. A removal follows the parent chain, so keeping an edited child keeps the rows above it. And a `container` another pack's rows (or the user's) are filed under is never removed, since removing the folder would take their content with it.
+
+### What an import does differently
+
+**Settings → Import Pack Seeds reads none of that record.** Asking for a pack's data back is asking for the rows to come back, so an import creates a row the user deleted, writes over a row they edited, and removes nothing. It leaves rows with no hash of the pack's alone — a row the user created themselves is never the pack's to replace — and it records what it wrote, so the next boot does not read its writes as the user's edits.
+
+`wipe-and-replace` is blunter still, and is not about the record at all: it removes every row of the entry's types first, trashed ones and other packs' included, and creates them all again.
 
 ## Slash commands
 

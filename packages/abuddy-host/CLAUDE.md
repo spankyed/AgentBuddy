@@ -62,7 +62,7 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 
 ## App state (`app-state/`)
 
-- The app's own state is one `AppState` row (`AppState-app`): `hasOnboarded`, `version` (the app version the data was migrated to), `packVersions`, `packSeedHashes` (every pack's compiled seeds last seeded, by pack id), `packSeedDeps` (for a pack whose last seed failed, the seed state of the packs it depends on at the time, which is what lets that seed be retried without re-importing it every boot), `packSeedKeys` (the seed keys each pack's content defined when it last seeded, which is how a row the user deleted outright is known to be the user's), and the app shell's state: `pluginVisibility` (the tabs the user showed or hid, by plugin ref) and `lastActivePlugin`. Host declares the entity type (`HOST_ENTITY_TYPES`), which the engine's entity-type check and the test harness include and no pack may declare.
+- The app's own state is one `AppState` row (`AppState-app`): `hasOnboarded`, `version` (the app version the data was migrated to), `packVersions`, `packSeedDeps` (for a pack whose last apply of its content failed, the state of the packs it depends on at the time, which is what lets that apply be retried without re-importing it every boot), and the app shell's state: `pluginVisibility` (the tabs the user showed or hid, by plugin ref) and `lastActivePlugin`. Host declares the entity type (`HOST_ENTITY_TYPES`), which the engine's entity-type check and the test harness include and no pack may declare. What a pack's content last wrote is **not** here — it is the pack's own `AppliedContent` row below, so the revision and the per-item record that must agree about it cannot be recorded apart.
 - Only host code reads and writes it, through `appState` (`get()` fills defaults; `update()` creates the row on the first write): the migrations runners, pack seeding (`packs/runtime/seed.ts`, `lifecycle.ts`, `reload.ts`, the API's boot), `createAppBus()` (the application plugin's `CLIENT_CONNECTED` carries `hasOnboarded`, the tabs' visibility and the plugin last open), the host `application` system (`features/application/be/system.ts`, which records `SET_PLUGIN_VISIBILITY` and `SET_LAST_ACTIVE_PLUGIN` and sends `PLUGIN_VISIBILITY_UPDATED` on a change and whenever it is asked to publish) and `services.appData` (`hasOnboarded()`, `completeOnboarding()`, which default-setup's onboarding calls).
 - **Beside it, one `AppliedContent` row per pack** (`AppliedContent-<packId>`, `app-state/applied-content.ts`):
   `revision`, the compiled content it was applied from, and `items`, one entry per content item the pack has
@@ -70,8 +70,17 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
   `fields`, `node:<id>` and `edges` for a flow). `seedPacks` records it after every apply, failed or not,
   since what a run wrote is written either way, and keeps the entry of every item an apply left alone. It is
   in the primary partition so a backup carries it: without it a restore would make every entity read as the
-  user's own or as one they deleted. Nothing reads it yet — phase 1 of
-  [`pack-content-apply.md`](../../docs/plans/pack-content-apply.md).
+  user's own or as one they deleted.
+- **It is what the merge reads, and the revision is also the skip gate.** Deciding what to do with one item
+  is a three-way question — what we applied last, what the pack declares now, what the database holds — and
+  this is the only record of the first of those, which is why the revision lives with the items rather than
+  beside them: a revision recorded without the items, or the other way round, is the state in which every
+  item of a pack reads as the user's. The question only a **part** can answer is *which piece* of an item
+  the user changed, and without it a digest over a whole item can say no more than that something in it
+  moved — which is a freeze on everything else in it with nothing to explain it. The merge is one function
+  (`@abuddy/sdk/seed`'s `resolve`), and every verdict in the app is reached through it;
+  [`pack-content-apply.md`](../../docs/plans/pack-content-apply.md) has what the partial records it replaced
+  each cost.
 - Packs never read it, and their settings don't hold it: resetting settings leaves it alone (`default-setup/tests/settings-reset-app-state.spec.ts`). `appData.reset()` clears it with the rest of the database; the migrations the reset runs record the version again.
 - Before 0.3.15 it lived in default-setup's Settings row (`data.internal`); the host's 0.3.15 app migration moves it (`migrations/app/0.3.15.ts`, `tests/migrations/app-state-0.3.15.spec.ts`).
 

@@ -8,47 +8,57 @@ import { validate } from '../build/compilers/flow-dsl-validator.ts';
 import { isFlowConfig, type FlowDSL } from '../build/compilers/flow-types.ts';
 import { EARS } from '../types/entities.ts';
 import type { ActionEntity, FlowEntity } from '../types/sdk-entities.ts';
-import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
-import { childSeedKey, defineSeedKey, hashValues, recordApplied, removedByUser, SEED_KEY, seedKeyPrefix, SOURCE_HASH } from './seeder.ts';
+import { childSeedKey, defineKey, hashValues, recordApplied, SEED_KEY, seedKeyPrefix, SOURCE_HASH } from './seeder.ts';
+import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
 import { seedPackId } from '../utils/seed.ts';
 
-/** What the seeder wrote for a flow: its row's fields, each node's fields, the relation kinds between them, and a hash of their stored state */
-interface SeededGraph {
-  flowFields: string[];
-  nodeFields: Record<string, string[]>;
-  relKinds: string[];
-  hash: string;
-}
+/**
+ * What a flow's parts are **not** over: an entity's own id, when it was written, and the two attributes the
+ * apply stamps on it. Everything else a flow or one of its nodes holds is content.
+ */
+const ROW_KEYS = new Set(['id', 'createdAt', 'sourceHash', 'seedKey']);
 
-const SEEDED_GRAPH = 'seededGraph' as EARS.AttrKind;
-// createdAt is when the rows were written, not what was written
-const ROW_KEYS = new Set(['id', 'sourceHash', 'createdAt']);
+/**
+ * The relation kinds a flow's structure is made of. `flow-compiler.ts` emits these two and no others, which
+ * `tests/seed/flow-seeder.spec.ts` holds against its output, so filtering to them is what keeps a flow's
+ * `edges` part about the flow rather than about whatever a running app later links from one of its nodes.
+ */
+export const GRAPH_REL_KINDS: readonly string[] = [EARS.RelKind.CONTAINS, EARS.RelKind.TRANSITIONS_TO];
 
 /** A flow's three parts as stored now: its own values, each node's, and its edges */
-type GraphState = [unknown[] | null, Array<[string, unknown[] | null]>, string[]];
+type GraphState = [Array<[string, unknown]>, Array<[string, Array<[string, unknown]>]>, string[]];
 
-/** The flow's rows as stored now, for the fields and relation kinds the seeder wrote; independent of relation order */
-function graphState(flowId: EARS.EntityId, seeded: Omit<SeededGraph, 'hash'>): GraphState {
-  const values = (id: string, fields: readonly string[] | undefined) => fields?.map((field) => ears().getAttr(id as EARS.EntityId, field as EARS.AttrKind) ?? null) ?? null;
+/** An entity's content as stored now: every attribute but the four that say which or when */
+function contentOf(id: EARS.EntityId): Array<[string, unknown]> {
+  const row = ears().findByIdRaw(id) as Record<string, unknown> | null;
+  return Object.entries(row ?? {}).filter(([field]) => !ROW_KEYS.has(field)).sort(([a], [b]) => (a < b ? -1 : 1));
+}
+
+/**
+ * The flow's rows as stored now, independent of relation order.
+ *
+ * **It reads the entities rather than a recorded list of their fields**, which is what makes the apply that
+ * wrote a flow and the apply that reads it back agree by construction: both ask the database the same
+ * question a moment apart. A stored field list was the other option and it hid exactly the edit worth
+ * catching — a field the user added to a node was not in the list, so it was not in the digest.
+ */
+function graphState(flowId: EARS.EntityId): GraphState {
   const nodeIds = findRelations({ sourceEntity: flowId, relationType: EARS.RelKind.CONTAINS }).map((r) => r.targetEntity as string).sort();
   const relations = [flowId, ...nodeIds]
     .flatMap((source) => findRelations({ sourceEntity: source as EARS.EntityId }))
-    .filter((r) => seeded.relKinds.includes(r.relationType))
+    .filter((r) => GRAPH_REL_KINDS.includes(r.relationType))
     .map((r) => JSON.stringify([r.sourceEntity, r.relationType, r.targetEntity, r.info ?? null]))
     .sort();
-  return [values(flowId, seeded.flowFields), nodeIds.map((id) => [id, values(id, seeded.nodeFields[id])]), relations];
+  return [contentOf(flowId), nodeIds.map((id) => [id, contentOf(id as EARS.EntityId)]), relations];
 }
 
-/** The one digest `seededGraph` holds: the three parts together */
-const hashGraph = (flowId: EARS.EntityId, seeded: Omit<SeededGraph, 'hash'>): string => hashValues(graphState(flowId, seeded));
-
 /**
- * The same walk's three parts, a hash each (`AppliedItem.parts`, `@abuddy/sdk/utils`): the flow's own fields,
- * each node's values as one unit, and the whole edge set with each edge's `info`.
+ * The walk's three parts, a hash each (`AppliedItem.parts`, `@abuddy/sdk/utils`): the flow's own fields, each
+ * node's values as one unit, and the whole edge set with each edge's `info`.
  *
- * **It takes the state rather than re-walking**, so the parts and the digest `seededGraph` stores are over the
- * same reads by construction rather than by two functions agreeing. A node's path is its compiled id, which
- * derives from the flow's name — the determinism `collidingOwner` also rests on.
+ * A node's path is its compiled id, which derives from the flow's name — the determinism `collidingOwner`
+ * also rests on. Nothing goes inside a node: edit a step's parameters and what the user is told is that the
+ * step changed, which is what someone deciding whether to take a new version needs.
  */
 function graphParts([flow, nodes, relations]: GraphState): Record<string, string> {
   return {
@@ -58,40 +68,18 @@ function graphParts([flow, nodes, relations]: GraphState): Record<string, string
   };
 }
 
-/** Records a newly imported flow's seeded graph, and hands back the parts that graph is made of */
-function stampSeededGraph(flowId: EARS.EntityId, compiled: CompiledRows): Record<string, string> {
-  const rows = compiled.entity as Array<Record<string, unknown> & { id: string }>;
-  const fieldsOf = (id: string) => Object.keys(rows.find((row) => row.id === id) ?? {}).filter((key) => !ROW_KEYS.has(key)).sort();
-  const nodeIds = compiled.relation.filter((r) => r.source === flowId && r.kind === EARS.RelKind.CONTAINS).map((r) => r.target);
-  const sources = new Set([flowId, ...nodeIds]);
-  const seeded = {
-    flowFields: fieldsOf(flowId),
-    nodeFields: Object.fromEntries(nodeIds.map((id) => [id, fieldsOf(id)])),
-    relKinds: [...new Set(compiled.relation.filter((r) => sources.has(r.source)).map((r) => r.kind))].sort(),
-  };
-  const state = graphState(flowId, seeded);
-  untypedTx(flowId).update(SEEDED_GRAPH, { ...seeded, hash: hashValues(state) } satisfies SeededGraph);
-  return graphParts(state);
-}
-
 /**
  * The parts of a recorded flow whose value in the database is no longer what we wrote.
  *
  * Beside `driftedFieldParts` (`seeder.ts`) rather than one function over both, because a flow's parts and an
- * entity's are produced by different walks; each derivation lives with the writer that produced it.
+ * entity's are produced by different walks; each derivation lives with the writer that produced it. A node
+ * the user added or deleted appears as a path on one side only, which the union over both sides is for.
  */
 export function driftedGraphParts(item: AppliedItem, flowId: EARS.EntityId): string[] {
-  const seeded = ears().getAttr(flowId, SEEDED_GRAPH) as SeededGraph | null;
-  if (!seeded) return Object.keys(item.parts).sort();
-  const live = graphParts(graphState(flowId, seeded));
+  const live = graphParts(graphState(flowId));
   return [...new Set([...Object.keys(item.parts), ...Object.keys(live)])]
     .filter((path) => live[path] !== item.parts[path])
     .sort();
-}
-
-/** The flow's nodes, fields and relations still hold what the seeder wrote */
-function holdsSeededGraph(flowId: EARS.EntityId, seeded: SeededGraph): boolean {
-  return hashGraph(flowId, seeded) === seeded.hash;
 }
 
 /** A DSL entry's seed key: the seeding pack, then the entry key and the flow's name in the source */
@@ -176,42 +164,33 @@ export function createFlowSeeder(): Seeder {
         const existing = lookupSeeded(existingFlows, key);
         const compiledHash = isFlowConfig(entry) ? (entry as any).sourceHash : undefined;
         const seedKey = flowSeedKey(packId, key);
-        defineSeedKey(ctx, seedKey);
+        defineKey(ctx, seedKey);
+        const applied = ctx.applied?.before.get(seedKey);
+        // A flow is destroyed rather than trashed (`flowRepository.deleteFlow`), so there is no trashed case
+        // here: no flow means no flow, and what says whether the user removed it is the record
+        const { resolution, parts } = resolve({
+          applied,
+          ...(compiledHash !== undefined && { incoming: compiledHash as string }),
+          ...(existing !== undefined && { live: { sourceHash: existing.sourceHash } as LiveEntity }),
+          ...(ctx.mode !== undefined && { mode: ctx.mode }),
+          drifted: () => (applied && existing ? driftedGraphParts(applied, existing.id) : []),
+        });
 
-        // A flow is destroyed rather than trashed (`flowRepository.deleteFlow`), so this record is the only
-        // one its deletion leaves
-        if (!existing && removedByUser(ctx, seedKey)) {
-          ctx.log(`  flow skipped (removed): ${key}`);
+        if (resolution !== 'create' && resolution !== 'fast-forward') {
           counts.skipped++;
-          continue;
-        }
-
-        if (existing) {
-          if (ctx.mode === 'keep-existing') {
+          if (resolution === 'conflict') {
+            ctx.applied?.conflicts.set(seedKey, parts ?? []);
+            ctx.log(`  flow skipped (edited: ${(parts ?? []).join(', ')}): ${key}`);
+          } else if (resolution === 'absent-by-deletion') {
+            ctx.log(`  flow skipped (removed): ${key}`);
+          } else if (resolution === 'kept') {
             ctx.log(`  flow skipped (existing): ${key}`);
-            counts.skipped++;
-            continue;
-          }
-
-          if (!existing.sourceHash) {
+          } else if (resolution === 'user-owned') {
             ctx.log(`  flow skipped (user-owned): ${key}`);
-            counts.skipped++;
-            continue;
-          }
-
-          if (compiledHash && existing.sourceHash === compiledHash) {
+          } else {
             ctx.log(`  flow unchanged (hash match): ${key}`);
-            counts.skipped++;
-            continue;
           }
-
-          // A flow whose seeded graph wasn't recorded can't be checked for edits, so it's left alone too
-          const seeded = ears().getAttr(existing.id, SEEDED_GRAPH) as SeededGraph | null;
-          if (!seeded || !holdsSeededGraph(existing.id, seeded)) {
-            ctx.log(`  flow skipped (edited): ${key}`);
-            counts.skipped++;
-            continue;
-          }
+          continue;
         }
 
         const owner = collidingOwner(key, entry, existing);
@@ -224,6 +203,8 @@ export function createFlowSeeder(): Seeder {
 
         if (existing) {
           try {
+            // The flow writer's whole-item write is a delete and a re-import, since a flow's nodes and
+            // wiring arrive together
             flowRepository.deleteFlow(existing.id, { allowRoot: true });
             replacedLabels.add(key);
             ctx.log(`  flow replaced (hash mismatch): ${key}`);
@@ -261,9 +242,42 @@ export function createFlowSeeder(): Seeder {
         return targets;
       };
 
+      /**
+       * The flows this apply wrote that the content no longer declares: removed while they are still ours,
+       * kept and flagged once the user has edited one. The conditions are the generic writer's
+       * (`seeder.ts`'s `removals`), and for the same reasons.
+       */
+      const removals = () => {
+        const record = ctx.applied;
+        if (!record || !shouldImportAll(ctx.include)) return;
+        const prefix = `${seedKeyPrefix(packId)}flows/`;
+        for (const itemKey of [...record.before.keys()].filter((k) => k.startsWith(prefix) && !record.defined.has(k))) {
+          const item = record.before.get(itemKey)!;
+          const flow = ears().findAll<FlowEntity>(EARS.Entity.Flow).find((f) => ears().getAttr(f.id, SEED_KEY) === itemKey);
+          const { resolution, parts } = resolveRemoval({
+            applied: item,
+            ...(flow !== undefined && { live: { sourceHash: flow.sourceHash } as LiveEntity }),
+            drifted: () => (flow ? driftedGraphParts(item, flow.id) : []),
+          });
+          if (resolution === 'removed-but-edited') {
+            record.flagged.set(itemKey, parts ?? []);
+            ctx.log(`  flow kept (dropped from the content, and edited): ${itemKey}`);
+            continue;
+          }
+          try {
+            if (flow) flowRepository.deleteFlow(flow.id, { allowRoot: true });
+            record.removed.add(itemKey);
+            ctx.log(`  flow removed (dropped from the content): ${itemKey}`);
+          } catch (err) {
+            (counts.errors ??= []).push(`Flow "${itemKey}": ${(err as Error)?.message ?? String(err)}`);
+          }
+        }
+      };
+
       const flowNames = Object.keys(validFlowDSL);
       if (flowNames.length === 0) {
         ctx.log('  no flows to import');
+        removals();
         return counts;
       }
 
@@ -276,7 +290,9 @@ export function createFlowSeeder(): Seeder {
           const flowId = row.id as EARS.EntityId;
           const seedKey = flowSeedKey(packId, name);
           untypedTx(flowId).update(SEED_KEY, seedKey);
-          const parts = stampSeededGraph(flowId, compiled);
+          // Read back off the entities a moment after writing them, which is what makes this and
+          // `driftedGraphParts` two reads of one question rather than two accounts of it
+          const parts = graphParts(graphState(flowId));
           const sourceHash = ears().getAttr(flowId, SOURCE_HASH);
           recordApplied(ctx, seedKey, {
             entityType: EARS.Entity.Flow,
@@ -292,6 +308,7 @@ export function createFlowSeeder(): Seeder {
           ctx.log(`  flow created: ${name}`);
         }
       }
+      removals();
       return counts;
     },
   };

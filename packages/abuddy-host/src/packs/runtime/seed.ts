@@ -6,7 +6,7 @@ import { PACK_LAYOUT, packSeedFiles } from '../layout.ts';
 import { recordSeedOutcomes } from '../installed.ts';
 import type { PackManifest } from '@abuddy/sdk/build';
 import { appliedContent, appState } from '../../app-state/index.ts';
-import { importCompiledSeeds, type AppliedItem } from '@abuddy/sdk/utils';
+import { applyRecord, importCompiledSeeds } from '@abuddy/sdk/utils';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('pack-seed');
@@ -64,15 +64,25 @@ export interface PackSeedTarget {
 }
 
 /**
- * The seed state of the packs `dependencies` names, as one string.
+ * The applied state of the packs `dependencies` names, as one string.
  *
- * A pack's own hash says whether its data changed. This says whether anything it depends on has seeded
- * since — the other thing that can turn a failed seed into one that would now succeed. A dependency that
- * has never seeded reads the same as one with nothing to seed, which is what the deferred note in
+ * A pack's own revision says whether its data changed. This says whether anything it depends on has applied
+ * since — the other thing that can turn a failed apply into one that would now succeed. A dependency that
+ * has never applied reads the same as one with nothing to apply, which is what the deferred note in
  * `docs/archive/goals/goal-pack-seed-order-and-retry.md` is about.
  */
-function dependencyState(dependencies: Record<string, string> | undefined, seeded: Record<string, string>): string {
-  return Object.keys(dependencies ?? {}).sort().map((id) => `${id}:${seeded[id] ?? ''}`).join('|');
+function dependencyState(dependencies: Record<string, string> | undefined): string {
+  return Object.keys(dependencies ?? {}).sort().map((id) => `${id}:${appliedContent.get(id).revision}`).join('|');
+}
+
+/** One line per item the user now has a decision about, so the freeze is visible before any UI draws it */
+function reportUnresolved(packId: string, kind: string, items: ReadonlyMap<string, string[]>): void {
+  if (items.size === 0) return;
+  const named = [...items].map(([key, parts]) => `${key} (${parts.join(', ')})`);
+  logger.warn(`${items.size} of ${packId}'s items ${kind}:\n  ${named.join('\n  ')}`, {
+    packId,
+    items: Object.fromEntries(items),
+  });
 }
 
 /**
@@ -81,13 +91,13 @@ function dependencyState(dependencies: Record<string, string> | undefined, seede
  * (`packSeedOrder`), so a pack sees what the packs it depends on seeded in this same run.
  *
  * **Every pack, by one rule**, whoever ships it: one hash over the files in its seeds directory, one record
- * (`AppState.packSeedHashes`) and one retry rule. Which
+ * (`appliedContent`) and one retry rule. Which
  * directory that is follows from where the pack lives, so a pack does not tell the host
  * where its compiled data is — the host knows, because it is the host that put the pack there.
  *
  * A pack whose seed reports errors (an invalid flow, say) is a failed seed: the error is recorded as the
- * installed-packs entry's `lastError`, and its hash is stored like a successful seed's, so the same failing
- * data isn't re-imported on every boot. What is stored alongside it is the state its dependencies were in,
+ * installed-packs entry's `lastError`, and its revision is recorded like a successful seed's, so the same
+ * failing data isn't re-imported on every boot. What is stored alongside it is the state its dependencies were in,
  * so the retry happens when that changes rather than never.
  */
 export function seedPacks(packs: Iterable<PackSeedTarget>, importSeeds: typeof importCompiledSeeds = importCompiledSeeds): PackImportFailure[] {
@@ -106,45 +116,50 @@ export function seedPacks(packs: Iterable<PackSeedTarget>, importSeeds: typeof i
     }
 
     // Read per pack, not once: a pack earlier in this run may be one this pack depends on
-    const state = appState.get();
-    const deps = dependencyState(pack.manifest.dependencies, state.packSeedHashes);
-    const failedAgainst = state.packSeedDeps[packId];
-    if (state.packSeedHashes[packId] === currentHash && (failedAgainst === undefined || failedAgainst === deps)) {
+    const applied = appliedContent.get(packId);
+    const deps = dependencyState(pack.manifest.dependencies);
+    const failedAgainst = appState.get().packSeedDeps[packId];
+    if (applied.revision === currentHash && (failedAgainst === undefined || failedAgainst === deps)) {
       logger.info(`Pack seed skipped (unchanged): ${packId}`);
       continue;
     }
 
     logger.info(`Importing seeds for pack: ${packId}`);
     let errors: string[];
-    // The keys this pack's content defined when it last seeded, and a set for the ones it defines now. Boot
-    // seeding is the only import that carries them, which is what makes a row it cannot find the user's
-    // deletion rather than a request for the data back (`removedByUser`, the SDK's `seed/seeder.ts`)
-    const keyRecord = { before: new Set(state.packSeedKeys[packId] ?? []), defined: new Set<string>() };
-    // What this run writes, by content key; `appliedContent.record` keeps the entry of every item it leaves
-    // alone, since the entity still holds what the last run wrote
-    const applied = new Map<string, AppliedItem>();
+    /**
+     * The record that makes this an apply rather than an import: what the last one wrote per item, the keys
+     * this run's content declares, and what this run then did. It is the only reason an entity the user
+     * destroyed is known to be theirs, and the only reason the user's edit to one part of an item does not
+     * freeze the rest of it.
+     *
+     * A user-requested import (`IMPORT_PACK_SEEDS`) passes none, which is what makes asking for a pack's
+     * data back ask for the entities to come back.
+     */
+    const record = applyRecord(new Map(Object.entries(applied.items)));
     try {
       // `replace-on-collision` is what the seeders do by default — they branch only on `keep-existing` and
       // `wipe-and-replace` — so naming it changes nothing and says what this is
       errors = importErrors(importSeeds({
         compiledDir: seedsDir,
         mode: 'replace-on-collision',
-        keyRecord,
-        applied,
+        applied: record,
       }));
     } catch (err) {
       errors = [errorMessage(err)];
     }
-    appState.updatePackEntry('packSeedHashes', packId, currentHash);
     /**
      * **Recorded whether or not the run succeeded, because what it wrote is written either way.** A run that
-     * imported fifty items and failed on the next has changed fifty entities, and `packSeedHashes` above has
-     * already moved — so nothing re-imports them until the content changes again, and leaving them out would
-     * make a later apply read all fifty as the user's. `packSeedKeys` is the opposite case below: a failed
-     * run's set of defined keys is incomplete, so recording it would read as the pack having dropped every
-     * key the run never reached.
+     * imported fifty items and failed on the next has changed fifty entities, and the revision moves with
+     * them — so nothing re-imports them until the content changes again, and leaving them out would make a
+     * later apply read all fifty as the user's.
+     *
+     * The revision is also the skip gate, which is why it belongs with the items rather than beside them:
+     * a revision recorded without the items it describes, or the other way round, is the state in which
+     * every item of a pack reads as the user's.
      */
-    appliedContent.record(packId, { revision: currentHash, wrote: applied });
+    appliedContent.record(packId, { revision: currentHash, wrote: record.written, dropped: record.removed });
+    reportUnresolved(packId, 'have your edits and a newer version waiting', record.conflicts);
+    reportUnresolved(packId, 'you edited and the pack no longer ships', record.flagged);
     if (errors.length > 0) {
       logger.error(`Failed to seed pack ${packId}:\n  ${errors.join('\n  ')}`);
       appState.updatePackEntry('packSeedDeps', packId, deps);
@@ -153,9 +168,6 @@ export function seedPacks(packs: Iterable<PackSeedTarget>, importSeeds: typeof i
       continue;
     }
     appState.updatePackEntry('packSeedDeps', packId, undefined);
-    // After a clean run, and as what this run defined rather than merged with it: a key the content dropped
-    // stops being recorded, and a row a failed run never created is not remembered as one the user deleted
-    appState.updatePackEntry('packSeedKeys', packId, [...keyRecord.defined]);
     outcomes.set(packId, undefined);
     logger.info(`Pack seeded: ${packId}`);
   }

@@ -17,7 +17,8 @@ import { teardownPack, activatePack } from '../../../packs/runtime/lifecycle.ts'
 import { activationProblem } from '../../../packs/runtime/activation-outcome.ts';
 import { HOST } from '../../../refs.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
-import { importCompiledSeeds, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { applyRecord, importCompiledSeeds, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { appliedContent } from '../../../app-state/index.ts';
 import { previewPackSeeds } from '@abuddy/sdk/seed';
 
 export type { PackInfo };
@@ -115,7 +116,20 @@ export function createPacksSystem(registry: PackRegistry) {
         const include = ev.include ? toSeedInclude(ev.include) : undefined;
         // Read first: a directory that can't name its pack fails before anything is imported
         const { packId } = previewPackSeeds(ev.directory);
-        const result = importCompiledSeeds({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
+        /**
+         * **Write-only, which is what makes this an import and not an apply.** `before` is empty, so no
+         * verdict here can be reached from what a previous apply wrote: nothing is read as the user's
+         * deletion, nothing is read as their edit, and no item is removed for having left the content.
+         * Putting a pack's data back is the request, and the modes are the whole of the policy.
+         *
+         * **What it does write is what it wrote**, and it has to: an import that rewrote fifty entities and
+         * recorded nothing would leave the applied content describing the version before it, which the next
+         * boot's apply would read as fifty edits by the user. The revision is left where it is, so asking
+         * for the data again does not change what counts as changed.
+         */
+        const record = applyRecord();
+        const result = importCompiledSeeds({ compiledDir: ev.directory, include, mode: ev.mode, applied: record, verbose: true });
+        appliedContent.record(packId, { wrote: record.written });
         // Seeders report records they couldn't seed in their counts rather than throwing
         const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
         broadcastToPlugin('settings', { type: 'PACK_SEEDS_IMPORTED', result, errors });

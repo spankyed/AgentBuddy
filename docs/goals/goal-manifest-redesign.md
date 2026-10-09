@@ -1076,10 +1076,10 @@ the regenerated schema committed, `npm run api:update` has been run, and the cha
 - **`permissions`**, which only fixtures declare and nothing enforces yet. Leave the key where it is.
 - **Deleting the pre-release migrations.** `v0.3.14` is tagged and the app has no users, so the five
   default-setup migrations (`0.3.0`, `0.3.1`, `0.3.13`, `0.3.14`, `0.3.15`) and the host's
-  `app/0.3.15.ts` — 262 lines — move data shapes that exist only in a developer's own data dir. Two
-  things come with them: `markSeededRowUnedited` (`@abuddy/sdk/seed`) is a **published export whose
-  only non-test caller is `0.3.15.ts`**, so it goes too and the API reports shrink; and the runners
-  stay regardless, since external packs migrate against their own versions. This is not a manifest
+  `app/0.3.15.ts` move data shapes that exist only in a developer's own data dir. The runners stay
+  regardless, since external packs migrate against their own versions. (`markSeededRowUnedited` was the
+  other half of this item and is already gone: the merge adopts an entity it wrote but has no recorded
+  parts for, which is what that function did to one release's entities by hand.) This is not a manifest
   change and does not belong in this goal: it is a decision about real data in a real data dir, which
   is the owner's to make and to time, and it is only safe if they are willing to reset a dev install
   that still holds a pre-`0.3.15` shape. Worth doing before the first release that has users, when the

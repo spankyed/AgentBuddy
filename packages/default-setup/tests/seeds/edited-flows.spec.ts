@@ -1,19 +1,19 @@
-// Seeded flows someone edited or renamed survive a seed change. The flow seeder records what it
-// wrote for each flow (its row, its nodes and their relations); a changed sourceHash replaces only a
-// flow whose graph still holds that, and finds a flow by its seed key, not its label.
+// Flows someone edited or renamed survive a content change. Each apply records what it wrote for every flow
+// — a hash for its own fields, one per node, one for the wiring — and a changed sourceHash replaces only a
+// flow whose every part still holds what we wrote. A flow is found by its content key, not its label.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { SEED_INDEX_FILE, seedFile } from '@abuddy/sdk/build';
 import { createFlowSeeder, createSeeder } from '@abuddy/sdk/seed';
-import { importCompiledSeeds, type SeedKeyRecord } from '@abuddy/sdk/utils';
+import { importCompiledSeeds, type ApplyRecord } from '@abuddy/sdk/utils';
 import { registerPack, unregisterPack } from '@abuddy/testing/harness';
 import { findWhere } from '#generated/ears.ts';
 import { dropAttribute } from '@abuddy/sdk/testing';
 import { findRelations, untypedTx } from '@abuddy/ears';
 import { repository } from '#generated/repository.ts';
-import { PACK_DIR, keyRecordAfter, resetDatabase } from './harness.ts';
+import { PACK_DIR, applyAfter, resetDatabase } from './harness.ts';
 import type { EARS } from '@abuddy/ears';
 
 type FlowRow = { id: EARS.EntityId; label: string; sourceHash?: string };
@@ -48,10 +48,26 @@ function compiled(changed: string[] = [], version = 'changed', { only, packId = 
   return dir;
 }
 
-const seedFlows = (dir: string, keyRecord?: SeedKeyRecord) => importCompiledSeeds({ compiledDir: dir, mode: 'replace-on-collision', keyRecord }).flows;
+/**
+ * **An apply, with the record carried from the run before**, which is how the app's boot runs it: the merge
+ * reads what the last apply wrote for a flow, and that is what says whether the user has since changed it.
+ */
+let applied: ApplyRecord | undefined;
+const seedFlows = (dir: string) => {
+  applied = applyAfter(applied);
+  return importCompiledSeeds({ compiledDir: dir, mode: 'replace-on-collision', applied }).flows;
+};
+/** The same run as an **import**: no record, which is the user asking for the pack's flows back */
+const importFlows = (dir: string) => importCompiledSeeds({ compiledDir: dir, mode: 'replace-on-collision' }).flows;
+/** An apply whose record has never seen this pack, which is what an upgrade from an older version is */
+const seedUnrecorded = (dir: string) => {
+  applied = applyAfter();
+  return importCompiledSeeds({ compiledDir: dir, mode: 'replace-on-collision', applied }).flows;
+};
 
 beforeEach(() => {
   resetDatabase();
+  applied = undefined;
   seedFlows(compiled());
 });
 
@@ -103,10 +119,17 @@ describe('re-seeding edited flows', () => {
     expect(seedFlows(compiled(['Codex']))).toMatchObject({ updated: 1 });
   });
 
-  it("leaves a changed flow alone when its seeded graph wasn't recorded: it can't be checked for edits", () => {
-    dropAttribute(flow('Codex')[0].id, 'seededGraph');
-    expect(seedFlows(compiled(['Codex']))).toMatchObject({ updated: 0 });
-    expect(flow('Codex')[0].sourceHash).not.toMatch(/^changed-/);
+  /**
+   * **A flow we wrote with no recorded parts is adopted**, not frozen: every flow written before anything
+   * recorded which part of one we wrote is in that state, and freezing them would mean a user who upgrades
+   * never gets a fix to one again. The write records its parts, so the next apply can see an edit.
+   */
+  it('adopts a flow whose parts were never recorded, and tracks it from then on', () => {
+    expect(seedUnrecorded(compiled(['Codex']))).toMatchObject({ updated: 1 });
+    expect(flow('Codex')[0].sourceHash).toMatch(/^changed-/);
+
+    repository.flowsCommands.updateNode(nodesOf('Codex')[0].id, { description: 'My note' });
+    expect(seedFlows(compiled(['Codex'], 'changed-again'))).toMatchObject({ updated: 0 });
   });
 
   it("points a replaced flow's subflow steps at a seeded flow the user renamed", () => {
@@ -139,28 +162,33 @@ describe('re-seeding edited flows', () => {
   });
 });
 
-describe('a seeded flow the user deleted', () => {
+describe('a flow the user deleted', () => {
   /**
-   * **A flow is destroyed, not trashed** (`flowRepository.deleteFlow` ends in `destroy()`), so there is no row
-   * left carrying its seed key and the rule that leaves a trashed note alone has nothing to read. What answers
-   * for it is the record of the keys this pack's content defined on its last run (`SeedKeyRecord`), which boot
-   * seeding keeps in `AppState.packSeedKeys`: a key in it with no flow now is the user's deletion.
+   * **A flow is destroyed, not trashed** (`flowRepository.deleteFlow` ends in `destroy()`), so there is no
+   * entity left carrying its key and the rule that leaves a trashed note alone has nothing to read. What
+   * answers for it is the applied content: a key the last apply wrote with nothing behind it now is theirs.
    *
-   * The second seed gives Codex a new `sourceHash`, which is what would otherwise bring it back — a re-seed
+   * The second apply gives Codex a new `sourceHash`, which is what would otherwise bring it back — an apply
    * of unchanged content skips every flow and would pass without the rule.
    */
-  it('is not seeded again, given the keys the last run defined', () => {
-    const firstRun = keyRecordAfter();
-    seedFlows(compiled(), firstRun);
+  it('is not written again, given what the last apply wrote', () => {
     repository.flowsCommands.deleteFlow(flow('Codex')[0].id);
     expect(flow('Codex'), 'a destroyed flow leaves nothing behind, which is the premise').toEqual([]);
 
-    // Root Flow changes in the same run, so a seed that imported nothing at all would fail here rather than
+    // Root Flow changes in the same run, so an apply that wrote nothing at all would fail here rather than
     // pass the assertion below. The exemptions are in abuddy-sdk's flow-seeder spec
-    const counts = seedFlows(compiled(['Codex', 'Root Flow']), keyRecordAfter(firstRun.defined));
+    const counts = seedFlows(compiled(['Codex', 'Root Flow']));
 
-    expect(flow('Codex'), 'the seed created the flow the user deleted').toEqual([]);
+    expect(flow('Codex'), 'the apply created the flow the user deleted').toEqual([]);
     expect(counts).toMatchObject({ created: 0, updated: 1 });
+  });
+
+  /** And an import carries no record, so asking for the pack's flows back puts it back */
+  it('is written again by an import, which reads no record', () => {
+    repository.flowsCommands.deleteFlow(flow('Codex')[0].id);
+
+    expect(importFlows(compiled(['Codex']))).toMatchObject({ created: 1 });
+    expect(flow('Codex')).toHaveLength(1);
   });
 });
 
@@ -181,10 +209,12 @@ describe('a flow whose name another flow already has', () => {
   it("isn't seeded over a user's flow with the ids the seed would write", () => {
     // A user's flow that has the compiled flow's ids, under another name
     const codex = flow('Codex')[0].id;
-    for (const attr of ['sourceHash', 'seedKey', 'seededGraph']) dropAttribute(codex, attr);
+    for (const attr of ['sourceHash', 'seedKey']) dropAttribute(codex, attr);
     repository.flowsCommands.updateFlowLabel(codex, 'My Codex');
     const before = graph('My Codex');
-    const counts = seedFlows(compiled(['Codex']));
+    // An import: with the record carried forward, a flow of ours that is no longer there reads as one the
+    // user deleted and the apply stops before the collision check — the same outcome, a different sentence
+    const counts = importFlows(compiled(['Codex']));
     expect(counts.created).toBe(0);
     expect(counts.errors).toEqual(['Flow "Codex": a flow with this name already exists (created by the user)']);
     expect(graph('My Codex')).toEqual(before);

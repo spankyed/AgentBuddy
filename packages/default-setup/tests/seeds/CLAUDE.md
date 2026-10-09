@@ -25,11 +25,20 @@ vocabulary — *seed* is the content, *import* is the act — and `src/seeds/CLA
 | Spec | What it holds |
 |---|---|
 | `seed-parity.spec.ts` | the gate itself: fresh seeds and re-seeds in each import mode, against `__golden__/` |
-| `edited-rows.spec.ts` | a row the **user edited** survives a seed change — the seeder skips it |
-| `edited-flows.spec.ts` | the same for flows, matched by seed key rather than label |
+| `applied-content.spec.ts` | what an apply records for all of this pack's content, and what a second one then decides |
+| `edited-rows.spec.ts` | an entity the **user edited** survives a content change — the apply skips it and names the part |
+| `edited-flows.spec.ts` | the same for flows, matched by content key rather than label |
 | `notes-change-tracking.spec.ts` | notes' own change-tracking rules (goal-generic-seed-compiler Decision 10) |
 | `dependent-pack.spec.ts` | another pack seeding through *default-setup's* formats and hooks gets the same rows |
-| `harness.ts` | compiles, seeds, and snapshots rows with ids and timestamps normalized |
+| `harness.ts` | compiles, runs, and snapshots rows with ids and timestamps normalized |
+
+**Two ways to run the content, and a spec has to pick the right one** (`harness.ts`). `seed()` is an
+**import** — no record, which is the user asking for the pack's content back — and it is what the goldens are
+recorded through, because a scenario that seeds one fixture version over another is about the import modes.
+`applySeeds()` is an **apply**, carrying forward what the last one wrote, which is how the app's boot runs it:
+a spec about what the user's edit survives needs that record, because an apply with no entry for an item
+*adopts* it. Using `seed()` for an edit case is the mistake to watch for — it passes for the wrong reason,
+since nothing told the run which part of the item the user had changed.
 
 ## What goes in the golden, and what must not
 
@@ -51,9 +60,9 @@ fields — so a field added to an action later is covered without anyone remembe
 
 ### Why presence but not value
 
-A row with **no** `sourceHash` is the user's for good: the seeder skips an existing row that has none as user-owned
-(`@abuddy/sdk/src/seed/seeder.ts`, "skipped (edited)"). So whether a hash is there is the difference between
-"seeded" and "hands off", which is parity. Which hash it is, is the compiler's business. One row in the goldens
+A row with **no** `sourceHash` is the user's for good: the merge reads an entity carrying none as `user-owned`
+(`@abuddy/sdk/src/seed/merge.ts`). So whether a hash is there is the difference between "written by the pack"
+and "hands off", which is parity. Which hash it is, is the compiler's business. One row in the goldens
 records `false` — `Action:Set Instructions` in the `untracked` scenario — and that row is the reason the field
 exists.
 

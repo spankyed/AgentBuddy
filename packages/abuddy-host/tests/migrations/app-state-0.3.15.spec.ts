@@ -1,7 +1,8 @@
 // The host's 0.3.15 app migration moves the app's state out of the built-in pack's settings (`internal`) into
-// AppState: data from 0.3.14 comes back onboarded, at its version (so the migrations after it still run), with its
-// seed hashes, on the release, its betas and development builds. A second run changes nothing, and a failed move
-// runs no pack migration and records no version.
+// AppState: data from 0.3.14 comes back onboarded and at its version, so the migrations after it still run, on the
+// release, its betas and development builds. A second run changes nothing, and a failed move runs no pack
+// migration and records no version. The seed records it used to carry are dropped, since what says a pack's
+// content has been applied is the per-item record only an apply can write.
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -50,7 +51,7 @@ const OLD_SETTINGS = {
     lastInteractionTimestamp: null,
     version: '0.3.14',
     packVersions: { 'memo-pack': '1.2.0' },
-    // The stored pre-0.3.15 names: this is data in the old shape, not AppState fields
+    // The stored pre-0.3.15 names: this is data in the old shape, and nothing reads them now
     packSeedHashes: { 'memo-pack': 'memo-hash' },
     seedHash: 'boot-hash',
     seedStatFingerprint: 'actions.seed.json:1:2',
@@ -59,14 +60,8 @@ const OLD_SETTINGS = {
 
 const MOVED = {
   hasOnboarded: true,
-  // One field now, carrying what the old row kept as two: the installed packs' hashes and the shipped
-  // pack's boot-seed hash
-  packSeedHashes: { 'memo-pack': 'memo-hash', [BUILT_IN_ID]: 'boot-hash' },
-  // Only written for a pack whose seed failed, and the move doesn't produce one
+  // Only written for a pack whose apply failed, and the move doesn't produce one
   packSeedDeps: {},
-  // Written by a seed run, not by the move: data migrated from 0.3.14 has never recorded its keys, so the
-  // first boot seed after this treats every row as one it has not imported before
-  packSeedKeys: {},
   // The shell's state, which 0.3.14's settings here don't hold
   pluginVisibility: {},
 };
@@ -117,51 +112,51 @@ afterEach(() => {
 });
 
 describe('the 0.3.15 app migration', () => {
-  // The row kept a seed record per *kind* of pack — `packSeedHashes`/`packSeedDeps` for the installed ones
-  // against `seedHashes`/`seedStatFingerprints` for the shipped one — and one seed path each. There is one
-  // path now, so there is one pair of fields, and both of the old hash records move onto `packSeedHashes`.
-  // `appState` reads only the names it knows, so without this the app forgets every seed once.
+  // The row kept a seed record per *kind* of pack — `packSeedHashes` for the installed ones against
+  // `seedHashes` for the shipped one — and the names changed twice as those paths merged. None of them is
+  // read any more: what says a pack's content has been applied is its `AppliedContent`, which holds a
+  // revision *and* a hash per part of every item, and only an apply can write one. A bare hash carried onto
+  // it would describe a pack that applied nothing, so the records are dropped and the first boot after this
+  // applies each pack's content once.
   //
-  // `seedStatFingerprints` is dropped rather than moved: it was mtimes and sizes standing in front of a
-  // content hash that costs 0.39ms, and nothing reads one since 2026-10-07.
+  // `externalSeedDeps` is the one that still moves: what a failed apply faced is still `packSeedDeps`.
   describe('the seed records a row kept per kind of pack', () => {
     const APP_STATE_ID = 'AppState-app' as EARS.EntityId;
     const OLD = {
       packSeedHashes: { 'memo-pack': 'e1' },
-      packSeedDeps: { 'memo-pack': 'd1' },
+      externalSeedDeps: { 'memo-pack': 'd1' },
       seedHashes: { 'default-setup': 'b1' },
       seedStatFingerprints: { 'default-setup': 'f1' },
+      packSeedKeys: { 'default-setup': ['k1'] },
     };
     const writeOld = () => {
       const tx = untypedTx(APP_STATE_ID, true).put('entityType', 'AppState');
       for (const [k, v] of Object.entries(OLD)) tx.put(k, v);
     };
 
-    it('moves each onto the field named for the axis that distinguishes it', () => {
+    it('moves what a failed apply faced onto the field that holds it now', () => {
       writeOld();
 
       move();
 
-      // Both of the row's old seed records reach the one field, neither overwriting the other
-      expect(appState.get()).toMatchObject({
-        packSeedHashes: { 'memo-pack': 'e1', 'default-setup': 'b1' },
-        packSeedDeps: { 'memo-pack': 'd1' },
-      });
+      expect(appState.get()).toMatchObject({ packSeedDeps: { 'memo-pack': 'd1' } });
     });
 
-    // Dropped rather than moved, and the row is what says so: a record carried onto a new name is one a later
-    // reader will find and wonder about, where this one's only reader is gone
-    it('drops the stat fingerprints rather than moving them, under either name', () => {
+    // Dropped rather than moved, and the row is what says so: a record carried onto a new name is one a
+    // later reader will find and wonder about, where these have no reader left at all
+    it('drops every record of what a pack last seeded, under each name it has had', () => {
       writeOld();
-      appState.update({ packSeedHashes: { 'default-setup': 'b0' } });
       untypedTx(APP_STATE_ID).put('builtInSeedFingerprints', { 'default-setup': 'f0' });
+      untypedTx(APP_STATE_ID).put('builtInSeedHashes', { 'default-setup': 'b0' });
 
       move();
 
-      const left = untypedQx(APP_STATE_ID).pickOne(['seedStatFingerprints', 'builtInSeedFingerprints']) as Record<string, unknown>;
-      expect(left.seedStatFingerprints, 'the old name survived the move').toBeNull();
-      expect(left.builtInSeedFingerprints, 'the name an earlier run of this migration wrote survived it').toBeNull();
-      expect(appState.get()).not.toHaveProperty('builtInSeedFingerprints');
+      const names = ['packSeedHashes', 'seedHashes', 'builtInSeedHashes', 'seedStatFingerprints', 'builtInSeedFingerprints', 'packSeedKeys'];
+      const left = untypedQx(APP_STATE_ID).pickOne(names) as Record<string, unknown>;
+      expect(names.length, 'the list of names to drop is empty, so this checks nothing').toBeGreaterThan(3);
+      for (const name of names) expect(left[name], `${name} survived the move`).toBeNull();
+      // And nothing of them reached the state the app reads
+      expect(Object.keys(appState.get())).toEqual(expect.not.arrayContaining(names));
     });
 
     it('leaves the old names behind, so a second run finds nothing to move', () => {
@@ -176,23 +171,18 @@ describe('the 0.3.15 app migration', () => {
       expect(appState.get()).toEqual(moved);
       // `drop` clears the attribute rather than removing the key, which is what the migration reads as "moved"
       const left = untypedQx(APP_STATE_ID).pickOne(Object.keys(OLD)) as Record<string, unknown>;
-      expect(left.seedHashes, 'the record that moved').toBeNull();
-      expect(left.seedStatFingerprints, 'the record that was dropped').toBeNull();
-      // Not dropped, because it is the name the row carries now — it is where the move put the shipped
-      // pack's hash, beside the installed pack's it already held. Dropping it would delete the record this
-      // migration exists to preserve, and a second run would find a pack that had never seeded
-      expect(left.packSeedHashes, 'the one record, carrying both')
-        .toEqual({ 'memo-pack': 'e1', 'default-setup': 'b1' });
+      expect(left.externalSeedDeps, 'the record that moved').toBeNull();
+      expect(left.seedStatFingerprints, 'a record that was dropped').toBeNull();
     });
 
     // `appState.update` sets the whole field, so this is what the row holds when the move runs
     it('keeps what the new field already holds', () => {
       writeOld();
-      appState.update({ packSeedHashes: { 'default-setup': 'newer' } });
+      appState.update({ packSeedDeps: { 'memo-pack': 'newer' } });
 
       move();
 
-      expect(appState.get().packSeedHashes).toEqual({ 'default-setup': 'newer' });
+      expect(appState.get().packSeedDeps).toEqual({ 'memo-pack': 'newer' });
     });
   });
 
@@ -220,9 +210,9 @@ describe('the 0.3.15 app migration', () => {
 
   it("keeps what AppState already records over the settings' older values", () => {
     writeOldSettings({
-      internal: { hasOnboarded: false, version: '0.3.14', packVersions: { 'memo-pack': '1.0.0', 'old-pack': '0.1.0' }, packSeedHashes: { [BUILT_IN_ID]: 'older' } },
+      internal: { hasOnboarded: false, version: '0.3.14', packVersions: { 'memo-pack': '1.0.0', 'old-pack': '0.1.0' } },
     });
-    appState.update({ hasOnboarded: true, version: '0.3.15', packVersions: { 'memo-pack': '1.2.0' }, packSeedHashes: { [BUILT_IN_ID]: 'newer' } });
+    appState.update({ hasOnboarded: true, version: '0.3.15', packVersions: { 'memo-pack': '1.2.0' } });
 
     move();
 
@@ -230,7 +220,6 @@ describe('the 0.3.15 app migration', () => {
       hasOnboarded: true,
       version: '0.3.15',
       packVersions: { 'memo-pack': '1.2.0', 'old-pack': '0.1.0' },
-      packSeedHashes: { [BUILT_IN_ID]: 'newer' },
     });
   });
 

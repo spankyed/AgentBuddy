@@ -9,12 +9,12 @@ import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { compileBuiltinFormat, type SeedFormatConfig, type SeedRecord } from '@abuddy/sdk/build';
 import { createSeeder } from '@abuddy/sdk/seed';
-import type { ImportMode, ImportCounts, SeedIncludeSet, SeedKeyRecord } from '@abuddy/sdk/utils';
+import type { ApplyRecord, ImportMode, ImportCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
 import { untypedQx as qx, untypedTx as tx } from '@abuddy/ears';
 import { trash } from '@abuddy/sdk/repositories';
 import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
 import { createEntityWithDefaults, type EARS } from '#generated/ears.ts';
-import { FIXTURES, PACK_DIR, keyRecordAfter, resetDatabase, snapshot, type Snapshot } from './harness.ts';
+import { FIXTURES, PACK_DIR, applyAfter, resetDatabase, snapshot, type Snapshot } from './harness.ts';
 
 const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'abuddy.json'), 'utf-8'));
 /** default-setup's notes format; the test setup registers its Note seed hooks with the pack */
@@ -43,15 +43,28 @@ afterAll(() => {
 });
 
 const seeder = createSeeder({ key: 'notes', entities: ['Note'], identity: NOTES_FORMAT.identity, relKind: NOTES_FORMAT.tree?.relKind });
+
+/**
+ * **The record the apply reads and writes, carried from the run before**, as the app's boot carries it: the
+ * merge answers "has the user changed this" from what the last apply wrote, so a case about an edited note
+ * needs the two runs to be one sequence. `reset()` clears the database and the record together, since a
+ * record describing entities that are gone is not a state the app can be in.
+ */
+let applied: ApplyRecord | undefined;
+function reset(): void {
+  resetDatabase();
+  applied = undefined;
+}
 function seedNotes(
   sources: 'v1' | 'v2' | 'default-setup',
-  options: { mode?: ImportMode; include?: SeedIncludeSet; keyRecord?: SeedKeyRecord } = {},
+  options: { mode?: ImportMode; include?: SeedIncludeSet; unrecorded?: boolean } = {},
 ): ImportCounts {
+  applied = applyAfter(options.unrecorded ? undefined : applied);
   return seeder.apply({
     compiledDir: compile(sources).dir,
     mode: options.mode,
     include: options.include,
-    keyRecord: options.keyRecord,
+    applied,
     log: () => {},
   });
 }
@@ -162,7 +175,7 @@ function expectReseed(before: Snapshot, after: Snapshot, records: SeedRecord[], 
 
 describe('notes seeding (generic pipeline)', () => {
   it('stores a sourceHash on every seeded note', () => {
-    resetDatabase();
+    reset();
     seedNotes('v1');
     const rows = notesOf(snapshot(), { withHash: true }).rows;
     expect(Object.keys(rows).length).toBeGreaterThan(0);
@@ -170,7 +183,7 @@ describe('notes seeding (generic pipeline)', () => {
   });
 
   it.each([undefined, 'replace-on-collision', 'keep-existing'] as const)('re-seeding unchanged sources in mode %s changes nothing', (mode) => {
-    resetDatabase();
+    reset();
     seedNotes('v1', { mode });
     const before = snapshot();
     const counts = seedNotes('v1', { mode });
@@ -180,7 +193,7 @@ describe('notes seeding (generic pipeline)', () => {
   });
 
   it.each([undefined, 'replace-on-collision', 'keep-existing'] as const)('re-seeding changed sources in mode %s follows the change-tracking rules', (mode) => {
-    resetDatabase();
+    reset();
     addLinkTargets();
     seedNotes('v1', { mode });
     const before = snapshot();
@@ -195,7 +208,7 @@ describe('notes seeding (generic pipeline)', () => {
   });
 
   it('leaves a note without a stored sourceHash alone (user-owned)', () => {
-    resetDatabase();
+    reset();
     addLinkTargets();
     seedNotes('v1');
     const welcome = (entityIds() as EARS.EntityId[]).find((id) =>
@@ -222,7 +235,7 @@ describe('notes seeding (generic pipeline)', () => {
    * row is still there either way, and a count is what tells "left alone" from "recreated".
    */
   it('leaves a note the user deleted alone, rather than seeding it again', () => {
-    resetDatabase();
+    reset();
     addLinkTargets();
     seedNotes('v1');
     const welcome = notesTitled('Welcome');
@@ -245,7 +258,7 @@ describe('notes seeding (generic pipeline)', () => {
    * is observable as the v1 value surviving a v2 seed.
    */
   it('does not seed the children of a note the user deleted', () => {
-    resetDatabase();
+    reset();
     addLinkTargets();
     seedNotes('v1');
     const projects = notesTitled('Projects');
@@ -265,23 +278,22 @@ describe('notes seeding (generic pipeline)', () => {
   /**
    * **A note the user deleted *outright* is not seeded again either.** Notes trash, so the two cases above
    * read the row itself; a flow or a library document is destroyed, and then nothing is left to read. What
-   * answers for those is the record of the keys the pack's content defined last time (`SeedKeyRecord`), which
-   * boot seeding keeps in `AppState.packSeedKeys` — a key in it with no row is the user's deletion.
+   * answers for those is the applied content — a key the last apply wrote with no entity behind it now is
+   * the user's deletion.
    *
    * Destroying the row rather than trashing it is the whole point of the case, so it uses `tx().destroy()`
    * directly: `trash.move` would leave the row the earlier cases are about and prove nothing new.
    */
-  it('leaves a note the user deleted outright alone, given the keys the last run defined', () => {
-    resetDatabase();
+  it('leaves a note the user deleted outright alone, given what the last apply wrote', () => {
+    reset();
     addLinkTargets();
-    const firstRun = keyRecordAfter();
-    seedNotes('v1', { keyRecord: firstRun });
+    seedNotes('v1');
     const welcome = notesTitled('Welcome');
     if (welcome.length !== 1) throw new Error(`expected one seeded Welcome note to delete, found ${welcome.length}`);
     tx(welcome[0]).destroy();
     expect(notesTitled('Welcome'), 'a destroyed row leaves nothing behind, which is the premise').toEqual([]);
 
-    const counts = seedNotes('v2', { mode: 'replace-on-collision', keyRecord: keyRecordAfter(firstRun.defined) });
+    const counts = seedNotes('v2', { mode: 'replace-on-collision' });
 
     expect(notesTitled('Welcome'), 'the seed created the note the user deleted outright').toEqual([]);
     // The run did work on the other notes, so the empty result above is this rule rather than a seed that
@@ -290,10 +302,10 @@ describe('notes seeding (generic pipeline)', () => {
   });
 
   it('wipes nested notes and seeds them again', () => {
-    resetDatabase();
+    reset();
     seedNotes('v2');
     const freshV2 = notesOf(snapshot(), { withHash: true });
-    resetDatabase();
+    reset();
     seedNotes('v1');
     const counts = seedNotes('v2', { mode: 'wipe-and-replace' });
     expect(counts.errors).toBeUndefined();

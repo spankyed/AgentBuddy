@@ -157,14 +157,15 @@ Settings → General → "Import Pack Seeds" imports a pack's compiled seeds fro
 
 At boot, the host seeds every pack's compiled seeds (`seedPacks`, `@abuddy/host/packs/runtime`) from its
 `runtime/seeds` directory, in dependency order so a pack's seeds can reference what the packs it depends on
-seeded. A SHA-256 hash of those files is stored per pack in the app's state (`AppState.packSeedHashes`). If
-it matches on the next startup, seeding is skipped; changed data triggers a re-seed. A pack whose last seed
-failed is retried when a pack it depends on has seeded since (`AppState.packSeedDeps` holds what that attempt
-faced). The keys the pack's content defined are passed in and recorded too (`AppState.packSeedKeys`), which
-is what tells a later run that a row it cannot find was deleted by the user rather than never imported.
+seeded. A SHA-256 hash of those files is recorded per pack as its applied content's revision
+(`appliedContent`, `@abuddy/host/app-state`). If it matches on the next startup, seeding is skipped; changed
+data triggers a re-seed. A pack whose last seed failed is retried when a pack it depends on has seeded since
+(`AppState.packSeedDeps` holds what that attempt faced). Beside the revision, that record holds one entry per
+row the pack has written — a hash per part of what was written — which is what makes a boot seed a three-way
+merge: it tells a later run that a row it cannot find was deleted by the user rather than never imported,
+which parts of a row the user has since changed, and which rows the pack has stopped shipping.
 Every key a pack declares is imported: there is no policy saying otherwise, because `boot.seed` holds only
-entries that import rows, and the seeder itself leaves alone a row the user trashed — or, through that
-record, one they destroyed.
+entries that import rows, and what a run leaves alone it decides from that merge.
 
 **The hash is over content alone** — the bytes and the file names holding them. File times are not in them: a pack's files are replaced wholesale by every install (`placePack` renames a fresh directory into place), so hashing their mtimes made a reinstall of the identical pack read as changed data, and a `touch` re-seed. Putting a pack's data back on purpose is `IMPORT_PACK_SEEDS`, which the Settings view drives with a preview, a per-key selection and a collision mode.
 

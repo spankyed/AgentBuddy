@@ -10,7 +10,7 @@ import { appliedContent, appState } from '../../../src/app-state/index.ts';
 import { getLoadedPackEntries } from '../../../src/packs/layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
 import { PACK_SNAPSHOT_FORMAT, seedFile } from '@abuddy/sdk/build';
-import type { AppliedItem, SeedKeyRecord } from '@abuddy/sdk/utils';
+import type { ApplyRecord } from '@abuddy/sdk/utils';
 import { _appDirOf } from '@abuddy/sdk/env';
 import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
@@ -558,49 +558,80 @@ describe('seedPacks: failures', () => {
     expect(registryEntry('recovered')).not.toHaveProperty('lastError');
   });
 
-  /** A seeder that defines the given keys and reports what it was told to */
+  /** A writer that declares the given keys, writes them, and reports what it was told to */
   const seedDefining = (keys: string[], counts = { created: 1, updated: 0, skipped: 0 }) =>
-    (options: { keyRecord?: SeedKeyRecord }) => {
-      seenBefore.push([...(options.keyRecord?.before ?? [])]);
-      for (const key of keys) options.keyRecord?.defined.add(key);
+    (options: { applied?: ApplyRecord }) => {
+      seenBefore.push([...(options.applied?.before.keys() ?? [])]);
+      for (const key of keys) {
+        options.applied?.defined.add(key);
+        options.applied?.written.set(key, { entityType: 'Note', parts: { title: key } });
+      }
       return { notes: counts };
     };
   let seenBefore: string[][] = [];
   beforeEach(() => { seenBefore = []; });
 
   /**
-   * **The record of what a pack's content defined is what makes a destroyed row stay deleted**, so what
-   * belongs here are the two halves `seedPacks` owns: a run is handed what the last one defined, and what
-   * this one defined is what gets recorded. What a seeder then does with it is default-setup's seed specs.
+   * **What the last apply wrote is what the next one is handed**, which is the half `seedPacks` owns: the
+   * writers decide what to do about an item, and this decides what they get to decide it from. It is
+   * deliberately what was *written* rather than what the content *declared*: those are different questions,
+   * and only the first answers "did we ever put this in the database" — a declared key whose create failed
+   * never did.
    */
-  it('hands a run the keys the last one defined, and records the keys this one did', () => {
+  it('hands a run what the last one wrote', () => {
     const pack = installedPack('keys');
     writeRegistry(['keys']);
 
     seedPacks([pack], seedDefining(['keys:notes/a', 'keys:notes/b']));
-    // Changed seed data, or the second run is skipped on its hash
+    // Changed content, or the second run is skipped on its revision
     fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
-    seedPacks([pack], seedDefining(['keys:notes/a']));
+    seedPacks([pack], seedDefining(['keys:notes/a', 'keys:notes/b']));
 
     expect(seenBefore).toEqual([[], ['keys:notes/a', 'keys:notes/b']]);
-    // What this run defined, not the union: a key the content dropped stops being recorded rather than
-    // counting as deleted for good
-    expect(appState.get().packSeedKeys).toEqual({ keys: ['keys:notes/a'] });
   });
 
-  it('records no keys for a run that failed, so a row it never created is not taken for a deleted one', () => {
-    const pack = installedPack('keys-failed');
-    writeRegistry(['keys-failed']);
+  /**
+   * **An entry stays until the removal pass drops it**, not until the content stops declaring its key: the
+   * writer is what decides whether the entity goes, and it reports that as `removed`. An entry dropped here
+   * on the strength of the key alone would make a removal indistinguishable from content never shipped.
+   */
+  it('drops the entry of an item the run reports having removed, and keeps the rest', () => {
+    const pack = installedPack('dropped');
+    writeRegistry(['dropped']);
 
-    seedPacks([pack], seedDefining(['keys-failed:notes/a'], { created: 0, updated: 0, skipped: 1, errors: ['nope'] } as never));
+    seedPacks([pack], seedDefining(['dropped:notes/a', 'dropped:notes/b']));
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
+    seedPacks([pack], (options: { applied?: ApplyRecord }) => {
+      options.applied?.defined.add('dropped:notes/a');
+      options.applied?.removed.add('dropped:notes/b');
+      return { notes: { created: 0, updated: 0, skipped: 0 } };
+    });
 
-    expect(appState.get().packSeedKeys).toEqual({});
+    expect(Object.keys(appliedContent.get('dropped').items)).toEqual(['dropped:notes/a']);
   });
 
-  /** A seeder that reports having written the given items, as the real writers report what they stamped */
+  /**
+   * **An item the content no longer declares that the user edited keeps its entry**, since the entity is
+   * still there holding what we wrote: that is what Phase 4 draws the flag from.
+   */
+  it('keeps the entry of an item the run flagged rather than removed', () => {
+    const pack = installedPack('flagged');
+    writeRegistry(['flagged']);
+
+    seedPacks([pack], seedDefining(['flagged:notes/a']));
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
+    seedPacks([pack], (options: { applied?: ApplyRecord }) => {
+      options.applied?.flagged.set('flagged:notes/a', ['title']);
+      return { notes: { created: 0, updated: 0, skipped: 0 } };
+    });
+
+    expect(Object.keys(appliedContent.get('flagged').items)).toEqual(['flagged:notes/a']);
+  });
+
+  /** A writer that reports having written the given items, as the real writers report what they stamped */
   const seedWriting = (items: Record<string, Record<string, string>>, counts = { created: 1, updated: 0, skipped: 0 }) =>
-    (options: { applied?: Map<string, AppliedItem> }) => {
-      for (const [key, parts] of Object.entries(items)) options.applied?.set(key, { entityType: 'Note', parts });
+    (options: { applied?: ApplyRecord }) => {
+      for (const [key, parts] of Object.entries(items)) options.applied?.written.set(key, { entityType: 'Note', parts });
       return { notes: counts };
     };
 
@@ -611,7 +642,25 @@ describe('seedPacks: failures', () => {
     seedPacks([pack], seedWriting({ 'rev:notes/a': { title: 'h1' } }));
 
     expect(appliedContent.get('rev').revision).toBe(computePackSeedHash(path.join(pack.dir, 'runtime', 'seeds')));
-    expect(appliedContent.get('rev').revision).toBe(appState.get().packSeedHashes.rev);
+  });
+
+  /**
+   * **The revision is the skip gate, which is why it lives with the items it describes.** A revision
+   * recorded without them, or the other way round, is the state in which every item of a pack reads as the
+   * user's — so the two move in one write.
+   */
+  it('skips a pack whose recorded revision is what its content hashes to', () => {
+    const pack = installedPack('gate');
+    writeRegistry(['gate']);
+    const applyFn = vi.fn(seedWriting({ 'gate:notes/a': { title: 'h1' } }));
+
+    seedPacks([pack], applyFn);
+    seedPacks([pack], applyFn);
+    expect(applyFn, 'the content has not moved, so there is nothing to decide again').toHaveBeenCalledOnce();
+
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
+    seedPacks([pack], applyFn);
+    expect(applyFn).toHaveBeenCalledTimes(2);
   });
 
   /**
@@ -634,9 +683,9 @@ describe('seedPacks: failures', () => {
   });
 
   /**
-   * **A run that failed still wrote whatever it got through**, and `packSeedHashes` has already moved, so
-   * nothing will re-import those items until the content changes again. Leaving them out would make a later
-   * apply read every one of them as the user's.
+   * **A run that failed still wrote whatever it got through**, and the revision has already moved with them,
+   * so nothing will re-import those items until the content changes again. Leaving them out would make a
+   * later apply read every one of them as the user's.
    */
   it('records what a failed run wrote, since its writes landed anyway', () => {
     const pack = installedPack('partial');
@@ -703,14 +752,16 @@ describe('seedPacks', () => {
     seedPacks([pack], applyFn);
 
     expect(applyFn).toHaveBeenCalledOnce();
-    // No `include`: every key a pack seeds is imported. What a seed leaves alone it decides from the rows —
-    // an unchanged hash, an edited row, one the user trashed — and from the keys the last run defined, for
-    // a row deleted outright; never from a policy naming keys
+    // No `include`: every key a pack declares is applied. What an apply leaves alone it decides from the
+    // merge over what it last wrote, what the content says now and what the database holds; never from a
+    // policy naming keys
     expect(applyFn).toHaveBeenCalledWith({
       compiledDir: path.join(pack.dir, 'runtime', 'seeds'),
       mode: 'replace-on-collision',
-      keyRecord: { before: new Set(), defined: new Set() },
-      applied: new Map(),
+      applied: {
+        before: new Map(), defined: new Set(), written: new Map(),
+        removed: new Set(), flagged: new Map(), conflicts: new Map(),
+      },
     });
   });
 
@@ -733,15 +784,14 @@ describe('seedPacks', () => {
     expect(applyFn).not.toHaveBeenCalled();
   });
 
-  it('skips packs whose seed hash has not changed', () => {
+  it('skips packs whose recorded revision has not changed', () => {
     const packsDir = path.join(_appDirOf(tmpDir), 'packs');
     const pack = makePackWithSeeds(packsDir, 'cached-pack', {
       [seedFile('actions')]: [{ label: 'cached' }],
     });
 
     const distDir = path.join(pack.dir, 'runtime', 'seeds');
-    const hash = computePackSeedHash(distDir);
-    appState.update({ packSeedHashes: { 'cached-pack': hash } });
+    appliedContent.record('cached-pack', { revision: computePackSeedHash(distDir), wrote: new Map() });
 
     const applyFn = vi.fn().mockReturnValue({});
     seedPacks([pack], applyFn);
@@ -755,16 +805,16 @@ describe('seedPacks', () => {
       [seedFile('actions')]: [{ label: 'v1' }],
     });
 
-    appState.update({ packSeedHashes: { 'updated-pack': 'old-hash', 'disabled-pack': 'its-hash' } });
+    appliedContent.record('updated-pack', { revision: 'old-hash', wrote: new Map() });
+    appliedContent.record('disabled-pack', { revision: 'its-hash', wrote: new Map() });
     const applyFn = vi.fn().mockReturnValue({});
 
     seedPacks([pack], applyFn);
 
     expect(applyFn).toHaveBeenCalledOnce();
-    const { packSeedHashes } = appState.get();
-    expect(packSeedHashes['updated-pack']).toBe(computePackSeedHash(path.join(pack.dir, 'runtime', 'seeds')));
-    // A pack not loaded this boot (disabled) keeps its hash, so enabling it doesn't import its seeds again
-    expect(packSeedHashes['disabled-pack']).toBe('its-hash');
+    expect(appliedContent.get('updated-pack').revision).toBe(computePackSeedHash(path.join(pack.dir, 'runtime', 'seeds')));
+    // A pack not loaded this boot (disabled) keeps its revision, so enabling it doesn't re-apply its content
+    expect(appliedContent.get('disabled-pack').revision).toBe('its-hash');
   });
 
   it('continues seeding other packs when one fails', () => {
@@ -786,8 +836,9 @@ describe('seedPacks', () => {
     seedPacks([pack1, pack2], applyFn);
 
     expect(applyFn).toHaveBeenCalledTimes(2);
-    // A failed seed's hash is stored too, so the same failing data isn't retried every boot
-    expect(appState.get().packSeedHashes).toEqual({ 'fail-pack': expect.any(String), 'ok-pack': expect.any(String) });
+    // A failed seed's revision is recorded too, so the same failing data isn't retried every boot
+    expect(appliedContent.get('fail-pack').revision).toEqual(expect.any(String));
+    expect(appliedContent.get('ok-pack').revision).toEqual(expect.any(String));
   });
 });
 

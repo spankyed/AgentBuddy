@@ -1,18 +1,18 @@
-// The generic seeder's change tracking at its edges: a row whose seeded values weren't recorded, rows two
-// packs' records both identify, and an update hook that fails part way.
-import { installedEngine as ears } from '@abuddy/ears';
+// The generic writer's merge at its edges: an entity we wrote with no recorded parts, items two packs' content
+// both identifies, content the pack has dropped, and an update hook that fails part way.
+import { installedEngine as ears, untypedTx } from '@abuddy/ears';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { dropAttribute, resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
-import { createSeeder, driftedFieldParts, markSeededRowUnedited } from '../../src/seed/seeder.ts';
+import { createSeeder, driftedFieldParts } from '../../src/seed/seeder.ts';
 import type { SeedHooks } from '../../src/seed/hooks.ts';
-import { _getMediaPath, type AppliedItem, type ImportMode, type SeedKeyRecord } from '../../src/utils/index.ts';
+import { _getMediaPath, applyRecord, type ApplyRecord, type ImportMode } from '../../src/utils/index.ts';
 import type { SeedRecord } from '../../src/build/seeds/records.ts';
 import type { EARS } from '../../src/types/entities.ts';
 
-type Memo = { id: EARS.EntityId; name: string; body: string; pinned?: boolean; mood?: string; sourceHash?: string; seededFields?: { fields: string[] } };
+type Memo = { id: EARS.EntityId; name: string; body: string; pinned?: boolean; mood?: string; sourceHash?: string };
 const memos = (name: string) => ears().findWhere<Memo>('Memo' as EARS.Entity, 'name', name);
 const memo = (name: string) => memos(name)[0];
 const edit = (name: string, fields: Partial<Memo>) => ears().updateEntity(memo(name).id, fields);
@@ -45,27 +45,38 @@ function compiled(packId: string, records: Array<{ name: string; body: string; v
 }
 
 const seeder = createSeeder({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'] });
-const seed = (dir: string, keyRecord?: SeedKeyRecord, mode: ImportMode = 'replace-on-collision', applied?: Map<string, AppliedItem>) =>
-  seeder.apply({ compiledDir: dir, mode, keyRecord, applied, log: () => {} });
-/** An apply's record of what it wrote, as `seedPacks` builds it */
-const report = () => new Map<string, AppliedItem>();
-/** A boot seed's key record, as `seedPacks` builds it: what the last run defined, and a set for this one */
-const keyRecordAfter = (defined: ReadonlySet<string> = new Set()): SeedKeyRecord =>
-  ({ before: defined, defined: new Set<string>() });
+
+/**
+ * One run. With a record it is an **apply** — the three-way merge the app's boot runs; with none it is an
+ * **import**, which is the user asking for the pack's data back and reads nothing of what we wrote before.
+ */
+const seed = (dir: string, record?: ApplyRecord, mode: ImportMode = 'replace-on-collision') =>
+  seeder.apply({ compiledDir: dir, mode, ...(record && { applied: record }), log: () => {} });
+
+/**
+ * The record the next apply reads, from what the last one left: its entries with what the run wrote over
+ * them and what it removed taken out.
+ *
+ * **This mirrors `appliedContent.record`** (`@abuddy/host/app-state`), which is the real merge and is covered
+ * where it lives (`abuddy-host/tests/packs/runtime/loader.spec.ts`). Here it is a fixture, so that a case can
+ * say "and then the next apply" without an app.
+ */
+const after = (previous: ApplyRecord): ApplyRecord => {
+  const items = new Map(previous.before);
+  for (const [key, item] of previous.written) items.set(key, item);
+  for (const key of previous.removed) items.delete(key);
+  return applyRecord(items);
+};
 
 describe('the applied content a run records', () => {
-  /**
-   * **One part per field the seeder wrote, and the same fields the entity's own digest covers.** The two are
-   * produced by different walks — the parts off the entity per field, `seededFields.fields` off the compiled
-   * record — so their agreeing is a claim rather than a restatement.
-   */
-  it('records a part per field it wrote, over the fields seededFields covers', () => {
-    const applied = report();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), undefined, 'replace-on-collision', applied);
+  /** One part per field the writer wrote, and nothing for a field it didn't set */
+  it('records a part per field it wrote', () => {
+    const record = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), record);
 
-    const [[key, item]] = [...applied];
-    expect(key, 'the entry is keyed by the content key').toBe([...keyRecordAfter().defined, key][0]);
-    expect(Object.keys(item.parts).sort()).toEqual(memo('Intro').seededFields!.fields);
+    const [[key, item]] = [...record.written];
+    expect([...record.defined], 'the key the content declared is the key the entry is under').toEqual([key]);
+    expect(Object.keys(item.parts).sort(), 'every field but the hash of the source it came from').toEqual(['body', 'name']);
     expect(item).toMatchObject({ entityType: 'Memo', sourceHash: 'Intro-v1' });
     expect(Object.values(item.parts).every((hash) => /^[0-9a-f]{16}$/.test(hash)), 'each part is a digest').toBe(true);
   });
@@ -75,9 +86,9 @@ describe('the applied content a run records', () => {
    * cannot say, and the reason for recording parts at all.
    */
   it('moves only the part of the field that changed', () => {
-    const applied = report();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), undefined, 'replace-on-collision', applied);
-    const item = applied.get([...applied.keys()][0])!;
+    const record = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), record);
+    const item = [...record.written.values()][0];
 
     edit('Intro', { mood: 'mine' });
 
@@ -86,60 +97,101 @@ describe('the applied content a run records', () => {
 
   /** An item the apply left alone is not this run's to describe: its entry stays whatever the last run recorded */
   it('records nothing for an item it skipped', () => {
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+    const first = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
 
-    const applied = report();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), undefined, 'replace-on-collision', applied);
+    const second = after(first);
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
 
-    expect([...applied.keys()], 'an unchanged item was written again').toEqual([]);
+    expect([...second.written.keys()], 'an unchanged item was written again').toEqual([]);
+    expect([...second.defined], 'and the key is still one the content declares').toEqual([...first.defined]);
   });
 
   it('records nothing for an item it skipped as user-owned', () => {
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+    const first = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
     dropAttribute(memo('Intro').id, 'sourceHash');
 
-    const applied = report();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), undefined, 'replace-on-collision', applied);
+    const second = after(first);
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), second);
 
-    expect([...applied.keys()]).toEqual([]);
+    expect([...second.written.keys()]).toEqual([]);
+  });
+
+  /**
+   * **The conflict is the thing this subsystem exists to make visible**, so the run names it and the parts
+   * that differ. Until Phase 4 of `docs/plans/pack-content-apply.md` draws it, `seedPacks` logs it.
+   */
+  it('names an item with the user’s edit and a newer version, and the parts that differ', () => {
+    const first = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
+    edit('Intro', { mood: 'mine' });
+
+    const second = after(first);
+    const counts = seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', mood: 'calm', version: 'v2' }]), second);
+
+    expect(counts).toEqual({ created: 0, updated: 0, skipped: 1 });
+    expect(Object.fromEntries(second.conflicts)).toEqual({ [[...first.defined][0]]: ['mood'] });
+    expect(memo('Intro').body, 'and nothing of the new version was written').toBe('Hello');
+  });
+
+  /**
+   * **One edited field no longer freezes the item's other parts for good**, which is the whole of what the
+   * record buys: the user's edit is kept, and the apply after the pack ships a version they have not touched
+   * takes it.
+   */
+  it('takes a later version once the part the user changed is what the content now says', () => {
+    const first = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
+    edit('Intro', { mood: 'mine' });
+
+    const second = after(first);
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello v2', mood: 'calm', version: 'v2' }]), second);
+    // The user's value is now what the content ships, so nothing of ours is overwritten by taking it
+    edit('Intro', { mood: 'calm' });
+
+    const third = after(second);
+    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello v3', mood: 'calm', version: 'v3' }]), third))
+      .toEqual({ created: 0, updated: 1, skipped: 0 });
+    expect(memo('Intro').body).toBe('Hello v3');
   });
 });
 
-describe('a row the user deleted outright', () => {
+describe('an entity the user deleted outright', () => {
   /**
-   * **The row is gone, so the record of the key is all there is to go on.** A trashed row still carries its
-   * seed key and the seeder finds it (`find` reads deleted rows); a destroyed one leaves nothing, and without
-   * the keys the last run defined the seeder cannot tell it from a record it has never imported.
+   * **The entity is gone, so the record of what we wrote is all there is to go on.** A trashed entity still
+   * carries its key and the writer finds it (`find` reads deleted entities); a destroyed one leaves nothing,
+   * and without the record the writer cannot tell it from an item it has never written.
    */
-  it('is not created again when the last run defined its key', () => {
-    const firstRun = keyRecordAfter();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), firstRun);
+  it('is not created again when the last apply wrote it', () => {
+    const first = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
     ears().tx(memo('Intro').id).destroy();
-    expect(memos('Intro'), 'a destroyed row leaves nothing behind, which is the premise').toEqual([]);
+    expect(memos('Intro'), 'a destroyed entity leaves nothing behind, which is the premise').toEqual([]);
 
-    const counts = seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]),
-      keyRecordAfter(firstRun.defined));
+    const counts = seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), after(first));
 
     expect(counts).toEqual({ created: 0, updated: 0, skipped: 1 });
     expect(memos('Intro')).toEqual([]);
   });
 
-  /** And the record says so whatever the outcome was, or the next run would create what this one skipped */
-  it('stays in the record of what this run defined', () => {
-    const firstRun = keyRecordAfter();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), firstRun);
+  /** And the key stays declared whatever the outcome was, or the removal pass would read it as dropped */
+  it('stays in the keys this run declares', () => {
+    const first = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
     ears().tx(memo('Intro').id).destroy();
 
-    const secondRun = keyRecordAfter(firstRun.defined);
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), secondRun);
+    const second = after(first);
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), second);
 
-    expect([...secondRun.defined]).toEqual([...firstRun.defined]);
+    expect([...second.defined]).toEqual([...first.defined]);
+    expect([...second.removed], 'and it is not removed: the content still declares it').toEqual([]);
   });
 
   /**
    * **An import carrying no record creates it**, which is what a user asking for a pack's data back is
-   * (`IMPORT_PACK_SEEDS`), and what makes the first case about the record rather than about the seeder
-   * having stopped creating rows.
+   * (`IMPORT_PACK_SEEDS`), and what makes the first case about the record rather than about the writer
+   * having stopped creating entities.
    */
   it('is created again by an import that carries no record', () => {
     seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
@@ -151,15 +203,15 @@ describe('a row the user deleted outright', () => {
   });
 
   /**
-   * **`wipe-and-replace` is exempt**, and by name rather than by luck: it removes the rows itself and then
-   * creates every record, so every key would be one "the user deleted" if the rule applied to it.
+   * **`wipe-and-replace` is exempt**, and by name rather than by luck: it removes the entities itself and
+   * then creates every item, so every key would be one "the user deleted" if the rule applied to it.
    */
-  it('is created again by wipe-and-replace, which removed the rows itself', () => {
-    const firstRun = keyRecordAfter();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), firstRun);
+  it('is created again by wipe-and-replace, which removed the entities itself', () => {
+    const first = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
 
     const counts = seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]),
-      keyRecordAfter(firstRun.defined), 'wipe-and-replace');
+      after(first), 'wipe-and-replace');
 
     expect(counts).toMatchObject({ created: 1 });
     expect(memo('Intro').body).toBe('Hello again');
@@ -188,39 +240,137 @@ describe('a row with no stored sourceHash', () => {
   });
 });
 
-describe('a row whose seeded values were not recorded', () => {
-  it("is left alone when its record changes: it can't be checked for edits", () => {
+describe('an entity we wrote with no recorded parts', () => {
+  /**
+   * **It is adopted: written once and re-stamped**, which is the one branch of the merge that can overwrite
+   * something the user typed. Every entity written before anything recorded *which part* we wrote is in
+   * this state, so the alternative is freezing all of them for good — a user who upgrades would then never
+   * get a fix again. It is the rule that replaced a migration doing the same thing by hand
+   * (`default-setup/src/migrations/0.3.15.ts`).
+   */
+  it('is written once, and its edits are honoured from then on', () => {
     seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
-    dropAttribute(memo('Intro').id, 'seededFields');
-    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]))).toEqual({ created: 0, updated: 0, skipped: 1 });
-    expect(memo('Intro').body).toBe('Hello');
-  });
+    // No entry for it: an apply whose record has never seen this item, which an upgrade is
+    const upgrade = applyRecord();
 
-  // Every row an older version seeded is in that state, so without this they would all stay frozen
-  it('takes its record again once a migration marks it unedited, and tracks edits from then on', () => {
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
-    dropAttribute(memo('Intro').id, 'seededFields');
-
-    markSeededRowUnedited(memo('Intro').id);
-
-    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]))).toEqual({ created: 0, updated: 1, skipped: 0 });
+    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), upgrade))
+      .toEqual({ created: 0, updated: 1, skipped: 0 });
     expect(memo('Intro').body).toBe('Hello again');
 
-    // The update re-stamped the row with its real fields, so a later edit is honoured as usual
+    // The write recorded its parts, so the next apply can see an edit and leaves it alone
     edit('Intro', { body: 'mine' });
-    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello a third time', version: 'v3' }]))).toEqual({ created: 0, updated: 0, skipped: 1 });
+    const next = after(upgrade);
+    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello a third time', version: 'v3' }]), next))
+      .toEqual({ created: 0, updated: 0, skipped: 1 });
     expect(memo('Intro').body).toBe('mine');
   });
 
-  it('keeps the fields no seed set: marking it unedited clears nothing', () => {
+  it('keeps the fields no apply set: there is no previous field list, so nothing is cleared', () => {
     seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
     edit('Intro', { pinned: true });
-    dropAttribute(memo('Intro').id, 'seededFields');
 
-    markSeededRowUnedited(memo('Intro').id);
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]));
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), applyRecord());
 
     expect(memo('Intro')).toMatchObject({ body: 'Hello again', pinned: true });
+  });
+
+  /** An entity with no hash of ours is the user's by identity, which the adoption must not reach */
+  it('is not adopted when it carries no hash of ours', () => {
+    ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: 'Intro', body: 'theirs' });
+
+    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), applyRecord()))
+      .toEqual({ created: 0, updated: 0, skipped: 1 });
+    expect(memo('Intro').body).toBe('theirs');
+  });
+});
+
+describe('content the pack has dropped', () => {
+  /** Ours while it is still ours: the item left the content, so the entity goes with it */
+  it('is removed, and its entry with it', () => {
+    const first = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
+    const extraKey = [...first.written.keys()].find((key) => key.includes('Extra'))!;
+
+    const second = after(first);
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
+
+    expect(memos('Extra')).toEqual([]);
+    expect([...second.removed]).toEqual([extraKey]);
+    expect(after(second).before.has(extraKey), 'the entry is dropped, so nothing recomputes the removal').toBe(false);
+  });
+
+  /** Theirs once they have touched it: kept, and named so the user can decide (Phase 4 draws it) */
+  it('is kept and flagged when the user has edited it', () => {
+    const first = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
+    const extraKey = [...first.written.keys()].find((key) => key.includes('Extra'))!;
+    edit('Extra', { body: 'mine' });
+
+    const second = after(first);
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
+
+    expect(memo('Extra').body).toBe('mine');
+    expect(Object.fromEntries(second.flagged)).toEqual({ [extraKey]: ['body'] });
+    expect([...second.removed]).toEqual([]);
+  });
+
+  /** An entity the user has already trashed stays trashed: destroying it would take their undo with it */
+  it('leaves an entity the user had already trashed in the trash', () => {
+    const first = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
+    const extraKey = [...first.written.keys()].find((key) => key.includes('Extra'))!;
+    const extraId = memo('Extra').id;
+    untypedTx(extraId).update('deleted' as never, true);
+
+    const second = after(first);
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
+
+    expect(ears().findByIdRaw(extraId), 'the trashed entity was destroyed').toBeTruthy();
+    expect([...second.removed], 'and the entry goes, so nothing recomputes the removal').toEqual([extraKey]);
+  });
+
+  /**
+   * **A partial selection declares only what was selected**, so every unselected item would read as dropped.
+   * The guard is the whole reason a per-key import cannot delete the rest of a pack's content.
+   */
+  it('is not removed by a run that was given a selection', () => {
+    const first = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
+
+    const second = after(first);
+    seeder.apply({
+      compiledDir: compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]),
+      include: new Set(['Intro']),
+      applied: second,
+      log: () => {},
+    });
+
+    expect(memo('Extra').body, 'the unselected item was removed').toBe('Bye');
+    expect([...second.removed]).toEqual([]);
+  });
+
+  /** And an import carries no record, so asking for a pack's data back never removes anything */
+  it('is not removed by an import, which reads no record', () => {
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]));
+
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+
+    expect(memo('Extra').body).toBe('Bye');
+  });
+
+  /** A file that did not load said nothing, so there is no list to diff against */
+  it('is not removed when the entry has no compiled file to read', () => {
+    const first = applyRecord();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
+
+    const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'seeder-none-'));
+    dirs.push(empty);
+    fs.writeFileSync(path.join(empty, 'seeds.json'), JSON.stringify({ version: 1, packId: 'pack-a', seeds: [] }));
+    const second = after(first);
+    seed(empty, second);
+
+    expect(memo('Intro').body).toBe('Hello');
+    expect([...second.removed]).toEqual([]);
   });
 });
 
@@ -286,12 +436,12 @@ describe("a folder another pack seeded", () => {
   it("stays out of this pack's record, so this pack makes its own once that folder is gone", () => {
     registerHooks('Folder', { container: true });
     seed(tree('pack-a', ['welcome.md']));
-    const packB = keyRecordAfter();
+    const packB = applyRecord();
     seed(tree('pack-b', ['theirs.md']), packB);
     ears().tx(folders()[0].id).destroy();
 
     // Its memo is still there and still pack-b's, so only the folder is created
-    expect(seed(tree('pack-b', ['theirs.md']), keyRecordAfter(packB.defined))).toMatchObject({ created: 1 });
+    expect(seed(tree('pack-b', ['theirs.md']), after(packB))).toMatchObject({ created: 1 });
     expect(folders()[0].label, "pack-b never made its own folder").toBe('pack-b');
   });
 
@@ -325,6 +475,86 @@ describe("a folder another pack seeded", () => {
 
     expect(folders()).toHaveLength(1);
     expect(contents(folders()[0])).toEqual(['guide.md', 'welcome.md']);
+  });
+
+  /**
+   * **A container the content dropped is not deleted while it holds entities we did not write.** Removing
+   * the shared folder would take another pack's documents — or the user's — with it, and it is not ours to
+   * remove. The entry stays, so the folder is reconsidered once those are gone.
+   */
+  it('is not removed with the content that dropped it while another pack’s entities are in it', () => {
+    registerHooks('Folder', { container: true });
+    const packA = applyRecord();
+    seed(tree('pack-a', ['welcome.md']), packA);
+    seed(tree('pack-b', ['theirs.md']));
+
+    const emptied = fs.mkdtempSync(path.join(os.tmpdir(), 'seeder-emptied-'));
+    dirs.push(emptied);
+    fs.writeFileSync(path.join(emptied, 'seeds.json'), JSON.stringify({ version: 1, packId: 'pack-a', seeds: [] }));
+    fs.writeFileSync(path.join(emptied, 'memos.seed.json'), JSON.stringify({ records: [] }));
+    const next = after(packA);
+    seed(emptied, next);
+
+    expect(folders(), "pack-a's folder was removed, and pack-b's memo with it").toHaveLength(1);
+    expect(contents(folders()[0]), "pack-a's own memo goes, pack-b's stays").toEqual(['theirs.md']);
+    const folderKey = [...packA.written].find(([, item]) => item.entityType === 'Folder')![0];
+    expect([...next.removed], "pack-a's own memo, and not the folder it is in").toEqual(
+      [...packA.written.keys()].filter((key) => key !== folderKey));
+  });
+
+  /**
+   * **A key the walk did not reach is still a key the content declares.** The walk stops at an item it is
+   * leaving alone — the mode says to keep what is there, or the user deleted it — and without declaring the
+   * subtree below it, every child would read as content the pack had dropped and be removed: exactly the
+   * subtree the walk was being careful of.
+   */
+  it('is not removed because the walk stopped at the item above it', () => {
+    registerHooks('Folder', { container: false });
+    const first = applyRecord();
+    seed(tree('pack-a', ['welcome.md', 'guide.md']), first);
+
+    const second = after(first);
+    seeder.apply({ compiledDir: tree('pack-a', ['welcome.md', 'guide.md']), mode: 'keep-existing', applied: second, log: () => {} });
+
+    expect([...second.removed], 'a child under an item the mode skipped').toEqual([]);
+    expect(second.defined, 'every key the content declares, whatever the walk did about it').toEqual(first.defined);
+  });
+
+  /** And the same for a subtree under an item the user threw away, which the walk also stops at */
+  it('is not removed because the user trashed the item above it', () => {
+    registerHooks('Folder', { container: false });
+    const first = applyRecord();
+    seed(tree('pack-a', ['welcome.md', 'guide.md']), first);
+    untypedTx(folders()[0].id).update('deleted' as never, true);
+
+    const second = after(first);
+    seed(tree('pack-a', ['welcome.md', 'guide.md']), second);
+
+    expect([...second.removed], 'a child under an item the user trashed').toEqual([]);
+    expect(second.defined).toEqual(first.defined);
+  });
+
+  /**
+   * And the same where an error stopped the walk. This is the branch with the worst failure mode of the
+   * three: a hook that throws for one item would otherwise take that item's whole subtree with it.
+   */
+  it('is not removed because an error stopped the walk above it', () => {
+    const first = applyRecord();
+    seed(tree('pack-a', ['welcome.md', 'guide.md']), first);
+    registerHooks('Folder', { update: () => { throw new Error('disk full'); } });
+
+    // A new sourceHash on the folder, so the apply reaches the update that throws
+    const dir = tree('pack-a', ['welcome.md', 'guide.md']);
+    const file = path.join(dir, 'memos.seed.json');
+    const data = JSON.parse(fs.readFileSync(file, 'utf-8')) as { records: SeedRecord[] };
+    data.records[0].sourceHash = 'internal-pack-a-v2';
+    fs.writeFileSync(file, JSON.stringify(data));
+
+    const second = after(first);
+    expect(seed(dir, second)).toMatchObject({ errors: ['Folder "internal": disk full'] });
+
+    expect([...second.removed], "the folder's whole subtree went with the error").toEqual([]);
+    expect(second.defined).toEqual(first.defined);
   });
 
   it("is copied when its hooks don't, so a pack never writes into another's rows", () => {
@@ -418,31 +648,41 @@ describe('an update hook that fails part way', () => {
     expect(memo('Intro')).toMatchObject({ body: 'Hello v2', pinned: true, sourceHash: 'Intro-v2' });
   });
 
-  it("keeps the row's previous seeded fields: a field the record newly sets isn't recorded as seeded", () => {
+  it("re-takes the item's entry over the fields it had: a field the record newly sets isn't recorded as ours", () => {
     registerHooks('Memo', {
       update: (id, record) => {
         ears().updateEntity(id, { body: record.body });
         throw new Error('disk full');
       },
     });
-    seed(compiled('demo', [{ name: 'Intro', body: 'Hello' }]));
+    const first = applyRecord();
+    seed(compiled('demo', [{ name: 'Intro', body: 'Hello' }]), first);
     // The user's mood, which the next version of the record sets too
     edit('Intro', { mood: 'mine' });
 
-    expect(seed(compiled('demo', [{ name: 'Intro', body: 'Hello v2', mood: 'calm', version: 'v2' }]))).toMatchObject({ errors: ['Memo "Intro": disk full'] });
-    expect(memo('Intro')).toMatchObject({ mood: 'mine', seededFields: { fields: ['body', 'name'] } });
+    const second = after(first);
+    expect(seed(compiled('demo', [{ name: 'Intro', body: 'Hello v2', mood: 'calm', version: 'v2' }]), second))
+      .toMatchObject({ errors: ['Memo "Intro": disk full'] });
+    expect(memo('Intro').mood).toBe('mine');
+    const item = second.written.get([...first.written.keys()][0])!;
+    expect(Object.keys(item.parts).sort(), 'the fields the entry named, not the ones the new record sets').toEqual(['body', 'name']);
+    // Re-taken from what the entity holds now, so the next apply updates it rather than reading the
+    // half-written values as the user's edit
+    expect(driftedFieldParts(item, memo('Intro').id)).toEqual([]);
   });
 });
 
 describe('a field a changed record no longer sets', () => {
-  it("is dropped from the row, and a field the seed never set is kept", () => {
-    seed(compiled('demo', [{ name: 'Intro', body: 'Hello', pinned: true }]));
-    edit('Intro', { mood: 'mine' });
-    expect(seed(compiled('demo', [{ name: 'Intro', body: 'Hello', version: 'v2' }]))).toEqual({ created: 0, updated: 1, skipped: 0 });
+  it("is dropped from the entity, and a field the apply never set is kept", () => {
+    const first = applyRecord();
+    seed(compiled('demo', [{ name: 'Intro', body: 'Hello', pinned: true }]), first);
+    const second = after(first);
+    expect(seed(compiled('demo', [{ name: 'Intro', body: 'Hello', version: 'v2' }]), second)).toEqual({ created: 0, updated: 1, skipped: 0 });
     expect(memo('Intro').pinned).toBeUndefined();
-    expect(memo('Intro')).toMatchObject({ mood: 'mine', seededFields: { fields: ['body', 'name'] } });
+    expect(Object.keys(second.written.get([...first.written.keys()][0])!.parts).sort()).toEqual(['body', 'name']);
   });
 
+  /** Which fields those are comes from the entry, so an apply with no entry for the item clears nothing */
   it('is passed to the update hook to reset', () => {
     const cleared: string[][] = [];
     registerHooks('Memo', {
@@ -451,8 +691,9 @@ describe('a field a changed record no longer sets', () => {
         ears().updateEntity(id, { body: record.body, ...(clearedFields.includes('pinned') && { pinned: false }) });
       },
     });
-    seed(compiled('demo', [{ name: 'Intro', body: 'Hello', pinned: true }]));
-    seed(compiled('demo', [{ name: 'Intro', body: 'Hello', version: 'v2' }]));
+    const first = applyRecord();
+    seed(compiled('demo', [{ name: 'Intro', body: 'Hello', pinned: true }]), first);
+    seed(compiled('demo', [{ name: 'Intro', body: 'Hello', version: 'v2' }]), after(first));
     expect(cleared).toEqual([['pinned']]);
     expect(memo('Intro').pinned).toBe(false);
   });

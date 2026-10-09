@@ -21,13 +21,6 @@ const migration = migrations.find((m) => m.target === '0.3.15')!
 /** The settings row as the repository stores it: only what differs from the defaults */
 const stored = () => untypedQx('Settings-app' as SdkEARS.EntityId).pickOne(['data'])?.data as Record<string, unknown>
 
-/** A row as an older version's seeder left it: a source hash, but no record of the values it wrote */
-function seededTheOldWay(name: string) {
-  const row = createEntityWithDefaults(EARS.Entity.Note, { label: name, title: name, content: 'seeded', sourceHash: `${name}-v1` })
-  dropAttribute(row.id, 'seededFields')
-  return row.id
-}
-
 const attrs = (id: string) => (untypedQx(id).pickAll() as Array<Record<string, unknown>>)[0]
 
 describe('the 0.3.15 migration', () => {
@@ -83,33 +76,6 @@ describe('the 0.3.15 migration', () => {
 
     migration.up()
     expect(stored()).toEqual({ plugins: { 'default-setup/flows': { enableFlowPreview: false }, 'default-setup/brain': { inspectEnabled: true } } })
-  })
-
-  it('marks a row seeded before the seeder tracked its values as unedited', () => {
-    const id = seededTheOldWay('Welcome')
-
-    migration.up()
-
-    // Empty field list: nothing was recorded to compare against, so the row reads as unedited
-    expect(attrs(id).seededFields).toEqual({ fields: [], hash: expect.any(String) })
-  })
-
-  it("leaves a user's own row alone: it carries no source hash", () => {
-    const mine = createEntityWithDefaults(EARS.Entity.Note, { label: 'Mine', title: 'Mine', content: 'mine' })
-
-    migration.up()
-
-    expect(attrs(mine.id).seededFields).toBeUndefined()
-  })
-
-  it('leaves a row the current seeder already stamped alone', () => {
-    const row = createEntityWithDefaults(EARS.Entity.Note, { label: 'Tracked', title: 'Tracked', content: 'seeded', sourceHash: 'tracked-v1' })
-    // seededFields is the seeder's own bookkeeping, not a declared Note field: written with the unchecked untypedTx
-    untypedTx(row.id).update('seededFields', { fields: ['title'], hash: 'kept' })
-
-    migration.up()
-
-    expect(attrs(row.id).seededFields).toEqual({ fields: ['title'], hash: 'kept' })
   })
 
   const excludedSources = () => (services.settings.forFeature(ref('logs')) as any).excludedSources

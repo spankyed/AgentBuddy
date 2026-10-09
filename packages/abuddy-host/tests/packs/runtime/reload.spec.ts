@@ -16,7 +16,7 @@ const { seedPacks } = await import('../../../src/packs/runtime/seed.ts');
 const { resolveAppContext } = await import('@abuddy/sdk/env');
 // The test host's logger reports through its root event bus, so a test can read what the code under test logged
 const { testRootEvents: rootEvents, resetTestData, testPacks } = await import('@abuddy/sdk/testing');
-const { appState } = await import('../../../src/app-state/index.ts');
+const { appliedContent, appState } = await import('../../../src/app-state/index.ts');
 const { readInstalledPacks } = await import('../../../src/packs/installed.ts');
 
 const PACK_ID = 'reload-pack';
@@ -208,10 +208,10 @@ describe('reloading a pack the app ships', () => {
     seedPacks([seedTarget()]);
     expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.seedsDir)]);
 
-    // Another pack the app ships seeds its own data, recorded in the same AppState row
+    // Another pack the app ships applies its own content, recorded in its own entity
     seeded.length = 0;
     seedPacks([seedTarget('other-pack')]);
-    expect(Object.keys(appState.get().packSeedHashes).sort()).toEqual([SHIPPED_ID, 'other-pack'].sort());
+    expect([SHIPPED_ID, 'other-pack'].map((id) => appliedContent.get(id).revision).every(Boolean)).toBe(true);
 
     // ...and this pack's own seed is still recorded, so it isn't seeded again
     seeded.length = 0;
@@ -227,8 +227,8 @@ describe('reloading a pack the app ships', () => {
 
     // The failure is reported, not swallowed behind "Boot seed completed"
     expect(loggedErrors.join('\n')).toContain('Flow "Broken": step 2 names no action');
-    // The hash is stored anyway, as importPackSeeds does: the same failing data isn't re-imported every boot
-    expect(appState.get().packSeedHashes[SHIPPED_ID]).toBeTruthy();
+    // The revision is recorded anyway: the same failing data isn't re-applied every boot
+    expect(appliedContent.get(SHIPPED_ID).revision).toBeTruthy();
 
     // ...and the next seed of unchanged data doesn't retry it
     seeded.length = 0;

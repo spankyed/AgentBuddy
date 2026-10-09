@@ -2,8 +2,9 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '../types/entities.ts';
-import { destroyEntity, installedEngine as ears, untypedTx, untypedQx as qx } from '@abuddy/ears';
+import { destroyEntity, findRelations, installedEngine as ears, untypedTx, untypedQx as qx } from '@abuddy/ears';
 import { _getMediaPath, loadJSON, shouldImportAll, type Seeder, type ImportContext, type ImportCounts, type AppliedItem } from '../utils/index.ts';
+import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
 import { seedPath } from '../build/manifest.ts';
 import { seedPackId } from '../utils/seed.ts';
 import { RECORD_KEYS, recordLabel, type CompiledSeedFile, type SeedRecord } from '../build/seeds/records.ts';
@@ -23,24 +24,17 @@ export interface SeederOptions {
 }
 
 const DEFAULT_REL_KIND = 'contains';
-/** What the seeder last wrote to a row: the record's field names and a hash of their stored values */
-const SEEDED_FIELDS = 'seededFields' as EARS.AttrKind;
-/** Which record a seeded row came from, independent of fields a user can change (a renamed row keeps it) */
+/** Which item a written entity came from, independent of fields a user can change (a renamed entity keeps it) */
 export const SEED_KEY = 'seedKey' as EARS.AttrKind;
 export const SOURCE_HASH = 'sourceHash' as EARS.AttrKind;
 const MEDIA_LINK_RE = /!\[([^\]]*)\]\((media\/([^)]+))\)/g;
-
-interface SeededFields {
-  fields: string[];
-  hash: string;
-}
 
 function fieldsOf(record: SeedRecord): Record<string, unknown> {
   return Object.fromEntries(Object.entries(record).filter(([key]) => !RECORD_KEYS.has(key)));
 }
 
 /** The fields the seeder tracks for a record: every field it sets but its sourceHash */
-function seededFieldNames(record: SeedRecord): string[] {
+function trackedFieldNames(record: SeedRecord): string[] {
   return Object.keys(fieldsOf(record)).filter((field) => field !== 'sourceHash').sort();
 }
 
@@ -49,28 +43,23 @@ export function hashValues(values: unknown[]): string {
   return crypto.createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 16);
 }
 
-function hashStoredFields(id: EARS.EntityId, fields: string[]): string {
-  return hashValues(fields.map((field) => ears().getAttr(id, field as EARS.AttrKind) ?? null));
-}
-
 /**
- * A hash per field, read from the row as `hashStoredFields` reads it (`AppliedItem.parts`,
- * `@abuddy/sdk/utils`). The path of a field's part is the field's name.
+ * A hash per field, read from the entity (`AppliedItem.parts`, `@abuddy/sdk/utils`). The path of a field's
+ * part is the field's name.
  *
- * **Only the fields the seeder wrote**, which is why this takes the list rather than reading the row's keys:
- * a hash over everything stored would move when the user or another pack adds an attribute, and read as our
- * edit. That is the constraint `seededFields`' own field list exists for.
+ * **Only the fields the seeder wrote**, which is why this takes the list rather than reading the entity's
+ * keys: a hash over everything stored would move when the user or another pack adds an attribute, and read
+ * as our edit.
  */
 function fieldParts(id: EARS.EntityId, fields: string[]): Record<string, string> {
   return Object.fromEntries(fields.map((field) => [field, hashValues([ears().getAttr(id, field as EARS.AttrKind) ?? null])]));
 }
 
 /**
- * The parts of a recorded item whose value in the database is no longer what we wrote — the per-part answer to
- * the question `seededFields`' single digest answers for a whole row.
+ * The parts of a recorded item whose value in the database is no longer what we wrote.
  *
- * For a row the generic seeder wrote; a flow's parts are read by `driftedGraphParts` (`flow-seeder.ts`), since
- * the shapes are produced by different walks.
+ * For an entity the generic seeder wrote; a flow's parts are read by `driftedGraphParts`
+ * (`flow-seeder.ts`), since the shapes are produced by different walks.
  */
 export function driftedFieldParts(item: AppliedItem, id: EARS.EntityId): string[] {
   const live = fieldParts(id, Object.keys(item.parts));
@@ -88,63 +77,24 @@ export function childSeedKey(parentKey: string, record: SeedRecord, identity: re
 export const seedKeyPrefix = (packId: string) => `${packId}:`;
 
 /**
- * Records that this run's content defines `key` (`SeedKeyRecord`, `@abuddy/sdk/utils`).
+ * Records that this run's content declares `key` (`ApplyRecord.defined`, `@abuddy/sdk/utils`).
  *
- * Every seeder does this for every record it reaches, whatever the outcome was: the record is what this
- * pack's content defines, not what it created, so a key skipped as edited or as removed stays in it. The one
- * row not to claim is a container another seed owns — this run did not define it, and claiming it would
- * make that pack's row disappearing read as the user deleting ours.
+ * Every writer does this for every item it reaches, whatever the outcome: the item is what this pack's
+ * content declares, not what it wrote, so a key skipped as the user's or as deleted stays in it. That is
+ * what makes the removals computable — a key the last apply wrote and this one never declared is one the
+ * pack dropped. The one entity not to claim is a container another item owns: this run did not declare it,
+ * and claiming it would make that pack's entity disappearing read as the user deleting ours.
  */
-export const defineSeedKey = (ctx: ImportContext, key: string): void => { ctx.keyRecord?.defined.add(key); };
+export const defineKey = (ctx: ImportContext, key: string): void => { ctx.applied?.defined.add(key); };
 
 /**
- * Records what this run wrote for one item (`ImportContext.applied`).
+ * Records what this run wrote for one item (`ApplyRecord.written`).
  *
  * **Only for an item the run actually wrote.** An item it skipped keeps whatever the last run recorded, and
- * carrying that forward is the caller's — so this is not the counterpart of `defineSeedKey`, which fires for
- * every key the content defines whatever the outcome.
+ * carrying that forward is the caller's — so this is not the counterpart of `defineKey`, which fires for
+ * every key the content declares whatever the outcome.
  */
-export const recordApplied = (ctx: ImportContext, key: string, item: AppliedItem): void => { ctx.applied?.set(key, item); };
-
-/**
- * **Did the user delete the row this key names?** Asked where a seeder found no row: a key the last run
- * defined with nothing behind it now can only be a row that was created and then deleted.
- *
- * It is the second of two records, and the only one a row destroyed rather than trashed leaves. A trashed
- * row still carries its seed key, so a seeder finds it and leaves it alone without asking this. A destroyed
- * row leaves nothing, so what answers is the memory of the key.
- *
- * `wipe-and-replace` is exempt by name: it removed the rows itself a moment ago, so every key would answer
- * yes. An import carrying no record is exempt by having none — asking for a pack's data back is asking for
- * the rows to come back.
- */
-export const removedByUser = (ctx: ImportContext, key: string): boolean =>
-  ctx.mode !== 'wipe-and-replace' && (ctx.keyRecord?.before.has(key) ?? false);
-
-/** Records the row's values for the seeded fields, so a later seed can tell whether anything else changed them */
-function stampSeededFields(id: EARS.EntityId, fields: string[]): void {
-  untypedTx(id).update(SEEDED_FIELDS, { fields, hash: hashStoredFields(id, fields) } satisfies SeededFields);
-}
-
-/** The row's seeded fields still hold what the seeder wrote */
-function holdsSeededValues(id: EARS.EntityId, seeded: SeededFields): boolean {
-  return hashStoredFields(id, seeded.fields) === seeded.hash;
-}
-
-/**
- * Marks a row seeded before the seeder recorded what it wrote as unedited, so the next seed of changed
- * data updates it once more instead of skipping it as edited. A migration calls this for rows that still
- * carry a `sourceHash`; without it every row seeded by an older version stays frozen for good.
- *
- * It records an empty field list, which reads back as unedited whatever the row now holds: the values
- * the old seeder wrote weren't recorded, so there is nothing to compare against. That makes the next
- * update overwrite an edit the user made before this ran — and it clears no fields, since none are
- * recorded as seeded. The update re-stamps the row with its real fields, and edits are honoured from
- * then on.
- */
-export function markSeededRowUnedited(id: EARS.EntityId): void {
-  untypedTx(id).update(SEEDED_FIELDS, { fields: [], hash: hashValues([]) } satisfies SeededFields);
-}
+export const recordApplied = (ctx: ImportContext, key: string, item: AppliedItem): void => { ctx.applied?.written.set(key, item); };
 
 /**
  * Seeds `<key>.seed.json` records: finds each record's existing row, creates, updates or skips it,
@@ -246,50 +196,54 @@ export function createSeeder(options: SeederOptions): Seeder {
         else ears().updateEntity(id, { ...fieldsOf(record), ...Object.fromEntries(context.clearedFields.map((field) => [field, null])) });
       };
 
-      /** Hooks' repository commands may not store sourceHash; change tracking needs it, the seeded values and the seed key */
+      /** Hooks' repository commands may not store sourceHash; the merge needs it, the parts and the key */
       const stamp = (id: EARS.EntityId, record: SeedRecord, seedKey: string) => {
         if (record.sourceHash && ears().getAttr(id, SOURCE_HASH) !== record.sourceHash) untypedTx(id).update(SOURCE_HASH, record.sourceHash);
-        const fields = seededFieldNames(record);
-        stampSeededFields(id, fields);
         untypedTx(id).update(SEED_KEY, seedKey);
         // The one place the entity, the record and the fields just written are all in hand, so the one place
         // a per-part record of them can be taken
-        recordApplied(ctx, seedKey, { entityType: record.entity, sourceHash: record.sourceHash, parts: fieldParts(id, fields) });
+        recordApplied(ctx, seedKey, {
+          entityType: record.entity,
+          sourceHash: record.sourceHash,
+          parts: fieldParts(id, trackedFieldNames(record)),
+        });
       };
 
       /**
-       * Updates a row to the record, resetting the fields its previous seed set that the record no
-       * longer sets. EARS writes can't be rolled back, so when the update throws part way, the row keeps
-       * its previous sourceHash and seeded fields, stamped with what they hold now: it isn't taken for
-       * edited, the next seed updates it again, and a field the record newly sets isn't recorded as
-       * seeded while it holds a user's value.
+       * Updates an entity to the record, resetting the fields the last apply set that the record no longer
+       * sets. EARS writes can't be rolled back, so when the update throws part way, the entity keeps its
+       * previous `sourceHash` and its entry is re-taken over the fields that entry named: it isn't read as
+       * the user's edit, the next apply updates it again, and a field the record newly sets isn't recorded
+       * as ours while it holds a user's value.
+       *
+       * **An item with no entry is one we are adopting**, so there is no previous field list: nothing is
+       * cleared, and a failed update records nothing rather than recording an empty item — leaving it
+       * unrecorded is what makes the next apply adopt it again rather than read it as a deletion.
        */
-      const updateTracked = (existing: SeedHookMatch, seeded: SeededFields, record: SeedRecord, context: SeedHookContext, seedKey: string, hooks?: SeedHooks) => {
-        const recordFields = new Set(seededFieldNames(record));
-        const clearedFields = seeded.fields.filter((field) => !recordFields.has(field));
+      const updateTracked = (existing: SeedHookMatch, applied: AppliedItem | undefined, record: SeedRecord, context: SeedHookContext, seedKey: string, hooks?: SeedHooks) => {
+        const recordFields = new Set(trackedFieldNames(record));
+        const wrote = Object.keys(applied?.parts ?? {});
+        const clearedFields = wrote.filter((field) => !recordFields.has(field));
         try {
           update(existing.id, restoreMedia(record, existing.id, mediaDir, ctx.log).record, { ...context, clearedFields }, hooks);
         } catch (err) {
           untypedTx(existing.id).update(SOURCE_HASH, existing.sourceHash);
-          stampSeededFields(existing.id, seeded.fields);
-          // Both accounts of what we wrote are re-taken from what the entity holds now, over the *previous*
-          // field list. An update that got part way leaves a mix of old and new values, and re-taking only the
-          // digest would leave the parts describing the values from before it — which the next apply would
-          // read as the user's edit
-          recordApplied(ctx, seedKey, {
-            entityType: record.entity,
-            ...(typeof existing.sourceHash === 'string' && { sourceHash: existing.sourceHash }),
-            parts: fieldParts(existing.id, seeded.fields),
-          });
+          if (applied) {
+            recordApplied(ctx, seedKey, {
+              entityType: record.entity,
+              ...(typeof existing.sourceHash === 'string' && { sourceHash: existing.sourceHash }),
+              parts: fieldParts(existing.id, wrote),
+            });
+          }
           throw err;
         }
         stamp(existing.id, record, seedKey);
       };
 
       /**
-       * Creates a row for the record and stamps it. A row left unstamped would be taken for a user's
-       * (untracked) forever, so when copying its media or stamping it throws, the row is removed and the
-       * next seed creates it again.
+       * Creates an entity for the record and stamps it. One left unstamped would be read as the user's
+       * forever, so when copying its media or stamping it throws, the entity is removed and the next apply
+       * creates it again.
        */
       const createTracked = (record: SeedRecord, context: SeedHookContext, seedKey: string, hooks?: SeedHooks): EARS.EntityId => {
         const id = create(record, context, hooks);
@@ -310,10 +264,31 @@ export function createSeeder(options: SeederOptions): Seeder {
            * where this is a no-op. The edit that makes it fire is a statement added after `stamp`, or a
            * `remove` hook that throws; mutate it by moving `stamp` one line earlier.
            */
-          ctx.applied?.delete(seedKey);
+          ctx.applied?.written.delete(seedKey);
           throw err;
         }
         return id;
+      };
+
+      const remove = (id: EARS.EntityId, hooks?: SeedHooks) => {
+        if (hooks?.remove) hooks.remove(id);
+        else destroyEntity(id);
+      };
+
+      /**
+       * Declares every key under these items without doing anything else.
+       *
+       * **A key the walk did not reach is still a key the content declares**, and conflating the two is what
+       * makes the removal pass wrong: the walk stops at an item it is leaving alone (the mode says to keep
+       * what is there, or the user deleted it), and its children would then read as content the pack had
+       * dropped and be removed — the subtree the walk was being careful of.
+       */
+      const declare = (items: SeedRecord[] | undefined, parentKey: string) => {
+        for (const record of items ?? []) {
+          const seedKey = childSeedKey(parentKey, record, identity);
+          defineKey(ctx, seedKey);
+          declare(record.children, seedKey);
+        }
       };
 
       const visit = (items: SeedRecord[], parentId: EARS.EntityId | undefined, parentKey: string) => {
@@ -324,75 +299,169 @@ export function createSeeder(options: SeederOptions): Seeder {
           const seedKey = childSeedKey(parentKey, record, identity);
           try {
             const { match: existing, reused, deleted } = find(record, seedKey, context, hooks);
-            if (!reused) defineSeedKey(ctx, seedKey);
-            if (existing) {
-              /**
-               * **The user removed it, which settles every other question — so this comes first.** A row
-               * carrying this record's seed key and marked deleted is one the seed created and the user threw
-               * away; recreating it is the one outcome nobody wants, and it is what happened until the lookup
-               * above could see it. It joins the three outcomes beside it — untracked, unchanged, edited — all
-               * of which are the same idea: leave what the user has taken ownership of.
-               *
-               * **And its children are not visited.** They would be created under a deleted parent, since
-               * that is what `context.parentId` would carry. `wipe-and-replace` never reaches here: `wipe`
-               * removed the rows first, the deleted ones with them, which is what that mode means.
-               */
-              if (deleted) {
-                counts.skipped++;
-                ctx.log(`  ${key} skipped (deleted): ${label}`);
-                return;
-              }
-              // A container another record seeded stays that record's: it isn't updated, stamped or re-keyed,
-              // and its children are seeded in every mode (keep-existing skips only the ones that exist)
-              if (reused) {
-                counts.skipped++;
-                ctx.log(`  ${key} skipped (another seed's container): ${label}`);
-                if (record.children) visit(record.children, existing.id, seedKey);
-                return;
-              }
-              if (ctx.mode === 'keep-existing') {
-                counts.skipped++;
-                ctx.log(`  ${key} skipped (existing): ${label}`);
-                return;
-              }
-              const seeded = ears().getAttr(existing.id, SEEDED_FIELDS) as SeededFields | null;
-              if (!existing.sourceHash) {
-                counts.skipped++;
-                ctx.log(`  ${key} skipped (untracked): ${label}`);
-              } else if (existing.sourceHash === record.sourceHash) {
-                counts.skipped++;
-                ctx.log(`  ${key} skipped: ${label}`);
-              } else if (!seeded || !holdsSeededValues(existing.id, seeded)) {
-                counts.skipped++;
-                ctx.log(`  ${key} skipped (edited): ${label}`);
-              } else {
-                updateTracked(existing, seeded, record, context, seedKey, hooks);
-                counts.updated++;
-                ctx.log(`  ${key} updated: ${label}`);
-              }
-              if (record.children) visit(record.children, existing.id, seedKey);
+            if (!reused) defineKey(ctx, seedKey);
+            const applied = ctx.applied?.before.get(seedKey);
+            const live: LiveEntity | undefined = existing && {
+              sourceHash: existing.sourceHash,
+              ...(deleted === true && { trashed: true }),
+              ...(reused === true && { foreignContainer: true }),
+            };
+            const { resolution, parts } = resolve({
+              applied,
+              ...(record.sourceHash !== undefined && { incoming: record.sourceHash }),
+              ...(live !== undefined && { live }),
+              ...(ctx.mode !== undefined && { mode: ctx.mode }),
+              drifted: () => (applied && existing ? driftedFieldParts(applied, existing.id) : []),
+            });
+
+            if (resolution === 'create') {
+              const id = createTracked(record, context, seedKey, hooks);
+              counts.created++;
+              ctx.log(`  ${key} created: ${label}`);
+              if (record.children) visit(record.children, id, seedKey);
               return;
             }
-            // Same verdict as the deleted branch above, from the other record, so the children are not
-            // visited either: they would be created with no parent
-            if (removedByUser(ctx, seedKey)) {
+
+            /**
+             * **The user removed it, which settles every other question.** An entity carrying this item's key
+             * and marked deleted is one we created and the user threw away, and a key the last apply wrote
+             * with no entity behind it now is one they destroyed outright. Recreating either is the one
+             * outcome nobody wants.
+             *
+             * **Its children are not visited either way**, since they would be created under a parent that is
+             * deleted or gone. `wipe-and-replace` never reaches here: `wipe` removed the entities first, the
+             * deleted ones with them, which is what that mode means.
+             */
+            if (resolution === 'absent-by-deletion') {
               counts.skipped++;
-              ctx.log(`  ${key} skipped (removed): ${label}`);
+              declare(record.children, seedKey);
+              ctx.log(`  ${key} skipped (${existing ? 'deleted' : 'removed'}): ${label}`);
               return;
             }
-            const id = createTracked(record, context, seedKey, hooks);
-            counts.created++;
-            ctx.log(`  ${key} created: ${label}`);
-            if (record.children) visit(record.children, id, seedKey);
+            // The mode says to leave whatever is there alone, which includes its subtree
+            if (resolution === 'kept') {
+              counts.skipped++;
+              declare(record.children, seedKey);
+              ctx.log(`  ${key} skipped (existing): ${label}`);
+              return;
+            }
+
+            if (resolution === 'fast-forward') {
+              updateTracked(existing!, applied, record, context, seedKey, hooks);
+              counts.updated++;
+              ctx.log(`  ${key} updated: ${label}`);
+            } else {
+              counts.skipped++;
+              if (resolution === 'conflict') {
+                ctx.applied?.conflicts.set(seedKey, parts ?? []);
+                ctx.log(`  ${key} skipped (edited: ${(parts ?? []).join(', ')}): ${label}`);
+              } else if (resolution === 'user-owned') {
+                ctx.log(`  ${key} skipped (untracked): ${label}`);
+              } else if (resolution === 'foreign-container') {
+                // A container another item wrote stays that item's: it isn't updated, stamped or re-keyed,
+                // and its children are written under it in every mode
+                ctx.log(`  ${key} skipped (another item's container): ${label}`);
+              } else {
+                ctx.log(`  ${key} skipped: ${label}`);
+              }
+            }
+            if (record.children) visit(record.children, existing!.id, seedKey);
           } catch (err) {
             const message = errorMessage(err);
             errors.push(`${record.entity ?? key} "${label}": ${message}`);
             counts.skipped++;
+            // The walk stopped here, so nothing below it was reached — but the content still declares it
+            declare(record.children, seedKey);
           }
         });
       };
 
+      /** The entity one of this entry's keys names, found as a later apply finds one */
+      const entityOf = (item: AppliedItem, itemKey: string) => item.entityType
+        ? qx(item.entityType as EARS.Entity).where(SEED_KEY as string, itemKey)
+          .pickAll()[0] as { id: EARS.EntityId; sourceHash?: string; deleted?: boolean } | undefined
+        : undefined;
+
+      /**
+       * A container holding entities this entry did not write — another pack's documents filed under a shared
+       * folder, or the user's. Removing the folder would take their content with it, and it is not ours to
+       * remove.
+       */
+      const holdsOthers = (id: EARS.EntityId, prefix: string): boolean =>
+        findRelations({ sourceEntity: id }).some((relation) => {
+          const childKey = ears().getAttr(relation.targetEntity as EARS.EntityId, SEED_KEY) as string | null;
+          return childKey === null || !childKey.startsWith(prefix);
+        });
+
+      /**
+       * The items this entry wrote that its content no longer declares: removed while they are still ours,
+       * kept and flagged once the user has edited one.
+       *
+       * **A content key whose file did not load contributes none**, which is structural rather than checked:
+       * `apply` returns above before reaching this, so a key that said nothing is never diffed against. A
+       * partial selection is excluded for the same reason — `defined` then holds only what was selected, so
+       * every unselected item would read as dropped. And an import carries no record at all, so asking for a
+       * pack's data back never removes anything.
+       */
+      const removals = () => {
+        const record = ctx.applied;
+        if (!record || !shouldImportAll(ctx.include)) return;
+        const prefix = `${seedKeyPrefix(packId)}${key}/`;
+        // A parent's key is a prefix of its children's, so sorted is parents first
+        const gone = [...record.before.keys()].filter((k) => k.startsWith(prefix) && !record.defined.has(k)).sort();
+        const verdicts = gone.map((itemKey) => {
+          const item = record.before.get(itemKey)!;
+          const entity = entityOf(item, itemKey);
+          const hooks = item.entityType ? _seedHookRegistry.get(item.entityType) : undefined;
+          const live: LiveEntity | undefined = entity && entity.deleted !== true
+            ? {
+              sourceHash: entity.sourceHash,
+              ...(hooks?.container === true && holdsOthers(entity.id, prefix) && { foreignContainer: true }),
+            }
+            : undefined;
+          return {
+            itemKey,
+            item,
+            hooks,
+            ...resolveRemoval({
+              applied: item,
+              ...(live !== undefined && { live }),
+              drifted: () => (entity ? driftedFieldParts(item, entity.id) : []),
+            }),
+          };
+        });
+        // Removal follows the parent chain, so keeping a child keeps the parents that hold it
+        const keptUnder = (itemKey: string) => verdicts.some((v) => v.resolution !== 'remove' && v.itemKey.startsWith(`${itemKey}/`));
+        for (const verdict of verdicts) {
+          if (verdict.resolution === 'removed-but-edited') {
+            record.flagged.set(verdict.itemKey, verdict.parts ?? []);
+            ctx.log(`  ${key} kept (dropped from the content, and edited): ${verdict.itemKey}`);
+            continue;
+          }
+          if (verdict.resolution === 'foreign-container') {
+            ctx.log(`  ${key} kept (dropped from the content, and holds another item's): ${verdict.itemKey}`);
+            continue;
+          }
+          if (keptUnder(verdict.itemKey)) {
+            ctx.log(`  ${key} kept (dropped from the content, and holds an item the user edited): ${verdict.itemKey}`);
+            continue;
+          }
+          try {
+            // Resolved again: removing a parent may already have removed this one
+            const entity = entityOf(verdict.item, verdict.itemKey);
+            // An entity the user has already thrown away is theirs to restore, so only the entry goes:
+            // destroying the trashed copy would take the undo with it
+            if (entity && entity.deleted !== true) remove(entity.id, verdict.hooks);
+            record.removed.add(verdict.itemKey);
+            ctx.log(`  ${key} removed (dropped from the content): ${verdict.itemKey}`);
+          } catch (err) {
+            errors.push(`${verdict.item.entityType ?? key} "${verdict.itemKey}": ${errorMessage(err)}`);
+          }
+        }
+      };
+
       visit(records, undefined, `${seedKeyPrefix(packId)}${key}`);
+      removals();
       if (errors.length > 0) counts.errors = errors;
       return counts;
     },

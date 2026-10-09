@@ -31,7 +31,7 @@ export {
 export {
   importCompiledSeeds,
   loadJSON, shouldImportAll, filterByInclude,
-  registeredSeedKeys,
+  registeredSeedKeys, applyRecord,
 } from './seed.ts';
-export type { ImportCounts, SeedIncludeSet, ImportMode, ImportContext, SeedKeyRecord, AppliedItem, Seeder } from './seed.ts';
+export type { ImportCounts, SeedIncludeSet, ImportMode, ImportContext, AppliedItem, ApplyRecord, Seeder } from './seed.ts';
 

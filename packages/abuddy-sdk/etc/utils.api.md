@@ -33,6 +33,23 @@ export interface AppliedItem {
 }
 
 // @public
+export interface ApplyRecord {
+    before: ReadonlyMap<string, AppliedItem>;
+    // (undocumented)
+    conflicts: Map<string, string[]>;
+    defined: Set<string>;
+    // (undocumented)
+    flagged: Map<string, string[]>;
+    // (undocumented)
+    removed: Set<string>;
+    // (undocumented)
+    written: Map<string, AppliedItem>;
+}
+
+// @public
+export function applyRecord(before?: ReadonlyMap<string, AppliedItem>): ApplyRecord;
+
+// @public
 export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 
 // @public (undocumented)
@@ -163,20 +180,17 @@ export function importCompiledSeeds(options: {
     compiledDir: string;
     include?: Record<string, SeedIncludeSet | undefined>;
     mode?: ImportMode;
-    keyRecord?: SeedKeyRecord;
-    applied?: Map<string, AppliedItem>;
+    applied?: ApplyRecord;
     verbose?: boolean;
 }): Record<string, ImportCounts>;
 
 // @public (undocumented)
 export interface ImportContext {
-    applied?: Map<string, AppliedItem>;
+    applied?: ApplyRecord;
     // (undocumented)
     compiledDir: string;
     // (undocumented)
     include?: SeedIncludeSet;
-    // (undocumented)
-    keyRecord?: SeedKeyRecord;
     // (undocumented)
     log: (...args: unknown[]) => void;
     // (undocumented)
@@ -311,14 +325,6 @@ export interface Seeder {
 
 // @public (undocumented)
 export type SeedIncludeSet = true | ReadonlySet<string>;
-
-// @public
-export interface SeedKeyRecord {
-    // (undocumented)
-    before: ReadonlySet<string>;
-    // (undocumented)
-    defined: Set<string>;
-}
 
 // @public (undocumented)
 export function shouldImportAll(inc: SeedIncludeSet | undefined): boolean;

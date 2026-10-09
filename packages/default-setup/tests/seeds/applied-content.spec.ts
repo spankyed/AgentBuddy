@@ -1,6 +1,6 @@
-// The applied content against the two fingerprints it is meant to replace, over this pack's real compiled
-// content. Phase 1 of docs/plans/pack-content-apply.md writes that record and reads nothing from it, so this
-// is the whole of what says the model is right before anything depends on it.
+// The applied content over this pack's real compiled content: what an apply records for all of it, and what a
+// second apply then decides. This is the gate that says the merge is right about 80-odd real items, which no
+// table of constructed cases can (`abuddy-sdk/tests/seed/merge.spec.ts` is that table).
 //
 // The subject is derived from the compiled index rather than listed here: a spec that reports nothing may have
 // looked at nothing, and the index is what declares what there is to look at.
@@ -8,10 +8,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { importCompiledSeeds, type AppliedItem } from '@abuddy/sdk/utils';
+import { importCompiledSeeds, type AppliedItem, type ApplyRecord } from '@abuddy/sdk/utils';
 import { SEED_INDEX_FILE } from '@abuddy/sdk/build';
-import { untypedQx as qx, type EARS } from '@abuddy/ears';
-import { PACK_DIR, keyRecordAfter } from './harness.ts';
+import { untypedQx as qx, untypedTx, type EARS } from '@abuddy/ears';
+import { PACK_DIR, applyAfter } from './harness.ts';
 
 /** This pack's compiled seeds, as its build wrote them */
 const BUILT = path.join(PACK_DIR, 'dist', 'runtime', 'seeds');
@@ -31,6 +31,8 @@ interface Variant {
   bump?: boolean;
   /** One field of the first action, given a new value */
   change?: [field: string, value: string];
+  /** One content key emptied of its items, as a pack dropping that content would leave it */
+  drop?: string;
 }
 
 /**
@@ -50,18 +52,18 @@ function compiledDir(variant: Variant = {}): string {
   return dir;
 }
 
-function vary(file: string, body: string, { bump, change }: Variant): string {
+function vary(file: string, body: string, { bump, change, drop }: Variant): string {
   const parsed = JSON.parse(body) as { records?: Array<Record<string, unknown>> };
+  if (drop && file === `${drop}.seed.json`) return JSON.stringify({ records: [] });
   if (change && file === 'actions.seed.json' && parsed.records?.[0]) parsed.records[0][change[0]] = change[1];
   return JSON.stringify(parsed, (key, value) =>
     bump && key === 'sourceHash' && typeof value === 'string' ? `${value}-bumped` : value);
 }
 
-function apply(dir: string, before: ReadonlySet<string> = new Set()) {
-  const keyRecord = keyRecordAfter(before);
-  const applied = new Map<string, AppliedItem>();
-  const counts = importCompiledSeeds({ compiledDir: dir, mode: 'replace-on-collision', keyRecord, applied });
-  return { keyRecord, applied, counts };
+function apply(dir: string, previous?: ApplyRecord) {
+  const record = applyAfter(previous);
+  const counts = importCompiledSeeds({ compiledDir: dir, mode: 'replace-on-collision', applied: record });
+  return { record, counts };
 }
 
 /** The entity one content key names, found the way a later apply would find it */
@@ -111,55 +113,53 @@ describe('the applied content over this pack’s real content', () => {
     expect(entries.map((entry) => entry.key).sort(), 'the pack stopped seeding a key this spec covers')
       .toEqual(['actions', 'flows', 'library', 'notes', 'prompts']);
     expect(declared, 'the index declares nothing, so every case here would pass over nothing').toBeGreaterThan(50);
-    expect(first.applied.size, 'an entry per declared item').toBe(declared);
-    expect([...first.applied].filter(([, item]) => Object.keys(item.parts).length === 0), 'an entry with no parts')
+    expect(first.record.written.size, 'an entry per declared item').toBe(declared);
+    expect([...first.record.written].filter(([, item]) => Object.keys(item.parts).length === 0), 'an entry with no parts')
       .toEqual([]);
   });
 
   /**
-   * **On a first apply the two records are the same set**, built by different code in the same run: the keys
-   * the content defined (`keyRecord`, which `packSeedKeys` holds) and the items it wrote. They diverge once
-   * anything is skipped, which the re-apply case below shows.
+   * **On a first apply the two accounts are the same set**, built by different code in the same run: the keys
+   * the content declared and the items it wrote. They diverge the moment anything is skipped, which the
+   * re-apply case below shows.
    */
-  it('wrote an item for every key the content defined', () => {
-    expect(new Set(first.applied.keys())).toEqual(first.keyRecord.defined);
+  it('wrote an item for every key the content declared', () => {
+    expect(new Set(first.record.written.keys())).toEqual(first.record.defined);
   });
 
   /**
-   * **The parts cover the fields the entity's own digest covers.** Two walks — the parts off the entity per
-   * field, `seededFields.fields` off the compiled record — so their agreeing is a claim, not a restatement.
-   * Reported as one object so a failure names every item rather than the first.
+   * **A part per field, read off the entity.** The entry names fields the item's content actually has, which
+   * is a claim about the walk rather than a restatement of it: a derivation reading the wrong thing would
+   * record parts for fields the entity does not hold.
    */
-  it('covers the same fields seededFields does, for every item that has one', () => {
-    const disagree: Record<string, { parts: string[]; seededFields: string[] }> = {};
+  it('records a part per field of every entity it wrote', () => {
+    const disagree: Record<string, { parts: string[]; fields: string[] }> = {};
     let compared = 0;
-    for (const [key, item] of first.applied) {
+    for (const [key, item] of first.record.written) {
       if (isFlow(item)) continue;
       const id = entityFor(key, item);
-      const seeded = id && attr<{ fields: string[] }>(id, 'seededFields');
-      if (!id || !seeded) continue;
+      if (!id) continue;
       compared++;
-      const parts = Object.keys(item.parts).sort();
-      if (JSON.stringify(parts) !== JSON.stringify([...seeded.fields].sort())) {
-        disagree[key] = { parts, seededFields: seeded.fields };
-      }
+      const stored = Object.keys((qx([id]).pickAll()[0] ?? {}) as Record<string, unknown>);
+      const missing = Object.keys(item.parts).filter((part) => !stored.includes(part));
+      if (missing.length > 0) disagree[key] = { parts: Object.keys(item.parts).sort(), fields: stored.sort() };
     }
-    expect(compared, 'no item had a seededFields to compare against').toBeGreaterThan(50);
-    expect(disagree, "the parts cover fields seededFields doesn't, or miss ones it has").toEqual({});
+    expect(compared, 'no entity was found to compare against').toBeGreaterThan(50);
+    expect(disagree, 'a part names a field its entity does not hold').toEqual({});
   });
 
-  /** And for a flow, against the three lists `seededGraph` keeps */
-  it("covers the same nodes seededGraph does, for every flow", () => {
-    const flows = [...first.applied].filter(([, item]) => isFlow(item));
+  /** And for a flow, the three shapes its parts take: its own fields, a part per node, and the wiring */
+  it('records a flow’s own fields, each of its nodes, and its wiring', () => {
+    const flows = [...first.record.written].filter(([, item]) => isFlow(item));
     expect(flows.length, 'no flow was recorded').toBeGreaterThan(0);
 
     for (const [key, item] of flows) {
       const id = entityFor(key, item)!;
-      const graph = attr<{ nodeFields: Record<string, string[]>; relKinds: string[] }>(id, 'seededGraph')!;
-      const nodes = Object.keys(item.parts).filter((part) => part.startsWith('node:')).sort();
-      expect(nodes, `${key}'s node parts`).toEqual(Object.keys(graph.nodeFields).map((node) => `node:${node}`).sort());
+      const nodes = Object.keys(item.parts).filter((part) => part.startsWith('node:'));
+      const live = qx(id).linksTo('contains' as string, 'Node' as EARS.Entity, true).ids();
+      expect(nodes.map((part) => part.slice('node:'.length)).sort(), `${key}'s node parts`).toEqual([...live].sort());
+      expect(item.parts.fields, `${key} records its own fields`).toBeDefined();
       expect(item.parts.edges, `${key} records its wiring`).toBeDefined();
-      expect(graph.relKinds.length, `${key} wrote relations for its edges part to cover`).toBeGreaterThan(0);
     }
   });
 
@@ -169,32 +169,67 @@ describe('the applied content over this pack’s real content', () => {
    * wrong thing, or read it unstably, would show up here as a part that moved.
    */
   it('records the same parts for the same content, applied twice', () => {
-    const again = apply(compiledDir({ bump: true }), first.keyRecord.defined);
+    const again = apply(compiledDir({ bump: true }), first.record);
 
-    expect(again.applied.size, 'the bumped hashes did not cause a rewrite').toBe(first.applied.size);
-    expect(moved(first.applied, again.applied), 'a part moved for content that did not').toEqual({});
+    expect(again.record.written.size, 'the bumped hashes did not cause a rewrite').toBe(first.record.written.size);
+    expect(moved(first.record.written, again.record.written), 'a part moved for content that did not').toEqual({});
+    expect(again.record.conflicts.size, 'nothing was edited, so nothing conflicts').toBe(0);
   });
 
   /**
    * **And exactly one part moves when exactly one field's content does** — which is the whole of what the
-   * parts add over the digest on the entity, which can only say that something in the item changed.
+   * parts add over a digest over the item, which can only say that something in it changed.
    */
   it('moves one part when one field of the content changes', () => {
-    const again = apply(compiledDir({ bump: true, change: ['description', 'rewritten upstream'] }), first.keyRecord.defined);
+    const again = apply(compiledDir({ bump: true, change: ['description', 'rewritten upstream'] }), first.record);
 
-    const changes = moved(first.applied, again.applied);
+    const changes = moved(first.record.written, again.record.written);
     expect(Object.keys(changes), 'one item changed, so one item has a moved part').toHaveLength(1);
     expect(Object.values(changes)[0], 'and only the field that changed').toEqual(['description']);
   });
 
   /**
-   * **A re-apply writes only what it changed**, so the two records stop being the same set — which is why the
-   * entries of the items it skipped are the caller's to carry forward.
+   * **A re-apply writes only what it changed**, so the two accounts stop being the same set — which is why
+   * the entries of the items it skipped are the caller's to carry forward.
    */
-  it('writes only the items a re-apply touched, and defines every key regardless', () => {
-    const again = apply(compiledDir(), first.keyRecord.defined);
+  it('writes only the items a re-apply touched, and declares every key regardless', () => {
+    const again = apply(compiledDir(), first.record);
 
-    expect(again.keyRecord.defined, 'every key is defined again').toEqual(first.keyRecord.defined);
-    expect(again.applied.size, 'an unchanged apply wrote nothing').toBe(0);
+    expect(again.record.defined, 'every key is declared again').toEqual(first.record.defined);
+    expect(again.record.written.size, 'an unchanged apply wrote nothing').toBe(0);
+  });
+
+  /**
+   * **The user's edit to one field of one item is kept, and named** — and nothing else of this pack's 80-odd
+   * items is held back by it, which is the freeze the plan was written to end.
+   */
+  it('keeps the user’s edit to one item, names the part, and applies the rest', () => {
+    const [key, item] = [...first.record.written].find(([, value]) => !isFlow(value) && 'description' in value.parts)!;
+    const id = entityFor(key, item)!;
+    untypedTx(id).update('description' as string, 'mine');
+
+    const again = apply(compiledDir({ bump: true }), first.record);
+
+    expect(Object.fromEntries(again.record.conflicts), 'the edited item, and the part that differs')
+      .toEqual({ [key]: ['description'] });
+    expect(attr<string>(id, 'description'), 'the user’s value was overwritten').toBe('mine');
+    expect(again.record.written.size, 'the rest of the pack was held back by one edit')
+      .toBe(first.record.written.size - 1);
+  });
+
+  /**
+   * **Content the pack drops is removed**, which is the behaviour the record makes possible at all: before
+   * it, an item a pack stopped shipping stayed in the user's database for good.
+   */
+  it('removes an item the content no longer declares', () => {
+    const dropped = seededEntries().find((entry) => entry.key === 'prompts')!;
+    expect(dropped.count ?? 0, 'the prompts entry seeds nothing, so this removes nothing').toBeGreaterThan(0);
+
+    const again = apply(compiledDir({ bump: true, drop: 'prompts' }), first.record);
+
+    const promptKeys = [...first.record.written.keys()].filter((key) => key.includes(':prompts/'));
+    expect(promptKeys.length).toBe(dropped.count);
+    expect([...again.record.removed].sort(), 'every prompt the pack dropped').toEqual(promptKeys.sort());
+    expect(qx('Prompt' as EARS.Entity).pickAll(), 'the entities went with the content').toEqual([]);
   });
 });

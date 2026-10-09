@@ -15,22 +15,12 @@ export type SeedIncludeSet = true | ReadonlySet<string>;
 export type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace';
 
 /**
- * The seed keys a pack's content defines, across runs: what it defined when it last imported, and a set the
- * seeders fill with what it defines now. It is how a row destroyed rather than trashed is known to be the
- * user's — `removedByUser` (`seed/seeder.ts`) is the rule, and the app's `seedPacks` keeps the record.
- */
-export interface SeedKeyRecord {
-  before: ReadonlySet<string>;
-  defined: Set<string>;
-}
-
-/**
- * What one import wrote for one item: the entity type it wrote, the hash of the content it wrote it from, and
+ * What one apply wrote for one item: the entity type it wrote, the hash of the content it wrote it from, and
  * a hash per **part** — one addressable piece of the item, by path. A field's path is its name; a flow's are
  * `fields`, `node:<id>` per node, and `edges` for its wiring.
  *
- * The parts are what makes "which piece did the user touch" answerable, where the single digest on the entity
- * (`seededFields`, `seededGraph`) can only say that something in it moved.
+ * The parts are what makes "which piece did the user touch" answerable, where one digest over the whole item
+ * could only say that something in it moved.
  */
 export interface AppliedItem {
   entityType?: string;
@@ -38,19 +28,54 @@ export interface AppliedItem {
   parts: Record<string, string>;
 }
 
+/**
+ * The record one apply reads and writes: what the last one wrote, what this one wrote, and what it found.
+ *
+ * It is the whole of what makes an apply a three-way merge — `before` is the side nothing used to store, so
+ * "did the user change this" was answerable only as "did anything in it move" and "is it still here" only
+ * as "did we ever name it". A caller that keeps the record allocates this and reads it back; an apply given
+ * none records nothing and detects no removal, which is what makes the import path structurally unable to
+ * reach it (`features/packs/be/system.ts`).
+ *
+ * `before` and `defined` are the inputs, the other three what the run found:
+ *
+ * - `written` — the items it wrote. One it skipped keeps whatever `before` holds, which is the caller's to
+ *   carry forward, so this is deliberately not every item the content declares.
+ * - `removed` — items the content no longer declares whose entity it deleted. Their entries are dropped.
+ * - `flagged` — items the content no longer declares that the user has edited, with the parts that differ:
+ *   kept, because they are the user's now.
+ * - `conflicts` — items whose content moved and whose entity the user has edited, with the parts that
+ *   differ. Nothing was written for them.
+ */
+export interface ApplyRecord {
+  /** What the last apply wrote, by content key */
+  before: ReadonlyMap<string, AppliedItem>;
+  /** Every key this run's content declares, whatever the run then did about it */
+  defined: Set<string>;
+  written: Map<string, AppliedItem>;
+  removed: Set<string>;
+  flagged: Map<string, string[]>;
+  conflicts: Map<string, string[]>;
+}
+
+/** An empty record, for a caller that wants one without writing out five containers */
+export function applyRecord(before: ReadonlyMap<string, AppliedItem> = new Map()): ApplyRecord {
+  return {
+    before,
+    defined: new Set(),
+    written: new Map(),
+    removed: new Set(),
+    flagged: new Map(),
+    conflicts: new Map(),
+  };
+}
+
 export interface ImportContext {
   compiledDir: string;
   include?: SeedIncludeSet;
   mode?: ImportMode;
-  keyRecord?: SeedKeyRecord;
-  /**
-   * What this import wrote, by content key, for a caller that asked it to keep a record: it allocates the map
-   * and reads it back, as with `keyRecord`. An import given none records nothing.
-   *
-   * It holds only the items the run **wrote** — one it skipped keeps whatever the last run recorded, which is
-   * the caller's to carry forward.
-   */
-  applied?: Map<string, AppliedItem>;
+  /** The applied content, for an apply; absent for an import, which reads none and records none */
+  applied?: ApplyRecord;
   log: (...args: unknown[]) => void;
 }
 
@@ -89,8 +114,7 @@ export function importCompiledSeeds(options: {
   compiledDir: string;
   include?: Record<string, SeedIncludeSet | undefined>;
   mode?: ImportMode;
-  keyRecord?: SeedKeyRecord;
-  applied?: Map<string, AppliedItem>;
+  applied?: ApplyRecord;
   verbose?: boolean;
 }): Record<string, ImportCounts> {
   const log = options.verbose ? console.log.bind(console) : () => {};
@@ -108,7 +132,6 @@ export function importCompiledSeeds(options: {
       compiledDir: options.compiledDir,
       include: inc,
       mode: options.mode,
-      keyRecord: options.keyRecord,
       applied: options.applied,
       log,
     });

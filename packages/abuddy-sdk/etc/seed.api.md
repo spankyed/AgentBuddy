@@ -13,9 +13,6 @@ export function createFlowSeeder(): Seeder;
 export function createSeeder(options: SeederOptions): Seeder;
 
 // @public
-export function markSeededRowUnedited(id: EARS.EntityId): void;
-
-// @public
 export interface PackSeedPreviewItem {
     childCount?: number;
     // (undocumented)
