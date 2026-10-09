@@ -3,18 +3,18 @@ import { runAppMigrations, runPackMigrations } from '../../migrations/index.ts';
 import type { PackRegistry } from '../registry.ts';
 import { applyPacks } from './apply.ts';
 
-/** Each registered pack's onInit, then the app's and the installed packs' migrations, then every pack's seeds, unless the app's migrations failed */
+/** Each registered pack's onInit, then the app's and the installed packs' migrations, then every pack's content, unless the app's migrations failed */
 export function startPacks(registry: PackRegistry): void {
   for (const hooks of registry.getBootHooks()) hooks.onInit?.();
 
-  // The versions and seed hashes the packs' migrations and seeds read may only be in place once the app's migrations
+  // The versions and content revisions the packs' migrations and content read may only be in place once the app's migrations
   // ran: when one failed, nothing else runs, and the next boot retries
   if (!runAppMigrations(registry)) return;
   // `runAppMigrations` has already run the shipped packs', against the app version; `packMigrationTargets`
   // leaves them out, so neither runner repeats the other's work
   runPackMigrations(registry.packMigrationTargets());
 
-  // One call for every pack, in dependency order, so every pack gets the same treatment: a failed seed is
+  // One call for every pack, in dependency order, so every pack gets the same treatment: a failed apply is
   // retried on the next boot, and a pack sees what the packs it depends on applied in this same run
   applyPacks(registry.packContentTargets());
 }

@@ -86,7 +86,7 @@ beforeAll(async () => {
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: BUILT_IN_ID, name: 'Built-in', version: TEST_APP_VERSION, builtIn: true }));
   const registration = {
     id: BUILT_IN_ID,
-    // A boot seed: the single seed hash of 0.3.14 was this pack's
+    // A boot apply: the single seed hash of 0.3.14 was this pack's
     migrations: ['0.3.14', '0.3.16'].map((target) => ({ target, description: target, up: () => { ran.push(target); } })),
   };
   // Registered straight into the registry: what this file is about is the migration runner, and routing
@@ -189,7 +189,7 @@ describe('the 0.3.15 app migration', () => {
 
     // Dropped rather than moved, and the row is what says so: a record carried onto a new name is one a
     // later reader will find and wonder about, where these have no reader left at all
-    it('drops every record of what a pack last seeded, under each name it has had', () => {
+    it('drops every record of what a pack last applyed, under each name it has had', () => {
       writeOld();
       untypedTx(APP_STATE_ID).put('builtInSeedFingerprints', { 'default-setup': 'f0' });
       untypedTx(APP_STATE_ID).put('builtInSeedHashes', { 'default-setup': 'b0' });

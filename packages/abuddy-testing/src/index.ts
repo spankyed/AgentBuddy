@@ -180,7 +180,7 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
 
 const E2E_VIEWPORT = { width: 1400, height: 900 };
 
-/** The pack's recorded install/seed error in the test app's installed packs, if any. */
+/** The pack's recorded install or apply error in the test app's installed packs, if any. */
 function readPackLastError(packId: string, userDataDir: string): string | undefined {
   try {
     const registry = JSON.parse(fs.readFileSync(resolveAppContext({ env: 'test', userDataDir }).installedPacksFile, 'utf-8'));

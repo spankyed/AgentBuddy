@@ -129,7 +129,7 @@ export function createPacksSystem(registry: PackRegistry) {
   return setup({
     types: packsSpec.types,
     actions: packsSpec.actions({
-    // Both answer the settings plugin, which is where the seed UI is drawn. The work is this system's; the
+    // Both answer the settings plugin, which is where the content UI is drawn. The work is this system's; the
     // view is not, and a system sends whichever plugin's inbox declares the event.
     previewPackContent: ({ event }) => {
       const ev = packsSpec.typeOf('PREVIEW_PACK_CONTENT', event);
@@ -160,10 +160,10 @@ export function createPacksSystem(registry: PackRegistry) {
         const record = applyRecord();
         const result = importCompiledContent({ compiledDir: ev.directory, include, mode: ev.mode, applied: record, verbose: true });
         appliedContent.record(packId, { wrote: record.written });
-        // Appliers report records they couldn't seed in their counts rather than throwing
+        // Appliers report records they couldn't write in their counts rather than throwing
         const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
         broadcastToPlugin('settings', { type: 'PACK_CONTENT_IMPORTED', result, errors });
-        // The running systems read what the seeds changed (the chat's slash commands, the library's documents)
+        // The running systems read what the apply changed (the chat's slash commands, the library's documents)
         sendToSystem('bus', { type: 'PACK_CHANGED', packId });
         if (ev.restartBrain) sendToSystem({ role: 'brain' }, { type: 'RESTART_BRAIN' });
       } catch (err) {

@@ -141,7 +141,7 @@ export interface ContentApplier {
   apply(ctx: ApplyContext): ApplyResult;
 }
 
-/** The content keys a registered pack has appliers for (its registration's `appliers`): the only keys an import of its seeds can touch */
+/** The content keys a registered pack has appliers for (its registration's `appliers`): the only keys an import of its content can touch */
 export function registeredContentKeys(packId: string): string[] {
   return boundHost().packs.appliers(packId).map((applier) => applier.key);
 }
@@ -150,18 +150,18 @@ export function registeredContentKeys(packId: string): string[] {
 export const CONTENT_INDEX_FILE = 'content.json';
 
 /**
- * The pack that compiled a seeds directory, from its content.json. Seed keys start with it, so two
- * packs' records with the same entry key and identity seed a row each.
+ * The pack that compiled a content directory, from its content.json. Seed keys start with it, so two
+ * packs' records with the same entry key and identity write an entity each.
  */
 export function contentPackId(compiledDir: string): string {
   const indexFile = path.join(compiledDir, CONTENT_INDEX_FILE);
   return indexPackId(loadJSON<{ packId?: string }>(indexFile), indexFile);
 }
 
-/** The pack a parsed seeds index names; an index from before packs were recorded names none */
+/** The pack a parsed content index names; an index from before packs were recorded names none */
 export function indexPackId(index: { packId?: string } | null, indexFile: string): string {
   if (!index?.packId) {
-    throw new Error(`${indexFile} doesn't name the pack that compiled these seeds: rebuild the pack with abuddy build`);
+    throw new Error(`${indexFile} doesn't name the pack that compiled this content: rebuild the pack with abuddy build`);
   }
   return index.packId;
 }
@@ -217,7 +217,7 @@ export function loadJSON<T>(filePath: string): T | null {
   try {
     return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as T;
   } catch (err) {
-    console.warn(`[seed] Failed to parse ${path.basename(filePath)}:`, (err as Error).message);
+    console.warn(`[content] Failed to parse ${path.basename(filePath)}:`, (err as Error).message);
     return null;
   }
 }

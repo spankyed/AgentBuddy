@@ -104,7 +104,7 @@ describe('activating and tearing down a pack at runtime', () => {
   const PACK_ID = 'activate-pack';
   const bus = { send: vi.fn() };
 
-  /** Installs a pack with one system that declares a slash command in its manifest, a 1.0.0 migration and seeds */
+  /** Installs a pack with one system that declares a slash command in its manifest, a 1.0.0 migration and content */
   async function install() {
     const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
     const sourceDir = path.join(tmpDir, PACK_ID);
@@ -124,7 +124,7 @@ describe('activating and tearing down a pack at runtime', () => {
         + "migrations: [{ target: '1.0.0', description: 'memos', up: () => { globalThis.activatePackRuns.push('migration'); } }]",
       {
         'runtime/content/memos.content.json': '[]',
-        'runtime/content/content.json': JSON.stringify({ version: 1, packId: PACK_ID, seeds: [] }),
+        'runtime/content/content.json': JSON.stringify({ version: 1, packId: PACK_ID, entries: [] }),
       },
     );
     await installPackFromLocal(sourceDir, packsDir());
@@ -155,7 +155,7 @@ describe('activating and tearing down a pack at runtime', () => {
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
   });
 
-  it('runs its migrations, then its seeds, as a boot does, and neither again when it activates unchanged', async () => {
+  it('runs its migrations, then its content, as a boot does, and neither again when it activates unchanged', async () => {
     await install();
     const { activatePack, teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
 
@@ -178,7 +178,7 @@ describe('activating and tearing down a pack at runtime', () => {
     activatePack(registry, PACK_ID, bus as never);
     const compiledDir = path.join(tmpDir, 'compiled-seeds');
     fs.mkdirSync(compiledDir);
-    fs.writeFileSync(path.join(compiledDir, 'content.json'), JSON.stringify({ version: 1, packId: PACK_ID, seeds: [] }));
+    fs.writeFileSync(path.join(compiledDir, 'content.json'), JSON.stringify({ version: 1, packId: PACK_ID, entries: [] }));
     expect(Object.keys(importCompiledContent({ compiledDir }))).toEqual(['memos']);
     bus.send.mockReset();
 

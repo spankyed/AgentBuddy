@@ -31,9 +31,9 @@ describe('core/seed — appliers', () => {
     const os = await import('os');
     const path = await import('path');
 
-    // A compiled content directory of default-setup's with no seed files: every applier runs and finds nothing
+    // A compiled content directory of default-setup's with no content files: every applier runs and finds nothing
     const compiledDir = fs.mkdtempSync(path.join(os.tmpdir(), 'default-setup-seeds-'));
-    fs.writeFileSync(path.join(compiledDir, 'content.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
+    fs.writeFileSync(path.join(compiledDir, 'content.json'), JSON.stringify({ version: 1, packId: 'default-setup', entries: [] }));
     const result = importCompiledContent({ compiledDir });
     fs.rmSync(compiledDir, { recursive: true, force: true });
 

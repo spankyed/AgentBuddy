@@ -1,4 +1,4 @@
-// Settings → Import Pack Content end to end: a seeds directory compiled from default-setup's own seed
+// Settings → Import Pack Content end to end: a content directory compiled from default-setup's own seed
 // entries (a notes markdown tree and the library compiler module), previewed from its content.json,
 // imported with an item deselected, then imported again in keep-existing mode. The imported document's image,
 // which the API copies into its media folder, loads through main's media:// protocol.
@@ -31,7 +31,7 @@ function write(file: string, content: string): void {
   fs.writeFileSync(file, content);
 }
 
-/** Compiles default-setup's notes and library entries over fresh sources into a seeds directory */
+/** Compiles default-setup's notes and library entries over fresh sources into a content directory */
 async function compileSeeds(work: string): Promise<string> {
   write(path.join(work, 'notes/e2e-plan/index.md'), `---\ntitle: E2E Plan ${RUN}\ntype: tasklist\n---\nThe plan.\n`);
   write(path.join(work, 'notes/e2e-plan/first-step.md'), `---\ntitle: E2E Step ${RUN}\ntype: task\n---\nDo it.\n`);

@@ -1,6 +1,6 @@
 // An action's body and a prompt's template are compiled by esbuild at build time (`compileSourceDir`), stored on the
 // record as `actionFn`/`templateFn`, and run by the app. A body that compiled to nothing, or to something that
-// doesn't parse, is silent: the seed imports, the row looks right, and the action fails when a flow reaches it.
+// doesn't parse, is silent: the content imports, the row looks right, and the action fails when a flow reaches it.
 //
 // The seed-parity golden used to cover this by accident, digesting the whole row — which also meant every edit to
 // any source moved 75 rows, so it fired constantly on changes that were fine. This checks the property that edit

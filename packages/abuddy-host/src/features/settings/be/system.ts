@@ -95,7 +95,7 @@ export const settingsSystem = setup({
       });
       return services.settings.onChange(tell);
     }),
-    // The host resets the whole app: stores, each pack's onInit and boot seed, migrations
+    // The host resets the whole app: stores, each pack's onInit and boot apply, migrations
     resetAppActor: fromPromise(() => services.appData.reset()),
   },
   actions: settingsSpec.actions({

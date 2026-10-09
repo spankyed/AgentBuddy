@@ -11,19 +11,19 @@ import { describeContentKey } from '@abuddy/sdk/content';
 import type { ContentOffer } from '@abuddy/sdk/utils';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
-const logger = createLogger('pack-seed');
+const logger = createLogger('pack-content');
 
 /**
  * What a pack's compiled content is: their bytes, and the names of the files holding them. **Content only.**
  *
- * The names as well as the bytes, so a seed moved between files, added or dropped counts — the same reason
+ * The names as well as the bytes, so a content file moved between files, added or dropped counts — the same reason
  * `fingerprintUnit` hashes a unit's declared paths beside its contents.
  *
  * **File times are deliberately not in here, and used to be.** `placePack` copies into a fresh directory and
  * renames it over the old one, so every install leaves new files whatever they contain; hashing their mtimes
  * made a reinstall of the identical pack look like changed data, which was the point — reinstalling was how
  * you got a pack's data put back. It also made a `touch` re-apply, and made every `abuddy run` backend rebuild
- * re-import every seed, since that loop reinstalls. Content is what "changed" means here, as it does
+ * re-import every item, since that loop reinstalls. Content is what "changed" means here, as it does
  * everywhere else in this repo that compares a tree against a record.
  *
  * Putting a pack's data back on purpose is `IMPORT_PACK_CONTENT` (`features/packs/be/types.ts`), which Settings
@@ -56,7 +56,7 @@ function applyErrors(result: Record<string, { errors?: string[] }> | undefined):
  *
  * The manifest fields are `Pick`ed from `PackManifest` rather than restated, so this can't drift from what
  * a manifest actually holds — `dependencies` is optional here because a pack with none declares none, not
- * because a caller may leave it out. It is what the retry rule reads: a seed that failed is run again once
+ * because a caller may leave it out. It is what the retry rule reads: an apply that failed is run again once
  * one of these has applied.
  */
 export interface PackContentTarget {
@@ -108,17 +108,17 @@ function reportOffers(packId: string, offers: ReadonlyMap<string, ContentOffer>)
 }
 
 /**
- * Seed the packs whose seed could have a different outcome than last time: their compiled data changed, or
+ * Apply the packs whose apply could have a different outcome than last time: their compiled data changed, or
  * their last apply failed and something they depend on has applied since. `packs` arrives in dependency order
  * (`packContentOrder`), so a pack sees what the packs it depends on applied in this same run.
  *
- * **Every pack, by one rule**, whoever ships it: one hash over the files in its seeds directory, one record
+ * **Every pack, by one rule**, whoever ships it: one hash over the files in its content directory, one record
  * (`appliedContent`) and one retry rule. Which
  * directory that is follows from where the pack lives, so a pack does not tell the host
  * where its compiled data is — the host knows, because it is the host that put the pack there.
  *
- * A pack whose seed reports errors (an invalid flow, say) is a failed seed: the error is recorded as the
- * installed-packs entry's `lastError`, and its revision is recorded like a successful seed's, so the same
+ * A pack whose apply reports errors (an invalid flow, say) is a failed apply: the error is recorded as the
+ * installed-packs entry's `lastError`, and its revision is recorded like a successful apply's, so the same
  * failing data isn't re-imported on every boot. What is stored alongside it is the state its dependencies were in,
  * so the retry happens when that changes rather than never.
  */

@@ -14,7 +14,7 @@
  * What the two share is the discipline, not the code: `undefined` means no evidence and never `[]`, and the
  * self-check runs inside the reader so no caller has to remember it.
  *
- * **It covers the bundling phases and not the step.** Codegen, the tsx-loaded seed compilation, the feature
+ * **It covers the bundling phases and not the step.** Codegen, the tsx-loaded content compilation, the feature
  * settings load and the static pack rules have no tool to ask, so they are absent from the record rather
  * than reported empty, and the step stays on `dep-files.integration.spec.ts`' list of what nothing verifies
  * per-step. A step reading as verified over part of its work is worse than one honestly listed.

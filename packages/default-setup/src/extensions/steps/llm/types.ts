@@ -8,7 +8,7 @@ import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
  *
  * The step runs: its handler is covered by `tests/extensions/steps/llm/step.spec.ts` and the editor offers it
  * in the palette. What is unsettled is how a flow *author* names one. As of this writing the `llm()` helper has
- * no call site anywhere in the repo — no seed flow, no spec, no doc example — so every field below is a design
+ * no call site anywhere in the repo — no content flow, no spec, no doc example — so every field below is a design
  * proposal that nothing has exercised end to end, and the shape may change without a migration being owed.
  *
  * Prefer `action()` with a prompt-running action until that settles. Reach for this and you are the first, so

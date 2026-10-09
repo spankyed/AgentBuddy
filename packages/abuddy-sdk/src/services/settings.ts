@@ -66,7 +66,7 @@ export interface SettingsService {
   /**
    * Calls `listener` on each change to the stored settings, whoever made it, and returns the unsubscribe. `written`
    * for a write; `replacing` and `replaced` bracket a wholesale replacement. Whoever tells features their settings
-   * changed listens here, so a write made anywhere — a system, an action, a seed — reaches them.
+   * changed listens here, so a write made anywhere — a system, an action, an apply — reaches them.
    */
   onChange(listener: (change: SettingsChange) => void): () => void;
 }

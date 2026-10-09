@@ -117,7 +117,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
 
       /**
        * The flow written from this DSL entry, however it's been renamed; otherwise a flow without a content key
-       * that has its label (a user's flow), so a seed never adds a copy beside it.
+       * that has its label (a user's flow), so an apply never adds a copy beside it.
        */
       const lookupWritten = (flows: FlowEntity[], name: string): FlowEntity | undefined => {
         const contentKey = flowContentKey(packId, name);
@@ -131,7 +131,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
       /**
        * Who owns the flow a DSL entry would overwrite: flow and node ids derive from the flow's name, so
        * another pack's flow with that name, or a user's flow with those ids, would be written over. The
-       * flow this seed replaces isn't a collision.
+       * flow this apply replaces isn't a collision.
        */
       const collidingOwner = (name: string, entry: FlowDSL[string], replacing: FlowEntity | undefined): string | undefined => {
         const ownIds = new Set<string>(replacing
@@ -172,7 +172,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
         if (!validation.valid) {
           const msgs = validation.errors.map((e: any) => `${e.path}: ${e.message}`);
           const message = `Flow "${key}" is invalid: ${msgs.join('; ')}`;
-          console.error(`[seed] ${message}`);
+          console.error(`[content] ${message}`);
           (counts.errors ??= []).push(message);
           continue;
         }
@@ -218,7 +218,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
         const owner = collidingOwner(key, entry, existing);
         if (owner) {
           const message = `Flow "${key}": a flow with this name already exists (${owner})`;
-          console.error(`[seed] ${message}`);
+          console.error(`[content] ${message}`);
           (counts.errors ??= []).push(message);
           continue;
         }
@@ -231,7 +231,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
             replacedLabels.add(key);
             ctx.log(`  flow replaced (hash mismatch): ${key}`);
           } catch (error: any) {
-            console.warn(`[seed] Failed to replace seed flow "${existing.label}":`, error?.message);
+            console.warn(`[content] Failed to replace the content flow "${existing.label}":`, error?.message);
             ctx.log(`  flow skipped: ${key}`);
             counts.skipped++;
             continue;
@@ -241,7 +241,7 @@ export function createFlowApplier(options: FlowApplierOptions = {}): ContentAppl
       }
 
       /**
-       * The flows a subflow step can name that this seed doesn't (re)import, such as an unchanged flow
+       * The flows a subflow step can name that this apply doesn't (re)import, such as an unchanged flow
        * or a dependency's. A flow this pack's content declares is the flow it wrote, found by content key however
        * it's been renamed, never another flow with its label. When it wrote no flow (the apply left
        * a user's or another pack's flow with that name alone), the name runs that flow; other names

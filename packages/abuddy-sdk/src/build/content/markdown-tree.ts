@@ -27,7 +27,7 @@ export interface MarkdownTreeOptions {
   branch?: string;
   /** Walk subdirectories. Default true; false reads only the directory's markdown files. */
   recursive?: boolean;
-  /** A subdirectory (relative, `/` separators) copied as media rather than read as seeds: the format's `media` */
+  /** A subdirectory (relative, `/` separators) copied as media rather than read as content: the format's `media` */
   media?: string;
 }
 

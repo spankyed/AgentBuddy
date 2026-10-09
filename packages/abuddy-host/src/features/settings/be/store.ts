@@ -151,7 +151,7 @@ export function createSettingsStore({ defaults }: SettingsStoreOptions) {
     /**
      * Calls `listener` on each change to the stored settings, whoever made it; returns the unsubscribe. The settings
      * system tells each feature whose settings changed from here, so a write made anywhere (a system, an action, a
-     * seed) reaches the features it changed, and none is told a change twice. The changes arrive in the order they
+     * an apply) reaches the features it changed, and none is told a change twice. The changes arrive in the order they
      * happened, so a write a replacement makes can't be taken for one of its own.
      */
     onChange(listener: (change: SettingsChange) => void): () => void {

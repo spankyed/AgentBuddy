@@ -182,7 +182,7 @@ export async function setupBackend(): Promise<void> {
   // ── Hydrate (policy now sees all entity types from all packs)
   await store.hydrate();
 
-  // ── Start the packs: each one's onInit, the migrations (the app's, then external packs'), the seeds
+  // ── Start the packs: each one's onInit, the migrations (the app's, then external packs'), the content
   startPacks(packs);
 
   // ── Start backend actor ──────────────────────────────────────────────

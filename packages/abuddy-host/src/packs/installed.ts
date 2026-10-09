@@ -3,7 +3,7 @@
  *
  * `installed-packs.json` is not the list of installed packs — `packs/<id>/` is, and `enabledExternalPacks`
  * (`discovery.ts`) derives it. This file is a side table keyed by pack id, holding only what the
- * directory cannot say: the user's enabled choice, where an install came from, and what the last seed and
+ * directory cannot say: the user's enabled choice, where an install came from, and what the last apply and
  * update check found. A pack with no row is installed all the same, which is what `abuddy install` and
  * `abuddy run` leave behind — they write the directory and never this file.
  *
@@ -30,7 +30,7 @@ export interface PackRecord {
   availableVersion?: string;
   /** Release tag for availableVersion, so updates install exactly what the check found. */
   availableTag?: string;
-  /** Why the pack's last install or boot seed failed; cleared on the next successful seed. */
+  /** Why the pack's last install or boot apply failed; cleared on the next successful apply. */
   lastError?: string;
   /** Why the last update check couldn't finish or confirm compatibility (rate limit, private repo, …) */
   updateCheckError?: string;
@@ -72,7 +72,7 @@ export function packRecords(): Map<string, PackRecord> {
  * What the app has recorded about `id` — a row of defaults when it has recorded nothing.
  *
  * A pack with no row is one nothing has decided anything about yet: enabled, from nowhere in particular,
- * with no seed or update check behind it. Callers get a whole record either way, so none of them repeats
+ * with no apply or update check behind it. Callers get a whole record either way, so none of them repeats
  * what absence means.
  */
 export function packRecord(id: string, records = packRecords()): PackRecord {
@@ -134,11 +134,11 @@ function changeRecord(id: string, change: (record: PackRecord) => PackRecord | u
  * What an update check last offered goes with it — the pack on disk is now whatever was just installed,
  * so an offer made against the old one says nothing.
  *
- * **`lastError` is not an install's to drop.** It says what the pack's seed data came to, which only
- * `recordApplyOutcomes` sets and clears, and a seed that was skipped as unchanged has nothing to say — so a
+ * **`lastError` is not an install's to drop.** It says what the pack's content came to, which only
+ * `recordApplyOutcomes` sets and clears, and a apply that was skipped as unchanged has nothing to say — so a
  * reinstall that replaces this record without it erases the only sign that a pack's content never applied. That
- * stayed hidden while a reinstall re-applied by accident, through the file times once in the seed hash: the
- * seed failed again and wrote the error back. It does not re-apply now, so this has to keep it.
+ * stayed hidden while a reinstall re-applied by accident, through the file times once in the content revision: the
+ * apply failed again and wrote the error back. It does not re-apply now, so this has to keep it.
  */
 export function recordInstalled(id: string, installedFrom?: string): boolean {
   return changeRecord(id, previous => ({

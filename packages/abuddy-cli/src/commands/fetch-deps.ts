@@ -73,7 +73,7 @@ export function findDepFiles(dir: string): DepFiles | null {
   return null;
 }
 
-/** The snapshot plus the build dir, runtime entry and its seeds under `root`, where they exist */
+/** The snapshot plus the build dir, runtime entry and its content under `root`, where they exist */
 function withBuildAndRuntime(snapshot: PackSnapshot, root: string): DepFiles {
   const buildDir = path.join(root, PACK_LAYOUT.buildDir);
   const runtimeEntry = path.join(root, PACK_LAYOUT.runtimeEntry);
@@ -114,7 +114,7 @@ async function resolveFromWorkspace(root: string, depId: string): Promise<DepFil
     for (const candidate of [path.join(dir, 'packages', depId), path.join(dir, depId)]) {
       // **A build of the dependency renames its `dist`, so a read taken during that swap finds no build dir
       // and `withBuildAndRuntime` reports one that is simply absent** — which surfaces downstream as the
-      // dependency's seed compiler coming back unresolved, naming the wrong cause. Waiting costs an
+      // dependency's content compiler coming back unresolved, naming the wrong cause. Waiting costs an
       // `existsSync` per candidate when no build is running, which is every ordinary resolution.
       await waitForPackBuild(candidate, { onWait: (holder) => console.log(`Waiting for ${holder} to finish...`) });
       const found = findDepFiles(candidate);

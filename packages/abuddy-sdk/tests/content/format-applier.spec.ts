@@ -501,7 +501,7 @@ describe('content the pack has dropped', () => {
 
     const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-none-'));
     dirs.push(empty);
-    fs.writeFileSync(path.join(empty, 'content.json'), JSON.stringify({ version: 1, packId: 'pack-a', seeds: [] }));
+    fs.writeFileSync(path.join(empty, 'content.json'), JSON.stringify({ version: 1, packId: 'pack-a', entries: [] }));
     const second = after(first);
     seed(empty, second);
 
@@ -511,7 +511,7 @@ describe('content the pack has dropped', () => {
 });
 
 describe("two packs' records with the same entry key and identity", () => {
-  it('seed a row each, and each pack updates only its own', () => {
+  it('write an entity each, and each pack updates only its own', () => {
     expect(seed(compiled('pack-a', [{ name: 'Welcome', body: 'From A' }]))).toMatchObject({ created: 1 });
     expect(seed(compiled('pack-b', [{ name: 'Welcome', body: 'From B' }]))).toMatchObject({ created: 1 });
     expect(memos('Welcome').map((row) => row.body).sort()).toEqual(['From A', 'From B']);
@@ -523,8 +523,8 @@ describe("two packs' records with the same entry key and identity", () => {
 
   it('fail with a rebuild error when the compiled content name no pack', () => {
     const dir = compiled('pack-a', [{ name: 'Welcome', body: 'From A' }]);
-    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, seeds: [] }));
-    expect(() => seed(dir)).toThrow(/doesn't name the pack that compiled these seeds: rebuild the pack/);
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, entries: [] }));
+    expect(() => seed(dir)).toThrow(/doesn't name the pack that compiled this content: rebuild the pack/);
   });
 });
 
@@ -626,7 +626,7 @@ describe("a folder another pack seeded", () => {
 
     const emptied = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-emptied-'));
     dirs.push(emptied);
-    fs.writeFileSync(path.join(emptied, 'content.json'), JSON.stringify({ version: 1, packId: 'pack-a', seeds: [] }));
+    fs.writeFileSync(path.join(emptied, 'content.json'), JSON.stringify({ version: 1, packId: 'pack-a', entries: [] }));
     fs.writeFileSync(path.join(emptied, 'memos.content.json'), JSON.stringify({ records: [] }));
     const next = after(packA);
     seed(emptied, next);
@@ -672,7 +672,7 @@ describe("a folder another pack seeded", () => {
 
     const emptied = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-chain-'));
     dirs.push(emptied);
-    fs.writeFileSync(path.join(emptied, 'content.json'), JSON.stringify({ version: 1, packId: 'pack-a', seeds: [] }));
+    fs.writeFileSync(path.join(emptied, 'content.json'), JSON.stringify({ version: 1, packId: 'pack-a', entries: [] }));
     fs.writeFileSync(path.join(emptied, 'memos.content.json'), JSON.stringify({ records: [] }));
     const second = after(first);
     // The offering entry, so the one item that is kept is also named as a decision the user has to take

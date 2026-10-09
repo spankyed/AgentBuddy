@@ -56,7 +56,7 @@ afterAll(() => {
 function dependentPack(records: unknown[]): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dependent-commands-'))
   dependentDirs.push(dir)
-  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId: 'team-notes', seeds: [] }))
+  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId: 'team-notes', entries: [] }))
   fs.writeFileSync(path.join(dir, 'library.content.json'), JSON.stringify({ records }))
   return dir
 }
@@ -129,7 +129,7 @@ describe('slash commands from the library commands folder', () => {
     // With every section deselected no applier runs, so nothing else reads the missing pack id
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'unnamed-seeds-'))
     dependentDirs.push(dir)
-    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, seeds: [] }))
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, entries: [] }))
     const nothing = Object.fromEntries(Object.keys(manifest.content.sources).map((key) => [key, []]))
     const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
     await app.connect()
@@ -137,14 +137,14 @@ describe('slash commands from the library commands folder', () => {
     await app.send('host/packs', { type: 'IMPORT_PACK_CONTENT', directory: dir, include: nothing, mode: 'replace-on-collision', restartBrain: false })
     const failed = await app.nextEmit('host/settings', 'PACK_CONTENT_IMPORT_FAILED') as unknown as { error: string }
 
-    expect(failed.error).toContain("doesn't name the pack that compiled these seeds")
+    expect(failed.error).toContain("doesn't name the pack that compiled this content")
     expect(app.emitted('host/settings').map((event) => event.type)).not.toContain('PACK_CONTENT_IMPORTED')
   })
 
-  it("reports the records a seed import couldn't seed, with the counts of the rest", async () => {
+  it("reports the records a content import couldn't write, with the counts of the rest", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'failing-seeds-'))
     dependentDirs.push(dir)
-    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId: manifest.id, seeds: [] }))
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId: manifest.id, entries: [] }))
     const note = (title: string) => ({ entity: 'Note', title, noteType: 'document', content: 'x', contentHash: `hash-${title}` })
     fs.writeFileSync(path.join(dir, 'notes.content.json'), JSON.stringify({ records: [note(''), note('kept')] }))
     const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
@@ -158,7 +158,7 @@ describe('slash commands from the library commands folder', () => {
     expect(imported.errors[0]).toMatch(/^notes: .*Title is required/)
   })
 
-  it('sends the chat the commands a pack seed import brings', async () => {
+  it('sends the chat the commands a pack content import brings', async () => {
     const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
     await app.connect()
     await app.send('host/packs', { type: 'IMPORT_PACK_CONTENT', directory: DIST, include: { library: ['internal'] }, mode: 'replace-on-collision', restartBrain: false })

@@ -511,7 +511,7 @@ const GUIDE = 'CLAUDE.md';
 
 const isProse = (file: string): boolean => {
   if (!file.endsWith('.md')) return false;
-  // A guide is prose wherever it sits, a content tree included: two live under a `seeds/` directory
+  // A guide is prose wherever it sits, a content tree included: two live under a `content/` directory
   // (`default-setup/src/content`, `default-setup/tests/content`), and keying on them was this rule's first draft
   if (file === GUIDE || file.endsWith(`/${GUIDE}`)) return true;
   return !file.split('/').some((segment) => READS_MARKDOWN.has(segment));

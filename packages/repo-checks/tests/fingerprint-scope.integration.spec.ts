@@ -179,7 +179,7 @@ describe('prose costs nothing', () => {
     // The CLI's scaffold, rendered into a new pack and read by the specifier rules
     'packages/abuddy-cli/templates/pack/README.md': 'check:specifiers',
     // Test input, read by the seed-parity goldens
-    'packages/default-setup/tests/_support/fixtures/seed-parity/v1/notes/welcome.md': 'test:unit:pack',
+    'packages/default-setup/tests/_support/fixtures/content-parity/v1/notes/welcome.md': 'test:unit:pack',
   };
 
   it('keeps markdown a build reads in the key of the step that reads it', () => {

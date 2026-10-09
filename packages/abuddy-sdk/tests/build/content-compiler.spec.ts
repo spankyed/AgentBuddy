@@ -11,7 +11,7 @@ import type { ContentDependency } from '../../src/build/content/resolve.ts';
 let root: string;
 let out: string;
 beforeEach(() => {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-seed-compiler-'));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-content-compiler-'));
   out = path.join(root, 'dist');
   vi.spyOn(console, 'log').mockImplementation(() => {});
 });
@@ -67,7 +67,7 @@ describe('compilePack', () => {
     expect(records[0]).toMatchObject({ entity: 'Memo', title: '2024', pinned: true, body: 'Hello ![pic](media/pic.png)\n', contentHash: expect.stringMatching(/^[0-9a-f]{16}$/) });
     expect(records[1].children).toEqual([expect.objectContaining({ entity: 'Memo', title: 'child memo', pinned: false })]);
     expect(fs.readFileSync(path.join(out, 'media/memos/pic.png'), 'utf-8')).toBe('PNG');
-    expect(read(CONTENT_INDEX_FILE)).toEqual({ version: 1, packId: 'demo', seeds: [{ key: 'memos', seeded: true, identity: ['title', 'parent'], count: 3, items: [{ key: '2024' }, { key: 'Group', childCount: 1 }] }] });
+    expect(read(CONTENT_INDEX_FILE)).toEqual({ version: 1, packId: 'demo', entries: [{ key: 'memos', written: true, identity: ['title', 'parent'], count: 3, items: [{ key: '2024' }, { key: 'Group', childCount: 1 }] }] });
     expect(result.counts).toEqual({ memos: 3 });
   });
 
@@ -197,7 +197,7 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
     write('seeds/glossary.json', JSON.stringify([{ question: 'Why?' }]));
     await compileArtifacts({ glossary: { format: 'json' } }, { glossary: { path: 'seeds/glossary.json', format: 'glossary' } });
     expect(read('glossary.content.json').records).toEqual([{ question: 'Why?', contentHash: expect.any(String) }]);
-    expect(read(CONTENT_INDEX_FILE).seeds).toEqual([{ key: 'glossary', seeded: false, count: 1, items: [] }]);
+    expect(read(CONTENT_INDEX_FILE).entries).toEqual([{ key: 'glossary', written: false, count: 1, items: [] }]);
   });
 
   /** And the two sections are not interchangeable: each refuses the other's shape rather than compiling it */
@@ -227,7 +227,7 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
     write('seeds/prompts/greet.ts', `export const meta = { label: 'Greet', description: 'Says hello' };\nexport function template() { return 'Hello'; }\n`);
     await compile({}, { prompts: 'seeds/prompts' });
     expect(read('prompts.content.json').records).toEqual([expect.objectContaining({ label: 'Greet' })]);
-    expect(read(CONTENT_INDEX_FILE).seeds).toEqual([{ key: 'prompts', seeded: true, identity: ['label'], count: 1, items: [{ key: 'Greet', description: 'Says hello' }] }]);
+    expect(read(CONTENT_INDEX_FILE).entries).toEqual([{ key: 'prompts', written: true, identity: ['label'], count: 1, items: [{ key: 'Greet', description: 'Says hello' }] }]);
   });
 
   it("indexes a source with a pack applier as seeded, whatever its format writes", async () => {
@@ -235,7 +235,7 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
     const formats = { theme: { format: 'json', entity: 'Theme' } };
     await compile(formats, { theme: { path: 'seeds/theme.json', format: 'theme', applier: 'src/content/theme.ts' } });
     expect(read('theme.content.json').records).toEqual([expect.objectContaining({ name: 'defaults', theme: 'dark' })]);
-    expect(read(CONTENT_INDEX_FILE).seeds).toEqual([{ key: 'theme', seeded: true, count: 1, items: [{ key: 'defaults', description: 'Theme defaults' }] }]);
+    expect(read(CONTENT_INDEX_FILE).entries).toEqual([{ key: 'theme', written: true, count: 1, items: [{ key: 'defaults', description: 'Theme defaults' }] }]);
   });
 });
 

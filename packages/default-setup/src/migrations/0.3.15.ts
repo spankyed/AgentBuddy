@@ -19,7 +19,7 @@ export const migration: PackMigration = {
   target: '0.3.15',
   description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, unwrap general.projects, point stored link blocks at plugins' refs, and give library rows the short codes and display orders the library used to backfill on every connection",
   up: () => {
-    // ── The app's state (onboarding, versions, seed hashes) is the host's AppState now ──
+    // ── The app's state (onboarding, versions, content revisions) is the host's AppState now ──
     // The host's own 0.3.15 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
     services.settings.removeStored(['internal']);
 
@@ -28,7 +28,7 @@ export const migration: PackMigration = {
     dropKeysMovedBy0314();
 
     // Entities written before anything recorded which *part* of one we wrote need no migration: an apply
-    // adopts an entity it wrote with no recorded parts and re-stamps it (`seed/merge.ts`'s `resolve`), which
+    // adopts an entity it wrote with no recorded parts and re-stamps it (`content/merge.ts`'s `resolve`), which
     // is what a loop here used to do by hand for the entities of one release.
 
     // ── Action logs moved from the shared `log-service` source to `action:<label>` ──
@@ -108,7 +108,7 @@ function dropDefaultsOf0314(): void {
     services.settings.replaceAll(next);
   } catch (err) {
     // The row as it is still reads correctly, only with 0.3.14's defaults pinned; a thrown migration would instead
-    // stop every later migration and the seeds, on every boot, until the settings were fixed by hand
+    // stop every later migration and the content, on every boot, until the settings were fixed by hand
     logger.warn(`[migration 0.3.15] kept 0.3.14's stored defaults: the settings refused the pruned copy (${(err as Error).message})`);
   }
 }

@@ -1,4 +1,4 @@
-// Compiles src/content/library (the `library` seed entry in abuddy.json): directories become Collections
+// Compiles src/content/library (the `library` content entry in abuddy.json): directories become Collections
 // (named by their _meta.md frontmatter) and markdown files Documents, with their content parsed into sections.
 import { compileMarkdownTree, contentHash, type MarkdownItem, type ContentCompileContext, type ContentItem } from '@abuddy/sdk/build';
 import { parseMarkdownSections } from '../../features/library/be/utils.ts';

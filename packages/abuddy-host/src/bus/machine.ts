@@ -22,7 +22,7 @@ export type ActivatePackEvent = { type: 'ACTIVATE_PACK'; packId: string; systemI
 /** A client loaded a pack's frontend after connecting: its systems send their startup data */
 export type PackClientConnectedEvent = { type: 'PACK_CLIENT_CONNECTED'; packId: string };
 /**
- * A pack was activated, reloaded or torn down while the app runs, or its seeds were imported: what it
+ * A pack was activated, reloaded or torn down while the app runs, or its content was imported: what it
  * registers (its slash commands) and the content it applied may differ, so every running system can refresh
  * what it reads. Raised once the change is complete. Boot raises nothing: the systems start after it.
  */
@@ -315,7 +315,7 @@ export function createBusMachine(options: BusOptions) {
         sendToRunning(system, targets, { type: 'CLIENT_CONNECTED' });
         if (listening(self)) askToPublish(system, targets);
       },
-      // Every system, not just the changed pack's: what a pack registers and seeds is read by others
+      // Every system, not just the changed pack's: what a pack registers and content is read by others
       // (its slash commands by the chat, say)
       sendPackChanged: ({ event, system, self }) => {
         if (event.type !== 'PACK_CHANGED') return;

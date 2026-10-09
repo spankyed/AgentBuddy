@@ -10,7 +10,7 @@ export interface PackBuildDefinitions {
   blocks: BlockDefinition[];
 }
 
-/** A pack's seed sources, as `compilePack` compiles them (built from abuddy.json by buildPackConfigFromManifest) */
+/** A pack's content sources, as `compilePack` compiles them (built from abuddy.json by buildPackConfigFromManifest) */
 export interface PackConfig {
   name: string;
   /** `content.sources`, each entry resolved to its path, applier, or format settings */

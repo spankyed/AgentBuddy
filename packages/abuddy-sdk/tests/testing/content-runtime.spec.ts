@@ -1,4 +1,4 @@
-// A built pack's seed runtime (dist/build/content-runtime.mjs) loaded into a bare SDK test runtime: no
+// A built pack's content runtime (dist/build/content-runtime.mjs) loaded into a bare SDK test runtime: no
 // host, no app. default-setup's is the example: a Note seeded through it gets default-setup's rows.
 import { installedEngine as ears, type EARS } from '@abuddy/ears';
 import * as fs from 'node:fs';
@@ -18,10 +18,10 @@ const FACET = path.join(DEFAULT_SETUP, 'dist', 'build', 'content-runtime.mjs');
 const built = fs.existsSync(FACET);
 if (!built && process.env.REQUIRE_SEED_RUNTIME) throw new Error(`${FACET} is required (REQUIRE_SEED_RUNTIME) but not built`);
 
-describe.skipIf(!built)("a built pack's seed runtime", () => {
+describe.skipIf(!built)("a built pack's content runtime", () => {
   let dir: string;
   beforeAll(async () => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'seed-runtime-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-runtime-'));
     process.env.ABUDDY_ENV ??= 'test';
     process.env.ABUDDY_USER_DATA_DIR ??= dir;
     startTestRuntime();
@@ -40,7 +40,7 @@ describe.skipIf(!built)("a built pack's seed runtime", () => {
     fs.writeFileSync(path.join(source, 'plan', 'first.md'), '---\ntype: task\n---\nDo it.\n');
     const compiled = path.join(dir, 'compiled');
     fs.mkdirSync(compiled);
-    fs.writeFileSync(path.join(compiled, 'content.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
+    fs.writeFileSync(path.join(compiled, 'content.json'), JSON.stringify({ version: 1, packId: 'default-setup', entries: [] }));
     fs.writeFileSync(path.join(compiled, 'notes.content.json'), JSON.stringify({ records: compileBuiltinFormat('notes', manifest.content!.formats!.notes, source) }));
 
     const format = manifest.content!.formats!.notes;

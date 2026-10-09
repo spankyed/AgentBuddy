@@ -1169,7 +1169,7 @@ ${entries.join('\n')}
  * \`<pack>/<feature>\`, this pack's own and the host's too; a system may also be a role.
  *
  * Naming its own pack is the point, not a gap left by the action having no pack scope. An action is content,
- * not source: a row a user can edit in the Actions plugin, read in the DB console, export to a seed file and
+ * not source: a row a user can edit in the Actions plugin, read in the DB console, export to a content file and
  * copy into another pack. A bare name would rebind on that copy — \`'threads'\` quietly meaning the new pack's
  * feature, or nothing — where a ref that no longer fits is wrong visibly, and is refused at the bus rather
  * than doing something else.
@@ -1246,7 +1246,7 @@ ${entries.map(([name]) => `  ${name}: __repo_${name},`).join('\n')}
   }
 
   /**
-   * The pack's seed runtime (entity types, relation kinds, repositories, content writers), what applying its
+   * The pack's content runtime (entity types, relation kinds, repositories, content writers), what applying its
    * entity types needs outside the app. \`abuddy build\` bundles it into dist/build/content-runtime.mjs for
    * dependents' unit tests; the pack's own tests import it from #generated/content-runtime.
    */

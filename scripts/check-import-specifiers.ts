@@ -510,7 +510,7 @@ export function findRawGitListings(dirs: readonly string[] = CHECKED_DIRS, root 
 export const SHARED_LIST_CONSUMERS = [
   'packages/abuddy-cli/src/build/be-bundler.ts',
   'packages/abuddy-cli/src/build/fe-bundler.ts',
-  'packages/abuddy-cli/src/build/seed-runtime-check.ts',
+  'packages/abuddy-cli/src/build/content-runtime-check.ts',
   'packages/abuddy-host/src/packs/runtime/bridge.ts',
   'packages/abuddy-host/src/packs/module-bridge.ts',
   'packages/abuddy-testing/src/dependency-runtime.ts',

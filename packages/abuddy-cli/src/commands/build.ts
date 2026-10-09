@@ -340,12 +340,12 @@ async function buildIntoStaging(args: string[]) {
   // ── Seed runtime (for dependents' unit tests) ─────────────────────────
   const contentRuntime = await bundlePackContentRuntime(root, outputDir, { release, recordReads: reads?.forPhase('contentRuntime') });
   if (contentRuntime.success) {
-    console.log(`  seed runtime: dist/${PACK_LAYOUT.buildDir}/${CONTENT_RUNTIME_FILE}`);
+    console.log(`  content runtime: dist/${PACK_LAYOUT.buildDir}/${CONTENT_RUNTIME_FILE}`);
   } else {
     fail(`Seed runtime bundle failed: ${contentRuntime.error}`);
   }
 
-  if (contentCompilersBundled) console.log(`  seed compilers: dist/${PACK_LAYOUT.buildDir}/${CONTENT_COMPILERS_FILE}`);
+  if (contentCompilersBundled) console.log(`  content compilers: dist/${PACK_LAYOUT.buildDir}/${CONTENT_COMPILERS_FILE}`);
 
   // ── DSL editor definitions ───────────────────────────────────────────
   if (manifest.dsl) {

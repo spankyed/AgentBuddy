@@ -251,7 +251,7 @@ export type SystemEvents =
     type: 'CLIENT_CONNECTED';
 }
 /**
-* A pack was activated, reloaded or torn down while the app runs, or its seeds were imported: what it
+* A pack was activated, reloaded or torn down while the app runs, or its content was imported: what it
 * registers (its slash commands) and the content it applied may differ. Sent once the change is complete.
 */
 | {

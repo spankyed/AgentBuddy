@@ -301,7 +301,7 @@ describe('packContentTargets', () => {
   });
 
   /**
-   * A seed target is where a pack's seeds are and what it depends on, and nothing else: what a seed leaves
+   * A seed target is where a pack's content are and what it depends on, and nothing else: what a seed leaves
    * alone the applier decides from the rows, so nothing about a pack's content travels on its registration.
    */
   it("carries each pack's own id and directory, whoever ships it", () => {
@@ -312,13 +312,13 @@ describe('packContentTargets', () => {
     const targets = registry.packContentTargets();
     expect(targets.find((t) => t.manifest.id === 'shipped-pack'))
       .toEqual({ manifest: { id: 'shipped-pack', dependencies: undefined }, dir: '/packs/shipped-pack' });
-    // Nothing in a seed target says which app shipped the pack: every pack's seeds are read from
+    // Nothing in a seed target says which app shipped the pack: every pack's content are read from
     // `runtime/content` under its own directory
     expect(targets.find((t) => t.manifest.id === 'installed-pack'))
       .toEqual({ manifest: { id: 'installed-pack', dependencies: undefined }, dir: '/packs/installed-pack' });
   });
 
-  // The order seeds run in, so a pack's seeds can reference what the packs it depends on seeded
+  // The order seeds run in, so a pack's content can reference what the packs it depends on seeded
   it('orders a pack after the packs it depends on', () => {
     registerPack({ id: 'base-pack' } as PackRegistration, origin('base-pack', true));
     registerPack({ id: 'dependent-pack' } as PackRegistration, origin('dependent-pack', false, { 'base-pack': '*' }));

@@ -43,7 +43,7 @@ export interface SpecialtyCompiler<T = unknown> {
   compile(sourcePath: string, context: SpecialtyCompileContext): Promise<T>;
   /**
    * Hard failures from `compile` that dropped entries. Reported and thrown before validation, so a
-   * dropped entry surfaces at its own source rather than as a downstream cross-seed reference error.
+   * dropped entry surfaces at its own source rather than as a downstream cross-entry reference error.
    */
   collectErrors?(data: T): string[];
   validate?(data: T, context: CompilationContext): ValidationResult;
@@ -60,13 +60,13 @@ export interface ContentIndex {
   version: 1;
   /** The pack that compiled the content: the content keys it writes name it, so two packs' items never share an entity */
   packId: string;
-  seeds: ContentIndexEntry[];
+  entries: ContentIndexEntry[];
 }
 
 export interface ContentIndexEntry {
   key: string;
   /** Written into the database (a compile-only entry is read by pack code instead) */
-  seeded: boolean;
+  written: boolean;
   /** Fields that name a record: include sets and previews use the first */
   identity?: string[];
   count: number;
@@ -160,7 +160,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
         output: specialty.output ? specialty.output(data) : data,
         index: {
           key,
-          seeded: true,
+          written: true,
           ...((key === 'actions' || key === 'prompts') && { identity: ['label'] }),
           count: specialty.count(data),
           items: specialty.items(data),
@@ -199,17 +199,17 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     }
     errors.push(...checkRecordEntities(key, format, records));
     // Items are written by the format's applier, or by the source's own pack applier
-    const seeded = formatEntities(format).length > 0 || source.applier !== undefined;
+    const written = formatEntities(format).length > 0 || source.applier !== undefined;
     compiled.push({
       key,
       ...(format.media && { media: path.join(sourcePath, format.media) }),
       output: { records },
       index: {
         key,
-        seeded,
+        written,
         ...(format.identity && { identity: format.identity }),
         count: countRecords(records),
-        items: !seeded ? [] : records.map((record) => ({
+        items: !written ? [] : records.map((record) => ({
           key: itemLabel(record, format.identity),
           ...(typeof record.description === 'string' && { description: record.description }),
           ...(record.children && { childCount: record.children.length }),
@@ -219,7 +219,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   }
 
   if (errors.length > 0) {
-    throw new Error(`${errors.length} seed source(s) failed to compile:\n${errors.map((e) => `  ✗ ${e}`).join('\n')}`);
+    throw new Error(`${errors.length} content source(s) failed to compile:\n${errors.map((e) => `  ✗ ${e}`).join('\n')}`);
   }
 
   const context: CompilationContext = {
@@ -239,8 +239,8 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     if (media && fs.existsSync(media)) fs.cpSync(media, path.join(mediaRoot, key), { recursive: true });
     log(`  ${key}: ${index.count}`);
   }
-  const seedIndex: ContentIndex = { version: 1, packId: packConfig.name, seeds: compiled.map(({ index }) => index) };
-  fs.writeFileSync(path.join(outputDir, CONTENT_INDEX_FILE), `${JSON.stringify(seedIndex, null, 2)}\n`);
+  const index: ContentIndex = { version: 1, packId: packConfig.name, entries: compiled.map(({ index }) => index) };
+  fs.writeFileSync(path.join(outputDir, CONTENT_INDEX_FILE), `${JSON.stringify(index, null, 2)}\n`);
 
   return { counts: Object.fromEntries(compiled.map(({ key, index }) => [key, index.count])), warnings: [] };
 }

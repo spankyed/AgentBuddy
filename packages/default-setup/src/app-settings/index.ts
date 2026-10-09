@@ -12,7 +12,7 @@ import baseSettings from '../content/default-settings.ts';
 /**
  * The base settings this pack contributes: its `general` and `assistant` sections, with no plugin's slice.
  *
- * **An import, because this is this pack's own source, and not a seed entry.** `content.sources` is for entries
+ * **An import, because this is this pack's own source, and not a content entry.** `content.sources` is for entries
  * that import rows into the database, and these are never written to one: the settings row holds only what
  * the user changed, and the store composes these defaults underneath it from this pack's registration. A
  * pack compiling its own content to disk only to read it back needs the build to have run before the app

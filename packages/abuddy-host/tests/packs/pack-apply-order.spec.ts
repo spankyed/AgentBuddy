@@ -1,4 +1,4 @@
-// A pack's seeds may reference what a pack it depends on seeded, so it has to seed after it. Discovery
+// A pack's content may reference what a pack it depends on seeded, so it has to seed after it. Discovery
 // order is readdirSync's, which is alphabetical at best and says nothing about what depends on what.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { packContentOrder } from '../../src/packs/discovery.ts';

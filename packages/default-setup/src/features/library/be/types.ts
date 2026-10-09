@@ -41,7 +41,7 @@ export interface DocumentEntity extends BaseEntity {
   displayOrder?: number
   /** Free-form tags, stored directly on the document as a string array. */
   tags?: string[]
-  /** Hash of the seed source at last seed. Absent on user-created documents. */
+  /** Hash of the content source at the last apply. Absent on user-created documents. */
   contentHash?: string
 }
 
@@ -51,7 +51,7 @@ export interface CollectionEntity extends BaseEntity {
   description?: string
   displayOrder?: number
   symlinkPath?: string
-  /** Hash of the seed source at last seed. Absent on user-created collections. */
+  /** Hash of the content source at the last apply. Absent on user-created collections. */
   contentHash?: string
 }
 

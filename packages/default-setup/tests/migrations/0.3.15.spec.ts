@@ -160,7 +160,7 @@ describe('the 0.3.15 migration', () => {
       expect(replace).not.toHaveBeenCalled()
     })
 
-    // A thrown migration would stop every later migration and the seeds on every boot
+    // A thrown migration would stop every later migration and the content on every boot
     it('leaves the row as it was when the settings refuse the pruned copy', () => {
       rowOf0314(withUserChanges)
       vi.spyOn(services.settings, 'replaceAll').mockImplementation(() => {

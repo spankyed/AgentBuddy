@@ -63,7 +63,7 @@ export function teardownPack(
 }
 
 /**
- * Loads, registers and starts an installed pack as a boot starts it: its onInit, its migrations, then its seeds
+ * Loads, registers and starts an installed pack as a boot starts it: its onInit, its migrations, then its content
  * (hash-checked, so unchanged data isn't imported again). Returns false when it can't be read, loaded or registered,
  * with why recorded as the pack's load problem in `registry`.
  */
@@ -108,7 +108,7 @@ export function activatePack(
     registry.registerShutdownHook(boot.onShutdown, packId);
   }
   boot?.onInit?.();
-  // The pack is registered by now, so its migrations and seeds are read from the registry like a boot's
+  // The pack is registered by now, so its migrations and content are read from the registry like a boot's
   runPackMigrations(registry.packMigrationTargets([packId]));
   applyPacks(registry.packContentTargets([packId]));
 

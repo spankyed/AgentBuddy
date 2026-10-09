@@ -321,9 +321,9 @@ export function contentHash(data: object): string;
 
 // @public
 export interface ContentIndex {
-    packId: string;
     // (undocumented)
-    seeds: ContentIndexEntry[];
+    entries: ContentIndexEntry[];
+    packId: string;
     // (undocumented)
     version: 1;
 }
@@ -336,7 +336,7 @@ export interface ContentIndexEntry {
     items: PackContentPreviewItem[];
     // (undocumented)
     key: string;
-    seeded: boolean;
+    written: boolean;
 }
 
 // @public

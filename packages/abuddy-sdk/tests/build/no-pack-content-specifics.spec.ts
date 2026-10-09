@@ -1,5 +1,5 @@
 // The SDK's build and seed modules know no pack's entity types: library, notes and FAQ seeding
-// belong to default-setup (its seed entries, compiler modules and content writers). A new name here
+// belong to default-setup (its content entries, compiler modules and content writers). A new name here
 // needs a reason in ALLOWED, not a quiet exception.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 const SRC = path.resolve(import.meta.dirname, '../../src');
 const SCANNED = ['build', 'content'];
 
-/** Library, notes and FAQ entity types, their shapes, compiled seed formats, repositories and content keys */
+/** Library, notes and FAQ entity types, their shapes, compiled content formats, repositories and content keys */
 const FORBIDDEN = /\b(Document|Collection|Note|Symlink|FAQ|DocumentEntity|CollectionEntity|NoteEntity|ContentSection|FieldContent|ListContent|MarkdownContent|TextContent|CodeContent|DocumentShortCode|Exported(Item|Document|Collection|Symlink|Library|Note|Notes)|CompiledFAQ|library(Commands|Queries)|note(Commands|Queries)|(compile|import)(Library|Notes|Faq)\w*|create(Library|Notes)ContentApplier|parseMarkdownSections|library|notes|faqs?)\b/gi;
 
 /** `file:line` substrings that name one of them for another reason */

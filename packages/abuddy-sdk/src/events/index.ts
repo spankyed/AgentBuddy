@@ -377,7 +377,7 @@ export type HostPluginEvents = {
 
 /** Events the host app's own systems receive from pack code, which names them `host/<feature>` */
 export type HostSystemEvents = {
-  // A pack whose data changed outside a pack change (its seeds imported) has the running systems read it again
+  // A pack whose data changed outside a pack change (its content imported) has the running systems read it again
   'host/bus': { type: 'PACK_CHANGED'; packId: string };
 };
 

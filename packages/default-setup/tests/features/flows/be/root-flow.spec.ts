@@ -1,5 +1,5 @@
 // The root flow is the flow with the root role, and only that: the flows system reports it to its plugin and changes
-// it (SET_ROOT_FLOW), imports and seed imports bring it with their flows, and no setting records it
+// it (SET_ROOT_FLOW), imports and content imports bring it with their flows, and no setting records it
 import { services } from '#generated/services.ts';
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -42,7 +42,7 @@ describe('the root flow', () => {
     expect(reportedRoot(await app.nextEmit('flows', 'FLOWS_CONNECTED'))).toBeUndefined()
   })
 
-  it('reaches the plugin when a pack seed import brought it', async () => {
+  it('reaches the plugin when a pack content import brought it', async () => {
     const app = await startApp({ systems: ['brain', 'flows', 'host/settings', 'host/packs'] })
     await app.connect()
     await app.nextEmit('flows', 'FLOWS_CONNECTED')

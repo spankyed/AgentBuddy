@@ -455,7 +455,7 @@ describe('what a reinstall does not redo', () => {
 // and took away the only sign that it hadn't.
 //
 // **What makes the report true changed on 2026-10-07, and this case did not.** A reinstall used to re-seed by
-// accident, through the file times that were once in the seed hash: the apply failed again and wrote the error
+// accident, through the file times that were once in the content revision: the apply failed again and wrote the error
 // back. Seeds are keyed on content now, so the same pack installed again is the same bytes and nothing is
 // re-imported — and what keeps this honest is `recordInstalled` preserving `lastError`, which belongs to the
 // seed outcome (`recordApplyOutcomes`) and is not an install's to clear. `activationProblem` reads it, so the
@@ -571,7 +571,7 @@ describe('importing a pack’s content', () => {
     const dir = path.join(tmpDir, 'compiled');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({
-      version: 1, packId: PACK_ID, seeds: [{ key: 'memos', seeded: true, count: 1 }],
+      version: 1, packId: PACK_ID, entries: [{ key: 'memos', written: true, count: 1 }],
     }));
     fs.writeFileSync(path.join(dir, 'memos.content.json'), JSON.stringify({
       records: [{ entity: 'Memo', name: 'Intro', body: 'Hello', contentHash: 'intro-v1' }],
@@ -645,7 +645,7 @@ describe('a user answering for one of a pack’s content items', () => {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.mkdirSync(seeds, { recursive: true });
     fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id: CONTENT_PACK, name: 'Content Pack', version: '1.0.0' }));
-    fs.writeFileSync(path.join(seeds, 'content.json'), JSON.stringify({ version: 1, packId: CONTENT_PACK, seeds: [] }));
+    fs.writeFileSync(path.join(seeds, 'content.json'), JSON.stringify({ version: 1, packId: CONTENT_PACK, entries: [] }));
     fs.writeFileSync(path.join(seeds, 'actions.content.json'), JSON.stringify({
       records: [{ entity: 'Action', label: 'Echo', description: `theirs ${version}`, contentHash: `echo-${version}` }],
     }));

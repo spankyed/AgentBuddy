@@ -456,7 +456,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       }
       const flows = untypedQx('Flow').pickAll() as Array<{ label?: string }>;
       if (!flows.some((flow) => flow.label === label)) {
-        throw new Error(`No flow "${label}". Flows: ${flows.map((flow) => flow.label).join(', ') || 'none (seed them first)'}`);
+        throw new Error(`No flow "${label}". Flows: ${flows.map((flow) => flow.label).join(', ') || 'none (apply the content first)'}`);
       }
       const flowTNodeIds = runningFlowTNodes(label);
       if (flowTNodeIds.length === 0) {

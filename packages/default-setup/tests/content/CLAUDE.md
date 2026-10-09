@@ -24,7 +24,7 @@ vocabulary — *seed* is the content, *import* is the act — and `src/content/C
 
 | Spec | What it holds |
 |---|---|
-| `seed-parity.spec.ts` | the gate itself: fresh content and re-applies in each import mode, against `__golden__/` |
+| `content-parity.spec.ts` | the gate itself: fresh content and re-applies in each import mode, against `__golden__/` |
 | `applied-content.spec.ts` | what an apply records for all of this pack's content, and what a second one then decides |
 | `edited-rows.spec.ts` | an entity the **user edited** survives a content change — the apply skips it and names the part |
 | `edited-flows.spec.ts` | the same for flows, matched by content key rather than label |
@@ -55,7 +55,7 @@ This is the part that is easy to get wrong twice, so the rule is explicit:
 | `contentHash` (value) | **no** | hashes the compiled bundle, so it changes with the body — *and* with a bundler or TypeScript upgrade where nothing was edited |
 | `contentHash` (presence, as `hasContentHash`) | yes | see below |
 
-`seed-parity.spec.ts`'s `forGolden` records an action or prompt **by exclusion** — everything except the two volatile
+`content-parity.spec.ts`'s `forGolden` records an action or prompt **by exclusion** — everything except the two volatile
 fields — so a field added to an action later is covered without anyone remembering to add it.
 
 ### Why presence but not value

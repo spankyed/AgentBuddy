@@ -226,7 +226,7 @@ export interface PackFlowHelpers {
   types: string;
 }
 
-/** The bundle of a pack's seed compiler modules, in its build dir: dependents compile its formats with it */
+/** The bundle of a pack's content compiler modules, in its build dir: dependents compile its formats with it */
 export const CONTENT_COMPILERS_FILE = 'content-compilers.mjs';
 
 export function contentFile(name: string): string {

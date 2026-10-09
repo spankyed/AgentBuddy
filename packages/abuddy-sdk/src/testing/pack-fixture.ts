@@ -43,7 +43,7 @@ export interface PackFixtureOptions {
    *
    * Here because it repeated: four specs wrote the same `mkdtemp` + manifest + `symlinkSync(REPO_ROOT/
    * node_modules)` preamble (`host-import-guard`, `fe-bundler-proxy-exports`, `fe-bundler-shared-ui`,
-   * `seed-runtime-load`), and `preparePack` is that pair with a name. A spec that only reads the tree passes
+   * `content-runtime-load`), and `preparePack` is that pair with a name. A spec that only reads the tree passes
    * nothing and gets no symlink.
    */
   readonly nodeModules?: string;

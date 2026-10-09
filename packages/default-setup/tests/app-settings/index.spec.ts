@@ -1,7 +1,7 @@
 /**
  * What this pack contributes to the app's settings (`src/app-settings/`).
  *
- * **These are defaults, not seed data**, which is why they are an import rather than a `content.sources` entry:
+ * **These are defaults, not content**, which is why they are an import rather than a `content.sources` entry:
  * the settings row holds only what the user changed and the store composes these underneath it, so there is
  * nothing for seeding to write. `content.sources` is for entries that import rows, and content a pack reads back
  * itself is an import of its own source.

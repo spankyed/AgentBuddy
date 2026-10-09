@@ -7,7 +7,7 @@
  * now only by migrations. What the event gained is an address.
  *
  * **A destructive action belongs in the Settings view behind a confirmation**, not in an import dialog —
- * which is the other reason settings are not seed data: an import is the wrong place to offer one.
+ * which is the other reason settings are not content: an import is the wrong place to offer one.
  */
 import { describe, expect, it } from 'vitest'
 import { startApp } from '@abuddy/testing/harness'

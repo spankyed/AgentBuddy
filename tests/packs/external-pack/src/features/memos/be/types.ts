@@ -3,7 +3,7 @@ import type { BaseEntity, EARS } from '#generated/ears.ts';
 
 export interface MemoEntity extends BaseEntity {
   entityType: EARS.Entity.Memo;
-  /** Seeded memos have a title; seeds match existing rows by it */
+  /** Written memos have a title; an apply matches existing entities by it */
   title?: string;
   text: string;
   createdAt: number;

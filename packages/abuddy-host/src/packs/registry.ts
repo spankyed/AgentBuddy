@@ -249,8 +249,8 @@ export interface PackRegistry extends PackRegistryView {
    * own version, would run each one twice and record a second version for the same pack. Excluding them
    * where the list is built rather than at each of the four callers is what keeps that true for the fifth.
    *
-   * **The contrast with `packContentTargets` is deliberate**: seeds are one path for every pack, because what
-   * a seed is keyed on is its own compiled data. Migrations are two, because what a migration is keyed on
+   * **The contrast with `packContentTargets` is deliberate**: an apply is one path for every pack, because what
+   * an apply is keyed on is its own compiled data. Migrations are two, because what a migration is keyed on
    * is a version, and a shipped pack's version is the app's.
    *
    * In dependency order (`packContentOrder`), so a pack's migrations run after those of the packs it depends
@@ -259,10 +259,10 @@ export interface PackRegistry extends PackRegistryView {
    */
   packMigrationTargets(packIds?: Iterable<string>): Array<{ manifest: PackManifest; migrations?: PackMigration[] }>;
   /**
-   * Every registered pack as `applyPacks` takes it, in dependency order: where its seeds are and what it
-   * depends on. With `packIds`, only those — activation and reload seed the one pack they handled.
+   * Every registered pack as `applyPacks` takes it, in dependency order: where its content are and what it
+   * depends on. With `packIds`, only those — activation and reload apply the one pack they handled.
    *
-   * A pack the app ships is in here beside an installed one: one seed path, one freshness record, one
+   * A pack the app ships is in here beside an installed one: one apply path, one freshness record, one
    * policy mechanism.
    */
   packContentTargets(packIds?: Iterable<string>): PackContentTarget[];

@@ -21,7 +21,7 @@ const flow = (label: string) => findWhere('Flow', 'label', label) as FlowRow[];
 const nodesOf = (label: string) => repository.flowsQueries.flowNodes(flow(label)[0].id);
 
 const dirs: string[] = [];
-// Another installed pack seeding flows: its own appliers read the seeds it compiled
+// Another installed pack seeding flows: its own appliers read the content it compiled
 registerPack({
   id: 'other-pack',
   appliers: [createFormatApplier({ key: 'actions', entities: ['Action'], identity: ['label'] }), createFormatApplier({ key: 'prompts', entities: ['Prompt'], identity: ['label'] }), createFlowApplier()],

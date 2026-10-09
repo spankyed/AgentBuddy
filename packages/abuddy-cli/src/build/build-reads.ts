@@ -11,7 +11,7 @@
  * Every bundler here already computes this set and threw it away. esbuild's `metafile.inputs` is the dep
  * file outright; Rollup's `bundle.watchFiles` is the declaration program's file list; Vite's module graph
  * is the same thing for the frontend bundle. So this records what they say rather than inferring anything,
- * and the phases that have no bundler to ask — codegen, the tsx-loaded seed compilation, the feature
+ * and the phases that have no bundler to ask — codegen, the tsx-loaded content compilation, the feature
  * settings load, the static pack rules — are absent rather than guessed at.
  *
  * **It is a proxy, in the root `CLAUDE.md` taxonomy**: it records what was read *last* time, so it can be
@@ -51,7 +51,7 @@ const optedOut = (): boolean => process.env[OPT_OUT] === '1';
  *
  * Each is named after what it produces rather than the bundler that produces it: a phase whose bundler is
  * replaced is the same phase, and what reads the record compares phases. The phases that are absent are the
- * ones with no bundler to ask — codegen, the seed compilation, the feature settings load, the pack rules.
+ * ones with no bundler to ask — codegen, the content compilation, the feature settings load, the pack rules.
  */
 export const BUILD_PHASES = [
   'types', 'flowHelperTypes', 'flowHelpersModule', 'dslDefs',
@@ -207,7 +207,7 @@ export function buildReads(packDir: string): BuildReads | undefined {
  * The files of one phase, as the record holds them: pack-relative, real, sorted, and only files.
  *
  * Two drops, both judgements rather than readings. A **virtual module** names no file — esbuild writes
- * `<stdin>` for the seed-compiler bundle's generated entry and Rollup prefixes a plugin's own ids with a
+ * `<stdin>` for the content-compiler bundle's generated entry and Rollup prefixes a plugin's own ids with a
  * NUL — so what is kept is what is on disk, asked rather than pattern-matched. And a path in any
  * `node_modules` is dropped, the same judgement `readsOf` makes for the typecheck legs and for the same
  * reason: it is a dependency, which every step already covers through `package-lock.json`, where the

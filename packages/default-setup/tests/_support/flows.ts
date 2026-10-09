@@ -4,7 +4,7 @@ import { importCompiledContent } from '@abuddy/sdk/utils';
 import type { FlowStepTrace } from '@abuddy/testing/harness';
 import { repository } from '#generated/repository.ts';
 
-/** default-setup's compiled actions, prompts and flows, seeded as the app's boot seed seeds them */
+/** default-setup's compiled actions, prompts and flows, seeded as the app's boot apply seeds them */
 export function seedDefaultFlows(): void {
   importCompiledContent({ compiledDir: path.resolve(__dirname, '../../dist', 'runtime', 'content'), include: { library: new Set(), notes: new Set(), settings: new Set() } });
 }

@@ -8,11 +8,11 @@
 // seeding produces moves, you re-record it deliberately with
 // `npm run content-parity:update -w @app/default-setup`, and you never hand-edit one.
 //
-// The v1/v2 scenarios seed fixture sources (tests/_support/fixtures/seed-parity), so only a change in seeding moves their
+// The v1/v2 scenarios seed fixture sources (tests/_support/fixtures/content-parity), so only a change in seeding moves their
 // goldens; default-setup.json follows the pack's own sources, so content moves it too. The goldens were first
-// recorded from the pipeline that preceded the generic seed compiler.
+// recorded from the pipeline that preceded the generic content compiler.
 //
-// Notes are the one intended difference (goal-generic-seed-compiler Decision 10): they now carry a
+// Notes are the one intended difference (goal-generic-content-compiler Decision 10): they now carry a
 // contentHash and follow the same change-tracking rules as every other entry. Their contentHash field
 // and seed counts are left out of the goldens, and so are their rows in the steps where the old
 // pipeline overwrote notes: notes-change-tracking.spec.ts checks those steps by the Decision 10 rules.

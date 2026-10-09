@@ -88,7 +88,7 @@ export function discoveredPackIds(discovered: DiscoveredPack[]): ReadonlySet<str
 }
 
 
-/** A pack and what it declares it depends on (`abuddy.json` `dependencies`), as the seed order reads it */
+/** A pack and what it declares it depends on (`abuddy.json` `dependencies`), as the apply order reads it */
 export interface PackDependents {
   id: string;
   dependencies?: Record<string, string>;
@@ -100,7 +100,7 @@ export interface PackDependents {
  * Only edges between the packs given, so a dependency on a pack that is not in the list is not an edge:
  * either the caller is not acting on it, or it is not installed, which is reported when the pack that
  * declares it is installed. Callers that want every edge honoured pass every pack — `packContentTargets`
- * does, which is how a pack depending on one the app ships seeds after it.
+ * does, which is how a pack depending on one the app ships applies after it.
  *
  * A cycle has no order that satisfies it, and a pack-authoring mistake must not stop an app booting, so
  * the packs in one are still returned, in an order that is arbitrary but deterministic, and the cycle is

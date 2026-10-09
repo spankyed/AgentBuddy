@@ -37,7 +37,7 @@ const isRelative = (target: string): boolean =>
 /**
  * The markdown written for a reader of this repo — not content seeded into the app.
  *
- * A pack's seed sources and the fixture packs' are markdown too, and their links mean something else: a
+ * A pack's content sources and the fixture packs' are markdown too, and their links mean something else: a
  * library document's `media/pic.png` is resolved by the media store against the seeded tree, not by this
  * checkout's directory layout, so three of them read as dead here and are not.
  */

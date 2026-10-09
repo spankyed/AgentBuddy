@@ -10,7 +10,7 @@ import { errorMessage } from '@abuddy/sdk/utils/pure';
 const LOAD_TIMEOUT_MS = 60_000;
 /**
  * Optional @abuddy/sdk peers every dependent's unit tests have: @abuddy/testing/harness compiles
- * seeds with @abuddy/sdk/build, which needs them (the scaffold installs typescript; @abuddy/testing's
+ * content with @abuddy/sdk/build, which needs them (the scaffold installs typescript; @abuddy/testing's
  * tsx brings esbuild).
  */
 const HARNESS_PEERS = ['typescript', 'esbuild'];
@@ -51,7 +51,7 @@ function missingSdkPeers(packDir: string): string[] {
 }
 
 /**
- * Loads a built seed runtime the way a dependent's unit tests do: in a fresh Node process, with
+ * Loads a built content runtime the way a dependent's unit tests do: in a fresh Node process, with
  * only the pack's @abuddy/sdk and none of the SDK's optional peers the harness doesn't need. A bundle that can't load there
  * (a native module, an optional peer, code that needs the app) fails the build instead of a
  * dependent's tests.
@@ -62,7 +62,7 @@ export async function checkContentRuntimeLoads(
   { tmpDir = os.tmpdir() }: { tmpDir?: string } = {},
 ): Promise<{ success: boolean; error?: string }> {
   // The load's user data dir, removed after
-  const dataDir = fs.mkdtempSync(path.join(tmpDir, 'abuddy-seed-runtime-check-'));
+  const dataDir = fs.mkdtempSync(path.join(tmpDir, 'abuddy-content-runtime-check-'));
   try {
     const args = [
       // The bundle loads the packages' published dist, as a dependent's tests do

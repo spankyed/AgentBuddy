@@ -23,7 +23,7 @@ export interface HostRuntimeOptions {
   engine: EarsEngine;
   /** The app's event bus */
   transport: { rootEvents: RootEvents };
-  /** The app's registered packs (`createPackRegistry()`): packs read them through the SDK, the services reset and seed them */
+  /** The app's registered packs (`createPackRegistry()`): packs read them through the SDK, the services reset them and apply their content */
   packs: PackRegistry;
   appVersion: string;
 }

@@ -10,7 +10,7 @@ export interface PackContentPreviewItem {
 /** What importing a compiled content directory would write: the keys it writes and their items, from its content.json */
 export interface PackContentPreview {
   directory: string;
-  /** The pack that compiled the seeds */
+  /** The pack that compiled the content */
   packId: string;
   /** The keys the pack's registered appliers import */
   content: Record<string, PackContentPreviewItem[]>;

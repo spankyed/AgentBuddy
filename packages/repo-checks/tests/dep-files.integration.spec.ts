@@ -580,7 +580,7 @@ describe('what has looked at a step at all', () => {
    * rather than finding a hole, which is what a gate over a correct declaration is supposed to do.
    *
    * **Both steps stay on this list, and that is why the distinction is written down rather than inferred
-   * from a column.** What is observed is the bundling. Codegen, the tsx-loaded seed compilation, the
+   * from a column.** What is observed is the bundling. Codegen, the tsx-loaded content compilation, the
    * feature settings load and the static pack rules have no bundler to ask. So moving either step out of
    * this list would make it read as verified over part of its work, which is the same judgement the
    * paragraph below makes about the cheap route.

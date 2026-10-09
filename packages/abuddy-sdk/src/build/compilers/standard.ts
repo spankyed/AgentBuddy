@@ -15,7 +15,7 @@ function uniqueEntries(kind: string, compiled: CompileResult): CompiledEntry[] {
   return compiled.entries;
 }
 
-/** A compiled action or prompt, tagged with the entity type it seeds */
+/** A compiled action or prompt, tagged with the entity type it writes */
 export type CompiledContentEntry = CompiledEntry & { entity: string };
 
 interface DslCompiled {

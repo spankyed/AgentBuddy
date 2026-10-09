@@ -92,7 +92,7 @@ export interface Run {
  *
  * What it changes when the walk finds nothing is the sentence. `related` reports the same emptiness for a
  * file nothing covers and for one whose specs are behind a build, and those are opposite facts — a gap in
- * the suite against a gap in the router. Until this existed the seed source got the first for the second:
+ * the suite against a gap in the router. Until this existed the content source got the first for the second:
  * *"No spec covers …"*, which `tests/content/` refutes.
  */
 export interface BuildEdge {
@@ -311,7 +311,7 @@ const ownSuiteFor = (rel: string): UnitSuite | undefined => {
   return PACK_SUITES.find((suite) => suite.dir === pkg);
 };
 
-/** A pack's seed sources, and the specs that read what building them produces */
+/** A pack's content sources, and the specs that read what building them produces */
 const CONTENT_SOURCES = 'src/content';
 const CONTENT_SPECS = 'tests/content';
 
@@ -353,7 +353,7 @@ export function packBuildEdge(rel: string, root: string): { suite: UnitSuite; sp
 /** What covers a build-edge target, in the words the note and the `--full` label both use */
 const edgeCovers = (suite: UnitSuite, specs: readonly string[]): string =>
   specs.length === 0 ? `${suite.workspace}'s whole suite, which resolves through what its build inputs configure`
-    : `${suite.workspace} ${specs.join(' ')}, which read what building its seeds produces`;
+    : `${suite.workspace} ${specs.join(' ')}, which read what building its content produces`;
 
 /** The edge as the command reports it, for one target */
 const beyondOf = (edge: { suite: UnitSuite; specs: readonly string[] }, rel: string): BuildEdge =>
@@ -556,7 +556,7 @@ export function planTargets(targets: readonly string[], flags: readonly string[]
   const runs: Run[] = [];
   const unmatched: string[] = [];
   const ambiguous: { query: string; specs: string[] }[] = [];
-  // Keyed by what a run would be, so two seed sources plan one build and one spec run rather than two of each
+  // Keyed by what a run would be, so two content sources plan one build and one spec run rather than two of each
   const edges = new Map<string, { suite: UnitSuite; specs: readonly string[] }>();
   const named: string[] = [];          // spec files the targets name, grouped at the end
   const sourcePackages: (string | null)[] = [];   // whose pack-suite dependents a rebuild would reach
@@ -659,7 +659,7 @@ export function planChanged(changedPaths: readonly string[], flags: readonly str
   // The claim is over the part of the change set a spec could cover. A doc-only change set has none — which
   // is also why this takes the paths: a package name cannot say whether what changed inside it was code.
   const coverable = changedPaths.filter(couldBeCovered);
-  // And a pack's build edges are covered without being coverable: `abuddy.json` is a `.json` and a seed source
+  // And a pack's build edges are covered without being coverable: `abuddy.json` is a `.json` and a content source
   // may be a `.md`, and both have specs that read what building them produces. Naming one as a *target* says
   // so, so a change set holding one must not answer "nothing a spec could cover" — the two routes would
   // contradict each other about the same file, which is how this was found
@@ -672,7 +672,7 @@ export function planChanged(changedPaths: readonly string[], flags: readonly str
   const changedPackages = [...new Set(changedPaths.map(packageOf))].filter((pkg) => pkg !== null);
   const affected = affectedPackSuites(changedPackages, root);
   const affectedIntegration = affectedIntegrationSuites(changedPackages, root);
-  // No root run when nothing in the change set is in its graph: a pack's manifest and its seed sources are
+  // No root run when nothing in the change set is in its graph: a pack's manifest and its content sources are
   // covered by that pack's own suite below, and asking the root for them is the empty vitest this route
   // stopped paying for
   const runs: Run[] = [ensurePackages(root)];

@@ -312,7 +312,7 @@ describe('a change set a spec could not cover', () => {
   });
 
   /**
-   * A pack's build edges are covered without being *coverable*: `abuddy.json` is a `.json` and a seed source
+   * A pack's build edges are covered without being *coverable*: `abuddy.json` is a `.json` and a content source
    * may be a `.md`. Naming one as a target says what covers it, so a change set holding one must not answer
    * "nothing a spec could cover" — the two routes would contradict each other about the same file.
    */
@@ -562,7 +562,7 @@ describe("the package's CLAUDE.md names what is here", () => {
  *
  * A pack's specs import what `abuddy build` produced, never the source that produced it, so the edge runs
  * `src` -> build -> artifact -> spec and `related` reports the same emptiness it reports for a file nothing
- * covers. Those are opposite facts and until these routes existed they got the same sentence: a seed source
+ * covers. Those are opposite facts and until these routes existed they got the same sentence: a content source
  * was told *"No spec covers …"*, which `tests/content/` refutes.
  */
 describe('a pack file whose specs sit behind a build', () => {
@@ -597,7 +597,7 @@ describe('a pack file whose specs sit behind a build', () => {
     }
   });
 
-  it('sends a seed source to the specs that read what building it produces', () => {
+  it('sends a content source to the specs that read what building it produces', () => {
     const edge = packBuildEdge(SEED, REPO_ROOT);
     expect(edge?.suite.workspace).toBe('@app/default-setup');
     expect(edge?.specs, 'the seed goldens, not the whole suite').toEqual(['tests/content']);
@@ -616,7 +616,7 @@ describe('a pack file whose specs sit behind a build', () => {
 
   it('leaves every other file in the pack alone', () => {
     expect(packBuildEdge(`packages/${PACK}/src/features/brain/be/system.ts`, REPO_ROOT)).toBeUndefined();
-    expect(packBuildEdge(`packages/${PACK}/tests/content/seed-parity.spec.ts`, REPO_ROOT)).toBeUndefined();
+    expect(packBuildEdge(`packages/${PACK}/tests/content/content-parity.spec.ts`, REPO_ROOT)).toBeUndefined();
     expect(packBuildEdge('packages/abuddy-sdk/src/index.ts', REPO_ROOT), 'and every file outside a pack').toBeUndefined();
   });
 
@@ -687,7 +687,7 @@ describe('a pack file whose specs sit behind a build', () => {
     ]);
   });
 
-  // One build and one run for two seed sources: the edge is the pack's, not the file's
+  // One build and one run for two content sources: the edge is the pack's, not the file's
   it('plans one build however many of a pack\'s files are named', () => {
     const planned = planTargets([SEED, `packages/${PACK}/src/content/prompts/index.ts`], [], REPO_ROOT, { full: true });
     expect(planned.runs.filter((r) => r.args.includes('build'))).toHaveLength(1);
@@ -921,7 +921,7 @@ describe('what the plan would list', () => {
    *
    * `packBuildEdge` names the seed goldens as a *directory* and the listing reads *files*, and both were
    * right on their own: the seed run resolved to one unexpanded path, which is the whole of what `--full`
-   * adds for a seed source. Asserted over the plan rather than over `packageRun`, because the directory is
+   * adds for a content source. Asserted over the plan rather than over `packageRun`, because the directory is
    * what the edge hands it and the expansion is what has to survive the trip.
    */
   it('expands the seed run the edge plans into files rather than the directory it names', () => {

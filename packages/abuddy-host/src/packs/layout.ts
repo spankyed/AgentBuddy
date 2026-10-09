@@ -6,7 +6,7 @@
  *   <id>/integrity.json            format version, versions, source, sha256 per file
  *   <id>/runtime/index.cjs      backend: exports `registration` + `setCompiledDir`
  *   <id>/runtime/fe.js, fe.css  frontend
- *   <id>/runtime/content/         compiled seed data
+ *   <id>/runtime/content/         compiled content
  *   <id>/build/                 build-time code dependents load (step build facets)
  *   <id>/types/snapshot.json    types + manifest for dependents' codegen
  *
@@ -22,11 +22,12 @@ import { _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type PackManifest } from
 import type { PackRegistry } from './registry.ts';
 
 /**
- * The layout's major version, which `verifyPack` refuses a mismatch of.
+ * The layout's major version, which `verifyPack` and the loader refuse a mismatch of.
  *
- * **2 because a pack's compiled content moved from `runtime/seeds` to `runtime/content`.** A pack built
- * at 1 and installed before that would have been read as a pack with no content at all — found, loaded,
- * and silently applying nothing — where a refusal names the pack and says to rebuild it.
+ * **Bump it whenever a path in `PACK_LAYOUT` changes.** A pack built against an older layout is still a
+ * readable directory, so nothing else notices: it is found, registered, and quietly contributes whichever
+ * part has moved — no error, no missing file, just an app running without content it was given. The
+ * version is what turns that into a refusal naming the pack and asking for a rebuild.
  */
 export const PACK_LAYOUT_VERSION = 2;
 
@@ -308,7 +309,7 @@ export async function extractPackArchive(archive: string, destDir: string, expec
   return path.join(destDir, dirs[0].name);
 }
 
-/** A pack's compiled seed files, relative to the seeds directory holding them */
+/** A pack's compiled content files, relative to the content directory holding them */
 export function packContentFiles(contentDir: string): string[] {
   return fs.existsSync(contentDir) ? listFiles(contentDir).sort() : [];
 }

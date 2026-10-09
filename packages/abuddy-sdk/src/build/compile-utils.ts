@@ -41,7 +41,7 @@ export interface CompileResult {
 // --- esbuild Plugin ---
 
 /**
- * Bare specifiers that seed sources may import. These resolve to sandbox-safe
+ * Bare specifiers that content sources may import. These resolve to sandbox-safe
  * SDK source and are inlined into the compiled function body by esbuild; the
  * bundled output is still checked for Node-only global references.
  */

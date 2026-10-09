@@ -4,7 +4,7 @@
  * than something the view reads from one pack's compiled content.
  *
  * A pack's entries are read the first time the list is, not at registration, so a pack whose help is compiled with
- * its seeds can read them then.
+ * its content can read them then.
  */
 import { boundHost } from '../runtime/host-runtime.ts';
 

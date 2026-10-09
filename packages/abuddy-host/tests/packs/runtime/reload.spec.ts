@@ -95,7 +95,7 @@ describe('reloading a pack the app ships', () => {
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, types: {} }));
     writeSeeds('[{ "label": "first" }]');
     // The index naming the pack, and the runtime built beside it
-    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.contentDir, 'content.json'), JSON.stringify({ version: 1, packId: SHIPPED_ID, seeds: [] }));
+    fs.writeFileSync(path.join(packDir, PACK_LAYOUT.contentDir, 'content.json'), JSON.stringify({ version: 1, packId: SHIPPED_ID, entries: [] }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `
       let compiledDir = '';
       module.exports = {
@@ -147,12 +147,12 @@ describe('reloading a pack the app ships', () => {
       const meta: unknown = event.meta;
       loggedErrors.push(`${event.message} ${meta instanceof Error ? meta.message : JSON.stringify(meta ?? {})}`);
     });
-    // AppState, where the boot seed records what it last seeded, starts empty
+    // AppState, where the boot apply records what it last applyed, starts empty
     resetTestData();
     // The appliers the built-in pack's registration carries
     testPacks.appliers.set(SHIPPED_ID, [{
       key: 'actions',
-      // An applier reports the records it couldn't seed in its counts; it doesn't throw
+      // An applier reports the records it couldn't write in its counts; it doesn't throw
       apply: ({ compiledDir }) => {
         if (seedFailure) throw seedFailure;
         seeded.push(compiledDir);
@@ -173,7 +173,7 @@ describe('reloading a pack the app ships', () => {
     expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: SHIPPED_ID, systemIds: [`${SHIPPED_ID}/widget`] });
   });
 
-  // Only the reloaded pack's own systems restart; other packs' systems read what it registers and seeds
+  // Only the reloaded pack's own systems restart; other packs' systems read what it registers and content
   it('tells the running systems the pack changed, after restarting its own', async () => {
     writeShipped();
     loadAppPacks(registry, new Set([SHIPPED_ID]));
@@ -202,7 +202,7 @@ describe('reloading a pack the app ships', () => {
     expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
   });
 
-  it("records what it seeded per pack, so a second shipped pack's boot seed doesn't re-run this one", async () => {
+  it("records what it seeded per pack, so a second shipped pack's boot apply doesn't re-run this one", async () => {
     writeShipped();
     loadAppPacks(registry, new Set([SHIPPED_ID]));
     applyPacks([seedTarget()]);
@@ -307,16 +307,16 @@ describe('reloading a pack', () => {
   it("records a first-time pack's seed failure", async () => {
     resetTestData();
     writeRebuild(runtime());
-    // Compiled seeds from a pack built by an older CLI: importCompiledContent refuses them, which is a failed seed
+    // Compiled seeds from a pack built by an older CLI: importCompiledContent refuses them, which is a failed apply
     fs.writeFileSync(
       path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'runtime', 'content', 'content.json'),
-      JSON.stringify({ version: 1, seeds: [] }),
+      JSON.stringify({ version: 1, entries: [] }),
     );
 
     await reloadPackById(registry, PACK_ID, bus as never);
 
     expect(readInstalledPacks()).toMatchObject([
-      expect.objectContaining({ id: PACK_ID, lastError: expect.stringContaining("doesn't name the pack that compiled these seeds") }),
+      expect.objectContaining({ id: PACK_ID, lastError: expect.stringContaining("doesn't name the pack that compiled this content") }),
     ]);
   });
 
@@ -353,7 +353,7 @@ describe('reloading a pack', () => {
     expect(appState.get().packVersions).toEqual({ [PACK_ID]: '1.0.1' });
   });
 
-  // Other packs' systems read what the pack registers and seeds (the chat's slash commands, say). A system
+  // Other packs' systems read what the pack registers and content (the chat's slash commands, say). A system
   // reading it between unregistering the running pack and registering the rebuild would find nothing
   it('tells the running systems the pack changed once the rebuild is registered and its systems restarted', async () => {
     writeRebuild(runtime());

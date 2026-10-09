@@ -5,7 +5,7 @@ import { packFixture } from '@abuddy/sdk/testing/pack-fixture';
 import { bundlePackContentRuntime } from '../../src/build/be-bundler';
 import { REPO_ROOT } from '@abuddy/host/build/packages-built';
 
-/** A seed runtime that bundles but can't load where dependents' unit tests load it fails `abuddy build` */
+/** A content runtime that bundles but can't load where dependents' unit tests load it fails `abuddy build` */
 const tmpDirs: string[] = [];
 afterEach(() => {
   for (const dir of tmpDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
@@ -29,8 +29,8 @@ function pack(repository: string): string {
   return dir;
 }
 
-describe('abuddy build loads the seed runtime it bundles', () => {
-  it('passes a seed runtime that uses only @abuddy/sdk', async () => {
+describe('abuddy build loads the content runtime it bundles', () => {
+  it('passes a content runtime that uses only @abuddy/sdk', async () => {
     const dir = pack("import { findRelations } from '@abuddy/ears';\nexport const memoQueries = { links: findRelations };\n");
     expect(await bundlePackContentRuntime(dir, path.join(dir, 'dist'))).toEqual({ success: true });
   });
@@ -38,7 +38,7 @@ describe('abuddy build loads the seed runtime it bundles', () => {
   it('passes when the caller carries the source condition, as npm test and PACK_DIR builds do', async () => {
     // The check loads the bundle in a child process. Inheriting --conditions=@abuddy/source would make
     // that child resolve the packages' TypeScript with no loader to read it, and the build would fail
-    // naming the pack's seed runtime rather than the loader.
+    // naming the pack's content runtime rather than the loader.
     const dir = pack("import { findRelations } from '@abuddy/ears';\nexport const memoQueries = { links: findRelations };\n");
     const before = process.env.NODE_OPTIONS;
     process.env.NODE_OPTIONS = `${before ?? ''} --conditions=@abuddy/source`.trim();

@@ -1,7 +1,7 @@
 // Notes through the generic seed pipeline: markdown compiled into records, written by the SDK's
 // generic applier through default-setup's Note content writers.
 // - Fresh seeds must produce the same notes rows as the goldens (first recorded from the pre-generic pipeline).
-// - Re-seeds follow goal-generic-seed-compiler Decision 10: notes carry a contentHash, an unchanged or
+// - Re-seeds follow goal-generic-content-compiler Decision 10: notes carry a contentHash, an unchanged or
 //   missing stored hash leaves the row alone, keep-existing skips, wipe-and-replace works on nested notes.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -31,7 +31,7 @@ function compile(sources: 'v1' | 'v2' | 'default-setup') {
     const records = compileBuiltinFormat('notes', NOTES_FORMAT, source);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-seed-'));
     dirs.push(dir);
-    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId: 'default-setup', entries: [] }));
     fs.writeFileSync(path.join(dir, 'notes.content.json'), JSON.stringify({ records }));
     compiled.set(sources, { dir, records });
   }
@@ -308,7 +308,7 @@ describe('notes seeding (generic pipeline)', () => {
     expect(counts.updated, 'nothing was seeded at all, so the case above proves nothing').toBeGreaterThan(0);
   });
 
-  it('wipes nested notes and seeds them again', () => {
+  it('wipes nested notes and content them again', () => {
     reset();
     seedNotes('v2');
     const freshV2 = notesOf(snapshot(), { withHash: true });

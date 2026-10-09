@@ -55,7 +55,7 @@ export const noteWriter: ContentWriter<NoteItem> = {
 
   /**
    * Writes every field the record sets, so the row holds the values the applier records for it, and
-   * resets the fields its previous seed set that the record no longer does to a new note's
+   * resets the fields its previous apply set that the record no longer does to a new note's
    */
   update(id, record, { index, clearedFields }) {
     const resets = Object.fromEntries(Object.entries(NOTE_DEFAULTS).filter(([field]) => clearedFields.includes(field))) as NoteUpdates;

@@ -32,7 +32,7 @@ describe('flow applier', () => {
     tmp ??= fs.mkdtempSync(path.join(os.tmpdir(), 'flow-applier-'));
     const file = contentPath(tmp, 'flows');
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(path.join(tmp, 'content.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
+    fs.writeFileSync(path.join(tmp, 'content.json'), JSON.stringify({ version: 1, packId: 'demo', entries: [] }));
     fs.writeFileSync(file, JSON.stringify({
       [name]: {
         contentHash: `${name}-${version}`,
@@ -222,7 +222,7 @@ describe('flow applier', () => {
     const flowId = flows('Demo Flow')[0].id;
 
     const broken = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-applier-broken-'));
-    fs.writeFileSync(path.join(broken, 'content.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
+    fs.writeFileSync(path.join(broken, 'content.json'), JSON.stringify({ version: 1, packId: 'demo', entries: [] }));
     fs.writeFileSync(contentPath(broken, 'flows'), JSON.stringify({
       'Demo Flow': { contentHash: 'Demo Flow-v2', tracks: [{ event: 'flow.entry', label: 'Flow Entry', exits: [[{ type: 'no_such_step' }]] }] },
     }));
@@ -244,7 +244,7 @@ describe('flow applier', () => {
     const [key] = [...first.written.keys()];
 
     const emptied = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-applier-none-'));
-    fs.writeFileSync(path.join(emptied, 'content.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
+    fs.writeFileSync(path.join(emptied, 'content.json'), JSON.stringify({ version: 1, packId: 'demo', entries: [] }));
     fs.writeFileSync(contentPath(emptied, 'flows'), JSON.stringify({}));
 
     const second = after(first);
@@ -285,7 +285,7 @@ describe('flow applier', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-applier-'));
     const file = contentPath(tmp, 'flows');
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(path.join(tmp, 'content.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
+    fs.writeFileSync(path.join(tmp, 'content.json'), JSON.stringify({ version: 1, packId: 'demo', entries: [] }));
     fs.writeFileSync(file, JSON.stringify({
       'Broken Flow': { tracks: [{ event: 'flow.entry', label: 'Flow Entry', exits: [[{ type: 'no_such_step' }]] }] },
     }));

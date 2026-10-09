@@ -27,7 +27,7 @@ const SOURCE_CONDITION_FLAG = `--conditions=${SOURCE_CONDITION}`;
 
 /**
  * NODE_OPTIONS without the source condition, for the processes the CLI starts to run pack code: the
- * Playwright runner, the seed-runtime check and the app the fixture launches, each of which resolves the
+ * Playwright runner, the content-runtime check and the app the fixture launches, each of which resolves the
  * @abuddy packages' dist as a pack does. Nothing here adds the condition — a host process that needs it
  * gets it from `scripts/with-source.mjs`, which runs before any TypeScript loader and keeps its own copy.
  */

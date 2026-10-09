@@ -18,7 +18,7 @@ export interface PackMigration {
  *
  * **A registration carries code; the manifest and the compiled artifacts carry facts.** So nothing here
  * describes a pack's content: which keys it writes is `content.json`'s, where its compiled content is follows
- * from where the pack is installed, and what a seed leaves alone the applier decides from the rows — an
+ * from where the pack is installed, and what an apply leaves alone the applier decides from the rows — an
  * unchanged hash, an edited row, one the user deleted. A fact put here is a second account of one of those.
  */
 export interface PackBootHooks {
@@ -84,7 +84,7 @@ export interface PackRegistration {
   commands?: import('./pack-commands.ts').PackCommand[];
   /**
    * Help entries this pack answers with, listed under Help in the app's Settings view (abuddy.json `help`).
-   * Called the first time the list is read, so a pack whose help is compiled with its seeds can read them then.
+   * Called the first time the list is read, so a pack whose help is compiled with its content can read them then.
    */
   help?: () => import('./pack-help.ts').HelpEntry[];
   /**

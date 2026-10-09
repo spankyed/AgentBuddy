@@ -53,7 +53,7 @@ afterAll(() => {
 
 describe('services.appData.reset()', () => {
   it('leaves an onboarded app with default settings, seeded flows and migrations applied', async () => {
-    // A fresh boot seeded flows, and its data is at the app version
+    // A fresh boot applyed flows, and its data is at the app version
     expect(fresh.flows.length).toBeGreaterThan(0);
     expect(appState.get()).toMatchObject({ hasOnboarded: false, version: getAppVersion() });
 

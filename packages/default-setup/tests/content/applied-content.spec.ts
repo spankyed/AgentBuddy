@@ -16,11 +16,11 @@ import { PACK_DIR, applyAfter } from './harness.ts';
 /** This pack's compiled content, as its build wrote them */
 const BUILT = path.join(PACK_DIR, 'dist', 'runtime', 'content');
 
-interface IndexEntry { key: string; seeded?: boolean; count?: number }
-const index = (): { seeds: IndexEntry[] } => JSON.parse(fs.readFileSync(path.join(BUILT, CONTENT_INDEX_FILE), 'utf-8'));
+interface IndexEntry { key: string; written?: boolean; count?: number }
+const index = (): { entries: IndexEntry[] } => JSON.parse(fs.readFileSync(path.join(BUILT, CONTENT_INDEX_FILE), 'utf-8'));
 
-/** The keys the build says it seeds, and how many items each holds — the declaration this spec derives from */
-const seededEntries = () => index().seeds.filter((entry) => entry.seeded);
+/** The keys the build says it writes, and how many items each holds — the declaration this spec derives from */
+const writtenEntries = () => index().entries.filter((entry) => entry.written);
 
 const dirs: string[] = [];
 /** The copies, made once: a spec file's tests share them, and only the database is per test */
@@ -99,7 +99,7 @@ let first: ReturnType<typeof apply>;
  * so anything seeded in a `beforeAll` is gone before the first case runs.
  */
 beforeEach(() => {
-  expect(fs.existsSync(BUILT), 'the built seeds are missing: run npm run compile').toBe(true);
+  expect(fs.existsSync(BUILT), 'the built content is missing: run npm run compile').toBe(true);
   first = apply(compiledDir());
 });
 
@@ -108,8 +108,8 @@ afterAll(() => {
 });
 
 describe('the applied content over this pack’s real content', () => {
-  it('records an item for everything the build says it seeds', () => {
-    const entries = seededEntries();
+  it('records an item for everything the build says it writes', () => {
+    const entries = writtenEntries();
     const declared = entries.reduce((total, entry) => total + (entry.count ?? 0), 0);
 
     expect(entries.map((entry) => entry.key).sort(), 'the pack stopped seeding a key this spec covers')
@@ -245,7 +245,7 @@ describe('the applied content over this pack’s real content', () => {
    * it, an item a pack stopped shipping stayed in the user's database for good.
    */
   it('removes an item the content no longer declares', () => {
-    const dropped = seededEntries().find((entry) => entry.key === 'prompts')!;
+    const dropped = writtenEntries().find((entry) => entry.key === 'prompts')!;
     expect(dropped.count ?? 0, 'the prompts entry seeds nothing, so this removes nothing').toBeGreaterThan(0);
 
     const again = apply(compiledDir({ bump: true, drop: 'prompts' }), first.record);

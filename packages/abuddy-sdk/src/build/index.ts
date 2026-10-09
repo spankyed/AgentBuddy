@@ -50,7 +50,7 @@ export { contentFile, contentPath, CONTENT_COMPILERS_FILE, PROVENANCE_KINDS, PAC
 export { entry, on } from './flow-helpers.ts';
 
 // Seed authoring types
-export type { ActionMeta, PromptMeta } from './seed-types.ts';
+export type { ActionMeta, PromptMeta } from './content-types.ts';
 
 // Entry codegen
 export {

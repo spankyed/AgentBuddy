@@ -77,7 +77,7 @@ export function isolatedDataDir(prefix = 'abuddy-tests-'): IsolatedDataDir {
 /**
  * What a pack's SFCs become in its tests, and why they are not compiled.
  *
- * A pack's specs drive machines, systems, seeds and repositories; **one spec in the whole AgentBuddy repo
+ * A pack's specs drive machines, systems, content and repositories; **one spec in the whole AgentBuddy repo
  * mounts a Vue component**. What every pack needs instead is a module graph that *resolves*, because
  * `vitest related` and `--changed` walk it from the file you edited — and without this they die on the first
  * `.vue` they reach, which is any pack with a plugin.

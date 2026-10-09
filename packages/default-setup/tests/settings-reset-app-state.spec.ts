@@ -1,4 +1,4 @@
-// Resetting settings resets the user's settings, not the app's own state (onboarding, pack versions, seed hashes).
+// Resetting settings resets the user's settings, not the app's own state (onboarding, pack versions, content revisions).
 // That state used to live in the Settings row's `internal` section, which resetSettings() erased; it's the host's
 // AppState row now, which this pack never reads but the test does, as the host stores it.
 import { describe, expect, it } from 'vitest';

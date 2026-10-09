@@ -19,7 +19,7 @@ export interface BackupInfo {
 export interface AppDataService {
   /**
    * Resets the whole app: deletes all stored data and keys, reopens empty stores (the in-memory database is cleared
-   * too), then runs each pack's init hook, the boot seed and the app migrations. Onboarding starts over
+   * too), then runs each pack's init hook, the boot apply and the app migrations. Onboarding starts over
    */
   reset(): Promise<void>;
   /** Whether the user finished onboarding */

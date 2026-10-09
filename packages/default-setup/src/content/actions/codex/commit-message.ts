@@ -72,7 +72,7 @@ export async function action(
     if (!fullPrompt) {
       services.emitter.broadcastToPlugin('default-setup/code', {
         type: 'commit.ERROR_RECEIVED',
-        data: { message: 'Commit Message prompt template not found. Run seed import.' },
+        data: { message: 'Commit Message prompt template not found. Import the pack content.' },
       });
       return { success: false, error: 'Prompt not found' };
     }

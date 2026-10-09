@@ -10,7 +10,7 @@ import { entityIds } from '@abuddy/sdk/testing';
 import { resetTestData, testMediaPath } from '@abuddy/testing/harness';
 
 export const PACK_DIR = path.resolve(import.meta.dirname, '../..');
-export const FIXTURES = path.join(PACK_DIR, 'tests/_support/fixtures/seed-parity');
+export const FIXTURES = path.join(PACK_DIR, 'tests/_support/fixtures/content-parity');
 
 /**
  * The record that makes a run an **apply**: what the last one wrote, and the containers this one fills.

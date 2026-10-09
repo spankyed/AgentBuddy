@@ -23,7 +23,7 @@ afterAll(() => { for (const dir of roots) fs.rmSync(dir, { recursive: true, forc
 /**
  * The pack: two step definitions, and one flow whose single step is `stepInFlow`.
  *
- * **A directory of its own per case**, because the seed compiler loads a pack's TypeScript through tsx, which
+ * **A directory of its own per case**, because the content compiler loads a pack's TypeScript through tsx, which
  * caches by path: two packs at one path leave the second case compiling the first one's flow, and reporting it.
  */
 function pack(stepInFlow: string): string {

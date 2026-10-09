@@ -92,7 +92,7 @@ describe('createHostRuntime', () => {
       packs.unregisterPack('reset-pack');
       packs.unregisterPack('seeded-pack');
     }
-    // One seed call for every pack, after the migrations — where it was the shipped pack's boot seed and
+    // One seed call for every pack, after the migrations — where it was the shipped pack's boot apply and
     // then the installed packs', which is why only the second half retried or saw a dependency seed
     expect(order).toEqual([
       'onShutdown', 'engine cleared', 'store reset', 'onInit (0 keys)',

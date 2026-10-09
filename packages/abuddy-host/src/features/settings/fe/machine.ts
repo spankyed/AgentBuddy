@@ -32,7 +32,7 @@ export interface PackContentImport {
   importMode: ImportMode;
   restartBrain: boolean;
   result: Record<string, { created: number; updated: number; skipped: number }> | null;
-  /** Records the import couldn't seed, when it finished */
+  /** Records the import couldn't write, when it finished */
   errors: string[];
   error: string | null;
 }
@@ -252,7 +252,7 @@ export function createSettingsMachine(io: SettingsIO) {
 
     previewPackContent: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_CONTENT.PREVIEW'; directory: string };
-      // The packs system owns seed orchestration; its answers come back to this plugin, which draws them
+      // The packs system owns content orchestration; its answers come back to this plugin, which draws them
       sendToSystem('packs', {
         type: 'PREVIEW_PACK_CONTENT',
         directory: ev.directory,

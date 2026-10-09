@@ -7,7 +7,7 @@ export interface ContentWriteContext {
   parentId?: EARS.EntityId;
   index: number;
   /**
-   * On update, the fields the row's previous seed set that the record no longer sets: `update` resets
+   * On update, the fields the entity's previous apply set that the record no longer sets: `update` resets
    * them (to what `create` gives a record that doesn't set them). Empty for `find` and `create`.
    */
   clearedFields: string[];
@@ -29,7 +29,7 @@ export interface ContentWriter<R extends ContentItem = ContentItem> {
    * The entity holds other records rather than being one of them (a folder), so a row another pack
    * wrote is reused as a parent: the item's children are written under it and the entity itself is
    * left as its own pack wrote it. Without this an entity another pack's content claimed is never matched,
-   * and the record seeds a second row beside it.
+   * and the item writes a second entity beside it.
    */
   container?: boolean;
   /** Replaces the entry's `identity` matching */

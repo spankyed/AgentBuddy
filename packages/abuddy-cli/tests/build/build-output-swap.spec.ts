@@ -47,7 +47,7 @@ describe('a build that fails', () => {
     const cwd = process.cwd();
     process.chdir(root);
     try {
-      // The feature's settings file is missing, which fails the build before it compiles the seeds
+      // The feature's settings file is missing, which fails the build before it compiles the content
       await expect(build(['--skip-generate'])).rejects.toThrow('Invalid feature settings');
     } finally {
       process.chdir(cwd);
@@ -57,7 +57,7 @@ describe('a build that fails', () => {
   });
 });
 
-describe('a pack whose seed compiler modules fail to bundle', () => {
+describe('a pack whose content compiler modules fail to bundle', () => {
   it('fails the build before it writes the snapshot', async () => {
     const dir = previousBuild(['snapshot.json']);
     const root = path.dirname(dir);

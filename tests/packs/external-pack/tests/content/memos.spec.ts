@@ -13,7 +13,7 @@ describe('memo seeds', () => {
       memos: { created: 1, updated: 0, skipped: 0 },
       'quick-memos': { created: 1, updated: 0, skipped: 0 },
     });
-    expect(repository.memoQueries.all().map((memo) => memo.text).sort()).toEqual(['Seeded by a compiler module', 'Seeded from markdown\n']);
+    expect(repository.memoQueries.all().map((memo) => memo.text).sort()).toEqual(['Written by a compiler module', 'Written from markdown\n']);
   });
 
   it('starts each test from an empty database and skips unchanged rows on a re-seed', async () => {
@@ -26,7 +26,7 @@ describe('memo seeds', () => {
 // The chat lists a pack's commands from two places: its manifest, and the documents it seeds into
 // default-setup's internal/commands folder for users to edit
 describe('slash commands', () => {
-  it("registers the pack's declared command, and seeds its command document", async () => {
+  it("registers the pack's declared command, and content its command document", async () => {
     expect(getPackCommands()).toContainEqual({ name: 'memo-note', placeholder: 'Memo text' });
 
     await importContent({ keys: ['library'] });

@@ -22,11 +22,11 @@ export function previewPackContent(directory: string): PackContentPreview {
   if (registered.size === 0) {
     throw new Error(`Pack "${packId}" isn't installed, so its content can't be imported: install the pack first`);
   }
-  const seeded = index.seeds.filter((entry) => entry.seeded);
+  const written = index.entries.filter((entry) => entry.written);
   return {
     directory,
     packId,
-    content: Object.fromEntries(seeded.filter((entry) => registered.has(entry.key)).map((entry) => [entry.key, entry.items])),
-    unavailable: seeded.filter((entry) => !registered.has(entry.key)).map((entry) => entry.key),
+    content: Object.fromEntries(written.filter((entry) => registered.has(entry.key)).map((entry) => [entry.key, entry.items])),
+    unavailable: written.filter((entry) => !registered.has(entry.key)).map((entry) => entry.key),
   };
 }

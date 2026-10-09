@@ -74,7 +74,7 @@ async function reloadPack(
   const systemIds = [...new Set([...oldSystemIds, ...fresh.newSystemIds])];
 
   backendActor.send({ type: 'RELOAD_PACK', packId, systemIds });
-  // Other packs' systems read what this one registers and seeds (the chat's slash commands, say). Sent once the
+  // Other packs' systems read what this one registers and content (the chat's slash commands, say). Sent once the
   // fresh registration is live, never between unregistering the old one and registering it
   backendActor.send({ type: 'PACK_CHANGED', packId });
 

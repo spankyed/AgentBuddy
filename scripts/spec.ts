@@ -43,7 +43,7 @@
 //   1  a spec failed — the ordinary one
 //   2  a name was wide enough to be a search, so the paths were listed instead of run
 //   3  nothing ran and nothing passed: no spec covers the target, or the specs that do sit behind a build
-//      this run is not doing (a pack's seed sources, its build inputs) — `npm run spec:full` answers those
+//      this run is not doing (a pack's content sources, its build inputs) — `npm run spec:full` answers those
 //
 // 3 is the one worth knowing about. `vitest related` exits 0 when the module graph reaches no spec, so until it
 // existed "nothing covers this" and "everything covering this passed" were the same output and the same code —
@@ -239,7 +239,7 @@ if (notReached.length > 0) {
 }
 
 // Two sentences for one emptiness, because they are opposite facts: a gap in the suite, and specs that
-// exist behind a build this run did not do. Saying the first for the second is what a seed source used to get
+// exist behind a build this run did not do. Saying the first for the second is what a content source used to get
 for (const run of uncovered) {
   const target = run.claimsCoverageOf!;
   console.error(run.beyond === undefined

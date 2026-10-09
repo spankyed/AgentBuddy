@@ -309,7 +309,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(exported.boot?.onInit).toBeDefined();
   });
 
-  // A pack's seeds are files the host reads with the appliers that pack *registered*; a function the pack
+  // A pack's content are files the host reads with the appliers that pack *registered*; a function the pack
   // puts on `boot` is not a door into seeding, and never was
   it("seeds a pack from its compiled files, never from a function its boot hooks export", async () => {
     const { registerExternalPacks } = await import('../../../src/packs/runtime/loader.ts');
@@ -410,7 +410,7 @@ describe('applyPacks: failures', () => {
     expect(registryEntry('bad-flows').lastError).toBe('flows: Flow "X" is invalid: missing event');
   });
 
-  it("doesn't re-import unchanged failing seed data on every boot, and keeps its lastError", () => {
+  it("doesn't re-import unchanged failing content on every boot, and keeps its lastError", () => {
     const pack = installedPack('bad-flows');
     writeRegistry(['bad-flows']);
     const applyFn = vi.fn(failingSeed);
@@ -441,7 +441,7 @@ describe('applyPacks: failures', () => {
   // What makes the retry possible without re-importing on every boot: the hash says the pack's own data is
   // unchanged, and this says what its dependencies were when it failed. A pack that seeded cleanly has
   // nothing to compare against, so it keeps no entry.
-  it('records what a failed seed faced, and keeps nothing once the pack seeds cleanly', () => {
+  it('records what a failed apply faced, and keeps nothing once the pack seeds cleanly', () => {
     const pack = { ...installedPack('records'), manifest: { id: 'records', dependencies: { provider: '^1.0.0' } } };
     writeRegistry(['records']);
 
@@ -493,7 +493,7 @@ describe('applyPacks: failures', () => {
     expect(registryEntry('flaky').lastError).toBeTruthy();
   });
 
-  it('forgets what a failed seed faced once the pack has no seed data to retry', () => {
+  it('forgets what a failed apply faced once the pack has no content to retry', () => {
     const pack = { ...installedPack('withdrawn'), manifest: { id: 'withdrawn', dependencies: { provider: '^1.0.0' } } };
     writeRegistry(['withdrawn']);
     applyPacks([pack], failingSeed);
@@ -505,7 +505,7 @@ describe('applyPacks: failures', () => {
     expect(appState.get().failedAgainst).toEqual({});
   });
 
-  it("clears an earlier version's lastError when the pack no longer has seed data", () => {
+  it("clears an earlier version's lastError when the pack no longer has content", () => {
     const pack = installedPack('no-more-seeds');
     fs.rmSync(path.join(pack.dir, 'runtime', 'content'), { recursive: true });
     fs.writeFileSync(path.join(_appDirOf(tmpDir), 'installed-packs.json'), JSON.stringify({
@@ -526,7 +526,7 @@ describe('applyPacks: failures', () => {
     fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'settings.content.json'), '{"plugins": {}}');
     const settingsSeed = vi.fn(() => ({ created: 0, updated: 1, skipped: 0 }));
     const actionsSeed = vi.fn(() => ({ created: 1, updated: 0, skipped: 0 }));
-    fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'content.json'), JSON.stringify({ version: 1, packId: 'with-settings', seeds: [] }));
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'content.json'), JSON.stringify({ version: 1, packId: 'with-settings', entries: [] }));
     // The appliers its registration carries
     testPacks.appliers.set('with-settings', [{ key: 'settings', apply: settingsSeed }, { key: 'actions', apply: actionsSeed }]);
 
@@ -548,7 +548,7 @@ describe('applyPacks: failures', () => {
     expect(registryEntry('throws').lastError).toBe('boom');
   });
 
-  it('clears lastError after a successful seed', () => {
+  it('clears lastError after a successful apply', () => {
     const pack = installedPack('recovered');
     fs.writeFileSync(path.join(_appDirOf(tmpDir), 'installed-packs.json'), JSON.stringify({
       packs: [{ id: 'recovered', name: 'r', version: '1.0.0', dir: '', enabled: true, installedAt: '', lastError: 'old failure' }],
@@ -727,7 +727,7 @@ describe('applyPacks: failures', () => {
     expect(appliedContent.get('partial').items).toEqual({ 'partial:notes/a': { entityType: 'Note', parts: { title: 'h1' } } });
   });
 
-  it('records nothing for a pack with no seed data', () => {
+  it('records nothing for a pack with no content', () => {
     const pack = installedPack('empty');
     fs.rmSync(path.join(pack.dir, 'runtime', 'content'), { recursive: true });
     writeRegistry(['empty']);
@@ -874,7 +874,7 @@ describe('applyPacks', () => {
 });
 
 describe('contentRevision', () => {
-  it('returns empty string for a directory with no seed files', () => {
+  it('returns empty string for a directory with no content files', () => {
     const emptyDir = path.join(tmpDir, 'empty-dist');
     fs.mkdirSync(emptyDir, { recursive: true });
     expect(contentRevision(emptyDir)).toBe('');
@@ -893,7 +893,7 @@ describe('contentRevision', () => {
   });
 
   // The names as well as the bytes, which is the half a byte-only hash would miss: the same records moved from one
-  // seed file to another are a different seeding, and nothing else here tells those apart — adding or changing a
+  // content file to another are a different seeding, and nothing else here tells those apart — adding or changing a
   // file moves the bytes too, so only a rename isolates it.
   it('changes when the same bytes move to a different file', () => {
     const distDir = path.join(tmpDir, 'hash-renamed');
@@ -909,7 +909,7 @@ describe('contentRevision', () => {
 
   // **The hash is content, so a rewrite with the same bytes is not a change.** It used to be: file times were in
   // here so that reinstalling a pack would re-seed it, since `placePack` replaces every file. That made a `touch`
-  // re-seed too, and made every `abuddy run` backend rebuild re-import every seed, because that loop reinstalls.
+  // re-seed too, and made every `abuddy run` backend rebuild re-import every item, because that loop reinstalls.
   // Asking for a pack's data to be put back is `IMPORT_PACK_CONTENT` now, which says so.
   it('returns the same hash when the same bytes are put back in new files', () => {
     const distDir = path.join(tmpDir, 'hash-replaced');
@@ -969,10 +969,10 @@ describe('contentRevision', () => {
     expect(hash).not.toBe('');
   });
 
-  // **Everything in the pack's seeds directory, media included.** The directory holds what `abuddy build`
+  // **Everything in the pack's content directory, media included.** The directory holds what `abuddy build`
   // compiled there and nothing else, so there is no file kind to exclude — and a changed image is changed
-  // seed data, which a hash over `.json` alone called unchanged
-  it('hashes every file under the seeds directory, media and all', () => {
+  // content, which a hash over `.json` alone called unchanged
+  it('hashes every file under the content directory, media and all', () => {
     const contentDir = path.join(tmpDir, 'with-media');
     fs.mkdirSync(contentDir, { recursive: true });
     expect(contentRevision(contentDir), 'an empty directory has nothing to seed').toBe('');
@@ -984,10 +984,10 @@ describe('contentRevision', () => {
     fs.mkdirSync(path.join(contentDir, 'media', 'notes'), { recursive: true });
     fs.writeFileSync(path.join(contentDir, 'media', 'notes', 'diagram.png'), 'first');
     const withMedia = contentRevision(contentDir);
-    expect(withMedia, 'a media file is seed data').not.toBe(withoutMedia);
+    expect(withMedia, 'a media file is content').not.toBe(withoutMedia);
 
     fs.writeFileSync(path.join(contentDir, 'media', 'notes', 'diagram.png'), 'second');
-    expect(contentRevision(contentDir), "a media file's content is seed data").not.toBe(withMedia);
+    expect(contentRevision(contentDir), "a media file's content is content").not.toBe(withMedia);
   });
 });
 

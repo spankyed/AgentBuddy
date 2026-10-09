@@ -57,7 +57,7 @@ describe('importCompiledContent', () => {
   });
 
   it('refuses a directory that names no pack', () => {
-    expect(() => importCompiledContent({ compiledDir: compiledDir() })).toThrow("doesn't name the pack that compiled these seeds");
+    expect(() => importCompiledContent({ compiledDir: compiledDir() })).toThrow("doesn't name the pack that compiled this content");
   });
 
   /**

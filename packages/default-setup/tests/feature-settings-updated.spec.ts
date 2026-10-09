@@ -64,7 +64,7 @@ describe('a feature whose settings change', () => {
     expect(warned.mock.calls.flat().join(' ')).not.toContain('not found');
   });
 
-  // A system's own write (the code system's browsed directory, the brain's inspect toggle), an action's or a seed's goes
+  // A system's own write (the code system's browsed directory, the brain's inspect toggle), an action's or an apply's goes
   // straight to the repository. It reaches the feature once, and a later unrelated change doesn't send it again: told
   // late, a stale difference had the code explorer jump back to its default directory.
   it('tells the feature once when its settings are written outside the settings system, and not again later', async () => {

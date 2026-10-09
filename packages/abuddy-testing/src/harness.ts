@@ -1,7 +1,7 @@
 // Unit tests for a pack without the app, on the pack's own @abuddy/sdk (registrations are the ones
 // the pack's code sees). Two tiers:
-// - data: the pack's seeds, repositories and content writers against an in-memory EARS, with its
-//   dependencies' content behaviour (their seed runtimes);
+// - data: the pack's content, repositories and content writers against an in-memory EARS, with its
+//   dependencies' content behaviour (their content runtimes);
 // - runtime (with `registration`): also its systems, services and steps, and its dependencies' full
 //   runtimes, run under the app's bus core with `startApp`.
 //
@@ -38,7 +38,7 @@ import { _getMediaPath, importCompiledContent, type ImportMode, type ImportResul
 export { takeSystemErrors, addTestSecret, type ContentRuntime };
 
 /**
- * Where the media a test's seeds wrote lands: the store itself, or one row's folder
+ * Where the media a test's content wrote lands: the store itself, or one row's folder
  * (`media/<entityId>/<file>`). A pack's tests read and assert on it through this; the path itself is
  * the app's, and the data dir is this package's contract (`isolatedDataDir`).
  */
@@ -49,7 +49,7 @@ export function testMediaPath(entityId?: string): string {
 /**
  * Empties what a test wrote: the in-memory database and the stored keys (the SDK's `resetTestData`),
  * and the media store with them, which is what a test between tests expects. The harness calls it
- * before each test; a test that reseeds mid-run calls it itself.
+ * before each test; a test that re-applies mid-run calls it itself.
  */
 export function resetTestData(): void {
   resetSdkTestData();
@@ -68,7 +68,7 @@ let inTest = false;
 const registry = createPackRegistry();
 // The app's own plugins (the shell, the Packs tab, Settings), which a pack's systems may send to. The harness runs
 // two of the host's systems: settings, because a feature's own settings are the app's to store and hand back and a
-// pack's code reads them in almost every test, and packs, which owns seed import and preview — a pack's tests seed
+// pack's code reads them in almost every test, and packs, which owns content import and preview — a pack's tests write
 // their own compiled output constantly, and that is the system those events reach.
 registry.registerPack(hostRegistration({
   settings: { machine: createSettingsSystem(), receives: [...settingsEvents] },
@@ -77,7 +77,7 @@ registry.registerPack(hostRegistration({
 setAppPacks(registry);
 
 /**
- * The systems and plugins the packs' manifests declare, when the harness registers seed runtimes, which carry no
+ * The systems and plugins the packs' manifests declare, when the harness registers content runtimes, which carry no
  * features: an action a test runs sends to them through `services.emitter`, which resolves against these
  */
 const declaredRefs = { systems: new Set<string>(), plugins: new Set<string>() };
@@ -139,12 +139,12 @@ const DEPS_DIR = path.join('.abuddy', 'deps');
 const CONTENT_RUNTIME_FILE = 'content-runtime.mjs';
 
 export interface PackTestOptions {
-  /** The pack's own seed runtime: `import { contentRuntime } from '#generated/content-runtime'` */
+  /** The pack's own content runtime: `import { contentRuntime } from '#generated/content-runtime'` */
   contentRuntime: ContentRuntime;
   /**
    * The pack's runtime registration, `import { registration } from '#generated/pack-entry'`: registers
    * its systems, services, steps and designations, and loads each dependency's full runtime instead
-   * of its seed runtime, for `startApp`.
+   * of its content runtime, for `startApp`.
    */
   registration?: PackRegistration;
   /**
@@ -231,7 +231,7 @@ function originOf(manifest: PackManifest, dir: string): PackOrigin {
   return { id: manifest.id, name: manifest.name, version: manifest.version, dir, shipped: false, manifest };
 }
 
-/** A seed runtime as a registration: its entity types, repositories and content writers, and the pack's appliers */
+/** A content runtime as a registration: its entity types, repositories and content writers, and the pack's appliers */
 function contentRuntimeRegistration(runtime: ContentRuntime, appliers?: ContentApplier[]): PackRegistration {
   return {
     id: runtime.id,
@@ -244,7 +244,7 @@ function contentRuntimeRegistration(runtime: ContentRuntime, appliers?: ContentA
 
 /**
  * Starts the in-memory runtime for the pack's tests: entity types of the SDK, the pack and its
- * dependencies; each dependency's seed runtime (its repositories and content writers) and the pack's own
+ * dependencies; each dependency's content runtime (its repositories and content writers) and the pack's own
  * registered in the test file's registry; the database emptied before each test. Call it once, from a vitest setup file.
  */
 export async function setupPackTests(options: PackTestOptions): Promise<void> {
@@ -356,13 +356,13 @@ async function registerRuntimes(packDir: string, manifest: PackManifest, depende
 }
 
 export interface ImportContentOptions {
-  /** Seed entries to seed; defaults to every entry naming a format without a pack applier (actions and flows need the app) */
+  /** Content entries to write; defaults to every entry naming a format without a pack applier (actions and flows need the app) */
   keys?: string[];
   mode?: ImportMode;
 }
 
 /**
- * Compiles the pack's seed entries (with its own and its dependencies' formats) and seeds them into
+ * Compiles the pack's content entries (with its own and its dependencies' formats) and content them into
  * the in-memory database, through the registered content writers. Returns each key's counts.
  */
 export async function importContent(options: ImportContentOptions = {}): Promise<Record<string, ImportResult>> {
@@ -373,7 +373,7 @@ export async function importContent(options: ImportContentOptions = {}): Promise
   const unknown = keys.filter((key) => !(key in resolved));
   if (unknown.length > 0) throw new Error(`No content sources ${unknown.join(', ')} in abuddy.json`);
 
-  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-pack-seeds-'));
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-pack-content-'));
   const { register, tsImport } = await import('tsx/esm/api');
   // The SDK's own compilers import TypeScript sources (flows, actions) that use the pack's #generated imports
   const unregister = register();
@@ -387,11 +387,11 @@ export async function importContent(options: ImportContentOptions = {}): Promise
       importModule: (file) => tsImport(file, import.meta.url) as Promise<Record<string, unknown>>,
       log: () => {},
     });
-    // Registered appliers whose key wasn't compiled find no seed file and skip
+    // Registered appliers whose key wasn't compiled find no content file and skip
     const index = JSON.parse(fs.readFileSync(path.join(outputDir, CONTENT_INDEX_FILE), 'utf-8')) as ContentIndex;
-    const seeded = new Set(index.seeds.filter((seed) => seed.seeded).map((seed) => seed.key));
+    const written = new Set(index.entries.filter((entry) => entry.written).map((entry) => entry.key));
     const result = importCompiledContent({ compiledDir: outputDir, mode: options.mode });
-    return Object.fromEntries(Object.entries(result).filter(([key]) => seeded.has(key)));
+    return Object.fromEntries(Object.entries(result).filter(([key]) => written.has(key)));
   } finally {
     await unregister();
     fs.rmSync(outputDir, { recursive: true, force: true });

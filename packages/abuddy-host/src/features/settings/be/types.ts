@@ -33,7 +33,7 @@ export type IncomingSecretsEvents =
 // What this system's own `fromCallback` children send it. Nothing else sends these.
 export type SettingsInternalEvents =
   | { type: 'PACK_SETTINGS_CHANGED' } // A pack's feature settings (defaults) registered or unregistered
-  | { type: 'SETTINGS_WRITTEN' } // Something wrote the stored settings: this system, a feature's system, an action or a seed
+  | { type: 'SETTINGS_WRITTEN' } // Something wrote the stored settings: this system, a feature's system, an action or an apply
   // The stored data is being replaced wholesale (a backup import), and has been: what each feature was told is then
   // stale either way, since a failed import may have migrated some of the data already
   | { type: 'DATA_REPLACING' }
@@ -50,7 +50,7 @@ export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_REFUSED'; problems: string[] }
   | { type: 'SETTINGS_RESET'; data: SettingsDocument }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
-  // The four seed events are sent by the `packs` system, not this one: the work is pack-level and lives
+  // The four content events are sent by the `packs` system, not this one: the work is pack-level and lives
   // there, while the view that draws it is the settings plugin, whose inbox this type is.
   /** `errors` lists the items that couldn't be written (`<key>: <error>`); the rest were imported */
   | { type: 'PACK_CONTENT_IMPORTED'; result: Record<string, ApplyResult>; errors: string[] }

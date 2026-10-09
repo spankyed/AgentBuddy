@@ -14,7 +14,7 @@
 // (`@abuddy/host/build/packages-built`) keeps one build of the five `@abuddy` packages; a pack's own build sat
 // between the two with no lock, so `npm run compile` run beside a chain, or two agents in one checkout, raced.
 // What that costs is not only a broken `dist`: a reader of the pack's `dist/build` while one build has moved it
-// aside sees no build dir at all, which is how a dependent's seed compiler comes back unresolved.
+// aside sees no build dir at all, which is how a dependent's content compiler comes back unresolved.
 //
 // **It waits rather than refusing**, which is the opposite of the chain's choice and for the opposite reason.
 // Two chain runs are a mistake to be told about — they would cache each other's results. Two builds are just
@@ -95,7 +95,7 @@ export function holdPackBuildLock(
  * cycle. Waiting holds nothing, so it cannot deadlock.
  *
  * What it buys is the common case: a build in flight when the read starts is waited out, rather than the read
- * seeing a tree mid-rename and taking absent for *not built* — which is how a dependency's seed compiler comes
+ * seeing a tree mid-rename and taking absent for *not built* — which is how a dependency's content compiler comes
  * back unresolved. What it does **not** cover is a build that starts *during* the read; closing that needs the
  * dependent's own lock released before it resolves, so only one is ever held, and that is a change to the
  * order of `build()` rather than to this.

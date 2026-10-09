@@ -1,7 +1,7 @@
 import type { SettingsService } from '../services/settings.ts';
 // The runtime a pack's unit tests run against: the EARS engine in memory, without the app.
 // @abuddy/testing's harness drives it; it lives in the SDK so tests share the pack's SDK instance
-// (its query, repository and seed-hook registries) instead of a copy.
+// (its query, repository and content-writer registries) instead of a copy.
 import { createEarsEngine, installEngine, type EarsEngine } from '@abuddy/ears';
 import type { ContentWriter } from '../content/writers.ts';
 import { SDK_ENTITIES } from '../types/sdk-entities.ts';
@@ -102,7 +102,7 @@ export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
   bindTestRuntime({ engine: testEngine, resetData: resetTestData, ...started });
 }
 
-/** Registers a pack's seed runtime: its entity types, its repositories (with the engine) and its content writers (in `testPacks`) */
+/** Registers a pack's content runtime: its entity types, its repositories (with the engine) and its content writers (in `testPacks`) */
 export function registerContentRuntime(runtime: ContentRuntime): void {
   startTestRuntime({ entityTypes: Object.values(runtime.entities) });
   for (const [name, repo] of Object.entries(runtime.repositories)) testEngine().query.registerRepository(name, repo);

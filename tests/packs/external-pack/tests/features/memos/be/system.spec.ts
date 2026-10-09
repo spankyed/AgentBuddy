@@ -4,12 +4,12 @@ import { importContent, startApp } from '@abuddy/testing/harness';
 import { repository } from '#generated/repository.ts';
 
 describe('memos system', () => {
-  it('sends the seeded memos when a client connects', async () => {
+  it('sends the memos its content wrote when a client connects', async () => {
     await importContent();
     const app = await startApp({ systems: ['memos'] });
     await app.connect();
     const connected = await app.nextEmit('memos', 'MEMOS_CONNECTED');
-    expect((connected.memos as Array<{ text: string }>).map((memo) => memo.text.trim())).toContain('Seeded from markdown');
+    expect((connected.memos as Array<{ text: string }>).map((memo) => memo.text.trim())).toContain('Written from markdown');
   });
 
   it('stores a memo a client adds and sends it back', async () => {

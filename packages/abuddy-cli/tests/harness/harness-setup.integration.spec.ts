@@ -75,7 +75,7 @@ it('seeds nothing', async () => {
     expect(result.output).toMatch(/Tests\s+1 passed/);
   });
 
-  // A seed runtime registers no features, yet an action the test runs sends to the pack's own through services.emitter
+  // A content runtime registers no features, yet an action the test runs sends to the pack's own through services.emitter
   it("let services.emitter send to the features the pack's manifest declares", () => {
     const root = dataPack(`
 import { expect, it } from 'vitest';

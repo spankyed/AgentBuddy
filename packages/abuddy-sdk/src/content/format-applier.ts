@@ -15,7 +15,7 @@ import type { ContentEditPolicy } from '../build/manifest-schema.ts';
 
 export interface FormatApplierOptions {
   key: string;
-  /** The entity types the entry seeds (the format's `entity`): what `wipe-and-replace` removes */
+  /** The entity types the entry writes (the format's `entity`): what `wipe-and-replace` removes */
   entities: string[];
   /** Fields matched to find an existing row (`parent` = the tree parent); entity types with a `find` hook ignore it */
   identity?: string[];
@@ -158,9 +158,9 @@ export const recordApplied = (ctx: ApplyContext, key: string, item: AppliedItem)
  *   still visited.
  * - `wipe-and-replace` first removes every row of the entry's entity types, whoever created it (other
  *   packs' rows and the user's too), even when the file has no records of a type.
- * - A row another record's seed claimed (another pack's, or another entry's of this pack) isn't this
+ * - A row another item's apply claimed (another pack's, or another entry's of this pack) isn't this
  *   record's, unless the entity's hooks set `container`: then it's reused as the record's parent, counted
- *   as skipped and left as its seed wrote it, in every mode but `wipe-and-replace`.
+ *   as skipped and left as that apply wrote it, in every mode but `wipe-and-replace`.
  */
 export function createFormatApplier(options: FormatApplierOptions): ContentApplier {
   const { key, entities, identity = [], relKind = DEFAULT_REL_KIND } = options;
@@ -190,13 +190,13 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
 
       /**
        * The entity written from this item, however it's been renamed since; otherwise one without a content
-       * key that matches by identity (a user's row with its name), so a seed never adds a copy beside it.
+       * key that matches by identity (a user's row with its name), so an apply never adds a copy beside it.
        * A container another item wrote (another pack's, or another entry's) is reused as a parent
        * (`reused`): its children are written under it and the row itself is left alone.
        */
       const find = (record: ContentItem, contentKey: string, context: ContentWriteContext, hooks?: ContentWriter): { match?: ContentMatch; reused?: boolean; deleted?: boolean } => {
         /**
-         * **The keyed lookup sees deleted rows, and that is the whole of how a seed knows the user removed
+         * **The keyed lookup sees deleted rows, and that is the whole of how an apply knows the user removed
          * one.** `qx` carries no filter; the finders do (`@abuddy/ears`' `query-helpers.ts`, `!isDeleted`),
          * so `findWhere` here hid exactly the row that answers "did the user delete this" — a soft-deleted
          * row keeps the `contentKey` this is searching for. With it hidden, `findByIdentity` missed too (same
@@ -576,7 +576,7 @@ function isInside(root: string, file: string): boolean {
 /**
  * Copies media a record links to into the row's media folder and rewrites the links. A link whose file
  * would resolve outside the compiled media folder, or be written outside the row's, is left as it is:
- * a compiled content directory can come from anywhere (Settings → Import pack seeds).
+ * a compiled content directory can come from anywhere (Settings → Import Pack Content).
  */
 function restoreMedia(
   record: ContentItem,

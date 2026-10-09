@@ -20,7 +20,7 @@ export interface PackConfigOptions {
    * steps so flows can use dependency steps and are validated with their real code.
    */
   dependencyStepModules?: string[];
-  /** Dependencies whose seed formats this pack's entries may name */
+  /** Dependencies whose content formats this pack's entries may name */
   dependencies?: ReadonlyMap<string, ContentDependency>;
 }
 

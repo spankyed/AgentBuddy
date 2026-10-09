@@ -121,7 +121,7 @@ describe('the 0.3.15 app migration, for plugins', () => {
     expect(appState.get().pluginVisibility).toEqual({ 'draft-pack/drafts': false });
   });
 
-  // One broken pack on disk mustn't stop the migration, which would stop every boot's migrations and seeds
+  // One broken pack on disk mustn't stop the migration, which would stop every boot's migrations and content
   it("moves every other key when an installed pack's manifest is malformed", () => {
     untypedTx(SETTINGS_ID).put('data', { plugins: { drafts: { wrap: true }, memos: { sort: 'oldest' } } });
 

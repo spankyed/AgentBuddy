@@ -43,8 +43,8 @@ test('seeds memos from abuddy.json: a markdown entry and a compiler module', asy
   await app.navigate('memos');
 
   const list = appPage.getByTestId('memo-list');
-  await expect(list.getByText('Seeded from markdown', { exact: true })).toBeVisible({ timeout: 10_000 });
-  await expect(list.getByText('Seeded by a compiler module', { exact: true })).toBeVisible();
+  await expect(list.getByText('Written from markdown', { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(list.getByText('Written by a compiler module', { exact: true })).toBeVisible();
 });
 
 /** The memos plugin's settings, as the app's settings plugin holds them, keyed by the id it runs under */
@@ -81,7 +81,7 @@ test("a re-enabled pack's plugin gets its startup data again", async ({ appPage,
   await app.waitForPlugin('memos');
   await expect.poll(memoSettings(appPage)).toEqual({ listTitle: 'Memos' });
   await app.navigate('memos');
-  await expect(appPage.getByTestId('memo-list').getByText('Seeded from markdown', { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(appPage.getByTestId('memo-list').getByText('Written from markdown', { exact: true })).toBeVisible({ timeout: 10_000 });
 });
 
 test('writes through @abuddy/ears and reads back through the SDK, on the app\'s engine', async ({ appPage, app }) => {

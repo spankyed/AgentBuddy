@@ -24,7 +24,7 @@ export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: Pac
 
   return {
     // The app as a fresh boot leaves it: the packs stop as when the app exits, the stores empty, then the packs
-    // start as a boot starts them (onInit, migrations, seeds). Their systems keep running.
+    // start as a boot starts them (onInit, migrations, content). Their systems keep running.
     async reset() {
       try {
         registry.runShutdownHooks();

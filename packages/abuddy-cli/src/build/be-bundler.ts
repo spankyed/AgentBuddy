@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { APP_ONLY_EXPORTS, HOST_RESOLVED_BINARIES, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
 import { CONTENT_COMPILERS_FILE } from '@abuddy/sdk/build';
-import { checkContentRuntimeLoads } from './seed-runtime-check';
+import { checkContentRuntimeLoads } from './content-runtime-check';
 import type { RecordReads } from './build-reads';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
@@ -152,7 +152,7 @@ export async function bundlePackContentCompilers(
 
   try {
     await bundlePackSource(packDir, options, {
-      stdin: { contents, resolveDir: packDir, sourcefile: 'seed-compilers.ts', loader: 'ts' },
+      stdin: { contents, resolveDir: packDir, sourcefile: 'content-compilers.ts', loader: 'ts' },
       outfile: path.join(outputDir, 'build', CONTENT_COMPILERS_FILE),
     });
     return { success: true };
@@ -188,11 +188,11 @@ export async function bundlePackFlowHelpersModule(
   }
 }
 
-/** The pack's seed runtime bundle in its build dir: what dependents' unit tests register */
+/** The pack's content runtime bundle in its build dir: what dependents' unit tests register */
 export const CONTENT_RUNTIME_FILE = 'content-runtime.mjs';
 
 /**
- * Bundle the pack's seed runtime (src/__generated__/content-runtime.ts: entity types, repositories,
+ * Bundle the pack's content runtime (src/__generated__/content-runtime.ts: entity types, repositories,
  * content writers) into dist/build/content-runtime.mjs. Only the shared-instance packages (@abuddy/sdk and
  * @abuddy/ears) stay external, so a dependent's unit tests can load it with just their own installed
  * and share their instances. The

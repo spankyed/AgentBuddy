@@ -333,7 +333,7 @@ describe('the snapshot format', () => {
   const SNAPSHOT_FIELDS: Record<keyof PackSnapshot, true> = {
     types: true, defs: true, manifest: true, format: true, sdkVersion: true, provenance: true, flowHelpers: true,
   };
-  /** The snapshot's manifest, which a dependent's codegen reads (features, services, seed formats, version…) */
+  /** The snapshot's manifest, which a dependent's codegen reads (features, services, content formats, version…) */
   const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
     $manifestVersion: true, $schema: true, artifacts: true, blocks: true, boot: true, build: true, builtIn: true, commands: true,
     dependencies: true, description: true, dsl: true, entities: true, entityShapes: true, help: true, fe: true, features: true,
@@ -347,7 +347,7 @@ describe('the snapshot format', () => {
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
   const MANIFEST_SYSTEM_EVENTS_FIELDS: Record<keyof NonNullable<PackSystemEntry['events']>, true> = { incoming: true };
   const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { contract: true, default: true, entry: true };
-  /** A dependency's seed formats, which a dependent's `content.sources` compiles its own sources with */
+  /** A dependency's content formats, which a dependent's `content.sources` compiles its own sources with */
   const SEED_FORMAT_FIELDS: Record<keyof ContentFormatConfig, true> = {
     compiler: true, entity: true, fields: true, format: true, identity: true, media: true, tree: true,
   };

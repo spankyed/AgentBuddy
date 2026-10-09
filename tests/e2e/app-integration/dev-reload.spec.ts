@@ -1,5 +1,5 @@
 // `abuddy run` and the built-in pack's watcher rebuild a pack and then POST /dev/reload. The reload has to
-// leave the pack as a boot would: its runtime pointed at the compiled content, and seed data a rebuild changed
+// leave the pack as a boot would: its runtime pointed at the compiled content, and content a rebuild changed
 // imported. This drives the real endpoint against the running app, and the library's index is what shows it.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -21,7 +21,7 @@ async function libraryDocuments(appPage: Page): Promise<string[]> {
   });
 }
 
-/** Renames a compiled record, as recompiling the pack's seed sources after an edit would */
+/** Renames a compiled record, as recompiling the pack's content sources after an edit would */
 function renameSeededDocument(records: LibraryRecord[], from: string, to: string): boolean {
   for (const record of records) {
     if (record.entity === 'Document' && record.name === from) {
@@ -34,7 +34,7 @@ function renameSeededDocument(records: LibraryRecord[], from: string, to: string
 }
 
 /**
- * The test edits a compiled seed file in the checkout, so the restore can't live in the test body: a
+ * The test edits a compiled content file in the checkout, so the restore can't live in the test body: a
  * Playwright timeout rejects the test without unwinding it, and a `finally` left unrun would leave the
  * renamed document on disk, failing every later run on its first assertion. A hook runs either way.
  */
@@ -44,7 +44,7 @@ test.afterEach(() => {
   originalSeedFile = undefined;
 });
 
-test('a rebuilt built-in pack reloads with the seed data the rebuild changed', async ({ app, appPage }) => {
+test('a rebuilt built-in pack reloads with the content the rebuild changed', async ({ app, appPage }) => {
   const { apiPort, apiToken } = await appPage.evaluate(() => {
     const api = (window as { electronAPI?: { apiPort?: number; apiToken?: string } }).electronAPI;
     return { apiPort: api?.apiPort, apiToken: api?.apiToken ?? '' };
