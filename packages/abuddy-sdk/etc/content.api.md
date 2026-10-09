@@ -110,6 +110,9 @@ export interface PackContentPreviewItem {
 // @public
 export function previewPackContent(directory: string): PackContentPreview;
 
+// @public
+export function removeContentEntity(entityType: string, id: EARS_2.EntityId): void;
+
 // (No @packageDocumentation comment for this package)
 
 ```

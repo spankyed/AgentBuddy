@@ -188,6 +188,28 @@ describe('the applied content a run records', () => {
   });
 
   /**
+   * **A forced write puts back an entity the user threw away**, because the request is for the pack's item
+   * and an item still in the trash is not one. Only `force` reaches a trashed entity at all — every other
+   * path reads one as the user's deletion — and the fields a write sets are the record's, so nothing else
+   * would clear the mark.
+   */
+  it('restores an entity the user trashed when the user asks for it back', () => {
+    const first = applyRecord();
+    seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
+    const id = memo('Intro').id;
+    untypedTx(id).update('deleted' as never, true);
+
+    const counts = offering.apply({
+      compiledDir: compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]),
+      mode: 'replace-on-collision', force: true, applied: applyRecord(), log: () => {},
+    });
+
+    expect(counts).toEqual({ created: 0, updated: 1, skipped: 0 });
+    expect(ears().getAttr(id, 'deleted' as never), 'out of the trash').toBeFalsy();
+    expect(ears().getAttr(id, 'body' as never)).toBe('Hello again');
+  });
+
+  /**
    * **`force` is the one write that overwrites the user, and it is what taking an offered version does.**
    * Every mode skips an edited item, so the flag rather than a mode is what makes "give me the pack's
    * version of this one item" expressible at all.

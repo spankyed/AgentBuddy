@@ -120,6 +120,51 @@ describe('the 0.3.15 app migration', () => {
   // applies each pack's content once.
   //
   // `externalSeedDeps` is the one that still moves: what a failed apply faced is still `failedAgainst`.
+  /**
+   * **The two attributes an apply stamps, on every entity in the database rather than on the registered
+   * types.** A pack disabled or failing to load at this boot registers no entity types, so its types are
+   * not types as far as the engine is concerned and a walk over the registered ones cannot see its
+   * entities at all — and the migration records its version and never runs again. Its items would carry
+   * the old names for good, which a later apply reads as entities carrying no hash of ours: left alone as
+   * the user's, never updated again, which is the freeze 0.3.15 exists to end.
+   */
+  describe('the content key and hash an apply stamps', () => {
+    const ofType = (type: string, id: string) => `${type}-${id}` as EARS.EntityId;
+
+    it('are renamed on an entity whose type no registered pack declares', () => {
+      const absent = ofType('MemoFromADisabledPack', 'one');
+      untypedTx(absent, true).put('entityType', 'MemoFromADisabledPack');
+      untypedTx(absent).update('seedKey', 'memo-pack:memos/one');
+      untypedTx(absent).update('sourceHash', 'h1');
+      expect(registry.getRegisteredEntityTypes(), 'the type is not one the engine knows').not.toContain('MemoFromADisabledPack');
+
+      move();
+
+      const row = untypedQx(absent).pickOne(['contentKey', 'contentHash', 'seedKey', 'sourceHash']) as Record<string, unknown>;
+      expect(row.contentKey).toBe('memo-pack:memos/one');
+      expect(row.contentHash).toBe('h1');
+      expect(row.seedKey, 'and the old names are gone').toBeNull();
+      expect(row.sourceHash).toBeNull();
+    });
+
+    /** A second run finds the new name already there and leaves it, which is what makes the rename free */
+    it('are left alone by a later run, and an entity carrying neither is untouched', () => {
+      const stamped = ofType('MemoFromADisabledPack', 'two');
+      untypedTx(stamped, true).put('entityType', 'MemoFromADisabledPack');
+      untypedTx(stamped).update('contentKey', 'memo-pack:memos/two');
+      const theirs = ofType('MemoFromADisabledPack', 'three');
+      untypedTx(theirs, true).put('entityType', 'MemoFromADisabledPack');
+      untypedTx(theirs).update('title', 'mine');
+
+      move();
+      move();
+
+      expect(untypedQx(stamped).pickOne(['contentKey'])?.contentKey).toBe('memo-pack:memos/two');
+      expect(untypedQx(theirs).pickOne(['title', 'contentKey']) as Record<string, unknown>)
+        .toMatchObject({ title: 'mine', contentKey: null });
+    });
+  });
+
   describe('the seed records a row kept per kind of pack', () => {
     const APP_STATE_ID = 'AppState-app' as EARS.EntityId;
     const OLD = {

@@ -38,7 +38,7 @@ function legacyInternal(): LegacyInternal | undefined {
 /** A per-pack record with the stored one's entries it lacks */
 const withMissing = (current: Record<string, string>, legacy: Record<string, string> | undefined) => ({ ...legacy, ...current });
 
-type MigrationRegistry = Pick<PackRegistry, 'getPackRegistration' | 'shippedPacks' | 'loadedPacks' | 'pluginIds' | 'systemIds' | 'getRegisteredEntityTypes'>;
+type MigrationRegistry = Pick<PackRegistry, 'getPackRegistration' | 'shippedPacks' | 'loadedPacks' | 'pluginIds' | 'systemIds'>;
 
 /** The manifests of the external packs installed on disk, whether or not they loaded this boot */
 export type InstalledManifests = () => ReadonlyArray<Pick<PackManifest, 'id' | 'features'>>;
@@ -55,7 +55,7 @@ export const migration = (registry: MigrationRegistry, installed: InstalledManif
   description: "Move the app's state (onboarding and versions) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, every pack's plugin settings onto their plugins' refs and every written entity's content key and hash onto their names; drop the seed records each pack's applied content replaced",
   up: () => {
     renameSeedRecords();
-    renameContentAttributes(registry);
+    renameContentAttributes();
     moveAppState();
     const owners = ownersIn(registry, installed());
     moveShellState(owners);
@@ -116,25 +116,34 @@ const DROPPED_SEED_RECORDS = [
 const RENAMED_CONTENT_ATTRIBUTES = { seedKey: 'contentKey', sourceHash: 'contentHash' } as const;
 
 /**
- * Renames them on every entity of every registered type.
+ * Renames them on **every entity in the database**, which is what `qx()` with no start gives.
+ *
+ * Not a walk over the registered entity types, which is what this was and which misses exactly the
+ * entities nobody can fix later: a pack disabled or failing to load at this boot registers no types, its
+ * types are not types as far as the engine is concerned (`isEntityType`), so `qx(type)` reads the name as
+ * an id and finds nothing — and the migration records its version and never runs again. The pack's items
+ * would carry the old names for good, which the next apply reads as entities carrying no hash of ours:
+ * user-owned, left alone, never updated again. That is the freeze this release exists to end, kept alive
+ * for whichever pack happened to be off.
+ *
+ * Asking every entity costs no more than asking each registered type, since that visited every entity of
+ * every type; it simply stops the population being a question.
  *
  * Idempotent, and in the safe order for a run that dies half way: the new name is written before the old
  * one is dropped, so an interrupted run leaves an entity carrying both and the next pass finishes it. An
  * entity that already holds the new name is left alone, which is what makes a second run free.
  */
-function renameContentAttributes(registry: MigrationRegistry): void {
+function renameContentAttributes(): void {
   let moved = 0;
-  for (const entity of registry.getRegisteredEntityTypes()) {
-    // Untyped: these are attributes the app stamps, not fields any pack declares, and the entity types
-    // are whatever is registered rather than a list written here
-    for (const row of untypedQx(entity as EARS.Entity).pickAll() as Array<Record<string, unknown>>) {
-      const id = row.id as EARS.EntityId;
-      for (const [from, to] of Object.entries(RENAMED_CONTENT_ATTRIBUTES)) {
-        if (row[from] == null || row[to] != null) continue;
-        untypedTx(id).update(to, row[from]);
-        untypedTx(id).drop(from);
-        moved++;
-      }
+  // Untyped and unstarted: these are attributes the app stamps, not fields any pack declares, so which
+  // entity types exist decides nothing about where they are
+  for (const row of untypedQx().pickAll() as Array<Record<string, unknown>>) {
+    const id = row.id as EARS.EntityId;
+    for (const [from, to] of Object.entries(RENAMED_CONTENT_ATTRIBUTES)) {
+      if (row[from] == null || row[to] != null) continue;
+      untypedTx(id).update(to, row[from]);
+      untypedTx(id).drop(from);
+      moved++;
     }
   }
   if (moved > 0) console.log(`[migration 0.3.15] renamed ${moved} content attribute(s)`);

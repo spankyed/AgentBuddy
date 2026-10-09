@@ -2,6 +2,7 @@
 // entries (a notes markdown tree and the library compiler module), previewed from its seeds.json,
 // imported with an item deselected, then imported again in keep-existing mode. The imported document's image,
 // which the API copies into its media folder, loads through main's media:// protocol.
+import type { PackContentPreview } from '@abuddy/sdk/content';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -17,7 +18,9 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
 
 type PackContentImport = {
   status: string;
-  preview: { seeds: Record<string, Array<{ key: string; childCount?: number }>>; unavailable: string[] } | null;
+  // The published type rather than a copy of its shape: a restatement here went on compiling after the
+  // field was renamed, so the one spec that reads a preview was the last thing to know
+  preview: PackContentPreview | null;
   selection: Record<string, string[]>;
   result: Record<string, { created: number; updated: number; skipped: number; errors?: string[] }> | null;
   error: string | null;
@@ -80,7 +83,7 @@ test('previews a compiled seeds directory by its seeds.json and imports the sele
     await waitForStatus('selecting');
     const previewed = await importState();
     expect(previewed.error).toBeNull();
-    expect(previewed.preview!.seeds).toEqual({
+    expect(previewed.preview!.content).toEqual({
       library: [{ key: `E2E Guide ${RUN}` }],
       notes: [{ key: `E2E Plan ${RUN}`, childCount: 1 }, { key: `E2E Skipped ${RUN}` }],
     });

@@ -17,6 +17,9 @@ import { reloadPackById } from '../../../../src/packs/runtime/reload.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { createPackArchive, stagePack } from '../../../../src/packs/layout.ts';
 import { PACK_LAYOUT } from '../../../../src/packs/layout.ts';
+import { applyPacks } from '../../../../src/packs/runtime/apply.ts';
+import { createFormatApplier } from '@abuddy/sdk/content';
+import { untypedQx, untypedTx } from '@abuddy/ears';
 
 const PACK_ID = 'reinstall-pack';
 
@@ -613,6 +616,172 @@ describe('importing a pack’s content', () => {
       });
     } finally {
       testPacks.appliers.delete(PACK_ID);
+      system.stop();
+    }
+  });
+});
+
+/**
+ * **The three answers a user gives to one content item**, which are the only requests in the app that write
+ * a pack's content over what the user has made of it, or remove it.
+ *
+ * The fixture is two entries over two SDK entity types, which is default-setup's own shape: one that offers
+ * and one that does not. Two entries rather than one because the thing most worth holding here is what a
+ * request about *one* item does to everything else — the answer was "overwrites all of it", and nothing
+ * could have said so with a single entry.
+ */
+describe('a user answering for one of a pack’s content items', () => {
+  const CONTENT_PACK = 'content-pack';
+  const ACTION_KEY = `${CONTENT_PACK}:actions/${encodeURIComponent(JSON.stringify(['Action', 'Echo']))}`;
+  const PROMPT_KEY = `${CONTENT_PACK}:prompts/${encodeURIComponent(JSON.stringify(['Prompt', 'Greet']))}`;
+
+  /**
+   * The pack as installed, in the data dir's packs directory — which is where the restore looks, because
+   * the host put it there and a pack never says where its compiled content is.
+   */
+  function contentPack(version: 'v1' | 'v2'): string {
+    const dir = path.join(_appDirOf(tmpDir), 'packs', CONTENT_PACK);
+    const seeds = path.join(dir, PACK_LAYOUT.seedsDir);
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.mkdirSync(seeds, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id: CONTENT_PACK, name: 'Content Pack', version: '1.0.0' }));
+    fs.writeFileSync(path.join(seeds, 'seeds.json'), JSON.stringify({ version: 1, packId: CONTENT_PACK, seeds: [] }));
+    fs.writeFileSync(path.join(seeds, 'actions.seed.json'), JSON.stringify({
+      records: [{ entity: 'Action', label: 'Echo', description: `theirs ${version}`, contentHash: `echo-${version}` }],
+    }));
+    fs.writeFileSync(path.join(seeds, 'prompts.seed.json'), JSON.stringify({
+      records: [{ entity: 'Prompt', label: 'Greet', description: `theirs ${version}`, contentHash: `greet-${version}` }],
+    }));
+    return dir;
+  }
+
+  /** The prompt's writer records its removal instead of destroying, as a pack's own delete does */
+  const removed: string[] = [];
+
+  function registerContentPack(): void {
+    registry.registerPack({
+      id: CONTENT_PACK,
+      appliers: [
+        createFormatApplier({ key: 'actions', entities: ['Action'], identity: ['label'], onUserEdit: 'offer' }),
+        createFormatApplier({ key: 'prompts', entities: ['Prompt'], identity: ['label'], onUserEdit: 'offer' }),
+      ],
+      contentWriters: {
+        Prompt: {
+          remove(id) {
+            removed.push(id);
+            untypedTx(id).update('deleted' as never, true);
+          },
+        },
+      },
+    });
+  }
+
+  const describedBy = (id: string) => untypedQx(id as never).pickOne(['description'])?.description as string | undefined;
+
+  let dir: string;
+  beforeEach(() => {
+    resetTestData();
+    removed.length = 0;
+    dir = contentPack('v1');
+    registerContentPack();
+    // The apply that writes both items and records what it wrote, which is what makes the rest an answer
+    applyPacks([{ manifest: { id: CONTENT_PACK }, dir }]);
+  });
+
+  afterEach(() => {
+    if (registry.getPackExtensions(CONTENT_PACK)) registry.unregisterPack(CONTENT_PACK);
+  });
+
+  const entityOf = (key: string, entity: 'Action' | 'Prompt') =>
+    (untypedQx(entity as never).where('contentKey', key).pickAll()[0] as { id: string } | undefined)?.id;
+
+  /**
+   * **One item restored leaves every other entry alone**, which is the whole of what makes this request
+   * safe to put behind a button. A selection naming one entry says nothing about the others, and a run
+   * that read it as "everything else too" would write the pack's version over every item the user had
+   * edited under every other entry — on a click that asked for one.
+   */
+  it('writes the item the user asked for, and nothing of any other entry', () => {
+    const prompt = entityOf(PROMPT_KEY, 'Prompt')!;
+    untypedTx(prompt as never).update('description' as never, 'mine');
+    fs.rmSync(dir, { recursive: true, force: true });
+    contentPack('v2');
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'RESTORE_CONTENT_ITEM', packId: CONTENT_PACK, key: ACTION_KEY });
+
+      expect(describedBy(entityOf(ACTION_KEY, 'Action')!), 'the item they asked for').toBe('theirs v2');
+      expect(describedBy(prompt), 'and the one they did not, which they had edited').toBe('mine');
+      expect(takeSystemErrors()).toEqual([]);
+    } finally {
+      system.stop();
+    }
+  });
+
+  /**
+   * **Deleting goes through the owner's own delete.** The entity types a pack writes are removed by whoever
+   * declared them — a flow through its repository, which takes its nodes and wiring with it, and anything
+   * with a `remove` writer the way that pack removes one. Destroying the entity here would orphan the first
+   * and skip the second, which for a note is the user's undo.
+   */
+  it('removes a deleted item through its pack’s own writer', () => {
+    const prompt = entityOf(PROMPT_KEY, 'Prompt')!;
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'DELETE_CONTENT_ITEM', packId: CONTENT_PACK, key: PROMPT_KEY });
+
+      expect(removed, 'the writer that owns the entity type').toEqual([prompt]);
+      expect(appliedContent.get(CONTENT_PACK).items[PROMPT_KEY], 'and nothing is left for a later apply to describe').toBeUndefined();
+    } finally {
+      system.stop();
+    }
+  });
+
+  /**
+   * **An offer the restore could not answer stays open.** A run that wrote nothing for the item has changed
+   * nothing about it, and clearing the offer anyway would mean the user is never asked again about a
+   * version they never received.
+   */
+  it('keeps the offer when the restore wrote nothing for that item', () => {
+    const offer = { kind: 'update' as const, parts: ['description'], contentHash: 'echo-v2' };
+    appliedContent.record(CONTENT_PACK, { wrote: new Map(), offers: new Map([[ACTION_KEY, offer]]) });
+    // The content no longer holds an item under that label, so the selection matches no record
+    fs.writeFileSync(path.join(dir, PACK_LAYOUT.seedsDir, 'actions.seed.json'), JSON.stringify({ records: [] }));
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'RESTORE_CONTENT_ITEM', packId: CONTENT_PACK, key: ACTION_KEY });
+
+      expect(appliedContent.get(CONTENT_PACK).items[ACTION_KEY]?.offer, 'still outstanding').toEqual(offer);
+    } finally {
+      system.stop();
+    }
+  });
+
+  /** "Keep mine" records the version they declined, and the list then offers to reset it instead */
+  it('records the version the user declined, and lists the item as one they keep', () => {
+    appliedContent.record(CONTENT_PACK, {
+      wrote: new Map(),
+      offers: new Map([[ACTION_KEY, { kind: 'update', parts: ['description'], contentHash: 'echo-v2' }]]),
+    });
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'DISMISS_CONTENT_OFFER', packId: CONTENT_PACK, key: ACTION_KEY });
+
+      const item = appliedContent.get(CONTENT_PACK).items[ACTION_KEY];
+      expect(item?.dismissed, 'the version they were shown').toBe('echo-v2');
+      expect(item?.offer, 'and the decision is taken').toBeUndefined();
+
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      const lists = emitted(system.sent).filter((e) => e.type === 'PACKS_LIST');
+      const listed = lists[lists.length - 1]?.packs as PackInfo[];
+      const pack = listed.find(p => p.id === CONTENT_PACK);
+      expect(pack?.contentOffers, 'nothing outstanding').toEqual([]);
+      expect(pack?.contentKept.map(k => k.key), 'and an item to reset to factory').toEqual([ACTION_KEY]);
+    } finally {
       system.stop();
     }
   });

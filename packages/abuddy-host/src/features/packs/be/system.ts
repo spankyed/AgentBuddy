@@ -17,10 +17,10 @@ import { teardownPack, activatePack } from '../../../packs/runtime/lifecycle.ts'
 import { activationProblem } from '../../../packs/runtime/activation-outcome.ts';
 import { HOST } from '../../../refs.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
-import { applyRecord, importCompiledContent, type ContentSelection } from '@abuddy/sdk/utils';
+import { applyRecord, importCompiledContent, registeredContentKeys, type ContentSelection } from '@abuddy/sdk/utils';
 import { appliedContent } from '../../../app-state/index.ts';
-import { contentKeySelection, describeContentKey, previewPackContent } from '@abuddy/sdk/content';
-import { destroyEntity, untypedQx } from '@abuddy/ears';
+import { contentKeySelection, describeContentKey, previewPackContent, removeContentEntity } from '@abuddy/sdk/content';
+import { untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 
 export type { PackInfo };
@@ -194,21 +194,41 @@ export function createPacksSystem(registry: PackRegistry) {
         }
         try {
           const dir = compiledDirOf(ev.packId);
+          /**
+           * **Every other entry is named and given nothing**, because an entry the map omits is not
+           * excluded — `selectsAll` reads an absent selection as *all of its items*, and only an empty set
+           * means skip. With `force` beside it, a map naming one entry would write every item of every
+           * other entry over whatever the user had made of them, which is the one thing this request must
+           * not do: they asked for one item back.
+           */
+          const include = Object.fromEntries(registeredContentKeys(ev.packId)
+            .map((key) => [key, key === selection.entryKey ? new Set([selection.label]) : new Set<string>()]));
+          if (!(selection.entryKey in include)) {
+            reportError({ source: 'packs', operation: 'restoreContentItem', severity: 'error', error: new Error(`Can't restore ${describeContentKey(ev.key)}: "${ev.packId}" has no content entry "${selection.entryKey}"`) });
+            return;
+          }
           const record = applyRecord();
           const result = importCompiledContent({
             compiledDir: dir,
-            include: { [selection.entryKey]: new Set([selection.label]) },
+            include,
             mode: 'replace-on-collision',
             force: true,
             applied: record,
             verbose: true,
           });
           appliedContent.record(ev.packId, { wrote: record.written });
-          appliedContent.resolveOffer(ev.packId, ev.key, { choice: 'taken' });
           const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
           if (errors.length > 0) {
             reportError({ source: 'packs', operation: 'restoreContentItem', severity: 'error', error: new Error(`Couldn't restore ${describeContentKey(ev.key)}:\n  ${errors.join('\n  ')}`) });
           }
+          /**
+           * **Only an item that was written has been decided**, which is why this reads the record rather
+           * than the absence of an error: a run that could not write this item has changed nothing about
+           * it, and clearing its offer would stop the user ever being asked again about a version they
+           * never received. The write itself re-stamps the entry, so this is what answers an offer the
+           * write happened to leave in place.
+           */
+          if (record.written.has(ev.key)) appliedContent.resolveOffer(ev.packId, ev.key, { choice: 'taken' });
           // The running systems read what the write changed (the brain's flows, the chat's slash commands)
           sendToSystem('bus', { type: 'PACK_CHANGED', packId: ev.packId });
         } catch (err) {
@@ -239,7 +259,9 @@ export function createPacksSystem(registry: PackRegistry) {
           const id = item?.entityType
             ? (untypedQx(item.entityType as EARS.Entity).where('contentKey', ev.key).pickAll()[0] as { id: EARS.EntityId } | undefined)?.id
             : undefined;
-          if (id) destroyEntity(id);
+          // Through the owner's own delete: a flow's nodes and wiring go with it, and an entity type whose
+          // pack registered a `remove` writer is removed the way that pack removes one
+          if (id) removeContentEntity(item!.entityType!, id);
           appliedContent.resolveOffer(ev.packId, ev.key, { choice: 'deleted' });
           sendToSystem('bus', { type: 'PACK_CHANGED', packId: ev.packId });
         } catch (err) {

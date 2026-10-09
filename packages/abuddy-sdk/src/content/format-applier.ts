@@ -9,6 +9,7 @@ import { seedPath } from '../build/manifest.ts';
 import { contentPackId } from '../utils/apply.ts';
 import { RECORD_KEYS, itemLabel, type CompiledContentFile, type ContentItem } from '../build/content/items.ts';
 import { _contentWriterRegistry, type ContentWriteContext, type ContentMatch, type ContentWriter } from './writers.ts';
+import { trash } from '../repositories/trash.ts';
 import { errorMessage } from '../utils/shared.ts';
 import type { ContentEditPolicy } from '../build/manifest-schema.ts';
 
@@ -401,6 +402,14 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
             }
 
             if (resolution === 'fast-forward') {
+              /**
+               * **A forced write to an entity the user trashed puts it back.** Only `force` reaches here
+               * with a trashed entity — every other path reads one as the user's deletion — and the user
+               * asking for the pack's item back and being given one still in the trash is not an answer.
+               * The fields the write sets are the record's, and `deleted` is not one of them, so nothing
+               * else would clear it.
+               */
+              if (deleted === true) trash.restore([existing!.id]);
               updateTracked(existing!, applied, record, context, contentKey, hooks);
               counts.updated++;
               ctx.log(`  ${key} updated: ${label}`);
