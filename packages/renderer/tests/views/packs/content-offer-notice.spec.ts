@@ -2,12 +2,12 @@
 // answered; this is the only thing that says a pack has any without opening it.
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp, type App } from 'vue';
-import ContentOfferBadge from '@/views/packs/ContentOfferBadge.vue';
+import ContentOfferNotice from '@/views/packs/ContentOfferNotice.vue';
 
 let app: App | undefined;
 function render(count: number): HTMLElement {
   const el = document.createElement('div');
-  app = createApp(ContentOfferBadge, { count });
+  app = createApp(ContentOfferNotice, { count });
   app.mount(el);
   return el;
 }
@@ -21,8 +21,12 @@ describe('a pack’s row with decisions waiting', () => {
     expect(badge(render(0))).toBeNull();
   });
 
-  it('counts them, and says what they are', () => {
-    expect(badge(render(1))?.textContent).toBe('1 item');
-    expect(badge(render(3))?.textContent).toBe('3 items');
+  /**
+   * It says whose the items are and what to do, because the row carries two other counts of what the pack
+   * holds and a bare number among them reads as a third.
+   */
+  it('says what has changed and that the pack is where to answer it', () => {
+    expect(badge(render(1))?.textContent).toBe("You've changed 1 item this pack ships — open to review");
+    expect(badge(render(3))?.textContent).toBe("You've changed 3 items this pack ships — open to review");
   });
 });
