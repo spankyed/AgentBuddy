@@ -1,16 +1,7 @@
 # `dev` holds the app, `drive` attaches to it
 
-Compiled 2026-10-09; revised after review the same day. The spike below is run and green, so this is work
-that can start.
-
-**What the review changed**, since the text reads differently from the first version in four places: the
-invariant is *any* live app rather than *the one `dev` started*, so `npm start` writes a marker too and a
-miss starts one instead of launching per question — without which deleting `--serve` is a regression for a
-cold checkout, which is most of what an agent asks. The work is in four phases with the deletion last. The
-security posture is a section with a firing case rather than a risk bullet. And the claim that this removes
-an unauthenticated port was wrong: today's port is token-guarded, and CDP is a trade, not an improvement.
-The Playwright paragraph was wrong twice over and is rewritten: the runner is not what this deletes, and
-neither package is a dependency of the CLI.
+Compiled 2026-10-09. The spike below is run and green, so this is work that can start, after
+[`profiles-not-instances.md`](profiles-not-instances.md).
 
 ## Context
 
@@ -24,8 +15,9 @@ Three commands launch the app and each owns the one it launched:
 
 `drive --serve` exists for one reason, which `CLAUDE.md` states: *"an agent asks many questions of one warm
 session rather than editing and relaunching for each."* **It is a long-lived app wearing a cache's clothes**
-— an HTTP server, a token, a marker in Playwright's `outputDir`, a ready-line protocol and a `/close` verb,
-all so that one app survives between questions.
+— an HTTP server, a token, a file in Playwright's `outputDir` saying where it is (`engine/marker.ts`,
+which this deletes and which is **not** the session file below), a ready-line protocol and a `/close`
+verb, all so that one app survives between questions.
 
 **The latency is the smaller half of why.** What a session holds is *state*: the data dir, where it was
 navigated, what was typed into it, the entities a question created. Three questions against three fresh
@@ -37,8 +29,10 @@ beside one that already exists**, and the only reason it exists is that nothing 
 
 Two facts remove that reason.
 
-**`SessionPage` is already a port.** Thirteen methods (`engine/session.ts:37`), with `SessionDeps` taking
-`page`, `api`, `takeErrors` and `readLog`. The 705 lines of verb implementation have no Playwright in them.
+**`SessionPage` is already a port.** Twelve methods (`engine/session.ts:37`), with `SessionDeps`
+(`:112`) taking `page`, `api`, `takeErrors` and `readLog`. The 705 lines behind the 23 verbs have no
+Playwright in them — the verbs are built on the port, which is the separation this design needs and the
+reason it is already there.
 `AppHelper` (`abuddy-testing/src/index.ts:15`) is the same: every one of its methods is `page.evaluate`,
 `page.waitForFunction` or `page.screenshot`, so it is a function of a `Page` and only *looks* fixture-bound
 because the fixture is where it is constructed.
@@ -71,31 +65,69 @@ the engine has no reconnection by design, so a long-lived session rots. A CDP cl
 
 ## The design
 
+### The shape
+
+**Two words this design needs, named here because it revolves around them.** An **attachable app** is a
+live app that published a debug port and said so; what it publishes is its **session file**, not a
+"marker" — `<dataDir>/session.json`, which is what the name should say, since the data dir already holds
+one marker (`pack-dev-servers/<id>.json`) that means something else entirely.
+
+**The order matters**: that rename gives `--profile` its name, and this plan changes what the flag
+*means* — it becomes what decides attach-against-launch. A flag should not gain a new name and a new
+behaviour in one change.
+
 **A live app is a resource with a lifecycle, not a side effect of a command someone remembered to run.**
 That is the invariant the rest follows from, and it is one step further than *"`dev` holds the app"*: once
 `connectOverCDP` works, *which* command launched the app stops mattering, so what the design owes a caller
 is an answer to "is one live, and if not, make one" rather than a rule about who went first.
 
 ```
-an attachable app   any launcher that starts one writes the marker:
-                    { debugPort, apiPort, logPath, dataDir, pid }
+an attachable app   any launcher that starts one writes <dataDir>/session.json:
+                    { debugPort, apiPort, logPath, dataDir, pid, startedBy }
                     `dev` and `npm start` both do. `test` never does.
 
-dev    spawn(electron, [root, '--remote-debugging-port=0', '--enable-logging']) + the marker.
+dev    spawn(electron, [root, '--remote-debugging-port=0', '--enable-logging']) + the session file.
        Serves nothing. Holds no engine. No Playwright. The supervisor it already is.
 
-drive  live marker -> connectOverCDP -> page -> appHelper(page) -> the session verbs
-       no marker   -> start one, write the marker, attach -> the same session
-       One SessionPage implementation; the session cannot tell the two apart.
+drive  attachable -> connectOverCDP -> page -> appHelper(page) -> the verbs
+       otherwise  -> call `dev`, which publishes the session file, attach -> the same verbs
+       One SessionPage implementation, and one capability it cannot serve attached (setViewport).
+       This is the one-shot path. `drive <script>` is the next line, and the difference is deliberate.
 
-test   @playwright/test + _electron.launch. Unchanged, owns its app, writes no marker.
+drive <script>   @playwright/test + _electron.launch, in whichever profile it was given. A question
+       attaches, a program gets a dir — "What stays" below says why, and it is not an oversight.
+
+test   @playwright/test + _electron.launch. Unchanged, owns its app, publishes nothing.
 ```
 
-**`npm start` writes one too, and that is the half worth having.** `dev`'s Vite server is rooted at a
+**Autostart is `dev`, not something shaped like it.** The same function, watcher included — because the
+Playwright fixture is also the only thing that builds and installs the pack under test
+(`abuddy-testing/src/index.ts:357`, which is why `drive.ts:477` says *"No build here"*), and `dev` is the
+only other thing that does. An autostart that merely copied dev's environment would hand a pack author an
+app without their pack. One launcher, one session-file writer, and no `dev --no-watch`.
+
+### What a caller types
+
+**What a caller types, before and after.** The verbs do not change; what changes is that none of them
+needs a session stood up first.
+
+| Today | After |
+|---|---|
+| `abuddy run [flags]` | `abuddy dev [flags]` — same flags |
+| `abuddy drive <script>` | unchanged |
+| `abuddy drive --serve` | gone: the app itself is the long-lived thing |
+| `abuddy drive --eval 'body'` | same spelling; attaches rather than launching |
+| `abuddy drive --attach --eval 'body'` | `abuddy drive --eval 'body'` — an attachable app is the whole condition |
+| read-only one-shots (`eval`, `query`, `state`) | every verb, writes included |
+| `npm run drive:serve` | `npm run dev` |
+
+### What it reaches
+
+**`npm start` publishes one too, and that is the half worth having.** `dev`'s Vite server is rooted at a
 *pack*, so attaching to it gives HMR for a pack's frontend and nothing else; the host renderer still comes
-from its built bundle. `npm start` is the loop that serves the renderer itself, so a marker there is what
-makes "edit a `.vue` in `packages/renderer` and drive the app that just hot-reloaded it" possible at all.
-Scoping the marker to `dev` would leave the app you are most often looking at the one you cannot attach to.
+from its built bundle. `npm start` is the loop that serves the renderer itself, so a session file there is
+what makes "edit a `.vue` in `packages/renderer` and drive the app that just hot-reloaded it" possible at
+all. Scoping it to `dev` would leave the app you are most often looking at the one you cannot attach to.
 
 **What attaching buys depends on the layer, and the plan should not be read as promising more.** Four
 loops, and only one of them has none:
@@ -112,44 +144,154 @@ backend change still needs `npm run build:be` and a restarted app, and a `/reloa
 not a process. That is a different problem and not this plan's — but it is the layer an agent working on
 the app itself spends most of its time in, so the plan should not be read as having addressed it.
 
+**And a packaged build is attachable-never**, which is a property of the binary rather than a decision
+here. `appEnv()` reports `beta` for anything packaged (`app-target.ts`), the debug flag is `development`
+only, so `dev --app beta` publishes no port. Its own loops are unchanged by that and by this plan: the
+pack frontend still hot-reloads, because the Vite server and the `pack://` proxy do not care what kind of
+build is on the other side, and its pack backend is **restart-only**, because a packaged app publishes no
+API token for `POST /dev/reload` to authenticate with (`run.ts`'s usage note says so today).
+
+**It still writes a session file — without a `debugPort`.** An app holding a data dir is worth knowing
+about whether or not it can be driven, and the absence of the port is the reason, recorded where the
+reader already looks. Two consequences, and neither is a new rule:
+
+- **With no profile named**, `drive` reads it, sees it is not attachable, starts its own app on a
+  throwaway dir and **says which app it is driving**. There is no conflict — different data dirs — and the
+  line exists only so that nobody watches a Beta window wondering why their clicks land nowhere.
+- **With a profile named**, the app holding it is in the way, and the refusal is the one that already
+  exists for any holder (`profileInUse`): the single-instance lock is scoped to the data dir, so the dir
+  cannot be launched into and, a Beta publishing no port, cannot be attached to either. **This plan
+  narrows that refusal rather than adding one** — an attachable holder stops being a refusal at all, which
+  is most of them.
+
+**Which data dir `drive` looks at, with no profile named, is the `development` build's — it scans nothing.**
+A session file is per data dir, so "is one live" needs a dir to ask about, and the choice is between a
+scan of every environment and every profile, or a default. A default, because a scan answers a question
+nobody asked (*which* app did you mean, of the three it found?) and because the answer is already
+unambiguous: `npm start` and `dev --app-root` both land in `development`, which is the app an agent
+working on this checkout is looking at. `--profile x` asks about that dir instead, and is the only way to
+mean another one.
+
+**What each profile flag then means**, since they decide the dir and so decide attachability:
+
+| `drive` invocation | Behaviour |
+|---|---|
+| no flag | attach to the `development` app, or start it if none is live — saying which |
+| `--profile drive` | a scratch kept between sessions, idling out when unused |
+| `--profile probe`, an attachable app on it | **attach** — the case this plan is for |
+| `--profile probe`, nothing on it | start one there, publish its session file, attach |
+| `--profile probe`, a non-attachable app on it | the existing `profileInUse` refusal — the dir can be neither launched into nor attached to |
+| `--fresh` / `--fresh --rm` | mints a new dir by definition, so there is nothing to attach to: always launches. Isolation is what was asked for, not a gap |
+
 **A checkout with no pack in hand is a first-class case**, not a fallback. `drive` run where no
 `abuddy.json` sits above it drives *this checkout's* app, which is how the repo's own `drive/` scripts run
 and how an agent asks about the host rather than a pack. Scoping attachability to a pack's `dev` would
-leave exactly that caller relaunching, so the marker is a property of an app, never of a pack.
+leave exactly that caller relaunching, so the session file is a property of an app, never of a pack.
 
-**No marker means start one, not launch one per question.** A `drive --eval` against a cold checkout
+### Starting one when there is none
+
+**Nothing attachable means start an app, not launch one per question.** A `drive --eval` against a cold checkout
 otherwise pays a full launch *every time*, which is worse than today — `--serve` is exactly the thing that
 stops that, so deleting it without this would be a regression on the caller `drive` was built for. An
-autostarted app writes the marker like any other, so the second question costs the attach and nothing else.
+autostarted app publishes its session file like any other, so the second question costs the attach and
+nothing else.
 
-Two things make autostart safe rather than surprising. It takes `holdExclusiveLock`
-(`@abuddy/host/exclusive-lock`) and **re-reads the marker after acquiring**, because two agents asking at
-once is the ordinary case here and both would otherwise launch — the same rule, and the same mechanism, as
-the chain's one writer per stamp directory. And it **idles out** where a session a person started does not:
-an autostarted app is a cache and should disappear, `dev` in a terminal is a session and should not, and
-the marker says which it is.
+**It calls `dev`. Not the fixture, and not a launcher shaped like `dev` — `dev` itself, and that is
+load-bearing twice over.**
+
+First, the environment. `appLaunchEnv` sets `PLAYWRIGHT_TEST = 'true'` unconditionally
+(`abuddy-testing/src/launch-env.ts:16`) and `_inferElectronAppEnv` answers `test` to that before
+considering anything else — so an app launched through the fixture can never be `development`, and the
+environment gate below would refuse it the debug port. An app autostarted through the fixture would
+publish a session file with no port and be unattachable, which is the one thing autostart exists to
+prevent. **There is no axis to gate on instead**: a one-shot sets no `PLAYWRIGHT_VISIBLE` either, so
+nothing the app can see tells a `drive` app from an `abuddy test` app. That is a reason to keep autostart
+off the fixture, not a problem to work around.
+
+Second, the pack — and this is the half that "spawns it as `dev` does" would get wrong while passing every
+check the paragraph above suggests. **The fixture is the only thing that installs the pack under test.**
+With `PACK_DIR` set it builds the pack and installs it into the data dir through the same stage-verify-place
+path a user gets (`abuddy-testing/src/index.ts:357`), waits for its plugins and fails on its `lastError`;
+`drive` deliberately does none of it (`drive.ts:477`: *"No build here: the fixture builds the pack itself
+when PACK_DIR is set"*). In this repo that is free — a root with no `abuddy.json` leaves `packDir`
+undefined and the built-in pack is compiled into the API — but in a pack repo it is the whole subject, and
+an autostart that reproduced dev's *environment* would attach a pack author to an app without their pack,
+or with the copy from before their last edit. `dev` already builds and installs it
+(`ensureCheckoutPackages`, door 3 in `abuddy-testing/CLAUDE.md`), so calling `dev` gets that for nothing.
+
+**And no `dev --no-watch`.** A flag whose only purpose is to let one caller skip a step is the thing that
+drifts, and a watcher costs nothing while nothing is being edited — if something is, the rebuild was
+wanted. One launcher also keeps the "session file's writers are derived, not listed" case to one row.
+
+**It starts the `development` app, which is a change in what `drive` touches, and is stated rather than
+defaulted into.** Today the fixture gives every `drive` run a throwaway dir, so a one-shot cannot reach
+real data. After this, a `drive --eval` with nothing running boots the development app: your notes, your
+installed packs, your flows — which is the point, since a blank app cannot answer most of what the
+command is asked, and since it leaves `drive --eval` with **one** meaning rather than one per whichever
+app happened to be up. Starting that app is what `npm start` does several times a day, and the apply
+that runs on its boot is the one this repo made non-destructive.
+
+**`dev` reclaims an app a tool started, which is what makes the default safe.** One app per data dir, and
+`SingleInstanceApp` exits on the second — so without this, an agent's one-shot would hold the development
+dir and the developer's own `npm start` would refuse, with the blame landing on `npm start`. The session
+file already carries what settles it:
+
+```
+dev / npm start, on the development dir
+  startedBy: drive  -> SIGTERM that pid, wait for exit, launch — and say what it reclaimed
+  startedBy: dev    -> refuse, as today. A person's app is not a tool's to take
+  no session file   -> launch
+```
+
+A pid read from a file the app wrote is the only kind this repo permits, and the rule is narrow by
+construction: it reclaims what a tool started for itself and nothing else. **The two commands then
+converge** rather than compete — after a reclaim the next `drive` finds the developer's app live and
+attaches to it.
+
+**So the idle reap does not apply to `development`.** A scratch app that nobody is looking at should
+disappear; the development app is the one somebody may be looking at, and closing it under them is worse
+than leaving it. There is at most one, it is the app they would have started anyway, and a reclaim is
+what ends it. The reap stays for a profile `drive` was asked to use.
+
+**A scratch that persists is a profile, asked for by name**: `--profile drive`, a fixed path, which is
+why it needs no record of *which* scratch dir to keep, check or reap. `--fresh` and `--fresh --rm` are
+the other half, for a clean one. None of them is the default, so none of them is something an agent gets
+without asking.
+
+**Every run says which path it took**, on stdout — attached to the development app, reclaimed and
+started it, or started it cold. A command that can reach a developer's data should be legible from
+inside the run rather than discovered from outside it.
+
+Under contention it takes `holdExclusiveLock` (`@abuddy/host/exclusive-lock`) and **re-reads the session
+file after acquiring**, because two agents asking at once is the ordinary case here and both would
+otherwise launch — the same rule, and the same mechanism, as the chain's one writer per stamp directory.
 
 **Liveness is already solved.** `recordIsStale(file, pid)` (`@abuddy/host/process-liveness`) exists for
-exactly "is the process that wrote this record still there", errs toward stale, and is what the dev-server
-marker and the API port file already use. A marker whose app has gone is a miss, not an error.
+exactly "is the process that wrote this record still there", errs toward stale, and is what the
+`pack-dev-servers` marker and the API port file already use. A session file whose app has gone is a miss,
+not an error.
+
+### The two Playwright packages
 
 **Two Playwright packages, two jobs, and the runner is not one of the things that goes.**
-`playwright-core` carries `chromium.connectOverCDP` and `_electron.launch` — the attach path and the
-thirteen verbs. `@playwright/test` carries the runner, which is what *runs a script in `drive/`*: `drive`
+`playwright-core` carries `chromium.connectOverCDP` and `_electron.launch` — the attach path, and so
+every one of the 23 verbs, since each is a call on the `Page` it hands back. `@playwright/test` carries the runner, which is what *runs a script in `drive/`*: `drive`
 is `_default.test` (`abuddy-testing/src/index.ts:673`), so every script there is a Playwright test, and the
-runner is supplying script selection, per-script isolation and the worker/test fixture split, `reporter:
-'list'`, the deliberate `timeout: 0`, and the `trace.zip` a failing drive run prints the `show-trace` line
-for. Dropping it would mean reimplementing collection, isolation, reporting and traces, or losing them —
-a replacement cost booked as a saving. `_electron.launch` is what attach replaces, not `@playwright/test`.
+runner is supplying script selection and `--grep`, the worker/test fixture split, `reporter: 'list'`, the
+deliberate `timeout: 0`, and the `trace.zip` a failing drive run prints the `show-trace` line for.
+Dropping it would mean reimplementing collection, reporting and traces, or losing them — a replacement
+cost booked as a saving. **Per-script isolation is not on that list**, deliberately: it is a consequence
+of the script path launching its own app rather than a reason to keep the runner, and it would survive a
+runner that did nothing else. "What stays" is where it is argued. `_electron.launch` is what attach replaces, not `@playwright/test`.
 
-**Neither is a dependency of `@abuddy/cli`; both are optional peers, imported lazily.** Measured
-2026-10-09 on this checkout: `playwright-core` 11M, `@playwright/test`'s own files ~24K, and the 12M beside
-it is a *duplicated* `playwright-core` 1.54.1 under its `node_modules` — version skew here (root pins
-1.54.1, the hoisted core is 1.59.1), not the runner's weight. **None of the three has an install script**,
-so *"no postinstall and so downloads no browsers"* is not a difference between them; browsers come from
-`npx playwright install`. What is true is that a published CLI should not drag either into an install of
-someone who only runs `abuddy build` — and `dev` and `drive` are one binary, so a module-level rule that
-`dev` never imports the session decides runtime and not install weight.
+**Neither is a dependency of `@abuddy/cli`; both are optional peers, imported lazily.** The runner is
+nearly free beside the attach path it sits next to: measured 2026-10-09 on this checkout, `playwright-core`
+is 11M and `@playwright/test`'s own files are ~24K, the 12M beside it being a *duplicated*
+`playwright-core` 1.54.1 under its `node_modules` (version skew here — root pins 1.54.1, the hoisted core
+is 1.59.1). None of the three has an install script; browsers come from `npx playwright install`. What
+decides where they are declared is that a published CLI should not drag either into an install of someone
+who only runs `abuddy build` — and `dev` and `drive` are one binary, so a module-level rule that `dev`
+never imports the session decides runtime and not install weight.
 
 So both sit on `@abuddy/testing`, where `@playwright/test` already is (`peerDependencies`,
 `peerDependenciesMeta.optional`) and where `SessionPage` and the new `cdp-page.ts` live, and the attach
@@ -158,10 +300,15 @@ path imports `playwright-core` lazily and throws with an install hint when it is
 gain nothing to install; `drive` needs what it needs and says so. A pack that ran `init-tests` has both
 already, and `resolvePlaywrightCli` continues to resolve the pack's copy rather than a bundled one.
 
-**Attachability is declared, never inferred.** A marker is written by a launcher that means its app to be
-driven, so `test` writes none and a packaged app cannot. `--attach` stops being a flag because a live
-marker is the whole condition, and `--serve` stops existing because an attachable app is always there to
+**Attachability is declared, never inferred.** A session file is published by a launcher that means its
+app to be driven, so `test` publishes none and a packaged build carries no port. `--attach` stops being a
+flag because an attachable app is the whole condition, and `--serve` stops existing because an attachable app is always there to
 answer — autostarted if nobody started one.
+
+**`--attach` goes as a flag; the word is not retired.** It is deleted because for a one-shot it has
+nothing left to select, not because attaching stopped being the name of the thing. If `drive <script>`
+is ever given the choice (the goal doc's Deferred), `--attach` is its spelling — the one place the choice
+is real — and it should not be made to find a second word for a concept this plan names throughout.
 
 ## What goes
 
@@ -174,7 +321,9 @@ answer — autostarted if nobody started one.
 | `abuddy-cli/src/app/drive-engine.ts` | 152 | the HTTP client, `ENGINE_TOKEN_HEADER`, `oneShotOutcome` |
 | `abuddy-cli/src/app/drive-one-shot.ts` | 143 | ready-line accumulation, three settle paths, `/close` in a `finally` |
 
-Plus the `--serve`/`--attach`/one-shot half of `drive.ts` (544), and:
+Plus `--serve`, `--attach` and the **machinery behind** the one-shots in `drive.ts` (544) — the spawn,
+the ready-line wait and the `/close` in a `finally`. The one-shot *interface* stays and gains verbs; what
+goes is that each had to stand a server up to be answered. And:
 
 - **`ONE_SHOT_ASKS`' read-only subset** — a restriction because a session closing a moment later made writes
   hard to explain. Attached to a `dev` session there is nothing to explain, so `/click` and `/fill` become
@@ -187,31 +336,47 @@ Plus the `--serve`/`--attach`/one-shot half of `drive.ts` (544), and:
   `playwright-config.spec.ts`'s string comparison — a gate that exists only because the client and the
   server live in different packages.
 
-**What stays, against the first draft of this plan: the runner and the script path.** `resolvePlaywrightCli`,
-`drive/playwright.config.ts` and `defineDriveConfig` are untouched, because `drive <script>` goes on being a
-Playwright run and nothing in the case above asks otherwise. The engine, the token, the HTTP server and the
-ready-line protocol are what this deletes; the runner shares none of them, so removing it would save
-nothing and cost traces, `--grep`, isolation and reporting.
+**What stays: the runner and the script path.** `resolvePlaywrightCli`, `drive/playwright.config.ts` and
+`defineDriveConfig` are untouched, because `drive <script>` goes on being a Playwright run. The engine,
+the token, the HTTP server and the ready-line protocol are what this deletes; the runner shares none of
+them, so removing it would save nothing and cost traces, `--grep` and reporting.
 
-Two defect *classes* go rather than move: a marker that outlives its session, and an exit code read off the
+**And the script path keeps launching its own app, which is a decision rather than what fell out.** One
+reading of the shape above is that the two halves end up backwards — a one-shot attaches to the app you
+are looking at, a script launches a throwaway, when a script is the longer sequence of clicks and reads
+you would more plausibly want against real state. The answer is that **a question attaches and a program
+gets a dir**: a script whose result depends on whichever plugin was left open and whichever rows were
+half-edited has undeclared inputs, and the fresh dir is what declares them. A script that wants the
+developer's *data* already has it — `--profile` hands the fixture exactly that directory (`E2E_DATA_DIR`,
+`drive.ts:495`) — so what it cannot share is the *process*, which costs a launch and the chance to watch
+it happen in the window already open.
+
+**What it would cost to change, if that is ever wanted.** The fixture *is* the launch, so a script would
+need `electronApp`/`appPage` to yield a connected page instead — a change to the one file every spec in
+this repo, both fixture packs and every external pack's suite imports — plus a gate proving `abuddy test`
+can never take that path, since a hermetic suite that attached to a developer's app would be worse than
+useless. That is a plan of its own, and the thing to start it from is a run that was annoying rather than
+a table that looks asymmetric.
+
+Two defect *classes* go rather than move: an engine marker that outlives its session, and an exit code read off the
 wrong field.
 
-**The third is not a defect removed, it is a trade taken, and saying otherwise would be the one dishonest
-line in this plan.** The engine's port is token-guarded today (`ENGINE_TOKEN_HEADER`; a wrong header
-answers `missing or wrong x-abuddy-drive-token`). CDP is not guarded at all, and the renderer it exposes
-holds the app's API token — so this swaps an authenticated local port for an unauthenticated one, and
-autostart means more apps carry it. The posture that makes that acceptable is in "Security" below, and it
-is a condition of the design rather than a mitigation listed after it.
+**The port's authentication is a trade taken, not a defect removed.** The engine's port is token-guarded
+today (`ENGINE_TOKEN_HEADER`; a wrong header answers `missing or wrong x-abuddy-drive-token`). CDP is not
+guarded at all, and the renderer it exposes holds the app's API token — so this swaps an authenticated
+local port for an unauthenticated one, and autostart means more apps carry it. What makes that acceptable
+is in "Security" below, and it is a condition of the design rather than a mitigation after it.
 
 ## Files
 
 | File | Change |
 |---|---|
-| `abuddy-cli/src/commands/run.ts` → `dev.ts` | rename; add the two argv entries and the marker write; `index.ts` `COMMANDS`/`USAGE` |
-| `abuddy-cli/src/app/dev-marker.ts` | new: write/read `{ debugPort, apiPort, logPath, dataDir, pid, startedBy }` through `writePrivateFile`, `readDevToolsPort` polling `DevToolsActivePort`, and the autostart under `holdExclusiveLock` with the re-read after acquiring |
-| `packages/dev-mode.js` | `npm start` writes the marker too, so the app with renderer HMR is attachable |
-| `abuddy-cli/src/commands/drive.ts` | attach-or-launch; delete `--serve`, `--attach`, `takeServeFlag`. The script path and its config are untouched |
-| `abuddy-testing/src/index.ts` | extract `appHelper(page, resultsDir)` as a free function the fixture calls |
+| `abuddy-cli/src/commands/run.ts` → `dev.ts` | rename; add the two argv entries, publish the session file, and reclaim one a tool started (`startedBy: drive` → SIGTERM its pid, wait for exit, launch, say so); `index.ts` `COMMANDS`/`USAGE`. Its body has to be callable from `drive`'s autostart as a function, since autostart *is* this command and not a copy of it |
+| `abuddy-host/src/private-file.ts` | moved: `writePrivateFile` out of `secrets/private-file.ts`, with a `./private-file` export. It is a 0600 atomic write and nothing about secrets, and a session file is not a secret — reaching for it behind the secrets barrel would be the wrong dependency, and it is not in that barrel today anyway |
+| `abuddy-cli/src/app/session-file.ts` | new: write/read `{ debugPort, apiPort, logPath, dataDir, pid, startedBy }` through `writePrivateFile`, `readDevToolsPort` polling `DevToolsActivePort`, and the autostart under `holdExclusiveLock` with the re-read after acquiring. The autostart **calls `dev`** rather than spawning Electron itself, so the pack build and install come with it |
+| `packages/dev-mode.js` | `npm start` publishes one too, so the app with renderer HMR is attachable |
+| `abuddy-cli/src/commands/drive.ts` | attach-or-launch for the one-shots; a miss calls `dev`. Delete `--serve`, `--attach`, `takeServeFlag`. **The script path and its config are untouched by decision**, per "What stays": a question attaches, a program gets a dir |
+| `abuddy-testing/src/index.ts` | extract two free functions the fixture then calls: `appHelper(page, resultsDir)`, and `waitForAppReady(page)` — the readiness wait (`index.ts:479-507`) with the onboarding dismissal moved *inside* the predicate. Window-finding is not extracted: `findMainWindow` takes an `ElectronApplication`, and the attach path enumerates `browser.contexts()[0].pages()` with the same `!!window.applicationState` predicate |
 | `abuddy-testing/src/engine/cdp-page.ts` | new: `SessionPage` over a connected `Page` — the same body the fixture's uses |
 | `abuddy-testing/src/engine/{server,marker}.ts` | delete |
 | `abuddy-cli/src/app/drive-{engine,one-shot}.ts` | delete |
@@ -223,15 +388,17 @@ is a condition of the design rather than a mitigation listed after it.
 ## Phases
 
 **Nothing is deleted until its replacement carries load**, which is the one thing the size of this change
-asks for: a command rename, a new dependency, 851 lines, a scaffold and five prose files is not a single
-step, and the deletion is the part with no way back.
+asks for: a command rename, a new optional peer, 851 lines, a scaffold and five prose files is not a
+single step, and the deletion is the part with no way back.
 
-1. **The port.** `appHelper(page, resultsDir)` extracted; `SessionPage` over a connected `Page`. Both paths
-   live, neither deleted. This is the whole technical risk and it is provable on its own.
-2. **The marker.** `dev` and `npm start` write one; `drive` attaches when a live one is there and launches
-   its own when it is not — today's behaviour, now with a fast path in front of it.
-3. **Autostart.** A miss starts an app under the lock and writes the marker. This is what makes a one-shot
-   against a cold checkout cheap, and so what `--serve` would be deleted *in favour of*.
+1. **The port.** `appHelper(page, resultsDir)` and `waitForAppReady(page)` extracted; `SessionPage` over a
+   connected `Page`. Both paths live, neither deleted. This is the whole technical risk and it is provable
+   on its own. The fixture then reaches `connected` through the extracted wait, so `npm test -- smoke` is
+   what says the extraction kept its behaviour.
+2. **The session file.** `dev` and `npm start` publish one; `drive` attaches when a live one is there and
+   launches its own when it is not — today's behaviour, now with a fast path in front of it.
+3. **Autostart.** A miss calls `dev` under the lock, and that `dev` publishes the session file. This is what
+   makes a one-shot against a cold checkout cheap, and so what `--serve` would be deleted *in favour of*.
 4. **The deletion.** `--serve`, the four files and the engine's two generated scripts. Only now, because
    only now does nothing reach for them — and the runner is not in this list.
 
@@ -243,12 +410,12 @@ below exists.
 
 **Step 0 is done** — the spike above. The remaining firing cases:
 
-- **a marker present → attaches and launches nothing.** Mutate it: point the marker at a dead port and
-  assert the answer names it rather than silently launching a second app.
-- **no marker → launches its own**, and the session answers the same verb identically. This is the case that
+- **an attachable app → attaches and launches nothing.** Mutate it: point the session file at a dead port
+  and assert the answer names it rather than silently launching a second app.
+- **nothing attachable → starts its own**, and the session answers the same verb identically. This is the case that
   proves one `SessionPage` serves both, so it must assert equality of the two answers, not merely that each
   works.
-- **`test` writes no marker**, so a `drive` run during a test suite does not attach to the test's app.
+- **`test` publishes no session file**, so a `drive` run during a suite does not attach to the test's app.
 - **the engine is unreachable from `dev`** — `dev` must not import the session, or the coupling this plan
   removes comes back. `check:specifiers` is the home for that rule.
 - **a verb that needs the main process** — `setViewport` refuses when attached, naming why. A gate, so it
@@ -256,14 +423,30 @@ below exists.
 - **a non-development context never gets the debug flag.** The gate reads `resolveAppContext().env`, so a
   `test` or packaged context is the case that must fire. Its subject is input, so it needs one, and it is
   the single assertion standing between this design and an open port on a user's installed app.
+- **`dev` reclaims a `drive` app and refuses a person's.** Both halves, because the rule is the whole of
+  what makes the default safe: with `startedBy: drive` it takes the dir and says so, and with
+  `startedBy: dev` it exits as today. Mutation: reclaiming unconditionally takes an app somebody opened.
+- **an autostarted app is attachable.** The case that fails if autostart ever routes through the fixture:
+  assert the app it started carries a `debugPort` and answers a verb. `PLAYWRIGHT_TEST` would make it
+  `test`, and the environment gate would refuse the port, so this is the firing case for that whole
+  coupling rather than a smoke test.
+- **an autostart in a pack repo has the pack installed**, which is the other half of the same decision and
+  fails on the other mistake: an autostart that reproduced dev's *environment* rather than calling `dev`
+  passes the case above and leaves the pack author's own pack missing. Assert its plugins are present.
+- **a never-onboarded profile answers a verb, and the run says it dismissed onboarding.** `--profile`
+  pointed at a fresh dir, driven cold: without the dismissal inside `waitForAppReady`'s predicate nothing
+  reaches `connected` and the verb times out. Both halves, because the printed line is what makes the
+  write to a developer's dir visible rather than silent.
 - **two `drive` calls at once start one app.** The lock's firing case: without the re-read after acquiring,
-  both see no marker and both launch. Assert one pid.
-- **an autostarted app idles out and a `dev` one does not**, which is the whole of what `startedBy` decides.
+  both see nothing attachable and both launch. Assert one pid.
+- **a `drive`-profile app idles out and a `development` one does not**, which is the whole of what
+  `startedBy` and the dir decide between them: a scratch nobody watches goes, the app somebody may be
+  looking at stays until a reclaim ends it.
 - **`drive` without `playwright-core` says so.** A lazy import that throws with an install hint is a gate,
   so it needs a case that fires: the attach path with the peer absent names the package and the install,
   rather than failing as a module-not-found from inside a bundle.
-- **the marker's writers are derived, not listed.** A spec that reads the declaration of what starts an
-  attachable app, so a third launcher cannot arrive unmarked — and that asserts the population is not empty,
+- **the session file's writers are derived, not listed.** A spec that reads the declaration of what starts
+  an attachable app, so a third launcher cannot arrive without one — and that asserts the population is not empty,
   since a check over nothing passes.
 
 **Before phase 4, measure the thing being deleted.** `npm run measure` on the *end-to-end* one-shot — CLI
@@ -282,10 +465,11 @@ unauthenticated control of the renderer, and the renderer holds the app's API to
 risk to note but a condition to meet:
 
 - **The flag is computed from `resolveAppContext().env`**, never from an argv flag anyone can pass and
-  never from a marker's contents. `development` only: not `test`, and not a packaged app a user installed.
+  never from a session file's contents. `development` only: not `test`, and not a packaged app a user installed.
   One call site, one gate, and the firing case above is what holds it.
 - **`127.0.0.1` only.** Chromium binds the debug port locally by default and nothing may widen it.
-- **The marker is mode-0600**, through `writePrivateFile` (`@abuddy/host/secrets`) — the posture the app's
+- **The session file is mode-0600**, through `writePrivateFile` (`@abuddy/host/private-file`, moved there
+  from `secrets/`, where it was never exported and never belonged) — the posture the app's
   own `api-token` file already has. The port is discoverable by the user and by nothing else, which is the
   same answer Chrome gives with `DevToolsActivePort` and the honest limit of it: any process running as the
   user can drive the app. That is acceptable for a development app and for nothing else, which is why the
@@ -296,9 +480,8 @@ risk to note but a condition to meet:
 - **`setViewport`'s real resize needs the main process**, which CDP does not reach
   (`electronApp.browserWindow(page)`). The port already makes `window` optional, so attached mode leaves it
   `undefined` and the verb refuses. Resizing a window you are looking at by hand is the normal act; the
-  emulated viewport would be the wrong answer there, which is the `pinsViewport` defect. It is also the one
-  place *"the session cannot tell the two apart"* is not true, so the design claim reads: one
-  implementation, one named capability difference.
+  emulated viewport would be the wrong answer there, which is the `pinsViewport` defect. It is the one capability the design
+  block names as not surviving an attach, and the only one.
 - **Renderer errors are weaker when attached, and must not be collapsed into log text.** `page.on('pageerror')`
   is wired at launch today, so a connection that attaches, asks and leaves sees nothing historical. The
   temptation is to resolve `takeErrors` and `readLog` to one source, the log, and lose the structured
@@ -309,5 +492,28 @@ risk to note but a condition to meet:
   `newContext` are not available. None is used by any verb.
 - **Two pages were live** in the spike (the app window and a second target). The predicate handles it, but
   the attach path must find the window rather than take `pages()[0]`.
-- **Onboarding gets simpler, not harder**: the fixture dismisses it because a test gets a fresh data dir. A
-  `dev` app is one already in use, so attached mode has nothing to bypass.
+- **Onboarding is dismissed on every path, by one function, and the dismissal must be *inside* the poll.**
+  It is tempting to read this as a non-issue — the fixture dismisses onboarding because a test gets a fresh
+  data dir, and a `dev` app is one already in use — but the paths this plan *adds* mint fresh dirs:
+  `--profile drive`, `--fresh`, a first-ever `development` dir, and one after `db reset`. Those boot
+  straight into onboarding with no fixture in front of them. So `waitForAppReady(page)` is the extracted
+  readiness wait and all three callers use it unchanged: one `waitForFunction` for
+  `running === 'connected'` that calls `window.__disableOnboardingUI()` whenever it sees `onboarding` in
+  the state value. The hook is defined unconditionally (`renderer/src/main.ts:80`), so a CDP-attached page
+  reaches it with no environment gate in the way.
+  **In-poll rather than check-then-dismiss**, because onboarding can arrive at any point during the boot:
+  `engine/index.ts:105` already learned that for `reloadWindow` and says so, where the fixture's two-step
+  form (evaluate, dismiss, wait again) has a window in which onboarding appears after the check and the
+  second wait hangs to its deadline.
+  **No policy flag, and the cost is named rather than designed around**: attaching to an app whose owner is
+  sitting in onboarding completes the wizard for them, and an autostart against a never-run `development`
+  dir writes `hasOnboarded` to the developer's own data. It is a wizard rather than data, and the run says
+  so on the line that already names which path it took, so it is visible rather than silent.
+  **One shape note, so that the thing this forecloses stays a line rather than a rewrite.** The terminal
+  state is a *parameter with a default*, not a literal buried in the predicate: `connected`, dismissing on
+  the way, is what all three callers want and what the default gives them. The caller it leaves room for is
+  the one who wants onboarding **left up** — driving the onboarding flow itself, which is impossible today
+  and stays impossible after this plan, since the fixture dismisses unconditionally and nothing in
+  `tests/e2e/` drives it. That caller does not want "refuse"; for them the onboarding screen *is* ready, so
+  what they need is a different terminal state rather than an inverted boolean, and writing the wait with
+  one hard-coded state is what would turn that into a rewrite. See the goal doc's Deferred.
