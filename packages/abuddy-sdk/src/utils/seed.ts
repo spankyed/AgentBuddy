@@ -24,11 +24,37 @@ export interface SeedKeyRecord {
   defined: Set<string>;
 }
 
+/**
+ * What one import wrote for one item: the entity type it wrote, the hash of the content it wrote it from, and
+ * a hash per **part** — one addressable piece of the item, by path. A field's path is its name; a flow's are
+ * `fields`, `node:<id>` per node, and `edges` for its wiring.
+ *
+ * The parts are what makes "which piece did the user touch" answerable, where the single digest on the entity
+ * (`seededFields`, `seededGraph`) can only say that something in it moved.
+ */
+export interface AppliedItem {
+  entityType?: string;
+  sourceHash?: string;
+  parts: Record<string, string>;
+}
+
+/**
+ * What this import wrote, by content key, for whoever asked it to keep a record. A caller allocates one and
+ * reads it back; an import given none reports nothing, as with `SeedKeyRecord`.
+ *
+ * It holds only the items this run **wrote** — an item it skipped keeps whatever the last run recorded, which
+ * is the caller's to carry forward.
+ */
+export interface AppliedReport {
+  written: Map<string, AppliedItem>;
+}
+
 export interface ImportContext {
   compiledDir: string;
   include?: SeedIncludeSet;
   mode?: ImportMode;
   keyRecord?: SeedKeyRecord;
+  applied?: AppliedReport;
   log: (...args: unknown[]) => void;
 }
 
@@ -68,6 +94,7 @@ export function importCompiledSeeds(options: {
   include?: Record<string, SeedIncludeSet | undefined>;
   mode?: ImportMode;
   keyRecord?: SeedKeyRecord;
+  applied?: AppliedReport;
   verbose?: boolean;
 }): Record<string, ImportCounts> {
   const log = options.verbose ? console.log.bind(console) : () => {};
@@ -86,6 +113,7 @@ export function importCompiledSeeds(options: {
       include: inc,
       mode: options.mode,
       keyRecord: options.keyRecord,
+      applied: options.applied,
       log,
     });
   }

@@ -6,11 +6,11 @@ import * as os from 'os';
 import { loadAppPacks, loadExternalPacks, type LoadedPack } from '../../../src/packs/runtime/loader.ts';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { seedPacks, computePackSeedHash, type PackSeedTarget } from '../../../src/packs/runtime/seed.ts';
-import { appState } from '../../../src/app-state/index.ts';
+import { appliedContent, appState } from '../../../src/app-state/index.ts';
 import { getLoadedPackEntries } from '../../../src/packs/layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
 import { PACK_SNAPSHOT_FORMAT, seedFile } from '@abuddy/sdk/build';
-import type { SeedKeyRecord } from '@abuddy/sdk/utils';
+import type { AppliedReport, SeedKeyRecord } from '@abuddy/sdk/utils';
 import { _appDirOf } from '@abuddy/sdk/env';
 import { PACK_LAYOUT } from '../../../src/packs/layout.ts';
 
@@ -596,6 +596,76 @@ describe('seedPacks: failures', () => {
 
     expect(appState.get().packSeedKeys).toEqual({});
   });
+
+  /** A seeder that reports having written the given items, as the real writers report what they stamped */
+  const seedWriting = (items: Record<string, Record<string, string>>, counts = { created: 1, updated: 0, skipped: 0 }) =>
+    (options: { applied?: AppliedReport }) => {
+      for (const [key, parts] of Object.entries(items)) options.applied?.written.set(key, { entityType: 'Note', parts });
+      return { notes: counts };
+    };
+
+  it('records the revision it applied from, which is the hash the skip gate reads', () => {
+    const pack = installedPack('rev');
+    writeRegistry(['rev']);
+
+    seedPacks([pack], seedWriting({ 'rev:notes/a': { title: 'h1' } }));
+
+    expect(appliedContent.get('rev').revision).toBe(computePackSeedHash(path.join(pack.dir, 'runtime', 'seeds')));
+    expect(appliedContent.get('rev').revision).toBe(appState.get().packSeedHashes.rev);
+  });
+
+  /**
+   * **An item a run did not write keeps the entry the last one gave it**, because the entity still holds what
+   * that run wrote. Without the carry-forward the record would describe only the latest run's writes, which
+   * is not what it claims to be.
+   */
+  it('keeps the entry of an item this run did not write', () => {
+    const pack = installedPack('carry');
+    writeRegistry(['carry']);
+
+    seedPacks([pack], seedWriting({ 'carry:notes/a': { title: 'h1' }, 'carry:notes/b': { title: 'h2' } }));
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"v":2}');
+    seedPacks([pack], seedWriting({ 'carry:notes/a': { title: 'h1-changed' } }));
+
+    expect(appliedContent.get('carry').items).toEqual({
+      'carry:notes/a': { entityType: 'Note', parts: { title: 'h1-changed' } },
+      'carry:notes/b': { entityType: 'Note', parts: { title: 'h2' } },
+    });
+  });
+
+  /**
+   * **A run that failed still wrote whatever it got through**, and `packSeedHashes` has already moved, so
+   * nothing will re-import those items until the content changes again. Leaving them out would make a later
+   * apply read every one of them as the user's.
+   */
+  it('records what a failed run wrote, since its writes landed anyway', () => {
+    const pack = installedPack('partial');
+    writeRegistry(['partial']);
+
+    seedPacks([pack], seedWriting({ 'partial:notes/a': { title: 'h1' } }, { created: 1, updated: 0, skipped: 1, errors: ['the next one failed'] } as never));
+
+    expect(appliedContent.get('partial').items).toEqual({ 'partial:notes/a': { entityType: 'Note', parts: { title: 'h1' } } });
+  });
+
+  it('records nothing for a pack with no seed data', () => {
+    const pack = installedPack('empty');
+    fs.rmSync(path.join(pack.dir, 'runtime', 'seeds'), { recursive: true });
+    writeRegistry(['empty']);
+
+    seedPacks([pack], vi.fn());
+
+    expect(appliedContent.get('empty')).toEqual({ revision: '', items: {} });
+  });
+
+  /** A pack id holds a dash, and an entity's type is the text before its first one */
+  it('records a pack whose id holds a dash', () => {
+    const pack = installedPack('default-setup');
+    writeRegistry(['default-setup']);
+
+    seedPacks([pack], seedWriting({ 'default-setup:notes/a': { title: 'h1' } }));
+
+    expect(Object.keys(appliedContent.get('default-setup').items)).toEqual(['default-setup:notes/a']);
+  });
 });
 
 describe('seedPacks', () => {
@@ -640,6 +710,7 @@ describe('seedPacks', () => {
       compiledDir: path.join(pack.dir, 'runtime', 'seeds'),
       mode: 'replace-on-collision',
       keyRecord: { before: new Set(), defined: new Set() },
+      applied: { written: new Map() },
     });
   });
 

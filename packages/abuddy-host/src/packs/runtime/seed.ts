@@ -5,8 +5,8 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { PACK_LAYOUT, packSeedFiles } from '../layout.ts';
 import { recordSeedOutcomes } from '../installed.ts';
 import type { PackManifest } from '@abuddy/sdk/build';
-import { appState } from '../../app-state/index.ts';
-import { importCompiledSeeds } from '@abuddy/sdk/utils';
+import { appliedContent, appState } from '../../app-state/index.ts';
+import { importCompiledSeeds, type AppliedItem } from '@abuddy/sdk/utils';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('pack-seed');
@@ -120,6 +120,9 @@ export function seedPacks(packs: Iterable<PackSeedTarget>, importSeeds: typeof i
     // seeding is the only import that carries them, which is what makes a row it cannot find the user's
     // deletion rather than a request for the data back (`removedByUser`, the SDK's `seed/seeder.ts`)
     const keyRecord = { before: new Set(state.packSeedKeys[packId] ?? []), defined: new Set<string>() };
+    // What this run writes, by content key. `appliedContent.record` keeps the entry of every item it does not
+    // touch, since the entity still holds what the last run wrote
+    const applied = { written: new Map<string, AppliedItem>() };
     try {
       // `replace-on-collision` is what the seeders do by default — they branch only on `keep-existing` and
       // `wipe-and-replace` — so naming it changes nothing and says what this is
@@ -127,11 +130,22 @@ export function seedPacks(packs: Iterable<PackSeedTarget>, importSeeds: typeof i
         compiledDir: seedsDir,
         mode: 'replace-on-collision',
         keyRecord,
+        applied,
       }));
     } catch (err) {
       errors = [errorMessage(err)];
     }
     appState.updatePackEntry('packSeedHashes', packId, currentHash);
+    /**
+     * **Recorded whether or not the run succeeded, because an item it wrote is written either way.** A run
+     * that imported fifty items and then failed on one has changed fifty entities, and `packSeedHashes` above
+     * has already moved, so nothing will re-import them until the content changes again. Leaving them out of
+     * the record would make a later apply read all fifty as the user's and never update them.
+     *
+     * What a failure does not do is move `packSeedKeys`: its `defined` set is incomplete, so recording it
+     * would read as the pack having dropped every key the failed run never reached.
+     */
+    appliedContent.record(packId, { revision: currentHash, wrote: applied.written });
     if (errors.length > 0) {
       logger.error(`Failed to seed pack ${packId}:\n  ${errors.join('\n  ')}`);
       appState.updatePackEntry('packSeedDeps', packId, deps);

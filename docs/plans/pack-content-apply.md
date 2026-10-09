@@ -77,9 +77,8 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
 (`destroyEntity`, `updateEntity`); this doc does not say "row", since EARS has no tables for one to sit in.
 
 1. **The applied content is one entity per pack, in the database.** A host-declared entity type beside `AppState` and
-   `Settings` (`HOST_ENTITY_TYPES`), one entity per pack, saved as a single value at the end of each apply that
-   finished without errors — one write, not one per item, and a failed apply leaves the previous
-   one intact:
+   `Settings` (`HOST_ENTITY_TYPES`), one entity per pack, written at the end of each apply — two attributes
+   rather than one document, so the gate can read `revision` without deserialising every item:
 
    ```
    AppliedContent-<packId>
@@ -94,7 +93,8 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
 
    `revision` *is* what `packSeedHashes` holds today — `computePackSeedHash` over the compiled directory,
    file names and bytes — rather than a second number meaning almost the same thing, and `items[k].sourceHash`
-   adds the granularity it cannot: an edit to one note stops re-walking the pack's other 150 items.
+   adds the granularity it cannot: an edit to one note stops re-walking the pack's other items — 85 of
+   them as this pack ships today, a figure a spec derives from the compiled index rather than holding.
 
    **An item's parts are what we last wrote to that entity — not what the last version declared**, and the two
    differ for every item an apply skipped. A conflicted item, a user-owned one, an edited item the pack
@@ -103,6 +103,13 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
    conflict would be lost. So `revision` is the version we last applied *from* and nothing more than a gate,
    while the items may each lag it. This is the one thing `seededFields` has right today — it records what
    the seeder wrote — and the move is off the entity into one place, not to a different fact.
+
+   **A failed apply records what it wrote**, which is a correction to "saved at the end of each apply that
+   finished without errors" below. A run that imported fifty items and then failed on one has changed fifty
+   entities, and `packSeedHashes` moves whether it failed or not — so nothing re-imports them until the
+   content changes again, and leaving them out of the record would make a later apply read all fifty as the
+   user's. What a failure does not move is `packSeedKeys`: its set of defined keys is incomplete, so recording
+   it would read as the pack having dropped every key the run never reached.
 
    **So the applied content is updated, not recomputed.** Each apply starts from the existing one and makes four
    kinds of change: an entry is **replaced** for every item it wrote; **kept as it was** for every item it
@@ -352,10 +359,17 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
 - Both writers (`createSeeder`, `createFlowSeeder`) report the parts they wrote, through the context, as
   `defineSeedKey` reports keys today.
 - `seedPacks` writes the applied content after a successful run, beside what it writes now. Nothing reads it.
-- A spec derives each of the five current answers from the applied content and asserts it agrees, over
-  default-setup's real compiled content: `revision` equal to `packSeedHashes`, per-item presence against
-  `packSeedKeys`, per-item drift against `holdsSeededValues`/`holdsSeededGraph`, and a flow's parts
-  against `seededGraph`'s three lists.
+- **Three homes, not one spec**, because two of the five answers are out of any single suite's reach:
+  `holdsSeededValues`/`holdsSeededGraph` are module-private and callable from no spec, and `packSeedHashes`
+  is written by `seedPacks`, which a pack suite never runs (and may not import). So: the derivation rules over
+  a synthetic fixture in `abuddy-sdk/tests/seed/`, the per-item and per-part agreement over real content in
+  `default-setup/tests/seeds/`, and `revision` against `packSeedHashes` in host's `loader.spec.ts`.
+- **The agreement with the stored digests is behavioural, not arithmetic.** `seededFields.hash` is one digest
+  over the whole value array, so it is not derivable from per-part hashes — and a spec that re-hashes the
+  values itself to compare restates the writer and fails on any behaviour-preserving rewrite. What the specs
+  assert instead: the part paths equal `seededFields.fields` and `seededGraph.nodeFields`' keys (two walks
+  agreeing), every part agrees with the database the same run wrote, and an edit to one field moves exactly
+  that part where the stored digest can only say something moved.
 
 **Done when:** that agreement spec passes for every seeded key in default-setup; `seed-parity` goldens are
 unmoved; `npm run spec -- seeder flow-seeder loader` and the pack's seed suite pass. Mutation: dropping one

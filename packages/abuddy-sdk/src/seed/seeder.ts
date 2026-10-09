@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '../types/entities.ts';
 import { destroyEntity, installedEngine as ears, untypedTx, untypedQx as qx } from '@abuddy/ears';
-import { _getMediaPath, loadJSON, shouldImportAll, type Seeder, type ImportContext, type ImportCounts } from '../utils/index.ts';
+import { _getMediaPath, loadJSON, shouldImportAll, type Seeder, type ImportContext, type ImportCounts, type AppliedItem } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
 import { seedPackId } from '../utils/seed.ts';
 import { RECORD_KEYS, recordLabel, type CompiledSeedFile, type SeedRecord } from '../build/seeds/records.ts';
@@ -44,12 +44,37 @@ function seededFieldNames(record: SeedRecord): string[] {
   return Object.keys(fieldsOf(record)).filter((field) => field !== 'sourceHash').sort();
 }
 
-function hashValues(values: unknown[]): string {
+/** The digest every hash here is taken with: one for a whole item, one per part */
+export function hashValues(values: unknown[]): string {
   return crypto.createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 16);
 }
 
 function hashStoredFields(id: EARS.EntityId, fields: string[]): string {
   return hashValues(fields.map((field) => ears().getAttr(id, field as EARS.AttrKind) ?? null));
+}
+
+/**
+ * A hash per field, read from the row as `hashStoredFields` reads it (`AppliedItem.parts`,
+ * `@abuddy/sdk/utils`). The path of a field's part is the field's name.
+ *
+ * **Only the fields the seeder wrote**, which is why this takes the list rather than reading the row's keys:
+ * a hash over everything stored would move when the user or another pack adds an attribute, and read as our
+ * edit. That is the constraint `seededFields`' own field list exists for.
+ */
+function fieldParts(id: EARS.EntityId, fields: string[]): Record<string, string> {
+  return Object.fromEntries(fields.map((field) => [field, hashValues([ears().getAttr(id, field as EARS.AttrKind) ?? null])]));
+}
+
+/**
+ * The parts of a recorded item whose value in the database is no longer what we wrote — the per-part answer to
+ * the question `seededFields`' single digest answers for a whole row.
+ *
+ * For a row the generic seeder wrote; a flow's parts are read by `driftedGraphParts` (`flow-seeder.ts`), since
+ * the shapes are produced by different walks.
+ */
+export function driftedFieldParts(item: AppliedItem, id: EARS.EntityId): string[] {
+  const live = fieldParts(id, Object.keys(item.parts));
+  return Object.keys(item.parts).filter((path) => live[path] !== item.parts[path]).sort();
 }
 
 /** A record's place in its entry: the entry key, then each ancestor's and its own entity and identity */
@@ -71,6 +96,18 @@ export const seedKeyPrefix = (packId: string) => `${packId}:`;
  * make that pack's row disappearing read as the user deleting ours.
  */
 export const defineSeedKey = (ctx: ImportContext, key: string): void => { ctx.keyRecord?.defined.add(key); };
+
+/**
+ * Records what this run wrote for one item (`AppliedReport`, `@abuddy/sdk/utils`).
+ *
+ * **Only for an item the run actually wrote.** An item it skipped keeps whatever the last run recorded, and
+ * carrying that forward is the caller's — so this is not the counterpart of `defineSeedKey`, which fires for
+ * every key the content defines whatever the outcome.
+ */
+export const recordApplied = (ctx: ImportContext, key: string, item: AppliedItem): void => { ctx.applied?.written.set(key, item); };
+
+/** Forgets what this run recorded for an item, for a create that fails after it was recorded */
+export const forgetApplied = (ctx: ImportContext, key: string): void => { ctx.applied?.written.delete(key); };
 
 /**
  * **Did the user delete the row this key names?** Asked where a seeder found no row: a key the last run
@@ -215,8 +252,12 @@ export function createSeeder(options: SeederOptions): Seeder {
       /** Hooks' repository commands may not store sourceHash; change tracking needs it, the seeded values and the seed key */
       const stamp = (id: EARS.EntityId, record: SeedRecord, seedKey: string) => {
         if (record.sourceHash && ears().getAttr(id, SOURCE_HASH) !== record.sourceHash) untypedTx(id).update(SOURCE_HASH, record.sourceHash);
-        stampSeededFields(id, seededFieldNames(record));
+        const fields = seededFieldNames(record);
+        stampSeededFields(id, fields);
         untypedTx(id).update(SEED_KEY, seedKey);
+        // The one place the entity, the record and the fields just written are all in hand, so the one place
+        // a per-part record of them can be taken
+        recordApplied(ctx, seedKey, { entityType: record.entity, sourceHash: record.sourceHash, parts: fieldParts(id, fields) });
       };
 
       /**
@@ -234,6 +275,15 @@ export function createSeeder(options: SeederOptions): Seeder {
         } catch (err) {
           untypedTx(existing.id).update(SOURCE_HASH, existing.sourceHash);
           stampSeededFields(existing.id, seeded.fields);
+          // Both accounts of what we wrote are re-taken from what the entity holds now, over the *previous*
+          // field list. An update that got part way leaves a mix of old and new values, and re-taking only the
+          // digest would leave the parts describing the values from before it — which the next apply would
+          // read as the user's edit
+          recordApplied(ctx, seedKey, {
+            entityType: record.entity,
+            ...(typeof existing.sourceHash === 'string' && { sourceHash: existing.sourceHash }),
+            parts: fieldParts(existing.id, seeded.fields),
+          });
           throw err;
         }
         stamp(existing.id, record, seedKey);
@@ -254,6 +304,16 @@ export function createSeeder(options: SeederOptions): Seeder {
           if (hooks?.remove) hooks.remove(id);
           else destroyEntity(id);
           if (mediaDir) fs.rmSync(path.join(_getMediaPath(), id), { recursive: true, force: true });
+          /**
+           * The entity is gone, so the record must not name it: an entry with no entity is what a later apply
+           * reads as the user having deleted it.
+           *
+           * **Nothing reaches this with an entry recorded today**, because `stamp` is the last statement in
+           * the `try` above — media restore and the update before it both throw before anything is recorded,
+           * where this is a no-op. The edit that makes it fire is a statement added after `stamp`, or a
+           * `remove` hook that throws; mutate it by moving `stamp` one line earlier.
+           */
+          forgetApplied(ctx, seedKey);
           throw err;
         }
         return id;

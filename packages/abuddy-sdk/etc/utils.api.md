@@ -23,6 +23,22 @@ export interface _AppDataPaths {
 export function _appDataPaths(userDataDir: string): _AppDataPaths;
 
 // @public
+export interface AppliedItem {
+    // (undocumented)
+    entityType?: string;
+    // (undocumented)
+    parts: Record<string, string>;
+    // (undocumented)
+    sourceHash?: string;
+}
+
+// @public
+export interface AppliedReport {
+    // (undocumented)
+    written: Map<string, AppliedItem>;
+}
+
+// @public
 export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 
 // @public (undocumented)
@@ -154,11 +170,14 @@ export function importCompiledSeeds(options: {
     include?: Record<string, SeedIncludeSet | undefined>;
     mode?: ImportMode;
     keyRecord?: SeedKeyRecord;
+    applied?: AppliedReport;
     verbose?: boolean;
 }): Record<string, ImportCounts>;
 
 // @public (undocumented)
 export interface ImportContext {
+    // (undocumented)
+    applied?: AppliedReport;
     // (undocumented)
     compiledDir: string;
     // (undocumented)

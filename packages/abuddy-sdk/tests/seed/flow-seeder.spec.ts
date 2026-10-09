@@ -2,7 +2,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createEarsEngine, installEngine, installedEngine } from '@abuddy/ears';
+import { createEarsEngine, findRelations, installEngine, installedEngine, untypedTx } from '@abuddy/ears';
+import type { AppliedReport } from '../../src/utils/index.ts';
 
 const { createFlowSeeder } = await import('../../src/seed/flow-seeder.ts');
 const { startTestRuntime, testPacks } = await import('../../src/testing/index.ts');
@@ -44,6 +45,56 @@ describe('flow seeder', () => {
   /** The Flow rows with this label, through the installed engine's finder as the seeder reads them */
   const flows = (label: string) =>
     installedEngine().findWhere<{ id: string; label: string }>('Flow' as never, 'label', label);
+
+  /**
+   * **The three parts a flow is made of, over the walk its stored digest is taken from.** `stampSeededGraph`
+   * hands them back rather than a second function re-walking, so the parts and `seededGraph.hash` cannot
+   * describe different reads.
+   */
+  it('records the flow, a part per node, and the wiring', async () => {
+    const { createFlowSeeder: make } = await import('../../src/seed/flow-seeder.ts');
+    const applied: AppliedReport = { written: new Map() };
+    make().apply({ compiledDir: compiledFlows('Demo Flow'), mode: 'replace-on-collision', applied, log: () => {} });
+
+    const [[, item]] = [...applied.written];
+    const paths = Object.keys(item.parts).sort();
+    expect(paths.filter((p) => !p.startsWith('node:'))).toEqual(['edges', 'fields']);
+    expect(paths.filter((p) => p.startsWith('node:')).length, 'a part per compiled node').toBeGreaterThan(0);
+    expect(item).toMatchObject({ entityType: 'Flow', sourceHash: 'Demo Flow-v1' });
+  });
+
+  /**
+   * **A rewired edge moves `edges` and nothing else**, which is the whole reason the wiring is its own part:
+   * the stored digest can only say that something in the flow moved.
+   */
+  it('moves only `edges` when the wiring changes', async () => {
+    const { createFlowSeeder: make } = await import('../../src/seed/flow-seeder.ts');
+    const { driftedGraphParts } = await import('../../src/seed/flow-seeder.ts');
+    const applied: AppliedReport = { written: new Map() };
+    make().apply({ compiledDir: compiledFlows('Demo Flow'), mode: 'replace-on-collision', applied, log: () => {} });
+    const [[, item]] = [...applied.written];
+    const flowId = flows('Demo Flow')[0].id as never;
+
+    const nodeId = findRelations({ sourceEntity: flowId, relationType: 'contains' as never })[0].targetEntity;
+    untypedTx(flowId).link('transitions_to' as never, nodeId as never, { sourceHandle: 'branch-9' });
+
+    expect(driftedGraphParts(item, flowId)).toEqual(['edges']);
+  });
+
+  /**
+   * **A flow a seeder wrote agrees with itself**: every part it recorded still matches what the entity holds,
+   * so nothing reads as the user's the moment it was written. The companion of the two cases above — without
+   * it they would both pass for a derivation that reported constants.
+   */
+  it('records parts that agree with the database it just wrote', async () => {
+    const { createFlowSeeder: make } = await import('../../src/seed/flow-seeder.ts');
+    const { driftedGraphParts } = await import('../../src/seed/flow-seeder.ts');
+    const applied: AppliedReport = { written: new Map() };
+    make().apply({ compiledDir: compiledFlows('Demo Flow'), mode: 'replace-on-collision', applied, log: () => {} });
+
+    const [[, item]] = [...applied.written];
+    expect(driftedGraphParts(item, flows('Demo Flow')[0].id as never)).toEqual([]);
+  });
 
   /**
    * **A flow is destroyed rather than trashed, so the record of the key is all there is to go on.** The

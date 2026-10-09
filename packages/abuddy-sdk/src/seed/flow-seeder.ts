@@ -1,8 +1,7 @@
-import * as crypto from 'node:crypto';
 import { flowRepository } from '../repositories/flow-repository.ts';
 import { promptRepository } from '../repositories/prompt-repository.ts';
 import { findRelations, installedEngine as ears, untypedTx } from '@abuddy/ears';
-import { loadJSON, shouldImportAll, type Seeder, type ImportContext, type ImportCounts } from '../utils/index.ts';
+import { loadJSON, shouldImportAll, type Seeder, type ImportContext, type ImportCounts, type AppliedItem } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
 import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
 import { validate } from '../build/compilers/flow-dsl-validator.ts';
@@ -10,7 +9,7 @@ import { isFlowConfig, type FlowDSL } from '../build/compilers/flow-types.ts';
 import { EARS } from '../types/entities.ts';
 import type { ActionEntity, FlowEntity } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
-import { childSeedKey, defineSeedKey, removedByUser, SEED_KEY, seedKeyPrefix } from './seeder.ts';
+import { childSeedKey, defineSeedKey, hashValues, recordApplied, removedByUser, SEED_KEY, seedKeyPrefix } from './seeder.ts';
 import { seedPackId } from '../utils/seed.ts';
 
 /** What the seeder wrote for a flow: its row's fields, each node's fields, the relation kinds between them, and a hash of their stored state */
@@ -25,8 +24,11 @@ const SEEDED_GRAPH = 'seededGraph' as EARS.AttrKind;
 // createdAt is when the rows were written, not what was written
 const ROW_KEYS = new Set(['id', 'sourceHash', 'createdAt']);
 
+/** A flow's three parts as stored now: its own values, each node's, and its edges */
+type GraphState = [unknown[] | null, Array<[string, unknown[] | null]>, string[]];
+
 /** The flow's rows as stored now, for the fields and relation kinds the seeder wrote; independent of relation order */
-function hashGraph(flowId: EARS.EntityId, seeded: Omit<SeededGraph, 'hash'>): string {
+function graphState(flowId: EARS.EntityId, seeded: Omit<SeededGraph, 'hash'>): GraphState {
   const values = (id: string, fields: readonly string[] | undefined) => fields?.map((field) => ears().getAttr(id as EARS.EntityId, field as EARS.AttrKind) ?? null) ?? null;
   const nodeIds = findRelations({ sourceEntity: flowId, relationType: EARS.RelKind.CONTAINS }).map((r) => r.targetEntity as string).sort();
   const relations = [flowId, ...nodeIds]
@@ -34,12 +36,30 @@ function hashGraph(flowId: EARS.EntityId, seeded: Omit<SeededGraph, 'hash'>): st
     .filter((r) => seeded.relKinds.includes(r.relationType))
     .map((r) => JSON.stringify([r.sourceEntity, r.relationType, r.targetEntity, r.info ?? null]))
     .sort();
-  const state = [values(flowId, seeded.flowFields), nodeIds.map((id) => [id, values(id, seeded.nodeFields[id])]), relations];
-  return crypto.createHash('sha256').update(JSON.stringify(state)).digest('hex').slice(0, 16);
+  return [values(flowId, seeded.flowFields), nodeIds.map((id) => [id, values(id, seeded.nodeFields[id])]), relations];
 }
 
-/** Records a newly imported flow's seeded graph, so a later seed can tell whether it was edited */
-function stampSeededGraph(flowId: EARS.EntityId, compiled: CompiledRows): void {
+/** The one digest `seededGraph` holds: the three parts together */
+const hashGraph = (flowId: EARS.EntityId, seeded: Omit<SeededGraph, 'hash'>): string => hashValues(graphState(flowId, seeded));
+
+/**
+ * The same walk's three parts, a hash each (`AppliedItem.parts`, `@abuddy/sdk/utils`): the flow's own fields,
+ * each node's values as one unit, and the whole edge set with each edge's `info`.
+ *
+ * **It takes the state rather than re-walking**, so the parts and the digest `seededGraph` stores are over the
+ * same reads by construction rather than by two functions agreeing. A node's path is its compiled id, which
+ * derives from the flow's name — the determinism `collidingOwner` also rests on.
+ */
+function graphParts([flow, nodes, relations]: GraphState): Record<string, string> {
+  return {
+    fields: hashValues([flow]),
+    ...Object.fromEntries(nodes.map(([id, values]) => [`node:${id}`, hashValues([values])])),
+    edges: hashValues([relations]),
+  };
+}
+
+/** Records a newly imported flow's seeded graph, and hands back the parts that graph is made of */
+function stampSeededGraph(flowId: EARS.EntityId, compiled: CompiledRows): Record<string, string> {
   const rows = compiled.entity as Array<Record<string, unknown> & { id: string }>;
   const fieldsOf = (id: string) => Object.keys(rows.find((row) => row.id === id) ?? {}).filter((key) => !ROW_KEYS.has(key)).sort();
   const nodeIds = compiled.relation.filter((r) => r.source === flowId && r.kind === EARS.RelKind.CONTAINS).map((r) => r.target);
@@ -49,7 +69,24 @@ function stampSeededGraph(flowId: EARS.EntityId, compiled: CompiledRows): void {
     nodeFields: Object.fromEntries(nodeIds.map((id) => [id, fieldsOf(id)])),
     relKinds: [...new Set(compiled.relation.filter((r) => sources.has(r.source)).map((r) => r.kind))].sort(),
   };
-  untypedTx(flowId).update(SEEDED_GRAPH, { ...seeded, hash: hashGraph(flowId, seeded) } satisfies SeededGraph);
+  const state = graphState(flowId, seeded);
+  untypedTx(flowId).update(SEEDED_GRAPH, { ...seeded, hash: hashValues(state) } satisfies SeededGraph);
+  return graphParts(state);
+}
+
+/**
+ * The parts of a recorded flow whose value in the database is no longer what we wrote.
+ *
+ * Beside `driftedFieldParts` (`seeder.ts`) rather than one function over both, because a flow's parts and an
+ * entity's are produced by different walks; each derivation lives with the writer that produced it.
+ */
+export function driftedGraphParts(item: AppliedItem, flowId: EARS.EntityId): string[] {
+  const seeded = ears().getAttr(flowId, SEEDED_GRAPH) as SeededGraph | null;
+  if (!seeded) return Object.keys(item.parts).sort();
+  const live = graphParts(graphState(flowId, seeded));
+  return [...new Set([...Object.keys(item.parts), ...Object.keys(live)])]
+    .filter((path) => live[path] !== item.parts[path])
+    .sort();
 }
 
 /** The flow's nodes, fields and relations still hold what the seeder wrote */
@@ -236,8 +273,16 @@ export function createFlowSeeder(): Seeder {
         const row = (compiled.entity as Array<{ id: string; entityType?: string; label?: string }>)
           .find((entity) => entity.entityType === EARS.Entity.Flow && entity.label === name);
         if (row) {
-          untypedTx(row.id as EARS.EntityId).update(SEED_KEY, flowSeedKey(packId, name));
-          stampSeededGraph(row.id as EARS.EntityId, compiled);
+          const flowId = row.id as EARS.EntityId;
+          const seedKey = flowSeedKey(packId, name);
+          untypedTx(flowId).update(SEED_KEY, seedKey);
+          const parts = stampSeededGraph(flowId, compiled);
+          const sourceHash = ears().getAttr(flowId, 'sourceHash' as EARS.AttrKind);
+          recordApplied(ctx, seedKey, {
+            entityType: EARS.Entity.Flow,
+            ...(typeof sourceHash === 'string' && { sourceHash }),
+            parts,
+          });
         }
         if (replacedLabels.has(name)) {
           counts.updated++;

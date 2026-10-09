@@ -6,9 +6,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { dropAttribute, resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
-import { createSeeder, markSeededRowUnedited } from '../../src/seed/seeder.ts';
+import { createSeeder, driftedFieldParts, markSeededRowUnedited } from '../../src/seed/seeder.ts';
 import type { SeedHooks } from '../../src/seed/hooks.ts';
-import { _getMediaPath, type ImportMode, type SeedKeyRecord } from '../../src/utils/index.ts';
+import { _getMediaPath, type AppliedReport, type ImportMode, type SeedKeyRecord } from '../../src/utils/index.ts';
 import type { SeedRecord } from '../../src/build/seeds/records.ts';
 import type { EARS } from '../../src/types/entities.ts';
 
@@ -45,11 +45,65 @@ function compiled(packId: string, records: Array<{ name: string; body: string; v
 }
 
 const seeder = createSeeder({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'] });
-const seed = (dir: string, keyRecord?: SeedKeyRecord, mode: ImportMode = 'replace-on-collision') =>
-  seeder.apply({ compiledDir: dir, mode, keyRecord, log: () => {} });
+const seed = (dir: string, keyRecord?: SeedKeyRecord, mode: ImportMode = 'replace-on-collision', applied?: AppliedReport) =>
+  seeder.apply({ compiledDir: dir, mode, keyRecord, applied, log: () => {} });
+/** An apply's record of what it wrote, as `seedPacks` builds it */
+const report = (): AppliedReport => ({ written: new Map() });
 /** A boot seed's key record, as `seedPacks` builds it: what the last run defined, and a set for this one */
 const keyRecordAfter = (defined: ReadonlySet<string> = new Set()): SeedKeyRecord =>
   ({ before: defined, defined: new Set<string>() });
+
+describe('the applied content a run records', () => {
+  /**
+   * **One part per field the seeder wrote, and the same fields the entity's own digest covers.** The two are
+   * produced by different walks — the parts off the entity per field, `seededFields.fields` off the compiled
+   * record — so their agreeing is a claim rather than a restatement.
+   */
+  it('records a part per field it wrote, over the fields seededFields covers', () => {
+    const applied = report();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), undefined, 'replace-on-collision', applied);
+
+    const [[key, item]] = [...applied.written];
+    expect(key, 'the entry is keyed by the content key').toBe([...keyRecordAfter().defined, key][0]);
+    expect(Object.keys(item.parts).sort()).toEqual(memo('Intro').seededFields!.fields);
+    expect(item).toMatchObject({ entityType: 'Memo', sourceHash: 'Intro-v1' });
+    expect(Object.values(item.parts).every((hash) => /^[0-9a-f]{16}$/.test(hash)), 'each part is a digest').toBe(true);
+  });
+
+  /**
+   * **The part of the field the user changed moves, and no other.** This is what the entity's single digest
+   * cannot say, and the reason for recording parts at all.
+   */
+  it('moves only the part of the field that changed', () => {
+    const applied = report();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), undefined, 'replace-on-collision', applied);
+    const item = applied.written.get([...applied.written.keys()][0])!;
+
+    edit('Intro', { mood: 'mine' });
+
+    expect(driftedFieldParts(item, memo('Intro').id)).toEqual(['mood']);
+  });
+
+  /** An item the apply left alone is not this run's to describe: its entry stays whatever the last run recorded */
+  it('records nothing for an item it skipped', () => {
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+
+    const applied = report();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), undefined, 'replace-on-collision', applied);
+
+    expect([...applied.written.keys()], 'an unchanged item was written again').toEqual([]);
+  });
+
+  it('records nothing for an item it skipped as user-owned', () => {
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+    dropAttribute(memo('Intro').id, 'sourceHash');
+
+    const applied = report();
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), undefined, 'replace-on-collision', applied);
+
+    expect([...applied.written.keys()]).toEqual([]);
+  });
+});
 
 describe('a row the user deleted outright', () => {
   /**
