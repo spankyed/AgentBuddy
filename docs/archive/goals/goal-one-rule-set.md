@@ -166,7 +166,7 @@ Final.
 7. **What stays in code**: `MANIFEST_TEMPLATE` and `PACKAGE_JSON_TEMPLATE` (objects with computed keys and
    runtime version ranges), `PACK_TSCONFIG`/`TSCONFIG_TEMPLATE` (imported as an object by
    `tests/_support/pack-builds.ts`), `GITIGNORE_TEMPLATE` (a nested `.gitignore` is read by npm as ignore
-   rules), `EXAMPLE_SEED_ROW_TEMPLATE` (`.md` is stripped from the packaged app), and the register-entry
+   rules), `EXAMPLE_CONTENT_TEMPLATE` (`.md` is stripped from the packaged app), and the register-entry
    fragments, which edit an existing file rather than rendering one.
 8. **The runner collects every rule** instead of exiting inside its loop, and gains paths, `--rule` and
    `--list`. A per-file run names the whole-tree rules it skipped. The success line stays byte-identical.
@@ -200,9 +200,9 @@ because it deletes machinery they would otherwise carry. Phase 5 needs Phase 3's
 
 **Done when:** four new `step-timing.spec.ts` cases pass (pooled step silent unforced; reported forced;
 reported when it overran under `--all`; an ordinary step still reported unforced); `npm run chain` twice prints
-no advisory on the second run (grep the string, don't eyeball); seeding a drift in an ordinary step's
-`seconds`, and in `POOL_SECONDS` under `--all`, each reports — and `POOL_SECONDS` seeded without `--all` stays
-silent. Revert the seeds.
+no advisory on the second run (grep the string, don't eyeball); applying a drift in an ordinary step's
+`seconds`, and in `POOL_SECONDS` under `--all`, each reports — and `POOL_SECONDS` written without `--all` stays
+silent. Revert the content.
 
 ### Phase 2 — the scaffold's templates become files (seven steps, seven commits)
 
@@ -333,7 +333,7 @@ deleted; `npm run test:external-pack:contract` passes.
 
 | Phase | Status | Evidence |
 |---|---|---|
-| 1 — the chain stops nagging | **done** | `240c78cc3`. `driftedSteps` skips a step that keeps its own cache unless `--all` forced it; four cases, one mutation; two chain runs silent, a seeded drift still reported |
+| 1 — the chain stops nagging | **done** | `240c78cc3`. `driftedSteps` skips a step that keeps its own cache unless `--all` forced it; four cases, one mutation; two chain runs silent, a written drift still reported |
 | 2 — templates become files | **done** | `c4ea43aec`, `226819ac4`, `753833c29`, `9d00f67ed`, `eaf89af1f`, `2725f14ad`, `0ca955577`. 34 template files; the golden scaffold diff empty at every step; 176 lines of extraction machinery and one rule deleted |
 | 3 — one reader, one rule set | **done** | `65021e770`, `2e51b133f`. `readSource` with positions; nine pack rules in `build/pack-rules.ts`; `internal-imports-gate.ts` deleted; `abuddy.checks.json` |
 | 4 — census, one pass, per-file flag | **done** | `6c8eee988`, `1c40e6dca`, `a3e3be850`. **1,735 parses over 1,735 files, 2.67s — from 9,698 parses and 4.4s**; pack dirs derived from where a manifest is; `<paths…>`, `--rule`, `--list`; collect-all |
@@ -348,7 +348,7 @@ deleted; `npm run test:external-pack:contract` passes.
 
 - **Decision 6 said `.ts` and `.vue` templates are files. Two file types cannot be.** `electron-builder.mjs`
   strips every `.d.ts` from the packaged app whatever its `files` array says — measured on a `--dir` build:
-  zero remain in `app.asar` — and excludes `'!**/*.md'` outright. So `env.d.ts` and the example seed row stay
+  zero remain in `app.asar` — and excludes `'!**/*.md'` outright. So `env.d.ts` and the example content row stay
   strings in `init.ts`, with the reason recorded there and in `src/templates.ts`, and a spec refuses a `.d.ts`
   template. Without the `--dir` build in Phase 2's step 1 this would have shipped: `abuddy init` from the CLI
   the app installs would have scaffolded a pack with no `env.d.ts`, and no test covers that path.

@@ -71,7 +71,7 @@ export interface ReportedModule {
    * `collectDuration` by itself, which is right for the host pool — 68-85s of collection against 71-92s of
    * tests — and wrong for the pack pool, whose per-file cost is `setupDuration`: measured 2026-10-06,
    * `harness-app-stop` is 3,984ms of tests against 1,716ms of setup and 21ms of collection, and
-   * `seed-parity` is 753ms of tests against 1,703ms of setup. For that file the tests are 30% of what it
+   * `content-parity` is 753ms of tests against 1,703ms of setup. For that file the tests are 30% of what it
    * cost. So the quantity worth keeping is the sum, which is what `work/cores` needs.
    *
    * One figure rather than four, because no decision here wants the breakdown: a reader asking why a half

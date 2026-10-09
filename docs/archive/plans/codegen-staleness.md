@@ -23,7 +23,7 @@ for it and will not be built.
 
 | Input | Moves when |
 |---|---|
-| the manifest (`abuddy.json`) | a feature, plugin path, entity, extension, repository or seed format changes |
+| the manifest (`abuddy.json`) | a feature, plugin path, entity, extension, repository or content format changes |
 | the generator | codegen's own output pattern changes (`codegenSource()` is what hashes it) |
 | the pack's `src/` | a service export's shape, a step's `build.ts`/`types.ts`, which `*-fe.ts` files exist |
 | a resolved dependency's snapshot | generated flow helpers and `deps/<id>.d.ts` follow every dependency |
@@ -129,5 +129,5 @@ includes. There is none today, because a pack's tsconfig includes its `src/` who
 The investigation that produced this document also found the first instance of a separate rule, which now
 lives in the root `CLAUDE.md`: **frontend-reachable SDK code imports `@abuddy/sdk/utils/pure` or a specific
 file, never the `@abuddy/sdk/utils` barrel**, which is Node-only by construction (`paths`, `media`, `export`,
-`seed`). The instance was `randomId`, pulling `process.env` into the browser bundle through the barrel; it is
+`content`). The instance was `randomId`, pulling `process.env` into the browser bundle through the barrel; it is
 `utils/random-id.ts` now, re-exported from `pure.ts`.

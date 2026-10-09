@@ -89,7 +89,7 @@ than a refused one, because nothing records which statements ran.
 
 ## Decisions
 
-1. **The console runners take the boundary; nothing else changes.** Seeding, migrations, repositories and
+1. **The console runners take the boundary; nothing else changes.** Applying, migrations, repositories and
    system code keep writing as they do now. The three call sites above are the scope.
 2. **A commit is one LMDB transaction.** Every write the code made reaches the files together or not at
    all, which means `onDestroyEntity` is buffered like the rest (Phase 2).

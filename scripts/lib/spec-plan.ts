@@ -85,7 +85,7 @@ export interface Run {
  * Specs that cover a target and that no walk of the module graph will reach, because a build stands between
  * them: `src` -> `abuddy build` -> an artifact -> the spec that reads it.
  *
- * **Beside a run, never instead of one.** A seed *helper* is imported by specs directly — measured,
+ * **Beside a run, never instead of one.** An apply *helper* is imported by specs directly — measured,
  * `src/content/actions/claude-code/_helpers/thread-context.ts` reaches 3 — and routing every `src/content/**`
  * file at the build would throw that answer away to recommend a build. So the walk still runs and this is
  * what it could not see, which is the shape `packSuiteNote` already has.
@@ -337,7 +337,7 @@ const BUILD_INPUTS: readonly string[] = ['abuddy.json', 'package.json', 'tsconfi
  *   nothing narrower is honest.
  *
  * Derived from the pack's own layout rather than named: the suite comes from `UNIT_SUITES`' pack kind and the
- * seed half is offered only where the pack has both halves on disk. A third pack arriving with seeds is routed
+ * content half is offered only where the pack has both halves on disk. A third pack arriving with content is routed
  * by existing, and `spec-plan.spec.ts` partitions the packs under `packages/` so one arriving *without* a suite
  * fails a check instead of being silently unroutable.
  */
@@ -346,8 +346,8 @@ export function packBuildEdge(rel: string, root: string): { suite: UnitSuite; sp
   if (suite === undefined) return undefined;
   const inPack = path.relative(path.join('packages', suite.dir), rel);
   if (BUILD_INPUTS.includes(inPack)) return { suite, specs: [] };
-  const hasSeedSpecs = fs.existsSync(path.join(root, 'packages', suite.dir, CONTENT_SPECS));
-  return inPack.startsWith(`${CONTENT_SOURCES}/`) && hasSeedSpecs ? { suite, specs: [CONTENT_SPECS] } : undefined;
+  const hasContentSpecs = fs.existsSync(path.join(root, 'packages', suite.dir, CONTENT_SPECS));
+  return inPack.startsWith(`${CONTENT_SOURCES}/`) && hasContentSpecs ? { suite, specs: [CONTENT_SPECS] } : undefined;
 }
 
 /** What covers a build-edge target, in the words the note and the `--full` label both use */
@@ -459,7 +459,7 @@ const packageRun = (root: string, pkg: string, args: readonly string[], flags: r
   command: 'npm',
   args: ['test', '--', ...(half === 'fast' ? [] : ['--config', CONFIG_BY_HALF[half]]), ...args, ...flags],
   // Expanded here rather than where it is priced, because the field promises *spec files* and one of its
-  // producers hands it a directory: the seed edge's `tests/content`, which vitest resolves as a filter and a
+  // producers hands it a directory: the apply edge's `tests/content`, which vitest resolves as a filter and a
   // cost record has no row for. Unexpanded it priced that run at one unrecorded spec — zero — which is the
   // whole of what `--full` adds. `args` is untouched, so the run is the same run
   specs: args.length === 0 ? undefined : args.flatMap((arg) => {

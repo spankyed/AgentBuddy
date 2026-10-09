@@ -111,10 +111,10 @@ finding, but an edit you made after the step finished, or a step gaining a decla
 too. Which it was is the `when` on each line.
 
 The `·` line is not one of them. That file was written during the run and its bytes came out the same
-— an E2E test that edits a compiled seed and puts it back, a deterministic build — so its mtime moved
+— an E2E test that edits a compiled content and puts it back, a deterministic build — so its mtime moved
 and its fingerprint did not. It is named rather than counted, because the name is the whole of what the
 note has to say: it exists to stop you chasing that file, and it cannot do that without telling you
-which file. The capture above is exactly that: `dev-reload.spec.ts` rewrites a compiled seed by design.
+which file. The capture above is exactly that: `dev-reload.spec.ts` rewrites a compiled content by design.
 
 An empty diff with a stale verdict means the *declared* set moved — a step gaining or losing a
 watched path is stale before any byte changes — and the line says so instead of listing no files.

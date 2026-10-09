@@ -7,8 +7,8 @@ import type { Page } from '@playwright/test';
 import { API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
 import { test, expect } from '@abuddy/testing';
 
-const SEED_FILE = path.resolve(import.meta.dirname, '../../../packages/default-setup/dist/runtime/content/library.content.json');
-const SEEDED_DOCUMENT = 'Codex commands';
+const CONTENT_FILE = path.resolve(import.meta.dirname, '../../../packages/default-setup/dist/runtime/content/library.content.json');
+const WRITTEN_DOCUMENT = 'Codex commands';
 const REBUILT_DOCUMENT = 'Codex commands after a rebuild';
 
 interface LibraryRecord { entity?: string; name?: string; children?: LibraryRecord[] }
@@ -22,13 +22,13 @@ async function libraryDocuments(appPage: Page): Promise<string[]> {
 }
 
 /** Renames a compiled record, as recompiling the pack's content sources after an edit would */
-function renameSeededDocument(records: LibraryRecord[], from: string, to: string): boolean {
+function renameWrittenDocument(records: LibraryRecord[], from: string, to: string): boolean {
   for (const record of records) {
     if (record.entity === 'Document' && record.name === from) {
       record.name = to;
       return true;
     }
-    if (record.children && renameSeededDocument(record.children, from, to)) return true;
+    if (record.children && renameWrittenDocument(record.children, from, to)) return true;
   }
   return false;
 }
@@ -38,10 +38,10 @@ function renameSeededDocument(records: LibraryRecord[], from: string, to: string
  * Playwright timeout rejects the test without unwinding it, and a `finally` left unrun would leave the
  * renamed document on disk, failing every later run on its first assertion. A hook runs either way.
  */
-let originalSeedFile: Buffer | undefined;
+let originalContentFile: Buffer | undefined;
 test.afterEach(() => {
-  if (originalSeedFile) fs.writeFileSync(SEED_FILE, originalSeedFile);
-  originalSeedFile = undefined;
+  if (originalContentFile) fs.writeFileSync(CONTENT_FILE, originalContentFile);
+  originalContentFile = undefined;
 });
 
 test('a rebuilt built-in pack reloads with the content the rebuild changed', async ({ app, appPage }) => {
@@ -53,12 +53,12 @@ test('a rebuilt built-in pack reloads with the content the rebuild changed', asy
   expect(apiToken, 'the renderer knows the API token').toBeTruthy();
 
   await app.navigate('default-setup/library');
-  await expect.poll(() => libraryDocuments(appPage)).toContain(SEEDED_DOCUMENT);
+  await expect.poll(() => libraryDocuments(appPage)).toContain(WRITTEN_DOCUMENT);
 
-  originalSeedFile = fs.readFileSync(SEED_FILE);
-  const seeds = JSON.parse(originalSeedFile.toString()) as { records: LibraryRecord[] };
-  expect(renameSeededDocument(seeds.records, SEEDED_DOCUMENT, REBUILT_DOCUMENT), `${SEED_FILE} holds "${SEEDED_DOCUMENT}"`).toBe(true);
-  fs.writeFileSync(SEED_FILE, JSON.stringify(seeds, null, 2));
+  originalContentFile = fs.readFileSync(CONTENT_FILE);
+  const content = JSON.parse(originalContentFile.toString()) as { records: LibraryRecord[] };
+  expect(renameWrittenDocument(content.records, WRITTEN_DOCUMENT, REBUILT_DOCUMENT), `${CONTENT_FILE} holds "${WRITTEN_DOCUMENT}"`).toBe(true);
+  fs.writeFileSync(CONTENT_FILE, JSON.stringify(content, null, 2));
 
   const response = await fetch(`http://127.0.0.1:${apiPort}/dev/reload`, {
     method: 'POST',
@@ -67,6 +67,6 @@ test('a rebuilt built-in pack reloads with the content the rebuild changed', asy
   });
   expect(response.status, await response.text()).toBe(200);
 
-  // The reload re-seeds, its systems get CLIENT_CONNECTED again, and the plugin's index carries the change
+  // The reload re-applies, its systems get CLIENT_CONNECTED again, and the plugin's index carries the change
   await expect.poll(() => libraryDocuments(appPage), { timeout: 15_000 }).toContain(REBUILT_DOCUMENT);
 });

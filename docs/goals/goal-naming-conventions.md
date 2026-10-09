@@ -120,7 +120,7 @@ behind a filler word, and only the last one names its stage. `PackOrigin`
 
 **`source` is one sense in compounds and three senses bare.** ~707 occurrences. The compounds are
 consistent — `sourceHandle` (146, Vue Flow's edge endpoint), `sourceId` (56, an EARS relation's origin),
-`sourceEntity` (49), `contentHash` (93, the text a seed record compiled from), `sourcePath` (42, a backup
+`sourceEntity` (49), `contentHash` (93, the text an apply record compiled from), `sourcePath` (42, a backup
 copy's origin), `sourceTab` (70), `sourceThreadId` (34) — each naming the origin of the thing the compound
 names. The bare fields are not: in the pack install path alone, `installPack(slug, source?)`
 (`abuddy-host/src/packs/pack-installer.ts:324`) takes a kind, `installPackFromLocal(source)`

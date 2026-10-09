@@ -7,7 +7,7 @@ import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { findWhere } from '#generated/ears.ts';
 import { repository } from '#generated/repository.ts';
-import { applySeeds, compileSeeds, resetDatabase, seed, snapshot } from './harness.ts';
+import { apply as importContent, applyContent, compileContent, resetDatabase, snapshot } from './harness.ts';
 import type { ApplyRecord } from '@abuddy/sdk/utils';
 // No local row type: `findWhere` already returns the entity with its branded id and declared fields, and a
 // `{ id: never; [field: string]: unknown }` alias discarded both — `never` is assignable to every parameter,
@@ -28,8 +28,8 @@ const dirs: string[] = [];
 let v1: string;
 let v2: string;
 beforeAll(async () => {
-  v1 = await compileSeeds('v1');
-  v2 = await compileSeeds('v2');
+  v1 = await compileContent('v1');
+  v2 = await compileContent('v2');
   dirs.push(v1, v2);
 });
 afterAll(() => {
@@ -41,8 +41,8 @@ afterAll(() => {
  * has changed an item is what the last apply wrote for it.
  */
 let applied: ApplyRecord | undefined;
-const apply = (dir: string, options: Parameters<typeof applySeeds>[2] = {}) => {
-  const run = applySeeds(dir, applied, options);
+const apply = (dir: string, options: Parameters<typeof applyContent>[2] = {}) => {
+  const run = applyContent(dir, applied, options);
   applied = run.record;
   return run.counts;
 };
@@ -58,7 +58,7 @@ beforeEach(() => { applied = undefined; });
 const edited = (key: string) => key.startsWith('a note') ? 'Note:Welcome' : 'Document:Getting Started';
 const untouched = (key: string) => key.startsWith('a note') ? 'Document:Getting Started' : 'Note:Welcome';
 
-describe('re-seeding edited rows', () => {
+describe('re-applying edited rows', () => {
   it('updates changed rows nobody edited', () => {
     reset();
     apply(v1);
@@ -84,7 +84,7 @@ describe('re-seeding edited rows', () => {
   it("keeps a field the record doesn't set and still updates the row", () => {
     reset();
     apply(v1);
-    // The Welcome record sets favorite, not hideCompletedChildren or completed, so the seed doesn't own those
+    // The Welcome record sets favorite, not hideCompletedChildren or completed, so the apply doesn't own those
     repository.noteCommands.update(note('Welcome').id, { hideCompletedChildren: true, completed: true });
     apply(v2, { mode: 'replace-on-collision' });
     expect(snapshot().rows['Note:Welcome']).toMatchObject({ hideCompletedChildren: true, completed: true, content: expect.stringContaining('Hello again') });
@@ -104,7 +104,7 @@ describe('re-seeding edited rows', () => {
   it("resets a field a changed record no longer sets to a new note's, and keeps fields its source never set", () => {
     reset();
     apply(v1);
-    // The Task Two record never sets favorite: the user's favorite isn't the seed's to reset
+    // The Task Two record never sets favorite: the user's favorite isn't the apply's to reset
     repository.noteCommands.update(note('Task Two').id, { favorite: true });
     const v3 = withNote(withNote(withNote(v1, 'Welcome', { icon: undefined }), 'task one', { completed: undefined }), 'Task Two', { content: 'Still open.' });
     expect(apply(v3, { mode: 'replace-on-collision' }).notes).toMatchObject({ updated: 3 });
@@ -112,7 +112,7 @@ describe('re-seeding edited rows', () => {
     expect(rows['Note:Welcome'].icon ?? null).toBeNull();
     expect(rows['Note:Projects/task one']).toMatchObject({ completed: false });
     expect(rows['Note:Projects/Task Two']).toMatchObject({ favorite: true, content: 'Still open.' });
-    // The reset fields aren't seeded any more: the user's value for them survives the next change
+    // The reset fields aren't written any more: the user's value for them survives the next change
     repository.noteCommands.update(note('task one').id, { completed: true });
     expect(apply(withNote(v3, 'task one', { content: 'Done, really.' }), { mode: 'replace-on-collision' }).notes).toMatchObject({ updated: 1 });
     expect(snapshot().rows['Note:Projects/task one']).toMatchObject({ completed: true, content: 'Done, really.' });
@@ -131,7 +131,7 @@ describe('re-seeding edited rows', () => {
     expect(projects()).not.toContain(`document://${taskTwo}`);
   });
 
-  it('keeps updating a row a seed already updated', () => {
+  it('keeps updating a row an apply already updated', () => {
     reset();
     apply(v1);
     const fresh = snapshot();
@@ -142,7 +142,7 @@ describe('re-seeding edited rows', () => {
     expect(after.rows['Document:Getting Started']).toMatchObject({ tags: fresh.rows['Document:Getting Started'].tags });
   });
 
-  it('detects an edit made after a seed updated the row', () => {
+  it('detects an edit made after an apply updated the row', () => {
     reset();
     apply(v1);
     apply(v2, { mode: 'replace-on-collision' });
@@ -152,7 +152,7 @@ describe('re-seeding edited rows', () => {
     expect(snapshot().rows['Note:Welcome']).toEqual(before.rows['Note:Welcome']);
   });
 
-  it('finds renamed rows instead of seeding a copy, and leaves them as renamed', () => {
+  it('finds renamed rows instead of applying a copy, and leaves them as renamed', () => {
     reset();
     apply(v1);
     repository.noteCommands.update(note('Welcome').id, { title: 'My welcome' });
@@ -173,7 +173,7 @@ describe('re-seeding edited rows', () => {
     ]);
   });
 
-  it("doesn't take another seeded item for one renamed to its name", () => {
+  it("doesn't take another written item for one renamed to its name", () => {
     reset();
     apply(v1);
     repository.libraryCommands.deleteDocument(document('2024').id);
@@ -193,7 +193,7 @@ describe('re-seeding edited rows', () => {
      * the user had changed. That is what asking for a pack's data back means, and the one place in the app
      * where the user's work is replaced.
      */
-    seed(v2, { mode: 'replace-on-collision' });
+    importContent(v2, { mode: 'replace-on-collision' });
 
     expect(findWhere('Document', 'name', '2024').map((row) => row.id), 'the deleted document, created again')
       .not.toEqual([renamed]);

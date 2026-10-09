@@ -22,7 +22,7 @@ const RUNTIME_ENTRY = path.join(REPO_ROOT, 'packages', 'default-setup', 'dist', 
  * holding — the built-runtime test checks the built pack never requires them.
  */
 const UNBRIDGED_BY_POLICY = new Map<string, string>([
-  // Shared-instance exports the bridge leaves out (the Seed DSL, test tooling), with their reasons
+  // Shared-instance exports the bridge leaves out (the Content DSL, test tooling), with their reasons
   ...Object.entries(APP_UNBRIDGED),
   // Shared-instance exports only the app's composition root loads (the LMDB store)
   ...Object.entries(APP_ONLY_EXPORTS),

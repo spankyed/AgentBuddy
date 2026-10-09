@@ -6,7 +6,7 @@
 //
 // It guards the property rather than any particular name — a new `writeStuff(): ApplyResult` fails here
 // whichever word someone reached for — and it is the one check that can see the hole the old rule could
-// not: that rule only refused the leaving noun (`seed*`), so `seedPacks`, which returns failures, was
+// not: that rule only refused the leaving noun (`content*`), so `applyPacks`, which returns failures, was
 // invisible to it in both directions.
 //
 // **Not extended to "no identifier contains both a noun and a verb stem"**, which the same audit proposed:
@@ -79,7 +79,7 @@ describe('a function says which operation it performs', () => {
   });
 
   /** And the noun that left the vocabulary is not in either of their names */
-  it('names none of them after the content', () => {
+  it('names none of them after the noun that left', () => {
     const offenders = found.filter((f) => /seed/i.test(f.name));
     expect(offenders.map((o) => `${o.file}: ${o.name}`)).toEqual([]);
   });
@@ -92,21 +92,12 @@ describe('a function says which operation it performs', () => {
  *
  * It is a scan over one word rather than over verb stems, which is why it can exist: `seed` either appears
  * or it does not, where "is this a verb" is a judgement a scan makes wrongly.
- */
-const KEEPS_THE_NOUN: Record<string, string> = {
-  contentPath: 'the compiled file `<key>.content.json`, which a built pack holds on disk',
-  contentFile: 'the same file name, built from a key',
-  CONTENT_INDEX_FILE: '`content.json`, read by every built pack on disk',
-  CONTENT_COMPILERS_FILE: '`content-compilers.mjs`, read from a dependency’s built dir',
-  ContentIndex: 'the shape of `content.json`, which keeps its name because the file does',
-  ContentIndexEntry: 'one of its rows',
-};
-
-/**
- * The same keeps for the two packages a scan over `ROOTS` does not cover — `@abuddy/cli`, which writes the
- * built files, is not one of them, so this records that it is where the rest of the noun lives:
- * `CONTENT_RUNTIME_FILE`, `bundlePackContentRuntime`, `bundlePackContentCompilers`, `checkContentRuntimeLoads`, each
- * named after a file on disk.
+ *
+ * **There are no exceptions, and the list that held them is gone.** It kept the names of files a built pack
+ * holds on disk — `seeds.json`, `<key>.seed.json`, `seed-compilers.mjs` — on the reasoning that a file owns
+ * its name. Those are build artifacts that `abuddy build` regenerates, so they were renamed with everything
+ * else, and the three uses of the word that remain in this repo are a require cache, a terminal's
+ * scrollback and a component's state, none of which an export of these packages reaches.
  */
 
 /** Every exported function, const or type in `source`, by name */
@@ -126,14 +117,8 @@ describe('the noun that left', () => {
     expect(exported.length, 'no exports were found — the scan is broken').toBeGreaterThan(200);
   });
 
-  it('is in no export’s name but the files on disk still called that', () => {
-    const offenders = exported.filter((e) => /seed/i.test(e.name) && !(e.name in KEEPS_THE_NOUN));
+  it('is in no export\u2019s name', () => {
+    const offenders = exported.filter((e) => /seed/i.test(e.name));
     expect(offenders.map((o) => `${o.file}: ${o.name}`)).toEqual([]);
-  });
-
-  /** A keep that names nothing is a reason nobody can check, which is what an exception list rots into */
-  it('keeps nothing that is no longer there', () => {
-    const names = new Set(exported.map((e) => e.name));
-    expect(Object.keys(KEEPS_THE_NOUN).filter((name) => !names.has(name))).toEqual([]);
   });
 });

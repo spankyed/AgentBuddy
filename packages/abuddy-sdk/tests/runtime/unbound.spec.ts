@@ -77,7 +77,7 @@ describe('with no app bound', () => {
   });
 
   it('throws, naming bindHost (or bindFeHost in the frontend), for what packs registered', () => {
-    const contentDir = fs.mkdtempSync(path.join(os.tmpdir(), 'unbound-seeds-'));
+    const contentDir = fs.mkdtempSync(path.join(os.tmpdir(), 'unbound-content-'));
     fs.writeFileSync(path.join(contentDir, 'content.json'), JSON.stringify({ version: 1, packId: 'memo-pack', entries: [] }));
     onTestFinished(() => fs.rmSync(contentDir, { recursive: true, force: true }));
     const lookups: Array<[string, () => unknown]> = [

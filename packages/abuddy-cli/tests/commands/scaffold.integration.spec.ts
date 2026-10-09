@@ -74,7 +74,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const result = run('node', [CLI, 'add', 'flow', 'heartbeat'], pack);
     expect(result.code).not.toBe(0);
     expect(result.output).toMatch(/"dependencies": \{ "default-setup": "\*" \}/);
-    expect(fs.existsSync(path.join(pack, 'src', 'seeds', 'flows', 'heartbeat.ts'))).toBe(false);
+    expect(fs.existsSync(path.join(pack, 'src', 'content', 'flows', 'heartbeat.ts'))).toBe(false);
   });
 
   it('rejects a feature id that is not an identifier', () => {
@@ -88,12 +88,12 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     // produces: the feature the build below compiles
     expect((await callCli(pack, 'add', ['feature', 'notes', '--label', 'Notes'])).code).toBe(0);
 
-    // produces: the dist files and seed JSON asserted just below
+    // produces: the dist files and apply JSON asserted just below
     const build = await callCli(pack, 'build');
     expect(build.code, build.output).toBe(0);
     expect(fs.existsSync(path.join(pack, 'dist', 'runtime', 'index.cjs'))).toBe(true);
     expect(fs.existsSync(path.join(pack, 'dist', 'runtime', 'fe.js'))).toBe(true);
-    // The scaffold's example entry seeds the pack's own entity type from markdown
+    // The scaffold's example entry content the pack's own entity type from markdown
     const examples = JSON.parse(fs.readFileSync(path.join(pack, 'dist', 'runtime', 'content', 'examples.content.json'), 'utf-8'));
     expect(examples.records).toEqual([expect.objectContaining({ entity: 'DemoPack', title: 'Hello', content: expect.stringContaining('hello.md') })]);
 
@@ -254,7 +254,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const unit = run(path.join(REPO_ROOT, 'node_modules', '.bin', 'vitest'), ['run'], pack);
     expect(unit.code, unit.output).toBe(0);
     expect(unit.output).toMatch(/tests\/demo-pack\.spec\.ts/);
-    // The scaffold's seed test and the added feature's system test run through the harness
+    // The scaffold's content test and the added feature's system test run through the harness
     expect(unit.output).toMatch(/tests\/features\/notes\/be\/system\.spec\.ts/);
     // Matching the control character is the job: this strips ANSI colour from captured output.
     // eslint-disable-next-line no-control-regex

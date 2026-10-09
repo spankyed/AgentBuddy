@@ -83,7 +83,7 @@ export const flowsCompiler: SpecialtyCompiler<FlowDSL> = {
   }),
 };
 
-/** Seed keys the SDK compiles itself */
+/** Content keys the SDK compiles itself */
 export const SPECIALTY_COMPILERS: Record<string, SpecialtyCompiler> = {
   actions: actionsCompiler as SpecialtyCompiler,
   prompts: promptsCompiler as SpecialtyCompiler,

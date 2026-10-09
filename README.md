@@ -5,7 +5,7 @@ AgentBuddy is an Electron desktop app for building and running AI agent workflow
 ## Features
 
 - **Actor-based runtime**: XState state machines coordinate frontend and backend behavior through a typed event bus.
-- **Packs**: Features (backend systems and frontend plugins), flow steps, seeds, artifacts and blocks ship as packs, built with the `abuddy` CLI. The app's own features are the built-in `default-setup` pack.
+- **Packs**: Features (backend systems and frontend plugins), flow steps, content, artifacts and blocks ship as packs, built with the `abuddy` CLI. The app's own features are the built-in `default-setup` pack.
 - **Model integrations**: Anthropic, OpenAI, Google, Groq, Mistral and Cohere, through the Vercel AI SDK.
 - **Local graph store**: The EARS entity-attribute-relation store (`@abuddy/ears`) is backed by LMDB for fast local access.
 - **Visual flow editor**: Vue Flow powers drag-and-drop authoring for agent flows.
@@ -33,11 +33,11 @@ packages/
 │   └── src/
 │       ├── core/         # tRPC routers, the root event emitter, log capture
 │       └── setup/        # Boot sequence and composition (opens the store, binds the app), websocket, config
-├── default-setup/        # The built-in pack: features, steps, seeds, migrations (abuddy.json)
+├── default-setup/        # The built-in pack: features, steps, content, migrations (abuddy.json)
 │   └── src/
 │       ├── features/     # One folder per feature: be/ (system) and fe/ (plugin)
 │       ├── extensions/   # Steps, artifacts, blocks, services, tiptap plugins
-│       ├── seeds/        # Actions, prompts, flows, library, notes, FAQs, settings
+│       ├── content/        # Actions, prompts, flows, library, notes, FAQs, settings
 │       ├── migrations/
 │       └── defs/         # Monaco DSL type definitions
 ├── abuddy-ears/          # @abuddy/ears: the EARS engine (entity-attribute-relation store) and its LMDB store
@@ -45,7 +45,7 @@ packages/
 ├── abuddy-ui/            # @abuddy/ui: Vue components, editors and composables
 ├── abuddy-cli/           # @abuddy/cli: the abuddy command
 ├── abuddy-testing/       # @abuddy/testing: unit test harness and Playwright fixture
-├── abuddy-host/          # @abuddy/host (private): app runtime: registered packs, installer and pack runtime (loading, reload, seeding), bus, migrations, app state, secrets, host services
+├── abuddy-host/          # @abuddy/host (private): app runtime: registered packs, installer and pack runtime (loading, reload, applying), bus, migrations, app state, secrets, host services
 ├── main/                 # Electron main process
 │   └── src/modules/      # Window manager, API server launcher, pack:// and media protocols, etc.
 ├── preload/              # IPC bridge (contextBridge APIs)
@@ -99,7 +99,7 @@ npm run typecheck        # Type checks for every workspace, plus import specifie
 
 ### Default Setup
 
-The built-in pack's seeds (actions, prompts, flows, library, notes, FAQs, settings) are TypeScript and markdown sources that its build compiles.
+The built-in pack's content (actions, prompts, flows, library, notes, FAQs, settings) are TypeScript and markdown sources that its build compiles.
 
 ```sh
 npm run compile          # Build the default-setup pack (abuddy build, DSL defs, runtime)

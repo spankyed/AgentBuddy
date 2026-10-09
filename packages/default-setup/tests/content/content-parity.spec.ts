@@ -1,20 +1,20 @@
-// Parity gate for seeding: does importing default-setup's seeds still produce the database it produced before?
+// Parity gate for applying: does importing default-setup's content still produce the database it produced before?
 // It compiles the pack's library, notes, actions and prompts, imports them into a scratch database the test
 // discards,
 // and compares the rows against the snapshots in `__golden__/`.
 //
 // **If this failed and you are wondering what to do, read `CLAUDE.md` in this folder first.** It says what belongs
 // in a golden and what must not, and why re-recording one is safe. The short version: a golden moves when what
-// seeding produces moves, you re-record it deliberately with
+// applying produces moves, you re-record it deliberately with
 // `npm run content-parity:update -w @app/default-setup`, and you never hand-edit one.
 //
-// The v1/v2 scenarios seed fixture sources (tests/_support/fixtures/content-parity), so only a change in seeding moves their
+// The v1/v2 scenarios content fixture sources (tests/_support/fixtures/content-parity), so only a change in applying moves their
 // goldens; default-setup.json follows the pack's own sources, so content moves it too. The goldens were first
 // recorded from the pipeline that preceded the generic content compiler.
 //
 // Notes are the one intended difference (goal-generic-content-compiler Decision 10): they now carry a
 // contentHash and follow the same change-tracking rules as every other entry. Their contentHash field
-// and seed counts are left out of the goldens, and so are their rows in the steps where the old
+// and apply counts are left out of the goldens, and so are their rows in the steps where the old
 // pipeline overwrote notes: notes-change-tracking.spec.ts checks those steps by the Decision 10 rules.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -22,16 +22,16 @@ import { afterAll, describe, expect, it } from 'vitest';
 import type { ImportMode, ApplyResult, ContentSelection } from '@abuddy/sdk/utils';
 import { untypedQx } from '@abuddy/ears';
 import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
-import { compileSeeds, resetDatabase, seed, snapshot, type Snapshot } from './harness.ts';
+import { compileContent, resetDatabase, apply, snapshot, type Snapshot } from './harness.ts';
 import type { EARS } from '@abuddy/ears';
 
 const GOLDEN_DIR = path.join(import.meta.dirname, '__golden__');
 const UPDATE = process.env.UPDATE_CONTENT_GOLDEN === '1';
 
 /**
- * Steps where the old pipeline rewrote existing notes (every re-seed, whatever the mode or hash) and
+ * Steps where the old pipeline rewrote existing notes (every re-apply, whatever the mode or hash) and
  * the Decision 10 rules leave them alone: compared by those rules in notes-change-tracking.spec.ts.
- * Wipe re-seeds leave notes out, so they aren't listed.
+ * Wipe re-applies leave notes out, so they aren't listed.
  */
 export const NOTES_INTENDED_DIFFERENCES = new Set([
   ...['default', 'replace-on-collision', 'keep-existing'].flatMap((mode) => [`${mode}/unchanged`, `${mode}/changed`]),
@@ -43,7 +43,7 @@ type Step = { name: string; snapshot: Snapshot; counts: Record<string, ApplyResu
 const compiled = new Map<string, string>();
 async function compiledDir(sources: 'v1' | 'v2' | 'default-setup'): Promise<string> {
   if (!compiled.has(sources)) {
-    compiled.set(sources, await compileSeeds(sources));
+    compiled.set(sources, await compileContent(sources));
   }
   return compiled.get(sources)!;
 }
@@ -115,7 +115,7 @@ async function run(
   const steps: Step[] = [];
   for (const step of plan) {
     step.before?.();
-    const counts = seed(await compiledDir(step.sources), { mode: step.mode, include: step.include });
+    const counts = apply(await compiledDir(step.sources), { mode: step.mode, include: step.include });
     steps.push({ name: step.name, snapshot: snapshot(), counts });
   }
   return steps;
@@ -147,11 +147,11 @@ function resolveId(alias: string): EARS.EntityId {
 
 const MODES: Array<ImportMode | undefined> = [undefined, 'replace-on-collision', 'keep-existing', 'wipe-and-replace'];
 
-describe('seed parity (golden snapshots)', () => {
-  it.each(MODES.map((mode) => [mode ?? 'default']))('fresh, unchanged and changed re-seeds in mode %s', async (label) => {
+describe('content parity (golden snapshots)', () => {
+  it.each(MODES.map((mode) => [mode ?? 'default']))('fresh, unchanged and changed re-applies in mode %s', async (label) => {
     const mode = label === 'default' ? undefined : label as ImportMode;
     // The old notes applier throws when it wipes nested notes (deleting a parent already deleted its
-    // children), so wipe re-seeds leave notes out here; notes-change-tracking.spec.ts covers wiping them.
+    // children), so wipe re-applies leave notes out here; notes-change-tracking.spec.ts covers wiping them.
     const include = mode === 'wipe-and-replace' ? { notes: new Set<string>() } : undefined;
     const steps = await run([
       { name: 'fresh', sources: 'v1', mode },
@@ -177,7 +177,7 @@ describe('seed parity (golden snapshots)', () => {
     checkGolden('untracked', steps);
   });
 
-  it('seeds only the included items', async () => {
+  it('content only the included items', async () => {
     const steps = await run([
       {
         name: 'fresh',
@@ -193,7 +193,7 @@ describe('seed parity (golden snapshots)', () => {
     checkGolden('include', steps);
   });
 
-  it("seeds default-setup's own library, notes, actions and prompts", async () => {
+  it("content default-setup's own library, notes, actions and prompts", async () => {
     const steps = await run([{ name: 'fresh', sources: 'default-setup' }]);
     checkGolden('default-setup', steps);
   });

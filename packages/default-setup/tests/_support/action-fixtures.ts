@@ -1,7 +1,7 @@
 import type { ActionInput } from '@abuddy/sdk/repositories';
 
 /**
- * Reusable action definitions for seeding tests.
+ * Reusable action definitions for applying tests.
  */
 export const actionFixtures: ActionInput[] = [
   {

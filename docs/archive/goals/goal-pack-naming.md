@@ -73,8 +73,8 @@ which reads zero or does not.
 - **`bundle` — a noun and a verb.** Noun: the verified, checksummed shippable layout — `BUNDLE_PATHS` (64
   lines / 74 occurrences), `verifyBundle` (28), `stageBundle` (24), `extractBundleArchive` (16),
   `createBundleArchive` (14), `BUNDLE_FORMAT_VERSION` (13), `bundle.json`. Verb: run esbuild/Vite —
-  `bundleFile`, `bundlePackFE`, `bundlePackRuntime`, `bundlePackStepBuild`, `bundlePackSeedCompilers`,
-  `bundlePackFlowHelpers(Module)`, `bundlePackSeedRuntime`, `bundlePackTypes`, `bundleDeclarations`,
+  `bundleFile`, `bundlePackFE`, `bundlePackRuntime`, `bundlePackStepBuild`, `bundlePackContentCompilers`,
+  `bundlePackFlowHelpers(Module)`, `bundlePackContentRuntime`, `bundlePackTypes`, `bundleDeclarations`,
   `bundleDslDefs`, and the `fe.bundleUi` flag. `buildPackBundle` (`cli/src/build/be-bundler.ts:22`) reads as
   "build the bundle" but is the shared esbuild setup.
 - **`snapshot` — one misnomer among correct uses.** `PackSnapshot` (59) / `snapshot.json` (67) /
@@ -86,7 +86,7 @@ which reads zero or does not.
   The machine: `db-write.lock`'s `host: os.hostname()` (`database/write-lock.ts:73`, read at `:49` and
   `database/running.ts:39`), and `SingletonLock`'s `<host>-<pid>`.
 - **`artifact` — one build-sense survivor.** Two senses were retired on 2026-09-17 (the published build
-  output of built-in packs, and `PackSeedManifest.artifacts` → `seedKeys`). What remains is
+  output of built-in packs, and `PackContentManifest.artifacts` → `contentKeys`). What remains is
   `resolveDepArtifacts` (`cli/src/commands/fetch-deps.ts:392`, 25 refs) with `DepArtifacts` (17) and
   `findDepArtifacts` (7): a dependency's resolved files, not a pack's first-class artifacts.
 
@@ -139,7 +139,7 @@ The renames follow five rules. Prefer the rule over the table when they disagree
    only ever that; the thing it used to name becomes the pack's layout/archive.
 3. **`registry` is a live in-process collection things register into — never a file, never a wire route.**
    The remote sense is qualified (`resolveFromRemoteRegistry`). `stepRegistry`, `artifactRegistry`,
-   `blockRegistry`, `seedHookRegistry` and `tiptapPluginRegistry` keep the word; the docs stop calling them
+   `blockRegistry`, `contentWriterRegistry` and `tiptapPluginRegistry` keep the word; the docs stop calling them
    "lookups" so prose and code agree.
 4. **`host` is the app; `machine` is the computer.**
 5. **A borrowed generic word is qualified by what it is *of*; if it describes *when* rather than *what*, it is
@@ -183,11 +183,11 @@ live: `extensions` is the public-facing umbrella, `contributions` the internal o
   Removes the synonym pair; much larger, and changes a published SDK export.
 — *open*
 
-**2. The `seedKeys` rebuild guard — before Phase 4.** `orchestrateDeclarativeSeed` throws `Pack "<id>" was
-built with an older @abuddy/cli (its seed manifest has no seedKeys): rebuild it with the current one` when a
-seed manifest lacks `seedKeys`. No bundle predating that field exists outside this repo, so by Decision 1 it
+**2. The `contentKeys` rebuild guard — before Phase 4.** `orchestrateDeclarativeContent` throws `Pack "<id>" was
+built with an older @abuddy/cli (its content manifest has no contentKeys): rebuild it with the current one` when a
+content manifest lacks `contentKeys`. No bundle predating that field exists outside this repo, so by Decision 1 it
 is compatibility code.
-- **A.** Remove it and its spec (`abuddy-host/tests/packs/runtime/seed.spec.ts`).
+- **A.** Remove it and its spec (`abuddy-host/tests/packs/runtime/content.spec.ts`).
 - **B.** Keep it, reworded as a stale-build check that doesn't mention an older CLI.
 
   *Evidence against B, from the one real staleness incident (2026-09-17):* the guard did **not** fire, because
@@ -257,7 +257,7 @@ Under **B**, add: the directory rename; the four CLI scaffold sites (`cli/src/co
 (`tests/cli/add-extensions.spec.ts`, ~15 lines; `tests/cli/scaffold.spec.ts:90`;
 `tests/build/trigger-track-helpers.spec.ts:22`; `tests/build/import-specifiers.spec.ts:281`); the external
 pack fixture's generated flow helpers; and the public docs (`extensions.md` including its title, `cli.md`,
-`manifest.md`, `seeds.md`, `services-and-data.md`).
+`manifest.md`, `content.md`, `services-and-data.md`).
 
 **Done when:** the root of the umbrella directory holds only kind-folders, and `abuddy init` followed by
 `abuddy add step`/`add artifact`/`add service` scaffolds and builds.
@@ -277,7 +277,7 @@ pack fixture's generated flow helpers; and the public docs (`extensions.md` incl
   `database/running.ts:39`, and the `SingletonLock` `<host>-<pid>` comments (rule 4).
 - `resolveFromRegistry` → `resolveFromRemoteRegistry` (`cli/src/commands/install.ts`).
 - The docs stop calling `stepRegistry` and friends "lookups" (rule 3).
-- Open decision 2's outcome for the `seedKeys` guard.
+- Open decision 2's outcome for the `contentKeys` guard.
 
 **Done when:** each renamed symbol has one meaning in the tree, and the write-lock and database specs pass
 unchanged apart from the field name. Mechanically: `grep -rn 'DepArtifacts\|findDepArtifacts\|resolveDepArtifacts'`
@@ -291,7 +291,7 @@ pack's.
 - Update the docs describing these areas: root `CLAUDE.md`, `abuddy-host/CLAUDE.md`,
   `abuddy-host/src/packs/runtime/CLAUDE.md`, `abuddy-cli/CLAUDE.md`, `abuddy-sdk/CLAUDE.md`,
   `default-setup/CLAUDE.md`, `api/CLAUDE.md`, `docs/public-facing/architecture.md`, `cli.md`, `manifest.md`,
-  `seeds.md` and `extensions.md`.
+  `content.md` and `extensions.md`.
 - Record the five rules, and the "check the word first" instruction, in `docs/reference/naming.md` (new), so
   the next name is chosen by the rule rather than by precedent. Both words this goal had to reject —
   `contract`, and the `contributions`/`extensions` pair — belong in it as worked examples.
@@ -311,7 +311,7 @@ the argument for the guard.
 | 1 — installed packs are not a registry | done, after a follow-up | `packs/installed-packs.ts`, `InstalledPack`, `installedAt`, `installedFrom`, `installed-packs.json`, and the route `packs.loaded` with `loadedPacksError`. Phase grep reads zero — the module and the route's consumer kept the word in their own names; see *What the phase greps missed* |
 | 2 — `bundle` becomes only a verb | done, after a follow-up | `PACK_LAYOUT`, `PACK_LAYOUT_VERSION`, `stagePack`, `verifyPack`, `PackIntegrity`, `integrity.json`, `isPackLayout`, `getLoadedPackEntries`, `LoadedPackEntry`, `bundlePackSource`, `buildPackArchive`; module renamed `packs/pack-layout.ts`. Phase grep reads zero — but it greps names, and three noun leftovers had none of them; see *What the phase greps missed* |
 | 3 — the umbrella's odd one out | done | `src/extensions/app/Welcome.vue` with the manifest path and regenerated entry following; then the second pass: `features[].contributions` → `references` (manifest key, `@abuddy/sdk/fe/references`, `ReferenceTypeConfig`, `ReferenceItem`, `REFERENCE_TYPES`, generated `references.ts`), and `contributions` retired in favour of `extensions` everywhere else. `grep -rn contribution` over `packages/` and `docs/public-facing/` reads zero — but that scope left `docs/goals/` and `docs/plans/`, where eight uses survived; see *What the phase greps missed* |
-| 4 — the remaining single-sense fixes | done | `resolveDepFiles`/`DepFiles`/`ResolvedDepFiles`, `resolvedFrom`, `store.copyTo`, the write-lock's `machine`, `resolveFromRemoteRegistry`, the `seedKeys` guard removed (Open decision 2 A), and the docs calling the per-kind registries "registries" |
+| 4 — the remaining single-sense fixes | done | `resolveDepFiles`/`DepFiles`/`ResolvedDepFiles`, `resolvedFrom`, `store.copyTo`, the write-lock's `machine`, `resolveFromRemoteRegistry`, the `contentKeys` guard removed (Open decision 2 A), and the docs calling the per-kind registries "registries" |
 | 5 — keep the retired names retired | done, after a follow-up | `removed-names-in-docs.spec.ts` extended with 28 names and 4 paths, plus a case per rename asserting the replacement is *not* caught. It covered `registry`, `bundle` and `artifact` but not `contributions`, the goal's largest rename, and read no app source; both closed in review |
 
 ### Corrections to the Decisions
@@ -387,7 +387,7 @@ The `registry` rows above are the important ones, because they are permanent: a 
 sense cannot be guarded against in another. Adding bare `registry` to the list would fire on
 `createPackRegistry`, `PackRegistryView` and `stepRegistry`. The guard now says so in its own header, so the
 next concept rename knows to budget for reading rather than grepping. The full sweep that followed also found
-the same two senses in `pack-discovery.ts`, `loaded-packs.ts`, `seed.ts`, `activation-outcome.ts`,
+the same two senses in `pack-discovery.ts`, `loaded-packs.ts`, `apply.ts`, `activation-outcome.ts`,
 `schema.ts`, `pack-updater.ts`, the `packs` barrel, five docs and three spec files — about sixty sites in all,
 none of which any phase grep could have reported.
 

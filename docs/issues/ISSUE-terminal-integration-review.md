@@ -84,7 +84,7 @@ orchestration, `L` = lifecycle and persisted data, `G` = agent sessions.
 | **X1** | **High** | Windows: no terminal process is ever killed when the app quits | `be/services/terminal.ts:51-55`, `main/.../process-manager.ts:153` |
 | **X2** | **High** | Windows: closing a terminal leaves its children, and may leave the terminal undead | `be/services/terminal.ts:199-230` |
 | **X3** | **High** | Windows/Linux: Ctrl+R reloads the window and Ctrl+W closes it while typing in a shell | `main/src/modules/MacOSAppMenu.ts:12` |
-| **G1** | **High** | Agent streaming rewrites the whole message to EARS every 80 ms and re-broadcasts it | `seeds/actions/claude-code/_helpers/stream-writer.ts:54,64` |
+| **G1** | **High** | Agent streaming rewrites the whole message to EARS every 80 ms and re-broadcasts it | `content/actions/claude-code/_helpers/stream-writer.ts:54,64` |
 | **L1** | Medium | `restoreTerminalsActor` has no `onError`: a rejection stops the terminal system for the session, silently | `be/features/terminal.ts:302-310` |
 | **T1** | Medium | `handleTerminalClosed` can pick the just-closed terminal as the next panel terminal | `fe/features/terminal/state.ts:321` |
 | ~~**T4**~~ | ~~Medium~~ | **Fixed.** `pendingTarget`/`pendingCommand` were single uncorrelated slots for N in-flight creates; the intent is keyed by the envelope's call now (`pendingOpens`) | `fe/features/terminal/state.ts` |
@@ -93,7 +93,7 @@ orchestration, `L` = lifecycle and persisted data, `G` = agent sessions.
 | **T5** | Medium | "Open Terminal Here" spawns a terminal without expanding the panel | `fe/features/CodePanelHeader.vue:22` |
 | **M3** | Medium | `terminal.CREATED` is broadcast and every window consumes it as if it had asked | `fe/features/terminal/state.ts:268-294` |
 | **M1** | Medium | Two windows write the same persisted-output key from differently-based copies | `fe/utils/terminal-events.ts:49` |
-| **M4** | Medium | A window attaching after a pty replacement seeds the dead shell's scrollback with no seam | `fe/utils/terminal-pool.ts:164-178` |
+| **M4** | Medium | A window attaching after a pty replacement content the dead shell's scrollback with no seam | `fe/utils/terminal-pool.ts:164-178` |
 | **M5** | Medium | Every window restores and rewrites the single `code-plugin-open-tabs` key | `fe/utils/persisted-tabs.ts:18` |
 | **L3** | Medium | No Terminal row is ever deleted; `terminalCommands.delete` is dead code | `be/repository/index.ts:136-145` |
 | **F6** | Medium | Up to 1 MB of synchronous `localStorage` per terminal per output burst | `fe/utils/terminal-events.ts:47` |

@@ -61,8 +61,8 @@ and zero sources — so the condition is what blocks `tsc -b`, not the reverse. 
 tooling made the repo faster, not slower: `typecheck` 71s → 48s, `compile` 56s → 14s.
 
 It was also hiding a correctness bug. `@abuddy/sdk/actions` is inlined into every compiled action, so the
-same pack built in a checkout and from installed packages produced different compiled seed bytes and
-different `sourceHash`/`rowSha256` values — and the host decides whether to re-seed from those hashes.
+same pack built in a checkout and from installed packages produced different compiled content bytes and
+different `sourceHash`/`rowSha256` values — and the host decides whether to re-apply from those hashes.
 
 **What the two branches are.** `AS/package-resolution` keeps the dual mode and hardens it: per-package
 detection, an `ABUDDY_PACKAGES=source|dist` declaration, a `check:specifiers` rule that every config
@@ -166,7 +166,7 @@ later phases lean on it, and re-add anything that went missing:
   export, `etc/build.source-conditions.api.md`, the `@abuddy/sdk/build` re-export and the
   `shared-modules.ts` bridge entry (`npm run shared-modules:update -w @abuddy/host`).
 - Drop the seven call sites: `facade-gate.ts`, `types-bundler.ts`, `fe-bundler.ts` (two),
-  `seed-runtime-check.ts`, `module-exports.ts`, `compile-utils.ts`. Each resolves `dist` with no conditions.
+  `content-runtime-check.ts`, `module-exports.ts`, `compile-utils.ts`. Each resolves `dist` with no conditions.
 - Delete the `sourceConditions` re-export from `@abuddy/testing/src/vitest.ts` and every caller, and remove
   `customConditions`/`resolve.conditions` from `packages/default-setup` and both `tests/fixtures/*` packs.
 - Invert the guard's verdict per Decisions, and delete `CONDITION_HELPER`'s `sourceConditions` branch only
@@ -194,9 +194,9 @@ later phases lean on it, and re-add anything that went missing:
 
 ### Phase 3 — fix what the review found
 Each of these is a verified defect, with the reproduction in the review:
-- **`abuddy build` fails when `NODE_OPTIONS` carries the condition** (`seed-runtime-check.ts:62-69`): the
+- **`abuddy build` fails when `NODE_OPTIONS` carries the condition** (`content-runtime-check.ts:62-69`): the
   child inherits it with no loader. Strip it with `withoutSourceCondition`, as `abuddy test` already does.
-  This breaks the documented `PACK_DIR=… npm test` flow and fails as "seed runtime bundle failed", blaming
+  This breaks the documented `PACK_DIR=… npm test` flow and fails as "content runtime bundle failed", blaming
   the pack.
 - **`npm start` and `npm run build` consume `dist` without ensuring it**: wire `packages:ensure` into
   `prebuild:be:dev` and `build` (`compile`, `typecheck:pack`, `test:external-pack` and default-setup's
@@ -227,7 +227,7 @@ Each of these is a verified defect, with the reproduction in the review:
   scaffolded by an older CLI fails at config load. Name the error and the one-line fix. Note too that
   `@abuddy/sdk/testing` now references `vue` and `@tiptap/*` types through `FeTestRuntimeOptions`.
 - **Document the new exports** where a pack author looks: `startFeTestRuntime`/`stopFeTestRuntime` and
-  `registeredSeedKeys` in `docs/public-facing/testing.md` and `packages/abuddy-sdk/CLAUDE.md`'s Testing
+  `registeredContentKeys` in `docs/public-facing/testing.md` and `packages/abuddy-sdk/CLAUDE.md`'s Testing
   entry section.
 - **Fix the stale text**: `docs/public-facing/getting-started.md:24`, `docs/public-facing/testing.md:19`,
   `packages/abuddy-host/CLAUDE.md:175`, `packages/abuddy-cli/CLAUDE.md:81` and `:99`,
@@ -259,7 +259,7 @@ lack of time; the open items below are choices left standing, not unfinished wor
 |---|---|---|
 | 1 — the mechanical baseline | done (confirmed, not rebuilt) | `npm test -w @abuddy/cli` green at the start: 60 files, 621 tests. `package-freshness.spec.ts` still covers the interrupted build, the deleted source and the future-dated source; no consumer fixture installs `@abuddy/testing`. |
 | 2 — remove the inference | done | `acd6263d0`, `bac70f8f2`, `f9649ab7f`, `3ab270cc3`. `check:specifiers` mutation-checked both ways on the committed tree: a pack config declaring the condition and a host config omitting it each produce their own message. Nothing reads `ABUDDY_PACKAGES`. `vue-tsc -p packages/default-setup/tsconfig.json --explainFiles \| grep -c abuddy-host/src` returns **0**, against 98 before. |
-| 3 — fix what the review found | done | `16ad7ab44`. Five defects: the seed-runtime check's inherited `NODE_OPTIONS`, `fixtureEnv`'s per-pack decision, Tailwind's silent empty `@abuddy/ui` dist, `abuddy test`/`abuddy dev` against a stale checkout, and the repo's own entry points. |
+| 3 — fix what the review found | done | `16ad7ab44`. Five defects: the content-runtime check's inherited `NODE_OPTIONS`, `fixtureEnv`'s per-pack decision, Tailwind's silent empty `@abuddy/ui` dist, `abuddy test`/`abuddy dev` against a stale checkout, and the repo's own entry points. |
 | 4 — restore the invariants | done | `157c8209e`, `2dc4ed515`, `28c283f5e`. `secret-matcher-reach.spec.ts` fails if the setter appears in `@abuddy/sdk/utils`, `/utils/pure` or the pack bridge. `assertCheckoutPackagesFresh` verified from a pack outside the monorepo, green and failing, and covered by `checkout-freshness.spec.ts` (9 tests). |
 | 5 — contracts and documentation | done | `4e2ed2943`, `f16b862a3`. `abuddy init` scaffolds no condition; a changeset names the break; no non-archive doc names a deleted export. |
 | 6 — verify the paths a unit suite doesn't reach | done | See Final verification. |
@@ -348,9 +348,9 @@ work-in-progress one.
   hooks (`bin/source-hooks.mjs`) stay: the CLI is host code, and host source imports
   `@abuddy/sdk/runtime/internals`, which is source-only. Deleting those hooks needs that entry to stop being
   source-only first — a separate decision, not this goal's work.
-- Seed goldens: `packages/default-setup/tests/unit/seed-parity/__golden__/default-setup.json` is now
+- Content goldens: `packages/default-setup/tests/unit/content-parity/__golden__/default-setup.json` is now
   sensitive to the SDK's `dist` output, because compiled actions inline `@abuddy/sdk/actions`. A bundler or
-  tsc change can churn it; re-record with `UPDATE_SEED_GOLDEN=1` and say so in the summary rather than
+  tsc change can churn it; re-record with `UPDATE_CONTENT_GOLDEN=1` and say so in the summary rather than
   editing hashes by hand.
 - Don't take `single-mode/phase-1`'s `scripts/ensure-packages-built.ts`, its `PACKAGE_DIRS` merge, or its
   copy of `findMissingSourceConditions`. They are earlier drafts of Phase 1's files.

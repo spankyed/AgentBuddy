@@ -326,7 +326,7 @@ covers behaviour nothing else covers.
 - **Component tests for `@abuddy/ui`** (Finding 4). Its 33 recorded contracts have no behavioural test,
   and that is probably the largest coverage gap in the repo — but it is new test-writing, not relocation,
   and sizing it deserves its own look. Phase 2 creates the suite it would go in.
-- **Re-recording the seed-parity goldens** with notes included, still deferred from
+- **Re-recording the content-parity goldens** with notes included, still deferred from
   `goal-test-cleanup.md`'s Decision 6.
 - **`_hybrid`'s name**, which its own CLAUDE.md calls historical. Renaming a directory of three specs is
   churn unless Phase 5 is moving files there anyway; fold it in if so, leave it if not.

@@ -46,12 +46,12 @@ Never, regardless of the spec:
 
 ## Decisions (final)
 
-**D1 — Flows that use a dependency's steps.** `abuddy build` validates with the dependency's real step build code (`validate`/`compile`/`decompile`/`getLabel`), shipped in its release bundle. The host re-validates at seed time. Invalid flows at seed become a visible pack install error and fail `abuddy test` (today `flow-seeder.ts` skips them with `console.warn`). The host publishes its built-in packs' `types/` and `build/` into the app data dir on boot so dependencies resolve without a workspace or registry.
+**D1 — Flows that use a dependency's steps.** `abuddy build` validates with the dependency's real step build code (`validate`/`compile`/`decompile`/`getLabel`), shipped in its release bundle. The host re-validates at content time. Invalid flows at content become a visible pack install error and fail `abuddy test` (today `flow-applier.ts` skips them with `console.warn`). The host publishes its built-in packs' `types/` and `build/` into the app data dir on boot so dependencies resolve without a workspace or registry.
 
 **D2 — Release artifact.** One `<id>-<version>.tgz` per version, plus a `.sha256` asset. Layout:
 - `<id>/abuddy.json` — resolved manifest
 - `<id>/bundle.json` — formatVersion, sdkVersion, source {repo, commit}, sha256 per file
-- `<id>/runtime/` — `index.cjs` (exports `registration`: systems, services, steps, artifacts, blocks, boot, migrations, EARS), `fe.js` + `fe.css` minified, `seeds/*.json`
+- `<id>/runtime/` — `index.cjs` (exports `registration`: systems, services, steps, artifacts, blocks, boot, migrations, EARS), `fe.js` + `fe.css` minified, `content/*.json`
 - `<id>/build/steps.build.mjs` — step build facets only, no FE imports
 - `<id>/types/` — `snapshot.json` (includes defs)
 
@@ -96,7 +96,7 @@ Installer: verify checksum, check hostVersion + dependencies, place the bundle. 
 - `abuddy init` template: no unresolvable `"default-setup": "*"` dependency, and no example flow that can't compile; an unresolvable dependency is a hard build error. Once D1 lands, the template may depend on default-setup and include a keepAlive flow again, resolved from the host.
 - SDK/CLI unit test: init → add feature → build → `tsc --noEmit` → pack in a temp dir outside the monorepo, no Electron; mutation-check it.
 
-**Phase 2 — D1.** Dependency step validation, loud seed failures, host-published built-in snapshots and build facets.
+**Phase 2 — D1.** Dependency step validation, loud content failures, host-published built-in snapshots and build facets.
 
 **Phase 3 — D5, D6.** Package split, compiled output, exports maps, peers, Changesets, CI publish workflow (dry-run only), CLI hand-off to the project version, app-bundled CLI + "Install 'abuddy' command in PATH" action, Homebrew formula file in the repo.
 

@@ -248,7 +248,7 @@ describe('what abuddy add scaffolds', () => {
 });
 
 /**
- * The seed scaffolds, which had no test reading their output before their templates became files
+ * The apply scaffolds, which had no test reading their output before their templates became files
  * (`docs/goals/goal-one-rule-set.md`): `abuddy add action`, `add prompt` and `add flow` were covered only by
  * whether they exited 0.
  */

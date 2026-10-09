@@ -1,4 +1,4 @@
-// The faqs seed format's compiler (src/content/_compilers/faqs.ts): markdown files into Help tab FAQs.
+// The faqs content format's compiler (src/content/_compilers/faqs.ts): markdown files into Help tab FAQs.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';

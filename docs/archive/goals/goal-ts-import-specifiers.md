@@ -56,7 +56,7 @@ Codemod sdk, then ui (including `.vue` `<script>` blocks), then host and its tes
 4. **Consumers compiling this source.** TS5097 fires in any file in the program:
    - api `tsconfig.json`: node10, `paths` into source, and it emits, which `allowImportingTsExtensions` forbids;
    - renderer, main, cli, testing, default-setup (including `tsconfig.defs.json` and `rollup-defs.config.mjs`), and the api-extractor tsconfigs;
-   - tsup, esbuild (`dev-build.mjs`, `bundle-package.ts`, the seed compiler), tsx and Playwright.
+   - tsup, esbuild (`dev-build.mjs`, `bundle-package.ts`, the content compiler), tsx and Playwright.
 
    Record the fix each consumer needs. If a consumer can only be fixed by violating Decision 1, the spike fails.
 5. **End to end:** everything in "Finished when".

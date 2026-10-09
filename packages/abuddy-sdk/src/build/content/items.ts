@@ -122,7 +122,7 @@ export function compileBuiltinFormat(key: string, format: ContentFormatConfig, s
     }));
     return withContentHashes(tag(records as ContentItem[]));
   }
-  throw new Error(`Seed "${key}": unknown built-in format "${String(format.format)}"`);
+  throw new Error(`Content "${key}": unknown built-in format "${String(format.format)}"`);
 }
 
 /** Checks each record's entity type against the format's declared entities */
@@ -132,7 +132,7 @@ export function checkRecordEntities(key: string, format: ContentFormatConfig, re
   const visit = (items: ContentItem[], trail: string) => items.forEach((record, index) => {
     const at = `${trail}[${index}]`;
     if (allowed.length === 0) {
-      if (record.entity !== undefined) errors.push(`Seed "${key}" ${at}: has entity "${record.entity}", but its format declares no entity`);
+      if (record.entity !== undefined) errors.push(`Content "${key}" ${at}: has entity "${record.entity}", but its format declares no entity`);
     } else if (record.entity === undefined || !allowed.includes(record.entity)) {
       errors.push(`Content "${key}" ${at}: entity ${record.entity === undefined ? 'is missing' : `"${record.entity}" isn't one of ${allowed.join(', ')}`}`);
     }

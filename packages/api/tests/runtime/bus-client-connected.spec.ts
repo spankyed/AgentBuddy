@@ -31,7 +31,7 @@ const backendSystem = createAppBus(registry);
 
 const received: string[] = [];
 
-/** A system that records each CLIENT_CONNECTED it receives, and each pack seed it's told about */
+/** A system that records each CLIENT_CONNECTED it receives, and each pack content it's told about */
 function recorder(label: string) {
   return setup({}).createMachine({
     on: {
@@ -264,8 +264,8 @@ describe('a bus given a subset of the registered systems', () => {
   });
 });
 
-// A pack installed, updated or rebuilt while the app runs seeds its data then; systems already running
-// read what it seeded (the chat's slash commands, say), so the bus tells them all
+// A pack installed, updated or rebuilt while the app runs content its data then; systems already running
+// read what it written (the chat's slash commands, say), so the bus tells them all
 describe('PACK_CHANGED on the bus', () => {
   it('reaches every running system, whichever pack changed', async () => {
     registerPack(pack('second-pack'));

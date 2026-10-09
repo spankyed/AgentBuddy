@@ -11,7 +11,7 @@ Three architectural layers emerge:
 
 1. **Host packages** (`api/`, `renderer/`, `main/`) — thin runtime shells providing the framework: event bus, persistence engine, pack loading, window management
 2. **SDK** (`abuddy-sdk/`) — the public API contract for pack development: CLI toolchain, build system, reusable UI components, EARS database helpers, system definition framework
-3. **Default-setup** (the built-in pack) — all 13 domain features with colocated frontend + backend code, extension points (steps, blocks, artifacts, tiptap plugins, services), seeds, and migrations
+3. **Default-setup** (the built-in pack) — all 13 domain features with colocated frontend + backend code, extension points (steps, blocks, artifacts, tiptap plugins, services), content, and migrations
 
 ## Major Workstreams
 
@@ -19,13 +19,13 @@ Three architectural layers emerge:
 
 **Renderer** went from ~510 files to 33. All plugin UIs (371 files across 14 plugins), shared design system components (74 files), tiptap editor subsystem (~30 files), and composables/utilities (~16 files) were extracted.
 
-**API** went from ~350 files to 45. All backend systems (180+ files across 13 systems), services (~50 files), shared EARS modules, migrations, and seeds were extracted.
+**API** went from ~350 files to 45. All backend systems (180+ files across 13 systems), services (~50 files), shared EARS modules, migrations, and content were extracted.
 
 **Destinations:**
 - Feature code (systems + plugins) → `default-setup/src/features/<name>/` with colocated `be/` + `fe/` directories
 - Reusable framework APIs → `abuddy-sdk/src/` (design components, composables, EARS engine, step/block/artifact registries)
 - Cross-cutting extensions → `default-setup/src/extensions/` (steps, blocks, artifacts, tiptap plugins, services)
-- Seeds (DSL source) → `default-setup/src/seeds/`
+- Content (DSL source) → `default-setup/src/content/`
 - Migrations → `default-setup/src/migrations/`
 
 ### 2. SDK Creation (`@abuddy/sdk`) (~110 commits)
@@ -42,7 +42,7 @@ Entirely new package (248 files, +29,111 lines). Provides:
 
 ### 3. Default-Setup Restructuring (~45 commits)
 
-Transformed from a DSL-only seed data repo into a fully self-contained pack:
+Transformed from a DSL-only content data repo into a fully self-contained pack:
 
 ```
 src/
@@ -52,7 +52,7 @@ src/
     threads/  code/  notes/  calendar/  browser/  library/
     flows/  actions/  prompts/  brain/  database/  logs/  settings/
   extensions/          # Cross-cutting: artifacts, blocks, steps, services, tiptap
-  seeds/               # DSL source (actions, prompts, flows, library, notes, faqs)
+  content/               # DSL source (actions, prompts, flows, library, notes, faqs)
   migrations/          # Pack-owned migrations
 ```
 
@@ -68,8 +68,8 @@ The `abuddy.json` manifest is each feature's only configuration: it declares all
 **Backend loading:**
 - `tsup.config.ts` with esbuild plugins for pack discovery, virtual module generation, per-pack alias resolution
 - Pack registry with atomic writes, service collision detection
-- Per-pack EARS entities, boot hooks, migrations, seeds
-- Hash-based seed lifecycle for external packs
+- Per-pack EARS entities, boot hooks, migrations, content
+- Hash-based content lifecycle for external packs
 
 **Dev mode:**
 - Parallelized startup (API build, default-setup dev-watch, renderer Vite server concurrent)
@@ -117,7 +117,7 @@ packages/
   abuddy-sdk/       # Pack SDK (~248 files, NEW)
                     #   CLI, build system, FE components, EARS engine, pack lifecycle, testing
   default-setup/    # Built-in pack (~818 files changed)
-                    #   13 features (be/ + fe/), extensions, seeds, migrations, manifest
+                    #   13 features (be/ + fe/), extensions, content, migrations, manifest
 ```
 
 ## Key Files for Navigation

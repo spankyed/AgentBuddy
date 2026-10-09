@@ -43,7 +43,7 @@ afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-/** The pack source `abuddy build` would leave, at `version`; `seeds` gives it compiled data that won't seed */
+/** The pack source `abuddy build` would leave, at `version`; `content` gives it compiled data that won't content */
 function packSource(version: string, { failsImport = false, id = PACK_ID } = {}): string {
   const dir = path.join(tmpDir, 'source');
   fs.rmSync(dir, { recursive: true, force: true });
@@ -53,7 +53,7 @@ function packSource(version: string, { failsImport = false, id = PACK_ID } = {})
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)} } };`);
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   if (failsImport) {
-    // Compiled data with no content.json: the applier can't tell whose records these are, so seeding fails
+    // Compiled data with no content.json: the applier can't tell whose records these are, so applying fails
     fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'content'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'content', 'flows.content.json'), '[]');
   }
@@ -449,18 +449,18 @@ describe('what a reinstall does not redo', () => {
   });
 });
 
-// Installing is the remedy a user reaches for when a pack's data didn't seed, so what it reports has to be about
+// Installing is the remedy a user reaches for when a pack's data didn't content, so what it reports has to be about
 // the pack they end up with. It wasn't: `recordInstalled` replaces the record, which dropped the `lastError` the
-// earlier failure left — so reinstalling a pack whose data never seeded reported that it had installed cleanly,
+// earlier failure left — so reinstalling a pack whose data never written reported that it had installed cleanly,
 // and took away the only sign that it hadn't.
 //
-// **What makes the report true changed on 2026-10-07, and this case did not.** A reinstall used to re-seed by
+// **What makes the report true changed on 2026-10-07, and this case did not.** A reinstall used to re-apply by
 // accident, through the file times that were once in the content revision: the apply failed again and wrote the error
-// back. Seeds are keyed on content now, so the same pack installed again is the same bytes and nothing is
+// back. Content are keyed on content now, so the same pack installed again is the same bytes and nothing is
 // re-imported — and what keeps this honest is `recordInstalled` preserving `lastError`, which belongs to the
-// seed outcome (`recordApplyOutcomes`) and is not an install's to clear. `activationProblem` reads it, so the
-// install still says the pack's data failed to seed, which is what the user needs to know.
-describe('reinstalling a pack whose data did not seed', () => {
+// content outcome (`recordApplyOutcomes`) and is not an install's to clear. `activationProblem` reads it, so the
+// install still says the pack's data failed to apply, which is what the user needs to know.
+describe('reinstalling a pack whose data did not content', () => {
   const outcomes = (sent: AnyEventObject[]) =>
     emitted(sent).map(e => e.type).filter(t => t === 'PACK_INSTALL_COMPLETE' || t === 'PACK_INSTALL_FAILED');
 
@@ -477,7 +477,7 @@ describe('reinstalling a pack whose data did not seed', () => {
       first.stop();
     }
 
-    // The same pack again, byte for byte: nothing about its data has changed, so nothing is seeded again
+    // The same pack again, byte for byte: nothing about its data has changed, so nothing is written again
     const second = runPacksSystem();
     try {
       second.send({ type: 'INSTALL_PACK', packSlug: source, source: 'local' });
@@ -485,7 +485,7 @@ describe('reinstalling a pack whose data did not seed', () => {
 
       expect(outcomes(second.sent)).toEqual(['PACK_INSTALL_FAILED']);
       expect(readInstalledPacks().find(r => r.id === PACK_ID)?.lastError,
-        'the reinstall erased the earlier failure, which is the only sign the data never seeded').toBeTruthy();
+        'the reinstall erased the earlier failure, which is the only sign the data never written').toBeTruthy();
     } finally {
       second.stop();
     }
@@ -641,15 +641,15 @@ describe('a user answering for one of a pack’s content items', () => {
    */
   function contentPack(version: 'v1' | 'v2'): string {
     const dir = path.join(_appDirOf(tmpDir), 'packs', CONTENT_PACK);
-    const seeds = path.join(dir, PACK_LAYOUT.contentDir);
+    const content = path.join(dir, PACK_LAYOUT.contentDir);
     fs.rmSync(dir, { recursive: true, force: true });
-    fs.mkdirSync(seeds, { recursive: true });
+    fs.mkdirSync(content, { recursive: true });
     fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id: CONTENT_PACK, name: 'Content Pack', version: '1.0.0' }));
-    fs.writeFileSync(path.join(seeds, 'content.json'), JSON.stringify({ version: 1, packId: CONTENT_PACK, entries: [] }));
-    fs.writeFileSync(path.join(seeds, 'actions.content.json'), JSON.stringify({
+    fs.writeFileSync(path.join(content, 'content.json'), JSON.stringify({ version: 1, packId: CONTENT_PACK, entries: [] }));
+    fs.writeFileSync(path.join(content, 'actions.content.json'), JSON.stringify({
       records: [{ entity: 'Action', label: 'Echo', description: `theirs ${version}`, contentHash: `echo-${version}` }],
     }));
-    fs.writeFileSync(path.join(seeds, 'prompts.content.json'), JSON.stringify({
+    fs.writeFileSync(path.join(content, 'prompts.content.json'), JSON.stringify({
       records: [{ entity: 'Prompt', label: 'Greet', description: `theirs ${version}`, contentHash: `greet-${version}` }],
     }));
     return dir;

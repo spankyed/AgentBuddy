@@ -38,9 +38,9 @@ afterAll(() => {
 function compiled(packId: string, records: Array<{ name: string; body: string; version?: string; [field: string]: unknown }>): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-'));
   dirs.push(dir);
-  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
-  const seedRecords: ContentItem[] = records.map(({ version = 'v1', ...fields }) => ({ entity: 'Memo', ...fields, contentHash: `${fields.name}-${version}` }));
-  fs.writeFileSync(path.join(dir, 'memos.content.json'), JSON.stringify({ records: seedRecords }));
+  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, content: [] }));
+  const contentItems: ContentItem[] = records.map(({ version = 'v1', ...fields }) => ({ entity: 'Memo', ...fields, contentHash: `${fields.name}-${version}` }));
+  fs.writeFileSync(path.join(dir, 'memos.content.json'), JSON.stringify({ records: contentItems }));
   return dir;
 }
 
@@ -57,11 +57,11 @@ const offering = createFormatApplier({ key: 'memos', entities: ['Memo', 'Folder'
  * One run. With a record it is an **apply** — the three-way merge the app's boot runs; with none it is an
  * **import**, which is the user asking for the pack's data back and reads nothing of what we wrote before.
  */
-const seed = (dir: string, record?: ApplyRecord, mode: ImportMode = 'replace-on-collision') =>
+const apply = (dir: string, record?: ApplyRecord, mode: ImportMode = 'replace-on-collision') =>
   applier.apply({ compiledDir: dir, mode, ...(record && { applied: record }), log: () => {} });
 
 /** The same run for the offering entry */
-const seedOffering = (dir: string, record?: ApplyRecord, mode: ImportMode = 'replace-on-collision') =>
+const applyOffering = (dir: string, record?: ApplyRecord, mode: ImportMode = 'replace-on-collision') =>
   offering.apply({ compiledDir: dir, mode, ...(record && { applied: record }), log: () => {} });
 
 /**
@@ -83,7 +83,7 @@ describe('the applied content a run records', () => {
   /** One part per field the writer wrote, and nothing for a field it didn't set */
   it('records a part per field it wrote', () => {
     const record = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), record);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), record);
 
     const [[key, item]] = [...record.written];
     expect([...record.defined], 'the key the content declared is the key the entry is under').toEqual([key]);
@@ -98,7 +98,7 @@ describe('the applied content a run records', () => {
    */
   it('moves only the part of the field that changed', () => {
     const record = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), record);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), record);
     const item = [...record.written.values()][0];
 
     edit('Intro', { mood: 'mine' });
@@ -109,10 +109,10 @@ describe('the applied content a run records', () => {
   /** An item the apply left alone is not this run's to describe: its entry stays whatever the last run recorded */
   it('records nothing for an item it skipped', () => {
     const first = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
 
     const second = after(first);
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
 
     expect([...second.written.keys()], 'an unchanged item was written again').toEqual([]);
     expect([...second.defined], 'and the key is still one the content declares').toEqual([...first.defined]);
@@ -120,11 +120,11 @@ describe('the applied content a run records', () => {
 
   it('records nothing for an item it skipped as user-owned', () => {
     const first = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
     dropAttribute(memo('Intro').id, 'contentHash');
 
     const second = after(first);
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), second);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), second);
 
     expect([...second.written.keys()]).toEqual([]);
   });
@@ -135,11 +135,11 @@ describe('the applied content a run records', () => {
    */
   it('names an item with the user’s edit and a newer version, and the parts that differ', () => {
     const first = applyRecord();
-    seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
+    applyOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
     edit('Intro', { mood: 'mine' });
 
     const second = after(first);
-    const counts = seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', mood: 'calm', version: 'v2' }]), second);
+    const counts = applyOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', mood: 'calm', version: 'v2' }]), second);
 
     expect(counts).toEqual({ created: 0, updated: 0, skipped: 1 });
     expect(Object.fromEntries(second.offers)).toEqual({
@@ -155,11 +155,11 @@ describe('the applied content a run records', () => {
    */
   it('records no decision for a `theirs` entry the user edited', () => {
     const first = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
     edit('Intro', { mood: 'mine' });
 
     const second = after(first);
-    const counts = seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', mood: 'calm', version: 'v2' }]), second);
+    const counts = apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', mood: 'calm', version: 'v2' }]), second);
 
     expect(counts).toEqual({ created: 0, updated: 0, skipped: 1 });
     expect([...second.offers], 'theirs forever, and silent about it').toEqual([]);
@@ -173,17 +173,17 @@ describe('the applied content a run records', () => {
    */
   it('does not offer a version the user has already declined, and offers the next one', () => {
     const first = applyRecord();
-    seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
+    applyOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
     edit('Intro', { mood: 'mine' });
     const key = [...first.defined][0]!;
 
     const declined = after(first);
     declined.before.get(key)!.dismissed = 'Intro-v2';
-    seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', mood: 'calm', version: 'v2' }]), declined);
+    applyOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', mood: 'calm', version: 'v2' }]), declined);
     expect([...declined.offers], 'the version they declined').toEqual([]);
 
     const changedAgain = after(declined);
-    seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello once more', mood: 'calm', version: 'v3' }]), changedAgain);
+    applyOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello once more', mood: 'calm', version: 'v3' }]), changedAgain);
     expect([...changedAgain.offers.keys()], 'and the one after it').toEqual([key]);
   });
 
@@ -195,7 +195,7 @@ describe('the applied content a run records', () => {
    */
   it('restores an entity the user trashed when the user asks for it back', () => {
     const first = applyRecord();
-    seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
+    applyOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
     const id = memo('Intro').id;
     untypedTx(id).update('deleted' as never, true);
 
@@ -216,7 +216,7 @@ describe('the applied content a run records', () => {
    */
   it('writes the pack’s version over the user’s edit when the user asked for it', () => {
     const first = applyRecord();
-    seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
+    applyOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
     edit('Intro', { mood: 'mine' });
 
     const forced = applyRecord();
@@ -237,16 +237,16 @@ describe('the applied content a run records', () => {
    */
   it('takes a later version once the part the user changed is what the content now says', () => {
     const first = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello', mood: 'calm' }]), first);
     edit('Intro', { mood: 'mine' });
 
     const second = after(first);
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello v2', mood: 'calm', version: 'v2' }]), second);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello v2', mood: 'calm', version: 'v2' }]), second);
     // The user's value is now what the content ships, so nothing of ours is overwritten by taking it
     edit('Intro', { mood: 'calm' });
 
     const third = after(second);
-    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello v3', mood: 'calm', version: 'v3' }]), third))
+    expect(apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello v3', mood: 'calm', version: 'v3' }]), third))
       .toEqual({ created: 0, updated: 1, skipped: 0 });
     expect(memo('Intro').body).toBe('Hello v3');
   });
@@ -281,11 +281,11 @@ describe('an entity the user deleted outright', () => {
    */
   it('is not created again when the last apply wrote it', () => {
     const first = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
     ears().tx(memo('Intro').id).destroy();
     expect(memos('Intro'), 'a destroyed entity leaves nothing behind, which is the premise').toEqual([]);
 
-    const counts = seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), after(first));
+    const counts = apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), after(first));
 
     expect(counts).toEqual({ created: 0, updated: 0, skipped: 1 });
     expect(memos('Intro')).toEqual([]);
@@ -294,11 +294,11 @@ describe('an entity the user deleted outright', () => {
   /** And the key stays declared whatever the outcome was, or the removal pass would read it as dropped */
   it('stays in the keys this run declares', () => {
     const first = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
     ears().tx(memo('Intro').id).destroy();
 
     const second = after(first);
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), second);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), second);
 
     expect([...second.defined]).toEqual([...first.defined]);
     expect([...second.removed], 'and it is not removed: the content still declares it').toEqual([]);
@@ -310,10 +310,10 @@ describe('an entity the user deleted outright', () => {
    * having stopped creating entities.
    */
   it('is created again by an import that carries no record', () => {
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
     ears().tx(memo('Intro').id).destroy();
 
-    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }])))
+    expect(apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }])))
       .toEqual({ created: 1, updated: 0, skipped: 0 });
     expect(memo('Intro').body).toBe('Hello again');
   });
@@ -324,9 +324,9 @@ describe('an entity the user deleted outright', () => {
    */
   it('is created again by wipe-and-replace, which removed the entities itself', () => {
     const first = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
 
-    const counts = seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]),
+    const counts = apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]),
       after(first), 'wipe-and-replace');
 
     expect(counts).toMatchObject({ created: 1 });
@@ -337,21 +337,21 @@ describe('an entity the user deleted outright', () => {
 describe('a row with no stored contentHash', () => {
   // The applier's user-owned rule (`format-applier.ts`: "skipped (untracked)"), which every entity type runs through. It is
   // what makes a row the user's for good, so it is tested here once rather than per entity type: notes have their
-  // own case in default-setup, and actions and prompts had only a boolean in the seed-parity golden.
+  // own case in default-setup, and actions and prompts had only a boolean in the content-parity golden.
   it('is left alone, and stays so however its record changes', () => {
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
     dropAttribute(memo('Intro').id, 'contentHash');
 
-    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }])))
+    expect(apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }])))
       .toEqual({ created: 0, updated: 0, skipped: 1 });
     expect(memo('Intro').body).toBe('Hello');
   });
 
-  it('is not given one by a later seed, which would take it back from the user', () => {
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+  it('is not given one by a later content, which would take it back from the user', () => {
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
     dropAttribute(memo('Intro').id, 'contentHash');
 
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]));
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]));
     expect(memo('Intro').contentHash).toBeUndefined();
   });
 });
@@ -365,27 +365,27 @@ describe('an entity we wrote with no recorded parts', () => {
    * (`default-setup/src/migrations/0.3.15.ts`).
    */
   it('is written once, and its edits are honoured from then on', () => {
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
     // No entry for it: an apply whose record has never seen this item, which an upgrade is
     const upgrade = applyRecord();
 
-    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), upgrade))
+    expect(apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), upgrade))
       .toEqual({ created: 0, updated: 1, skipped: 0 });
     expect(memo('Intro').body).toBe('Hello again');
 
     // The write recorded its parts, so the next apply can see an edit and leaves it alone
     edit('Intro', { body: 'mine' });
     const next = after(upgrade);
-    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello a third time', version: 'v3' }]), next))
+    expect(apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello a third time', version: 'v3' }]), next))
       .toEqual({ created: 0, updated: 0, skipped: 1 });
     expect(memo('Intro').body).toBe('mine');
   });
 
   it('keeps the fields no apply set: there is no previous field list, so nothing is cleared', () => {
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
     edit('Intro', { pinned: true });
 
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), applyRecord());
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), applyRecord());
 
     expect(memo('Intro')).toMatchObject({ body: 'Hello again', pinned: true });
   });
@@ -394,7 +394,7 @@ describe('an entity we wrote with no recorded parts', () => {
   it('is not adopted when it carries no hash of ours', () => {
     ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: 'Intro', body: 'theirs' });
 
-    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), applyRecord()))
+    expect(apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), applyRecord()))
       .toEqual({ created: 0, updated: 0, skipped: 1 });
     expect(memo('Intro').body).toBe('theirs');
   });
@@ -404,11 +404,11 @@ describe('content the pack has dropped', () => {
   /** Ours while it is still ours: the item left the content, so the entity goes with it */
   it('is removed, and its entry with it', () => {
     const first = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
     const extraKey = [...first.written.keys()].find((key) => key.includes('Extra'))!;
 
     const second = after(first);
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
 
     expect(memos('Extra')).toEqual([]);
     expect([...second.removed]).toEqual([extraKey]);
@@ -418,12 +418,12 @@ describe('content the pack has dropped', () => {
   /** Theirs once they have touched it: kept, and named so the user can decide (Phase 4 draws it) */
   it('is kept and flagged when the user has edited it', () => {
     const first = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
     const extraKey = [...first.written.keys()].find((key) => key.includes('Extra'))!;
     edit('Extra', { body: 'mine' });
 
     const second = after(first);
-    seedOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
+    applyOffering(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
 
     expect(memo('Extra').body).toBe('mine');
     expect(Object.fromEntries(second.offers)).toEqual({ [extraKey]: { kind: 'removed', parts: ['body'] } });
@@ -433,13 +433,13 @@ describe('content the pack has dropped', () => {
   /** An entity the user has already trashed stays trashed: destroying it would take their undo with it */
   it('leaves an entity the user had already trashed in the trash', () => {
     const first = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
     const extraKey = [...first.written.keys()].find((key) => key.includes('Extra'))!;
     const extraId = memo('Extra').id;
     untypedTx(extraId).update('deleted' as never, true);
 
     const second = after(first);
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), second);
 
     expect(ears().findByIdRaw(extraId), 'the trashed entity was destroyed').toBeTruthy();
     expect([...second.removed], 'and the entry goes, so nothing recomputes the removal').toEqual([extraKey]);
@@ -453,7 +453,7 @@ describe('content the pack has dropped', () => {
    */
   it('is not removed because a selection left it out', () => {
     const first = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]), first);
 
     const second = after(first);
     applier.apply({
@@ -473,12 +473,12 @@ describe('content the pack has dropped', () => {
    */
   it('is not removed because a hook threw on it', () => {
     const first = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
     // The walk reaches it (the keyed lookup finds the entity) and then throws part way through writing it
     registerHooks('Memo', { update: () => { throw new Error('boom'); } });
 
     const second = after(first);
-    const counts = seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), second);
+    const counts = apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]), second);
 
     expect(counts.errors).toEqual(['Memo "Intro": boom']);
     expect(memo('Intro').body, 'the item the error was about').toBe('Hello');
@@ -487,9 +487,9 @@ describe('content the pack has dropped', () => {
 
   /** And an import carries no record, so asking for a pack's data back never removes anything */
   it('is not removed by an import, which reads no record', () => {
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]));
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }, { name: 'Extra', body: 'Bye' }]));
 
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
 
     expect(memo('Extra').body).toBe('Bye');
   });
@@ -497,13 +497,13 @@ describe('content the pack has dropped', () => {
   /** A file that did not load said nothing, so there is no list to diff against */
   it('is not removed when the entry has no compiled file to read', () => {
     const first = applyRecord();
-    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
+    apply(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), first);
 
     const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-none-'));
     dirs.push(empty);
     fs.writeFileSync(path.join(empty, 'content.json'), JSON.stringify({ version: 1, packId: 'pack-a', entries: [] }));
     const second = after(first);
-    seed(empty, second);
+    apply(empty, second);
 
     expect(memo('Intro').body).toBe('Hello');
     expect([...second.removed]).toEqual([]);
@@ -512,23 +512,23 @@ describe('content the pack has dropped', () => {
 
 describe("two packs' records with the same entry key and identity", () => {
   it('write an entity each, and each pack updates only its own', () => {
-    expect(seed(compiled('pack-a', [{ name: 'Welcome', body: 'From A' }]))).toMatchObject({ created: 1 });
-    expect(seed(compiled('pack-b', [{ name: 'Welcome', body: 'From B' }]))).toMatchObject({ created: 1 });
+    expect(apply(compiled('pack-a', [{ name: 'Welcome', body: 'From A' }]))).toMatchObject({ created: 1 });
+    expect(apply(compiled('pack-b', [{ name: 'Welcome', body: 'From B' }]))).toMatchObject({ created: 1 });
     expect(memos('Welcome').map((row) => row.body).sort()).toEqual(['From A', 'From B']);
 
-    expect(seed(compiled('pack-b', [{ name: 'Welcome', body: 'From B, revised', version: 'v2' }]))).toEqual({ created: 0, updated: 1, skipped: 0 });
-    expect(seed(compiled('pack-a', [{ name: 'Welcome', body: 'From A' }]))).toEqual({ created: 0, updated: 0, skipped: 1 });
+    expect(apply(compiled('pack-b', [{ name: 'Welcome', body: 'From B, revised', version: 'v2' }]))).toEqual({ created: 0, updated: 1, skipped: 0 });
+    expect(apply(compiled('pack-a', [{ name: 'Welcome', body: 'From A' }]))).toEqual({ created: 0, updated: 0, skipped: 1 });
     expect(memos('Welcome').map((row) => row.body).sort()).toEqual(['From A', 'From B, revised']);
   });
 
   it('fail with a rebuild error when the compiled content name no pack', () => {
     const dir = compiled('pack-a', [{ name: 'Welcome', body: 'From A' }]);
     fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, entries: [] }));
-    expect(() => seed(dir)).toThrow(/doesn't name the pack that compiled this content: rebuild the pack/);
+    expect(() => apply(dir)).toThrow(/doesn't name the pack that compiled this content: rebuild the pack/);
   });
 });
 
-describe("a folder another pack seeded", () => {
+describe("a folder another pack written", () => {
   type Folder = { id: EARS.EntityId; name: string; label?: string; contentKey?: string };
   const folders = () => ears().findWhere<Folder>('Folder' as EARS.Entity, 'name', 'internal');
   const contents = (folder: Folder) => ears().qx(folder.id).linksTo('contains', 'Memo' as EARS.Entity, true).pick(['name']).map((row) => row.name as string).sort();
@@ -537,7 +537,7 @@ describe("a folder another pack seeded", () => {
   function tree(packId: string, memoNames: string[], entryKey = 'memos'): string {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-tree-'));
     dirs.push(dir);
-    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, content: [] }));
     const records: ContentItem[] = [{
       entity: 'Folder',
       name: 'internal',
@@ -549,51 +549,51 @@ describe("a folder another pack seeded", () => {
     return dir;
   }
 
-  it('is seeded into, not copied, when its hooks mark it a container', () => {
+  it('is written into, not copied, when its hooks mark it a container', () => {
     registerHooks('Folder', { container: true });
 
-    expect(seed(tree('pack-a', ['welcome.md']))).toEqual({ created: 2, updated: 0, skipped: 0 });
+    expect(apply(tree('pack-a', ['welcome.md']))).toEqual({ created: 2, updated: 0, skipped: 0 });
     // The folder is pack-a's; only pack-b's own memo is new
-    expect(seed(tree('pack-b', ['theirs.md']))).toEqual({ created: 1, updated: 0, skipped: 1 });
+    expect(apply(tree('pack-b', ['theirs.md']))).toEqual({ created: 1, updated: 0, skipped: 1 });
 
     expect(folders()).toHaveLength(1);
     const [folder] = folders();
     expect(contents(folder)).toEqual(['theirs.md', 'welcome.md']);
-    // Left as pack-a seeded it: not updated, not re-keyed
+    // Left as pack-a written it: not updated, not re-keyed
     expect(folder.label).toBe('pack-a');
     expect(folder.contentKey).toMatch(/^pack-a:/);
   });
 
   /**
-   * **A container another seed owns is not this pack's key to claim.** pack-b reuses pack-a's folder rather
+   * **A container another content owns is not this pack's key to claim.** pack-b reuses pack-a's folder rather
    * than creating one, so that key stays out of pack-b's record — otherwise the folder going away with
    * pack-a would read as the user deleting pack-b's folder, and pack-b would never make its own again.
    */
   it("stays out of this pack's record, so this pack makes its own once that folder is gone", () => {
     registerHooks('Folder', { container: true });
-    seed(tree('pack-a', ['welcome.md']));
+    apply(tree('pack-a', ['welcome.md']));
     const packB = applyRecord();
-    seed(tree('pack-b', ['theirs.md']), packB);
+    apply(tree('pack-b', ['theirs.md']), packB);
     ears().tx(folders()[0].id).destroy();
 
     // Its memo is still there and still pack-b's, so only the folder is created
-    expect(seed(tree('pack-b', ['theirs.md']), after(packB))).toMatchObject({ created: 1 });
+    expect(apply(tree('pack-b', ['theirs.md']), after(packB))).toMatchObject({ created: 1 });
     expect(folders()[0].label, "pack-b never made its own folder").toBe('pack-b');
   });
 
-  it('is found again by the pack seeding into it: seeding it twice adds nothing', () => {
+  it('is found again by the pack applying into it: applying it twice adds nothing', () => {
     registerHooks('Folder', { container: true });
-    seed(tree('pack-a', ['welcome.md']));
-    seed(tree('pack-b', ['theirs.md']));
+    apply(tree('pack-a', ['welcome.md']));
+    apply(tree('pack-b', ['theirs.md']));
 
-    expect(seed(tree('pack-b', ['theirs.md']))).toEqual({ created: 0, updated: 0, skipped: 2 });
+    expect(apply(tree('pack-b', ['theirs.md']))).toEqual({ created: 0, updated: 0, skipped: 2 });
     expect(folders()).toHaveLength(1);
     expect(contents(folders()[0])).toEqual(['theirs.md', 'welcome.md']);
   });
 
   it("takes the other pack's new records in keep-existing mode, which skips only rows that exist", () => {
     registerHooks('Folder', { container: true });
-    seed(tree('pack-a', ['welcome.md']));
+    apply(tree('pack-a', ['welcome.md']));
 
     const counts = applier.apply({ compiledDir: tree('pack-b', ['theirs.md']), mode: 'keep-existing', log: () => {} });
 
@@ -601,10 +601,10 @@ describe("a folder another pack seeded", () => {
     expect(contents(folders()[0])).toEqual(['theirs.md', 'welcome.md']);
   });
 
-  it("is shared by two entries of the pack that seeded it, like another pack's", () => {
+  it("is shared by two entries of the pack that written it, like another pack's", () => {
     registerHooks('Folder', { container: true });
     const docs = createFormatApplier({ key: 'docs', entities: ['Memo', 'Folder'], identity: ['name'] });
-    seed(tree('pack-a', ['welcome.md']));
+    apply(tree('pack-a', ['welcome.md']));
 
     expect(docs.apply({ compiledDir: tree('pack-a', ['guide.md'], 'docs'), mode: 'replace-on-collision', log: () => {} }))
       .toEqual({ created: 1, updated: 0, skipped: 1 });
@@ -621,15 +621,15 @@ describe("a folder another pack seeded", () => {
   it('is not removed with the content that dropped it while another pack’s entities are in it', () => {
     registerHooks('Folder', { container: true });
     const packA = applyRecord();
-    seed(tree('pack-a', ['welcome.md']), packA);
-    seed(tree('pack-b', ['theirs.md']));
+    apply(tree('pack-a', ['welcome.md']), packA);
+    apply(tree('pack-b', ['theirs.md']));
 
     const emptied = fs.mkdtempSync(path.join(os.tmpdir(), 'applier-emptied-'));
     dirs.push(emptied);
     fs.writeFileSync(path.join(emptied, 'content.json'), JSON.stringify({ version: 1, packId: 'pack-a', entries: [] }));
     fs.writeFileSync(path.join(emptied, 'memos.content.json'), JSON.stringify({ records: [] }));
     const next = after(packA);
-    seed(emptied, next);
+    apply(emptied, next);
 
     expect(folders(), "pack-a's folder was removed, and pack-b's memo with it").toHaveLength(1);
     expect(contents(folders()[0]), "pack-a's own memo goes, pack-b's stays").toEqual(['theirs.md']);
@@ -650,7 +650,7 @@ describe("a folder another pack seeded", () => {
   it('is not removed because the walk stopped at the item above it', () => {
     registerHooks('Folder', { container: false });
     const first = applyRecord();
-    seed(tree('pack-a', ['welcome.md', 'guide.md']), first);
+    apply(tree('pack-a', ['welcome.md', 'guide.md']), first);
 
     const second = after(first);
     applier.apply({ compiledDir: tree('pack-a', ['welcome.md', 'guide.md']), mode: 'keep-existing', applied: second, log: () => {} });
@@ -666,7 +666,7 @@ describe("a folder another pack seeded", () => {
    */
   it('is not removed while it holds an item the user edited', () => {
     const first = applyRecord();
-    seed(tree('pack-a', ['welcome.md', 'guide.md']), first);
+    apply(tree('pack-a', ['welcome.md', 'guide.md']), first);
     const folderId = folders()[0].id;
     edit('guide.md', { body: 'mine' });
 
@@ -676,7 +676,7 @@ describe("a folder another pack seeded", () => {
     fs.writeFileSync(path.join(emptied, 'memos.content.json'), JSON.stringify({ records: [] }));
     const second = after(first);
     // The offering entry, so the one item that is kept is also named as a decision the user has to take
-    seedOffering(emptied, second);
+    applyOffering(emptied, second);
 
     expect(memo('guide.md').body, 'the item the user rewrote').toBe('mine');
     expect(ears().findByIdRaw(folderId), 'the folder it is in went with the content').toBeTruthy();
@@ -688,11 +688,11 @@ describe("a folder another pack seeded", () => {
   it('is not removed because the user trashed the item above it', () => {
     registerHooks('Folder', { container: false });
     const first = applyRecord();
-    seed(tree('pack-a', ['welcome.md', 'guide.md']), first);
+    apply(tree('pack-a', ['welcome.md', 'guide.md']), first);
     untypedTx(folders()[0].id).update('deleted' as never, true);
 
     const second = after(first);
-    seed(tree('pack-a', ['welcome.md', 'guide.md']), second);
+    apply(tree('pack-a', ['welcome.md', 'guide.md']), second);
 
     expect([...second.removed], 'a child under an item the user trashed').toEqual([]);
     expect(second.defined).toEqual(first.defined);
@@ -704,7 +704,7 @@ describe("a folder another pack seeded", () => {
    */
   it('is not removed because an error stopped the walk above it', () => {
     const first = applyRecord();
-    seed(tree('pack-a', ['welcome.md', 'guide.md']), first);
+    apply(tree('pack-a', ['welcome.md', 'guide.md']), first);
     registerHooks('Folder', { update: () => { throw new Error('disk full'); } });
 
     // A new contentHash on the folder, so the apply reaches the update that throws
@@ -715,7 +715,7 @@ describe("a folder another pack seeded", () => {
     fs.writeFileSync(file, JSON.stringify(data));
 
     const second = after(first);
-    expect(seed(dir, second)).toMatchObject({ errors: ['Folder "internal": disk full'] });
+    expect(apply(dir, second)).toMatchObject({ errors: ['Folder "internal": disk full'] });
 
     expect([...second.removed], "the folder's whole subtree went with the error").toEqual([]);
     expect(second.defined).toEqual(first.defined);
@@ -724,16 +724,16 @@ describe("a folder another pack seeded", () => {
   it("is copied when its hooks don't, so a pack never writes into another's rows", () => {
     registerHooks('Folder', {});
 
-    seed(tree('pack-a', ['welcome.md']));
-    seed(tree('pack-b', ['theirs.md']));
+    apply(tree('pack-a', ['welcome.md']));
+    apply(tree('pack-b', ['theirs.md']));
 
     expect(folders().map((folder) => folder.label)).toEqual(['pack-a', 'pack-b']);
     expect(folders().map(contents)).toEqual([['welcome.md'], ['theirs.md']]);
   });
 
-  it('is updated as usual by the pack that seeded it', () => {
+  it('is updated as usual by the pack that written it', () => {
     registerHooks('Folder', { container: true });
-    seed(tree('pack-a', ['welcome.md']));
+    apply(tree('pack-a', ['welcome.md']));
 
     const dir = tree('pack-a', ['welcome.md']);
     const file = path.join(dir, 'memos.content.json');
@@ -742,7 +742,7 @@ describe("a folder another pack seeded", () => {
     data.records[0].contentHash = 'internal-pack-a-v2';
     fs.writeFileSync(file, JSON.stringify(data));
 
-    expect(seed(dir)).toMatchObject({ updated: 1 });
+    expect(apply(dir)).toMatchObject({ updated: 1 });
     expect(folders()).toHaveLength(1);
     expect(folders()[0].label).toBe('renamed');
   });
@@ -752,11 +752,11 @@ describe('wipe-and-replace', () => {
   const wipeImport = (dir: string) => applier.apply({ compiledDir: dir, mode: 'wipe-and-replace', log: () => {} });
   const folderNames = () => ears().qx('Folder' as EARS.Entity).pick(['name']).map((row) => row.name as string).sort();
 
-  it("removes rows of every entity type the entry seeds, even types its records don't hold", () => {
+  it("removes rows of every entity type the entry content, even types its records don't hold", () => {
     ears().createEntityWithDefaults('Folder' as EARS.Entity, { name: 'old folder' });
     ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
 
-    // Only top-level memos: no Folder record, yet the entry seeds folders too
+    // Only top-level memos: no Folder record, yet the entry content folders too
     expect(wipeImport(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]))).toEqual({ created: 1, updated: 0, skipped: 0 });
 
     expect(folderNames()).toEqual([]);
@@ -772,7 +772,7 @@ describe('wipe-and-replace', () => {
     expect(memos('old memo')).toEqual([]);
   });
 
-  it("leaves entity types the entry doesn't seed", () => {
+  it("leaves entity types the entry doesn't content", () => {
     const memosOnly = createFormatApplier({ key: 'memos', entities: ['Memo'], identity: ['name'] });
     ears().createEntityWithDefaults('Folder' as EARS.Entity, { name: 'kept folder' });
 
@@ -783,7 +783,7 @@ describe('wipe-and-replace', () => {
 });
 
 describe('an update hook that fails part way', () => {
-  it("reports the error and leaves the row updatable, not edited: the next seed updates it", () => {
+  it("reports the error and leaves the row updatable, not edited: the next content updates it", () => {
     let failing = true;
     registerHooks('Memo', {
       create: (record) => ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: record.name, body: record.body, pinned: false }).id,
@@ -801,14 +801,14 @@ describe('an update hook that fails part way', () => {
       fs.writeFileSync(file, JSON.stringify(data));
       return dir;
     };
-    seed(pinnedRecord('v1', false));
+    apply(pinnedRecord('v1', false));
 
-    const failed = seed(pinnedRecord('v2', true));
+    const failed = apply(pinnedRecord('v2', true));
     expect(failed).toMatchObject({ updated: 0, errors: ['Memo "Intro": disk full'] });
     expect(memo('Intro')).toMatchObject({ body: 'Hello v2', pinned: false, contentHash: 'Intro-v1' });
 
     failing = false;
-    expect(seed(pinnedRecord('v2', true))).toEqual({ created: 0, updated: 1, skipped: 0 });
+    expect(apply(pinnedRecord('v2', true))).toEqual({ created: 0, updated: 1, skipped: 0 });
     expect(memo('Intro')).toMatchObject({ body: 'Hello v2', pinned: true, contentHash: 'Intro-v2' });
   });
 
@@ -820,12 +820,12 @@ describe('an update hook that fails part way', () => {
       },
     });
     const first = applyRecord();
-    seed(compiled('demo', [{ name: 'Intro', body: 'Hello' }]), first);
+    apply(compiled('demo', [{ name: 'Intro', body: 'Hello' }]), first);
     // The user's mood, which the next version of the record sets too
     edit('Intro', { mood: 'mine' });
 
     const second = after(first);
-    expect(seed(compiled('demo', [{ name: 'Intro', body: 'Hello v2', mood: 'calm', version: 'v2' }]), second))
+    expect(apply(compiled('demo', [{ name: 'Intro', body: 'Hello v2', mood: 'calm', version: 'v2' }]), second))
       .toMatchObject({ errors: ['Memo "Intro": disk full'] });
     expect(memo('Intro').mood).toBe('mine');
     const item = second.written.get([...first.written.keys()][0])!;
@@ -839,9 +839,9 @@ describe('an update hook that fails part way', () => {
 describe('a field a changed record no longer sets', () => {
   it("is dropped from the entity, and a field the apply never set is kept", () => {
     const first = applyRecord();
-    seed(compiled('demo', [{ name: 'Intro', body: 'Hello', pinned: true }]), first);
+    apply(compiled('demo', [{ name: 'Intro', body: 'Hello', pinned: true }]), first);
     const second = after(first);
-    expect(seed(compiled('demo', [{ name: 'Intro', body: 'Hello', version: 'v2' }]), second)).toEqual({ created: 0, updated: 1, skipped: 0 });
+    expect(apply(compiled('demo', [{ name: 'Intro', body: 'Hello', version: 'v2' }]), second)).toEqual({ created: 0, updated: 1, skipped: 0 });
     expect(memo('Intro').pinned).toBeUndefined();
     expect(Object.keys(second.written.get([...first.written.keys()][0])!.parts).sort()).toEqual(['body', 'name']);
   });
@@ -856,15 +856,15 @@ describe('a field a changed record no longer sets', () => {
       },
     });
     const first = applyRecord();
-    seed(compiled('demo', [{ name: 'Intro', body: 'Hello', pinned: true }]), first);
-    seed(compiled('demo', [{ name: 'Intro', body: 'Hello', version: 'v2' }]), after(first));
+    apply(compiled('demo', [{ name: 'Intro', body: 'Hello', pinned: true }]), first);
+    apply(compiled('demo', [{ name: 'Intro', body: 'Hello', version: 'v2' }]), after(first));
     expect(cleared).toEqual([['pinned']]);
     expect(memo('Intro').pinned).toBe(false);
   });
 });
 
 describe('a created row that fails before it is tracked', () => {
-  it('is removed and the error reported, so the next seed creates it again and tracks it', () => {
+  it('is removed and the error reported, so the next content creates it again and tracks it', () => {
     let failing = true;
     registerHooks('Memo', {
       update: (id, record) => {
@@ -872,27 +872,27 @@ describe('a created row that fails before it is tracked', () => {
         ears().updateEntity(id, { body: record.body });
       },
     });
-    const mediaSeeder = createFormatApplier({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'], media: true });
+    const mediaApplier = createFormatApplier({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'], media: true });
     const dir = compiled('demo', [{ name: 'Intro', body: 'See ![pic](media/pic.png)' }]);
     fs.mkdirSync(path.join(dir, 'media', 'memos'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'media', 'memos', 'pic.png'), 'PNG');
-    const seedMedia = () => mediaSeeder.apply({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} });
+    const contentMedia = () => mediaApplier.apply({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} });
 
-    expect(seedMedia()).toMatchObject({ created: 0, errors: ['Memo "Intro": disk full'] });
+    expect(contentMedia()).toMatchObject({ created: 0, errors: ['Memo "Intro": disk full'] });
     expect(memos('Intro')).toEqual([]);
 
     failing = false;
-    expect(seedMedia()).toEqual({ created: 1, updated: 0, skipped: 0 });
+    expect(contentMedia()).toEqual({ created: 1, updated: 0, skipped: 0 });
     const { id, body } = memo('Intro');
     expect(body).toBe(`See ![pic](media://${id}/pic.png)`);
     expect(fs.readdirSync(_getMediaPath())).toEqual([id]);
-    expect(seedMedia()).toEqual({ created: 0, updated: 0, skipped: 1 });
+    expect(contentMedia()).toEqual({ created: 0, updated: 0, skipped: 1 });
   });
 });
 
 describe('media links that point outside the media folders', () => {
   it('are left as written, copying nothing in or out', () => {
-    const mediaSeeder = createFormatApplier({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'], media: true });
+    const mediaApplier = createFormatApplier({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'], media: true });
     // `media/../memos/pic.png` reads a file inside the compiled media but would write beside the row's folder
     const dir = compiled('demo', [{ name: 'Escape', body: 'A ![up](media/../../secret.txt) B ![link](media/linked.png) C ![side](media/../memos/pic.png) D ![ok](media/pic.png)' }]);
     const mediaDir = path.join(dir, 'media', 'memos');
@@ -902,7 +902,7 @@ describe('media links that point outside the media folders', () => {
     fs.writeFileSync(path.join(dir, 'secret.txt'), 'SECRET');
     fs.symlinkSync(path.join(dir, 'secret.txt'), path.join(mediaDir, 'linked.png'));
 
-    expect(mediaSeeder.apply({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} })).toEqual({ created: 1, updated: 0, skipped: 0 });
+    expect(mediaApplier.apply({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} })).toEqual({ created: 1, updated: 0, skipped: 0 });
 
     const { id, body } = memo('Escape');
     expect(body).toBe(`A ![up](media/../../secret.txt) B ![link](media/linked.png) C ![side](media/../memos/pic.png) D ![ok](media://${id}/pic.png)`);

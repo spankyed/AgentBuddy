@@ -1,4 +1,4 @@
-// Settings → Import Pack Content end to end: a content directory compiled from default-setup's own seed
+// Settings → Import Pack Content end to end: a content directory compiled from default-setup's own content
 // entries (a notes markdown tree and the library compiler module), previewed from its content.json,
 // imported with an item deselected, then imported again in keep-existing mode. The imported document's image,
 // which the API copies into its media folder, loads through main's media:// protocol.
@@ -32,7 +32,7 @@ function write(file: string, content: string): void {
 }
 
 /** Compiles default-setup's notes and library entries over fresh sources into a content directory */
-async function compileSeeds(work: string): Promise<string> {
+async function compileContent(work: string): Promise<string> {
   write(path.join(work, 'notes/e2e-plan/index.md'), `---\ntitle: E2E Plan ${RUN}\ntype: tasklist\n---\nThe plan.\n`);
   write(path.join(work, 'notes/e2e-plan/first-step.md'), `---\ntitle: E2E Step ${RUN}\ntype: task\n---\nDo it.\n`);
   write(path.join(work, 'notes/e2e-skipped.md'), `---\ntitle: E2E Skipped ${RUN}\n---\nNot imported.\n`);
@@ -64,9 +64,9 @@ function filesUnder(dir: string): string[] {
 }
 
 test('previews a compiled content directory by its content.json and imports the selected items', async ({ app, appPage, electronApp }) => {
-  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-import-seeds-'));
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-import-content-'));
   try {
-    const directory = await compileSeeds(work);
+    const directory = await compileContent(work);
     await app.navigate('host/settings');
 
     const send = (event: Record<string, unknown>) => appPage.evaluate((e) => {

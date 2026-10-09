@@ -32,7 +32,7 @@ Context: `docs/archive/goals/goal-external-pack-authoring.md` (decisions D1–D7
 
 ### High
 
-1. **Settings wiped every boot by a failing pack seed.** `packages/api/src/packs/pack-seed.ts` doesn't store the hash on failure, so the pack reseeds each boot. Reseeding runs the settings seeder (`packages/abuddy-sdk/src/seed/settings-seeder.ts`), whose `resetSettings()` replaces all app settings, onboarding state and seed hashes. Pack seeds must never reset host settings wholesale, and a persistent failure must not loop destructive work.
+1. **Settings wiped every boot by a failing pack content.** `packages/api/src/packs/pack-apply.ts` doesn't store the hash on failure, so the pack re-applies each boot. Re-applying runs the settings applier (`packages/abuddy-sdk/src/content/settings-applier.ts`), whose `resetSettings()` replaces all app settings, onboarding state and content hashes. Pack content must never reset host settings wholesale, and a persistent failure must not loop destructive work.
 2. **App-bundled `abuddy test` can't launch Electron.** `packages/abuddy-cli/bin/app-launcher.sh` sets `ELECTRON_RUN_AS_NODE=1`. It leaks through `abuddy test` into `_electron.launch` (`packages/abuddy-testing/src/index.ts`). Strip it in `fixtureEnv` and in the fixture's launch env.
 3. **`--app beta` never matches a release.** GitHub turns spaces in asset names into dots (`AgentBuddy.Beta-…zip`). `packages/abuddy-cli/src/app/beta-app.ts` expects `AgentBuddy Beta-…`. Match GitHub's stored name, and make the unit test use real stored names.
 4. **The scaffolded CI release workflow can't resolve built-in dependencies** such as `default-setup`. There's no workspace, installed app, configured app or cache on a runner (`commands/init.ts` workflow template, `commands/fetch-deps.ts`). Give CI a way to get host built-in types/build, e.g. from a downloaded beta app or a published artifact.
@@ -45,9 +45,9 @@ Context: `docs/archive/goals/goal-external-pack-authoring.md` (decisions D1–D7
 8. **`abuddy add flow` template imports `keepAlive`,** which a dependency-free scaffold doesn't have (`commands/add/flow.ts`).
 9. **`abuddy add step` doesn't register the step** (the `updateRegisterArray` import search fails) and never sets up `steps.build`. **`abuddy add service`** writes a path codegen can't resolve (double `.ts`).
 10. **Codegen input hash misses source changes** (`commands/generate-entries.ts`): service export shape, step `trackField`, `types.ts`, and whether `*-fe.ts` files exist.
-11. **Seed state goes stale:**
-    - A failed seed keeps the previous good hash, so rolling back is skipped.
-    - `lastError` isn't cleared when the seed is unchanged or absent, and the update flow re-reports it.
+11. **Content state goes stale:**
+    - A failed content keeps the previous good hash, so rolling back is skipped.
+    - `lastError` isn't cleared when the apply is unchanged or absent, and the update flow re-reports it.
 12. **Promoted/regular betas fail `hostVersion: ">=X"`** (`0.4.0-beta.0 < 0.4.0`). Compare against the build's app version.
 13. **Published SDK `.d.ts` break `moduleResolution: node16`** (extensionless specifiers). D5 asked for rolled-up types.
 14. **`tests/scripts/test-packaged-authoring.sh` checks for `flows: 1`,** which is printed even with no flows. Assert the compiled flow exists instead.
@@ -81,7 +81,7 @@ Context: `docs/archive/goals/goal-external-pack-authoring.md` (decisions D1–D7
   - No check that `steps/build.ts` matches `register.ts`.
   - The drift guard's dev-entry check never runs in CI.
   - `build/prod/verify-node-modules.mjs` skips the bundled CLI's own deps and optional native binaries.
-  - No unit test for the flow seeder's error path.
+  - No unit test for the flow applier's error path.
   - The E2E temp dir leaks when build or launch throws.
 - **Stale references:**
   - Homebrew sha256 is stale.
@@ -93,4 +93,4 @@ Context: `docs/archive/goals/goal-external-pack-authoring.md` (decisions D1–D7
 - No PATH action on Windows/Linux.
 - `abuddy-beta` defaults to production.
 - Missing dependencies don't block installs, and dependency ranges aren't enforced.
-- Boot seed failures aren't shown in the UI.
+- Boot apply failures aren't shown in the UI.

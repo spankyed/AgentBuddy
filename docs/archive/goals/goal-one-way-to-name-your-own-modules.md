@@ -282,7 +282,7 @@ backend bundle and the API's, because `packages/api` does not depend on `@abuddy
 - **Phase 1's "No config changes: `#generated` already resolves in every tool" was false**, and `npm run
   build` said so: the API's tsup could not resolve `#generated/services`. esbuild finds the mapping and then
   refuses the path, needing the extension — which this goal's own spike table already recorded. What hid it is
-  that the five `#generated` imports the pack already had were all under `src/seeds/flows/`, which
+  that the five `#generated` imports the pack already had were all under `src/content/flows/`, which
   `abuddy build` compiles and the API never sees, so the claim rested on files that could not have tested it.
   Decision 4 moved forward from Phase 3 into Phase 1 as a result; **if a phase's premise is "no config
   change", name the evidence for it, because five files in the wrong directory looked like evidence.**

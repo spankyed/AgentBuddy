@@ -23,7 +23,7 @@
 >
 > **One lever is left unmeasured rather than unpursued**, recorded in
 > [`packages/abuddy-testing/CLAUDE.md`](../../../packages/abuddy-testing/CLAUDE.md) where the harness lives: the
-> harness imports `@abuddy/sdk/build` statically (238ms as a standalone import) for seed compilation most
+> harness imports `@abuddy/sdk/build` statically (238ms as a standalone import) for content compilation most
 > files never do, but reaches it on every setup through two format-check helpers — so the saving depends on a
 > marginal cost inside a worker that was not taken, and is probably well under the standalone number.
 >
@@ -210,7 +210,7 @@ tier, and `suite-timeouts.spec.ts` now refuses a config that declares no budget 
 
 ### The one cost already identified
 
-`packages/default-setup/tests/setup.ts:33` calls `setupPackTests({ seedRuntime, registration })` at
+`packages/default-setup/tests/setup.ts:33` calls `setupPackTests({ contentRuntime, registration })` at
 module scope, so it runs once per test file. Measured earlier in `goal-test-tiers.md`: ~1.16s × 84 files,
 which a run reports as `setup 97.3s` — that figure is the sum across workers against a 15.4s wall, which
 is why it reads as alarming and is not. It is still the largest single identified item inside the largest

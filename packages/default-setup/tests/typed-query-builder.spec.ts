@@ -23,9 +23,9 @@ describe('Typed QueryBuilder — qx() overloads', () => {
     expectTypeOf(qx(ids)).toEqualTypeOf<QueryBuilder<string, PackShapes>>();
   });
 
-  // The seeds each overload takes. Name overloads come before id overloads (so editors offer entity
-  // names in qx('…')); this pins that every seed still resolves as it did in the other order.
-  it('resolves every kind of seed to the same builder whatever the overload order', () => {
+  // The content each overload takes. Name overloads come before id overloads (so editors offer entity
+  // names in qx('…')); this pins that every apply still resolves as it did in the other order.
+  it('resolves every kind of content to the same builder whatever the overload order', () => {
     type QB<E extends string> = QueryBuilder<E, PackShapes, EntityName>;
     // Type-level only: never called
     const check = (

@@ -57,7 +57,7 @@ my-pack/
     content/
       actions/
       flows/
-      examples/             # markdown rows of the pack's entity type (the `examples` seed format)
+      examples/             # markdown rows of the pack's entity type (the `examples` content format)
     __generated__/          # Auto-generated from manifest — never edit
   .abuddy/
     generated/              # EARS types from deps
@@ -90,7 +90,7 @@ The build pipeline (`abuddy build`):
 5. Content compilation — compiles `content.sources` from `src/content/` to `dist/runtime/content/`, validating flows with the dependencies' step code
 6. Facade types — bundles `dist/types/pack-types.d.ts`, the types packs that depend on yours import, and fails unless it type-checks on its own and imports only `@abuddy/*` packages, `@abuddy/sdk`'s peers and Node built-ins. Warns if your committed `etc/pack-types.api.md` has fallen behind it
 7. Snapshot — writes `dist/types/snapshot.json` (types, facade types, flow helpers, manifest) for downstream packs
-8. Build code for dependents — `dist/build/steps.build.mjs` (step build code), `dist/build/content-runtime.mjs` (your entity types, repositories and content writers, for their unit tests) and `dist/build/content-compilers.mjs` (your seed formats' compiler modules). The build loads the seed runtime the way their tests do, and fails if it can't: repositories and content writers can't use native modules or optional `@abuddy/sdk` peers such as `@tiptap/pm`
+8. Build code for dependents — `dist/build/steps.build.mjs` (step build code), `dist/build/content-runtime.mjs` (your entity types, repositories and content writers, for their unit tests) and `dist/build/content-compilers.mjs` (your content formats' compiler modules). The build loads the content runtime the way their tests do, and fails if it can't: repositories and content writers can't use native modules or optional `@abuddy/sdk` peers such as `@tiptap/pm`
 9. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot hooks, migrations)
 10. FE bundling — bundles `src/__generated__/pack-entry-fe.ts` into `dist/runtime/fe.js` via Vite
 
@@ -160,7 +160,7 @@ abuddy clean      # Remove dist/, .abuddy/, __generated__/
 - **Manifest (`abuddy.json`)** — declares everything: features, steps, services, content, entities. See [Manifest Reference](manifest.md).
 - **Generated files (`__generated__/`)** — auto-generated from the manifest. Never edit these. They are regenerated on every build. The generated `pack-entry.ts` and `pack-entry-fe.ts` are your pack's registrations: everything it contributes (systems, services, repositories, steps, appliers, DSL types, …) reaches the app through them, never by writing to a registry when a module is imported.
 - **Host dependencies** — packs share `vue`, `xstate`, tiptap, `lucide-vue-next` and other libraries, the SDK modules and `@abuddy/ui` with the host app. The build pipeline leaves those imports external and the app's document carries an import map naming its own copy of each, so your pack gets the app's instance.
-- **Content** — actions, prompts, flows and entity rows are compiled at build time and seeded when the pack loads. See [Content](content.md) for what action code may import.
+- **Content** — actions, prompts, flows and entity rows are compiled at build time and written when the pack loads. See [Content](content.md) for what action code may import.
 - **`pack://` protocol** — the host loads your pack's FE bundle at runtime via `pack://<id>/runtime/fe.js`. This is handled automatically.
 
 ## Constraints

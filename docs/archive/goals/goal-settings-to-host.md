@@ -116,9 +116,9 @@ from. Settings adds a third feature beside `application` and `packs`.
 | `be/system.ts` | 400 | the system — and four jobs that aren't settings (below) |
 | `be/types.ts` | 199 | `SettingsData`, and every per-plugin settings interface |
 | `be/repository/index.ts` | 170 | the store: stored vs effective, the one `write()`, listeners, `whileReplacingData` |
-| `be/defaults.ts` | 40 | reads default-setup's compiled `settings.seed.json`, merges `getPackSettingsDefaults()` |
+| `be/defaults.ts` | 40 | reads default-setup's compiled `settings.content.json`, merges `getPackSettingsDefaults()` |
 | `be/services/settings.ts` | 45 | `SettingsService`: `getAll`, `getPluginSettings`, `getGeneralSettings`, `updatePluginSetting` |
-| `be/faqs.ts` | 9 | reads default-setup's compiled `faqs.seed.json` |
+| `be/faqs.ts` | 9 | reads default-setup's compiled `faqs.content.json` |
 | `document.ts` | 107 | pure: `setIn`, `removeIn`, `changesFrom`, `isEqual`, `settingsProblems`, `SettingsRefusedError`, `SETTINGS_KIND` |
 | `settings.ts`, `plugin-settings.ts`, `constants.ts` | — | the feature's own defaults; reading a slice by name; UI URLs |
 | `fe/**` | — | the plugin, its machine, and the canvas/tabs/components |
@@ -137,7 +137,7 @@ host's equivalent of the first is `import { tx, untypedQx } from '@abuddy/ears'`
 - **settings** — `GET_SETTINGS`, `UPDATE_SETTINGS`, `RESET_SETTINGS`, `REPLACE_SETTINGS`
 - **CLI provider testing** — `TEST_CLI_PROVIDER`, importing `testCli`/`isCliName`/`clearCliPathCache` from
   `@/features/code/be/utils/resolve-cli`. default-setup's `code` feature.
-- **pack seeds** — `PREVIEW_PACK_SEEDS`, `IMPORT_PACK_SEEDS` (`previewPackSeeds` from `@abuddy/sdk/seed`)
+- **pack content** — `PREVIEW_PACK_CONTENT`, `IMPORT_PACK_CONTENT` (`previewPackContent` from `@abuddy/sdk/content`)
 - **app reset** — `RESET_APP` (`services.appData.reset()`)
 
 plus `SECRETS_CHANGED`/`SECRETS_UPDATED` forwarding (host's `forwardSecretsChanges`) and `loadFaqs()` for
@@ -166,8 +166,8 @@ What actually has to move, and what it drags:
 
 - **The store is the big one.** `repository.settingsQueries` / `settingsCommands` has **40+ call sites**
   across `code`, `threads`, `database`, `library`, `logs`, `notes`, `actions`, `prompts`, `brain`, `flows`,
-  plus seeds and migrations. Every one becomes a `services.settings` call. That is the bulk of Phase 3.
-- **`services.settings` has few callers**: 12, all in sandboxed seed actions (`seeds/actions/**`), plus
+  plus content and migrations. Every one becomes a `services.settings` call. That is the bulk of Phase 3.
+- **`services.settings` has few callers**: 12, all in sandboxed content actions (`content/actions/**`), plus
   tests. `getAll()` and `getGeneralSettings()` have **zero in-repo callers** — they exist for dependent
   packs.
 - **`whileReplacingData` is used outside the feature**: `features/database/be/system.ts:131,223` brackets
@@ -230,7 +230,7 @@ Final.
    settings, read and written without naming itself.
 
 5. **The system's non-settings jobs go where they belong**, in the same phase that moves the system:
-   `TEST_CLI_PROVIDER` to default-setup's `code` system; `PREVIEW_PACK_SEEDS`/`IMPORT_PACK_SEEDS` and
+   `TEST_CLI_PROVIDER` to default-setup's `code` system; `PREVIEW_PACK_CONTENT`/`IMPORT_PACK_CONTENT` and
    `RESET_APP` to the host `settings` system as host concerns (they already call host services);
    `SECRETS_CHANGED`/`SECRETS_UPDATED` stay with it, since `forwardSecretsChanges(registry)` already
    targets the `settings` designation.
@@ -275,8 +275,8 @@ Final.
   manifest; the registry collects each pack's entries in registration order and the Settings view lists
   them all. Option B (an app-extension slot) does not work: a pack's Help component renders inside the
   *host's* settings plugin, with no scope from which to reach its own backend. Named `help` rather than
-  `faqs` because `tests/build/no-pack-seed-specifics.spec.ts` is right that FAQ is default-setup's word
-  for its own content — the pack maps its FAQ seed onto the app's help entries.
+  `faqs` because `tests/build/no-pack-content-specifics.spec.ts` is right that FAQ is default-setup's word
+  for its own content — the pack maps its FAQ content onto the app's help entries.
 - **Open decision 2 — `general` keeps its shape.** Sections stay opaque to the host (Decision 2), and the
   host reads `general.application.hotkeys` only through the settings system's `APPLICATION_HOTKEYS` event,
   never by knowing the shape. No migration needed.
@@ -291,8 +291,8 @@ Both were settled while implementing; see the section above. This section is kep
 was open, and what it was weighed against, survives with the answer.
 
 1. **Where the Help tab's FAQs live** (settle before Phase 5). `be/faqs.ts` reads default-setup's compiled
-   `faqs.seed.json`, and the Help tab is part of the settings canvas. The renderer must not read a pack's
-   seed.
+   `faqs.content.json`, and the Help tab is part of the settings canvas. The renderer must not read a pack's
+   content.
    - **A pack contribution.** FAQs become something a pack registers (like commands or blocks), the host
      collects, and the settings view renders. Any pack can then contribute help. — *chosen, as `help`*
    - **An app-extension slot.** The Help tab becomes a slot default-setup fills through
@@ -347,11 +347,11 @@ listeners firing in order, and `whileReplacingData` bracketing; `npm test -w @ab
 >
 > **No pack code reads or writes the settings row any more**: `git grep 'repository.settings'` in
 > `packages/default-setup/src` finds nothing. All ~60 call sites across the ten features, the three
-> migrations, the seed actions and the settings seeder go through `services.settings`.
+> migrations, the content actions and the settings applier go through `services.settings`.
 >
 > The sections mechanism of Decision 2 landed with it, because the section-dependent half of the surface
 > (`getSettings`, `getGeneralSettings`, `updateSettings`, `replaceSettings`, …) could not move without it:
-> `PackRegistration.settingsSections` (a lazy provider, so a pack may read its compiled seeds on first
+> `PackRegistration.settingsSections` (a lazy provider, so a pack may read its compiled content on first
 > use), the manifest field, the codegen that emits it, and `createSettingsDefaultsStore` merging each
 > pack's sections into the default document. default-setup registers `general` and `assistant` through
 > `features/settings/sections.ts`. `PackSettingsDefaults.settings` is now the whole default document

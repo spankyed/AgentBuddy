@@ -78,9 +78,9 @@ looks like a service:
 2. **`untypedQx` / `untypedTx` from `@abuddy/ears`** — and this one is *documented as a pack affordance*:
    the root guide says pack code "queries untyped with `untypedQx`". Gating the repository while this stays
    open locks the front door and leaves the side door in the manual.
-3. **Seeds**, which touch `services` not at all. An applier calls
+3. **Content**, which touch `services` not at all. An applier calls
    `createEntityWithDefaults(record.entity, …)` (`abuddy-sdk/src/content/format-applier.ts:164`) with the entity name
-   taken from the pack's compiled seed data.
+   taken from the pack's compiled content data.
 
 **What is enforced today is declaration, not use.** The registry refuses a pack that *declares* a reserved
 entity type or one another pack already declared (`packs/registry.ts:37`, `:324`). The engine's
@@ -101,14 +101,14 @@ Restricting the data layer contradicts a documented affordance. Either:
 
 ### The cheap piece worth doing either way
 
-**A pack's compiled seeds may only create entity types the pack declares** — derivable at build time from
-`abuddy.json`'s `ears.entities` against the `record.entity` values in the compiled seed data, and refused by
-`abuddy validate` and `abuddy build`. It closes the seed path without touching runtime queries or the
+**A pack's compiled content may only create entity types the pack declares** — derivable at build time from
+`abuddy.json`'s `ears.entities` against the `record.entity` values in the compiled content data, and refused by
+`abuddy validate` and `abuddy build`. It closes the content path without touching runtime queries or the
 untyped affordance, and it is the same shape as the externals subset check `goal-one-kind-of-pack` landed
 (`abuddy-cli/tests/build/pack-externals.spec.ts`): two declarations, one derived comparison, a build-time
 refusal.
 
-It is worth doing whichever way the decision above goes, because a pack seeding another pack's entity types
+It is worth doing whichever way the decision above goes, because a pack applying another pack's entity types
 is a bug under either model.
 
 ## Steps
@@ -119,7 +119,7 @@ is a bug under either model.
 3. `check:specifiers` rule, with its firing case.
 4. The registry gate, with a case that an undeclared service is absent.
 5. default-setup declares what it uses — which is the migration, and the only pack to migrate.
-6. The seed-ownership check above, which is independent of 1-5 and can land first.
+6. The apply-ownership check above, which is independent of 1-5 and can land first.
 
 ## Verification
 

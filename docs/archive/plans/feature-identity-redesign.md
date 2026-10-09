@@ -142,7 +142,7 @@ interface PackRegistration {
     services?: Record<string, unknown>;
     settings?: FeatureSettings;
   }>;
-  // pack-level: seeders, migrations, extensions, boot hooks, ears
+  // pack-level: appliers, migrations, extensions, boot hooks, ears
 }
 ```
 

@@ -1,4 +1,4 @@
-// The SDK's build and seed modules know no pack's entity types: library, notes and FAQ seeding
+// The SDK's build and apply modules know no pack's entity types: library, notes and FAQ applying
 // belong to default-setup (its content entries, compiler modules and content writers). A new name here
 // needs a reason in ALLOWED, not a quiet exception.
 import * as fs from 'node:fs';
@@ -23,7 +23,7 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-function findPackSeedSpecifics(root: string = SRC): string[] {
+function findPackContentSpecifics(root: string = SRC): string[] {
   const found: string[] = [];
   for (const file of SCANNED.flatMap((dir) => sourceFiles(path.join(root, dir)))) {
     const relative = path.relative(root, file).split(path.sep).join('/');
@@ -41,9 +41,9 @@ function findPackSeedSpecifics(root: string = SRC): string[] {
   return found;
 }
 
-describe('SDK build and seed modules', () => {
+describe('SDK build and apply modules', () => {
   it("name no library, notes or FAQ types, formats, repositories or content keys", () => {
-    expect(findPackSeedSpecifics()).toEqual([]);
+    expect(findPackContentSpecifics()).toEqual([]);
   });
 
 });

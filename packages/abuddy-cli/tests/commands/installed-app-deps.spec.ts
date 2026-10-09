@@ -37,11 +37,11 @@ function builtInPack(snapshot: object = { types: { entities: {}, relKinds: {} },
   fs.writeFileSync(path.join(dir, 'dist', 'build', 'steps.build.mjs'), 'export const steps = [];');
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "base-pack" };');
-  // Compiled seeds at the top of a shipped pack's dist, beside files that aren't seeds
-  // Compiled seeds, where `abuddy build` writes them for every pack
+  // Compiled content at the top of a shipped pack's dist, beside files that aren't content
+  // Compiled content, where `abuddy build` writes them for every pack
   fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'settings.content.json'), '{"theme":"dark"}');
-  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'content.json'), '{"version":1,"seeds":[]}');
+  fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'content.json'), '{"version":1,"content":[]}');
   fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'media', 'library'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'media', 'library', 'pic.png'), 'PNG');
   fs.mkdirSync(path.join(dir, 'dist', 'defs'), { recursive: true });

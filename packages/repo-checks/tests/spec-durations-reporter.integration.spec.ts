@@ -178,7 +178,7 @@ describe('the durations reporter agrees with the console it replaced', () => {
    *
    * It is recorded at all because `ms` is tests and hooks only, and which part of the rest dominates
    * depends on the pool: collection for the host pool (68-85s against 71-92s of tests), setup for the pack
-   * pool (`seed-parity` at 1,703ms of setup against 753ms of tests). A `work/cores` computed from `ms`
+   * pool (`content-parity` at 1,703ms of setup against 753ms of tests). A `work/cores` computed from `ms`
    * alone understates by about two, which is how an 18.3s floor came to be read as binding against a
    * `work/cores` of 8.7s.
    */

@@ -126,7 +126,7 @@ For a pack that depends on default-setup, generate-entries leaves out default-se
 
 **Fix:**
 - Generate a dependency's step helpers with the same names and option types the dependency itself gets, from the dependency's published build facet and types.
-- `docs/public-facing/seeds.md`'s flow example must compile in the external-pack fixture.
+- `docs/public-facing/content.md`'s flow example must compile in the external-pack fixture.
 
 **Test:** the fixture pack uses `branch` and `schedule` with typed options.
 
@@ -148,7 +148,7 @@ Fix what would make a reader fail first. Every item is verified against the code
 - **Install command:** `abuddy install github:user/repo` fails (`cli.md`, `getting-started.md` ~106). Any input containing "/" is treated as `owner/repo[@tag]`, so `github:user` becomes the owner (`packages/abuddy-cli/src/commands/install.ts` ~12, ~34; `abuddy-host/src/packs/pack-installer.ts` ~265-273).
 - **Install location and layout:** `architecture.md` (Install, `pack://`) and `packages/api/src/packs/CLAUDE.md` say packs install to `~/.agentbuddy/packs` with a `dist/` layout.
   - Location: `resolveAppContext().userDataDir` (`packs/`, `host-packs/`, `pack-registry.json`).
-  - Layout: `abuddy.json`, `bundle.json`, `runtime/{index.cjs,fe.js,fe.css,seeds/}`, `build/`, `types/snapshot.json` (`abuddy-host/src/packs/bundle.ts` ~26-38).
+  - Layout: `abuddy.json`, `bundle.json`, `runtime/{index.cjs,fe.js,fe.css,content/}`, `build/`, `types/snapshot.json` (`abuddy-host/src/packs/bundle.ts` ~26-38).
   - Installing is stage → verify → place.
 - **Boot order** in `architecture.md` and `packages/api/src/packs/CLAUDE.md` leaves out steps. The real order (`packages/api/src/setup/backend.ts`):
   1. register the host packs system;
@@ -161,7 +161,7 @@ Fix what would make a reader fail first. Every item is verified against the code
   8. hydrate;
   9. every pack's `onInit`;
   10. host migrations, then pack migrations;
-  11. seeds;
+  11. content;
   12. the bus starts.
 - **External pack system ids:** `features.md` ~108/~115 sends to bare ids (`'bookmarks'`). External packs' systems are `<packId>.<featureId>` (`api/src/packs/pack-loader.ts` ~490); point to `busId` from `#generated/bus-ids`.
 - **`extensions.md` signatures:**
@@ -170,7 +170,7 @@ Fix what would make a reader fail first. Every item is verified against the code
   - **Artifact viewers** receive `artifact: ArtifactItem`, not `data` (`threads/fe/canvas/agent/content-viewer.vue` ~26).
   - **Blocks** receive their props spread out plus `disabled`/`response`, and answer with `@submit`/`@cancel` (`threads/fe/chat/interactions/InteractionContainer.vue`).
   - **`ArtifactFEFacet.icon`** is required.
-- **`seeds.md` settings:** it lists "Settings" as something a pack seeds. The manifest rejects `boot.seed.settings` for non-built-in packs (`manifest-schema.ts` ~223); feature defaults go in `features[].settings`.
+- **`content.md` settings:** it lists "Settings" as something a pack content. The manifest rejects `content.sources.settings` for non-built-in packs (`manifest-schema.ts` ~223); feature defaults go in `features[].settings`.
 - **Root `CLAUDE.md`:**
   - Migrations live in `packages/default-setup/src/migrations` (`PackMigration`); `packages/api/src/setup/migrations` holds only the runner.
   - `npm run test-build` doesn't exist.
@@ -182,14 +182,14 @@ Fix what would make a reader fail first. Every item is verified against the code
   - `packages/default-setup/src/features/brain/be/utils/README.md` describes files that no longer exist.
   - `packages/default-setup/src/features/library/fe/components/search-index/README.md` names components that don't exist, with a wrong model list.
   - `packages/default-setup/tests/unit/_hybrid/README.md` lists specs that aren't there, and a separation plan that's already done.
-- **Seeds `CLAUDE.md` imports:** `packages/default-setup/src/seeds/CLAUDE.md` gives the wrong import paths:
+- **Content `CLAUDE.md` imports:** `packages/default-setup/src/content/CLAUDE.md` gives the wrong import paths:
   - `ActionMeta` and `PromptMeta` come from `@abuddy/sdk/build`;
   - `Services` and `Z` come from `@/__generated__/services`.
 
   It also links `WRITING-ACTIONS.md`/`WRITING-PROMPTS.md`, which don't exist.
 - **`db` CLI README:**
   - It never says every script needs `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR`.
-  - It claims every command runs from the root, but `db:export`/`db:import`/`db:seed`/`db:clearSettings` exist only in `packages/api/package.json`.
+  - It claims every command runs from the root, but `db:export`/`db:import`/`db:apply`/`db:clearSettings` exist only in `packages/api/package.json`.
   - `db:cli` takes `-e/-s/-o/-f/-v`.
 - **Root `README.md`:**
   - scripts that don't exist (`start:no-build`, `compile:*`);
@@ -204,7 +204,7 @@ Fix what would make a reader fail first. Every item is verified against the code
 - **`cli.md`:**
   - The commands `release [patch|minor|major] [--beta] [--dry-run] [--local] [--skip-tests] [--skip-e2e]`, `release publish`, `init-tests` and `test [--app-root|--app beta]`.
   - The `-d/-b` flags on install/uninstall/list.
-  - Build's `--release` and `--skip-fe`, and its checks: facade gate, seed runtime load, feature settings, dependency version warning.
+  - Build's `--release` and `--skip-fe`, and its checks: facade gate, content runtime load, feature settings, dependency version warning.
   - `abuddy dev` is a Vite HMR server that installs into dev data, not a watcher.
   - `abuddy init` creates no feature.
   - Only `add feature`/`service`/`step` run generate-entries.
@@ -213,14 +213,14 @@ Fix what would make a reader fail first. Every item is verified against the code
 - **`manifest.md`:**
   - feature ids `^[a-z][a-zA-Z0-9]*$`;
   - service/repository keys as identifiers with `path#export` values;
-  - the `boot.hooks` exports (`onInit`, `onShutdown`, `seed`);
+  - the `boot.hooks` exports (`onInit`, `onShutdown`, `content`);
   - the `features[].settings` contract (only `plugins.<id>` and `plugins._meta.visibility.<id>`);
   - entity/relKind names that can't redeclare SDK ones;
-  - `seedHooks` keys;
-  - the `seedFormats` name rule;
+  - `contentWriters` keys;
+  - the `content.formats` name rule;
   - `<dep>:<format>` needs a declared dependency;
   - the sub-fields of `dsl`, `steps.definitions[].dsl` and `partitionPolicy`.
-- **`seeds.md`:**
+- **`content.md`:**
   - **Undocumented step helpers:** 7 of 13 steps have none documented: `llm`, `query`, `create`, `update`, `transform`, `kill` and `schedule`.
   - **Undocumented options:** action `map`/`params`, fire `scope`/`payload`, subflow `inherit`/`map`, the `listener` trigger.
   - **Unexplained:** `$.event`/`$.steps`/`$.lastStep` mappings, the switch operators, and `FlowConfig` (`root`, `final`, `next`).
@@ -229,7 +229,7 @@ Fix what would make a reader fail first. Every item is verified against the code
     - only `@abuddy/sdk/actions` is importable;
     - Node globals only warn;
     - `z`/`flowId` are passed only by the flow action step.
-  - **The seeder module contract** (`SeederContext` → `SeedCounts`), `seedPolicy`, and include sets.
+  - **The applier module contract** (`ContentApplierContext` → `ContentCounts`), `contentPolicy`, and include sets.
 - **`extensions.md`:**
   - step `runtime.waits`/`spawnsSubflow` and handler result conventions;
   - the trigger facet, and the FE facet fields;
@@ -251,7 +251,7 @@ Fix what would make a reader fail first. Every item is verified against the code
   - the `nextEmit`/`runFlow` default timeouts, `FlowRun.eventTNodeIds`, exported types, and `takeSystemErrors`;
   - the harness gives every system `CLIENT_CONNECTED` on `connect()`.
 - **`packages/abuddy-testing/CLAUDE.md` and `tests/e2e/CLAUDE.md`:**
-  - the file maps are missing `secrets.spec.ts` and `import-pack-seeds.spec.ts`;
+  - the file maps are missing `secrets.spec.ts` and `import-pack-content.spec.ts`;
   - app resolution order: `appExecutable`, `appRoot`, `ABUDDY_APP_EXECUTABLE`, `ABUDDY_ROOT`, then auto-detect;
   - the in-memory hosts include `secrets`;
   - `mockInference` includes `relevance`/rerank.
@@ -265,12 +265,12 @@ Fix what would make a reader fail first. Every item is verified against the code
   - FE boot: `loadPackFrontend`, `PACK_FRONTEND_LOADED`, `BUS_SUBSCRIBED` → `packClientReady`.
 - **Root `CLAUDE.md` scripts:** `test:unit`, `test:all`, `test:external-pack`, `test:packaged-authoring`, `typecheck:host/ui/cli/scripts`, `check:ui-entries`, `generate:schema`/`schema:check`, `facade:check`/`facade:update`.
 - **`packages/default-setup/CLAUDE.md`:**
-  - Boot hooks: `earlySystem` plus `boot.hooks` `onInit` (`createDefaultSettings`)/`onShutdown` (terminals, schedules, listeners, flow actors) plus the `seedManifest`.
+  - Boot hooks: `earlySystem` plus `boot.hooks` `onInit` (`createDefaultSettings`)/`onShutdown` (terminals, schedules, listeners, flow actors) plus the `contentManifest`.
   - `keep_alive` is the step's real type name (the doc says `keep-alive`).
-  - `seed-runtime.ts` in the generated files list.
+  - `content-runtime.ts` in the generated files list.
 - **Packages with no README or CLAUDE.md:**
   - abuddy-host: secrets, installer/updater/staging, bus composition, data dirs, source resolution;
-  - abuddy-sdk: the build pipeline and `module-exports`, the seed engine, registries;
+  - abuddy-sdk: the build pipeline and `module-exports`, the apply engine, registries;
   - abuddy-cli: command inventory, facade gate, source vs dist mode;
   - abuddy-ui: component conventions;
   - api: `core/` layout and routers, tests;
@@ -282,10 +282,10 @@ Fix what would make a reader fail first. Every item is verified against the code
 ## Out of scope (tracked separately)
 
 - **Slash commands from packs:**
-  - a pack seeding `internal/commands/*.md` creates a second `internal` folder, because library folders match by name and seed keys are per pack;
+  - a pack applying `internal/commands/*.md` creates a second `internal` folder, because library folders match by name and content keys are per pack;
   - runtime pack activation doesn't refresh an open chat's command list;
   - declaring commands in the manifest or action metadata.
-- **App reset:** move "Reset app"'s manual steps (default settings, seeding, migrations) into `services.appData.reset()`, as `docs/goals/goal-package-boundaries.md` plans.
+- **App reset:** move "Reset app"'s manual steps (default settings, applying, migrations) into `services.appData.reset()`, as `docs/goals/goal-package-boundaries.md` plans.
 - **Generator regexes:** the few that remain (step node types, the step DSL node lookup, `trackField`, dependency `.d.ts` type names).
 - **Known limitations:**
   - replies to one window go to every window;

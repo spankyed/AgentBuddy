@@ -74,7 +74,7 @@ describe('a pack whose content compiler modules fail to bundle', () => {
     const exitCode = process.exitCode;
     process.chdir(root);
     try {
-      await expect(build(['--skip-generate'])).rejects.toThrow(/Seed compiler bundle failed/);
+      await expect(build(['--skip-generate'])).rejects.toThrow(/Content compiler bundle failed/);
     } finally {
       process.chdir(cwd);
       process.exitCode = exitCode;

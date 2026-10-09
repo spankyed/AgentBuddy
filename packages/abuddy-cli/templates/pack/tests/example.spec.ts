@@ -8,7 +8,7 @@ describe('__NAME__', () => {
     expect(manifest.default.id).toBe('__NAME__');
   });
 
-  it('seeds the examples entry', async () => {
+  it('content the examples entry', async () => {
     expect(await importContent({ keys: ['__CONTENT_KEY__'] })).toEqual({ __CONTENT_KEY__: { created: 1, updated: 0, skipped: 0 } });
     expect(findAll(EARS.Entity.__PASCAL__).map((row) => row.title)).toEqual(['Hello']);
   });

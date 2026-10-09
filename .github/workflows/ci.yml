@@ -62,8 +62,8 @@ jobs:
       - name: Schema drift check
         run: npm run schema:check --workspace @abuddy/sdk
 
-      # Compiled seeds, snapshot, build/ (seed compilers, seed runtime) and the backend runtime: read by the
-      # seed parity, dependent-pack, SDK bridge drift and seed runtime tests
+      # Compiled content, snapshot, build/ (content compilers, content runtime) and the backend runtime: read by the
+      # content parity, dependent-pack, SDK bridge drift and content runtime tests
       - name: Build default-setup pack artifacts
         working-directory: packages/default-setup
         run: npx abuddy build
@@ -82,7 +82,7 @@ jobs:
       - name: Unit tests (sdk)
         run: npm test --workspace @abuddy/sdk -- --reporter=verbose
         env:
-          REQUIRE_SEED_RUNTIME: '1'
+          REQUIRE_CONTENT_RUNTIME: '1'
 
       - name: Unit tests (ears)
         run: npm test --workspace @abuddy/ears -- --reporter=verbose

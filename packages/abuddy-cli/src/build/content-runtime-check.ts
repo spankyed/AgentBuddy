@@ -31,7 +31,7 @@ export async function resolve(specifier, context, next) {
 // What a dependent's unit tests do with the bundle (@abuddy/testing/harness setupPackTests)
 const LOAD_SCRIPT = `
 import { register } from 'node:module';
-const [hook, bundle, blocked] = JSON.parse(process.env.ABUDDY_SEED_RUNTIME_CHECK);
+const [hook, bundle, blocked] = JSON.parse(process.env.ABUDDY_CONTENT_RUNTIME_CHECK);
 register(hook, { data: { blocked } });
 const { registerContentRuntime, startTestRuntime } = await import('@abuddy/sdk/testing');
 startTestRuntime();
@@ -92,7 +92,7 @@ export async function checkContentRuntimeLoads(
           NODE_OPTIONS: withoutSourceCondition(process.env.NODE_OPTIONS),
           ABUDDY_ENV: 'test',
           ABUDDY_USER_DATA_DIR: dataDir,
-          ABUDDY_SEED_RUNTIME_CHECK: check,
+          ABUDDY_CONTENT_RUNTIME_CHECK: check,
         },
         stdio: ['ignore', 'ignore', 'pipe'],
         timeout: LOAD_TIMEOUT_MS,

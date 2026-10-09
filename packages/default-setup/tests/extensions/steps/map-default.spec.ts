@@ -51,7 +51,7 @@ describe('a mapping with a fallback', () => {
   })
 
   // The case the fallback exists for: without one, a source that resolves to nothing writes nothing, and the
-  // short form is still what every seeded flow writes
+  // short form is still what every written flow writes
   it('writes nothing when the source misses and no fallback is given', async () => {
     await runWithMapping('$.event.data.payload.absent')
 

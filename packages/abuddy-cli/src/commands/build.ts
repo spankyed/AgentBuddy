@@ -206,7 +206,7 @@ async function buildIntoStaging(args: string[]) {
     fs.mkdirSync(contentOutputDir, { recursive: true });
   }
 
-  // Seed compiler modules, for dependents' entries naming this pack's formats. A pack whose formats
+  // Content compiler modules, for dependents' entries naming this pack's formats. A pack whose formats
   // dependents can't compile with isn't built: fail before the snapshot that advertises them
   const contentCompilers = Object.fromEntries(
     Object.entries(manifest.content?.formats ?? {}).flatMap(([name, format]) => (format.compiler ? [[name, format.compiler]] : [])),
@@ -214,7 +214,7 @@ async function buildIntoStaging(args: string[]) {
   const contentCompilersBundled = Object.keys(contentCompilers).length > 0;
   if (contentCompilersBundled) {
     const bundled = await bundlePackContentCompilers(root, outputDir, contentCompilers, { release, recordReads: reads?.forPhase('contentCompilers') });
-    if (!bundled.success) throw new Error(`Seed compiler bundle failed: ${bundled.error}`);
+    if (!bundled.success) throw new Error(`Content compiler bundle failed: ${bundled.error}`);
   }
 
   // Every failed bundle or gate is reported, then fails the build before the snapshot is written:
@@ -337,12 +337,12 @@ async function buildIntoStaging(args: string[]) {
     }
   }
 
-  // ── Seed runtime (for dependents' unit tests) ─────────────────────────
+  // ── Content runtime (for dependents' unit tests) ─────────────────────────
   const contentRuntime = await bundlePackContentRuntime(root, outputDir, { release, recordReads: reads?.forPhase('contentRuntime') });
   if (contentRuntime.success) {
     console.log(`  content runtime: dist/${PACK_LAYOUT.buildDir}/${CONTENT_RUNTIME_FILE}`);
   } else {
-    fail(`Seed runtime bundle failed: ${contentRuntime.error}`);
+    fail(`Content runtime bundle failed: ${contentRuntime.error}`);
   }
 
   if (contentCompilersBundled) console.log(`  content compilers: dist/${PACK_LAYOUT.buildDir}/${CONTENT_COMPILERS_FILE}`);

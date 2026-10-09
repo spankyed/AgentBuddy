@@ -208,7 +208,7 @@ Final.
 5. **Keep `tests/e2e/smoke.spec.ts` "runs in an isolated per-worker test data dir".** It tests the
    fixture rather than the app, which is normally a delete, but it is what stops an E2E run from
    touching real user data.
-6. **Don't re-record the seed-parity goldens.** The audit suggested re-recording them with notes
+6. **Don't re-record the content-parity goldens.** The audit suggested re-recording them with notes
    included, to retire `NOTES_INTENDED_DIFFERENCES`. That changes what the goldens cover and belongs in
    its own change (Deferred).
 7. **Leave `packages/abuddy-host/tests/packs/pack-protocol.spec.ts` alone.** Its 7 tests don't import
@@ -277,7 +277,7 @@ for a moved name, an unbridged-leaf case. The file stays; those individual tests
 |---|---|---|
 | `scripts/check-import-specifiers.ts` (13 rules) | layering, pack boundaries, relative `.js` specifiers, `lmdb`, `_internal` imports, `console` in pack backends, repository casts, source conditions | every symbol it names is exported and importable |
 | `abuddy-ears/tests/no-module-state.spec.ts` | module-level mutable state in `src/` | `new Map()` at module scope is an ordinary thing to write |
-| `abuddy-sdk/tests/build/no-pack-seed-specifics.spec.ts` | pack entity names in the SDK's build and seed modules | `Document`, `Note` and `FAQ` exist in default-setup and are easy to reach for |
+| `abuddy-sdk/tests/build/no-pack-content-specifics.spec.ts` | pack entity names in the SDK's build and apply modules | `Document`, `Note` and `FAQ` exist in default-setup and are easy to reach for |
 | `abuddy-sdk/tests/env/identity-guard.spec.ts` | hand-rolled environment and data-dir resolution | a literal `Application Support` path or a raw `ABUDDY_ENV` read is a natural shortcut |
 | `api/tests/unit/source-layout.spec.ts` | any file under `api/src` outside its list | an allowlist (Decision 9): it catches files nobody predicted |
 | `abuddy-host/tests/packs/runtime/sdk-bridge-drift.spec.ts` | the bridge list drifting from the exports map | both sides change independently, and neither fails the other |
@@ -382,7 +382,7 @@ Delete:
 - `bus/client-events.spec.ts`: "logs arrays over 5 items as their count and first 5".
 - `fe/pack-store-designations.spec.ts`: "resolve a role to the plugin that plays it, and drop it when the
   pack unregisters" (duplicate of `fe/fe-registered-lookups.spec.ts`).
-- `packs/registered-lookups.spec.ts`: "(seed hooks) are found once their pack registers…", "don't change
+- `packs/registered-lookups.spec.ts`: "(content hooks) are found once their pack registers…", "don't change
   when a pack's settings are refused", "(commands) aren't changed by a registration that collides".
 - `packs/registration.spec.ts`: "drops a pack's roles when it unregisters", "keeps TNode out of
   persistence and routes Secret to the secrets store without any pack asking" (the title describes an
@@ -396,7 +396,7 @@ Delete:
   update check", "unregisterPackFE removes contributions and returns removed plugins", "unregisterPackFE
   leaves a plugin another registration owns when the pack declared the same id", "registerPack then
   unregisterPack cleans up SDK registries".
-- `packs/runtime/loader.spec.ts`: "handles features without system entry", "seeds from runtime/seeds".
+- `packs/runtime/loader.spec.ts`: "handles features without system entry", "content from runtime/content".
 - `packs/runtime/sdk-bridge-drift.spec.ts`: "keeps unbridged leaf modules free of imports"
   (`UNBRIDGED_LEAVES` is empty, so it can't fail). Remove the empty map and its uses.
 
@@ -441,15 +441,15 @@ Delete:
   sentence that cites it, and any other doc `git grep no-engine-state-access` finds.
 - `abuddy-sdk/tests/designations/pack-facing.spec.ts` (whole file): "no longer exports
   `registerDesignations`"; `api:check` controls the published surface.
-- `abuddy-sdk/tests/build/no-pack-seed-specifics.spec.ts`: "every allowlist entry still matches a line".
+- `abuddy-sdk/tests/build/no-pack-content-specifics.spec.ts`: "every allowlist entry still matches a line".
 - `abuddy-sdk/tests/build/manifest-schema.spec.ts`: "rejects the removed boot.earlySystem and
   boot.createDefaultSettings"; the unknown-key cases cover it.
 - `abuddy-sdk/tests/runtime/bound-transport.spec.ts`: "sendToBrainSystem sends to the designated brain",
   "reportError logs a system error and sends it to the clients" (both duplicates).
 - `abuddy-sdk/tests/testing/fake-inference.spec.ts`: "records a model call per batch the AI SDK splits a
   call into" (pins AI SDK batch sizes).
-- `abuddy-sdk/tests/seed/flow-seeder.spec.ts` and `tests/seed/seeder.spec.ts`: the "fails with a rebuild
-  error when the compiled seeds name no pack" tests; `seed-registry.spec.ts` covers the shared check.
+- `abuddy-sdk/tests/content/flow-applier.spec.ts` and `tests/content/applier.spec.ts`: the "fails with a rebuild
+  error when the compiled content name no pack" tests; `content-registry.spec.ts` covers the shared check.
 - `abuddy-sdk/tests/runtime/internals-entry.spec.ts`: "is exported only under the @abuddy/source
   condition" (pins the `package.json` export object; `published-exports.spec.ts` covers the entry).
 - If `generate-entries.spec.ts` still has "ignores dependencies built when their manifests still declared
@@ -486,7 +486,7 @@ From the repo inventory:
 
 Delete:
 - `tests/unit/generated-entries-import.spec.ts` (whole file): a transitional guard that importing the
-  generated entries registers nothing, pinning the seeder and DSL-type key lists.
+  generated entries registers nothing, pinning the applier and DSL-type key lists.
 - `src/features/flows/fe/canvas/__tests__/layout-utils.test.ts`: "lays out with the steps the test
   registered" (tests the file's own fixture).
 - `tests/unit/handle-fork-stress.spec.ts`: "persists state on the new thread before returning" (the
@@ -528,7 +528,7 @@ Delete:
   entity ID", "RepositoryError is constructable and instanceof Error", "RepositoryErrorCode has expected
   values", "repository proxy delegates registerRepository", "getAttr reads stored attributes",
   "resetTestData resets all state", "emit and safeEvents are callable", "getAppVersion reads the host
-  version", "seed helpers are callable", "broadcastToPlugin and sendToBrainSystem are callable", and the
+  version", "content helpers are callable", "broadcastToPlugin and sendToBrainSystem are callable", and the
   source-grep test for the `@/core` alias (with the sibling `@/repository` and `@/services` greps, which
   `check:specifiers` covers). Keep the rest of the file.
 - `tests/unit/sdk-type-safety.spec.ts`: "qx() returns a QueryBuilder typed with the pack shapes",
@@ -536,22 +536,22 @@ Delete:
   (all duplicates of `typed-query-builder.spec.ts` or of tests above them).
 - `tests/unit/typed-query-builder.spec.ts`: "qx(someEntityId) returns untyped QueryBuilder" (the
   overload-order test asserts it).
-- `tests/unit/seed-parity/notes-change-tracking.spec.ts`: "fresh seed in mode %s matches the golden
-  notes", "seeds only the included notes", "seeds default-setup's own notes" (all covered by
-  `seed-parity.spec.ts`).
+- `tests/unit/content-parity/notes-change-tracking.spec.ts`: "fresh content in mode %s matches the golden
+  notes", "content only the included notes", "content default-setup's own notes" (all covered by
+  `content-parity.spec.ts`).
 
 Trim:
-- `typed-query-builder.spec.ts`: keep the Action and Thread seed cases; drop the Flow, Document and
+- `typed-query-builder.spec.ts`: keep the Action and Thread content cases; drop the Flow, Document and
   Prompt copies.
 - `notes-change-tracking.spec.ts`: the `sourceHash` check becomes non-empty rather than a 16-hex match.
-- `seed-parity/dependent-pack.spec.ts`: drop the character-exact generated `seeders.ts` match; loosen the
+- `content-parity/dependent-pack.spec.ts`: drop the character-exact generated `appliers.ts` match; loosen the
   unresolved-dependency throw to `/default-setup/`.
-- `seed-parity/edited-flows.spec.ts`: drop `skipped:` from the two `toMatchObject`s (it hard-codes how
+- `content-parity/edited-flows.spec.ts`: drop `skipped:` from the two `toMatchObject`s (it hard-codes how
   many flows default-setup ships); keep `updated`.
 - `query-step.spec.ts`: drop the `inference.calls` length check; match the API-key error by fragment.
-- `seed-action-services.spec.ts`: keep the log's `level` and `source`, drop the debug message and meta.
+- `content-action-services.spec.ts`: keep the log's `level` and `source`, drop the debug message and meta.
 - `send-to-system-diagnostics.spec.ts`: drop the assertions on TypeScript's message text.
-- `settings-seed.spec.ts`: drop the "the removed `internal` section is gone" line.
+- `settings-content.spec.ts`: drop the "the removed `internal` section is gone" line.
 - `settings-secrets.spec.ts`: retitle "keeps CLI path overrides … cleared from the cache" to what it
   checks, or assert that `resolveCliPath` picks up the new path.
 
@@ -591,8 +591,8 @@ Trim:
   `/isn't created yet/`.
 - `renderer/application-pack-registry.spec.ts` (three tests), `renderer/pack-loader.spec.ts`: drop the
   pinned `console.warn`/`console.error` text; keep the toast and reporting assertions.
-- `tests/fixtures/external-pack/tests/unit/seeds.spec.ts`: drop the `library: { created: 3 }` count,
-  which pins how many folders default-setup's library seeding makes.
+- `tests/fixtures/external-pack/tests/unit/content.spec.ts`: drop the `library: { created: 3 }` count,
+  which pins how many folders default-setup's library applying makes.
 
 Keep (Decision 5): `tests/e2e/smoke.spec.ts` "runs in an isolated per-worker test data dir".
 
@@ -632,8 +632,8 @@ single package's phase can do.
 
 ## Deferred
 
-- **Re-recording the seed-parity goldens** with notes included, retiring `NOTES_INTENDED_DIFFERENCES` and
-  the dropped `sourceHash` and counts in `seed-parity.spec.ts` (Decision 6).
+- **Re-recording the content-parity goldens** with notes included, retiring `NOTES_INTENDED_DIFFERENCES` and
+  the dropped `sourceHash` and counts in `content-parity.spec.ts` (Decision 6).
 - **`packages/abuddy-host/tests/packs/pack-protocol.spec.ts`** (Decision 7): its 7 tests check a MIME map
   declared in the test and a re-implementation of the install logic, so they can't catch a change in the
   product code. Rewriting them against the real module, or deleting them, is its own change.
@@ -742,7 +742,7 @@ same edit, so the guard is what catches it rather than a second opinion.
 |---|---|---|
 | `check-import-specifiers.ts` | a pack backend imports `@abuddy/host/packs` | fails; `typecheck:pack` passes — only the guard |
 | `no-module-state.spec.ts` | `const blueprintCache = new Map()` at module scope in `src/` | fails; `typecheck:ears` passes — only the guard |
-| `no-pack-seed-specifics.spec.ts` | `src/seed` special-cases `'Document'` and `'Note'` | fails; `typecheck:sdk` passes — only the guard |
+| `no-pack-content-specifics.spec.ts` | `src/content` special-cases `'Document'` and `'Note'` | fails; `typecheck:sdk` passes — only the guard |
 | `identity-guard.spec.ts` | a literal `Library/Application Support/abuddy` path in the SDK | fails; `typecheck:sdk` passes — only the guard |
 | `source-layout.spec.ts` | a new `packages/api/src/helpers.ts` | fails; `typecheck:be` passes — only the guard |
 | `sdk-bridge-drift.spec.ts` | one entry dropped from the bridge map | fails; `typecheck:host` passes — only the guard |
@@ -782,9 +782,9 @@ longer trips it.
 
 ### Kept against the audit
 
-- **`seeder.spec.ts`'s "fail with a rebuild error when the compiled seeds name no pack".** The plan gave
-  `seed-registry.spec.ts` as the shared cover and there is no such file — `tests/seed/` holds
-  `flow-seeder`, `preview` and `seeder`. With flow-seeder's copy deleted this is the only test of that
+- **`applier.spec.ts`'s "fail with a rebuild error when the compiled content name no pack".** The plan gave
+  `content-registry.spec.ts` as the shared cover and there is no such file — `tests/content/` holds
+  `flow-applier`, `preview` and `applier`. With flow-applier's copy deleted this is the only test of that
   refusal.
 - **`settings-secrets`' CLI-path test.** Its title claimed a cache was cleared and its body never checked
   one; retitled to what it asserts rather than deleted.
@@ -894,6 +894,6 @@ All green. `typecheck` (13 steps, 29.3s), `schema:check` 0.3s, `compile` 11.4s, 
 - `import-specifiers.spec.ts` stays in the fast half with its one spawning test extracted, rather than
   moving 187 in-process tests out.
 - The export clones merged to 5 tests per entity type rather than 7, folding the empty-export and
-  metadata cases into the one that checks what a seeded export writes. Every assertion of both is kept.
+  metadata cases into the one that checks what a written export writes. Every assertion of both is kept.
 - Where the plan said "drop the pinned message", the fragment kept is the one a reader acts on: the flag,
   the file, the entity type, the id, the fix.

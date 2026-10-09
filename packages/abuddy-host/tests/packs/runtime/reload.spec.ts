@@ -80,11 +80,11 @@ afterEach(() => {
 
 describe('reloading a pack the app ships', () => {
   const SHIPPED_ID = 'shipped-pack';
-  const seeded: string[] = [];
+  const written: string[] = [];
 
   /**
    * A pack the app ships, installed as every pack is: its built runtime records the compiled dir it was
-   * pointed at, reads it in its onInit, and it declares a seed over one compiled artifact
+   * pointed at, reads it in its onInit, and it declares an apply over one compiled artifact
    */
   function writeShipped(manifest: Record<string, unknown> = {}): string {
     const packDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID);
@@ -93,7 +93,7 @@ describe('reloading a pack the app ships', () => {
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: SHIPPED_ID, name: SHIPPED_ID, version: '1.0.0', ...manifest }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: SHIPPED_ID, version: '1.0.0', files: {} }));
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT, types: {} }));
-    writeSeeds('[{ "label": "first" }]');
+    writeContent('[{ "label": "first" }]');
     // The index naming the pack, and the runtime built beside it
     fs.writeFileSync(path.join(packDir, PACK_LAYOUT.contentDir, 'content.json'), JSON.stringify({ version: 1, packId: SHIPPED_ID, entries: [] }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `
@@ -118,29 +118,29 @@ describe('reloading a pack the app ships', () => {
   }
 
   /** A pack's compiled content, where an installed pack holds them */
-  function writeSeeds(content: string): void {
+  function writeContent(content: string): void {
     const contentDir = path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir);
     fs.mkdirSync(contentDir, { recursive: true });
     fs.writeFileSync(path.join(contentDir, 'actions.content.json'), content);
   }
 
   /** The pack as `applyPacks` takes it: a pack the app ships, with the policy its registration declares */
-  const seedTarget = (packId: string = SHIPPED_ID) =>
+  const contentTarget = (packId: string = SHIPPED_ID) =>
     ({ manifest: { id: packId }, dir: path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID) });
 
-  /** Records an applier reports for the next seed instead of importing them (an invalid flow, say) */
+  /** Records an applier reports for the next content instead of importing them (an invalid flow, say) */
   let recordsThatFail: string[] = [];
   /** Makes the applier itself throw, as a rebuild removing its files mid-reload would */
-  let seedFailure: Error | undefined;
+  let applyFailure: Error | undefined;
   /** What the code under test logged at error level */
   const loggedErrors: string[] = [];
   let stopLogging: (() => void) | undefined;
 
   beforeEach(() => {
-    seeded.length = 0;
+    written.length = 0;
     loggedErrors.length = 0;
     recordsThatFail = [];
-    seedFailure = undefined;
+    applyFailure = undefined;
     // The reason lives in meta: the app's logger redacts an Error into { name, message, stack }, the test host's passes it on
     stopLogging = rootEvents.onLog((event) => {
       if (event.level !== 'error') return;
@@ -154,8 +154,8 @@ describe('reloading a pack the app ships', () => {
       key: 'actions',
       // An applier reports the records it couldn't write in its counts; it doesn't throw
       apply: ({ compiledDir }) => {
-        if (seedFailure) throw seedFailure;
-        seeded.push(compiledDir);
+        if (applyFailure) throw applyFailure;
+        written.push(compiledDir);
         return { created: 1, updated: 0, skipped: recordsThatFail.length, ...(recordsThatFail.length > 0 && { errors: recordsThatFail }) };
       },
     }]);
@@ -184,76 +184,76 @@ describe('reloading a pack the app ships', () => {
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: SHIPPED_ID });
   });
 
-  it('seeds the compiled data a rebuild changed, and leaves unchanged data alone', async () => {
+  it('content the compiled data a rebuild changed, and leaves unchanged data alone', async () => {
     writeShipped();
     loadAppPacks(registry, new Set([SHIPPED_ID]));
-    // Boot's own seeding, which the reload picks up from
-    applyPacks([seedTarget()]);
-    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
+    // Boot's own applying, which the reload picks up from
+    applyPacks([contentTarget()]);
+    expect(written).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
 
     // A reload after a code-only rebuild leaves the data alone
-    seeded.length = 0;
+    written.length = 0;
     await reloadPackById(registry, SHIPPED_ID, bus as never);
-    expect(seeded).toEqual([]);
+    expect(written).toEqual([]);
 
     // A reload carrying recompiled content imports them
-    writeSeeds('[{ "label": "second" }]');
+    writeContent('[{ "label": "second" }]');
     await reloadPackById(registry, SHIPPED_ID, bus as never);
-    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
+    expect(written).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
   });
 
-  it("records what it seeded per pack, so a second shipped pack's boot apply doesn't re-run this one", async () => {
+  it("records what it written per pack, so a second shipped pack's boot apply doesn't re-run this one", async () => {
     writeShipped();
     loadAppPacks(registry, new Set([SHIPPED_ID]));
-    applyPacks([seedTarget()]);
-    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
+    applyPacks([contentTarget()]);
+    expect(written).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
 
     // Another pack the app ships applies its own content, recorded in its own entity
-    seeded.length = 0;
-    applyPacks([seedTarget('other-pack')]);
+    written.length = 0;
+    applyPacks([contentTarget('other-pack')]);
     expect([SHIPPED_ID, 'other-pack'].map((id) => appliedContent.get(id).revision).every(Boolean)).toBe(true);
 
-    // ...and this pack's own seed is still recorded, so it isn't seeded again
-    seeded.length = 0;
-    applyPacks([seedTarget()]);
-    expect(seeded).toEqual([]);
+    // ...and this pack's own content is still recorded, so it isn't written again
+    written.length = 0;
+    applyPacks([contentTarget()]);
+    expect(written).toEqual([]);
   });
 
-  it('reports the records an applier could not seed, and still records the hash so they are retried on the next change', async () => {
+  it('reports the records an applier could not content, and still records the hash so they are retried on the next change', async () => {
     writeShipped();
     loadAppPacks(registry, new Set([SHIPPED_ID]));
     recordsThatFail = ['Flow "Broken": step 2 names no action'];
-    applyPacks([seedTarget()]);
+    applyPacks([contentTarget()]);
 
-    // The failure is reported, not swallowed behind "Boot seed completed"
+    // The failure is reported, not swallowed behind "Boot apply completed"
     expect(loggedErrors.join('\n')).toContain('Flow "Broken": step 2 names no action');
     // The revision is recorded anyway: the same failing data isn't re-applied every boot
     expect(appliedContent.get(SHIPPED_ID).revision).toBeTruthy();
 
-    // ...and the next seed of unchanged data doesn't retry it
-    seeded.length = 0;
-    applyPacks([seedTarget()]);
-    expect(seeded).toEqual([]);
+    // ...and the next content of unchanged data doesn't retry it
+    written.length = 0;
+    applyPacks([contentTarget()]);
+    expect(written).toEqual([]);
 
     // ...while recompiled content do
-    writeSeeds('[{ "label": "second" }]');
+    writeContent('[{ "label": "second" }]');
     recordsThatFail = [];
     loggedErrors.length = 0;
-    applyPacks([seedTarget()]);
-    expect(seeded).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
+    applyPacks([contentTarget()]);
+    expect(written).toEqual([path.join(_appDirOf(tmpDir), 'packs', SHIPPED_ID, PACK_LAYOUT.contentDir)]);
     expect(loggedErrors).toEqual([]);
   });
 
-  it('still restarts the systems when the seed after registering throws, and says why', async () => {
+  it('still restarts the systems when the apply after registering throws, and says why', async () => {
     writeShipped();
     loadAppPacks(registry, new Set([SHIPPED_ID]));
     bus.send.mockClear();
 
     // A rebuild running again mid-reload takes the compiled content out from under the applier
-    seedFailure = new Error("ENOENT: no such file or directory, open 'actions.content.json'");
+    applyFailure = new Error("ENOENT: no such file or directory, open 'actions.content.json'");
     await reloadPackById(registry, SHIPPED_ID, bus as never);
 
-    // The swap already happened, so the systems have to be restarted whatever the seed did
+    // The swap already happened, so the systems have to be restarted whatever the apply did
     expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: SHIPPED_ID, systemIds: [`${SHIPPED_ID}/widget`] });
     expect(loggedErrors.join('\n')).toContain('ENOENT');
   });
@@ -302,12 +302,12 @@ describe('reloading a pack', () => {
     expect(registry.packOrigin(PACK_ID)).toEqual(origin);
   });
 
-  // A pack the app is the first to load has no row in installed-packs.json, and a seed failure still has
+  // A pack the app is the first to load has no row in installed-packs.json, and an apply failure still has
   // to reach it: the row is made when there is something to record on it.
-  it("records a first-time pack's seed failure", async () => {
+  it("records a first-time pack's apply failure", async () => {
     resetTestData();
     writeRebuild(runtime());
-    // Compiled seeds from a pack built by an older CLI: importCompiledContent refuses them, which is a failed apply
+    // Compiled content from a pack built by an older CLI: importCompiledContent refuses them, which is a failed apply
     fs.writeFileSync(
       path.join(_appDirOf(tmpDir), 'packs', PACK_ID, 'runtime', 'content', 'content.json'),
       JSON.stringify({ version: 1, entries: [] }),
@@ -320,9 +320,9 @@ describe('reloading a pack', () => {
     ]);
   });
 
-  // A pack that seeds cleanly and has decided nothing keeps no row: the packs directory is what makes it
+  // A pack that content cleanly and has decided nothing keeps no row: the packs directory is what makes it
   // installed, so there is nothing for the record to say about it.
-  it('leaves no row behind for a pack whose seed had nothing to report', async () => {
+  it('leaves no row behind for a pack whose content had nothing to report', async () => {
     resetTestData();
     writeRebuild(runtime());
 

@@ -56,11 +56,11 @@ const memosFormat = {
 
 describe('compilePack', () => {
   it("compiles an entry with its format's settings, copies media and indexes it", async () => {
-    write('seeds/memos/first.md', '---\ntitle: 2024\npinned: true\n---\nHello ![pic](media/pic.png)\n');
-    write('seeds/memos/group/index.md', '---\ntitle: Group\n---\nGroup body\n');
-    write('seeds/memos/group/child-memo.md', 'Child body\n');
-    write('seeds/memos/media/pic.png', 'PNG');
-    const result = await compile({ memos: memosFormat }, { memos: { path: 'seeds/memos', format: 'memos' } });
+    write('content/memos/first.md', '---\ntitle: 2024\npinned: true\n---\nHello ![pic](media/pic.png)\n');
+    write('content/memos/group/index.md', '---\ntitle: Group\n---\nGroup body\n');
+    write('content/memos/group/child-memo.md', 'Child body\n');
+    write('content/memos/media/pic.png', 'PNG');
+    const result = await compile({ memos: memosFormat }, { memos: { path: 'content/memos', format: 'memos' } });
 
     const { records } = read('memos.content.json');
     expect(records.map((r: { title: string }) => r.title)).toEqual(['2024', 'Group']);
@@ -72,61 +72,61 @@ describe('compilePack', () => {
   });
 
   it('gives empty frontmatter values the default', async () => {
-    write('seeds/memos/blank.md', '---\ntitle:\npinned:\n---\nBlank\n');
-    write('seeds/memos/empty-string.md', '---\ntitle: ""\n---\nEmpty\n');
-    await compile({ memos: memosFormat }, { memos: { path: 'seeds/memos', format: 'memos' } });
+    write('content/memos/blank.md', '---\ntitle:\npinned:\n---\nBlank\n');
+    write('content/memos/empty-string.md', '---\ntitle: ""\n---\nEmpty\n');
+    await compile({ memos: memosFormat }, { memos: { path: 'content/memos', format: 'memos' } });
     const { records } = read('memos.content.json');
     expect(records.map((r: { title: string; pinned: boolean }) => [r.title, r.pinned])).toEqual([['blank', false], ['empty string', false]]);
   });
 
-  it("skips only the format's media directory: a notes folder named media is seeded", async () => {
-    write('seeds/memos/media/index.md', '---\ntitle: Media notes\n---\n');
-    write('seeds/memos/media/clip.md', 'Clip\n');
-    write('seeds/memos/assets/pic.png', 'PNG');
-    write('seeds/memos/assets/stray.md', 'Not a memo\n');
-    await compile({ memos: { ...memosFormat, media: 'assets' } }, { memos: { path: 'seeds/memos', format: 'memos' } });
+  it("skips only the format's media directory: a notes folder named media is written", async () => {
+    write('content/memos/media/index.md', '---\ntitle: Media notes\n---\n');
+    write('content/memos/media/clip.md', 'Clip\n');
+    write('content/memos/assets/pic.png', 'PNG');
+    write('content/memos/assets/stray.md', 'Not a memo\n');
+    await compile({ memos: { ...memosFormat, media: 'assets' } }, { memos: { path: 'content/memos', format: 'memos' } });
     const { records } = read('memos.content.json');
     expect(records.map((r: { title: string; children?: Array<{ title: string }> }) => [r.title, r.children?.map((c) => c.title)]))
       .toEqual([['Media notes', ['clip']]]);
     expect(fs.readdirSync(path.join(out, 'media/memos'))).toEqual(['pic.png', 'stray.md']);
 
     // Without a media directory, nothing is skipped
-    await compile({ memos: { ...memosFormat, media: undefined } }, { memos: { path: 'seeds/memos', format: 'memos' } });
+    await compile({ memos: { ...memosFormat, media: undefined } }, { memos: { path: 'content/memos', format: 'memos' } });
     expect(read('memos.content.json').records.map((r: { title: string }) => r.title)).toEqual(['assets', 'Media notes']);
   });
 
   it('reads frontmatter with CRLF line endings or a byte order mark', async () => {
-    write('seeds/memos/crlf.md', '---\r\ntitle: Windows\r\npinned: true\r\n---\r\nBody\r\n');
-    write('seeds/memos/bom.md', '\uFEFF---\ntitle: Marked\n---\nBody\n');
-    await compile({ memos: memosFormat }, { memos: { path: 'seeds/memos', format: 'memos' } });
+    write('content/memos/crlf.md', '---\r\ntitle: Windows\r\npinned: true\r\n---\r\nBody\r\n');
+    write('content/memos/bom.md', '\uFEFF---\ntitle: Marked\n---\nBody\n');
+    await compile({ memos: memosFormat }, { memos: { path: 'content/memos', format: 'memos' } });
     expect(read('memos.content.json').records.map((r: { title: string; pinned: boolean; body: string }) => [r.title, r.pinned, r.body]))
       .toEqual([['Marked', false, 'Body\n'], ['Windows', true, 'Body\r\n']]);
   });
 
   it("replaces its earlier output: a dropped key or media doesn't linger, other files in the dir stay", async () => {
-    write('seeds/memos/first.md', 'Hello\n');
-    write('seeds/memos/media/pic.png', 'PNG');
-    await compile({ memos: memosFormat }, { memos: { path: 'seeds/memos', format: 'memos' } });
+    write('content/memos/first.md', 'Hello\n');
+    write('content/memos/media/pic.png', 'PNG');
+    await compile({ memos: memosFormat }, { memos: { path: 'content/memos', format: 'memos' } });
     fs.mkdirSync(path.join(out, 'runtime'));
     fs.writeFileSync(path.join(out, 'runtime/index.cjs'), '');
     fs.writeFileSync(path.join(out, 'notes.json'), '{}');
 
-    fs.rmSync(path.join(root, 'seeds/memos/media'), { recursive: true });
-    await compile({ memos: memosFormat }, { notes: { path: 'seeds/memos', format: 'memos' } });
+    fs.rmSync(path.join(root, 'content/memos/media'), { recursive: true });
+    await compile({ memos: memosFormat }, { notes: { path: 'content/memos', format: 'memos' } });
     expect(fs.readdirSync(out).sort()).toEqual([CONTENT_INDEX_FILE, 'notes.content.json', 'notes.json', 'runtime']);
 
-    // A failed compile leaves no seeds from the previous one
-    write('seeds/items.json', JSON.stringify([{ entity: 'Other', name: 'x' }]));
-    await expect(compile({ items: { format: 'json', entity: 'Item' } }, { items: { path: 'seeds/items.json', format: 'items' } })).rejects.toThrow(/isn't one of Item/);
+    // A failed compile leaves no content from the previous one
+    write('content/items.json', JSON.stringify([{ entity: 'Other', name: 'x' }]));
+    await expect(compile({ items: { format: 'json', entity: 'Item' } }, { items: { path: 'content/items.json', format: 'items' } })).rejects.toThrow(/isn't one of Item/);
     expect(fs.readdirSync(out).sort()).toEqual(['notes.json', 'runtime']);
   });
 
   it("compiles with the pack's own compiler module, which may leave contentHash to the default", async () => {
-    write('seeds/tags.txt', 'red\nblue\n');
+    write('content/tags.txt', 'red\nblue\n');
     write('compile-tags.mjs', `import * as fs from 'node:fs';
 export default ({ path, key }) => fs.readFileSync(path, 'utf-8').trim().split('\\n').map((name) => ({ entity: 'Tag', name, key }));`);
     const importModule = vi.fn((file: string) => import(file));
-    await compile({ tags: { compiler: 'compile-tags.mjs', entity: 'Tag', identity: ['name'] } }, { tags: { path: 'seeds/tags.txt', format: 'tags' } }, { importModule });
+    await compile({ tags: { compiler: 'compile-tags.mjs', entity: 'Tag', identity: ['name'] } }, { tags: { path: 'content/tags.txt', format: 'tags' } }, { importModule });
     expect(importModule).toHaveBeenCalledWith(path.join(root, 'compile-tags.mjs'));
     expect(read('tags.content.json').records).toEqual([
       { entity: 'Tag', name: 'red', key: 'tags', contentHash: expect.stringMatching(/^[0-9a-f]{16}$/) },
@@ -135,16 +135,16 @@ export default ({ path, key }) => fs.readFileSync(path, 'utf-8').trim().split('\
   });
 
   it("compiles this pack's sources with a dependency's format and its bundled compiler export", async () => {
-    write('seeds/team/plan.md', '---\ntitle: Plan\n---\nShip\n');
-    write('seeds/team.txt', 'red\n');
+    write('content/team/plan.md', '---\ntitle: Plan\n---\nShip\n');
+    write('content/team.txt', 'red\n');
     write('deps/base-pack/build/content-compilers.mjs', `import * as fs from 'node:fs';
 export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\\n').map((name) => ({ entity: 'Tag', name }));`);
     const base = { id: 'base-pack', name: 'Base', version: '1.0.0', content: { formats: { memos: memosFormat, tags: { compiler: 'src/content/compilers/tags.ts', entity: 'Tag', identity: ['name'] } } } } as unknown as PackManifest;
     const dependencies = new Map([['base-pack', { manifest: base, buildDir: path.join(root, 'deps/base-pack/build') }]]);
     const importModule = vi.fn((file: string) => import(file));
     await compile({}, {
-      team: { path: 'seeds/team', format: 'base-pack:memos' },
-      colors: { path: 'seeds/team.txt', format: 'base-pack:tags' },
+      team: { path: 'content/team', format: 'base-pack:memos' },
+      colors: { path: 'content/team.txt', format: 'base-pack:tags' },
     }, { dependencies, importModule, manifest: { dependencies: { 'base-pack': '*' } } });
 
     expect(read('team.content.json').records).toEqual([expect.objectContaining({ entity: 'Memo', title: 'Plan', body: 'Ship\n' })]);
@@ -153,25 +153,25 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
   });
 
   it("fails clearly when a dependency's compiler export or build dir is missing", async () => {
-    write('seeds/team.txt', 'red\n');
+    write('content/team.txt', 'red\n');
     write('deps/base-pack/build/content-compilers.mjs', 'export const other = () => [];');
     const base = { id: 'base-pack', name: 'Base', version: '1.0.0', content: { formats: { tags: { compiler: 'src/tags.ts', entity: 'Tag' } } } } as unknown as PackManifest;
-    const seed = { colors: { path: 'seeds/team.txt', format: 'base-pack:tags' } };
+    const content = { colors: { path: 'content/team.txt', format: 'base-pack:tags' } };
     const manifest = { dependencies: { 'base-pack': '*' } };
-    await expect(compile({}, seed, { manifest, dependencies: new Map([['base-pack', { manifest: base, buildDir: path.join(root, 'deps/base-pack/build') }]]) }))
+    await expect(compile({}, content, { manifest, dependencies: new Map([['base-pack', { manifest: base, buildDir: path.join(root, 'deps/base-pack/build') }]]) }))
       .rejects.toThrow(/format "base-pack:tags" has no compiler export "tags"/);
-    await expect(compile({}, seed, { manifest, dependencies: new Map([['base-pack', { manifest: base }]]) }))
+    await expect(compile({}, content, { manifest, dependencies: new Map([['base-pack', { manifest: base }]]) }))
       .rejects.toThrow(/format "base-pack:tags" compiles with a module, but its pack's build dir wasn't resolved/);
     // Built before it bundled its content compilers (or the bundle failed)
-    await expect(compile({}, seed, { manifest, dependencies: new Map([['base-pack', { manifest: base, buildDir: path.join(root, 'deps/unbuilt/build') }]]) }))
+    await expect(compile({}, content, { manifest, dependencies: new Map([['base-pack', { manifest: base, buildDir: path.join(root, 'deps/unbuilt/build') }]]) }))
       .rejects.toThrow(/format "base-pack:tags" compiles with base-pack's content compilers, but .*deps\/unbuilt\/build\/content-compilers\.mjs doesn't exist: build base-pack first/);
   });
 
   it("fails, naming the record, when a compiler module's output isn't an array of records", async () => {
-    write('seeds/tags.txt', 'red\n');
+    write('content/tags.txt', 'red\n');
     const tags = (body: string) => {
       write('compile-tags.mjs', `export default () => (${body});`);
-      return compile({ tags: { compiler: 'compile-tags.mjs', entity: 'Tag' } }, { tags: { path: 'seeds/tags.txt', format: 'tags' } }, {
+      return compile({ tags: { compiler: 'compile-tags.mjs', entity: 'Tag' } }, { tags: { path: 'content/tags.txt', format: 'tags' } }, {
         // A fresh module each time: the import cache would return the first
         importModule: (file: string) => import(`${file}?v=${Math.random()}`),
       });
@@ -184,38 +184,38 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
   });
 
   it("fails when a compiled record's entity isn't one the format declares", async () => {
-    write('seeds/items.json', JSON.stringify([{ entity: 'Other', name: 'x' }]));
-    await expect(compile({ items: { format: 'json', entity: 'Item' } }, { items: { path: 'seeds/items.json', format: 'items' } }))
+    write('content/items.json', JSON.stringify([{ entity: 'Other', name: 'x' }]));
+    await expect(compile({ items: { format: 'json', entity: 'Item' } }, { items: { path: 'content/items.json', format: 'items' } }))
       .rejects.toThrow(/Content "items" records\[0\]: entity "Other" isn't one of Item/);
   });
 
   /**
-   * **An artifact is compiled and indexed as unseeded**, which is the whole of what `content.artifacts`
+   * **An artifact is compiled and indexed as unwritten**, which is the whole of what `content.artifacts`
    * buys: the same compilation, and no applier to find nothing to do.
    */
-  it('compiles an artifact and indexes it as unseeded', async () => {
-    write('seeds/glossary.json', JSON.stringify([{ question: 'Why?' }]));
-    await compileArtifacts({ glossary: { format: 'json' } }, { glossary: { path: 'seeds/glossary.json', format: 'glossary' } });
+  it('compiles an artifact and indexes it as unwritten', async () => {
+    write('content/glossary.json', JSON.stringify([{ question: 'Why?' }]));
+    await compileArtifacts({ glossary: { format: 'json' } }, { glossary: { path: 'content/glossary.json', format: 'glossary' } });
     expect(read('glossary.content.json').records).toEqual([{ question: 'Why?', contentHash: expect.any(String) }]);
     expect(read(CONTENT_INDEX_FILE).entries).toEqual([{ key: 'glossary', written: false, count: 1, items: [] }]);
   });
 
   /** And the two sections are not interchangeable: each refuses the other's shape rather than compiling it */
   it('refuses a source whose format writes nothing, and an artifact whose format writes something', async () => {
-    write('seeds/glossary.json', JSON.stringify([{ question: 'Why?' }]));
-    await expect(compile({ glossary: { format: 'json' } }, { glossary: { path: 'seeds/glossary.json', format: 'glossary' } }))
+    write('content/glossary.json', JSON.stringify([{ question: 'Why?' }]));
+    await expect(compile({ glossary: { format: 'json' } }, { glossary: { path: 'content/glossary.json', format: 'glossary' } }))
       .rejects.toThrow(/declares no entity, so nothing is written — declare it under content\.artifacts instead/);
-    await expect(compileArtifacts({ items: { format: 'json', entity: 'Item' } }, { items: { path: 'seeds/glossary.json', format: 'items' } }))
+    await expect(compileArtifacts({ items: { format: 'json', entity: 'Item' } }, { items: { path: 'content/glossary.json', format: 'items' } }))
       .rejects.toThrow(/declares an entity, so it is content — declare it under content\.sources instead/);
   });
 
-  it('compiles content keys named like PackConfig fields as seeds', async () => {
-    write('seeds/name.json', JSON.stringify([{ entity: 'Item', label: 'a' }]));
-    write('seeds/setup.json', JSON.stringify([{ entity: 'Item', label: 'b' }]));
+  it('compiles content keys named like PackConfig fields as content', async () => {
+    write('content/name.json', JSON.stringify([{ entity: 'Item', label: 'a' }]));
+    write('content/setup.json', JSON.stringify([{ entity: 'Item', label: 'b' }]));
     // Through abuddy.json alone, as compilePack reads it without a packConfig
     write('abuddy.json', JSON.stringify({ id: 'demo', name: 'Demo', version: '1.0.0', content: { formats: { items: { format: 'json', entity: 'Item', identity: ['label'] } }, sources: {
-      name: { path: 'seeds/name.json', format: 'items' },
-      setup: { path: 'seeds/setup.json', format: 'items' },
+      name: { path: 'content/name.json', format: 'items' },
+      setup: { path: 'content/setup.json', format: 'items' },
     } } }));
     const result = await compilePack({ packDir: root, outputDir: out });
     expect(result.counts).toEqual({ name: 1, setup: 1 });
@@ -224,24 +224,24 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
   });
 
   it('routes specialty keys to their SDK compilers', async () => {
-    write('seeds/prompts/greet.ts', `export const meta = { label: 'Greet', description: 'Says hello' };\nexport function template() { return 'Hello'; }\n`);
-    await compile({}, { prompts: 'seeds/prompts' });
+    write('content/prompts/greet.ts', `export const meta = { label: 'Greet', description: 'Says hello' };\nexport function template() { return 'Hello'; }\n`);
+    await compile({}, { prompts: 'content/prompts' });
     expect(read('prompts.content.json').records).toEqual([expect.objectContaining({ label: 'Greet' })]);
     expect(read(CONTENT_INDEX_FILE).entries).toEqual([{ key: 'prompts', written: true, identity: ['label'], count: 1, items: [{ key: 'Greet', description: 'Says hello' }] }]);
   });
 
-  it("indexes a source with a pack applier as seeded, whatever its format writes", async () => {
-    write('seeds/theme.json', JSON.stringify([{ name: 'defaults', description: 'Theme defaults', theme: 'dark' }]));
+  it("indexes a source with a pack applier as written, whatever its format writes", async () => {
+    write('content/theme.json', JSON.stringify([{ name: 'defaults', description: 'Theme defaults', theme: 'dark' }]));
     const formats = { theme: { format: 'json', entity: 'Theme' } };
-    await compile(formats, { theme: { path: 'seeds/theme.json', format: 'theme', applier: 'src/content/theme.ts' } });
+    await compile(formats, { theme: { path: 'content/theme.json', format: 'theme', applier: 'src/content/theme.ts' } });
     expect(read('theme.content.json').records).toEqual([expect.objectContaining({ name: 'defaults', theme: 'dark' })]);
     expect(read(CONTENT_INDEX_FILE).entries).toEqual([{ key: 'theme', written: true, count: 1, items: [{ key: 'defaults', description: 'Theme defaults' }] }]);
   });
 });
 
 /**
- * `contentHash` is what a re-seed compares to decide whether a row changed, so it has to depend on the record's
- * content and nothing else. The seed-parity goldens used to pin its literal value, which made every cosmetic edit
+ * `contentHash` is what a re-apply compares to decide whether a row changed, so it has to depend on the record's
+ * content and nothing else. The content-parity goldens used to pin its literal value, which made every cosmetic edit
  * and every bundler change move them; they now record that a hash is present and this is where the property itself
  * is checked. Both directions matter: equality alone would still pass if the hash became a constant.
  *
@@ -258,10 +258,10 @@ describe('contentHash is content-addressed', () => {
   async function hashOf(action = ACTION, helper = HELPER): Promise<string> {
     const src = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-hash-src-'));
     const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-hash-out-'));
-    fs.mkdirSync(path.join(src, 'seeds/actions/_helpers'), { recursive: true });
-    fs.writeFileSync(path.join(src, 'seeds/actions/greet.ts'), action);
-    fs.writeFileSync(path.join(src, 'seeds/actions/_helpers/shout.ts'), helper);
-    const manifest = { id: 'demo', name: 'Demo', version: '1.0.0', content: { formats: {}, sources: { actions: 'seeds/actions' } } } as unknown as PackManifest;
+    fs.mkdirSync(path.join(src, 'content/actions/_helpers'), { recursive: true });
+    fs.writeFileSync(path.join(src, 'content/actions/greet.ts'), action);
+    fs.writeFileSync(path.join(src, 'content/actions/_helpers/shout.ts'), helper);
+    const manifest = { id: 'demo', name: 'Demo', version: '1.0.0', content: { formats: {}, sources: { actions: 'content/actions' } } } as unknown as PackManifest;
     try {
       await compilePack({ packDir: src, outputDir: dist, packConfig: await buildPackConfigFromManifest(manifest, src) });
       const { records } = JSON.parse(fs.readFileSync(path.join(dist, 'actions.content.json'), 'utf-8')) as { records: Array<{ contentHash: string }> };

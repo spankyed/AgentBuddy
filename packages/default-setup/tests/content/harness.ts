@@ -34,7 +34,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'abuddy.json'), 
 
 type ContentEntry = string | { path?: string; [key: string]: unknown };
 
-/** The sources a scenario seeds: a fixture version of every parity key, or the pack's own sources */
+/** The sources a scenario content: a fixture version of every parity key, or the pack's own sources */
 export type SourceSet = 'v1' | 'v2' | 'default-setup';
 
 function withPath(entry: ContentEntry, sourcePath: string): ContentEntry {
@@ -42,7 +42,7 @@ function withPath(entry: ContentEntry, sourcePath: string): ContentEntry {
 }
 
 /** Compiles the parity keys' sources through the pack's manifest entries into a fresh directory */
-export async function compileSeeds(sources: SourceSet): Promise<string> {
+export async function compileContent(sources: SourceSet): Promise<string> {
   const entries: Record<string, ContentEntry> = {};
   for (const key of PARITY_KEYS) {
     const entry = manifest.content.sources[key] as ContentEntry;
@@ -51,7 +51,7 @@ export async function compileSeeds(sources: SourceSet): Promise<string> {
     entries[key] = withPath(entry, sourcePath);
   }
   const pack = { ...manifest, steps: undefined, artifacts: undefined, blocks: undefined, content: { ...manifest.content, artifacts: undefined, sources: entries } };
-  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'seed-parity-'));
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-parity-'));
   const packConfig = await buildPackConfigFromManifest(pack, PACK_DIR);
   await compilePack({ packDir: PACK_DIR, outputDir, packConfig });
   return outputDir;
@@ -65,19 +65,19 @@ export function resetDatabase(): void {
 /**
  * An **import**: no record, which is the user asking for the pack's content back. The modes are the whole of
  * its policy, and it detects no edit and removes nothing, so it is what the parity goldens are recorded
- * through — a scenario that seeds one fixture version over another is about the modes, not about a merge.
+ * through — a scenario that content one fixture version over another is about the modes, not about a merge.
  */
-export function seed(compiledDir: string, options: { mode?: ImportMode; include?: Record<string, ContentSelection> } = {}): Record<string, ApplyResult> {
+export function apply(compiledDir: string, options: { mode?: ImportMode; include?: Record<string, ContentSelection> } = {}): Record<string, ApplyResult> {
   const result = importCompiledContent({ compiledDir, mode: options.mode, include: options.include });
   return Object.fromEntries(PARITY_KEYS.map((key) => [key, result[key]]));
 }
 
 /**
  * An **apply**, carrying the record forward from the run before, which is how the app's boot runs it. A spec
- * about what the user's edit survives needs this rather than `seed`: the merge reads what the last apply
+ * about what the user's edit survives needs this rather than `content`: the merge reads what the last apply
  * wrote, and an apply whose record has never seen an item adopts it.
  */
-export function applySeeds(
+export function applyContent(
   compiledDir: string,
   previous: ApplyRecord | undefined,
   options: { mode?: ImportMode; include?: Record<string, ContentSelection> } = {},

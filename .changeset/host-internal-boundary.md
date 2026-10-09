@@ -24,7 +24,7 @@ characters, and not a name the filesystem reserves — so `getDataDirPath('Cache
 `getDataDirPath('../..')` now throw instead of resolving somewhere that was never the pack's.
 
 `@abuddy/testing/harness` gains `testMediaPath(entityId?)`, the supported way for a pack's tests to
-find the media a seed wrote, and its `resetTestData()` now clears that store along with the database
+find the media an apply wrote, and its `resetTestData()` now clears that store along with the database
 and the secrets — what the testing docs already promised per test.
 
 Pack code naming an `_`-prefixed export now fails `abuddy build`, and in this repo

@@ -248,7 +248,7 @@ describe('staleLines', () => {
 
   /**
    * The line the whole change is for. An identical rewrite is not a cause, and reading one as a cause is what
-   * sent a diagnosis after the compiled seed an E2E test rewrites; it is still worth saying, because a tree written
+   * sent a diagnosis after the compiled content an E2E test rewrites; it is still worth saying, because a tree written
    * during every run is worth knowing about — and worth naming, since a count is not something anyone can know.
    */
   it('names the file whose mtime moved while its bytes did not', () => {

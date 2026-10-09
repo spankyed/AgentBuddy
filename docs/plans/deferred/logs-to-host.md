@@ -16,7 +16,7 @@ question, not a refactor one, and it is open.
 This file is the research, so that whenever the question is answered the work is costed rather than
 rediscovered. **The headline finding is that the move is far cheaper than its size suggests:** not one file
 in the feature imports anything outside it — no EARS, no repository, no other default-setup feature, no
-seed, no step. The whole coupling to the pack is four generated facades and some `'logs'` string literals.
+content, no step. The whole coupling to the pack is four generated facades and some `'logs'` string literals.
 
 **What changed under this plan when `earlySystem` went.** The move no longer deletes anything from the pack
 contract; that is done. Instead it has to *restore* early start, host-side — see below.
@@ -72,7 +72,7 @@ The defaults file moves unchanged: it is already a plain `FeatureSettings`
 ## Early start, which has to come back
 
 Phase 4 deleted the pack-facing route to running before hydration, and that is correct and permanent. If
-`logs` moves, the host wants it again — to put hydration, `onInit`, migrations and seeding back in the
+`logs` moves, the host wants it again — to put hydration, `onInit`, migrations and applying back in the
 viewer, which is the window that deletion gave up.
 
 **Restoring it host-side is cheaper than what was deleted, but it is not free: the host mechanism went
@@ -120,7 +120,7 @@ the feature, so that step moves into the host's `0.3.15.ts`, where the data now 
 
 Afterwards the target types through `HOST_PLUGIN_EVENT_TYPES`, which is why wiring 4 is required. The
 fixture keeps `"dependencies": { "default-setup": "*" }`: it also sends to
-`default-setup/{library,notes,code}` and seeds with `default-setup:library`.
+`default-setup/{library,notes,code}` and content with `default-setup:library`.
 
 `typed-sends.spec.ts:26-27`'s `@ts-expect-error` for `ADD_LOG` **still holds for a different reason** — a
 pack sending a system's internal event would be refused by `HostSystemEvents` rather than by a pack

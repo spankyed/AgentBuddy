@@ -1,4 +1,4 @@
-// A seed action run by the action step reaches the app through `services`: it sends through services.emitter, logs
+// A content action run by the action step reaches the app through `services`: it sends through services.emitter, logs
 // through services.logger and writes through services.repository, all on the runtime the harness binds
 import { expect, it, vi } from 'vitest'
 import { mockService, startApp } from '@abuddy/testing/harness'
@@ -7,10 +7,10 @@ import type { LogEvent } from '@abuddy/sdk/logger'
 import type { EARS } from '@abuddy/sdk'
 import { repository } from '#generated/repository.ts'
 import type { Services } from '#generated/services.ts'
-import { actionLabel, seedDefaultFlows } from '../../_support/flows.ts'
+import { actionLabel, writeDefaultFlows } from '../../_support/flows.ts'
 
 it("pauses a running Claude Code turn: CC: Pause Turn's event, log entry and thread row", async () => {
-  seedDefaultFlows()
+  writeDefaultFlows()
   // No CLI process runs in the test
   mockService<Services, 'cli'>('cli', { claudeCode: { getHandle: () => undefined, clearHandle: vi.fn() } } as never)
   mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() })

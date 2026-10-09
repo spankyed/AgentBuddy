@@ -214,7 +214,7 @@ and 18s:
 |---|---|---|
 | `features/brain/be/flow-system.ts` | 3 | 6s |
 | `extensions/steps/llm/runtime.ts` | 3 | 3s |
-| `seeds/actions/claude-code/_helpers/auto-approve.ts` | 3 | 3s |
+| `content/actions/claude-code/_helpers/auto-approve.ts` | 3 | 3s |
 | `features/threads/be/system.ts` | 1 | 2s |
 
 The first is the slowest only because it paid for `packages:ensure`'s stat pass first; the rest are the steady

@@ -13,7 +13,7 @@ Implement docs/goals/goal-tests-mirror-source.md on AS/chain-inputs, at or after
 Background was surveyed at. After goal-test-placement.md, which is archived: this extends its rule one level
 down, from which package a spec lives in to where inside it.
 Before Phase 1, confirm the base: packages/default-setup/tests/unit holds 76 flat specs plus _hybrid,
-migrations, seed-parity and helpers; packages/default-setup/tests/integration holds one spec, inside a
+migrations, content-parity and helpers; packages/default-setup/tests/integration holds one spec, inside a
 second _hybrid. If that is already false, stop and say so — the survey was taken somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask. The Open decision must be settled with the user before Phase 3; if it is still
@@ -60,7 +60,7 @@ nobody wrote it down.
 
 | Package | `tests/` top level | Scheme |
 |---|---|---|
-| `@abuddy/sdk` | build, database-console, env, events, fe, framework, ids, logger, repositories, runtime, seed, services, steps, testing, utils | **mirrors `src/`** |
+| `@abuddy/sdk` | build, database-console, env, events, fe, framework, ids, logger, repositories, runtime, content, services, steps, testing, utils | **mirrors `src/`** |
 | `@abuddy/host` | build, bus, database, fe, features, logs, migrations, packs, secrets, services | **mirrors `src/`** |
 | `@app/renderer` | adapters, boot, runtime, transport, views | **mirrors `src/`** |
 | `@abuddy/cli` | app, build, cli, harness, packs, helpers | mostly mirrors (`cli` ↔ `src/commands`) |
@@ -118,7 +118,7 @@ That is the Open decision below.
 
 | Reference | What it names |
 |---|---|
-| `default-setup/package.json` `seed-parity:check` / `:update` | `npm test -- tests/unit/seed-parity` |
+| `default-setup/package.json` `content-parity:check` / `:update` | `npm test -- tests/unit/content-parity` |
 | `default-setup/vitest.config.ts` | `tests/unit/**`, `tests/integration/**` |
 | `default-setup/src/defs/database.ts:4` | `tests/unit/database-console-globals.test.ts`, in a comment |
 | `api/vitest.config.ts` | `tests/unit/**`, `tests/runtime/**` |
@@ -194,13 +194,13 @@ Mutation-check it: add `tests/nonsense/` to a package and watch it named.
 ### Phase 3 — `@app/default-setup`
 
 The large one: 76 flat specs plus four directories. Mirror `src/`, which is `features/<name>/{be,fe}`,
-`migrations/`, `seeds/`, `extensions/`, `app-settings/`. `_hybrid`'s three specs go under the features they
-cover; `integration/_hybrid`'s one keeps its suffix and goes under `features/code/`; `seed-parity` follows
-`src/seeds/`; `helpers` and `fixtures` become `_support/`. Move the `package.json` seed-parity scripts, the
+`migrations/`, `content/`, `extensions/`, `app-settings/`. `_hybrid`'s three specs go under the features they
+cover; `integration/_hybrid`'s one keeps its suffix and goes under `features/code/`; `content-parity` follows
+`src/content/`; `helpers` and `fixtures` become `_support/`. Move the `package.json` content-parity scripts, the
 vitest config's include, and the comment in `src/defs/database.ts` in the same commit.
 
 **Done when:** 87 files and 720 tests, unchanged; no directory under `tests/` denotes a level; the
-`seed-parity:check` and `:update` scripts work; `spec-cost:update -- --suite default-setup` recorded.
+`content-parity:check` and `:update` scripts work; `spec-cost:update -- --suite default-setup` recorded.
 
 ### Phase 4 — `@app/api`
 
@@ -278,8 +278,8 @@ package's, and this package holds it on purpose".
   side runs the node.
 - **A relative `../../src/` import that the `@/` alias covers became the alias.** Six levels of `../` for
   `features/code/be/services/claude-code` was the worst of them, and the alias makes the next move free.
-  `src/seeds`, `src/defs` and `src/migrations` have no alias, so those stayed relative and were re-expressed.
-- **`seed-parity:check` now runs `tests/seeds`**, which is the whole seed suite rather than the five golden
+  `src/content`, `src/defs` and `src/migrations` have no alias, so those stayed relative and were re-expressed.
+- **`content-parity:check` now runs `tests/content`**, which is the whole content suite rather than the five golden
   specs — 18 files and 4.1s. There is no directory holding exactly the five any more, and a listed set of
   five filenames is a list that goes stale silently.
 - **`tests/e2e/**` is excluded from a pack's vitest include**, in the scaffold and in the fixture pack. It is

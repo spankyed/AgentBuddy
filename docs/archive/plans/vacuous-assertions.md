@@ -65,7 +65,7 @@ privately across the repo under eight different names — `pack`, `makePack`, `w
 
 **Corrected after implementing** (the figure below was 35 spec files across six packages, in revision 2 and in
 commit `38bc4cdec`): that count came from grepping those names, and it swept in things that build no pack — a
-manifest object literal in `manifest-schema.spec.ts`, a compiled-seeds result in `edited-flows.spec.ts`, a temp
+manifest object literal in `manifest-schema.spec.ts`, a compiled-content result in `edited-flows.spec.ts`, a temp
 directory holding one `defaults.mjs`. **19 specs actually write a pack directory**, and the five variants
 collapsed here were still the load-bearing ones. The weak shape has already cost twice:
 

@@ -145,10 +145,10 @@ outcome the "old-spec" category is meant to prevent.
 | `abuddy-host/tests/removed-names-in-docs.spec.ts` | 2 | `DELETE` ✓ | `scaffold` |
 | `abuddy-sdk/tests/runtime/no-host-modules.spec.ts` | 1 | `DELETE` ✓ | `scaffold` |
 | `abuddy-host/tests/boundaries.spec.ts` (2 of 7) | 2 | `DELETE` ✓ | `duplicate` |
-| `abuddy-host/tests/packs/runtime/seed.spec.ts` | 2 | `DELETE` ✓ | `old-spec` |
+| `abuddy-host/tests/packs/runtime/content.spec.ts` | 2 | `DELETE` ✓ | `old-spec` |
 
-All four were correct. The last is worth naming: `seed.spec.ts` asserted that a pack whose seed manifest
-predates `seedKeys` is told to rebuild. The goal's Open decision 2 removed that guard, so the spec went
+All four were correct. The last is worth naming: `content.spec.ts` asserted that a pack whose content manifest
+predates `contentKeys` is told to rebuild. The goal's Open decision 2 removed that guard, so the spec went
 with the behaviour rather than outliving it — deleted in the same commit, `bc14492c2`.
 
 `boundaries.spec.ts`'s two were redundant rather than dead: `api/tests/unit/source-layout.spec.ts`

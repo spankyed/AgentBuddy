@@ -53,7 +53,7 @@ Pack code gets models from an `@abuddy/sdk/inference` module on AI SDK 4, throug
 - **The callers are prototype code.**
   - The only in-repo model call that runs is the `llm` step (`default-setup/src/extensions/steps/llm/runtime.ts:69-81`).
   - default-setup's `llm` service (`features/brain/be/services/llm.ts`) only re-exports the inference module.
-  - The model client (`extensions/services/model-client/`, about 1,200 lines) and ChatGPT OAuth (`extensions/services/openai-auth/`, `extensions/services/auth.ts`) have no callers: nothing reaches them through `services`, imports them, or references them from a seed action or the UI.
+  - The model client (`extensions/services/model-client/`, about 1,200 lines) and ChatGPT OAuth (`extensions/services/openai-auth/`, `extensions/services/auth.ts`) have no callers: nothing reaches them through `services`, imports them, or references them from a content action or the UI.
   - The model catalog (`@abuddy/sdk/models`, `abuddy-sdk/src/services/models.ts`) has ids like `gpt-4-turbo`, which the `llm` form stores as the node's `model` (`steps/llm/form.vue:357-360`). The runtime splits it on `:` and defaults to `anthropic:claude-3-haiku-20240307`, so a model picked in the editor doesn't resolve.
 - **AI SDK 7** (`ai@7.0.100`; providers `@ai-sdk/{anthropic,openai,google,groq,mistral,cohere}` 4.x):
   - `generateObject`/`streamObject` are deprecated in favour of `generateText({ output: Output.object({ schema }) })`.
@@ -247,7 +247,7 @@ The contract, the app implementation and the callers depend on each other. They 
 ### Phase 5 — Docs
 
 - `docs/public-facing/services-and-data.md`: an Inference section with the two calls, `provider:model` ids and the providers, structured output with `Output`, tools with `tool` and `stopWhen`, and what comes from `ai`.
-- `docs/public-facing/seeds.md`: actions use `services.inference`; the services table drops `llm`.
+- `docs/public-facing/content.md`: actions use `services.inference`; the services table drops `llm`.
 - `docs/public-facing/testing.md`: models are mocked with `fakeInference`.
 - `docs/public-facing/getting-started.md`: Node 22 and TypeScript 5.7, and `ai` for packs that write tools or structured output.
 - The CLAUDE.md files: root (services, floor), `abuddy-sdk/TYPED-EARS.md`, default-setup (services list, no model client), `abuddy-testing`.

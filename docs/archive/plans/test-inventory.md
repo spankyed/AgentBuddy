@@ -134,7 +134,7 @@ of those are real — which is the point of reading rather than bulk-editing.
 ## Finding 3 — 38 tests reference no product module
 
 12 files. Five are the tree-scanning guards the goal keeps (`identity-guard`, `no-module-state`,
-`source-layout`, `no-pack-seed-specifics`, `registry-state`) — they scan sources by design and import
+`source-layout`, `no-pack-content-specifics`, `registry-state`) — they scan sources by design and import
 nothing, which is correct. The rest are worth a verdict:
 
 | Tests | File | Note |
@@ -158,7 +158,7 @@ default-setup/tests/unit/_hybrid/actions-export.spec.ts   7 tests
 default-setup/tests/unit/_hybrid/prompts-export.spec.ts   7 tests
 ```
 
-Same seven titles, same shape, differing only in entity type: *exports all seeded X · strips internal
+Same seven titles, same shape, differing only in entity type: *exports all written X · strips internal
 fields · preserves portable fields · returns correct metadata · creates directory if it does not exist ·
 exports empty array when no X exist · re-imported X match original portable fields*. That is one
 parameterised suite, `MERGE`, −7 tests.

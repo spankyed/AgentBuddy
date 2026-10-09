@@ -43,7 +43,7 @@ describe('external pack runtime', () => {
    * The require that is not made during the load. esbuild defers a module's body into an `__init` the
    * bundle calls on first use, so default-setup's `extensions/steps/action/runtime.ts` requires
    * `@abuddy/sdk/logger` when an action step first runs. A resolution scoped to the load is gone by then,
-   * and seeding the require cache cannot cover it, because Node resolves before it reads the cache.
+   * and applying the require cache cannot cover it, because Node resolves before it reads the cache.
    *
    * It is invisible in a checkout: the workspace `node_modules` above a pack answers the bare specifier.
    * This pack is in a temp dir, which is what an installed one is, so nothing answers but the host.

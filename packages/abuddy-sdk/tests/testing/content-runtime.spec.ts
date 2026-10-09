@@ -1,5 +1,5 @@
 // A built pack's content runtime (dist/build/content-runtime.mjs) loaded into a bare SDK test runtime: no
-// host, no app. default-setup's is the example: a Note seeded through it gets default-setup's rows.
+// host, no app. default-setup's is the example: a Note written through it gets default-setup's rows.
 import { installedEngine as ears, type EARS } from '@abuddy/ears';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -16,7 +16,7 @@ const DEFAULT_SETUP = path.resolve(import.meta.dirname, '../../../default-setup'
 const FACET = path.join(DEFAULT_SETUP, 'dist', 'build', 'content-runtime.mjs');
 // dist/ is gitignored; CI builds default-setup (abuddy build) and requires the facet
 const built = fs.existsSync(FACET);
-if (!built && process.env.REQUIRE_SEED_RUNTIME) throw new Error(`${FACET} is required (REQUIRE_SEED_RUNTIME) but not built`);
+if (!built && process.env.REQUIRE_CONTENT_RUNTIME) throw new Error(`${FACET} is required (REQUIRE_CONTENT_RUNTIME) but not built`);
 
 describe.skipIf(!built)("a built pack's content runtime", () => {
   let dir: string;
@@ -31,7 +31,7 @@ describe.skipIf(!built)("a built pack's content runtime", () => {
   });
   afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
 
-  it("registers the pack's repositories and content writers, so seeding goes through them", async () => {
+  it("registers the pack's repositories and content writers, so applying goes through them", async () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(DEFAULT_SETUP, 'abuddy.json'), 'utf-8')) as PackManifest;
     const source = path.join(dir, 'notes');
     fs.mkdirSync(path.join(source, 'plan'), { recursive: true });

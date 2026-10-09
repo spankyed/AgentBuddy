@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { collapseRecord, expandRecord, mapProblems } from '../../src/steps/utils.ts';
 
 describe('expandRecord', () => {
-  it('takes the short form, which is what every seeded flow writes', () => {
+  it('takes the short form, which is what every written flow writes', () => {
     expect(expandRecord({ text: '$.event.data.text' })).toEqual([{ target: 'text', source: '$.event.data.text' }]);
   });
 

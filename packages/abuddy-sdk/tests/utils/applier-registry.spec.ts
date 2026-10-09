@@ -18,13 +18,13 @@ afterEach(() => {
 
 /** A compiled content directory whose content.json names `packId` */
 function compiledDir(packId?: string): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'seed-registry-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'content-registry-'));
   dirs.push(dir);
-  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, ...(packId && { packId }), seeds: [] }));
+  fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, ...(packId && { packId }), content: [] }));
   return dir;
 }
 
-/** An applier that records which directories it seeded */
+/** An applier that records which directories it written */
 function recording(key: string, created: number): ContentApplier & { seen: string[] } {
   const seen: string[] = [];
   return { key, seen, apply: (ctx: ApplyContext) => { seen.push(ctx.compiledDir); return { created, updated: 0, skipped: 0 }; } };

@@ -13,7 +13,7 @@ const DIST = path.resolve(import.meta.dirname, '../../../../dist', 'runtime', 'c
 const indexOf = (event: unknown) => (event as { data: { index: LibraryIndex } }).data.index
 const folderNamed = (name: string) => repository.libraryQueries.getCollections().find((collection) => collection.name === name)!.id
 
-async function seededApp(): Promise<TestApp> {
+async function appliedApp(): Promise<TestApp> {
   importCompiledContent({ compiledDir: DIST, include: { library: new Set(['internal']) } })
   const app = await startApp({ systems: ['library'] })
   await app.connect()
@@ -22,7 +22,7 @@ async function seededApp(): Promise<TestApp> {
 
 describe('the library index', () => {
   it('names every document and folder when a client connects, with each document’s tags', async () => {
-    const app = await seededApp()
+    const app = await appliedApp()
     await app.send('library', { type: 'CREATE_DOCUMENT', name: 'Tagged', content: [], tags: ['note', 'draft'], collectionId: folderNamed('internal') })
     await app.send('library', { type: 'GET_LIBRARY_INDEX' })
 
@@ -37,14 +37,14 @@ describe('the library index', () => {
   })
 
   it('lists a document in the index however deep its folder is, not only the open one', async () => {
-    const app = await seededApp()
+    const app = await appliedApp()
     const connected = indexOf(await app.nextEmit('library', 'LIBRARY_CONNECTED'))
     // The commands documents live two folders down, in internal/commands
     expect(connected.documents.map((document) => document.name)).toEqual(expect.arrayContaining(['Claude Code commands']))
   })
 
   it('drops a deleted document from the index', async () => {
-    const app = await seededApp()
+    const app = await appliedApp()
     await app.send('library', { type: 'CREATE_DOCUMENT', name: 'Temporary', content: [], tags: [], collectionId: folderNamed('internal') })
     const created = repository.libraryQueries.getDocuments().find((document) => document.name === 'Temporary')!
 

@@ -30,7 +30,7 @@ until `tests/packs/external-pack` behaves like `packages/default-setup`.
 
 Finished when:
 - Phases 1-6 are implemented and each meets its "Done when"; every new guard is mutation-checked.
-- `manifest.builtIn` decides nothing: no load, reload, build, frontend or seed path reads it, and
+- `manifest.builtIn` decides nothing: no load, reload, build, frontend or content path reads it, and
   `grep -rn "builtIn" packages/*/src` finds only a pack's own manifest field and its uninstall property.
 - `grep -rn goal-one-kind-of-pack packages scripts` returns one hit, the dev-server spec's — see
   Background's "The comments that name this goal" for the other four and which phase takes each.
@@ -60,7 +60,7 @@ Never:
   tsc in preload, the example pack, release metadata, typed EARS, compat shims, loosened assertions.
 - Add a read-only fallback that loads a shipped pack straight from resources/ when its install fails
   (Decision 7) — that is the built-in load path returning in disguise.
-- Put file times back into a seed hash, or add a second record beside a seed hash (Decision 6).
+- Put file times back into a content hash, or add a second record beside a content hash (Decision 6).
 - Generalise `earlySystem` to any pack (Decision 4) — it is deleted, not widened.
 ```
 
@@ -97,7 +97,7 @@ and frontend phases. Phase 1 is what makes it run them.
 |---|---|---|
 | **where the files live** — read-only in `resources/` vs the user's data dir | **yes**, irreducibly | whether a pack is installed or loaded in place |
 | **how the code is loaded** — bundled into the app vs required from the pack's own directory | no | one load path or two |
-| **what the pack may do** — `earlySystem`, declarative seeds, partition policy | no | whether the privileged pack is the one that proves the author-facing path works |
+| **what the pack may do** — `earlySystem`, declarative content, partition policy | no | whether the privileged pack is the one that proves the author-facing path works |
 
 Axes 2 and 3 are accidental and come out cheaply, in steps 1-3. Axis 1 is legitimate and comes out in steps
 4-6, which is where install-on-first-boot and the two migrations are. Nothing about that order is a hedge:
@@ -114,7 +114,7 @@ Exactly three privileges. `loadSingleExternalPack` strips each one from an exter
 | privilege | declared | who uses it |
 |---|---|---|
 | `earlySystem` — the system starts before EARS hydration, outside the bus | `manifest-schema.ts:173`, refused for external packs at `:259` | **one feature in the repo**: default-setup's `logs` (`packages/default-setup/abuddy.json:238`) |
-| `boot.seedManifest` — the declarative seed path, with `seedPolicy` | `pack-registration.ts:20`, `manifest-schema.ts:122` | default-setup's seven seed sources |
+| `boot.contentManifest` — the declarative content path, with `contentPolicy` | `pack-registration.ts:20`, `manifest-schema.ts:122` | default-setup's seven content sources |
 | `ears.partitionPolicy.excludedEntityTypes` | `loader.ts:250-257`, consumed at `database/schema.ts:174` | **nobody** — default-setup's is `{"excludedEntityTypes": []}` |
 
 So one privilege is vacuous today, one is used by a single feature, and one is real.
@@ -131,7 +131,7 @@ undercounted it:
    (`api/tsup.config.ts:5,11`);
 3. `abuddy build`, which **returns early for a built-in pack** (`abuddy-cli/src/commands/build.ts:305-310`,
    *"Built-in packs' FE is compiled into the renderer … and their backend into the API bundle, never loaded
-   from dist/"*) — so it produces seeds, types, defs and a snapshot and then stops, skipping
+   from dist/"*) — so it produces content, types, defs and a snapshot and then stops, skipping
    `bundlePackRuntime` and `bundlePackFE`;
 4. **`packages/default-setup/dev-build.mjs`, 164 lines of bespoke esbuild** reimplementing
    `bundlePackRuntime` for one pack, because of (3). `dev-mode.js:27` forks it with `--watch` and waits for
@@ -146,14 +146,14 @@ The code that replaces (4) already exists, switched off by the four lines of (3)
 **Two reload paths.** `reloadBuiltInPack` (`reload.ts:133-177`) and `reloadExternalPack`, near-identical
 wrappers over one `reloadPack`.
 
-**Two seed-change mechanisms, both recorded in `AppState`.** `builtInSeedHashes`
-(`orchestrateDeclarativeSeed`, `seed.ts:170`) against `externalSeedHashes` + `externalSeedDeps` — a per-pack
-hash and the dependency state a failed seed faced (`importPackSeeds`, `seed.ts:88`). The external one is the
-more capable; the built-in one carries `seedPolicy` (`evaluateSeedPolicy`, `seed.ts:146`), which the external
+**Two content-change mechanisms, both recorded in `AppState`.** `builtInContentRevisions`
+(`orchestrateDeclarativeContent`, `apply.ts:170`) against `externalContentRevisions` + `externalContentDeps` — a per-pack
+hash and the dependency state a failed content faced (`importPackContent`, `apply.ts:88`). The external one is the
+more capable; the built-in one carries `contentPolicy` (`evaluateContentPolicy`, `apply.ts:146`), which the external
 path never evaluates.
 
 **Narrowed on 2026-10-07** (`0a25ff990`): both hashes are content now, where the external one also hashed file
-times and the built-in one kept a `builtInSeedFingerprints` record of them as a fast path. What is left is two
+times and the built-in one kept a `builtInContentFingerprints` record of them as a fast path. What is left is two
 *records* over one question, not two answers to it — which is the half a merge can just rename.
 
 **Two discovery sources in the schema reader.** `database/schema.ts` reads published built-in snapshots from
@@ -248,11 +248,11 @@ regenerating entries (`run.ts:377`) is the mitigation to keep.
 
 ### "Runs first" is already derived
 
-`packSeedOrder` (`abuddy-host/src/packs/discovery.ts:147`) is a cycle-tolerant topological sort over
+`packContentOrder` (`abuddy-host/src/packs/discovery.ts:147`) is a cycle-tolerant topological sort over
 declared `dependencies`, already covered by `tests/packs/dependencies.spec.ts`. Its own doc names the
 special case it is bypassed by:
 
-> *"A dependency on a built-in pack is already satisfied — the built-in packs' boot seeds run before any
+> *"A dependency on a built-in pack is already satisfied — the built-in packs' boot apply run before any
 > external pack's"*
 
 A hard-coded phase standing in for an edge the sort would compute. It matters only from step 6, when a
@@ -271,7 +271,7 @@ The entry point, in five steps:
    the installer. Worth knowing here because this goal makes a shipped directory authoritative — it holds the
    pack, not the build's leftovers, and nothing in the steps below has to arrange that. default-setup lands
    as a real directory at
-   `<resourcesPath>/app/packages/default-setup/`: `abuddy.json` and `dist/` (the seven `*.seed.json`,
+   `<resourcesPath>/app/packages/default-setup/`: `abuddy.json` and `dist/` (the seven `*.content.json`,
    `snapshot.json`, `types/`, `defs/`, `build/`, `runtime/index.cjs`).
 2. **`main/src/modules/api-server/config.ts:103`** — Electron main passes
    `BUILT_IN_PACKS_DIR = <resourcesPath>/app/packages` when packaged, `<appPath>/packages` otherwise, and
@@ -296,13 +296,13 @@ changed.
 
 | the claim | what was wrong |
 |---|---|
-| "four pieces of work that remove it", sequenced 1-4 | `boot.seedManifest` is stripped from external packs, so installing default-setup before merging the seed paths ships a pack that seeds nothing. The order was wrong, and the migration was a prerequisite rather than the revertible tail |
+| "four pieces of work that remove it", sequenced 1-4 | `boot.contentManifest` is stripped from external packs, so installing default-setup before merging the content paths ships a pack that writes nothing. The order was wrong, and the migration was a prerequisite rather than the revertible tail |
 | "three build paths" | Four. `abuddy build` returns early for a built-in pack, so `dev-build.mjs` exists — 164 lines no other pack has |
 | "item 1 is free" | Deleting `dev-build.mjs` removes the backend watcher `npm start` depends on |
 | "worth doing" | A measurement with a verdict attached. No criterion was stated, so nothing could have failed it |
 | "the one real loss is frontend HMR" | HMR is keyed on a static import, not on being built-in. Re-keying keeps it, and extends it to any pack author in a checkout |
 | **the criterion itself**: "collapse a duplication where it needs no stored-data migration" | It split the work in two and deferred half on the premise that a migration is a one-way door. There is one user and he wrote the app, so both migrations are conveniences — `CLAUDE.md`'s carve-out for stored data is written for users this repo does not have. The order the steps actually have is the code's: one gate, one strip |
-| three reasons step 6 was "a question" | A migration that costs nothing is not a reason; "it renames back to what 0.3.15 renamed away from" was an observation, not an objection; and the seed record's uninstall lifetime is answered by letting shipped packs be uninstallable, with a property deciding whether the button shows — which is on the roadmap anyway |
+| three reasons step 6 was "a question" | A migration that costs nothing is not a reason; "it renames back to what 0.3.15 renamed away from" was an observation, not an objection; and the apply record's uninstall lifetime is answered by letting shipped packs be uninstallable, with a property deciding whether the button shows — which is on the roadmap anyway |
 
 ## Decisions
 
@@ -314,12 +314,12 @@ workspace, with no `abuddy run` process. This is not a tightening: it is what on
 work is to stop that depending on which pack it is. Phase 3 carries it as a test rather than an argument.
 
 **2. What orders the phases is the code, not risk.** `abuddy build`'s `if (!external)` gate blocks the
-generic backend watcher, so Phase 1 precedes Phase 3; `loadSingleExternalPack` strips `boot.seedManifest`
-and `evaluateSeedPolicy` runs only on the declarative path, so Phase 5 precedes Phase 6.
+generic backend watcher, so Phase 1 precedes Phase 3; `loadSingleExternalPack` strips `boot.contentManifest`
+and `evaluateContentPolicy` runs only on the declarative path, so Phase 5 precedes Phase 6.
 
 **3. A migration is a convenience here, not a gate.** There is one user of this app and he wrote it, so
-the two records Phases 4 and 5 move can be migrated or not: skipping them costs one re-seed of every pack
-(seeds are upsert) and the `logs` plugin's settings and tab-visibility choice. `CLAUDE.md`'s carve-out for
+the two records Phases 4 and 5 move can be migrated or not: skipping them costs one re-apply of every pack
+(content are upsert) and the `logs` plugin's settings and tab-visibility choice. `CLAUDE.md`'s carve-out for
 stored data is written for users this repo does not have. An earlier version of this doc sorted its work
 by "needs no stored-data migration" and deferred half of it on that premise; see *What an earlier version
 got wrong*.
@@ -331,15 +331,15 @@ would also have removed the privilege, and is deferred rather than rejected
 ([`plans/logs-to-host.md`](../../plans/deferred/logs-to-host.md)): whether the Logs plugin should become a core app
 feature, updated only by a full app release, is a product question this goal does not need answered. Deleting the field removes more than the move would and touches nothing else.
 **The cost, which is the reason this is a decision and not a tidy-up:** `logs` stops starting before
-hydration, so hydration, `onInit`, migrations and seeding stop reaching the in-app viewer. They still reach
+hydration, so hydration, `onInit`, migrations and applying stop reaching the in-app viewer. They still reach
 stdout and the log file. Pack loading was already outside that window.
 
 **5. `partitionPolicy` is deleted, not generalised.** Nothing uses it: the only pack allowed one declares
 `{"excludedEntityTypes": []}`.
 
-**6. A seed hash is content, and there is one record per pack.** Settled already by `0a25ff990`: both
-hashes are over bytes and file names, `builtInSeedFingerprints` is gone, and asking for a pack's data back
-is `IMPORT_PACK_SEEDS`. Phase 5 is therefore a field rename plus porting `seedPolicy`, with no semantics
+**6. A content hash is content, and there is one record per pack.** Settled already by `0a25ff990`: both
+hashes are over bytes and file names, `builtInContentFingerprints` is gone, and asking for a pack's data back
+is `IMPORT_PACK_CONTENT`. Phase 5 is therefore a field rename plus porting `contentPolicy`, with no semantics
 left to decide.
 
 **7. First boot may fail, loudly.** Phase 6 makes the app able to start with no packs if the install
@@ -380,7 +380,7 @@ default-setup: a full `abuddy build` is **23.7s**, of which the Vite frontend bu
 runtime bundle on its own is **40ms** (956KB, three runs, 30-50ms). A loop that re-ran the whole build per
 edit would cost 24s against today's ~1s, so `--watch` rebuilds the one output whose staleness the app can
 see and says so in its own help text. That is also exactly today's semantics: `npm start` never recompiled
-seeds or facade types on an edit either. It is what `abuddy run`'s BE watcher should adopt — it calls
+content or facade types on an edit either. It is what `abuddy run`'s BE watcher should adopt — it calls
 `build([])` per edit, which is that 23.7s for a pack this size.
 
 **And it retires three built-in-aware pieces of the build record**, since removing that gate is exactly what
@@ -404,12 +404,12 @@ through the fixture packs, whose step shares no edge with the pool that reads th
 default-setup like any pack and the step on the chain's critical path is observed across all nine.
 
 **Two more pieces come out with `dev-build.mjs`, and one bites before the other.** It writes *two* files:
-`dist/runtime/index.cjs` and `dist/runtime/seeds-index.sha256`, the sha256 of the compiled seeds index its
+`dist/runtime/index.cjs` and `dist/runtime/content-index.sha256`, the sha256 of the compiled content index its
 runtime was built beside. `publishHostPackOutput` (`abuddy-host/src/packs/layout.ts:307-310`) **throws** when
 those two disagree, so a `--watch` wrapper that drops the hash leaves a packaged app unable to publish its own
-build output. Then the guard itself goes: it exists only because seeds and runtime are built by *different
-commands* — its own comment says so, and the throw reads *"seeds compiled again without rebuilding the
-runtime"* — and one command doing both removes the cause. `BUILT_IN_RUNTIME_SEEDS_HASH`, the file and the throw
+build output. Then the guard itself goes: it exists only because content and runtime are built by *different
+commands* — its own comment says so, and the throw reads *"content compiled again without rebuilding the
+runtime"* — and one command doing both removes the cause. `BUILT_IN_RUNTIME_CONTENT_HASH`, the file and the throw
 are then a check that cannot fail, so they are deleted, or the throw stays as an assertion with a comment
 naming the edit that would fire it, which is this repo's rule for one.
 
@@ -534,10 +534,10 @@ If the first bullet fails for a pack that is not default-setup, this step is not
 Steps 1-3 leave one difference: default-setup's directory ships read-only in `resources/` and is loaded in
 place, where every other pack is installed into the user's data dir. These three remove it.
 
-**The ordering is forced by one line.** `loadSingleExternalPack` deletes `registration.boot.seedManifest` for
-external packs (`loader.ts:244-249`), and `evaluateSeedPolicy` is called only from the declarative path
-(`seed.ts:184`). So installing default-setup before step 5 gives it `importPackSeeds`, which evaluates no
-`seedPolicy` — and default-setup declares `skipAtBoot: ['settings']` and `skipAfterOnboarding: ['notes']`, so
+**The ordering is forced by one line.** `loadSingleExternalPack` deletes `registration.boot.contentManifest` for
+external packs (`loader.ts:244-249`), and `evaluateContentPolicy` is called only from the declarative path
+(`apply.ts:184`). So installing default-setup before step 5 gives it `importPackContent`, which evaluates no
+`contentPolicy` — and default-setup declares `skipAtBoot: ['settings']` and `skipAfterOnboarding: ['notes']`, so
 its settings would be reset at every boot and its notes would come back after onboarding. Step 5 before step
 6 is not a preference.
 
@@ -565,7 +565,7 @@ get it back, and the host needs no manifest to express anything.
 should become a core app feature — updated only by a full app release — is a product question this goal
 does not need answered, and deleting the field removes more while moving nothing.
 
-**Cost:** `logs` stops starting before hydration, so hydration, `onInit`, migrations and seeding stop
+**Cost:** `logs` stops starting before hydration, so hydration, `onInit`, migrations and applying stop
 reaching the in-app viewer. Every line still reaches stdout and the log file, and pack loading was already
 outside the captured window — `startEarlySystems` is step 6 of the boot order, pack loading step 4.
 
@@ -586,7 +586,7 @@ Three specs assert the field and move with it: `manifest-schema.spec.ts:148-150`
 |---|---|---|
 | 1-4 — dirs, discovery, pack load, registration | pack loading, every load problem | no change — already outside the window, since `startEarlySystems` is step 6 |
 | 5-6 — store open, early systems start | — | — |
-| 7+ — hydration, `onInit`, migrations, seeding | the data layer coming up | **no**, this is the loss |
+| 7+ — hydration, `onInit`, migrations, applying | the data layer coming up | **no**, this is the loss |
 | the bus on | everything else | yes |
 
 Everything in the lost row still reaches stdout and the log file, which is where this repo reads boot
@@ -606,26 +606,26 @@ of the pack contract, which is the part that is settled.
 bespoke refinement; and the Logs plugin still shows everything logged from the bus actor on.
 Mutation: put `earlySystem: true` in a fixture manifest and watch the schema refuse it.
 
-### Phase 5 — Merge the two seed paths
+### Phase 5 — Merge the two content paths
 
 Keep the external path's per-pack hashing and dependency tracking, port
-`seedPolicy` onto it, and fold `builtInSeedHashes` into `externalSeedHashes` — renamed, since "external" stops
-meaning anything. `0.3.15.ts` renamed *away from* `packSeedHashes` and `packSeedDeps`, so that migration is the
+`contentPolicy` onto it, and fold `builtInContentRevisions` into `externalContentRevisions` — renamed, since "external" stops
+meaning anything. `0.3.15.ts` renamed *away from* `packContentRevisions` and `packContentDeps`, so that migration is the
 map for renaming back.
 
 **Cheaper than it was, because the semantics are settled.** This used to carry a decision as well as a rename:
 the two hashes disagreed about what "changed" means — the external one counted file times, so a `touch`
-re-seeded and a reinstall of identical bytes did too, while the built-in one counted bytes alone behind a
-`builtInSeedFingerprints` stat cache. `0a25ff990` made both content-only and deleted that field, measuring the
+re-applied and a reinstall of identical bytes did too, while the built-in one counted bytes alone behind a
+`builtInContentFingerprints` stat cache. `0a25ff990` made both content-only and deleted that field, measuring the
 cache at 0.38ms over default-setup's 490KB (0.07ms to stat the same files) — so there is no shortcut left to
-decide about, and the fields differ only in name. Asking for a pack's data back is `IMPORT_PACK_SEEDS`.
+decide about, and the fields differ only in name. Asking for a pack's data back is `IMPORT_PACK_CONTENT`.
 
-**Done when:** one pair of fields (`packSeedHashes`, `packSeedDeps`) carries every pack;
-`orchestrateDeclarativeSeed` and `importPackSeeds` are one function or share their freshness check;
-`evaluateSeedPolicy` runs for any pack with a `seedPolicy`. Mutation: give a fixture pack
+**Done when:** one pair of fields (`packContentRevisions`, `packContentDeps`) carries every pack;
+`orchestrateDeclarativeContent` and `importPackContent` are one function or share their freshness check;
+`evaluateContentPolicy` runs for any pack with a `contentPolicy`. Mutation: give a fixture pack
 `skipAtBoot: ['settings']`, boot twice, and assert its settings keys are absent both times — then remove
-the `seedPolicy` call and watch it fail. The dependency-state retry keeps its cases in
-`loader.spec.ts` (`externalSeedDeps`' four).
+the `contentPolicy` call and watch it fail. The dependency-state retry keeps its cases in
+`loader.spec.ts` (`externalContentDeps`' four).
 
 ### Phase 6 — Install on first boot
 
@@ -667,7 +667,7 @@ shipped pack's uninstall property true (the Packs view offers the button).
 ### Phase 7 — Review the whole change, then fix what it finds
 
 **Not a phase of work; a phase of reading.** Six phases of mechanical deletion across the loader, the two
-bundler configs, the shell, the seed paths and the installer leave the kind of defect no single phase's
+bundler configs, the shell, the content paths and the installer leave the kind of defect no single phase's
 "Done when" is pointed at: a case that still passes because its fixture moved with the code, a branch whose
 last caller went, an error message naming a thing that no longer exists, a claim in a guide that the diff
 quietly falsified.
@@ -778,7 +778,7 @@ own text keeps as axis 1.
 | 2 | done | `partitionPolicy` gone; `appPartitionPolicy()` is a constant in `database/open.ts` |
 | 3 | done | `npm run start` alone gives frontend and backend hot reload for every workspace pack, `tests/packs/external-pack` included, with no `abuddy run`. Held by `repo-checks`' `dev-pack-hmr` |
 | 4 | done | `earlySystem` deleted, not widened |
-| 5 | done | one `seedPacks`, one `packSeedHashes`/`packSeedDeps`, one policy for every pack |
+| 5 | done | one `applyPacks`, one `packContentRevisions`/`packContentDeps`, one policy for every pack |
 | 6 | done | install replaces publish; `publishHostPackOutput`, `pruneHostPackOutputs`, `hostPacksDir`, `loadBuiltInPacks`, `discoverBuiltInPacks`, the `publishing` staging kind and `schema.ts`'s `degraded` branch are gone |
 | 7 | done | 15 findings, all fixed; `npm run chain` green |
 
@@ -793,7 +793,7 @@ installed pack has none. So:
   `hostPackages` now covers every external. `pack-externals.spec.ts` holds the two halves together.
 - **A lazy `require` outlived the resolution that served it.** esbuild defers a module body into an
   `__init` the bundle calls on first use, so default-setup's action step required `@abuddy/sdk/logger`
-  when a step first ran, long after `withHostResolution` had restored the resolver. Seeding the require
+  when a step first ran, long after `withHostResolution` had restored the resolver. Applying the require
   cache cannot cover it, Node resolving before it reads the cache. `keepHostModulesResolvable` installs
   resolution for the process and never throws; `withModuleBridge`'s refusals stay scoped to the load they
   diagnose, which is where a *rebuild this pack* message belongs.

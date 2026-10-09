@@ -9,7 +9,7 @@
 # Phases, and the end state they establish for outside pack authors
 # (docs/archive/goals/goal-external-pack-authoring.md):
 #   1. install @abuddy/cli + @abuddy/sdk (with @abuddy/ears) from tarballs
-#   2. abuddy init -> add feature -> a flow using keepAlive from default-setup -> seeds from a format with a
+#   2. abuddy init -> add feature -> a flow using keepAlive from default-setup -> content from a format with a
 #      .ts compiler module, default-setup's notes format, and its library format -> an llm flow and a
 #      service calling services.inference
 #   3. abuddy build
@@ -120,7 +120,7 @@ export default {
 };
 EOF
 
-step "2. Seeds from abuddy.json: a format with a .ts compiler module, and default-setup's notes and library formats"
+step "2. Content from abuddy.json: a format with a .ts compiler module, and default-setup's notes and library formats"
 mkdir -p src/content/glossary src/content/notes
 printf -- '---\nterm: Pack\n---\nA bundle of features.\n' > src/content/glossary/pack.md
 mkdir -p src/content/compilers
@@ -131,7 +131,7 @@ export default function compileGlossary({ path }: ContentCompileContext): Conten
   return compileMarkdownTree(path).map((item) => ({ entity: 'DemoPack', term: String(item.frontmatter.term), definition: item.body.trim() }));
 }
 TS
-printf -- '---\ntitle: Demo notes\n---\nSeeded by demo-pack.\n' > src/content/notes/demo.md
+printf -- '---\ntitle: Demo notes\n---\nWritten by demo-pack.\n' > src/content/notes/demo.md
 mkdir -p src/content/library/guides
 printf -- '---\nname: Demo guides\n---\n' > src/content/library/guides/_meta.md
 printf -- '---\nname: Getting started\ntags: [demo]\n---\n<!-- section:text -->\nInstall demo-pack.\n' > src/content/library/guides/start.md
@@ -211,19 +211,19 @@ node -e '
   const [term] = read("glossary");
   if (term?.entity !== "DemoPack" || term.term !== "Pack" || term.definition !== "A bundle of features.") throw new Error("glossary: " + JSON.stringify(term));
   const [note] = read("demo-notes");
-  // A record carries only what its source sets: defaults are applied when the row is created, so they are not tracked as seeded
+  // A record carries only what its source sets: defaults are applied when the row is created, so they are not tracked as written
   if (note?.entity !== "Note" || note.title !== "Demo notes" || "noteType" in note || "favorite" in note || !note.contentHash) throw new Error("demo-notes: " + JSON.stringify(note));
   // Sections and the _meta.md name come from the library compiler module of default-setup, not the generic walker
   const [guides] = read("demo-library");
   const [doc] = guides?.children ?? [];
   if (guides?.entity !== "Collection" || guides.name !== "Demo guides" || doc?.entity !== "Document"
     || JSON.stringify(doc.content) !== JSON.stringify([{ type: "text", text: "Install demo-pack." }])) throw new Error("demo-library: " + JSON.stringify(guides));
-' || fail "the compiler modules and markdown seeds were not compiled"
+' || fail "the compiler modules and markdown content were not compiled"
 
 step "4. Unit tests through the harness, with default-setup's runtime"
 # A spec's path mirrors the source it covers, which is the layout `abuddy init` scaffolds and the one a
-# pack author reads about (docs/public-facing/testing.md). These three cover the seeds, a feature's service
-# and a seeded flow, so they go where those live.
+# pack author reads about (docs/public-facing/testing.md). These three cover the content, a feature's service
+# and a written flow, so they go where those live.
 mkdir -p tests/content/flows tests/features/notes/be/services
 cat > tests/content/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
@@ -232,14 +232,14 @@ import { findAll } from '#generated/ears.ts';
 import { findRelations } from '@abuddy/ears';
 
 describe('demo notes', () => {
-  it("seeds notes with default-setup's format and hooks", async () => {
+  it("content notes with default-setup's format and hooks", async () => {
     expect(await importContent({ keys: ['demo-notes'] })).toEqual({ 'demo-notes': { created: 1, updated: 0, skipped: 0 } });
     const [note] = findAll('Note');
     expect(note).toMatchObject({ title: 'Demo notes', noteType: 'document', lastSeen: 0 });
     expect(note.shortCode).toMatch(/^NOTE-\d+$/);
   });
 
-  it("seeds a library with default-setup's bundled compiler module and hooks", async () => {
+  it("content a library with default-setup's bundled compiler module and hooks", async () => {
     expect(await importContent({ keys: ['demo-library'] })).toEqual({ 'demo-library': { created: 2, updated: 0, skipped: 0 } });
     const [guides] = findAll('Collection');
     const [doc] = findAll('Document');
@@ -285,9 +285,9 @@ describe('notes summary flow', () => {
 TS
 # Uncoloured, so the summary line below matches whatever FORCE_COLOR the caller set
 NO_COLOR=1 FORCE_COLOR=0 node_modules/.bin/vitest run 2>&1 | tee "$WORK/unit.log"
-# The scaffold's seed test (2), the feature's system test, default-setup notes and library, the service and the flow
+# The scaffold's content test (2), the feature's system test, default-setup notes and library, the service and the flow
 grep -qE "Tests +7 passed" "$WORK/unit.log" || fail "unit tests through the harness failed"
-# The build prints a seed-file count even with no flows; check the compiled flow itself
+# The build prints an apply-file count even with no flows; check the compiled flow itself
 node -e '
   const flows = JSON.parse(require("fs").readFileSync("dist/runtime/content/flows.content.json", "utf8"));
   const flow = flows["Notes Heartbeat"];

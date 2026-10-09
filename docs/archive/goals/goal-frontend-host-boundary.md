@@ -189,7 +189,7 @@ The measured problem, from this session's runs on this machine:
 | a single spec file (`npx vitest run <file> --root packages/<pkg>`) | 1–3s | every edit |
 | one package's `tsc --noEmit` | 3s | every typed edit |
 | `npm run packages:ensure` | 1s when fresh | before a pack test run after touching sdk/ears/ui/testing |
-| `npm run compile` | 16s | after changing default-setup's seeds, manifest or runtime |
+| `npm run compile` | 16s | after changing default-setup's content, manifest or runtime |
 | `npm run typecheck` (all) | 53s | before asking for review |
 | `npm run test:unit` (8 workspaces) | 108s | before asking for review |
 | `npm run api:check` | 55s | only when a public SDK/ears/ui export changed |

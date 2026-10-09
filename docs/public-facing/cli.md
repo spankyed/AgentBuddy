@@ -107,7 +107,7 @@ Steps:
 6. Compiles `content.sources` into `runtime/content/`, validating flows against the dependencies' step build code
 7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@abuddy/*` packages, `@abuddy/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`. Warns, without failing, when a committed `etc/pack-types.api.md` no longer matches what it bundled (`abuddy facade-report`)
 8. Writes `types/snapshot.json`, and notes entity types with no `entityShapes` entry
-9. Bundles `steps.build`, the seed runtime and any seed compilers into `build/`. The seed runtime is then loaded in a fresh Node process with only `@abuddy/sdk`, as a dependent's tests load it; it fails if repositories or content writers need native modules or `@abuddy/sdk`'s optional peers
+9. Bundles `steps.build`, the content runtime and any content compilers into `build/`. The content runtime is then loaded in a fresh Node process with only `@abuddy/sdk`, as a dependent's tests load it; it fails if repositories or content writers need native modules or `@abuddy/sdk`'s optional peers
 10. Bundles the backend runtime into `runtime/index.cjs`
 11. Bundles each `dsl` entry with a `monaco` target into `defs/monaco/<name>-defs.d.ts`, wrapped as `declare module "@app/defs/<name>"`, inlining the pack's own modules, `@abuddy/*` and the entry's `inline` packages
 12. Bundles the FE entry into `runtime/fe.js` (and `fe.css`) with Vite, unless `--skip-fe`. The entry is `src/pack-entry-fe.ts` (or `.js`) if present, else `src/__generated__/pack-entry-fe.ts`
@@ -397,7 +397,7 @@ types, and that order varies between builds, so an unnormalised report would dif
 
 #### `abuddy info`
 
-Print a summary of the current pack: id, version, host version, feature count, step count, pack service count, action/prompt/flow seed file counts, dependency count, whether `dist/` exists, and the pack root.
+Print a summary of the current pack: id, version, host version, feature count, step count, pack service count, action/prompt/flow content file counts, dependency count, whether `dist/` exists, and the pack root.
 
 ### Testing
 
@@ -519,7 +519,7 @@ While a command changes the database it holds a lock on the data dir (`db-write.
 
 **The run history.** The database has two partitions: the app's data, and the run history (`TNode` rows, what each flow step did). Commands read the data only, as the app does, so a query for `TNode` comes back empty until you pass `--volatile`, which reads both. `reset` deletes both either way; its listing counts the run history only with `--volatile`.
 
-**Writing.** There is no seed command: AgentBuddy content each pack's data when it starts (and `abuddy run` re-applies a pack it rebuilds), so start the app rather than seed a data dir by hand.
+**Writing.** There is no apply command: AgentBuddy content each pack's data when it starts (and `abuddy run` re-applies a pack it rebuilds), so start the app rather than content a data dir by hand.
 
 **Installed packs.** Entity types, relation kinds and where each type is stored come from the packs installed in the data dir — every enabled pack in `packs/`, the ones the app ships included, read from its own `abuddy.json`; no pack code runs. A data dir with no packs installed knows only the names the app itself declares, which is the truth about it rather than a degraded reading of it.
 

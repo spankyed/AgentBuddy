@@ -1,7 +1,7 @@
 import type { PromptInput } from '@abuddy/sdk/repositories';
 
 /**
- * Reusable prompt definitions for seeding tests.
+ * Reusable prompt definitions for applying tests.
  */
 export const promptFixtures: PromptInput[] = [
   {

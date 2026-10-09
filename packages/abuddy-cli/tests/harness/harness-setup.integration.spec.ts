@@ -67,7 +67,7 @@ describe("a pack's unit tests on the harness", () => {
     const root = dataPack(`
 import { expect, it } from 'vitest';
 import { importContent } from '@abuddy/testing/harness';
-it('seeds nothing', async () => {
+it('writes nothing', async () => {
   expect(await importContent()).toEqual({});
 });`);
     // inherent: runs a pack's own vitest suite from another cwd — the nested runner is the thing under test
@@ -94,7 +94,7 @@ it('sends to its own system and plugin', () => {
     const spec = `
 import { expect, it } from 'vitest';
 import { importContent } from '@abuddy/testing/harness';
-it('seeds nothing', async () => {
+it('writes nothing', async () => {
   expect(await importContent()).toEqual({});
 });`;
     const root = dataPack(spec);

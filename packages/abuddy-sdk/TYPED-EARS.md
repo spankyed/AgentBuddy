@@ -36,7 +36,7 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
   name's `E` at its `string` default, so `findAll<Shape>('Tpyo')` compiles by design. Without a type
   argument the same call is checked.
 - A generic helper constrains its name to `EntityName`, or opts out with `as string`.
-- Overload order in `typed.ts` is part of the contract. `qx`'s name overloads come before its id overloads: in the other order, editors offer no entity names in `qx('…')`. It's also the order the runtime resolves a seed in (a registered entity type first, then an id).
+- Overload order in `typed.ts` is part of the contract. `qx`'s name overloads come before its id overloads: in the other order, editors offer no entity names in `qx('…')`. It's also the order the runtime resolves an apply in (a registered entity type first, then an id).
 
 **Ids.**
 - Typed queries return ids tagged with their entity type (`ids()`, `first()`, `pick`'s `id`, a row's `id`).
@@ -48,7 +48,7 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
   read them before proposing a fix.
 
 **Writes.**
-- `tx` from `#generated/ears` checks declared fields' values when it knows the entity: seeded with a declared name or a tagged id.
+- `tx` from `#generated/ears` checks declared fields' values when it knows the entity: written with a declared name or a tagged id.
 - Undeclared fields are accepted, and a plain id leaves every write unchecked.
 - So `put` and `add` take a field *name* of any string (`put<K extends string>`), and an undeclared one
   gets `unknown` for its value. This is deliberate — EARS stores attributes a shape need not declare —
@@ -122,4 +122,4 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
     as one.
   - Why it is tolerable meanwhile: entity names here are PascalCase with no dashes, so no realistic
     misspelling of `Thread`, `TNode` or `Flow` reaches the id overload.
-- **No entity names in `qx('…')` (found 2026-09-14).** `qx`'s id overloads came before its name overloads, so editors offered no names there. Fixed by putting the name overloads first; the seed resolution matrix in `typed-query-builder.spec.ts` pins that nothing else changed.
+- **No entity names in `qx('…')` (found 2026-09-14).** `qx`'s id overloads came before its name overloads, so editors offered no names there. Fixed by putting the name overloads first; the content resolution matrix in `typed-query-builder.spec.ts` pins that nothing else changed.

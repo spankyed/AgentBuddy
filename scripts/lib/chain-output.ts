@@ -265,7 +265,7 @@ export const CHANGED_CAP = 5;
  * What to print under a step that passed and is already stale, given the diff against its own stamp.
  *
  * Every line here is something the stamp can prove. That is the whole change: the list used to be the files
- * whose mtime had moved, which is a superset — it named a compiled seed an E2E test rewrites with the bytes it
+ * whose mtime had moved, which is a superset — it named a compiled content an E2E test rewrites with the bytes it
  * already had, and the diagnosis that followed was about the wrong file. So a rewrite that changed nothing is no
  * longer a cause; it is a footnote, because a tree being written during every run is worth knowing and is not
  * why anything re-ran.

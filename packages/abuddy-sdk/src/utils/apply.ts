@@ -150,7 +150,7 @@ export function registeredContentKeys(packId: string): string[] {
 export const CONTENT_INDEX_FILE = 'content.json';
 
 /**
- * The pack that compiled a content directory, from its content.json. Seed keys start with it, so two
+ * The pack that compiled a content directory, from its content.json. Content keys start with it, so two
  * packs' records with the same entry key and identity write an entity each.
  */
 export function contentPackId(compiledDir: string): string {
@@ -166,7 +166,7 @@ export function indexPackId(index: { packId?: string } | null, indexFile: string
   return index.packId;
 }
 
-/** Seeds a pack's compiled content directory with the appliers of the registered pack its content.json names */
+/** Content a pack's compiled content directory with the appliers of the registered pack its content.json names */
 export function importCompiledContent(options: {
   compiledDir: string;
   include?: Record<string, ContentSelection | undefined>;

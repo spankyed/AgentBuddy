@@ -281,7 +281,7 @@ describe('flow applier', () => {
     expect(kinds.filter((kind) => !GRAPH_REL_KINDS.includes(kind)), 'a kind the edges part would drop').toEqual([]);
   });
 
-  it('reports an invalid flow as a seed error instead of skipping it silently', () => {
+  it('reports an invalid flow as an apply error instead of skipping it silently', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-applier-'));
     const file = contentPath(tmp, 'flows');
     fs.mkdirSync(path.dirname(file), { recursive: true });

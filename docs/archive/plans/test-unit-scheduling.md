@@ -121,7 +121,7 @@ is a real tier boundary — 91 pure tests, 3 that invoke a compiler.
 
 ## Falls out of this
 
-`generate-entries.spec.ts` imports `transformSync` from **esbuild** (L1108, in *"generated seeders"*), and
+`generate-entries.spec.ts` imports `transformSync` from **esbuild** (L1108, in *"generated appliers"*), and
 esbuild starts a child process — while `suite-split.spec.ts` reads the file as clean, because that rule looks
 for `node:child_process` imports. This is a **pre-existing** second instance of the guard hole recorded in
 `cli-suite-spawns-rebase.md` §3.1, not one that branch creates, and it argues for making the predicate
@@ -177,7 +177,7 @@ anything.
 
 `@app/api`'s suite reads the built-in pack's `dist`, and no spec of its names that path: they boot the app
 runtime and host code resolves it. Declaring it independent let it run beside `compile` under three lanes,
-where it failed on a missing `settings.seed.json` after passing serially forever. `@abuddy/host` is the
+where it failed on a missing `settings.content.json` after passing serially forever. `@abuddy/host` is the
 inverse — `sdk-bridge-drift.spec.ts` reads `dist/runtime/index.cjs` but *skips* when it is absent, so it
 passes without the pack and would pass vacuously in a race.
 

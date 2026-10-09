@@ -30,7 +30,7 @@ Finished when:
 - No module under packages/abuddy-host/src holds the loaded packs at module scope: the registry created
   by createPackRegistry() is the only place they live, and tests/packs/registry-state.spec.ts covers
   whatever module now owns them.
-- startPacks takes only the registry; runPackMigrations and seedPackData are reached through it.
+- startPacks takes only the registry; runPackMigrations and applyPackContent are reached through it.
 - tests/packs/two-registries.spec.ts asserts two registries hold their own loaded packs, and its opening
   comment no longer overstates what it checks.
 - npm run typecheck, npm run test:unit, npm run build, npm test, npm run test:external-pack all pass.
@@ -107,7 +107,7 @@ Production reads, all of which want provenance or an id — none wants anything 
 | `bus/app-bus.ts` | `getPacksWithClientLoadedFrontends()` — needs `dir` |
 | `packs-router.ts:10` | `getLoadedPackEntries()` — needs `dir` and identity |
 
-`seedPackData` needs `manifest.id` and `dir`. `runPackMigrations` needs `manifest.{id,version}` and
+`applyPackContent` needs `manifest.id` and `dir`. `runPackMigrations` needs `manifest.{id,version}` and
 `migrations`. Both are provenance plus registration.
 
 ### What the asymmetry costs
@@ -142,7 +142,7 @@ already returns exactly that, from ids `loader.ts:314` wrote in the same shape. 
    module state into another module keeps the bug; the point is that the list stops outliving a registry.
 
 4. **`startPacks(registry)` loses its `externalPacks` parameter**, and `runPackMigrations` and
-   `seedPackData` are reached through the registry. `app-data.ts:30` currently threads module state into
+   `applyPackContent` are reached through the registry. `app-data.ts:30` currently threads module state into
    a registry-scoped call; that seam disappears rather than moving.
 
 5. **Order is preserved by the Map.** `registrations` is a `Map`, so insertion order holds.
@@ -182,12 +182,12 @@ Six production sites (`migrations/index.ts`, `migrations/app/0.3.15.ts`, `loader
 ### Phase 3 — the external readers move, and the parameters go
 
 `app-data.ts`, `packs-system.ts:185`, `bus/app-bus.ts`, `packs-router.ts`. `startPacks(registry)`,
-`runPackMigrations` and `seedPackData` take the registry. `lifecycle.ts` and `reload.ts` use
+`runPackMigrations` and `applyPackContent` take the registry. `lifecycle.ts` and `reload.ts` use
 `getRegisteredPackSystemIds`.
 
 **Done when:** no production file imports `loaded-packs.ts`; `startPacks` has one parameter; the two
 hand-built `${packId}.${featureId}` maps are gone. `npm run test:unit` and `npm test` pass.
-**Mutation:** a pack torn down but left registered would be seeded again on reset — assert reset seeds
+**Mutation:** a pack torn down but left registered would be written again on reset — assert reset content
 only registered packs, and check it fails when `unregisterPack` keeps the origin.
 
 ### Phase 4 — delete the module and close the guarantee
@@ -246,7 +246,7 @@ survey turned up.
   gone. Two registration paths needed the origin, not one: the dev-mode built runtime as well as the
   bundled loader.
 - **Phase 3 — the external readers and the parameters.** `startPacks(registry)`. `runPackMigrations` and
-  `seedPackData` now name what they need (`PackMigrationTarget`, `PackSeedTarget`) rather than taking a
+  `applyPackContent` now name what they need (`PackMigrationTarget`, `PackContentTarget`) rather than taking a
   whole `LoadedPack`, which left their 21 test call sites untouched. `packs-system`'s list scan became
   `registry.packOrigin(id)`. `getLoadedPackEntries` and `getPacksWithClientLoadedFrontends` moved to
   `packs/pack-layout.ts`, beside `LoadedPackEntry` and `packFrontendFiles`, and take the registry.
@@ -273,7 +273,7 @@ survey turned up.
 - **Phase 1 leaked an origin on a refused registration.** `registerPack` writes `registrations` and
   `origins` before the try that registers a pack's extensions, and the catch deleted only the first — so a
   pack refused for a collision stayed listed as one the app had loaded, and the next boot would have
-  migrated and seeded it. Caught by auditing the three parallel lists in this module, not by a test, which
+  migrated and written it. Caught by auditing the three parallel lists in this module, not by a test, which
   is the point of the first open item below.
 
 ### Phase 5 (follow-up, same session) — the class, not the instances
@@ -283,11 +283,11 @@ Both open items were closed, and auditing them found a third bug.
 - **`LoadedPack` is `{ registration, origin }`.** The unpack/repack round trip is gone: the registration
   the pack's bundle exports is passed to the registry as it is, with its systems completed once (bus id,
   designation, and the manifest's incoming events) instead of array → Map → array. Two hand-written
-  13-field lists deleted. The external-pack adjustments (`earlySystem`, `seedManifest`, `partitionPolicy`)
+  13-field lists deleted. The external-pack adjustments (`earlySystem`, `contentManifest`, `partitionPolicy`)
   now take their copies before deleting, so nothing borrowed from the pack module is mutated.
 - **`registerPack` has one `contributions` table** in place of three hand-maintained lists. Each entry
   records its undo as it works — not returned at the end, because an entry can throw partway through its
-  own items, which is how the seed-hook rollback was already being handled specially. `unregisterPack`
+  own items, which is how the content-writer rollback was already being handled specially. `unregisterPack`
   runs the same undos, so what comes out is exactly what went in.
 - **Found while auditing: a type two packs contribute facets of was dropped when either left.**
   `createDefinitionStore.unregister(type)` deleted the key outright, and merging facets across packs is

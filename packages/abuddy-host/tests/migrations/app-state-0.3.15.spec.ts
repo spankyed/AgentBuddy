@@ -1,7 +1,7 @@
 // The host's 0.3.15 app migration moves the app's state out of the built-in pack's settings (`internal`) into
 // AppState: data from 0.3.14 comes back onboarded and at its version, so the migrations after it still run, on the
 // release, its betas and development builds. A second run changes nothing, and a failed move runs no pack
-// migration and records no version. The seed records it used to carry are dropped, since what says a pack's
+// migration and records no version. The records it used to carry are dropped, since what says a pack's
 // content has been applied is the per-item record only an apply can write.
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'node:fs';
@@ -86,7 +86,7 @@ beforeAll(async () => {
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: BUILT_IN_ID, name: 'Built-in', version: TEST_APP_VERSION, builtIn: true }));
   const registration = {
     id: BUILT_IN_ID,
-    // A boot apply: the single seed hash of 0.3.14 was this pack's
+    // A boot apply: the single content revision 0.3.14 stored was this pack's
     migrations: ['0.3.14', '0.3.16'].map((target) => ({ target, description: target, up: () => { ran.push(target); } })),
   };
   // Registered straight into the registry: what this file is about is the migration runner, and routing
@@ -165,7 +165,7 @@ describe('the 0.3.15 app migration', () => {
     });
   });
 
-  describe('the seed records a row kept per kind of pack', () => {
+  describe('the content records a row kept per kind of pack', () => {
     const APP_STATE_ID = 'AppState-app' as EARS.EntityId;
     const OLD = {
       packSeedHashes: { 'memo-pack': 'e1' },

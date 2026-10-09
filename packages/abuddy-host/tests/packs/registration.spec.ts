@@ -288,10 +288,10 @@ describe('packContentTargets', () => {
   const origin = (id: string, shipped: boolean, dependencies?: Record<string, string>) =>
     ({ id, name: id, version: '1.0.0', dir: `/packs/${id}`, shipped, manifest: { id, name: id, version: '1.0.0', dependencies } } as unknown as Parameters<typeof registerPack>[1]);
 
-  // **A pack is seedable because it is somewhere.** Its compiled content is files in its directory, which the
+  // **A pack is writable because it is somewhere.** Its compiled content is files in its directory, which the
   // origin knows and a registration does not, so a pack never has to tell the host where its compiled data
-  // is: a registration claiming a `compiledDir` is not enough to be seeded from.
-  it('leaves out a pack with no origin, having nowhere to read seeds from', () => {
+  // is: a registration claiming a `compiledDir` is not enough to be written from.
+  it('leaves out a pack with no origin, having nowhere to read content from', () => {
     registerPack({ id: 'nowhere-pack', boot: { onInit() {} } } as unknown as PackRegistration);
     registered.push('nowhere-pack');
 
@@ -301,7 +301,7 @@ describe('packContentTargets', () => {
   });
 
   /**
-   * A seed target is where a pack's content are and what it depends on, and nothing else: what a seed leaves
+   * An apply target is where a pack's content are and what it depends on, and nothing else: what an apply leaves
    * alone the applier decides from the rows, so nothing about a pack's content travels on its registration.
    */
   it("carries each pack's own id and directory, whoever ships it", () => {
@@ -312,13 +312,13 @@ describe('packContentTargets', () => {
     const targets = registry.packContentTargets();
     expect(targets.find((t) => t.manifest.id === 'shipped-pack'))
       .toEqual({ manifest: { id: 'shipped-pack', dependencies: undefined }, dir: '/packs/shipped-pack' });
-    // Nothing in a seed target says which app shipped the pack: every pack's content are read from
+    // Nothing in an apply target says which app shipped the pack: every pack's content are read from
     // `runtime/content` under its own directory
     expect(targets.find((t) => t.manifest.id === 'installed-pack'))
       .toEqual({ manifest: { id: 'installed-pack', dependencies: undefined }, dir: '/packs/installed-pack' });
   });
 
-  // The order seeds run in, so a pack's content can reference what the packs it depends on seeded
+  // The order content run in, so a pack's content can reference what the packs it depends on written
   it('orders a pack after the packs it depends on', () => {
     registerPack({ id: 'base-pack' } as PackRegistration, origin('base-pack', true));
     registerPack({ id: 'dependent-pack' } as PackRegistration, origin('dependent-pack', false, { 'base-pack': '*' }));
@@ -328,7 +328,7 @@ describe('packContentTargets', () => {
     expect(ids.indexOf('base-pack')).toBeLessThan(ids.indexOf('dependent-pack'));
   });
 
-  it('narrows to the packs it is given, which is what activating or reloading one seeds', () => {
+  it('narrows to the packs it is given, which is what activating or reloading one content', () => {
     registerPack({ id: 'one-pack' } as PackRegistration, origin('one-pack', false));
     registerPack({ id: 'two-pack' } as PackRegistration, origin('two-pack', false));
     registered.push('one-pack', 'two-pack');

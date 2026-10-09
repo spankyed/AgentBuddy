@@ -23,7 +23,7 @@ Object.assign(jsonSchema, {
   $id: 'https://agentbuddy.dev/schemas/abuddy.json',
   $comment: 'Auto-generated from manifest-schema.ts — do not edit by hand. Run: npm run schema:update',
   title: 'AgentBuddy Pack Manifest',
-  description: 'Configuration manifest for an AgentBuddy pack. Declares metadata, features, entities, services, extensions, seeds, and build-time codegen inputs.',
+  description: 'Configuration manifest for an AgentBuddy pack. Declares metadata, features, entities, services, extensions, content, and build-time codegen inputs.',
 });
 
 const outPath = path.resolve(import.meta.dirname, '..', 'abuddy.schema.json');

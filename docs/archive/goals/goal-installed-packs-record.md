@@ -72,7 +72,7 @@ every divergence found in the session above.
 | `enabled` | the user's choice | no |
 | `installedFrom` | where the install came from | no |
 | `installedAt` | when it was placed | no |
-| `lastError` | the last seed's outcome | no (history) |
+| `lastError` | the last content's outcome | no (history) |
 | `availableVersion`, `availableTag`, `updateCheckError` | the last update check | no (remote state) |
 
 Three fields of ten are copies. They are the only ones the directory can already answer, and they are
@@ -100,7 +100,7 @@ build no longer ships.
 | Symptom | Fixed at | Why it happened |
 |---|---|---|
 | Packs view empty while a pack ran | `e14ed7767` | `reloadExternalPack` loaded a pack, wrote no row |
-| A first reload's seed failure dropped | `6d7f94714` | the seed wrote onto a row that did not exist yet |
+| A first reload's content failure dropped | `6d7f94714` | the apply wrote onto a row that did not exist yet |
 | Toggle losing the user's click | `e7e906c74` | `entries.map` over a record with no row |
 | Staging deleted a pack's only copy | `e007d8021` | "record lists none" read as "nothing installed" |
 | Two readers differing only in the absent case | `1d6cf3226` | same ambiguity, one layer up |
@@ -118,7 +118,7 @@ Readers (8): `schema.ts:70`, `pack-updater.ts:103,161`, `pack-discovery.ts:91`, 
 `runtime/activation-outcome.ts:11`, `runtime/packs-system.ts:143,263,360`.
 
 Writers: `writeInstalledPacks` / `updateInstalledPacks` / `addInstalledPack` / `removeInstalledPack` /
-`ensureInstalledPack` (`installed-packs.ts`), plus in-place merges at `runtime/seed.ts:53`,
+`ensureInstalledPack` (`installed-packs.ts`), plus in-place merges at `runtime/apply.ts:53`,
 `pack-updater.ts:148`, `runtime/packs-system.ts:169,240,291,378`, and the boot rebuild in
 `pack-discovery.ts:86`.
 
@@ -129,7 +129,7 @@ Writers: `writeInstalledPacks` / `updateInstalledPacks` / `addInstalledPack` / `
 "A loaded pack has a row" is maintained by convention at each site: install writes the row before
 `activatePack`, boot reconciles before `startPacks`, and the reload was taught to in `e14ed7767`. Nothing
 enforces the ordering — it was broken inside the very commit that introduced it, and again one call
-earlier in `recordSeedOutcome`. Under Decision 1 the invariant is not needed, so it cannot be broken.
+earlier in `recordApplyOutcome`. Under Decision 1 the invariant is not needed, so it cannot be broken.
 
 ### Staging's use of the record
 
@@ -143,9 +143,9 @@ already moved it aside. The state the guard defends looks unreachable without ha
 
 ### Wide survey: neighbouring state keyed by pack id
 
-- `AppState.packVersions` and `AppState.packSeedHashes` are never pruned when a pack is uninstalled
-  (`app-state/index.ts:22-24`, written at `migrations/index.ts:90` and `runtime/seed.ts:106`). A pack
-  uninstalled and reinstalled therefore skips its seed. The pack's *entities* survive an uninstall —
+- `AppState.packVersions` and `AppState.packContentRevisions` are never pruned when a pack is uninstalled
+  (`app-state/index.ts:22-24`, written at `migrations/index.ts:90` and `runtime/apply.ts:106`). A pack
+  uninstalled and reinstalled therefore skips its apply. The pack's *entities* survive an uninstall —
   `uninstallPack` deletes only the directory — so the end state is usually the same, but nothing records
   that as the intent, and the maps grow without bound. Deferred.
 - `pack-dev-servers/<packId>.json` is written by `abuddy dev` and removed by it on exit
@@ -176,7 +176,7 @@ Final.
 5. **`ensureInstalledPack` is deleted**, with its call in `reloadExternalPack` and the ordering constraint
    it created. Nothing has to remember to create a row when a pack appears.
 6. **Writes are named intentions, not merges.** `installed-packs.ts` exports one function per thing the
-   app decides or learns — set enabled, record the install source, record a seed outcome, record an
+   app decides or learns — set enabled, record the install source, record an apply outcome, record an
    update check, forget a pack — and nothing outside it reads or writes the file's shape. No call site
    maps over rows, and the `map`-versus-upsert judgement disappears with the merges.
 7. **A failed write is reported as the decision that was lost**, not as a log line about a file. Writes
@@ -225,7 +225,7 @@ rebuild that rewrites the row from the manifest fails that spec.
 - `activation-outcome.ts`, `packs-system.ts` (×3) and `pack-updater.ts` (×2) become row lookups over the
   derived list.
 - Delete the tests that pin the removed behaviour: `reload.spec.ts`'s "records a pack it is the first to
-  load", "leaves an existing entry alone" and "records a first-time pack's seed failure" — the first two
+  load", "leaves an existing entry alone" and "records a first-time pack's apply failure" — the first two
   describe machinery this phase removes, and the third's ordering constraint no longer exists.
   `tests/fixtures/external-pack/tests/e2e/dev-reload.spec.ts` keeps its second half (the pack comes back
   up) and drops the record assertion.
@@ -238,8 +238,8 @@ Mutation: making `packRecord` default `enabled` to false hides a running pack an
 
 - One exported function per decision or observation (Decision 6). `updateInstalledPacks`,
   `addInstalledPack` and `removeInstalledPack` stop being exported.
-- Migrate `runtime/seed.ts:53`, `pack-updater.ts:148` and `runtime/packs-system.ts:169,240,291,378`.
-- Delete `recordSeedOutcome`'s "could not record" warning: with no row required, there is nothing to fail
+- Migrate `runtime/apply.ts:53`, `pack-updater.ts:148` and `runtime/packs-system.ts:169,240,291,378`.
+- Delete `recordApplyOutcome`'s "could not record" warning: with no row required, there is nothing to fail
   to find.
 
 **Done when:** a guard spec asserts that no file outside `installed-packs.ts` names
@@ -299,8 +299,8 @@ Done. Phases 1–7 landed as six commits — Phases 2 and 3 as one, see below.
   there is no honest split left.
 - **`InstalledPacksRecord` died in Phase 7, not Phase 3.** Staging was its last reader, and Phase 7 is
   what removes that. Keeping it one phase longer is what let each phase leave the suite green.
-- **`recordSeedOutcomes` moved in Phase 2/3, not Phase 4.** With `ensureInstalledPack` gone, a first-time
-  pack's seed failure had nothing to write onto, so the fix had to travel with the deletion for the
+- **`recordApplyOutcomes` moved in Phase 2/3, not Phase 4.** With `ensureInstalledPack` gone, a first-time
+  pack's apply failure had nothing to write onto, so the fix had to travel with the deletion for the
   coverage to stay continuous.
 - **`enabledExternalPacks` takes the discovered packs, not a directory** (Phase 6). Boot prunes and
   filters from one discovery pass; passing a directory meant two.
@@ -330,7 +330,7 @@ survives a version change on disk.
 ### Tests removed, deliberately
 
 - `reload.spec.ts`: "records a pack it is the first to load" and "leaves an existing entry alone" —
-  both described `ensureInstalledPack`, which no longer exists. "Records a first-time pack's seed
+  both described `ensureInstalledPack`, which no longer exists. "Records a first-time pack's apply
   failure" survives, reworded: the behaviour is still wanted, the ordering constraint it named is not.
 - `discovery.spec.ts`: the two `reconcileInstalledPacks` specs, with the function.
 - `staging.spec.ts`: "doesn't restore a pack uninstalled while its interrupted install's copy sat here"
@@ -350,8 +350,8 @@ messages and the session transcript.
 
 Found while surveying; out of scope, and the agent must not do them.
 
-- **`AppState.packVersions` / `packSeedHashes` are never pruned.** A pack uninstalled and reinstalled
-  skips its seed. Probably benign — the entities survive an uninstall — but the intent is unrecorded and
+- **`AppState.packVersions` / `packContentRevisions` are never pruned.** A pack uninstalled and reinstalled
+  skips its apply. Probably benign — the entities survive an uninstall — but the intent is unrecorded and
   the maps grow without bound.
 - **Stale `pack-dev-servers/<packId>.json` markers.** A crashed `abuddy dev` leaves one naming a dead
   port that `pack://` still proxies to.

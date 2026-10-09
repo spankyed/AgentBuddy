@@ -176,7 +176,7 @@ describe('activating and tearing down a pack at runtime', () => {
     const { getPackCommands } = await import('@abuddy/sdk/framework');
     const { importCompiledContent } = await import('@abuddy/sdk/utils');
     activatePack(registry, PACK_ID, bus as never);
-    const compiledDir = path.join(tmpDir, 'compiled-seeds');
+    const compiledDir = path.join(tmpDir, 'compiled-content');
     fs.mkdirSync(compiledDir);
     fs.writeFileSync(path.join(compiledDir, 'content.json'), JSON.stringify({ version: 1, packId: PACK_ID, entries: [] }));
     expect(Object.keys(importCompiledContent({ compiledDir }))).toEqual(['memos']);

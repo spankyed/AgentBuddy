@@ -21,7 +21,7 @@ const flow = (label: string) => findWhere('Flow', 'label', label) as FlowRow[];
 const nodesOf = (label: string) => repository.flowsQueries.flowNodes(flow(label)[0].id);
 
 const dirs: string[] = [];
-// Another installed pack seeding flows: its own appliers read the content it compiled
+// Another installed pack applying flows: its own appliers read the content it compiled
 registerPack({
   id: 'other-pack',
   appliers: [createFormatApplier({ key: 'actions', entities: ['Action'], identity: ['label'] }), createFormatApplier({ key: 'prompts', entities: ['Prompt'], identity: ['label'] }), createFlowApplier()],
@@ -36,9 +36,9 @@ afterAll(() => {
  * `only` keeps just those flows, and `packId` names another pack that compiled them.
  */
 function compiled(changed: string[] = [], version = 'changed', { only, packId = 'default-setup' }: { only?: string[]; packId?: string } = {}): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-seed-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-content-'));
   dirs.push(dir);
-  fs.writeFileSync(path.join(dir, CONTENT_INDEX_FILE), JSON.stringify({ version: 1, packId, seeds: [] }));
+  fs.writeFileSync(path.join(dir, CONTENT_INDEX_FILE), JSON.stringify({ version: 1, packId, content: [] }));
   const contentDir = path.join(PACK_DIR, 'dist', 'runtime', 'content');
   for (const key of ['actions', 'prompts']) fs.copyFileSync(path.join(contentDir, contentFile(key)), path.join(dir, contentFile(key)));
   const all = JSON.parse(fs.readFileSync(path.join(contentDir, contentFile('flows')), 'utf-8')) as Record<string, { contentHash?: string }>;
@@ -53,14 +53,14 @@ function compiled(changed: string[] = [], version = 'changed', { only, packId = 
  * reads what the last apply wrote for a flow, and that is what says whether the user has since changed it.
  */
 let applied: ApplyRecord | undefined;
-const seedFlows = (dir: string) => {
+const contentFlows = (dir: string) => {
   applied = applyAfter(applied);
   return importCompiledContent({ compiledDir: dir, mode: 'replace-on-collision', applied }).flows;
 };
 /** The same run as an **import**: no record, which is the user asking for the pack's flows back */
 const importFlows = (dir: string) => importCompiledContent({ compiledDir: dir, mode: 'replace-on-collision' }).flows;
 /** An apply whose record has never seen this pack, which is what an upgrade from an older version is */
-const seedUnrecorded = (dir: string) => {
+const applyUnrecorded = (dir: string) => {
   applied = applyAfter();
   return importCompiledContent({ compiledDir: dir, mode: 'replace-on-collision', applied }).flows;
 };
@@ -68,44 +68,44 @@ const seedUnrecorded = (dir: string) => {
 beforeEach(() => {
   resetDatabase();
   applied = undefined;
-  seedFlows(compiled());
+  contentFlows(compiled());
 });
 
-describe('re-seeding edited flows', () => {
+describe('re-applying edited flows', () => {
   it('replaces a changed flow nobody edited, and still tracks it after', () => {
-    const counts = seedFlows(compiled(['Codex', 'Claude Code']));
+    const counts = contentFlows(compiled(['Codex', 'Claude Code']));
     expect(counts).toMatchObject({ updated: 2 });
     expect(counts.errors).toBeUndefined();
     expect(flow('Codex')[0].contentHash).toMatch(/^changed-/);
     // Tracked again: an edit after this replacement is detected
     repository.flowsCommands.updateNode(nodesOf('Codex')[0].id, { description: 'My note' });
-    expect(seedFlows(compiled(['Codex', 'Claude Code'], 'changed-again'))).toMatchObject({ updated: 1 });
+    expect(contentFlows(compiled(['Codex', 'Claude Code'], 'changed-again'))).toMatchObject({ updated: 1 });
     expect(flow('Codex')[0].contentHash).not.toMatch(/^changed-again-/);
   });
 
   it("leaves a flow alone when one of its nodes was edited, and still replaces the others", () => {
     const node = nodesOf('Codex')[0];
     repository.flowsCommands.updateNode(node.id, { description: 'My note' });
-    const counts = seedFlows(compiled(['Codex', 'Claude Code']));
+    const counts = contentFlows(compiled(['Codex', 'Claude Code']));
     expect(counts).toMatchObject({ updated: 1 });
     expect(repository.flowsQueries.node(node.id)).toMatchObject({ description: 'My note' });
     expect(flow('Codex')[0].contentHash).not.toMatch(/^changed-/);
   });
 
-  it("runs the flows a replaced flow's subflows name, when this seed doesn't replace those flows", () => {
-    expect(seedFlows(compiled(['Root Flow']))).toMatchObject({ updated: 1 })
+  it("runs the flows a replaced flow's subflows name, when this content doesn't replace those flows", () => {
+    expect(contentFlows(compiled(['Root Flow']))).toMatchObject({ updated: 1 })
     const subflowRefs = nodesOf('Root Flow').filter((node) => node.nodeType === 'subflow').map((node) => (node as { flowRef?: string }).flowRef)
     expect(subflowRefs.sort()).toEqual(['Claude Code', 'Codex', 'Command Listener', 'Onboarding Flow'].map((label) => flow(label)[0].id).sort())
   });
 
   it('leaves a flow alone when a node was removed from it', () => {
     repository.flowsCommands.deleteNode(nodesOf('Codex').at(-1)!.id);
-    expect(seedFlows(compiled(['Codex']))).toMatchObject({ updated: 0 });
+    expect(contentFlows(compiled(['Codex']))).toMatchObject({ updated: 0 });
   });
 
-  it("finds a renamed flow instead of seeding a copy, and leaves it as renamed", () => {
+  it("finds a renamed flow instead of applying a copy, and leaves it as renamed", () => {
     repository.flowsCommands.updateFlowLabel(flow('Codex')[0].id, 'My Codex');
-    const counts = seedFlows(compiled(['Codex']));
+    const counts = contentFlows(compiled(['Codex']));
     expect(counts.created).toBe(0);
     expect(flow('Codex')).toEqual([]);
     expect(flow('My Codex')).toHaveLength(1);
@@ -116,7 +116,7 @@ describe('re-seeding edited flows', () => {
     const [transition] = nodesOf('Codex').flatMap((node) => findRelations({ sourceEntity: node.id, relationType: 'transitions_to' }));
     untypedTx(transition.sourceEntity).unlinkIf('transitions_to', transition.targetEntity);
     untypedTx(transition.sourceEntity).link('transitions_to', transition.targetEntity, transition.info);
-    expect(seedFlows(compiled(['Codex']))).toMatchObject({ updated: 1 });
+    expect(contentFlows(compiled(['Codex']))).toMatchObject({ updated: 1 });
   });
 
   /**
@@ -125,35 +125,35 @@ describe('re-seeding edited flows', () => {
    * never gets a fix to one again. The write records its parts, so the next apply can see an edit.
    */
   it('adopts a flow whose parts were never recorded, and tracks it from then on', () => {
-    expect(seedUnrecorded(compiled(['Codex']))).toMatchObject({ updated: 1 });
+    expect(applyUnrecorded(compiled(['Codex']))).toMatchObject({ updated: 1 });
     expect(flow('Codex')[0].contentHash).toMatch(/^changed-/);
 
     repository.flowsCommands.updateNode(nodesOf('Codex')[0].id, { description: 'My note' });
-    expect(seedFlows(compiled(['Codex'], 'changed-again'))).toMatchObject({ updated: 0 });
+    expect(contentFlows(compiled(['Codex'], 'changed-again'))).toMatchObject({ updated: 0 });
   });
 
-  it("points a replaced flow's subflow steps at a seeded flow the user renamed", () => {
+  it("points a replaced flow's subflow steps at a written flow the user renamed", () => {
     const codex = flow('Codex')[0].id;
     repository.flowsCommands.updateFlowLabel(codex, 'My Codex');
-    expect(seedFlows(compiled(['Root Flow']))).toMatchObject({ updated: 1, created: 0 });
+    expect(contentFlows(compiled(['Root Flow']))).toMatchObject({ updated: 1, created: 0 });
     const refs = nodesOf('Root Flow').filter((node) => node.nodeType === 'subflow').map((node) => (node as { flowRef?: string }).flowRef);
     expect(refs).toContain(codex);
     expect(refs).not.toContain('Codex');
   });
 
-  it("points a replaced flow's subflow steps at the seeded flow, not a user's flow with its label", () => {
+  it("points a replaced flow's subflow steps at the written flow, not a user's flow with its label", () => {
     const codex = flow('Codex')[0].id;
     const mine = repository.flowsCommands.createFlow({ label: 'Codex' }).id;
-    expect(seedFlows(compiled(['Root Flow']))).toMatchObject({ updated: 1 });
+    expect(contentFlows(compiled(['Root Flow']))).toMatchObject({ updated: 1 });
     const refs = nodesOf('Root Flow').filter((node) => node.nodeType === 'subflow').map((node) => (node as { flowRef?: string }).flowRef);
     expect(refs).toContain(codex);
     expect(refs).not.toContain(mine);
   });
 
-  it("runs a user's flow with a seeded flow's name when the seed left that flow alone for it", () => {
+  it("runs a user's flow with a written flow's name when the apply left that flow alone for it", () => {
     repository.flowsCommands.deleteFlow(flow('Codex')[0].id);
     const mine = repository.flowsCommands.createFlow({ label: 'Codex' }).id;
-    const counts = seedFlows(compiled(['Root Flow', 'Codex']));
+    const counts = contentFlows(compiled(['Root Flow', 'Codex']));
     expect(counts).toMatchObject({ updated: 1, created: 0 });
     expect(counts.errors).toBeUndefined();
     const refs = nodesOf('Root Flow').filter((node) => node.nodeType === 'subflow').map((node) => (node as { flowRef?: string }).flowRef);
@@ -177,7 +177,7 @@ describe('a flow the user deleted', () => {
 
     // Root Flow changes in the same run, so an apply that wrote nothing at all would fail here rather than
     // pass the assertion below. The exemptions are in abuddy-sdk's flow-applier spec
-    const counts = seedFlows(compiled(['Codex', 'Root Flow']));
+    const counts = contentFlows(compiled(['Codex', 'Root Flow']));
 
     expect(flow('Codex'), 'the apply created the flow the user deleted').toEqual([]);
     expect(counts).toMatchObject({ created: 0, updated: 1 });
@@ -195,18 +195,18 @@ describe('a flow the user deleted', () => {
 describe('a flow whose name another flow already has', () => {
   const graph = (label: string) => ({ row: flow(label)[0], nodes: nodesOf(label) });
 
-  it("isn't seeded over another pack's flow: the other flow is left as it is, and the seed reports it", () => {
+  it("isn't written over another pack's flow: the other flow is left as it is, and the apply reports it", () => {
     const before = graph('Codex');
-    const counts = seedFlows(compiled(['Codex'], 'other', { only: ['Codex'], packId: 'other-pack' }));
+    const counts = contentFlows(compiled(['Codex'], 'other', { only: ['Codex'], packId: 'other-pack' }));
     expect(counts).toMatchObject({ created: 0, updated: 0 });
     expect(counts.errors).toEqual(['Flow "Codex": a flow with this name already exists (written by default-setup)']);
     expect(graph('Codex')).toEqual(before);
     // default-setup still owns and updates its flow
-    expect(seedFlows(compiled(['Codex']))).toMatchObject({ updated: 1 });
+    expect(contentFlows(compiled(['Codex']))).toMatchObject({ updated: 1 });
     expect(flow('Codex')[0].contentHash).toMatch(/^changed-/);
   });
 
-  it("isn't seeded over a user's flow with the ids the seed would write", () => {
+  it("isn't written over a user's flow with the ids the apply would write", () => {
     // A user's flow that has the compiled flow's ids, under another name
     const codex = flow('Codex')[0].id;
     for (const attr of ['contentHash', 'contentKey']) dropAttribute(codex, attr);
@@ -225,10 +225,10 @@ describe('a flow whose name another flow already has', () => {
     const pack = compiled(['Codex'], 'other', { only: ['Codex'], packId: 'other-pack' });
     // No default-setup flows: only the actions and prompts flows use
     resetDatabase();
-    seedFlows(compiled([], 'changed', { only: [] }));
+    contentFlows(compiled([], 'changed', { only: [] }));
     const mine = repository.flowsCommands.createFlow({ label: 'Codex' }).id;
     const before = graph('Codex');
-    expect(seedFlows(pack)).toMatchObject({ created: 0, skipped: 1 });
+    expect(contentFlows(pack)).toMatchObject({ created: 0, skipped: 1 });
     expect(flow('Codex')).toEqual([before.row]);
     expect(before.row.id).toBe(mine);
     expect(nodesOf('Codex')).toEqual(before.nodes);

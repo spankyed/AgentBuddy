@@ -29,7 +29,7 @@ export const packsSpec = defineSystem<Contract>();
 
 /**
  * Convert the JSON-safe include shape from the frontend (`null = all items, [] = skip, string[] = filter`)
- * into the `SeedInclude` structure `importCompiledContent` consumes.
+ * into the `ContentSelection` structure `importCompiledContent` consumes.
  */
 function toContentSelection(include: Record<string, string[] | null>): Record<string, ContentSelection | undefined> {
   return Object.fromEntries(Object.entries(include).map(([key, items]) => [key, items === null ? true : new Set(items)]));

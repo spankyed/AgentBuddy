@@ -32,7 +32,7 @@ interface MockMessage {
 }
 
 /**
- * Seeds the threads and messages as rows in the harness's in-memory database and mocks the services
+ * Content the threads and messages as rows in the harness's in-memory database and mocks the services
  * the action drives (the Claude Code CLI, settings, logger). `t` and `m` map the fixture keys to row ids.
  */
 function createServices(opts: {

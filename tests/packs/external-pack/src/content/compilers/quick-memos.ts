@@ -1,4 +1,4 @@
-// The "quick-memos" seed format's compiler module (abuddy.json content.formats): one Memo per line
+// The "quick-memos" content format's compiler module (abuddy.json content.formats): one Memo per line
 import * as fs from 'node:fs';
 import type { ContentCompileContext, ContentItem } from '@abuddy/sdk/build';
 

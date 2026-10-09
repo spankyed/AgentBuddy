@@ -11,8 +11,8 @@ another detail isn't specified, pick the conventional option, note it in the fin
 Finished when:
 - Phases 1–5 are implemented and each meets its "Done when"; every new guard or test is mutation-checked.
 - `abuddy db` covers every maintained operation of packages/api/scripts/db, and those scripts are gone or thin.
-  Except `seed.ts`: re-running a pack's boot seed needs the pack's own code (its seeders, seed hooks and
-  repositories), which an offline tool doesn't load (Decision 2), and starting the app runs that seed anyway, so the
+  Except `apply.ts`: re-running a pack's boot apply needs the pack's own code (its appliers, content hooks and
+  repositories), which an offline tool doesn't load (Decision 2), and starting the app runs that content anyway, so the
   command is deliberately not replaced.
 - No test or manual run opens a real data dir (~/Library/Application Support/abuddy*); all use temp
   ABUDDY_USER_DATA_DIRs.
@@ -34,7 +34,7 @@ Never:
 ## Background
 
 Database operations live in `packages/api/scripts/db` and run through `npm run db:*` in the monorepo:
-- **Scripts:** `cli/run-db-cli.ts` (REPL, `-e` exec, `-s` script), `reset.ts`, `seed.ts`, `import-backup.ts`, `export-json.ts`/`export-data.ts`/`export.sh`, `destroy-settings.ts` (dry run by default, `--force`), `inspect-relations.ts`, `cleanup-settings.ts`, and a one-off (`fix-prod-upgrade.ts`).
+- **Scripts:** `cli/run-db-cli.ts` (REPL, `-e` exec, `-s` script), `reset.ts`, `apply.ts`, `import-backup.ts`, `export-json.ts`/`export-data.ts`/`export.sh`, `destroy-settings.ts` (dry run by default, `--force`), `inspect-relations.ts`, `cleanup-settings.ts`, and a one-off (`fix-prod-upgrade.ts`).
 - **Env:** every script needs `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR`.
 
 **Why they can't move to `@abuddy/cli` today:** they boot the app's database through `scripts/db/database.ts`, which uses the API's composition root, `openAppStore()` (`@/setup/backend`: the pack registry, the LMDB store, the engine and the `bindHost` binding), and loads the built-in packs with `loadBuiltInPacks` (`@abuddy/host/packs/runtime`). The CLI ships as a bundled `dist/package` used outside the monorepo, so it can't depend on `@app/api`.
@@ -106,7 +106,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
 
 ### Phase 1 — Offline database access in `@abuddy/host`
 - `openAppDatabase` (Decision 3), plus the helpers for installed packs' EARS policy (from `hostPacksDir` snapshots and `packsDir` manifests), the version check (Decision 4) and running-app detection (`apiPortFile` liveness plus the `SingletonLock` pid, where ESRCH means not running).
-- **The API boots through `openAppDatabase`'s hydration path.** Its own boot keeps its order: hydrate, then `onInit`, migrations and seeds.
+- **The API boots through `openAppDatabase`'s hydration path.** Its own boot keeps its order: hydrate, then `onInit`, migrations and content.
 - **Tests on temp data dirs:**
   - a dir written by the API's boot in tests opens and queries identically;
   - an external pack's entity types come from its manifest;
@@ -165,7 +165,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
 **Done when:** `packages/api/scripts/db` holds nothing `abuddy db` covers, and no doc refers to the removed scripts.
 
 ### Phase 5 — Packaged use
-- **`test:packaged-authoring`** runs `abuddy db query` and `abuddy db export` from the packed CLI tarball against a temp data dir. The installed demo pack seeds that dir through the test-harness app. It also checks the version refusal with a data dir that records a different app version.
+- **`test:packaged-authoring`** runs `abuddy db query` and `abuddy db export` from the packed CLI tarball against a temp data dir. The installed demo pack content that dir through the test-harness app. It also checks the version refusal with a data dir that records a different app version.
 - **E2E** (monorepo): with the app running in the test environment, `abuddy db query --data-dir <worker dir>` reads the app's data. Under B, `db exec` writes a row the renderer then shows; under A, the command refuses.
 
 **Done when:** both pass, and every item in "Finished when" passes.
@@ -188,8 +188,8 @@ it records what is checkable now and leaves out what would be guessed.
 
 ### Conventional choices
 
-- **`seed.ts` is deliberately not replaced** (`50663661e`). Re-running a pack's boot seed needs the pack's own
-  seeders, seed hooks and repositories, which an offline tool doesn't load, and starting the app runs that seed
+- **`apply.ts` is deliberately not replaced** (`50663661e`). Re-running a pack's boot apply needs the pack's own
+  appliers, content hooks and repositories, which an offline tool doesn't load, and starting the app runs that content
   anyway.
 - **`abuddy db reset --keep-keys`** was added (`811bde98b`), so a reset can drop the data without deleting the
   stored API keys, which no backup holds.

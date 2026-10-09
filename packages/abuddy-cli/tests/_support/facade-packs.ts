@@ -243,7 +243,7 @@ findAll('Nope');
 export function anyOf<E extends string>(entityType: E) { return findAll(entityType); }
 // @ts-expect-error undeclared entity name
 qx('Nope');
-// @ts-expect-error undeclared entity name in a seed list
+// @ts-expect-error undeclared entity name in an apply list
 qx(['Memo', 'Nope']);
 // @ts-expect-error undeclared relation target
 qx('Memo').linksTo('contains', 'Nope');
@@ -509,7 +509,7 @@ afterEach(() => new Promise<void>((resolve) => { setImmediate(resolve); }));
     expect(at.eventType, 'only the chosen system\'s events').not.toContain('ADD_TAG');
   });
 
-  // qx's name overloads come before its id overloads; in the other order a name seed gets no suggestions
+  // qx's name overloads come before its id overloads; in the other order a name content gets no suggestions
   it.each(['bundler', 'node16'] as const)('offers entity-name completions in qx() under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
     const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));

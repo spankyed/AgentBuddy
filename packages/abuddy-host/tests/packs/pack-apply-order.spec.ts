@@ -1,4 +1,4 @@
-// A pack's content may reference what a pack it depends on seeded, so it has to seed after it. Discovery
+// A pack's content may reference what a pack it depends on written, so it has to apply after it. Discovery
 // order is readdirSync's, which is alphabetical at best and says nothing about what depends on what.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { packContentOrder } from '../../src/packs/discovery.ts';
@@ -18,7 +18,7 @@ function captureWarnings(): () => string {
 }
 afterEach(() => vi.restoreAllMocks());
 
-describe('the order external packs seed in', () => {
+describe('the order external packs content in', () => {
   it('puts a pack after the one it depends on, whichever way round they were found', () => {
     expect(ids(packContentOrder([pack('b', 'a'), pack('a')]))).toEqual(['a', 'b']);
     expect(ids(packContentOrder([pack('a'), pack('b', 'a')]))).toEqual(['a', 'b']);
@@ -28,7 +28,7 @@ describe('the order external packs seed in', () => {
     expect(ids(packContentOrder([pack('c', 'b'), pack('b', 'a'), pack('a')]))).toEqual(['a', 'b', 'c']);
   });
 
-  it('seeds a shared dependency once, before both of the packs that name it', () => {
+  it('content a shared dependency once, before both of the packs that name it', () => {
     const order = ids(packContentOrder([pack('d', 'b', 'c'), pack('b', 'a'), pack('c', 'a'), pack('a')]));
 
     expect(order).toHaveLength(4);
@@ -47,7 +47,7 @@ describe('the order external packs seed in', () => {
     expect(ids(packContentOrder([pack('c'), pack('a'), pack('b')]))).toEqual(['c', 'a', 'b']);
   });
 
-  it('still seeds every pack in a cycle, once, and says which packs are in it', () => {
+  it('still content every pack in a cycle, once, and says which packs are in it', () => {
     const warnings = captureWarnings();
 
     const order = ids(packContentOrder([pack('a', 'b'), pack('b', 'a'), pack('c')]));

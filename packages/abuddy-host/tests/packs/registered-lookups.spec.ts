@@ -166,7 +166,7 @@ describe('appliers', () => {
   function compiledDir(packId: string): string {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'registered-appliers-'));
     dirs.push(dir);
-    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, content: [] }));
     return dir;
   }
   const applier = (key: string, created: number): ContentApplier => ({ key, apply: () => ({ created, updated: 0, skipped: 0 }) });
@@ -290,13 +290,13 @@ describe('a pack whose registration is refused', () => {
   const scratch: string[] = [];
   afterEach(() => { for (const dir of scratch.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
   /** A compiled content directory whose content.json names `packId` */
-  const seedsOf = (packId: string) => {
+  const contentOf = (packId: string) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'refused-rollback-'));
     scratch.push(dir);
-    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
+    fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId, content: [] }));
     return dir;
   };
-  const aSeeder = (key: string): ContentApplier => ({ key, apply: () => ({ created: 1, updated: 0, skipped: 0 }) });
+  const anApplier = (key: string): ContentApplier => ({ key, apply: () => ({ created: 1, updated: 0, skipped: 0 }) });
 
   it('takes back every kind it had registered, and leaves the pack it collided with whole', () => {
     add({
@@ -305,7 +305,7 @@ describe('a pack whose registration is refused', () => {
       artifacts: [{ type: 'note-view' }],
       blocks: [{ type: 'note-block' }],
       contentWriters: { Note: {} },
-      appliers: [aSeeder('notes')],
+      appliers: [anApplier('notes')],
       commands: [{ name: 'standup', placeholder: 'Topic' }],
       features: { notes: { plugin: { receives: [] }, settings: { plugins: { notes: { from: 'incumbent' } } } } },
     });
@@ -317,7 +317,7 @@ describe('a pack whose registration is refused', () => {
       artifacts: [{ type: 'card-view' }],
       blocks: [{ type: 'card-block' }],
       contentWriters: { Card: {} },
-      appliers: [aSeeder('cards')],
+      appliers: [anApplier('cards')],
       commands: [{ name: 'standup', placeholder: 'Theirs' }],
       features: { cards: { plugin: { receives: [] }, settings: { plugins: { cards: {} } } } },
     })).toThrow('Command collision');
@@ -327,7 +327,7 @@ describe('a pack whose registration is refused', () => {
     expect(artifactRegistry.has('card-view')).toBe(false);
     expect(blockRegistry.has('card-block')).toBe(false);
     expect(_contentWriterRegistry.get('Card')).toBeUndefined();
-    expect(importCompiledContent({ compiledDir: seedsOf('refused') })).toEqual({});
+    expect(importCompiledContent({ compiledDir: contentOf('refused') })).toEqual({});
     expect(getPackSettingsDefaults().settings.plugins).not.toHaveProperty('refused/cards');
 
     // ...and nothing of the incumbent's was taken with it

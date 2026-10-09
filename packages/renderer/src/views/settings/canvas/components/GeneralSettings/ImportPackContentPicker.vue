@@ -219,7 +219,7 @@ interface Row {
   isEmpty: boolean
 }
 
-// Seed keys the pack's compiled content.json lists; known keys get an icon and hint, any other key a generic row
+// Content keys the pack's compiled content.json lists; known keys get an icon and hint, any other key a generic row
 const KEY_META: Record<string, { icon: Component; hint?: string }> = {
   actions: { icon: Zap },
   prompts: { icon: MessageSquare },

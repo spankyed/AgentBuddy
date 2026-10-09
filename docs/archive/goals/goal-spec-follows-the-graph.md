@@ -234,9 +234,9 @@ else's measurement* — including your own prose.
 
 ### What the graph still cannot see, recorded rather than deferred again
 
-- **A seed source change does not reach the goldens.** `related` on
-  `src/seeds/actions/claude-code/handle-fork.ts` finds the spec that imports it and not `seed-parity.spec.ts`,
-  which reads `dist/*.seed.json`. `src` → `abuddy build` → compiled seed → golden is a build edge, like the
+- **A content source change does not reach the goldens.** `related` on
+  `src/content/actions/claude-code/handle-fork.ts` finds the spec that imports it and not `content-parity.spec.ts`,
+  which reads `dist/*.content.json`. `src` → `abuddy build` → compiled content → golden is a build edge, like the
   `dist` seam this goal closed, and nothing routes it.
 - **`abuddy.json` → codegen → specs** is the same shape: a manifest change regenerates `src/__generated__/`,
   which specs do import, so a *regenerated* tree is covered — but editing the manifest alone reaches nothing

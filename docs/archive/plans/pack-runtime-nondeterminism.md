@@ -67,7 +67,7 @@ Ruled out by measurement, three runs each:
 ## The fix
 
 esbuild is 0.25.12 against 0.28.2. An upgrade is the candidate, and it is not a one-line change: esbuild
-builds the pack runtime, the seed runtime, the step build, the FE bundle, `@abuddy/cli`'s and
+builds the pack runtime, the content runtime, the step build, the FE bundle, `@abuddy/cli`'s and
 `@abuddy/testing`'s published bundles, and the API through tsup. It wants its own goal, with the published
 bundles re-checked.
 

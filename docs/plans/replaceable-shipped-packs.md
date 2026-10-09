@@ -3,7 +3,7 @@
 ## Context
 
 `goal-one-kind-of-pack` made the pack the app ships an installed pack like any other — one build path, one
-load path, one seed path. What it did not settle is what happens when a **user wants their own version of
+load path, one content path. What it did not settle is what happens when a **user wants their own version of
 it**: clone `default-setup`, edit it, install the result.
 
 Today that cannot work. Three facts stack:
@@ -113,9 +113,9 @@ Order: 1 is independent. 2 before 3 and 4. 5 after 2. 6 and 7 independent.
 - **The update offer has no version line to compare.** A shipped pack has no GitHub release, so the offer
   comes from the shipped dir's manifest; and a fork at `0.9.0` against a shipped `0.4.0` makes
   `compareVersions` offer nothing. The offer must read "the app ships X", not "X is newer than yours".
-- **Seeds re-import on every swap.** The applied content's revision is keyed by pack id and content-hashed, so installing
-  a fork re-seeds and restoring the default re-seeds again, merging the other pack's rows into user data.
-  Whether a swap should re-seed is a product call this plan does not make.
+- **Content re-import on every swap.** The applied content's revision is keyed by pack id and content-hashed, so installing
+  a fork re-applies and restoring the default re-applies again, merging the other pack's rows into user data.
+  Whether a swap should re-apply is a product call this plan does not make.
 - **Nothing stops a fork that drops a feature the app assumes.** With `canUninstall` gone there is no
   derived guard. Deliberate: it is the user's pack.
 - **Migrations are routed by provenance, and that is a separate plan.** A fork at `default-setup`'s id would
@@ -129,7 +129,7 @@ Order: 1 is independent. 2 before 3 and 4. 5 after 2. 6 and 7 independent.
 ## Out of scope
 
 Fixing `default-setup`'s decorative version. Anything about when migrations run. Whether a swap should
-re-seed. Whether the app should ship more than one pack — the directory scan already supports it and
+re-apply. Whether the app should ship more than one pack — the directory scan already supports it and
 nothing here assumes one.
 
 ## Verification

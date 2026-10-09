@@ -22,7 +22,7 @@ type FlowsAccepts = PluginInboxOf<FlowsContract>;
 
 declare const actionEvent: OutgoingActionEvents;
 declare const hotkeys: ApplicationHotkeys;
-// What a seed action receives
+// What a content action receives
 declare const services: Services;
 
 describe('SendablePluginEvents', () => {

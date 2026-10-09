@@ -72,7 +72,7 @@ onto its own 0.25.x rather than move it.
 `PACKAGE_BUILD_OUTPUTS` (derived from `BUILD_UNITS`, `chain-steps.ts:224`) and `APP_OUTPUTS`. The CLI and
 `@abuddy/testing` bundles come off the same esbuild. Whether those are reproducible has never been measured.
 
-**Prior art for the check.** `api:*`, `facade:*`, `schema:*`, `exports:*`, `seed-parity:*` are the
+**Prior art for the check.** `api:*`, `facade:*`, `schema:*`, `exports:*`, `content-parity:*` are the
 `<artifact>:check` / `<artifact>:update` shape this repo uses for something recorded that can go stale.
 `api:check` is deliberately **not** a chain step, because `typecheck` runs a 0.6s proxy against its 55s; that
 is the precedent Decision 5 follows.

@@ -12,7 +12,7 @@ function abuddyDb(args: string[]) {
 }
 
 test("reads the running app's data and refuses to change it", async ({ electronApp, app }) => {
-  // Connected: the API booted, hydrated and seeded the app's data
+  // Connected: the API booted, hydrated and written the app's data
   await app.waitForState('running.connected');
   const dataDir = await electronApp.evaluate(({ app: electron }) => electron.getPath('userData'));
 
@@ -20,7 +20,7 @@ test("reads the running app's data and refuses to change it", async ({ electronA
   expect(read.stderr).toContain(`Database: ${dataDir} (offline)`);
   expect(read.stderr).toMatch(/Warning: AgentBuddy is running on it \(its process is running \(pid \d+\)\)/);
   expect(read.status, read.stderr).toBe(0);
-  // The app's settings and seeded flows
+  // The app's settings and written flows
   expect(JSON.parse(read.stdout)).toEqual([true, true]);
 
   const write = abuddyDb(['exec', "tx(EARS.Entity.Note).put('title', 'written while the app runs')", '--data-dir', dataDir]);

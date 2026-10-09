@@ -24,7 +24,7 @@ describe('registries/services — feature services assembly', () => {
   });
 });
 
-describe('core/seed — appliers', () => {
+describe('core/content — appliers', () => {
   it("default-setup's registration carries all built-in appliers, which importCompiledContent runs for its compiled content", async () => {
     const { importCompiledContent } = await import('@abuddy/sdk/utils');
     const fs = await import('fs');
@@ -32,7 +32,7 @@ describe('core/seed — appliers', () => {
     const path = await import('path');
 
     // A compiled content directory of default-setup's with no content files: every applier runs and finds nothing
-    const compiledDir = fs.mkdtempSync(path.join(os.tmpdir(), 'default-setup-seeds-'));
+    const compiledDir = fs.mkdtempSync(path.join(os.tmpdir(), 'default-setup-content-'));
     fs.writeFileSync(path.join(compiledDir, 'content.json'), JSON.stringify({ version: 1, packId: 'default-setup', entries: [] }));
     const result = importCompiledContent({ compiledDir });
     fs.rmSync(compiledDir, { recursive: true, force: true });
@@ -44,7 +44,7 @@ describe('core/seed — appliers', () => {
     expect(keys).toContain('library');
     expect(keys).toContain('notes');
     // No `settings` applier: the app's default settings are this pack's own source, imported by
-    // `src/app-settings/`, and nothing about settings is written to the database by seeding
+    // `src/app-settings/`, and nothing about settings is written to the database by applying
     expect(keys).not.toContain('settings');
   });
 

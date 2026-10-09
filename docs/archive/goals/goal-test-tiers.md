@@ -123,7 +123,7 @@ Steps 1–4 need no app. Step 5 does, and because they share a script the whole 
 and typechecking a pack outside the monorepo, then `abuddy test` against this checkout.
 
 `abuddy test` is Playwright only (`abuddy-cli/src/commands/test.ts:63` requires `playwright.config.ts`),
-so a pack author asking "did my seeds compile correctly" has no way to find out without Electron.
+so a pack author asking "did my content compile correctly" has no way to find out without Electron.
 
 ### The tiering already half-exists
 
@@ -299,7 +299,7 @@ suite's timeout moved the failure to another suite. Note for
 **Parallelism found a bug serial execution structurally could not.** `@app/api`'s suite reads the built-in
 pack's `dist` — host code resolves the path while booting the app runtime — and declared that it read
 nothing. It had passed forever because `compile` always happened to finish first. Given a lane it ran beside
-`compile` and failed on a missing `settings.seed.json` in 16 seconds. The fix is in `SUITE_READS`, along with
+`compile` and failed on a missing `settings.content.json` in 16 seconds. The fix is in `SUITE_READS`, along with
 the only method that answers the question: run each suite with the tree moved aside.
 
 **Two of the guards written for these phases could not fail, and both were found by mutation rather than by
@@ -453,7 +453,7 @@ the flake is the finding. A quarantine list is written down, with the date and t
 quarantined.
 
 **9. `abuddy test` gains a way to run a pack's tier-2 checks without Electron.** A pack author testing
-compiled seeds should not need a browser. The CLI already runs `vitest` for the fixtures from a shell
+compiled content should not need a browser. The CLI already runs `vitest` for the fixtures from a shell
 script; that belongs in the command.
 
 ### Absorbed from the pipeline-graph plan
@@ -539,7 +539,7 @@ timings this plan's own measurements had to recover from log mtimes are the argu
 
   So every step from 3 onwards transitively needs the app, and a mode that skipped only 8 and 9 would still
   have been tier 3 — a branch in the script buying nothing. It is also a linear scenario (step 8 needs step 6's
-  archive, step 9 reads the data step 8's app seeded), which is the second reason not to split it.
+  archive, step 9 reads the data step 8's app written), which is the second reason not to split it.
 
   What would make it splittable is giving the CLI a way to resolve a dependency from a checkout without the app
   — which is Phase 7's `--contract` by another route — so this is deferred to there rather than dropped.

@@ -29,8 +29,8 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `boot` | `PackBootConfig` | no | Boot hooks and content; see [Boot configuration](#boot-configuration) |
 | `fe` | `object` | no | FE-only registrations; see [Frontend configuration](#frontend-configuration) |
 | `entityShapes` | `Record<string, { source, type }>` | no | Entity type -> TS interface mappings |
-| `content.formats` | `Record<string, ContentFormatConfig>` | no | Named seed formats: how a source becomes records. `content.sources` entries name them, dependents as `<pack id>:<name>`; see [Content](content.md#writing-entities) |
-| `content.writers` | `Record<string, string>` | no | Content writers for entity types this pack declares: the entity type's value in `entities` -> `path#exportName` of a `ContentWriter` object (`find`, `create`, `update`, `remove`, all optional). Every pack writing that type goes through them; see [Content](content.md#seed-hooks) |
+| `content.formats` | `Record<string, ContentFormatConfig>` | no | Named content formats: how a source becomes records. `content.sources` entries name them, dependents as `<pack id>:<name>`; see [Content](content.md#writing-entities) |
+| `content.writers` | `Record<string, string>` | no | Content writers for entity types this pack declares: the entity type's value in `entities` -> `path#exportName` of a `ContentWriter` object (`find`, `create`, `update`, `remove`, all optional). Every pack writing that type goes through them; see [Content](content.md#content-hooks) |
 | `dsl` | `Record<string, DslEntry>` | no | Monaco editor type definitions for code the app edits; see [DSL definitions](#dsl-definitions) |
 
 ## Features
@@ -149,7 +149,7 @@ The `boot` object configures hooks that run during app startup:
 | Field | Type | Description |
 |---|---|---|
 | `hooks` | `string` | Module exporting lifecycle hooks (see below) |
-| `seed` | `Record<string, string \| ContentSourceConfig>` | Content sources: `actions`, `prompts` and `flows` take a path; any other key is `{ path, format }` (optionally with `applier`) or `{ applier }`. **Every content source writes entities into the database** — that is what `content.sources` is for, so content your own code reads back is an ordinary import of your own source, not an entry here. Declare a feature's default settings with `features[].settings` |
+| `content` | `Record<string, string \| ContentSourceConfig>` | Content sources: `actions`, `prompts` and `flows` take a path; any other key is `{ path, format }` (optionally with `applier`) or `{ applier }`. **Every content source writes entities into the database** — that is what `content.sources` is for, so content your own code reads back is an ordinary import of your own source, not an entry here. Declare a feature's default settings with `features[].settings` |
 
 The `hooks` module's named exports become the pack's boot hooks:
 
@@ -192,7 +192,7 @@ A `content.formats` value, keyed by the format name: a lowercase letter, then lo
 |---|---|---|
 | `format` | `"markdown-tree" \| "json"` | Compile an entry's source with a built-in format: a directory of markdown, or a JSON array of records |
 | `compiler` | `string` | A module in this pack whose default export compiles an entry's source into records. Bundled into `dist/build/content-compilers.mjs` for dependents |
-| `entity` | `string \| string[]` | Entity types the records seed (the pack's, a dependency's or the SDK's). Omitted, entries are compiled but not written |
+| `entity` | `string \| string[]` | Entity types the records content (the pack's, a dependency's or the SDK's). Omitted, entries are compiled but not written |
 | `identity` | `string[]` | Fields matched to find an existing row (`"parent"` = the tree parent). Ignored when the type's owning pack registers a `find` content writer |
 | `tree` | `{ branch?, branchEntity?, relKind? }` | Walk subdirectories as parent rows: a directory's own file, its entity type, and the parent → child relation (default `contains`) |
 | `fields` | `Record<string, { from, default?, type? }>` | `markdown-tree` only: record field → `body`, `filename`, `path` or `frontmatter.<name>` |

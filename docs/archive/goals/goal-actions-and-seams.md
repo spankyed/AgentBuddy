@@ -217,7 +217,7 @@ fixed. `via` ended up wider than Decision 1 settled, which Phase 3 had invited a
 
 Details the doc left open, decided while implementing:
 
-- **`from` on an action's send is the pack whose runtime ran it**, not the pack that seeded the Action row. An
+- **`from` on an action's send is the pack whose runtime ran it**, not the pack that written the Action row. An
   `ActionEntity` records no owner the sandbox is given, and a flow's inline `mode: 'code'` action has no row at
   all, so the running pack is the only identity available on both paths.
 - **The pack id reaches the sandbox from codegen**, as a new `packId` export in `#generated/ref`, rather than a

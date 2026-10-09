@@ -79,13 +79,13 @@ function withBuildAndRuntime(snapshot: PackSnapshot, root: string): DepFiles {
   const runtimeEntry = path.join(root, PACK_LAYOUT.runtimeEntry);
   // One place for every pack's compiled content, named by its index
   const contentDir = path.join(root, PACK_LAYOUT.contentDir);
-  const hasSeeds = fs.existsSync(path.join(contentDir, CONTENT_INDEX_FILE));
+  const hasContent = fs.existsSync(path.join(contentDir, CONTENT_INDEX_FILE));
   const hasRuntime = fs.existsSync(runtimeEntry);
   return {
     snapshot,
     ...(fs.existsSync(buildDir) && { buildDir }),
     ...(hasRuntime && { runtimeEntry }),
-    ...(hasRuntime && hasSeeds && { contentDir }),
+    ...(hasRuntime && hasContent && { contentDir }),
   };
 }
 

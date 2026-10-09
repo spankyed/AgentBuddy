@@ -206,7 +206,7 @@ real. Lands after step 2, whose note it deletes.
 
   `Message.from` is documented as "the id of the pack that sent it", and every stamp today is one. For an
   action that is nearly no information: default-setup is the largest pack in the repo, and actions are
-  seeded, user-editable content — the likeliest wrong send and the hardest to locate. Diagnostics are the
+  written, user-editable content — the likeliest wrong send and the hardest to locate. Diagnostics are the
   field's whole job, so the grain matters. Actions are also the one case where finer is *available*:
   `runActionCode` already takes a `label` and builds `createLogger('action:<label>')`. A system's sends
   can't name their calling feature, because `defineEvents(packId)` is built once per pack.

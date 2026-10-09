@@ -1,6 +1,6 @@
 // Opens this data dir's database for a one-off script, the way the API boots it: built-in packs
 // registered (from their dev entries: the script runs unbundled) and LMDB hydrated, so it can run
-// their seed code. Needs ABUDDY_ENV and ABUDDY_USER_DATA_DIR, like any process that touches app data.
+// their content code. Needs ABUDDY_ENV and ABUDDY_USER_DATA_DIR, like any process that touches app data.
 // Database work that runs no pack code goes through `abuddy db` instead.
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';

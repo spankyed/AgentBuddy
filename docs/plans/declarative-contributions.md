@@ -10,7 +10,7 @@ A pack contributes two ways.
 
 **Declared**, in `abuddy.json` and compiled into each pack's built `snapshot.json` (`PACK_LAYOUT.snapshot`): features and their ids, designations,
 system and plugin entries with their contracts, repositories, settings sections, the EARS entities and
-relation kinds, the boot seed and its policy, dependencies and `hostVersion`.
+relation kinds, the boot apply and its policy, dependencies and `hostVersion`.
 
 **Imperative**, in the `PackRegistration` object the pack's runtime module exports
 (`abuddy-sdk/src/framework/pack-registration.ts:64-80`): `steps`, `artifacts`, `blocks`, `content.writers`,

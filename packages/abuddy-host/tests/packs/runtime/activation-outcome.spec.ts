@@ -33,7 +33,7 @@ function writeRegistry(entry: Record<string, unknown>) {
 const registry = (problems: Record<string, string> = {}) => ({ loadProblem: (packId: string) => problems[packId] });
 
 describe('activationProblem', () => {
-  it('reports a pack whose runtime failed to load, which records no seed error', () => {
+  it('reports a pack whose runtime failed to load, which records no apply error', () => {
     writeRegistry({ id: 'broken' });
     expect(activationProblem(registry(), 'broken', false)).toMatch(/failed to load/);
   });
@@ -43,12 +43,12 @@ describe('activationProblem', () => {
     expect(activationProblem(registry({ broken: 'its snapshot is format 2' }), 'broken', false)).toContain('its snapshot is format 2');
   });
 
-  it("reports the seed error of a pack that activated", () => {
-    writeRegistry({ id: 'bad-seed', lastError: 'flows: invalid' });
-    expect(activationProblem(registry(), 'bad-seed', true)).toContain('flows: invalid');
+  it("reports the apply error of a pack that activated", () => {
+    writeRegistry({ id: 'bad-content', lastError: 'flows: invalid' });
+    expect(activationProblem(registry(), 'bad-content', true)).toContain('flows: invalid');
   });
 
-  it('is undefined for a pack that activated and seeded', () => {
+  it('is undefined for a pack that activated and written', () => {
     writeRegistry({ id: 'fine' });
     expect(activationProblem(registry(), 'fine', true)).toBeUndefined();
   });

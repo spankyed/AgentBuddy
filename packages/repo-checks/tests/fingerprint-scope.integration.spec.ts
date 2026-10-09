@@ -174,11 +174,11 @@ describe('prose costs nothing', () => {
     // The same hole in the pack's facade report, which the `facade:check` step compares against. `compile`
     // declares it too — the build reads it to warn — but the step that fails on it is the one named here
     'packages/default-setup/etc/pack-types.api.md': 'facade:check',
-    // Seed sources compile into the rows a user gets
+    // Content sources compile into the rows a user gets
     'packages/default-setup/src/content/notes/welcome.md': 'compile',
     // The CLI's scaffold, rendered into a new pack and read by the specifier rules
     'packages/abuddy-cli/templates/pack/README.md': 'check:specifiers',
-    // Test input, read by the seed-parity goldens
+    // Test input, read by the content-parity goldens
     'packages/default-setup/tests/_support/fixtures/content-parity/v1/notes/welcome.md': 'test:unit:pack',
   };
 
@@ -211,8 +211,8 @@ describe('prose costs nothing', () => {
   // The subject is a walk, and a walk that reaches nothing reports no offence. The guide this once cost the
   // most for is the case: it is in `compile`'s declared tree, so only the skip keeps it out.
   it('would see one that was in a step, so the rule above can fail', () => {
-    const seeds = 'packages/default-setup/src/content/CLAUDE.md';
-    expect(guides(), seeds).toContain(seeds);
+    const content = 'packages/default-setup/src/content/CLAUDE.md';
+    expect(guides(), content).toContain(content);
     const compile = CHAIN_STEPS.find((step) => step.name === 'compile')!;
     expect([...fingerprinted(compile)].some((file) => file.startsWith('packages/default-setup/src/content/')),
       'compile no longer reads the tree that guide sits in, so this case proves nothing').toBe(true);

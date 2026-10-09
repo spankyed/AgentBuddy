@@ -10,7 +10,7 @@ guarded already**, and well:
 
 - a pack whose runtime fails to load is skipped with a reason (`loader.ts`'s `skipped`, the registry's
   `loadProblem`);
-- `activationProblem` (`packs/runtime/activation-outcome.ts`) turns a failed activation or a failed seed
+- `activationProblem` (`packs/runtime/activation-outcome.ts`) turns a failed activation or a failed content
   into a message naming the pack;
 - the frontend entry import is wrapped, and a registration that registers nothing is reported
   (`features/packs/fe/frontends.ts`);

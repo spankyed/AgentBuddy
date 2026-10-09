@@ -52,11 +52,11 @@ function pack(stepInFlow: string): string {
  *
  * **Its report rather than its output, because a build that fails now publishes nothing.** The later phases
  * fail here for want of installed dependencies — the facade gate needs `@abuddy/sdk` resolvable from the pack
- * — and phase 4, the one this file is about, has already run by then. The compiled seed used to be read from
+ * — and phase 4, the one this file is about, has already run by then. The compiled content used to be read from
  * `dist` in place; a build assembles that tree aside and removes it when it fails, so what survives a failed
  * build is what it printed. `result.counts` is the count behind that line, so the line is the count.
  */
-async function compiledSeeds(root: string): Promise<string> {
+async function compiledContent(root: string): Promise<string> {
   const cwd = process.cwd();
   process.chdir(root);
   const log = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -72,7 +72,7 @@ async function compiledSeeds(root: string): Promise<string> {
 describe('a build', () => {
   it('compiles flows against the steps it loaded, and leaves the bound registry untouched', async () => {
     const root = pack('note');
-    expect(await compiledSeeds(root), 'the flow compiled, so the build loaded its steps into a registry of its own')
+    expect(await compiledContent(root), 'the flow compiled, so the build loaded its steps into a registry of its own')
       .toMatch(/flows: 1/);
     expect(bound.steps(), 'and the registry this process bound saw none of them').toEqual([]);
     expect(stepRegistry.all()).toEqual([]);
@@ -88,6 +88,6 @@ describe('a build', () => {
    * definition declares and the flow compiles to nothing, with no count reported for it.
    */
   it('compiles no flow whose step is one no definition declares', async () => {
-    expect(await compiledSeeds(pack('no-such-step'))).not.toMatch(/flows: \d/);
+    expect(await compiledContent(pack('no-such-step'))).not.toMatch(/flows: \d/);
   });
 });

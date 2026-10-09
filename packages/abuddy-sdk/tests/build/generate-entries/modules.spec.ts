@@ -348,11 +348,11 @@ describe('the snapshot format', () => {
   const MANIFEST_SYSTEM_EVENTS_FIELDS: Record<keyof NonNullable<PackSystemEntry['events']>, true> = { incoming: true };
   const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { contract: true, default: true, entry: true };
   /** A dependency's content formats, which a dependent's `content.sources` compiles its own sources with */
-  const SEED_FORMAT_FIELDS: Record<keyof ContentFormatConfig, true> = {
+  const FORMAT_FIELDS: Record<keyof ContentFormatConfig, true> = {
     compiler: true, entity: true, fields: true, format: true, identity: true, media: true, tree: true,
   };
-  const SEED_TREE_FIELDS: Record<keyof NonNullable<ContentFormatConfig['tree']>, true> = { branch: true, branchEntity: true, relKind: true };
-  const SEED_FIELD_FIELDS: Record<keyof NonNullable<ContentFormatConfig['fields']>[string], true> = { default: true, from: true, type: true };
+  const TREE_FIELDS: Record<keyof NonNullable<ContentFormatConfig['tree']>, true> = { branch: true, branchEntity: true, relKind: true };
+  const FIELD_FIELDS: Record<keyof NonNullable<ContentFormatConfig['fields']>[string], true> = { default: true, from: true, type: true };
   /** The registration the runtime bundle exports, which the app loads */
   const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
     id: true, features: true, services: true, ears: true, repositories: true, boot: true, migrations: true, steps: true,
@@ -382,9 +382,9 @@ describe('the snapshot format', () => {
         system: Object.keys(MANIFEST_SYSTEM_FIELDS).sort(),
         systemEvents: Object.keys(MANIFEST_SYSTEM_EVENTS_FIELDS).sort(),
         plugin: Object.keys(MANIFEST_PLUGIN_FIELDS).sort(),
-        seedFormat: Object.keys(SEED_FORMAT_FIELDS).sort(),
-        seedTree: Object.keys(SEED_TREE_FIELDS).sort(),
-        seedField: Object.keys(SEED_FIELD_FIELDS).sort(),
+        contentFormat: Object.keys(FORMAT_FIELDS).sort(),
+        contentTree: Object.keys(TREE_FIELDS).sort(),
+        contentField: Object.keys(FIELD_FIELDS).sort(),
       },
       registration: {
         fields: Object.keys(REGISTRATION_FIELDS).sort(),
@@ -407,9 +407,9 @@ describe('the snapshot format', () => {
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
         plugin: ['contract', 'default', 'entry'],
-        seedFormat: ['compiler', 'entity', 'fields', 'format', 'identity', 'media', 'tree'],
-        seedTree: ['branch', 'branchEntity', 'relKind'],
-        seedField: ['default', 'from', 'type'],
+        contentFormat: ['compiler', 'entity', 'fields', 'format', 'identity', 'media', 'tree'],
+        contentTree: ['branch', 'branchEntity', 'relKind'],
+        contentField: ['default', 'from', 'type'],
       },
       registration: {
         fields: ['appliers', 'artifacts', 'blocks', 'boot', 'commands', 'contentWriters', 'ears', 'features', 'help', 'id', 'migrations', 'repositories', 'services', 'settingsSections', 'steps'],

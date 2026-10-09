@@ -6,7 +6,7 @@ design below is sound and the size of the prize is unknown, which is the wrong w
 ## Context
 
 Boot activates everything. `startPacks` (`packs/runtime/start.ts`) runs **every** registered pack's
-`onInit`, then the app's and the packs' migrations, then every pack's seeds; the bus spawns every registered
+`onInit`, then the app's and the packs' migrations, then every pack's content; the bus spawns every registered
 pack's systems. There are **no activation events** — `grep` finds no `activationEvent`, `activateOn` or
 equivalent anywhere in the SDK's build or the host's pack runtime.
 
@@ -25,7 +25,7 @@ a pack author has to learn.
 ## Step 0 — the measurement that decides whether to proceed
 
 Instrument a boot and attribute it: how much of the API process's start is `startPacks`, and inside it, how
-much is `onInit` against migrations against seeds against the bus spawning systems. `npm run measure` for
+much is `onInit` against migrations against content against the bus spawning systems. `npm run measure` for
 the whole, `DEBUG_E2E=1 npm test -- smoke` for the app's own path, and a per-phase timer for the split.
 
 **The outcome decides the shape of the work, and one outcome is "stop":**
@@ -33,7 +33,7 @@ the whole, `DEBUG_E2E=1 npm test -- smoke` for the app's own path, and a per-pha
 | what the split says | what to do |
 |---|---|
 | packs are a small share of boot | stop — record the number and close this |
-| seeds dominate | seeding is already hash-skipped; the lever is elsewhere and this plan is the wrong one |
+| content dominate | applying is already hash-skipped; the lever is elsewhere and this plan is the wrong one |
 | `onInit` and system spawning dominate | the design below is the lever, and the number sizes it |
 
 A plan whose first instruction is "measure" cannot also claim to know the answer, which is why nothing below
@@ -44,14 +44,14 @@ is sequenced yet.
 **Activation is a predicate over declarations, not a new vocabulary.** Candidates, cheapest first:
 
 - **A designation nothing has asked for.** A feature whose designation no flow, action or plugin references
-  in this app's data has no reason to be running. This is derivable from the seeded flows and the registry.
+  in this app's data has no reason to be running. This is derivable from the written flows and the registry.
 - **A role on demand.** `sendToSystem({ role })` already resolves a role to a system; it becomes the trigger
   that starts that system's pack rather than assuming it is up.
 - **A plugin the user opens.** The renderer already loads a pack's frontend lazily through `pack://`;
   the backend half could follow the same signal (`pluginVisibility` and `lastActivePlugin` are in `AppState`
   already).
 
-**What cannot be lazy, and must be said out loud:** migrations and seeds. A pack's stored data has to be
+**What cannot be lazy, and must be said out loud:** migrations and content. A pack's stored data has to be
 current before anything reads it, and a lazily-activated pack would migrate at an arbitrary moment. Either
 they stay eager (likely correct, and they are already hash-skipped so an unchanged pack costs a comparison)
 or they move behind the same predicate and the ordering guarantees in `applyPacks` have to be re-established.
@@ -69,7 +69,7 @@ plan's inventory before designing the predicate.
 - A pack whose designation nothing references does not run its `onInit` — asserted on the registry, not on a
   log line.
 - **The case that matters most: a lazily-activated pack is indistinguishable from an eager one** once
-  activated. Same systems, same seeds applied, same settings. A fixture pack exercised both ways, with the
+  activated. Same systems, same content applied, same settings. A fixture pack exercised both ways, with the
   same assertions, is the only honest way to hold that.
 
 ## Risks

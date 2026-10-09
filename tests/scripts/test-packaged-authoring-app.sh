@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # The half of the packaged-authoring check that needs the built app: run the pack's own E2E suite against
-# it, then read back the data the app seeded with the packed CLI.
+# it, then read back the data the app written with the packed CLI.
 #
 # It picks up where the author half left off, through `tests/authoring-handoff/work.json` — a path and a
 # digest, because the work dir is outside the checkout on purpose and the chain can only derive an edge from
 # a repo-relative path.
 #
 #   8. abuddy test passes against the app it is told to use (--app-root; it reads no machine state)
-#   9. the packed CLI's abuddy db reads and exports the data that app seeded
+#   9. the packed CLI's abuddy db reads and exports the data that app written
 # Requires a built app (npm run build) and the author half having run.
 # KEEP_WORK=1 keeps the work dir and the app data dir.
 set -euo pipefail
@@ -35,7 +35,7 @@ step "8. abuddy test on the packed archive (the app named on the command line)"
 # means the same thing on a fresh machine as on one someone has developed on
 # PACK_ARCHIVE installs step 6's .tgz as it is, so this runs the artifact a release ships rather than
 # another build of the same source — the one thing the rest of the script cannot check.
-# The app's data dir is kept for step 9: the app seeded the installed demo pack into it
+# The app's data dir is kept for step 9: the app written the installed demo pack into it
 # `if !` so the pipeline's exit status is this script's to report: under `set -e` a failure would otherwise end it
 # here, with only Playwright's own output to say why
 if ! PACK_ARCHIVE="$ARCHIVE" E2E_KEEP_DATA=1 "$ABUDDY" test --app-root "$ROOT" 2>&1 | tee "$WORK/e2e.log"; then fail "abuddy test failed"; fi
@@ -51,16 +51,16 @@ diff "$WORK/archive-integrity.json" "$APP_DATA/abuddy/packs/demo-pack/integrity.
 # a step whose output is gone reads as never-built.
 if [ -z "${KEEP_WORK:-}" ]; then trap 'rm -rf "$APP_DATA"' EXIT; fi
 
-step "9. abuddy db on the data the app seeded (the packed CLI, offline)"
+step "9. abuddy db on the data the app written (the packed CLI, offline)"
 # The demo pack's entity type comes from its installed manifest
 "$ABUDDY" db query "return qx(EARS.Entity.DemoPack).pickAll().map((row) => row.term)" --data-dir "$APP_DATA" -o json > "$WORK/db-query.json" 2> "$WORK/db-query.err" \
   || { cat "$WORK/db-query.err"; fail "abuddy db query failed"; }
 grep -q "Database: $APP_DATA (offline)" "$WORK/db-query.err" || fail "abuddy db query didn't print its data dir"
 node -e '
   const terms = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
-  // The glossary term, beside the example row the scaffold seeds (which has none)
-  if (!terms.includes("Pack")) throw new Error("the seeded glossary: " + JSON.stringify(terms));
-' "$WORK/db-query.json" || fail "abuddy db query didn't read the seeded demo pack"
+  // The glossary term, beside the example row the scaffold content (which has none)
+  if (!terms.includes("Pack")) throw new Error("the written glossary: " + JSON.stringify(terms));
+' "$WORK/db-query.json" || fail "abuddy db query didn't read the written demo pack"
 "$ABUDDY" db export --data-dir "$APP_DATA" --out "$WORK/db-export" --type DemoPack --type Note
 node -e '
   const fs = require("fs");
@@ -72,7 +72,7 @@ node -e '
   if (!notes.some((note) => note.title === "Demo notes")) throw new Error("Note.json has no demo note");
   const summary = JSON.parse(fs.readFileSync(`${dir}/export.json`, "utf8"));
   if (summary.counts.DemoPack !== rows.length) throw new Error("export.json: " + JSON.stringify(summary));
-' "$WORK/db-export" || fail "abuddy db export didn't write the seeded data"
+' "$WORK/db-export" || fail "abuddy db export didn't write the written data"
 
 
 step "No symlinks into the monorepo"

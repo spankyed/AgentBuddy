@@ -53,22 +53,22 @@ database. Every per-entity decision in `createFormatApplier` is answering one of
 |---|---|---|
 | Did the pack's content change at all? | `appliedContent` — a hash of the compiled files | `AppState`, per pack |
 | Which entity is this item's? | `contentKey` | on the entity (`applier.ts:29`) |
-| Is this entity still ours to update? | `seededFields` — **one** hash over all the fields together | on the entity (`applier.ts:27`, `:91`, `:96`) |
-| …for a flow? | `seededGraph` — the same idea, a second shape | on the entity (`flow-applier.ts:24`, `:29`, `:42`) |
+| Is this entity still ours to update? | `writtenFields` — **one** hash over all the fields together | on the entity (`applier.ts:27`, `:91`, `:96`) |
+| …for a flow? | `writtenGraph` — the same idea, a second shape | on the entity (`flow-applier.ts:24`, `:29`, `:42`) |
 | Did the user delete it? | the trashed entity's own `contentKey`, **or** `appliedContent` | on the entity **and** `AppState` |
 
 Five facts about that table:
 
-- **`seededFields` is one digest over every field.** Edit one field of a seeded flow and `holdsSeededValues`
+- **`writtenFields` is one digest over every field.** Edit one field of a written flow and `holdsWrittenValues`
   is false for the whole item, permanently and silently: the entity is skipped as "edited" by every future
   version. For a flow that is thirty entities frozen by one edit.
 - **The deletion rule needed two mechanisms** (`46de706f2`, `161891e64`) because a trashed entity is its own
   evidence while a destroyed one leaves nothing. They have different reach: the trashed-entity branch works for
   any caller, the remembered keys only where the app threads them in.
-- **Notes and library track no edges at all.** `seededFields` covers attributes; the `contains` link the
-  applier writes (`applier.ts:205`) and a note's `references` edges are remembered nowhere, so moving a seeded note
+- **Notes and library track no edges at all.** `writtenFields` covers attributes; the `contains` link the
+  applier writes (`applier.ts:205`) and a note's `references` edges are remembered nowhere, so moving a written note
   is invisible. Flows track edges because they were the first shape where it mattered.
-- **`clearedFields` is the tell.** The applier already reasons per field: `seededFields` keeps the field
+- **`clearedFields` is the tell.** The applier already reasons per field: `writtenFields` keeps the field
   *names* it wrote, so an update can work out which to reset because the incoming item no longer sets them.
   The names are there and the values are collapsed into one digest — so per-field reasoning is already
   wanted, already half-built, and stops exactly where the verdict is reached.
@@ -76,7 +76,7 @@ Five facts about that table:
   unlabelled skip branch), *both sides changed* (conflict), *we stopped shipping this* (nothing reads it),
   *who last wrote this part* (nothing).
 
-**One word covers two operations.** `importCompiledContent` (`utils/apply.ts:55`) is called by boot seeding
+**One word covers two operations.** `importCompiledContent` (`utils/apply.ts:55`) is called by boot applying
 (`packs/runtime/apply.ts`) and by the user asking for a pack's data back
 (`features/packs/be/system.ts:118`). They differ in every way that matters:
 
@@ -94,14 +94,14 @@ one has a standard name — **apply**, the declarative convergence of live state
 (`kubectl apply`, `terraform apply`, Ansible, Chef) — and it brings the vocabulary this subsystem is
 currently inventing.
 
-**The noun has already cost a design.** `skipAfterOnboarding: ['notes']` existed because "seed" means
-first-run data, so "the welcome note keeps coming back" was reasoned as "stop seeding after onboarding"; the
-actual cause was a lookup that could not see a deleted entity (`goal-boot-seed-imports-rows.md`). The repo's
-own convention — *seed is a noun, `import` is the verb*, checked by `import-is-the-verb.spec.ts` — fixed the
+**The noun has already cost a design.** `skipAfterOnboarding: ['notes']` existed because "content" means
+first-run data, so "the welcome note keeps coming back" was reasoned as "stop applying after onboarding"; the
+actual cause was a lookup that could not see a deleted entity (`goal-boot-content-imports-entities.md`). The repo's
+own convention — *content is a noun, `import` is the verb*, checked by `import-is-the-verb.spec.ts` — fixed the
 noun/verb confusion and left the connotation.
 
-**`faqs` contradicts the stated rule.** `goal-generic-seed-compiler.md` Decision 9 put it in `content.sources`
-with no entity, compiled but never imported; `goal-boot-seed-imports-rows.md` then established that
+**`faqs` contradicts the stated rule.** `goal-generic-content-compiler.md` Decision 9 put it in `content.sources`
+with no entity, compiled but never imported; `goal-boot-content-imports-entities.md` then established that
 `content.sources` holds only entries that import entities. Both are deliberate and they disagree.
 
 ## Decisions
@@ -137,7 +137,7 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
    removed: the entity still holds what we wrote *before*, so that is what its entry keeps. Recording the
    incoming content for an entity we did not write would make that item read as drifted from then on, and the
    conflict would be lost. So `revision` is the version we last applied *from* and nothing more than a gate,
-   while the items may each lag it. This is the one thing `seededFields` has right today — it records what
+   while the items may each lag it. This is the one thing `writtenFields` has right today — it records what
    the applier wrote — and the move is off the entity into one place, not to a different fact.
 
    **A failed apply records what it wrote**, which is a correction to "saved at the end of each apply that
@@ -156,7 +156,7 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
    from the new content.
 
    **It follows that whoever writes an entity updates that item's entry**, which includes
-   `importPackSeeds`: an import that puts content back has written entities, and an import that recorded nothing
+   `importPackContent`: an import that puts content back has written entities, and an import that recorded nothing
    would leave the next apply comparing new entities against older parts and calling the difference the user's.
 
    `identity` is in the entry for one job and it is not adoption: an entity the user created with the same name
@@ -165,7 +165,7 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
    ours.**
 
 2. **Parts are path-addressed, and one scheme covers entities, trees and graphs.** `label`,
-   `node:Ask.prompt`, `edges`, `parent`. `seededFields`' field list and `seededGraph`'s three lists
+   `node:Ask.prompt`, `edges`, `parent`. `writtenFields`' field list and `writtenGraph`'s three lists
    (`flowFields`, `nodeFields`, `relKinds`) are both part-id schemes written by hand; one map replaces both,
    and a part that is an edge set is a part like any other — which is how the untracked `contains` and
    `references` edges start being tracked. The precedent is Kubernetes' `managedFields`, which is a flat set
@@ -179,7 +179,7 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
 
    Two constraints the current design discovered and this one inherits. **Only the parts we wrote are
    recorded** — never everything on the entity, or an attribute the user or another pack adds reads as our
-   edit (what `seededFields`' field list and `ROW_KEYS` are for). And **node part paths rely on node ids
+   edit (what `writtenFields`' field list and `ROW_KEYS` are for). And **node part paths rely on node ids
    being derived from the flow's name at compile time**; that determinism is what lets one run's parts line
    up with the next's, and it is why `collidingOwner` exists.
 
@@ -201,7 +201,7 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
    nobody. A note is the same scheme with fewer parts (`title`, `content`, `parent`, `references`), where
    field-level happens to be the readable granularity.
 
-   **This is a smaller change than it sounds**: `seededGraph` already walks and records exactly that scope
+   **This is a smaller change than it sounds**: `writtenGraph` already walks and records exactly that scope
    — `flowFields`, `nodeFields` keyed by node id, `relKinds` — and then collapses it into one digest. The
    change is to keep one hash per node instead of one for the lot. Same walk, same scope, more outputs.
 
@@ -237,7 +237,7 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
    someone who knows what they mean.
 
 5. **`apply` and `import` are two operations with two entry points.** `applyPack` converges the database
-   toward what the pack declares, carries the applied content, and never overwrites the user. `importPackSeeds`
+   toward what the pack declares, carries the applied content, and never overwrites the user. `importPackContent`
    is the user asking for content to be put back: no applied content, modes as today, overwriting is the
    request. A spec asserts the applied content is read on the apply path and nowhere on the import path, so
    the distinction is structural rather than remembered.
@@ -245,7 +245,7 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
    **Three user-visible actions are one call, and there are not three paths.** "Restore this pack's content"
    selects everything; "take the new version" on an offer and "reset to factory" each select one item and
    overwrite whatever is there — the same request, differing only in what prompted it. So
-   `importPackSeeds({ select: [contentKey], force: true })` serves both, and the selection already exists
+   `importPackContent({ select: [contentKey], force: true })` serves both, and the selection already exists
    (`ContentSelection` names top-level items today). What is missing is `force`, because every mode now skips
    an edited item and `wipe-and-replace` is far too blunt for one of them.
 
@@ -311,7 +311,7 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
    sentence: *"this is no longer part of the pack."* The choices are keep it (it becomes plainly yours) or
    delete it.
 
-10. **`content` replaces `seed` as the noun, and ownership gets named rather than implied.** Three jobs,
+10. **`content` replaces `content` as the noun, and ownership gets named rather than implied.** Three jobs,
    three words:
 
    | Job | Word |
@@ -352,19 +352,19 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
     everywhere else in this repo it means a logger or event source.
 
 12. **`faqs` moves to `content.artifacts`, in this plan.** A compiled artefact the pack reads back itself is
-    not content applied to a database, and the contradiction between `goal-generic-seed-compiler.md`'s
+    not content applied to a database, and the contradiction between `goal-generic-content-compiler.md`'s
     Decision 9 and "`content.sources` holds only entries that import entities" is closed by giving it a key of its
     own: compiled like any other entry, no applier generated, never touching the database. Two lines of
     schema.
 
     **It does not wait for `goal-manifest-redesign.md`.** Deferring the key there was how the contradiction
     would have survived Phase 3 and possibly indefinitely; that plan can absorb this key with the rest of
-    the manifest if it lands. A build output belongs beside `steps.build` and `seed-compilers.mjs`, which is
+    the manifest if it lands. A build output belongs beside `steps.build` and `content-compilers.mjs`, which is
     where it was heading anyway.
 
-13. **Renames that are deletions.** `seededFields`, `seededGraph`, `appliedContent`, `appliedContent`,
-    `markSeededRowUnedited`, `holdsSeededValues`, `holdsSeededGraph`, `stampSeededFields`,
-    `stampSeededGraph`, `hashGraph`, `defineSeedKey`, `removedByUser` and the two deletion branches all go.
+13. **Renames that are deletions.** `writtenFields`, `writtenGraph`, `appliedContent`, `appliedContent`,
+    `markWrittenEntityUnedited`, `holdsWrittenValues`, `holdsWrittenGraph`, `stampWrittenFields`,
+    `stampWrittenGraph`, `hashGraph`, `defineContentKey`, `removedByUser` and the two deletion branches all go.
     Two roles, two words, neither of them "applier": a **writer** knows how to write one entity type
     (`ContentWriter` minus `find`, which the applied content answers — create/update/delete, with `container`
     moving to the format config where it belongs; the manifest key is `content.writers`), and an **applier**
@@ -380,10 +380,10 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
     `failedAgainst`, which says what it holds.
 
 14. **What is deliberately not renamed**, so the churn is a decision rather than an oversight: `contentKey`
-    becomes `contentKey` only because `seed` leaves the vocabulary — the identity itself is good and stays
-    the join key; `seeds.json`/`SEED_INDEX_FILE` (the constant already says index, and the file name is
-    read by built packs on disk); `SeedIndex` and `content.formats` are correct nouns and need only the noun swap
-    (`ContentItem` does not — it becomes `ContentItem`, per Decision 10); `previewPackContent` and `seed-parity:*` keep their shape. And `import` stays the
+    becomes `contentKey` only because `content` leaves the vocabulary — the identity itself is good and stays
+    the join key; `content.json`/`CONTENT_INDEX_FILE` (the constant already says index, and the file name is
+    read by built packs on disk); `ContentIndex` and `content.formats` are correct nouns and need only the noun swap
+    (`ContentItem` does not — it becomes `ContentItem`, per Decision 10); `previewPackContent` and `content-parity:*` keep their shape. And `import` stays the
     user-facing verb: "Restore this pack's content" is the label, but the operation underneath it is an
     import and should say so.
 
@@ -393,22 +393,22 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
 
 - The entity type, in `HOST_ENTITY_TYPES`, with `appliedContent` accessors beside `appState`.
 - Both writers (`createFormatApplier`, `createFlowApplier`) report the parts they wrote, through the context, as
-  `defineSeedKey` reports keys today.
+  `defineContentKey` reports keys today.
 - `applyPacks` writes the applied content after a successful run, beside what it writes now. Nothing reads it.
 - **Three homes, not one spec**, because two of the five answers are out of any single suite's reach:
-  `holdsSeededValues`/`holdsSeededGraph` are module-private and callable from no spec, and `appliedContent`
+  `holdsWrittenValues`/`holdsWrittenGraph` are module-private and callable from no spec, and `appliedContent`
   is written by `applyPacks`, which a pack suite never runs (and may not import). So: the derivation rules over
   a synthetic fixture in `abuddy-sdk/tests/content/`, the per-item and per-part agreement over real content in
   `default-setup/tests/content/`, and `revision` against `appliedContent` in host's `loader.spec.ts`.
-- **The agreement with the stored digests is behavioural, not arithmetic.** `seededFields.hash` is one digest
+- **The agreement with the stored digests is behavioural, not arithmetic.** `writtenFields.hash` is one digest
   over the whole value array, so it is not derivable from per-part hashes — and a spec that re-hashes the
   values itself to compare restates the writer and fails on any behaviour-preserving rewrite. What the specs
-  assert instead: the part paths equal `seededFields.fields` and `seededGraph.nodeFields`' keys (two walks
+  assert instead: the part paths equal `writtenFields.fields` and `writtenGraph.nodeFields`' keys (two walks
   agreeing), every part agrees with the database the same run wrote, and an edit to one field moves exactly
   that part where the stored digest can only say something moved.
 
-**Done when:** that agreement spec passes for every seeded key in default-setup; `seed-parity` goldens are
-unmoved; `npm run spec -- applier flow-applier loader` and the pack's seed suite pass. Mutation: dropping one
+**Done when:** that agreement spec passes for every written key in default-setup; `content-parity` goldens are
+unmoved; `npm run spec -- applier flow-applier loader` and the pack's content suite pass. Mutation: dropping one
 part from the applied content fails the agreement spec for that item, and dropping the `edges` part fails it for
 a flow. Cheap and reversible — if the model and the hashes disagree anywhere, that is the finding, and no
 behaviour depends on it yet.
@@ -440,8 +440,8 @@ and `createFlowApplier` become thin adapters that know only how to read and writ
   gives real feedback on whether the detection is right before anyone builds a diff view, and if
   Phases 3 and 4 slip the benefit has already landed.
 
-**Done when:** `grep -rn "seededFields\|seededGraph\|appliedContent\|markSeededRowUnedited"` finds nothing
-outside `docs/archive/`; the five questions are answered by one place; `seed-parity` goldens unmoved; a
+**Done when:** `grep -rn "writtenFields\|writtenGraph\|appliedContent\|markWrittenEntityUnedited"` finds nothing
+outside `docs/archive/`; the five questions are answered by one place; `content-parity` goldens unmoved; a
 spec covers an apply against a database holding entities the applied content does not know (the first apply,
 and the same path as a user's entity that matches a content item's identity); the conflict summary appears in
 the log for a database with an edited item; `npm run chain` passes.
@@ -449,7 +449,7 @@ the log for a database with an edited item; `npm run chain` passes.
 **One function deserves one table.** The merge becomes the single place every verdict is reached, so its
 spec is a case matrix in one file — the resolution outcomes against the content shapes (one entity, a tree
 child, a graph) and the modes — rather than cases scattered by the shape they happen to use. A new outcome
-is then a row. The `seed-parity` goldens stay beside it as the regression gate: they are what proves 144 real
+is then a row. The `content-parity` goldens stay beside it as the regression gate: they are what proves 144 real
 items still land identically, which no table of constructed cases can.
 
 **After this phase the subsystem is sound and the freeze is visible**, so Phases 3 and 4 are each
@@ -458,7 +458,7 @@ saying so here is meant to stop the plan being read as a sequence that has to co
 
 ### Phase 3 — two operations, two names
 
-After Phase 2, and landable before Phase 4. `applyPack` and `importPackSeeds` as separate entry points
+After Phase 2, and landable before Phase 4. `applyPack` and `importPackContent` as separate entry points
 (Decision 5), the `content` naming (Decision 10) and the vocabulary (Decision 11) through the manifest, the
 pack trees, the goldens, the docs and the pack-facing API. `api:update` and `schema:update` are part of this
 phase, as is rewriting every pack manifest in the tree — all of them are in this repo, so the rename is a

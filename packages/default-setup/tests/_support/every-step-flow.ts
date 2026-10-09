@@ -2,7 +2,7 @@
 //
 // Shared by two things that must not describe different flows: `export-fidelity.spec.ts`, which round-trips it
 // and asserts the graph comes back the same, and `export-example.spec.ts`, which records its export as the
-// golden a seed-flow author reads. Changing it moves both, which is why the golden is re-recorded deliberately.
+// golden an apply-flow author reads. Changing it moves both, which is why the golden is re-recorded deliberately.
 //
 // Every option is set to a *non-default* value on purpose: a field set to its default round-trips to the same
 // value even when nothing carries it, so a case would pass while covering nothing. Measured — with

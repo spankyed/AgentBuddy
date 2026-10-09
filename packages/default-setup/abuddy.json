@@ -4,7 +4,7 @@
   "name": "Default Setup",
   "version": "0.1.0",
   "builtIn": true,
-  "description": "The official AgentBuddy starter pack. Provides core entity types, backend systems, services, frontend plugins, artifacts, seed data, message blocks, and default settings.",
+  "description": "The official AgentBuddy starter pack. Provides core entity types, backend systems, services, frontend plugins, artifacts, content data, message blocks, and default settings.",
   "hostVersion": ">=0.3.0",
   "license": "MIT",
   "entities": {

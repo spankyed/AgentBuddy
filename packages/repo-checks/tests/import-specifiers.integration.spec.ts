@@ -151,8 +151,8 @@ describe('findInternalPackageImports', () => {
   });
 
   it("flags one a pack's tests import, not only its sources", () => {
-    writeAt('tests/unit/seed.spec.ts', "import { _getMediaPath } from '@abuddy/sdk/utils';\n");
-    expect(findInternalPackageImports(['tests'], root)).toEqual(['tests/unit/seed.spec.ts:1: _getMediaPath from @abuddy/sdk/utils']);
+    writeAt('tests/unit/content.spec.ts', "import { _getMediaPath } from '@abuddy/sdk/utils';\n");
+    expect(findInternalPackageImports(['tests'], root)).toEqual(['tests/unit/content.spec.ts:1: _getMediaPath from @abuddy/sdk/utils']);
   });
 
   it('allows public names, a public name aliased to an underscore, a pack-local one and other packages', () => {
@@ -247,7 +247,7 @@ describe('findPackBackendConsole', () => {
       'features/memos/be/system.spec.ts',
       'features/memos/be/__tests__/helpers.ts',
       'lib/features/memos/be/system.ts',
-      'seeds/actions/run.ts',
+      'content/actions/run.ts',
     ]) write(`pack/${file}`, "console.log('x');");
     expect(findPackBackendConsole(['src/pack'], root)).toEqual([]);
   });
@@ -635,7 +635,7 @@ const FIRES: Record<ImportRuleId, () => string[]> = {
     return findReservedEventKeys(PACK_SRC, root);
   },
   findPackBackendConsole: () => {
-    packFixture({ 'src/features/memos/be/system.ts': "console.log('seeded');" });
+    packFixture({ 'src/features/memos/be/system.ts': "console.log('written');" });
     return findPackBackendConsole(PACK_SRC, root);
   },
   findHostImports: () => {
@@ -1116,7 +1116,7 @@ describe('CHECKS', () => {
     'internal-package-imports': "import { _getMediaPath } from '@abuddy/sdk/utils';",
     'untyped-sends': "import { untypedSendToSystem } from '@abuddy/sdk/events';",
     'raw-transport': '_rootEvents.emitOutgoing(event);',
-    'backend-console': "console.log('seeded');",
+    'backend-console': "console.log('written');",
     'pack-own-aliases': "import { x } from '@/features/memos/be/x.ts';",
     'own-modules': "import { sendToSystem } from '#generated/events';",
     'repository-casts': 'const notes = repository as unknown as Repositories;',

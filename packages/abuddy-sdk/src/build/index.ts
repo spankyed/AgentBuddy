@@ -1,7 +1,7 @@
 // Types
 export type { PackConfig, PackBuildDefinitions, CompilePackOptions, CompilePackResult } from './types.ts';
 
-// Seed compiler framework
+// Content compiler framework
 export { _clearCompiledContent, compilePack, CONTENT_INDEX_FILE } from './content-compiler.ts';
 export { compileMarkdownTree, parseMarkdownFile, toDisplayName, type MarkdownItem, type MarkdownTreeOptions } from './content/markdown-tree.ts';
 export {
@@ -49,7 +49,7 @@ export { contentFile, contentPath, CONTENT_COMPILERS_FILE, PROVENANCE_KINDS, PAC
 // Flow DSL helpers (track builders)
 export { entry, on } from './flow-helpers.ts';
 
-// Seed authoring types
+// Content authoring types
 export type { ActionMeta, PromptMeta } from './content-types.ts';
 
 // Entry codegen

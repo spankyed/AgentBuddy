@@ -1,8 +1,8 @@
-// A pack that depends on default-setup seeds Notes and library documents from its own markdown with
+// A pack that depends on default-setup content Notes and library documents from its own markdown with
 // entries naming default-setup's formats (tests/_support/fixtures/dependent-pack): no field maps, compiler
 // modules or content writers of its own. Its notes go through default-setup's Note hooks and its library
 // through default-setup's bundled compiler module (dist/build/content-compilers.mjs) and library hooks,
-// so it gets the rows default-setup's own entries seed from the same sources: NOTE shortCodes,
+// so it gets the rows default-setup's own entries content from the same sources: NOTE shortCodes,
 // display order, nesting, REFERENCES links, DOC shortCodes, sections, media and contentHash.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -33,16 +33,16 @@ async function compile(packDir: string, pack: PackManifest, deps?: ReadonlyMap<s
   return outputDir;
 }
 
-/** Seeds each compiled format key the way the generated appliers.ts registers it */
+/** Content each compiled format key the way the generated appliers.ts registers it */
 function importAll(compiledDir: string, pack: PackManifest, packDir: string, deps?: ReadonlyMap<string, ContentDependency>) {
-  return Object.fromEntries(Object.entries(resolveContentSources(pack, packDir, deps)).flatMap(([key, seed]) => {
-    if (seed.kind !== 'format') return [];
-    const { identity, tree, media } = seed.format;
-    return [[key, createFormatApplier({ key, entities: formatEntities(seed.format), identity, relKind: tree?.relKind, media: !!media }).apply({ compiledDir, log: () => {} })]];
+  return Object.fromEntries(Object.entries(resolveContentSources(pack, packDir, deps)).flatMap(([key, content]) => {
+    if (content.kind !== 'format') return [];
+    const { identity, tree, media } = content.format;
+    return [[key, createFormatApplier({ key, entities: formatEntities(content.format), identity, relKind: tree?.relKind, media: !!media }).apply({ compiledDir, log: () => {} })]];
   }));
 }
 
-describe('a pack depending on default-setup seeds with its formats', () => {
+describe('a pack depending on default-setup content with its formats', () => {
   it("declares only a path and default-setup's format per entry, and registers no hooks", () => {
     expect(parseManifest(manifest).errors).toEqual([]);
     for (const entry of Object.values(manifest.content!.sources!)) {
@@ -87,7 +87,7 @@ describe('a pack depending on default-setup seeds with its formats', () => {
     ]));
   });
 
-  it("seeds the same rows as default-setup's own entries on the same sources", async () => {
+  it("content the same rows as default-setup's own entries on the same sources", async () => {
     resetDatabase();
     importAll(await compile(FIXTURE, manifest, dependencies), manifest, FIXTURE, dependencies);
     const dependent = snapshot();

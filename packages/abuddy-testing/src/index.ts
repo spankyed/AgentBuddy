@@ -527,7 +527,7 @@ export function createTest(options: CreateTestOptions = {}) {
 
       if (process.env.PACK_DIR) {
         const manifest = getPackManifest();
-        // Seeding runs before the backend accepts connections, so its outcome is final by now
+        // Applying runs before the backend accepts connections, so its outcome is final by now
         const applyError = manifest && readPackLastError(manifest.id, userDataDirs.get(electronApp)!);
         if (applyError) {
           throw describeFailure(`Pack ${manifest!.id} failed to apply its content:\n${applyError}`, electronApp, rendererErrors);

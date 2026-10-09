@@ -2,7 +2,7 @@
 // record as `actionFn`/`templateFn`, and run by the app. A body that compiled to nothing, or to something that
 // doesn't parse, is silent: the content imports, the row looks right, and the action fails when a flow reaches it.
 //
-// The seed-parity golden used to cover this by accident, digesting the whole row — which also meant every edit to
+// The content-parity golden used to cover this by accident, digesting the whole row — which also meant every edit to
 // any source moved 75 rows, so it fired constantly on changes that were fine. This checks the property that edit
 // cannot change: there is a body, and it parses. Editing what a body *does* leaves it alone; emitting an empty or
 // truncated one fails it. `tests/content/CLAUDE.md` has the whole split of what the golden records.
@@ -25,7 +25,7 @@ describe.each([
 ])('compiled $what', ({ what, file, body, params }) => {
   const all = records(file);
 
-  it('are in the compiled seed at all, so the checks below are reading something', () => {
+  it('are in the compiled content at all, so the checks below are reading something', () => {
     expect(all.length, `no ${what} in dist/${file} — run npm run compile`).toBeGreaterThan(0);
   });
 
@@ -34,8 +34,8 @@ describe.each([
     expect(empty.map((r) => r.label)).toEqual([]);
   });
 
-  // The other half of what the seed-parity golden used to cover by digesting the row: that every record carries a
-  // hash for change tracking to run on. notes-change-tracking.spec.ts asserts the same of every seeded note; the
+  // The other half of what the content-parity golden used to cover by digesting the row: that every record carries a
+  // hash for change tracking to run on. notes-change-tracking.spec.ts asserts the same of every written note; the
   // rule a missing hash triggers is the applier's, covered once in @abuddy/sdk's applier.spec.ts.
   it('each carry a contentHash of the compiler\'s shape', () => {
     const wrong = all.filter((r) => typeof r.contentHash !== 'string' || !/^[0-9a-f]{16}$/.test(r.contentHash as string));

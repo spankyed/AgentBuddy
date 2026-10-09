@@ -27,7 +27,7 @@ We burned a full debugging cycle hypothesizing the bug was elsewhere — the app
 
 **`@app/default-setup` uses a custom compile step that isn't wired into `build:be`.**
 
-The `default-setup` workspace is unusual. Its source files (`src/actions/**/*.ts`, `src/prompts/**/*.ts`, `src/flows/**/*.ts`, `src/library/**/*.md`, and notes) are not consumed as normal Node/TypeScript modules at runtime. Instead, they are compiled via a custom `build/compile.ts` script (esbuild + AST extraction) into a JSON bundle at `packages/default-setup/dist/compiled-actions.json` (and sibling files for the other DSL targets). The api server, at startup, imports these JSON files and seeds its action registry from them, then executes action function bodies inside a sandboxed scope. This is the design described in `packages/default-setup/CLAUDE.md`.
+The `default-setup` workspace is unusual. Its source files (`src/actions/**/*.ts`, `src/prompts/**/*.ts`, `src/flows/**/*.ts`, `src/library/**/*.md`, and notes) are not consumed as normal Node/TypeScript modules at runtime. Instead, they are compiled via a custom `build/compile.ts` script (esbuild + AST extraction) into a JSON bundle at `packages/default-setup/dist/compiled-actions.json` (and sibling files for the other DSL targets). The api server, at startup, imports these JSON files and content its action registry from them, then executes action function bodies inside a sandboxed scope. This is the design described in `packages/default-setup/CLAUDE.md`.
 
 The five compile scripts are already exposed at the repo root:
 

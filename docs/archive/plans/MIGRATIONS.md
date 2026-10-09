@@ -9,7 +9,7 @@ Startup sequence:
   hydrateSharded()       ← LMDB loaded
   onInit hooks           ← Settings entity ensured (default-setup)
   runMigrations()        ← Migrations run here
-  seedData()             ← Compiled DSL loaded
+  contentData()             ← Compiled DSL loaded
   backendActor.start()   ← Systems spawn
 ```
 

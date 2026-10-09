@@ -146,7 +146,7 @@ It only avoided crashing because `getHostModule` was called lazily. The fix:
 ### 6. No CI coverage for the external-pack path — ✅ resolved locally
 
 **Added:**
-- `tests/fixtures/external-pack/`: a checked-in pack derived from `abuddy init` + `abuddy add feature memos`. It has an EARS entity, a compiled CJS system, an FE plugin using `#generated/bus-ids`, `@abuddy/sdk/rpc` and pack Tailwind, with no seeds (see N1).
+- `tests/fixtures/external-pack/`: a checked-in pack derived from `abuddy init` + `abuddy add feature memos`. It has an EARS entity, a compiled CJS system, an FE plugin using `#generated/bus-ids`, `@abuddy/sdk/rpc` and pack Tailwind, with no content (see N1).
   - `memos.spec.ts` checks that a pack-only `p-[13px]` class applies, compares a visual baseline, and runs an add-memo round trip through the pack backend.
 - `tests/scripts/test-external-pack.sh`, run as `npm run test:external-pack`. It runs `abuddy validate`, `abuddy build`, `tsc --noEmit` on the pack, then `abuddy test` from the pack directory.
 - `.github/workflows/ci.yml` gets a new `external-pack-e2e` job (install, `npm run build`, `npm run test:external-pack`, upload test output on failure) and an `sdk` unit-test step in `check`.
@@ -165,9 +165,9 @@ The fixture was scaffolded from the `init` template, and it initially hit the sa
 | `#generated/*` not resolvable by TypeScript (subpath import targets get no extension probing) | `init` tsconfig template adds `paths: { "#generated/*": ["./src/__generated__/*"] }` |
 | No `*.vue` module declaration | `init` writes `src/env.d.ts` |
 | `.abuddy/generated/types.ts` imported `../__generated__/ears` (wrong dir) | `emitDepTypes` imports `../../src/__generated__/ears` |
-| `pack-entry.ts` imports `./seeders`, which wasn't generated for packs without seeds | `seeders.ts` is always emitted with the compiledDir accessors |
+| `pack-entry.ts` imports `./appliers`, which wasn't generated for packs without content | `appliers.ts` is always emitted with the compiledDir accessors |
 | `TS2352` on the generated `RelKind` cast when a pack declares no rel kinds | cast via `Record<string, unknown>` |
-| `EARS.Entity.Action` in `seeders.ts` for packs seeding actions without depending on `default-setup` | collection seeders use the entity name as a string literal |
+| `EARS.Entity.Action` in `appliers.ts` for packs applying actions without depending on `default-setup` | collection appliers use the entity name as a string literal |
 
 **Regression found and fixed along the way:** the new tsconfig `paths` broke `be-bundler.ts`. Its alias plugin returned extensionless paths (`Cannot read file …/__generated__/ears`), and the system compile failure didn't fail the build. The alias plugin now resolves extensions, and failed system compiles exit 1.
 
@@ -212,7 +212,7 @@ Stale fixture-lifecycle text there was also corrected (packs dir, always-rebuild
 
 | # | Finding | Evidence | Notes |
 |---|---|---|---|
-| N1 | **A freshly scaffolded pack can't build.** `init` declares `"default-setup": "*"`, which can't resolve outside a workspace layout (`abuddy fetch-deps` → `Failed to resolve: default-setup`; the registry lookup is a stub). The template's example flow then fails with `does not provide an export named 'keepAlive'`. Even with a `file:` dependency, the build fails with `No trigger types provided`: external pack builds register only the pack's own step definitions, so a flow using host steps can't compile. | Scaffold in `untracked/`: `abuddy init` + `add feature` → `abuddy build` exit 1 | ✅ **Resolved** (`1dee2929d`, `fd096520a`, `e6e219f0f`, `225e081cf`). The scaffold has no dependencies and no example flow, and an unresolvable dependency is a hard build error. Dependencies ship `build/steps.build.mjs`, and `abuddy build` validates flows with the dependency's real step code. The host re-validates at seed time, and invalid flows now record `lastError`, which fails `abuddy test`. Built-in packs resolve from the installed app's `host-packs`, or from the app configured for `abuddy test`. Evidence: the scaffold unit test (init → add feature → build → tsc → pack); the End state script builds and seeds a `keepAlive` flow from `default-setup`. |
+| N1 | **A freshly scaffolded pack can't build.** `init` declares `"default-setup": "*"`, which can't resolve outside a workspace layout (`abuddy fetch-deps` → `Failed to resolve: default-setup`; the registry lookup is a stub). The template's example flow then fails with `does not provide an export named 'keepAlive'`. Even with a `file:` dependency, the build fails with `No trigger types provided`: external pack builds register only the pack's own step definitions, so a flow using host steps can't compile. | Scaffold in `untracked/`: `abuddy init` + `add feature` → `abuddy build` exit 1 | ✅ **Resolved** (`1dee2929d`, `fd096520a`, `e6e219f0f`, `225e081cf`). The scaffold has no dependencies and no example flow, and an unresolvable dependency is a hard build error. Dependencies ship `build/steps.build.mjs`, and `abuddy build` validates flows with the dependency's real step code. The host re-validates at content time, and invalid flows now record `lastError`, which fails `abuddy test`. Built-in packs resolve from the installed app's `host-packs`, or from the app configured for `abuddy test`. Evidence: the scaffold unit test (init → add feature → build → tsc → pack); the End state script builds and content a `keepAlive` flow from `default-setup`. |
 | N2 | **`abuddy add feature` accepts hyphenated IDs, but the generated TS is invalid** (`settings.ts`: `{ notes-lite: true }`; `system-ids.ts`: `export { notes-lite }`). The manifest schema allows any string. | `add feature notes-lite` → `abuddy build`: `Expected "}" but found "-"` | ✅ **Resolved** (`1dee2929d`, D7). Feature IDs must match `^[a-z][a-zA-Z0-9]*$` in the manifest schema and `abuddy add feature`. The scaffold test rejects `my-notes`. |
 | N3 | **The test packs dir isn't isolated per pack.** Every pack installed in `abuddy-test/packs` loads in every E2E run, and the `abuddy-test` data dir persists across runs. | A stale mutated `abuddy-external` build broke the fixture's run until re-synced; accumulated events caused item 1. Fail-fast is now scoped to the pack under test. | ✅ **Resolved** (`c9d886a33`). Each worker gets a fresh `$TMPDIR/abuddy-e2e-*` data dir (`ABUDDY_USER_DATA_DIR`), and only the pack under test is installed in it. Launch-to-connected time is unchanged (~1.45–1.95s). The smoke test asserts the isolation. |
 | N4 | **The fixture's `.dev` check looks in the dev packs dir, but the test app reads the test packs dir.** While `abuddy dev` runs, the fixture skips build and sync, so tests use whatever was last synced to `abuddy-test/packs`. | Code reading: `testing/index.ts` (`devSignal` under `getPacksDirForEnv('development')`) vs sync target `getPacksDirForEnv('test')` | ✅ **Resolved** (`c9d886a33`). The `.dev` shortcut is gone: the fixture always builds and installs the pack. |
@@ -242,7 +242,7 @@ Branch `AS/external-pack-authoring`. The spec is `docs/archive/goals/goal-extern
 |---|---|
 | 0 Release artifact and pipeline | `98f5afc7e`, `545a3d6c4`, `3a36a642f` |
 | 1 Scaffold works | `1dee2929d` |
-| 2 Dependency steps (D1), loud seeds | `fd096520a`, `e6e219f0f` |
+| 2 Dependency steps (D1), loud content | `fd096520a`, `e6e219f0f` |
 | 3 Packages, publishing, CLI distribution | `e04f163e7`, `addc756de`, `683942c4c` |
 | 4 `abuddy test` without the monorepo | `7e9f3499e` |
 | 5 Test isolation | `c9d886a33` |

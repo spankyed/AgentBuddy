@@ -19,8 +19,8 @@
 >   for a run whose reporter never wrote a file. It exits 3 with the count treated as unknown rather than as
 >   zero, because "the reporter stopped being called" and "nothing ran" are the same silence. Decision 1's
 >   three *codes* are unchanged; the verdicts are four.
-> - **Background §2's symptom changed and did not improve.** A seed source no longer passes quietly — it now
->   exits 3 saying *"No spec covers packages/default-setup/src/seeds/…"*, which is **false**: `tests/seeds/`
+> - **Background §2's symptom changed and did not improve.** A content source no longer passes quietly — it now
+>   exits 3 saying *"No spec covers packages/default-setup/src/content/…"*, which is **false**: `tests/content/`
 >   covers it across the build edge. Phase 1 turned a silent hole into a confident wrong answer, which is a
 >   better failure and still a wrong one. Phase 2 is unchanged and is what fixes it.
 > - **`packages/<pack>/abuddy.json` is the opposite case** and neither phase noticed: `.json` is not a source
@@ -53,8 +53,8 @@
 
 Implement docs/goals/goal-spec-earns-its-pass.md on the current branch, at or after af694db4f — the base its
 Background was re-surveyed at. Phase 1 is already done; start at Phase 2.
-Before Phase 2, confirm the base, with SEED=packages/default-setup/src/seeds/actions/claude-code/answer-question.ts:
-`npm run spec -- $SEED` exits 3 claiming no spec covers it; `npm run spec -- packages/default-setup/abuddy.json`
+Before Phase 2, confirm the base, with CONTENT=packages/default-setup/src/content/actions/claude-code/answer-question.ts:
+`npm run spec -- $CONTENT` exits 3 claiming no spec covers it; `npm run spec -- packages/default-setup/abuddy.json`
 exits 0 having run nothing; scripts/lib/spec-plan.ts exports planTargets, verdictOf and exitCodeFor, and Run
 carries claimsCoverageOf. If any is already false, stop and say so — the survey was taken somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
@@ -73,7 +73,7 @@ Finished when:
   mutation-checked. Phase 1 is done (`249c0a8e8`) and is not to be re-implemented.
 - No target naming a file that exists can exit 0 having run no spec. A source file nothing covers says
   so, names what would cover it where that is known, and exits non-zero.
-- The two edges no module graph can see — a pack's seed sources to its goldens, and abuddy.json to the
+- The two edges no module graph can see — a pack's content sources to its goldens, and abuddy.json to the
   generated tree — are declared routes in scripts/lib/spec-plan.ts, asserted by repo-checks'
   spec-plan.spec.ts, and named in the root CLAUDE.md beside the other spec commands.
 - A failing run stops the plan instead of paying for the runs behind it.
@@ -171,14 +171,14 @@ The router already refuses to pass quietly for a *name* that matches nothing (`u
 `spec-plan.spec.ts`' case *"reports a target that matches nothing instead of passing quietly"*). The same
 claim is not made for a file that exists and nothing covers.
 
-### 2. A seed source is told nothing covers it, and something does
+### 2. A content source is told nothing covers it, and something does
 
 Re-run at `af694db4f`, after Phase 1:
 
 ```
-$ npm run spec -- packages/default-setup/src/seeds/actions/claude-code/answer-question.ts
-→ @app/default-setup: every spec covering src/seeds/actions/claude-code/answer-question.ts
-No spec covers packages/default-setup/src/seeds/actions/claude-code/answer-question.ts — nothing ran, so nothing passed.
+$ npm run spec -- packages/default-setup/src/content/actions/claude-code/answer-question.ts
+→ @app/default-setup: every spec covering src/content/actions/claude-code/answer-question.ts
+No spec covers packages/default-setup/src/content/actions/claude-code/answer-question.ts — nothing ran, so nothing passed.
 $ echo $?
 3
 ```
@@ -188,7 +188,7 @@ to a claim about coverage that is wrong, rather than to a silence that was merel
 is honest about the run and the words are not. It read, before Phase 1:
 
 ```
-→ @app/default-setup: every spec covering src/seeds/actions/claude-code/answer-question.ts
+→ @app/default-setup: every spec covering src/content/actions/claude-code/answer-question.ts
 No test files found, exiting with code 0     # $? = 0
 ```
 
@@ -203,9 +203,9 @@ $ echo $?
 ```
 
 So one edge asserts something untrue and the other still passes quietly, and Phase 2 is what closes both.
-The specs that do cover the seed file are
-`packages/default-setup/tests/seeds/seed-parity.spec.ts` and `tests/seeds/compiled-bodies.spec.ts`, which read
-`dist/*.seed.json` — so the edge is `src` → `abuddy build` → compiled seed → golden, a build edge of exactly
+The specs that do cover the content file are
+`packages/default-setup/tests/content/content-parity.spec.ts` and `tests/content/compiled-bodies.spec.ts`, which read
+`dist/*.content.json` — so the edge is `src` → `abuddy build` → compiled content → golden, a build edge of exactly
 the shape the archived goal closed for the `dist` seam, and nothing routes it. That goal recorded it, under
 *"What the graph still cannot see"*, along with `abuddy.json` → codegen → specs, which has the same shape: the
 generated tree is imported by specs, so a *regenerated* tree is covered, while editing the manifest alone
@@ -336,7 +336,7 @@ otherwise go looking:
 3. **The two edges no module graph can see are declared routes, reported by default and run under `--full`.**
    This is the mechanism `packSuiteNote`/`packSuiteRun` already is, reused rather than reinvented, and it
    inherits that decision's shape for the same reason: the note costs nothing and the run costs a build.
-   - `packages/<pack>/src/seeds/**` → that pack's `tests/seeds/`, through `npm run build -w <pack>` — the
+   - `packages/<pack>/src/content/**` → that pack's `tests/content/`, through `npm run build -w <pack>` — the
      pack's own build, which is what the root `compile` wraps; there is no `compile -w <pack>`, and the
      `packages:ensure` and `facade:check` that `compile` adds around it are already the plan's own first run
      and a separate artifact check.
@@ -424,18 +424,18 @@ the new case fails.
 ### Phase 2 — the edges no module graph can see are routes, not prose
 
 - Implement the two routes of Decision 3 in `spec-plan.ts`, derived from the pack's layout.
-- A seed-source or `abuddy.json` target prints what covers it and how (the note), and under `--full` runs it:
-  the pack's `build` then the seed specs, or the pack's suite for a manifest change.
-- Delete the corresponding sentences from `packages/default-setup/tests/seeds/CLAUDE.md` and the root
+- An apply-source or `abuddy.json` target prints what covers it and how (the note), and under `--full` runs it:
+  the pack's `build` then the content specs, or the pack's suite for a manifest change.
+- Delete the corresponding sentences from `packages/default-setup/tests/content/CLAUDE.md` and the root
   `CLAUDE.md` where they describe the gap as permanent, and say what the router now does instead.
 
-**Done when:** `npm run spec -- packages/default-setup/src/seeds/actions/claude-code/answer-question.ts`
-names `tests/seeds/` and exits non-zero — it exits 3 today with a sentence that is false, so the test is the
+**Done when:** `npm run spec -- packages/default-setup/src/content/actions/claude-code/answer-question.ts`
+names `tests/content/` and exits non-zero — it exits 3 today with a sentence that is false, so the test is the
 message, not the code; `npm run spec -- packages/default-setup/abuddy.json` names that pack's suite instead
 of exiting 0 having run nothing; `npm run spec:full -- <that file>`
-compiles the pack and runs the seed specs, and the golden failure a deliberately edited seed body produces is
+compiles the pack and runs the content specs, and the golden failure a deliberately edited content body produces is
 the run's failure. `spec-plan.spec.ts` partitions every pack under `packages/` into routed and unroutable.
-Mutation: removing the seeds route leaves the file answering zero specs, and the partition case fails.
+Mutation: removing the content route leaves the file answering zero specs, and the partition case fails.
 
 ### Phase 3 — a failure stops the plan
 
@@ -529,9 +529,9 @@ Finished 2026-09-28 on `AS/spec-earns-pass`, four commits over the re-survey.
 
 | | before | after |
 |---|---|---|
-| a seed source | exit 3, *"No spec covers …"* — false | exit 3, named: `@app/default-setup tests/seeds` |
+| a content source | exit 3, *"No spec covers …"* — false | exit 3, named: `@app/default-setup tests/content` |
 | `packages/default-setup/abuddy.json` | exit 0, nothing run | exit 0, 1 spec run, the suite named beside it |
-| `spec:full -- <seed source>` | no route | build + 18 specs, 16s; a broken seed body fails it |
+| `spec:full -- <content source>` | no route | build + 18 specs, 16s; a broken content body fails it |
 | a doc-only change set | 3.4s, `packages:ensure` + an empty vitest | **0s**, "nothing changed that a spec could cover" |
 | a failing `--full` plan | 23s, 2 runs | 22s, 1 run, the other named (the pack pool is 17s forced; it had skipped on its own stamp) |
 | "what would this run?" | run it, 21s | `spec:dry`, **3s**, 108 specs and 41.9s of file-time |
@@ -550,7 +550,7 @@ loading rather than a graph being walked.
 ### Choices made where the plan left a detail open
 
 - **The edge rides on the run, as `Run.beyond`, rather than a list beside the plan.** The first cut made
-  `src/seeds/**` a route *instead of* the pack `related` walk, and measuring killed it: a seed **helper** is
+  `src/content/**` a route *instead of* the pack `related` walk, and measuring killed it: an apply **helper** is
   imported by specs directly — `_helpers/thread-context.ts` reaches 3 — so replacing the walk threw away a
   precise answer to recommend a build. The walk still runs and carries what it could not see; what the edge
   changes is which sentence an *empty* walk gets, and the note a full one prints.
@@ -567,8 +567,8 @@ loading rather than a graph being walked.
   named-spec runs (their file list is the target) and whole-suite runs (the suite's record). Without the last
   two, `--full`'s pack suite — the most expensive run a plan produces — contributed nothing and read as free.
   A run that is none of the three says so rather than printing an empty prediction.
-- **The seed route runs `tests/seeds/` whole**, 18 specs, not the 6 goldens at its top level: the directory
-  mirrors `src/seeds/`, so the per-action specs under it are covered by the same edge.
+- **The apply route runs `tests/content/` whole**, 18 specs, not the 6 goldens at its top level: the directory
+  mirrors `src/content/`, so the per-action specs under it are covered by the same edge.
 - **One existing case changed rather than being added to.** `planChanged([])` asserted `packages:ensure` plus
   a root run for an empty change set — a shape the command never asks for, since it reports "nothing changed"
   before planning. It now asserts no runs, beside a real change set for the property it was testing.

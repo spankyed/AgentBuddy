@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockService, startApp, type TestApp } from '@abuddy/testing/harness'
 import type { Services } from '#generated/services.ts'
 import threadSettings from '#features/threads/settings.ts'
-import { actionLabel, seedDefaultFlows } from '../../_support/flows.ts'
+import { actionLabel, writeDefaultFlows } from '../../_support/flows.ts'
 import { phaseTipPromptLabel } from '../../../src/content/actions/claude-code/chat.ts'
 
 const chat = threadSettings.plugins.threads.chat
@@ -23,7 +23,7 @@ describe('mode name routing', () => {
   describe('Claude Code user messages, run on the brain', () => {
     let app: TestApp
     beforeEach(async () => {
-      seedDefaultFlows()
+      writeDefaultFlows()
       // The chat action would drive the CLI: mocked, so it never starts
       mockService<Services, 'cli'>('cli', { claudeCode: {} } as never)
       mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn(), sendBlockMessage: vi.fn() })

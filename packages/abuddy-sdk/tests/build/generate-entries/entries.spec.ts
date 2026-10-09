@@ -173,7 +173,7 @@ describe('generated registrations', () => {
   it("carry the pack's appliers and DSL types, which their modules only export", () => {
     const files = generate({
       features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }],
-      boot: { seed: { actions: 'src/content/actions' } },
+      boot: { content: { actions: 'src/content/actions' } },
       dsl: { memo: { entry: 'src/defs/memo.ts', targets: ['monaco'], prefix: 'memo:', globals: { memos: 'typeof _dsl.memos' } } },
     });
     expect(files['src/__generated__/pack-entry.ts']).toContain('\n  appliers,\n');

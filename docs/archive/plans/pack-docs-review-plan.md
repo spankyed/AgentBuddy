@@ -12,7 +12,7 @@ Examine `packages/sdk/` — its `package.json` exports map, the public types, an
 
 ## 3. Catalog the extension points
 
-List every capability a pack can register (systems, services, steps, EARS entities, artifacts, blocks, tiptap extensions, app extensions, boot hooks, migrations, seeds, FE plugins). For each, find the registration shape/type and an example of it being used (default-setup is the reference implementation).
+List every capability a pack can register (systems, services, steps, EARS entities, artifacts, blocks, tiptap extensions, app extensions, boot hooks, migrations, content, FE plugins). For each, find the registration shape/type and an example of it being used (default-setup is the reference implementation).
 
 ## 4. Review the manifest contract
 

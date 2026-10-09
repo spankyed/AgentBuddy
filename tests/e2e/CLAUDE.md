@@ -96,7 +96,7 @@ When a test worker starts, the fixture runs this sequence:
 
 5. **Wait for connected state** — `page.waitForFunction()` checks `applicationState.getSnapshot().value` for `{ running: 'connected' }` or `{ onboarding: ... }` (45s). If onboarding is detected, calls `window.__disableOnboardingUI()` then waits for `running.connected`.
 
-6. **Check the pack's seeding** (only when `PACK_DIR` is set) — if the pack's entry in the test data dir's `installed-packs.json` has a `lastError` (its data failed to seed), the fixture fails with it.
+6. **Check the pack's applying** (only when `PACK_DIR` is set) — if the pack's entry in the test data dir's `installed-packs.json` has a `lastError` (its data failed to apply), the fixture fails with it.
 
 7. **Wait for pack plugins** (only when `PACK_DIR` is set) — For each plugin ID from the manifest, waits for it to appear in `applicationState.getSnapshot().context.plugins`. If the renderer logs `[pack-loader] Failed to load FE entry pack://{packId}/…` for the pack under test, the test fails immediately. That failure, and a plugin that never registers, include the captured renderer errors and Electron/API error lines, so `DEBUG_E2E=1` is rarely needed to find the cause.
 
@@ -288,7 +288,7 @@ PACK_DIR=/path/to/my-pack npm test -- tests/e2e/smoke
 3. **Build**: always runs `abuddy build` in the pack directory (fails the run if the build fails)
 4. **Install** — installs the built pack into that data dir through the pack installer; no other packs are present
 5. **Launch Electron** — starts the app, which discovers the pack in its packs directory
-6. **Check seeding** — fails if the pack's installed-packs entry has a `lastError`
+6. **Check applying** — fails if the pack's installed-packs entry has a `lastError`
 7. **Wait for plugins** — for each plugin ID from the manifest, waits up to 30s for it to appear in `applicationState.context.plugins`. Fails immediately, with the captured errors, if the pack's FE entry fails to load.
 
 The in-repo fixture pack at `tests/packs/external-pack` exercises this whole path from its own directory: `npm run test:external-pack`.
@@ -350,7 +350,7 @@ data dir, the pack loader: things no harness test can reach.
 | `app-integration/api-access.spec.ts` | The API refuses WebSocket connections and `POST /dev/reload` without the run's token (the socket offers it as a subprotocol, not in the URL), takes them with it, and survives a malformed upgrade request |
 | `app-integration/api-reconnect.spec.ts` | The window keeps working across an API crash: main restarts it and the client re-establishes its bus subscription, on the same port or the one main reports |
 | `app-integration/db-cli.spec.ts` | `abuddy db` on the running app's data dir (`electronApp`'s `userData`): a query reads it with a stale-data warning, `exec` and `reset` are refused |
-| `app-integration/dev-reload.spec.ts` | `POST /dev/reload` of the pack the app ships refreshes the installed copy from what was rebuilt, re-seeds the changed seed data and resends startup data. The one spec in this suite that has caught a regression: a pack is loaded from the data dir, so without that refresh a rebuild reached the app only by accident, which no harness can see |
+| `app-integration/dev-reload.spec.ts` | `POST /dev/reload` of the pack the app ships refreshes the installed copy from what was rebuilt, re-applies the changed content data and resends startup data. The one spec in this suite that has caught a regression: a pack is loaded from the data dir, so without that refresh a rebuild reached the app only by accident, which no harness can see |
 | `app-integration/feature-addressing.spec.ts` | A name becoming an address: every path where a feature ref had to resolve and, when it didn't, the app ran on with the click or the setting silently lost |
 | `app-integration/import-pack-content.spec.ts` | Settings → Import Pack Content: compiles default-setup's notes and library entries into a compiled content directory, previews it, imports a selection, re-imports in keep-existing mode |
 | `app-integration/plugin-sends.spec.ts` | Backend sends to plugins through the bus: the code system's file watcher and terminal output, and the browser system's startup data after a pack reload, reach their plugins (recorded with `applicationState.system.inspect`) |

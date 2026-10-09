@@ -10,7 +10,7 @@ import { startTestRuntime, testPacks } from '../../src/testing/index.ts';
 // The registered packs' appliers: the stand-in's, which the specs fill
 startTestRuntime();
 
-const noopSeeder = (key: string): ContentApplier => ({ key, apply: () => ({ created: 0, updated: 0, skipped: 0 }) });
+const noopApplier = (key: string): ContentApplier => ({ key, apply: () => ({ created: 0, updated: 0, skipped: 0 }) });
 
 let root: string | undefined;
 afterEach(() => {
@@ -21,12 +21,12 @@ afterEach(() => {
 });
 
 async function compileDemo(): Promise<string> {
-  root = fs.mkdtempSync(path.join(os.tmpdir(), 'seed-preview-'));
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'content-preview-'));
   const write = (file: string, content: string) => {
     fs.mkdirSync(path.dirname(path.join(root!, file)), { recursive: true });
     fs.writeFileSync(path.join(root!, file), content);
   };
-  write('glossary.json', JSON.stringify([{ term: 'Pack', description: 'A bundle' }, { term: 'Seed', children: [{ term: 'Hook' }] }]));
+  write('glossary.json', JSON.stringify([{ term: 'Pack', description: 'A bundle' }, { term: 'Content', children: [{ term: 'Hook' }] }]));
   write('faqs.json', JSON.stringify([{ question: 'Why?' }]));
   vi.spyOn(console, 'log').mockImplementation(() => {});
   const out = path.join(root, 'dist');
@@ -47,21 +47,21 @@ async function compileDemo(): Promise<string> {
 }
 
 describe('previewPackContent', () => {
-  it("lists the seeded keys the compiling pack's appliers import, and their items, whatever the keys are", async () => {
+  it("lists the written keys the compiling pack's appliers import, and their items, whatever the keys are", async () => {
     const out = await compileDemo();
-    testPacks.appliers.set('demo', [noopSeeder('glossary')]);
+    testPacks.appliers.set('demo', [noopApplier('glossary')]);
 
     expect(previewPackContent(out)).toEqual({
       directory: out,
       packId: 'demo',
-      content: { glossary: [{ key: 'Pack', description: 'A bundle' }, { key: 'Seed', childCount: 1 }] },
+      content: { glossary: [{ key: 'Pack', description: 'A bundle' }, { key: 'Content', childCount: 1 }] },
       unavailable: ['notes'],
     });
   });
 
   it("fails when the compiling pack registered no appliers (it isn't installed)", async () => {
     const out = await compileDemo();
-    testPacks.appliers.set('other', [noopSeeder('glossary')]);
+    testPacks.appliers.set('other', [noopApplier('glossary')]);
     try {
       expect(() => previewPackContent(out)).toThrow(/Pack "demo" isn't installed/);
     } finally {
@@ -70,7 +70,7 @@ describe('previewPackContent', () => {
   });
 
   it('fails for a directory without content.json', () => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'seed-preview-'));
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'content-preview-'));
     expect(() => previewPackContent(root!)).toThrow(/has no content\.json/);
   });
 });

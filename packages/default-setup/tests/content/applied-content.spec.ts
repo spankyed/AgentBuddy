@@ -96,7 +96,7 @@ let first: ReturnType<typeof apply>;
 
 /**
  * **Applied per test, not once for the file**: `setupPackTests` empties the database in its own `beforeEach`,
- * so anything seeded in a `beforeAll` is gone before the first case runs.
+ * so anything written in a `beforeAll` is gone before the first case runs.
  */
 beforeEach(() => {
   expect(fs.existsSync(BUILT), 'the built content is missing: run npm run compile').toBe(true);
@@ -112,7 +112,7 @@ describe('the applied content over this pack’s real content', () => {
     const entries = writtenEntries();
     const declared = entries.reduce((total, entry) => total + (entry.count ?? 0), 0);
 
-    expect(entries.map((entry) => entry.key).sort(), 'the pack stopped seeding a key this spec covers')
+    expect(entries.map((entry) => entry.key).sort(), 'the pack stopped applying a key this spec covers')
       .toEqual(['actions', 'flows', 'library', 'notes', 'prompts']);
     expect(declared, 'the index declares nothing, so every case here would pass over nothing').toBeGreaterThan(50);
     expect(first.record.written.size, 'an entry per declared item').toBe(declared);
@@ -246,7 +246,7 @@ describe('the applied content over this pack’s real content', () => {
    */
   it('removes an item the content no longer declares', () => {
     const dropped = writtenEntries().find((entry) => entry.key === 'prompts')!;
-    expect(dropped.count ?? 0, 'the prompts entry seeds nothing, so this removes nothing').toBeGreaterThan(0);
+    expect(dropped.count ?? 0, 'the prompts entry writes nothing, so this removes nothing').toBeGreaterThan(0);
 
     const again = apply(compiledDir({ bump: true, drop: 'prompts' }), first.record);
 

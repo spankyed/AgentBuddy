@@ -3,7 +3,7 @@
 **`npm run spec` knows these specs cover `src/content/`.** The edge runs `src` -> `abuddy build` ->
 `dist/*.content.json` -> the goldens here, which no module graph can see, so it is a declared route
 (`packBuildEdge`, `scripts/lib/spec-plan.ts`): naming a content item source prints what covers it, and
-`npm run spec:full -- <that file>` builds the pack and runs this directory. A seed *helper* that specs
+`npm run spec:full -- <that file>` builds the pack and runs this directory. An apply *helper* that specs
 import directly is still answered by the walk, with these named beside it.
 
 ## What this is
@@ -16,9 +16,9 @@ They compile default-setup's real content sources, import them into a scratch da
 user's — and compare the rows that ended up there against a committed snapshot in `__golden__/`. One question: **does writing still produce
 the database it produced before?**
 
-The goldens were first recorded from the pipeline that preceded the generic seed compiler, which is why they are a
+The goldens were first recorded from the pipeline that preceded the generic content compiler, which is why they are a
 recording rather than hand-written expectations. See `docs/public-facing/content.md` ("The four stages") for the
-vocabulary — *seed* is the content, *import* is the act — and `src/content/CLAUDE.md` for authoring.
+vocabulary — *content* is the content, *import* is the act — and `src/content/CLAUDE.md` for authoring.
 
 ## The specs
 
@@ -28,16 +28,16 @@ vocabulary — *seed* is the content, *import* is the act — and `src/content/C
 | `applied-content.spec.ts` | what an apply records for all of this pack's content, and what a second one then decides |
 | `edited-rows.spec.ts` | an entity the **user edited** survives a content change — the apply skips it and names the part |
 | `edited-flows.spec.ts` | the same for flows, matched by content key rather than label |
-| `notes-change-tracking.spec.ts` | notes' own change-tracking rules (goal-generic-seed-compiler Decision 10) |
+| `notes-change-tracking.spec.ts` | notes' own change-tracking rules (goal-generic-content-compiler Decision 10) |
 | `dependent-pack.spec.ts` | another pack writing through *default-setup's* formats and hooks gets the same rows |
 | `harness.ts` | compiles, runs, and snapshots rows with ids and timestamps normalized |
 
-**Two ways to run the content, and a spec has to pick the right one** (`harness.ts`). `seed()` is an
+**Two ways to run the content, and a spec has to pick the right one** (`harness.ts`). `apply()` is an
 **import** — no record, which is the user asking for the pack's content back — and it is what the goldens are
 recorded through, because a scenario that applies one fixture version over another is about the import modes.
 `applyContent()` is an **apply**, carrying forward what the last one wrote, which is how the app's boot runs it:
 a spec about what the user's edit survives needs that record, because an apply with no entry for an item
-*adopts* it. Using `seed()` for an edit case is the mistake to watch for — it passes for the wrong reason,
+*adopts* it. Using `apply()` for an edit case is the mistake to watch for — it passes for the wrong reason,
 since nothing told the run which part of the item the user had changed.
 
 ## What goes in the golden, and what must not
@@ -91,7 +91,7 @@ Re-recording rewrites a **test expectation**. It changes no user data and needs 
 a new `contentHash` from the compile stage, and the applier updates only rows the user never edited — so read the
 diff, confirm it is the change you meant, and commit it with the change that caused it. Never hand-edit a golden.
 
-Note the split: the `v1`/`v2` scenario goldens seed fixture sources in `packages/default-setup/tests/_support/fixtures/`, so
+Note the split: the `v1`/`v2` scenario goldens content fixture sources in `packages/default-setup/tests/_support/fixtures/`, so
 only a change in *writing* moves them. `default-setup.json` follows the pack's own sources, so it also moves when
 content does.
 

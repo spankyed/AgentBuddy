@@ -38,7 +38,7 @@ test("renders the host's @abuddy/ui editor inside the pack", async ({ appPage, a
   await expect(preview.locator('.ProseMirror')).toContainText('typed draft');
 });
 
-test('seeds memos from abuddy.json: a markdown entry and a compiler module', async ({ appPage, app }) => {
+test('content memos from abuddy.json: a markdown entry and a compiler module', async ({ appPage, app }) => {
   await app.waitForPlugin('memos');
   await app.navigate('memos');
 

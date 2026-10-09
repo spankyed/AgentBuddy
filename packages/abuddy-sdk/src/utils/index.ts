@@ -27,7 +27,7 @@ export {
   toSlug, uniqueFilename,
 } from './export.ts';
 
-// --- Seed (direct) ---
+// --- Content (direct) ---
 export {
   importCompiledContent,
   loadJSON, selectsAll, filterBySelection,

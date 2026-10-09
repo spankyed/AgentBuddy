@@ -66,11 +66,11 @@ const document = (name: string, command: string) =>
 
 const folder = (name: string, children: unknown[]) => ({ entity: 'Collection', name, contentHash: `team-${name}`, children })
 
-/** Its own command document, under the internal/commands folders default-setup seeds */
+/** Its own command document, under the internal/commands folders default-setup content */
 const dependentPackCommands = (documentName: string, command: string) =>
   dependentPack([folder('internal', [folder('commands', [document(documentName, command)])])])
 
-async function seededApp(): Promise<TestApp> {
+async function appliedApp(): Promise<TestApp> {
   importCompiledContent({ compiledDir: DIST, include: { library: new Set(['internal']) } })
   // threads checks onboarding with the brain when a client connects
   const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
@@ -80,7 +80,7 @@ async function seededApp(): Promise<TestApp> {
 
 describe('slash commands from the library commands folder', () => {
   it("lists the commands default-setup declares, then its Claude Code and Codex documents'", async () => {
-    const app = await seededApp()
+    const app = await appliedApp()
     expect(commandDocuments().map((document) => document.name).sort()).toEqual(['Claude Code commands', 'Codex commands'])
 
     const connected = app.emitted('threads').find((event) => event.type === 'AGENT_CONNECTED') as unknown as { data: { commands: Array<{ name: string }> } }
@@ -93,7 +93,7 @@ describe('slash commands from the library commands folder', () => {
   })
 
   it("ignores a document that repeats a declared command, so a pack's own placeholder stands", async () => {
-    await seededApp()
+    await appliedApp()
     repository.libraryCommands.createDocument('aa-override', field('pr2md', 'Shadowed'), [], commandsFolderId())
 
     expect(services.library.commands().filter((command) => command.name === 'pr2md'))
@@ -101,7 +101,7 @@ describe('slash commands from the library commands folder', () => {
   })
 
   it('adds the commands of a document created in the folder, and sends the chat the new list', async () => {
-    const app = await seededApp()
+    const app = await appliedApp()
     await app.send('library', { type: 'CREATE_DOCUMENT', name: 'mine', content: field('my-command', 'Arguments'), tags: [], collectionId: commandsFolderId() })
     const updated = await app.nextEmit('threads', 'COMMANDS_UPDATED')
     expect(commandNames(updated)).toContain('my-command')
@@ -109,7 +109,7 @@ describe('slash commands from the library commands folder', () => {
   })
 
   it('removes the commands of a document moved out of the folder, and of one deleted', async () => {
-    const app = await seededApp()
+    const app = await appliedApp()
     await app.send('library', { type: 'MOVE_ITEMS', ids: [documentNamed('Codex commands').id], targetFolderId: internalFolderId() })
     expect(commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED')).some((name) => name.startsWith('cdx-'))).toBe(false)
 
@@ -120,14 +120,14 @@ describe('slash commands from the library commands folder', () => {
   })
 
   it("drops the documents' commands when the folder itself is renamed, keeping the declared ones", async () => {
-    const app = await seededApp()
+    const app = await appliedApp()
     await app.send('library', { type: 'RENAME_ITEM', id: commandsFolderId(), name: 'old-commands', itemType: 'folder' })
     expect(commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))).toEqual(['pr2md', 'instructions'])
   })
 
-  it("reports only a failure for seeds that don't name their pack, even when no section is selected", async () => {
+  it("reports only a failure for content that don't name their pack, even when no section is selected", async () => {
     // With every section deselected no applier runs, so nothing else reads the missing pack id
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'unnamed-seeds-'))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'unnamed-content-'))
     dependentDirs.push(dir)
     fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, entries: [] }))
     const nothing = Object.fromEntries(Object.keys(manifest.content.sources).map((key) => [key, []]))
@@ -142,7 +142,7 @@ describe('slash commands from the library commands folder', () => {
   })
 
   it("reports the records a content import couldn't write, with the counts of the rest", async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'failing-seeds-'))
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'failing-content-'))
     dependentDirs.push(dir)
     fs.writeFileSync(path.join(dir, 'content.json'), JSON.stringify({ version: 1, packId: manifest.id, entries: [] }))
     const note = (title: string) => ({ entity: 'Note', title, noteType: 'document', content: 'x', contentHash: `hash-${title}` })
@@ -166,14 +166,14 @@ describe('slash commands from the library commands folder', () => {
   })
 
   it("keeps the commands default-setup declares when its documents are gone", async () => {
-    const app = await seededApp()
+    const app = await appliedApp()
     await app.send('library', { type: 'DELETE_ITEMS', ids: [documentNamed('Claude Code commands').id, documentNamed('Codex commands').id] })
 
     expect(commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))).toEqual(['pr2md', 'instructions'])
   })
 
   it("sends nothing for a change that doesn't alter the commands", async () => {
-    const app = await seededApp()
+    const app = await appliedApp()
     await app.send('library', { type: 'CREATE_DOCUMENT', name: 'notes', content: field('not-a-command', 'x'), tags: [], collectionId: internalFolderId() })
     await app.nextEmit('library', 'DOCUMENT_CREATED')
     await app.settle()
@@ -182,7 +182,7 @@ describe('slash commands from the library commands folder', () => {
   })
 
   it("nests a dependent pack's command document in default-setup's folders, and lists its commands", async () => {
-    await seededApp()
+    await appliedApp()
     const before = repository.libraryQueries.getCollections()
 
     importCompiledContent({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
@@ -197,7 +197,7 @@ describe('slash commands from the library commands folder', () => {
   // A pack registers when it's installed or enabled, and unregisters when it's disabled or uninstalled; the
   // bus asks every system to publish once either is complete
   it("sends the chat a pack's declared commands when it registers, and drops them when it goes", async () => {
-    const app = await seededApp()
+    const app = await appliedApp()
 
     reregisterTeamNotes([{ name: 'team-standup', placeholder: 'Topic' }])
     await app.send('threads', { type: 'SEND_STATE' })
@@ -211,8 +211,8 @@ describe('slash commands from the library commands folder', () => {
   })
 
   // The bus asks every system to publish when a pack is installed, updated or rebuilt while the app runs
-  it('sends the chat the commands a pack seeded while the app runs brings', async () => {
-    const app = await seededApp()
+  it('sends the chat the commands a pack written while the app runs brings', async () => {
+    const app = await appliedApp()
     importCompiledContent({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
 
     await app.send('threads', { type: 'SEND_STATE' })
@@ -221,7 +221,7 @@ describe('slash commands from the library commands folder', () => {
   })
 
   it("sends nothing when asked to publish without the commands having altered", async () => {
-    const app = await seededApp()
+    const app = await appliedApp()
 
     await app.send('threads', { type: 'SEND_STATE' })
     await app.settle()
@@ -229,8 +229,8 @@ describe('slash commands from the library commands folder', () => {
     expect(app.emitted('threads').filter((event) => event.type === 'COMMANDS_UPDATED')).toEqual([])
   })
 
-  it("sends the library plugin its index again when asked to publish, with what the pack seeded", async () => {
-    const app = await seededApp()
+  it("sends the library plugin its index again when asked to publish, with what the pack written", async () => {
+    const app = await appliedApp()
     importCompiledContent({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
 
     const sentBefore = app.emitted('library').filter((event) => event.type === 'LIBRARY_CONNECTED').length
@@ -245,7 +245,7 @@ describe('slash commands from the library commands folder', () => {
   })
 
   it("keeps a folder of the same name elsewhere out of it: a name matches within its parent", async () => {
-    await seededApp()
+    await appliedApp()
 
     // The dependent pack's own root-level commands folder, not default-setup's internal/commands
     importCompiledContent({ compiledDir: dependentPack([folder('commands', [document('Team commands', 'team-standup')])]) })
@@ -257,7 +257,7 @@ describe('slash commands from the library commands folder', () => {
   })
 
   it("matches a document by name in its folder, not one the user keeps elsewhere", async () => {
-    await seededApp()
+    await appliedApp()
     const mine = repository.libraryCommands.createDocument('Team commands', field('mine', 'Untouched'), [], undefined)
 
     importCompiledContent({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
@@ -268,7 +268,7 @@ describe('slash commands from the library commands folder', () => {
   })
 
   it('keeps the first definition of a command two documents define', async () => {
-    await seededApp()
+    await appliedApp()
     const original = services.library.commands().find((command) => command.name === 'cc-resume')!
     repository.libraryCommands.createDocument('zz-override', field('cc-resume', 'Shadowed'), [], commandsFolderId())
     expect(services.library.commands().filter((command) => command.name === 'cc-resume')).toEqual([original])

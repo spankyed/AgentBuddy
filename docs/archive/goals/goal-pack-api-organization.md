@@ -44,7 +44,7 @@ Never:
 
 ## Background
 
-Packs reach the app's messaging, logging and action running through several overlapping paths. Counts are pack source in default-setup and the fixture pack; "action uses" are occurrences in default-setup's seed actions, which get only `params`, `services`, `z` and `flowId`.
+Packs reach the app's messaging, logging and action running through several overlapping paths. Counts are pack source in default-setup and the fixture pack; "action uses" are occurrences in default-setup's content actions, which get only `params`, `services`, `z` and `flowId`.
 
 - **Five ways to send an event.**
   - **Backend → frontend:**
@@ -186,13 +186,13 @@ Final.
 - Frontend: the 191 `trpc.bus.send.mutate` calls and 7 local `sendToBackend` helpers become `sendToSystem`.
 - Backend: the 118 `rootEvents.emitOutgoing` calls become `broadcastToPlugin`. Remove every `as any` on sent events, and declare the events it hid (`codePrompts.PROMPT_SELECTED`, `PROMPT_UPDATED`, `CODE_ERROR`, and any others found).
 - `rootEvents.onConnected`/`onIncoming` become `onConnected`/`onIncoming` from `events`.
-- `services.emitter` is built from `events`, and default-setup's seed actions typecheck against it.
+- `services.emitter` is built from `events`, and default-setup's content actions typecheck against it.
 - `check:specifiers` rules (Decision 3).
 
 **Done when:**
 - No pack source (default-setup, fixture pack, example pack, CLI templates) matches the rejected patterns, and each new rule fails on a planted violation (mutation).
 - The code, browser, notes and memos flows pass their E2E and unit tests.
-- A seed action using `services.emitter.broadcastToPlugin` with a wrong event type fails typecheck.
+- A content action using `services.emitter.broadcastToPlugin` with a wrong event type fails typecheck.
 
 ### Phase 3 — Observability and the action sandbox
 - `createLogger(source, { debug })`, `reportError`, `onLog` (Decision 5). Migrate the 4 `createInspectLogger` users, `reportSystemError` and `reportStepRuntimeError` callers, the logs system's subscription, and the 15 `console.*` backend files.
@@ -221,7 +221,7 @@ Final.
 - `docs/public-facing`:
   - **features:** events, sending to systems from the frontend
   - **services and data:** `services.emitter` and `services.logger` in actions
-  - **seeds:** the action sandbox
+  - **content:** the action sandbox
   - **testing:** `takeSystemErrors`, logging
 - CLAUDE.md files:
   - root: the key patterns section on events, and the SDK packages list

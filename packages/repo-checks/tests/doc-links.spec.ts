@@ -35,16 +35,16 @@ const isRelative = (target: string): boolean =>
   !/^[a-z][a-z0-9+.-]*:/i.test(target) && !target.startsWith('#') && !target.startsWith('/');
 
 /**
- * The markdown written for a reader of this repo — not content seeded into the app.
+ * The markdown written for a reader of this repo — not content written into the app.
  *
  * A pack's content sources and the fixture packs' are markdown too, and their links mean something else: a
- * library document's `media/pic.png` is resolved by the media store against the seeded tree, not by this
+ * library document's `media/pic.png` is resolved by the media store against the written tree, not by this
  * checkout's directory layout, so three of them read as dead here and are not.
  */
 const docs = (): string[] =>
   repoFiles('*.md')
     .filter((file) => file.startsWith('docs/') || !file.includes('/') || /(^|\/)(CLAUDE|README)\.md$/.test(file))
-    .filter((file) => !file.includes('/fixtures/') && !file.includes('/seeds/'));
+    .filter((file) => !file.includes('/fixtures/') && !file.includes('/content/'));
 
 describe("a link between the repo's documents resolves", () => {
   const broken = (): string[] => docs().flatMap((file) => {

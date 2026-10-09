@@ -3,14 +3,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockService, startApp, type FlowRun, type TestApp } from '@abuddy/testing/harness'
 import type { Services } from '#generated/services.ts'
-import { actionLabel, seedDefaultFlows } from '../../../_support/flows.ts'
+import { actionLabel, writeDefaultFlows } from '../../../_support/flows.ts'
 
 const actions = (run: FlowRun) => run.steps.map(actionLabel).filter(Boolean)
 const step = (run: FlowRun, action: string) => run.steps.find((s) => actionLabel(s) === action)
 
 let app: TestApp
 beforeEach(async () => {
-  seedDefaultFlows()
+  writeDefaultFlows()
   mockService<Services, 'codex'>('codex', { status: 'ready', getHandle: vi.fn(), respondToApproval: vi.fn(), start: vi.fn() })
   mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn(), sendBlockMessage: vi.fn() })
   mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() })

@@ -149,7 +149,7 @@ export const defineKey = (ctx: ApplyContext, key: string): void => { ctx.applied
 export const recordApplied = (ctx: ApplyContext, key: string, item: AppliedItem): void => { ctx.applied?.written.set(key, item); };
 
 /**
- * Seeds `<key>.content.json` records: finds each record's existing row, creates, updates or skips it,
+ * Content `<key>.content.json` records: finds each record's existing row, creates, updates or skips it,
  * and walks children under their parent row.
  * - `keep-existing` skips an existing row and its subtree.
  * - Otherwise a row with no stored hash is user-owned and left alone. A row whose stored hash matches
@@ -225,7 +225,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
       const findByIdentity = (record: ContentItem, context: ContentWriteContext, hooks?: ContentWriter): ContentMatch | undefined => {
         if (hooks?.find) return hooks.find(record, context);
         const fields = identity.filter((name) => name !== 'parent');
-        if (fields.length === 0) throw new Error(`Seed "${key}": entity "${record.entity}" has no find hook, so the entry needs "identity"`);
+        if (fields.length === 0) throw new Error(`Content "${key}": entity "${record.entity}" has no find hook, so the entry needs "identity"`);
         const [first, ...rest] = fields;
         const candidates = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>(record.entity as EARS.Entity, first, record[first])
           .filter((row) => rest.every((name) => row[name] === record[name]));

@@ -68,7 +68,7 @@ async function installExternalPack(id: string, entityType: string): Promise<void
 
 describe('a data dir opened by the API and by openAppDatabase', () => {
   it('hydrates to the same entities, relations and roles', async () => {
-    // A first run seeds the app's data; the user adds a note with a role and a relation, and a run leaves a trace in
+    // A first run content the app's data; the user adds a note with a role and a relation, and a run leaves a trace in
     // the volatile partition, which neither hydrates
     const first = await bootApi();
     startPacks(first.packs);

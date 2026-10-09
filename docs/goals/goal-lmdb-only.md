@@ -72,8 +72,8 @@ The user wants **LMDB-only**: reads query LMDB directly, writes are committed sy
 ### What depends on memory today (survey, 2026-09-17)
 
 - **Read APIs.** `E` = `packages/abuddy-ears/src`.
-  - `query.ts` builds whole id arrays at the seed, then filters in JS: `where` (`===` only), `withRole`, `ofType`, `linksTo`. `orderBy` called `getAttr` inside the sort comparator. `limit`/`page` slice after the full set is built.
-  - `qx()` with no seed lists every entity. Callers:
+  - `query.ts` builds whole id arrays at the apply, then filters in JS: `where` (`===` only), `withRole`, `ofType`, `linksTo`. `orderBy` called `getAttr` inside the sort comparator. `limit`/`page` slice after the full set is built.
+  - `qx()` with no apply lists every entity. Callers:
     - `ensure(role)` with no scope (`E/transaction.ts:89`)
     - `spawn` with `uniqueRoles`
     - `graph.leaves` with no type
@@ -220,10 +220,10 @@ These are the ones settled by the spikes. The ones below them need the user.
    - A background `root.sync()` runs on an interval, on idle and on close, and bounds what an OS crash can lose.
    - The engine API gains `transaction(fn)`: its writes commit atomically in one `transactionSync`, and reads inside it see them. Nested calls join the outer one; track the depth in storage, since the spike found nested `transactionSync` plus `close()` could hang.
    - The whole write is one transaction: a `tx` chain's writes inside a `transaction` commit together, and outside one each storage call commits on its own.
-4. **Partitions live in the storage.** One env per partition (`ears-db`, `ears-trace`). Each write picks its env by the policy. Reads that can involve a trace type read both envs: type seeds for trace types, relation lookups on trace entities, `findRelations`. Keep the history-link rule from 2026-09-17: a delete doesn't remove a trace relation that belongs to the other end.
+4. **Partitions live in the storage.** One env per partition (`ears-db`, `ears-trace`). Each write picks its env by the policy. Reads that can involve a trace type read both envs: type content for trace types, relation lookups on trace entities, `findRelations`. Keep the history-link rule from 2026-09-17: a delete doesn't remove a trace relation that belongs to the other end.
 5. **Values are copies.** Reads decode fresh values. The storage does read-modify-write where the memory engine mutated lists in place. `updateRelation` writes the new details instead of mutating them.
 6. **Query planner.**
-   - A query with no seed whose first step is `where(k, v)` or `withRole` seeds from the value index.
+   - A query with no apply whose first step is `where(k, v)` or `withRole` content from the value index.
    - `qx(type).where(k, v)` walks the index set in insertion order.
    - `limit`/`page` apply before `pickAll`/`pick`.
    - Optionally, add a sorted index `['o', kind, value, seq]` for `orderBy` + `limit`.
@@ -347,7 +347,7 @@ assumptions: settle the sequencing before either Phase 3.
 - Decision 6.
 
 **Done when:**
-- The disk benchmark's no-seed `withRole`, `where().pickAll()` and `orderBy` cases each come within 3× of memory, or the gap is explained and accepted.
+- The disk benchmark's no-content `withRole`, `where().pickAll()` and `orderBy` cases each come within 3× of memory, or the gap is explained and accepted.
 - `limit` stops reads early (a spec counts storage reads).
 
 ### Phase 4 — Partitions and trace sessions
@@ -380,7 +380,7 @@ assumptions: settle the sequencing before either Phase 3.
 - Short codes and labels use per-type counts.
 - Settings reads per log line: read once per event, or keep the needed values in the system's context.
 - Schema info regenerates on demand.
-- Wrap each flow step, each seed import and multi-write repository commands in `transaction()`.
+- Wrap each flow step, each content import and multi-write repository commands in `transaction()`.
 
 **Done when:**
 - A new flow-run benchmark (steps per second for a 20-step flow, with 100 flows in the store) is recorded, and memory vs disk is within the tolerance agreed with the user.

@@ -20,7 +20,7 @@ interface ExportCase {
   /** The export, with its count read off whatever the result names it */
   run: (dir: string) => { filePath: string; count: number };
   fixtures: readonly Row[];
-  seed: () => void;
+  apply: () => void;
   create: (item: Row) => void;
   all: () => readonly Row[];
   file: RegExp;
@@ -34,7 +34,7 @@ const CASES: ExportCase[] = [
     name: 'actions',
     run: (dir) => { const result = exportActions(dir); return { filePath: result.filePath, count: result.actionCount }; },
     fixtures: actionFixtures as unknown as readonly Row[],
-    seed: () => { for (const fixture of actionFixtures) repository.actionCommands.create(fixture); },
+    apply: () => { for (const fixture of actionFixtures) repository.actionCommands.create(fixture); },
     create: (item) => { repository.actionCommands.create(item as unknown as Parameters<typeof repository.actionCommands.create>[0]); },
     all: () => repository.actionQueries.all() as unknown as readonly Row[],
     file: /exported-actions\.json$/,
@@ -45,7 +45,7 @@ const CASES: ExportCase[] = [
     name: 'prompts',
     run: (dir) => { const result = exportPrompts(dir); return { filePath: result.filePath, count: result.promptCount }; },
     fixtures: promptFixtures as unknown as readonly Row[],
-    seed: () => { for (const fixture of promptFixtures) repository.promptCommands.create(fixture); },
+    apply: () => { for (const fixture of promptFixtures) repository.promptCommands.create(fixture); },
     create: (item) => { repository.promptCommands.create(item as unknown as Parameters<typeof repository.promptCommands.create>[0]); },
     all: () => repository.promptQueries.all() as unknown as readonly Row[],
     file: /exported-prompts\.json$/,
@@ -68,20 +68,20 @@ afterEach(() => {
 describe.each(CASES)('exporting $name', (testCase) => {
   const read = (filePath: string): Row[] => JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
-  it('writes every seeded row, and none when there are none', () => {
+  it('writes every written row, and none when there are none', () => {
     const empty = testCase.run(tmpDir);
     expect(read(empty.filePath)).toEqual([]);
     expect(empty.count).toBe(0);
 
-    testCase.seed();
-    const seeded = testCase.run(tmpDir);
-    expect(read(seeded.filePath)).toHaveLength(testCase.fixtures.length);
-    expect(seeded.count).toBe(testCase.fixtures.length);
-    expect(seeded.filePath).toMatch(testCase.file);
+    testCase.apply();
+    const written = testCase.run(tmpDir);
+    expect(read(written.filePath)).toHaveLength(testCase.fixtures.length);
+    expect(written.count).toBe(testCase.fixtures.length);
+    expect(written.filePath).toMatch(testCase.file);
   });
 
   it('strips internal fields', () => {
-    testCase.seed();
+    testCase.apply();
     for (const item of read(testCase.run(tmpDir).filePath)) {
       for (const field of ['id', 'entityType', 'createdAt', 'updatedAt', 'deleted', 'deletedAt']) {
         expect(item).not.toHaveProperty(field);
@@ -90,7 +90,7 @@ describe.each(CASES)('exporting $name', (testCase) => {
   });
 
   it('preserves portable fields', () => {
-    testCase.seed();
+    testCase.apply();
     const exported = read(testCase.run(tmpDir).filePath);
 
     testCase.fixtures.forEach((fixture, index) => {
@@ -101,12 +101,12 @@ describe.each(CASES)('exporting $name', (testCase) => {
   });
 
   it('creates the directory when it does not exist', () => {
-    testCase.seed();
+    testCase.apply();
     expect(fs.existsSync(testCase.run(path.join(tmpDir, 'a', 'b', 'c')).filePath)).toBe(true);
   });
 
   it('round-trips: re-importing what it wrote gives the portable fields back', () => {
-    testCase.seed();
+    testCase.apply();
     const { filePath } = testCase.run(tmpDir);
 
     resetTestData();

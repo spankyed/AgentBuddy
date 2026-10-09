@@ -47,12 +47,12 @@ Never:
 
 ## Background
 
-The pack harness (`@abuddy/testing/harness`, on `@abuddy/sdk/testing`) unit-tests a pack's data code: seeds, repositories and seed hooks against an in-memory EARS, including dependencies' seeding behaviour. Systems, services and flows are tested only in E2E, and default-setup's own unit tests run on the API's host init.
+The pack harness (`@abuddy/testing/harness`, on `@abuddy/sdk/testing`) unit-tests a pack's data code: content, repositories and content hooks against an in-memory EARS, including dependencies' applying behaviour. Systems, services and flows are tested only in E2E, and default-setup's own unit tests run on the API's host init.
 
 - **The harness covers data code only.**
-  - `setupPackTests` starts the in-memory EARS and registers dependencies' `build/seed-runtime.mjs` and the pack's own seed runtime (entity types, repositories, seed hooks). It clears the database before each test (`abuddy-testing/src/harness.ts:67-91`).
+  - `setupPackTests` starts the in-memory EARS and registers dependencies' `build/content-runtime.mjs` and the pack's own content runtime (entity types, repositories, content hooks). It clears the database before each test (`abuddy-testing/src/harness.ts:67-91`).
   - `@abuddy/sdk/testing` registers only a console `logger` host module (`abuddy-sdk/src/testing/index.ts:52-58`).
-  - The seed runtime facet has no systems, services, steps, designations or settings. Those exist only in `#generated/pack-entry`'s `registration`.
+  - The content runtime facet has no systems, services, steps, designations or settings. Those exist only in `#generated/pack-entry`'s `registration`.
 - **A system needs an actor registered as `bus`.**
   - `emit()` is pure: it returns an `OUTGOING` event (`sdk/src/helpers/actor-helpers.ts:66-71`), which the system sends to `system.get(bus)` itself.
   - The app's bus (`api/src/systems.ts`) spawns every registered system under its id (`:135-140`). It routes `INCOMING` to `system.get(id)` and `OUTGOING` to `rootEvents` only once connected (`:184-218`).
@@ -79,10 +79,10 @@ The pack harness (`@abuddy/testing/harness`, on `@abuddy/sdk/testing`) unit-test
 - **default-setup's 51 test files run on the API's host init.**
   - `tests/setup.ts` imports `@/setup/sdk-host-init`, which opens real LMDB stores and registers 14 host modules (`api/src/setup/sdk-host-init.ts:20-39`), then registers `pack-entry`'s registration.
   - `vitest.config.ts` resolves `@/` into both default-setup and the API.
-  - Groups: 5 FE, 8 services, 7 seed actions, 7 flows/brain/steps, 6 repositories/host data, 6 seeds, 8 type-level, 4 build/CLI.
+  - Groups: 5 FE, 8 services, 7 content actions, 7 flows/brain/steps, 6 repositories/host data, 6 content, 8 type-level, 4 build/CLI.
   - The build/CLI files test CLI and host code: `pack-cli`, `pack-generate`, `pack-protocol`, `monaco-defs-config`.
   - `host-data-services` tests the host's LMDB-backed `appData` and `traceStore`.
-  - The seed-parity harness uses `@abuddy/host/ears` (`clearMemory`, `getAllEntities`, `qx`, `dropAttr`).
+  - The content-parity harness uses `@abuddy/host/ears` (`clearMemory`, `getAllEntities`, `qx`, `dropAttr`).
 - **A dependency's full backend runtime is published.**
   - `dist/runtime/index.cjs` is published by the app for built-ins and cached in `.abuddy/deps/<id>/`.
   - It's CommonJS, with `@abuddy/sdk/*` and `SHARED_DEPS` external and everything else inlined. default-setup's inlines `ai`, `@ai-sdk/*` and croner.
@@ -92,21 +92,21 @@ The pack harness (`@abuddy/testing/harness`, on `@abuddy/sdk/testing`) unit-test
   - The harness bundle keeps `@abuddy/sdk`, `vitest` and `tsx` external and inlines `@abuddy/host` (`scripts/bundle-package.ts:35-45, 83-109`). Host code in the harness therefore runs on the pack's SDK.
   - `@abuddy/sdk/testing` is public API: no `any`, TypeScript 5.3, no host imports.
   - `harness-requires-source.ts` must list every harness export (`abuddy-cli/tests/build/testing-source-entry.spec.ts`).
-  - The seed runtime load check blocks `ai` and `@ai-sdk/*` (`abuddy-cli/src/build/seed-runtime-check.ts`). Systems and services can't join the seed facet.
+  - The content runtime load check blocks `ai` and `@ai-sdk/*` (`abuddy-cli/src/build/content-runtime-check.ts`). Systems and services can't join the apply facet.
 
 ## Decisions
 
 Final.
 
 1. **Two tiers, one harness.**
-   - `setupPackTests({ seedRuntime })` stays the data tier.
-   - `setupPackTests({ seedRuntime, registration })` adds the runtime tier: the pack's own `#generated/pack-entry` registration (systems, services, steps, designations, feature settings) and each dependency's full runtime.
-   - Seed-only tests stay fast and never load `ai`.
+   - `setupPackTests({ contentRuntime })` stays the data tier.
+   - `setupPackTests({ contentRuntime, registration })` adds the runtime tier: the pack's own `#generated/pack-entry` registration (systems, services, steps, designations, feature settings) and each dependency's full runtime.
+   - Content-only tests stay fast and never load `ai`.
 2. **Dependencies' runtimes load through the app's bridge.**
    - `SDK_BRIDGE` and `withHostResolution` move from `api/src/packs/pack-loader.ts` into `@abuddy/host/packs`, taking the SDK module namespaces to bridge as an argument.
    - The API passes its own. The harness, which inlines host code, passes the pack's `@abuddy/sdk` namespaces.
    - An SDK subpath whose optional peer isn't installed is bridged lazily and fails only when used, naming the missing peer.
-   - A dependency's registration is applied with host `registerPack`, as in the app. Its `boot` hooks and `seedManifest` don't run, and `setCompiledDir` points at the dependency's cached seeds.
+   - A dependency's registration is applied with host `registerPack`, as in the app. Its `boot` hooks and `contentManifest` don't run, and `setCompiledDir` points at the dependency's cached content.
 3. **One bus implementation.**
    - The bus's routing core moves into `@abuddy/host` as `createBusMachine({ onOutgoing })`. The core covers: spawn the registered systems, route `INCOMING` to `system.get(id)` and `OUTGOING` to the sink, the connected state with `CLIENT_CONNECTED`, and the pack client-ready handshake.
    - `api/src/systems.ts` composes pack activation, reload and the settings-backed connect event on top.
@@ -140,11 +140,11 @@ Final.
    - Schedule triggers go through the scheduler service, so `mockService('scheduler', …)` or vitest fake timers drive them.
    - Steps without a runtime handler complete on the next microtask instead of after `setTimeout(100)`. The brain E2E must pass unchanged with it.
 9. **default-setup's tests move onto the harness.**
-   - `tests/setup.ts` calls `setupPackTests({ seedRuntime, registration })`. `vitest.config.ts` and `tsconfig.test.json` drop the API paths.
+   - `tests/setup.ts` calls `setupPackTests({ contentRuntime, registration })`. `vitest.config.ts` and `tsconfig.test.json` drop the API paths.
    - Tests of host or CLI code move to their package:
      - `host-data-services` → `abuddy-host/tests`;
      - `pack-cli`, `pack-generate`, `pack-protocol`, `monaco-defs-config` → the package whose code they test.
-   - The seed-parity harness uses SDK test helpers: `resetTestData`, `untypedQx`, and new `@abuddy/sdk/testing` `entityIds()` and `dropAttribute()`.
+   - The content-parity harness uses SDK test helpers: `resetTestData`, `untypedQx`, and new `@abuddy/sdk/testing` `entityIds()` and `dropAttribute()`.
    - Hand-built service fakes become `mockService`. `brain-switch-node` and the flow routing tests (`codex-flow-routing`, `mode-name-routing`) run their flows with `runFlow`.
    - `check:specifiers` rejects `@abuddy/host` and API `@/` imports in default-setup's tests, as it does in pack sources.
 10. **Scope.**
@@ -203,7 +203,7 @@ Both spikes pass, run from the fixture pack's vitest process (in-memory harness 
 - `startApp` with `connect`, `send`, `emitted`, `nextEmit`, `settle`, and a stop after each test.
 - Add each new export to `harness-requires-source.ts`.
 - The fixture pack gains `tests/unit/memos-system.spec.ts`:
-  - connect → `MEMOS_CONNECTED` with the seeded memos;
+  - connect → `MEMOS_CONNECTED` with the written memos;
   - `ADD_MEMO` → a Memo row and `MEMO_ADDED`.
 
 **Done when:** the fixture's system spec passes in `test:external-pack`. A dependency-runtime spec shows a pack depending on default-setup spawning default-setup's `settings` system and reading its connect event. Both are mutation-checked (a dropped bridge entry, a lost `OUTGOING` route).
@@ -235,7 +235,7 @@ Both spikes pass, run from the fixture pack's vitest process (in-memory harness 
 
 - New `tests/setup.ts`, `vitest.config.ts` and `tsconfig.test.json` (Decision 9).
 - Relocate the host and CLI tests.
-- Move the seed-parity harness onto the SDK test helpers.
+- Move the content-parity harness onto the SDK test helpers.
 - Replace every remaining hand-built service fake with `mockService`.
 - Extend `check:specifiers` to default-setup's tests.
 

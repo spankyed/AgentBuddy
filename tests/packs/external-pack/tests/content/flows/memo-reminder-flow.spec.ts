@@ -50,7 +50,7 @@ describe('memo reminder flow', () => {
 });
 
 // The flow example in docs/public-facing/content.md, which must compile in a pack depending on default-setup
-const seedsDocExample = {
+const contentDocExample = {
   // Linear: entry -> action -> fire
   'Analysis Flow': [
     entry([
@@ -109,7 +109,7 @@ const seedsDocExample = {
 
 describe('the content.md flow example', () => {
   it("builds its branch with default-setup's switch helper", () => {
-    expect(seedsDocExample['Support Flow'][0].exits[0][1]).toEqual({
+    expect(contentDocExample['Support Flow'][0].exits[0][1]).toEqual({
       type: 'switch',
       conditions: [
         { if: "$.intent == 'question'", steps: [{ type: 'action', action: 'Lookup', label: 'lookup' }] },

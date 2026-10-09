@@ -23,7 +23,7 @@ Finished when:
   mutation-checked.
 - packages/default-setup/abuddy.json has exactly these top-level keys, in this order and no others:
   $schema, id, name, version, description, license, builtIn, hostVersion, data, features, extensions,
-  seed, lifecycle, migrations, build. No key holds a map whose keys equal its values. (`checks` is the
+  content, lifecycle, migrations, build. No key holds a map whose keys equal its values. (`checks` is the
   schema's sixteenth root key and this pack has none: it switches off no rule, so the section is absent
   rather than empty.)
 - Every feature carries an `about` line, and every entity is declared once — on the feature that owns
@@ -187,12 +187,12 @@ including the first draft of this goal — treats volatile data as lost when it 
 |---|---|
 | features | `features` (215) |
 | extension points | `steps` (93), `dsl` (66), `commands` (12), `fe` (8), `artifacts` (3), `blocks` (3) |
-| seeding | `content.formats` (60), `boot` (35, holding `seed` and `seedPolicy`), `content.writers` (7) |
+| applying | `content.formats` (60), `boot` (35, holding `content` and `contentPolicy`), `content.writers` (7) |
 | data model | `entityShapes` (44), `entities` (16), `relKinds` (7), `partitionPolicy` (5) |
 | identity | `id`, `name`, `version`, `description`, `license`, `builtIn`, `hostVersion`, `$schema` |
 | other | `defaultPlugin`, `migrations` |
 
-`boot` holds lifecycle hooks *and* two content keys, so seeding is spread across three top-level keys and
+`boot` holds lifecycle hooks *and* two content keys, so applying is spread across three top-level keys and
 a nested one.
 
 The table is what default-setup uses. The schema allows **28** root keys: those 24 plus `dependencies`
@@ -225,7 +225,7 @@ Final.
 > 3. its members **change together**.
 
 Four sections pass: `data` (what the pack adds to the EARS namespace), `features`, `extensions` (what
-it gives the host) and `seed` (what data it ships). `lifecycle` and `migrations` do not — two keys is
+it gives the host) and `content` (what data it ships). `lifecycle` and `migrations` do not — two keys is
 not a search and neither changes with the other — so they stay flat rather than being wrapped in a
 container invented for tidiness.
 
@@ -238,7 +238,7 @@ builtIn  hostVersion  dependencies  permissions   what it needs
 data                                             what it adds to EARS
 features                                         what it is made of
 extensions                                       what it gives the host
-seed                                             what data it ships
+content                                             what data it ships
 lifecycle  migrations                            what runs, and how its data moves
 ```
 
@@ -264,7 +264,7 @@ a later author cannot reinterpret the way they can reinterpret a principle.
 
 **2. One encoding for a module reference: `"path#export"`.** A bare `"path"` means the module's default
 export. `entityShapes`' `{ source, type }` object goes. Every place that names a module — services,
-repositories, systems, plugins, references, content writers, seed compilers, step definitions, DSL entries,
+repositories, systems, plugins, references, content writers, content compilers, step definitions, DSL entries,
 migrations — uses the same form, and the schema validates it with one shared refinement.
 
 **3. `entities` and `entityShapes` merge into one map, which lives on the feature that owns the
@@ -304,12 +304,12 @@ repeats `src/features/<id>/` for every typed entity, which is the redundancy Dec
 everywhere else. On the feature, the same line is `"Note": "be/types.ts#NoteEntity"`.
 
 **`data.entities` stays, and it is where every pack starts.** This is not a hedge against an imagined
-pack: `abuddy init` scaffolds `features: []` with one entity, seeds rows of it through `content.formats`,
+pack: `abuddy init` scaffolds `features: []` with one entity, content rows of it through `content.formats`,
 and only then tells the author to run `abuddy add feature` (`init.ts:18-20`, `init.ts:386`). So the
 scaffolded shape is exactly an entity with no feature to own it, and the pack-level map is the one a
 new pack is born with. Entities move onto features as the pack grows a structure to hold them;
 default-setup is the far end of that path, with all twelve placed, which is why it has no
-`data.entities` at all. A pack that never grows features — one contributing only a data model and a seed — simply stays
+`data.entities` at all. A pack that never grows features — one contributing only a data model and an apply — simply stays
 where it started.
 
 `abuddy add feature` does not relocate an entity: that would edit a declaration the author did not
@@ -554,7 +554,7 @@ it reads. Make it a `doctor` warning naming the limit, and fix `extensions.md`'s
 the types reach the declaring pack's own frontend and no further. If it turns out nothing can use them
 at all, gating it is then a one-line follow-up with the evidence already gathered.
 
-Paths outside a feature (seed data, extension registers, migrations) stay relative to the pack root.
+Paths outside a feature (content data, extension registers, migrations) stay relative to the pack root.
 
 **8. A capability key appears only when there is more to say than "it exists".** `provides` says the
 feature has a system; a sibling `system` or `plugin` key annotates it, carrying the `events` that
@@ -609,17 +609,17 @@ sites), `info.ts` and `abuddy add service`. Renaming it drops the `pack` prefix 
 keep it apart from the feature key; nesting it under `extensions` does that by position. It then
 mirrors entities exactly: a feature-level home, and a pack-level one for what no feature owns.
 
-**10. Every seed concern moves under `seed`**: `formats` (was `content.formats`), `hooks` (was `content.writers`),
+**10. Every content concern moves under `content`**: `formats` (was `content.formats`), `hooks` (was `content.writers`),
 `sources` (was `content.sources`), `policy` (was `content.sourcesPolicy`).
 
 > **`content.sourcesPolicy` no longer exists** (removed 2026-10-08,
-> [`goal-boot-seed-imports-rows.md`](../archive/goals/goal-boot-seed-imports-rows.md)): every key a pack
+> [`goal-boot-content-imports-entities.md`](../archive/goals/goal-boot-content-imports-entities.md)): every key a pack
 > declares is imported, and the applier itself leaves a row the user trashed alone. So there is no `policy`
-> to move, here or in Phase 3, and `boot` holds `hooks` and `seed` rather than three things.
+> to move, here or in Phase 3, and `boot` holds `hooks` and `content` rather than three things.
 
 `content.sources` becomes `sources`, not `data`, for two reasons. It is what the entries are: every value is
 a path or a `{ path, format, applier }` over source files a compiler reads, and both the current schema
-description ("Seed data sources") and `resolve.ts`'s `sourcePath` already use the word. And it keeps
+description ("Content data sources") and `resolve.ts`'s `sourcePath` already use the word. And it keeps
 `data` meaning one thing in the file: the root `data` is the pack's data model — the types it declares
 — while these are the records it ships. Two keys a screen apart, both spelled `data` and meaning
 different halves of the same subject, is the kind of thing a reader resolves wrongly once and then
@@ -638,15 +638,15 @@ model, so the other key gives way.
 "migrations": "src/migrations/index.ts"
 ```
 
-`boot` holds three unrelated things today — `hooks`, `seed` and `seedPolicy` — and the seed pair leaves
-for `seed`. What remains is one module path, so it becomes one key with a path as its value, named for
+`boot` holds three unrelated things today — `hooks`, `content` and `contentPolicy` — and the content pair leaves
+for `content`. What remains is one module path, so it becomes one key with a path as its value, named for
 what it is rather than when it runs. (`earlySystem` is already a feature key, and stays one.)
 
 An earlier draft grouped `lifecycle: { hooks, migrations }`. That fails the section test: two keys is
 not a search, and neither changes when the other does — a pack adds a migration per release and touches
 its hooks almost never. Both are a single module path, and a key whose value is a path needs no
-container. `seed` remains a section because it genuinely is one: formats, hooks, data and policy are
-four keys that change together whenever a seeded format changes.
+container. `content` remains a section because it genuinely is one: formats, hooks, data and policy are
+four keys that change together whenever a written format changes.
 
 **11. The schema is the specification and the docs follow it.** `manifest-schema.ts` gains a
 `.describe()` on every field, `npm run schema:update` regenerates `abuddy.schema.json`, and
@@ -925,21 +925,21 @@ produces identical `dist/` output for default-setup (compare the snapshot and `d
 `npm run test:unit` and `npm run test:external-pack` pass. Mutation: an extension point left at the root
 fails schema validation with a message naming `extensions`.
 
-### Phase 3 — `seed`: one section for seeding
+### Phase 3 — `content`: one section for applying
 
-- Move `content.formats` → `seed.formats`, `content.writers` → `seed.hooks`, `content.sources` → `seed.sources`
+- Move `content.formats` → `content.formats`, `content.writers` → `content.hooks`, `content.sources` → `content.sources`
   (there is no `content.sourcesPolicy` to move — see Decision 10); what remains of `boot` becomes the flat
   `lifecycle: "<path>"`, and `migrations` stays a root key (Decision 10).
-- Update `generate-entries.ts` (appliers, seed runtime), `build.ts` (compilers), the host's seed runtime.
+- Update `generate-entries.ts` (appliers, content runtime), `build.ts` (compilers), the host's content runtime.
 - Update `tests/scripts/test-packaged-authoring.sh`, which edits `m.content.formats` and `m.content.sources`
   in **three** separate node snippets (around lines 137-142 and 194-196). Phase 1 names the script for
-  its data-model keys; these are the seed ones, and they are the edits that actually fail here.
+  its data-model keys; these are the apply ones, and they are the edits that actually fail here.
 
 **Done when:** no manifest has a `boot` key, `lifecycle` is a string in every manifest that has one,
-and `migrations` is still a root key; no pack re-seeds on the next boot — `contentRevision`
-(`packs/runtime/apply.ts:28`) and the boot seed's hash cover the compiled `.json` output and never the
-manifest, so byte-identical compiled seeds mean an unchanged hash, which is the same fact the next
-clause checks from the other side; the compiled seeds for default-setup are
+and `migrations` is still a root key; no pack re-applies on the next boot — `contentRevision`
+(`packs/runtime/apply.ts:28`) and the boot apply's hash cover the compiled `.json` output and never the
+manifest, so byte-identical compiled content mean an unchanged hash, which is the same fact the next
+clause checks from the other side; the compiled content for default-setup are
 byte-identical (`dist/*.content.json`, `dist/content.json`); `tests/content` passes;
 `npm run compile`, `npm run test:unit`, `npm run test:external-pack` pass.
 
@@ -1013,7 +1013,7 @@ fail validation with the message naming the expected form.
   as a decision rather than a hole.
 - Rewrite `docs/public-facing/manifest.md` from the new shape, and update every other doc that names a
   retired key. That surface is larger than it looks: eight public-facing docs (`manifest`,
-  `architecture`, `cli`, `getting-started`, `extensions`, `features`, `seeds`, `services-and-data`) and
+  `architecture`, `cli`, `getting-started`, `extensions`, `features`, `content`, `services-and-data`) and
   ten `CLAUDE.md` files (root, `abuddy-sdk`, `abuddy-cli`, `abuddy-host`,
   `abuddy-host/src/packs/runtime`, `abuddy-ears`, `default-setup`, `default-setup/src/content`,
   `renderer`, `api`). Sweep by key name — `designation` alone appears in 23 files — rather than by
@@ -1077,7 +1077,7 @@ the regenerated schema committed, `npm run api:update` has been run, and the cha
 - **Deleting the pre-release migrations.** `v0.3.14` is tagged and the app has no users, so the five
   default-setup migrations (`0.3.0`, `0.3.1`, `0.3.13`, `0.3.14`, `0.3.15`) and the host's
   `app/0.3.15.ts` move data shapes that exist only in a developer's own data dir. The runners stay
-  regardless, since external packs migrate against their own versions. (`markSeededRowUnedited` was the
+  regardless, since external packs migrate against their own versions. (`markWrittenEntityUnedited` was the
   other half of this item and is already gone: the merge adopts an entity it wrote but has no recorded
   parts for, which is what that function did to one release's entities by hand.) This is not a manifest
   change and does not belong in this goal: it is a decision about real data in a real data dir, which
