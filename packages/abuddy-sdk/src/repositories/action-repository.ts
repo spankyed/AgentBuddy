@@ -1,5 +1,5 @@
 // Actions (Action rows), which action steps run: the SDK declares Action, and its flow compiler and
-// seeders resolve actions by label
+// appliers resolve actions by label
 import { RepositoryError, RepositoryErrorCode, installedEngine as ears } from '@abuddy/ears';
 import { EARS } from '../types/entities.ts';
 import { trash } from './trash.ts';
@@ -13,7 +13,7 @@ export interface ActionInput {
   input?: Record<string, ActionParameter>;
   actionFn: string;
   output?: unknown;
-  sourceHash?: string;
+  contentHash?: string;
 }
 
 /** Reads and writes of actions; deleted actions stay stored, and reads leave them out */

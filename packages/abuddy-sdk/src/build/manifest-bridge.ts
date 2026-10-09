@@ -5,7 +5,7 @@ import type { PackBuildDefinitions, PackConfig } from './types.ts';
 import type { PackManifest } from './manifest.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import { _mergeStepDefinitions } from '../steps/merge.ts';
-import { resolveSeeds, type SeedDependency } from './seeds/resolve.ts';
+import { resolveContentSources, type ContentDependency } from './content/resolve.ts';
 
 function findExportedArray(mod: Record<string, unknown>): unknown[] | null {
   for (const value of Object.values(mod)) {
@@ -21,7 +21,7 @@ export interface PackConfigOptions {
    */
   dependencyStepModules?: string[];
   /** Dependencies whose seed formats this pack's entries may name */
-  dependencies?: ReadonlyMap<string, SeedDependency>;
+  dependencies?: ReadonlyMap<string, ContentDependency>;
 }
 
 export async function buildPackConfigFromManifest(
@@ -31,7 +31,11 @@ export async function buildPackConfigFromManifest(
 ): Promise<PackConfig> {
   return {
     name: manifest.id,
-    seeds: resolveSeeds(manifest, packDir, options.dependencies),
+    // Both sections compile the same way; only an artifact is never written, which its format says
+    sources: {
+      ...resolveContentSources(manifest, packDir, options.dependencies),
+      ...resolveContentSources(manifest, packDir, options.dependencies, 'artifacts'),
+    },
     loadDefinitions: () => loadPackDefinitions(manifest, packDir, options.dependencyStepModules ?? []),
   };
 }

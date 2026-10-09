@@ -17,9 +17,9 @@ import { teardownPack, activatePack } from '../../../packs/runtime/lifecycle.ts'
 import { activationProblem } from '../../../packs/runtime/activation-outcome.ts';
 import { HOST } from '../../../refs.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
-import { applyRecord, importCompiledSeeds, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { applyRecord, importCompiledContent, type ContentSelection } from '@abuddy/sdk/utils';
 import { appliedContent } from '../../../app-state/index.ts';
-import { previewPackSeeds } from '@abuddy/sdk/seed';
+import { previewPackContent } from '@abuddy/sdk/content';
 
 export type { PackInfo };
 
@@ -27,9 +27,9 @@ export const packsSpec = defineSystem<Contract>();
 
 /**
  * Convert the JSON-safe include shape from the frontend (`null = all items, [] = skip, string[] = filter`)
- * into the `SeedInclude` structure `importCompiledSeeds` consumes.
+ * into the `SeedInclude` structure `importCompiledContent` consumes.
  */
-function toSeedInclude(include: Record<string, string[] | null>): Record<string, SeedIncludeSet | undefined> {
+function toSeedInclude(include: Record<string, string[] | null>): Record<string, ContentSelection | undefined> {
   return Object.fromEntries(Object.entries(include).map(([key, items]) => [key, items === null ? true : new Set(items)]));
 }
 
@@ -101,21 +101,21 @@ export function createPacksSystem(registry: PackRegistry) {
     actions: packsSpec.actions({
     // Both answer the settings plugin, which is where the seed UI is drawn. The work is this system's; the
     // view is not, and a system sends whichever plugin's inbox declares the event.
-    previewPackSeeds: ({ event }) => {
-      const ev = packsSpec.typeOf('PREVIEW_PACK_SEEDS', event);
+    previewPackContent: ({ event }) => {
+      const ev = packsSpec.typeOf('PREVIEW_PACK_CONTENT', event);
       try {
-        broadcastToPlugin('settings', { type: 'PACK_SEEDS_PREVIEW', preview: previewPackSeeds(ev.directory) });
+        broadcastToPlugin('settings', { type: 'PACK_CONTENT_PREVIEW', preview: previewPackContent(ev.directory) });
       } catch (err) {
-        broadcastToPlugin('settings', { type: 'PACK_SEEDS_PREVIEW_FAILED', error: errorMessage(err) });
+        broadcastToPlugin('settings', { type: 'PACK_CONTENT_PREVIEW_FAILED', error: errorMessage(err) });
       }
     },
 
-    importPackSeeds: ({ event }) => {
-      const ev = packsSpec.typeOf('IMPORT_PACK_SEEDS', event);
+    importPackContent: ({ event }) => {
+      const ev = packsSpec.typeOf('IMPORT_PACK_CONTENT', event);
       try {
         const include = ev.include ? toSeedInclude(ev.include) : undefined;
         // Read first: a directory that can't name its pack fails before anything is imported
-        const { packId } = previewPackSeeds(ev.directory);
+        const { packId } = previewPackContent(ev.directory);
         /**
          * **Write-only, which is what makes this an import and not an apply.** `before` is empty, so no
          * verdict here can be reached from what a previous apply wrote: nothing is read as the user's
@@ -128,16 +128,16 @@ export function createPacksSystem(registry: PackRegistry) {
          * for the data again does not change what counts as changed.
          */
         const record = applyRecord();
-        const result = importCompiledSeeds({ compiledDir: ev.directory, include, mode: ev.mode, applied: record, verbose: true });
+        const result = importCompiledContent({ compiledDir: ev.directory, include, mode: ev.mode, applied: record, verbose: true });
         appliedContent.record(packId, { wrote: record.written });
-        // Seeders report records they couldn't seed in their counts rather than throwing
+        // Appliers report records they couldn't seed in their counts rather than throwing
         const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
-        broadcastToPlugin('settings', { type: 'PACK_SEEDS_IMPORTED', result, errors });
+        broadcastToPlugin('settings', { type: 'PACK_CONTENT_IMPORTED', result, errors });
         // The running systems read what the seeds changed (the chat's slash commands, the library's documents)
         sendToSystem('bus', { type: 'PACK_CHANGED', packId });
         if (ev.restartBrain) sendToSystem({ role: 'brain' }, { type: 'RESTART_BRAIN' });
       } catch (err) {
-        broadcastToPlugin('settings', { type: 'PACK_SEEDS_IMPORT_FAILED', error: errorMessage(err) });
+        broadcastToPlugin('settings', { type: 'PACK_CONTENT_IMPORT_FAILED', error: errorMessage(err) });
       }
     },
 
@@ -463,11 +463,11 @@ export function createPacksSystem(registry: PackRegistry) {
           UPDATE_PACK: {
             actions: 'updatePack',
           },
-          PREVIEW_PACK_SEEDS: {
-            actions: 'previewPackSeeds',
+          PREVIEW_PACK_CONTENT: {
+            actions: 'previewPackContent',
           },
-          IMPORT_PACK_SEEDS: {
-            actions: 'importPackSeeds',
+          IMPORT_PACK_CONTENT: {
+            actions: 'importPackContent',
           },
           CHECK_FOR_UPDATES: {
             actions: 'checkForPackUpdates',
@@ -486,6 +486,6 @@ export const packsEvents = new Set([
   'GET_INSTALLED_PACKS',
   'UPDATE_PACK',
   'CHECK_FOR_UPDATES',
-  'PREVIEW_PACK_SEEDS',
-  'IMPORT_PACK_SEEDS',
+  'PREVIEW_PACK_CONTENT',
+  'IMPORT_PACK_CONTENT',
 ]);

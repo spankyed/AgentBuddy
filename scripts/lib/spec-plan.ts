@@ -86,14 +86,14 @@ export interface Run {
  * them: `src` -> `abuddy build` -> an artifact -> the spec that reads it.
  *
  * **Beside a run, never instead of one.** A seed *helper* is imported by specs directly — measured,
- * `src/seeds/actions/claude-code/_helpers/thread-context.ts` reaches 3 — and routing every `src/seeds/**`
+ * `src/content/actions/claude-code/_helpers/thread-context.ts` reaches 3 — and routing every `src/content/**`
  * file at the build would throw that answer away to recommend a build. So the walk still runs and this is
  * what it could not see, which is the shape `packSuiteNote` already has.
  *
  * What it changes when the walk finds nothing is the sentence. `related` reports the same emptiness for a
  * file nothing covers and for one whose specs are behind a build, and those are opposite facts — a gap in
  * the suite against a gap in the router. Until this existed the seed source got the first for the second:
- * *"No spec covers …"*, which `tests/seeds/` refutes.
+ * *"No spec covers …"*, which `tests/content/` refutes.
  */
 export interface BuildEdge {
   /** Repo-relative, as the user gave it */
@@ -312,8 +312,8 @@ const ownSuiteFor = (rel: string): UnitSuite | undefined => {
 };
 
 /** A pack's seed sources, and the specs that read what building them produces */
-const SEED_SOURCES = 'src/seeds';
-const SEED_SPECS = 'tests/seeds';
+const SEED_SOURCES = 'src/content';
+const SEED_SPECS = 'tests/content';
 
 /**
  * The files a pack's build reads, each of which every spec in the pack ends up resolving through.
@@ -331,7 +331,7 @@ const BUILD_INPUTS: readonly string[] = ['abuddy.json', 'package.json', 'tsconfi
  * visible to any module graph — the spec imports the built output, so a *regenerated* tree is covered while
  * editing the source that generates it reaches nothing.
  *
- * - **`src/seeds/**`** compiles to `dist/*.seed.json`, which `tests/seeds/` reads against its goldens.
+ * - **`src/content/**`** compiles to `dist/*.seed.json`, which `tests/content/` reads against its goldens.
  * - **the pack's build inputs** (`BUILD_INPUTS`) configure what the build emits and how the pack's own
  *   specifiers resolve, which every spec in the pack goes through. So the whole suite covers them, and
  *   nothing narrower is honest.
@@ -459,7 +459,7 @@ const packageRun = (root: string, pkg: string, args: readonly string[], flags: r
   command: 'npm',
   args: ['test', '--', ...(half === 'fast' ? [] : ['--config', CONFIG_BY_HALF[half]]), ...args, ...flags],
   // Expanded here rather than where it is priced, because the field promises *spec files* and one of its
-  // producers hands it a directory: the seed edge's `tests/seeds`, which vitest resolves as a filter and a
+  // producers hands it a directory: the seed edge's `tests/content`, which vitest resolves as a filter and a
   // cost record has no row for. Unexpanded it priced that run at one unrecorded spec — zero — which is the
   // whole of what `--full` adds. `args` is untouched, so the run is the same run
   specs: args.length === 0 ? undefined : args.flatMap((arg) => {

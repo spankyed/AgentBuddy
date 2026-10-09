@@ -255,7 +255,7 @@ describe('what abuddy add scaffolds', () => {
 describe('abuddy add action, prompt and flow', () => {
   it('writes an action under its category, with the label and the typed services import', async () => {
     await addAction(['analyze-text'], pack);
-    const action = read('src/seeds/actions/demo-pack/analyze-text.ts');
+    const action = read('src/content/actions/demo-pack/analyze-text.ts');
     expect(action).toContain("import type { Services, Z } from '#generated/services.ts';");
     expect(action).toContain("label: 'Analyze Text'");
     expect(action).toContain("category: 'demo-pack'");
@@ -264,7 +264,7 @@ describe('abuddy add action, prompt and flow', () => {
 
   it('writes a prompt with its label and template function', async () => {
     await addPrompt(['summarize-text'], pack);
-    const prompt = read('src/seeds/prompts/summarize-text.ts');
+    const prompt = read('src/content/prompts/summarize-text.ts');
     expect(prompt).toContain("import type { PromptMeta } from '@abuddy/sdk/build';");
     expect(prompt).toContain("label: 'Summarize Text'");
     expect(prompt).toContain('export function template(params: Record<string, any>)');
@@ -278,7 +278,7 @@ describe('abuddy add action, prompt and flow', () => {
   it('writes a flow whose track uses the helpers the pack generates', async () => {
     write('src/__generated__/flow-helpers.ts', ['export const entry = 1;', 'export const keepAlive = 2;', ''].join('\n'));
     await addFlow(['onboarding'], pack);
-    expect(read('src/seeds/flows/onboarding.ts')).toBe([
+    expect(read('src/content/flows/onboarding.ts')).toBe([
       "import type { FlowDSL } from '@abuddy/sdk/build';",
       "import { entry, keepAlive } from '#generated/flow-helpers.ts';",
       '',

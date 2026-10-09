@@ -4,8 +4,8 @@ import { extname, join } from 'path';
 import { _mergeProvenance, PROVENANCE_KINDS, type PackManifest, type PackFeatureEntry, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
-import { formatEntities } from './seeds/records.ts';
-import { resolveSeeds, type ResolvedSeed } from './seeds/resolve.ts';
+import { formatEntities } from './content/items.ts';
+import { resolveContentSources, type ResolvedContentSource } from './content/resolve.ts';
 import { createModuleExports, type ExportInfo, type ModuleExports } from './module-exports.ts';
 import { hasOwn } from '../utils/shared.ts';
 
@@ -183,11 +183,11 @@ export type AllEntities = EARS.Entity;
 `;
 }
 
-/** The SDK seeders of the specialty seed keys */
-const SPECIALTY_SEEDERS: Record<string, { factory: string; args: string }> = {
-  actions: { factory: 'createSeeder', args: `{ key: 'actions', entities: ['Action'], identity: ['label'] }` },
-  prompts: { factory: 'createSeeder', args: `{ key: 'prompts', entities: ['Prompt'], identity: ['label'] }` },
-  flows: { factory: 'createFlowSeeder', args: '' },
+/** The SDK appliers of the specialty seed keys */
+const SPECIALTY_APPLIERS: Record<string, { factory: string; args: string }> = {
+  actions: { factory: 'createFormatApplier', args: `{ key: 'actions', entities: ['Action'], identity: ['label'] }` },
+  prompts: { factory: 'createFormatApplier', args: `{ key: 'prompts', entities: ['Prompt'], identity: ['label'] }` },
+  flows: { factory: 'createFlowApplier', args: '' },
 };
 
 const COMPILED_DIR_ACCESSORS = `let _compiledDir = '';
@@ -422,7 +422,7 @@ export function generatePackFiles(
     const targets = [
       ...features.flatMap((f) => [...Object.values(f.services ?? {}), ...Object.values(f.repositories ?? {})]),
       ...Object.values(manifest.packServices ?? {}),
-      ...Object.values(manifest.seedHooks ?? {}),
+      ...Object.values(manifest.content?.writers ?? {}),
       ...(manifest.settingsSections ? [manifest.settingsSections] : []),
       ...(manifest.help ? [manifest.help] : []),
     ].map((target) => target.split('#')[0]);
@@ -599,7 +599,7 @@ export function generatePackFiles(
       ? `import * as _hooks from '${toImportPath(root, manifest.boot.hooks)}';`
       : '';
 
-    const hookEntries = seedHookEntries();
+    const writerEntries = contentWriterEntries();
     // The pack's settings sections: a function returning them, called the first time the defaults are read
     const sections = manifest.settingsSections
       ? valueExport('settingsSections', manifest.settingsSections)
@@ -628,14 +628,14 @@ ${contracted.length ? "import type { MachineMatchesContract } from '@abuddy/sdk/
 ${systemImports}
 import { featureServices } from './services.ts';
 ${hooksImport}
-${hookEntries.map(([, path, exportName], i) => `import { ${exportName} as __seedHooks_${i} } from '${path}';`).join('\n')}
+${writerEntries.map(([, path, exportName], i) => `import { ${exportName} as __contentWriter_${i} } from '${path}';`).join('\n')}
 ${settingsImports}
 ${manifest.migrations ? `import { migrations } from '${toImportPath(root, manifest.migrations)}';` : ''}
 ${stepsRegister ? `import { steps } from '${toImportPath(root, stepsRegister)}';` : ''}
 ${manifest.artifacts ? `import { artifacts } from '${toImportPath(root, manifest.artifacts)}';` : ''}
 ${manifest.blocks ? `import { blocks } from '${toImportPath(root, manifest.blocks)}';` : ''}
-import { seeders } from './seeders.ts';
-export { setCompiledDir } from './seeders.ts';
+import { appliers } from './appliers.ts';
+export { setCompiledDir } from './appliers.ts';
 ${sections ? `import { ${sections.exportName} as __settingsSections } from '${toImportPath(root, sections.source)}';` : ''}
 ${help ? `import { ${help.exportName} as __help } from '${toImportPath(root, help.source)}';` : ''}
 
@@ -647,8 +647,8 @@ ${hasRepositories() ? '  repositories,' : ''}
 ${stepsRegister ? '  steps,' : ''}
 ${manifest.artifacts ? '  artifacts,' : ''}
 ${manifest.blocks ? '  blocks,' : ''}
-${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity], i) => `${JSON.stringify(entity)}: __seedHooks_${i}`).join(', ')} },` : ''}
-  seeders,
+${writerEntries.length > 0 ? `  contentWriters: { ${writerEntries.map(([entity], i) => `${JSON.stringify(entity)}: __contentWriter_${i}`).join(', ')} },` : ''}
+  appliers,
 ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
 ${sections ? '  settingsSections: __settingsSections,' : ''}
 ${help ? '  help: __help,' : ''}
@@ -1242,24 +1242,24 @@ ${entries.map(([name]) => `  ${name}: __repo_${name},`).join('\n')}
   }
 
   /**
-   * The pack's seed runtime (entity types, relation kinds, repositories, seed hooks), what seeding its
+   * The pack's seed runtime (entity types, relation kinds, repositories, content writers), what seeding its
    * entity types needs outside the app. \`abuddy build\` bundles it into dist/build/seed-runtime.mjs for
-   * dependents' unit tests; the pack's own tests import it from #generated/seed-runtime.
+   * dependents' unit tests; the pack's own tests import it from #generated/content-runtime.
    */
-  function generateSeedRuntime(): string {
+  function generateContentRuntime(): string {
     const repositories = repositoryEntries();
-    const hooks = seedHookEntries();
+    const hooks = contentWriterEntries();
     return `${HEADER}
-import type { SeedRuntime } from '@abuddy/sdk/testing';
+import type { ContentRuntime } from '@abuddy/sdk/testing';
 ${repositories.map(([name, path, exportName]) => `import { ${exportName} as __repo_${name} } from '${path}';`).join('\n')}
-${hooks.map(([, path, exportName], i) => `import { ${exportName} as __seedHooks_${i} } from '${path}';`).join('\n')}
+${hooks.map(([, path, exportName], i) => `import { ${exportName} as __contentWriter_${i} } from '${path}';`).join('\n')}
 
-export const seedRuntime: SeedRuntime = {
+export const contentRuntime: ContentRuntime = {
   id: ${JSON.stringify(manifest.id)},
   entities: ${JSON.stringify(manifest.entities ?? {})},
   relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
   repositories: { ${repositories.map(([name]) => `${name}: __repo_${name}`).join(', ')} },
-  seedHooks: { ${hooks.map(([entity], i) => `${JSON.stringify(entity)}: __seedHooks_${i}`).join(', ')} },
+  contentWriters: { ${hooks.map(([entity], i) => `${JSON.stringify(entity)}: __contentWriter_${i}`).join(', ')} },
 };
 `;
   }
@@ -1320,55 +1320,53 @@ export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from 
 `;
   }
 
-  function generateSeeders(): string {
+  function generateAppliers(): string {
     const entityNames = new Set(packRegistry().entities.keys());
-    const seedImports = new Set<string>();
+    const applierImports = new Set<string>();
     const packImports: string[] = [];
     const registrations: string[] = [];
 
-    // This pack's own formats are checked whether or not an entry uses them: dependents may
-    for (const [name, format] of Object.entries(manifest.seedFormats ?? {})) {
+    // This pack's own formats are checked whether or not a source uses them: dependents may
+    for (const [name, format] of Object.entries(manifest.content?.formats ?? {})) {
       for (const entity of formatEntities(format)) {
         if (!entityNames.has(entity)) {
-          throw new Error(`Seed format "${name}": entity "${entity}" isn't declared by this pack, its dependencies or the SDK`);
+          throw new Error(`Content format "${name}": entity "${entity}" isn't declared by this pack, its dependencies or the SDK`);
         }
       }
     }
 
-    /** A pack module's `apply`, registered under the entry key */
-    const packSeeder = (key: string, seeder: string) => {
-      const importName = `__seeder_${toIdentifier(key)}`;
-      packImports.push(`import { apply as ${importName} } from '${toImportPath(root, seeder)}';`);
+    /** A pack module's `apply`, registered under the content key */
+    const packApplier = (key: string, applier: string) => {
+      const importName = `__applier_${toIdentifier(key)}`;
+      packImports.push(`import { apply as ${importName} } from '${toImportPath(root, applier)}';`);
       registrations.push(`{ key: ${JSON.stringify(key)}, apply: ${importName} }`);
     };
 
-    for (const [key, seed] of Object.entries(resolvedSeeds())) {
-      if (seed.kind === 'seeder') {
-        packSeeder(key, seed.seeder);
+    for (const [key, source] of Object.entries(resolvedContentSources())) {
+      if (source.kind === 'applier') {
+        packApplier(key, source.applier);
         continue;
       }
 
-      if (seed.kind === 'specialty') {
-        const specialty = SPECIALTY_SEEDERS[key];
-        seedImports.add(specialty.factory);
+      if (source.kind === 'specialty') {
+        const specialty = SPECIALTY_APPLIERS[key];
+        applierImports.add(specialty.factory);
         registrations.push(`${specialty.factory}(${specialty.args})`);
         continue;
       }
 
-      const { format } = seed;
+      const { format } = source;
       for (const entity of formatEntities(format)) {
         if (!entityNames.has(entity)) {
-          throw new Error(`Seed "${key}": format "${seed.formatRef}" seeds entity "${entity}", which isn't declared by this pack, its dependencies or the SDK`);
+          throw new Error(`Content "${key}": format "${source.formatRef}" writes entity "${entity}", which isn't declared by this pack, its dependencies or the SDK`);
         }
       }
-      if (seed.seeder) {
-        packSeeder(key, seed.seeder);
+      if (source.applier) {
+        packApplier(key, source.applier);
         continue;
       }
-      // A compile-only format (no entity): pack code reads its seed file
-      if (formatEntities(format).length === 0) continue;
 
-      seedImports.add('createSeeder');
+      applierImports.add('createFormatApplier');
       const options = {
         key,
         entities: formatEntities(format),
@@ -1376,42 +1374,40 @@ export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from 
         ...(format.tree?.relKind && { relKind: format.tree.relKind }),
         ...(format.media && { media: true }),
       };
-      registrations.push(`createSeeder(${JSON.stringify(options)})`);
+      registrations.push(`createFormatApplier(${JSON.stringify(options)})`);
     }
 
     if (registrations.length === 0) {
-      return `${HEADER}\nimport type { Seeder } from '@abuddy/sdk/utils';\n\n${COMPILED_DIR_ACCESSORS}\n/** The pack's seeders, which its registration carries */\nexport const seeders: Seeder[] = [];\n`;
+      return `${HEADER}\nimport type { ContentApplier } from '@abuddy/sdk/utils';\n\n${COMPILED_DIR_ACCESSORS}\n/** The pack's appliers, which its registration carries */\nexport const appliers: ContentApplier[] = [];\n`;
     }
 
     return `${HEADER}
-${seedImports.size > 0 ? `import { ${Array.from(seedImports).join(', ')} } from '@abuddy/sdk/seed';` : ''}
-import { importCompiledSeeds, type Seeder, type ImportCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
+${applierImports.size > 0 ? `import { ${Array.from(applierImports).join(', ')} } from '@abuddy/sdk/content';` : ''}
+import { importCompiledContent, type ContentApplier, type ApplyResult, type ContentSelection } from '@abuddy/sdk/utils';
 ${packImports.join('\n')}
 
 ${COMPILED_DIR_ACCESSORS}
-/** The pack's seeders, one per seeded key, which its registration carries */
-export const seeders: Seeder[] = [
+/** The pack's appliers, one per seeded key, which its registration carries */
+export const appliers: ContentApplier[] = [
 ${registrations.map((registration) => `  ${registration},`).join('\n')}
 ];
 
-export { importCompiledSeeds };
-export type { ImportCounts, SeedIncludeSet };
+export { importCompiledContent };
+export type { ApplyResult, ContentSelection };
 export type { ImportMode } from '@abuddy/sdk/utils';
 `;
   }
 
-  /** `boot.seed` resolved against this pack's formats and its dependencies' (compiler modules aren't loaded here) */
-  function resolvedSeeds(): Record<string, ResolvedSeed> {
+  /** `content.sources` resolved against this pack's formats and its dependencies' (compiler modules aren't loaded here) */
+  function resolvedContentSources(): Record<string, ResolvedContentSource> {
     const dependencies = new Map([...depSnapshots].map(([id, snap]) => [id, { manifest: snap.manifest }]));
-    return resolveSeeds(manifest, root, dependencies);
+    return resolveContentSources(manifest, root, dependencies);
   }
 
-  /** The seed keys the host seeds into the database: entries with a seeder */
-
-  /** [entity, source module specifier, export name] of each seed hook the manifest declares */
-  function seedHookEntries(): [string, string, string][] {
-    return Object.entries(manifest.seedHooks ?? {}).map(([entity, target]) => {
-      const { source, exportName } = valueExport(`Seed hooks for "${entity}"`, target);
+  /** [entity, source module specifier, export name] of each content writer the manifest declares */
+  function contentWriterEntries(): [string, string, string][] {
+    return Object.entries(manifest.content?.writers ?? {}).map(([entity, target]) => {
+      const { source, exportName } = valueExport(`A content writer for "${entity}"`, target);
       return [entity, toImportPath(root, source), exportName] as [string, string, string];
     });
   }
@@ -1625,8 +1621,8 @@ ${entries.join('\n')}
       ]
       : []),
     ['src/__generated__/references.ts', generateReferences()],
-    ['src/__generated__/seeders.ts', generateSeeders()],
-    ['src/__generated__/seed-runtime.ts', generateSeedRuntime()],
+    ['src/__generated__/appliers.ts', generateAppliers()],
+    ['src/__generated__/content-runtime.ts', generateContentRuntime()],
     ['src/__generated__/flow-helpers.ts', generateFlowHelpers()],
     ['src/__generated__/step-types.ts', generateStepTypes()],
     ['src/__generated__/dsl-types-fe.ts', generateDslTypesFe()],

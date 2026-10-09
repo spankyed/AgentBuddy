@@ -18,6 +18,7 @@ export interface ActionEntity extends BaseEntity {
     actionFn: string;
     // (undocumented)
     category?: string;
+    contentHash?: string;
     // (undocumented)
     createdAt: number;
     deleted?: boolean;
@@ -33,7 +34,6 @@ export interface ActionEntity extends BaseEntity {
     // (undocumented)
     output?: unknown;
     shortCode?: string;
-    sourceHash?: string;
     // (undocumented)
     updatedAt: number;
 }
@@ -119,6 +119,8 @@ export namespace EARS {
 // @public (undocumented)
 export interface FlowEntity extends BaseEntity {
     // (undocumented)
+    contentHash?: string;
+    // (undocumented)
     createdAt: number;
     // (undocumented)
     description?: string;
@@ -130,8 +132,6 @@ export interface FlowEntity extends BaseEntity {
     label: string;
     // (undocumented)
     shortCode: string;
-    // (undocumented)
-    sourceHash?: string;
 }
 
 // @public (undocumented)
@@ -160,6 +160,7 @@ export interface NodeBase extends BaseEntity {
 export interface PromptEntity extends BaseEntity {
     // (undocumented)
     category?: string;
+    contentHash?: string;
     // (undocumented)
     createdAt: number;
     deleted?: boolean;
@@ -174,7 +175,6 @@ export interface PromptEntity extends BaseEntity {
     label: string;
     outputSchema?: unknown;
     shortCode?: string;
-    sourceHash?: string;
     templateFn: string;
     // (undocumented)
     updatedAt: number;

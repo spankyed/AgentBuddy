@@ -245,23 +245,87 @@
     }
   ],
   "boot": {
-    "hooks": "src/features/hooks.ts",
-    "seed": {
-      "actions": "src/seeds/actions",
-      "prompts": "src/seeds/prompts",
-      "flows": "src/seeds/flows",
+    "hooks": "src/features/hooks.ts"
+  },
+  "content": {
+    "sources": {
+      "actions": "src/content/actions",
+      "prompts": "src/content/prompts",
+      "flows": "src/content/flows",
       "library": {
-        "path": "src/seeds/library",
+        "path": "src/content/library",
         "format": "library"
       },
       "notes": {
-        "path": "src/seeds/notes",
+        "path": "src/content/notes",
         "format": "notes"
-      },
+      }
+    },
+    "artifacts": {
       "faqs": {
-        "path": "src/seeds/faqs",
+        "path": "src/content/faqs",
         "format": "faqs"
       }
+    },
+    "formats": {
+      "notes": {
+        "format": "markdown-tree",
+        "entity": "Note",
+        "identity": [
+          "title",
+          "parent"
+        ],
+        "tree": {
+          "branch": "index.md",
+          "relKind": "contains"
+        },
+        "fields": {
+          "title": {
+            "from": "frontmatter.title",
+            "default": "filename",
+            "type": "string"
+          },
+          "noteType": {
+            "from": "frontmatter.type"
+          },
+          "icon": {
+            "from": "frontmatter.icon",
+            "default": null,
+            "type": "string"
+          },
+          "favorite": {
+            "from": "frontmatter.favorite"
+          },
+          "hideCompletedChildren": {
+            "from": "frontmatter.hideCompletedChildren"
+          },
+          "completed": {
+            "from": "frontmatter.completed"
+          },
+          "content": {
+            "from": "body"
+          }
+        }
+      },
+      "library": {
+        "compiler": "src/content/_compilers/library.ts",
+        "entity": [
+          "Collection",
+          "Document"
+        ],
+        "identity": [
+          "name"
+        ],
+        "media": "media"
+      },
+      "faqs": {
+        "compiler": "src/content/_compilers/faqs.ts"
+      }
+    },
+    "writers": {
+      "Collection": "src/content/writers/library.ts#collectionWriter",
+      "Document": "src/content/writers/library.ts#documentWriter",
+      "Note": "src/content/writers/notes.ts#noteWriter"
     }
   },
   "entityShapes": {
@@ -301,66 +365,6 @@
       "source": "src/features/notes/be/types.ts",
       "type": "NoteEntity"
     }
-  },
-  "seedFormats": {
-    "notes": {
-      "format": "markdown-tree",
-      "entity": "Note",
-      "identity": [
-        "title",
-        "parent"
-      ],
-      "tree": {
-        "branch": "index.md",
-        "relKind": "contains"
-      },
-      "fields": {
-        "title": {
-          "from": "frontmatter.title",
-          "default": "filename",
-          "type": "string"
-        },
-        "noteType": {
-          "from": "frontmatter.type"
-        },
-        "icon": {
-          "from": "frontmatter.icon",
-          "default": null,
-          "type": "string"
-        },
-        "favorite": {
-          "from": "frontmatter.favorite"
-        },
-        "hideCompletedChildren": {
-          "from": "frontmatter.hideCompletedChildren"
-        },
-        "completed": {
-          "from": "frontmatter.completed"
-        },
-        "content": {
-          "from": "body"
-        }
-      }
-    },
-    "library": {
-      "compiler": "src/seeds/_compilers/library.ts",
-      "entity": [
-        "Collection",
-        "Document"
-      ],
-      "identity": [
-        "name"
-      ],
-      "media": "media"
-    },
-    "faqs": {
-      "compiler": "src/seeds/_compilers/faqs.ts"
-    }
-  },
-  "seedHooks": {
-    "Collection": "src/seeds/hooks/library.ts#collectionSeedHooks",
-    "Document": "src/seeds/hooks/library.ts#documentSeedHooks",
-    "Note": "src/seeds/hooks/notes.ts#noteSeedHooks"
   },
   "steps": {
     "register": "src/extensions/steps/register.ts",

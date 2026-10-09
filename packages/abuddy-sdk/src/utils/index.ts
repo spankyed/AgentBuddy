@@ -29,9 +29,9 @@ export {
 
 // --- Seed (direct) ---
 export {
-  importCompiledSeeds,
-  loadJSON, shouldImportAll, filterByInclude,
-  registeredSeedKeys, applyRecord,
-} from './seed.ts';
-export type { ImportCounts, SeedIncludeSet, ImportMode, ImportContext, AppliedItem, ApplyRecord, Seeder } from './seed.ts';
+  importCompiledContent,
+  loadJSON, selectsAll, filterBySelection,
+  registeredContentKeys, applyRecord,
+} from './apply.ts';
+export type { ApplyResult, ImportResult, ContentSelection, ImportMode, ApplyContext, AppliedItem, ApplyRecord, ContentApplier } from './apply.ts';
 

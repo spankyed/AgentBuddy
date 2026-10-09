@@ -71,8 +71,8 @@
               <h4 class="text-sm font-medium text-emerald-400 mb-1">
                 Successfully imported {{ importedCount }} note{{ importedCount !== 1 ? 's' : '' }}
               </h4>
-              <ul v-if="importErrors.length" class="text-sm text-neutral-400 list-disc list-inside">
-                <li v-for="(error, idx) in importErrors" :key="idx">{{ error }}</li>
+              <ul v-if="applyErrors.length" class="text-sm text-neutral-400 list-disc list-inside">
+                <li v-for="(error, idx) in applyErrors" :key="idx">{{ error }}</li>
               </ul>
             </div>
           </div>
@@ -87,7 +87,7 @@
                 Import failed
               </h4>
               <ul class="text-sm text-neutral-400 list-disc list-inside">
-                <li v-for="(error, idx) in importErrors" :key="idx">{{ error }}</li>
+                <li v-for="(error, idx) in applyErrors" :key="idx">{{ error }}</li>
               </ul>
             </div>
           </div>
@@ -254,7 +254,7 @@ const notesActor: NotesState = usePlugin()
 // Import state
 const isImporting = useSelector(notesActor, (state) => state.context.notesImport.status === 'importing')
 const importStatus = useSelector(notesActor, (state) => state.context.notesImport.status)
-const importErrors = useSelector(notesActor, (state) => state.context.notesImport.errors)
+const applyErrors = useSelector(notesActor, (state) => state.context.notesImport.errors)
 const importedCount = useSelector(notesActor, (state) => state.context.notesImport.importedCount)
 
 // Export state

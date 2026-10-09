@@ -159,10 +159,10 @@
       "types": "./dist/utils/cron.d.ts",
       "default": "./dist/utils/cron.js"
     },
-    "./seed": {
-      "@abuddy/source": "./src/seed/index.ts",
-      "types": "./dist/seed/index.d.ts",
-      "default": "./dist/seed/index.js"
+    "./content": {
+      "@abuddy/source": "./src/content/index.ts",
+      "types": "./dist/content/index.d.ts",
+      "default": "./dist/content/index.js"
     },
     "./testing": {
       "@abuddy/source": "./src/testing/index.ts",

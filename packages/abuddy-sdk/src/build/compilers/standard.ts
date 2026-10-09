@@ -1,5 +1,5 @@
 import { compileSourceDir } from '../compile-utils.ts';
-import type { SpecialtyCompiler, CompilationContext, ValidationResult } from '../seed-compiler.ts';
+import type { SpecialtyCompiler, CompilationContext, ValidationResult } from '../content-compiler.ts';
 import type { CompiledEntry, CompileResult } from '../compile-utils.ts';
 import { loadFlowsFromDir, validateFlows, hashFlows } from './compile-flows.ts';
 import type { FlowDSL } from './flow-types.ts';
@@ -16,10 +16,10 @@ function uniqueEntries(kind: string, compiled: CompileResult): CompiledEntry[] {
 }
 
 /** A compiled action or prompt, tagged with the entity type it seeds */
-export type CompiledSeedEntry = CompiledEntry & { entity: string };
+export type CompiledContentEntry = CompiledEntry & { entity: string };
 
 interface DslCompiled {
-  records: CompiledSeedEntry[];
+  records: CompiledContentEntry[];
   errors: string[];
 }
 

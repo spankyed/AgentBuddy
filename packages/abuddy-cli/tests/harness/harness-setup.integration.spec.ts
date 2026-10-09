@@ -57,7 +57,7 @@ import { definePackTestConfig } from '@abuddy/testing/vitest';
 export default definePackTestConfig({ dataDirPrefix: 'harness-setup-' });`);
   write(root, 'tests/setup.ts', `
 import { setupPackTests } from '@abuddy/testing/harness';
-await setupPackTests({ seedRuntime: { id: 'data-pack', entities: {}, relKinds: {}, repositories: {}, seedHooks: {} } });`);
+await setupPackTests({ contentRuntime: { id: 'data-pack', entities: {}, relKinds: {}, repositories: {}, contentWriters: {} } });`);
   write(root, 'tests/pack.spec.ts', spec);
   return root;
 }
@@ -66,9 +66,9 @@ describe("a pack's unit tests on the harness", () => {
   it('find the pack from the vitest project root when run from another directory (--root)', () => {
     const root = dataPack(`
 import { expect, it } from 'vitest';
-import { importSeeds } from '@abuddy/testing/harness';
+import { importContent } from '@abuddy/testing/harness';
 it('seeds nothing', async () => {
-  expect(await importSeeds()).toEqual({});
+  expect(await importContent()).toEqual({});
 });`);
     // inherent: runs a pack's own vitest suite from another cwd — the nested runner is the thing under test
     const result = run(process.execPath, [VITEST, 'run', '--root', root], tempDir('abuddy-elsewhere-'));
@@ -93,9 +93,9 @@ it('sends to its own system and plugin', () => {
   it('fail naming why when test files share the harness (vitest isolate off)', () => {
     const spec = `
 import { expect, it } from 'vitest';
-import { importSeeds } from '@abuddy/testing/harness';
+import { importContent } from '@abuddy/testing/harness';
 it('seeds nothing', async () => {
-  expect(await importSeeds()).toEqual({});
+  expect(await importContent()).toEqual({});
 });`;
     const root = dataPack(spec);
     write(root, 'tests/other.spec.ts', spec);

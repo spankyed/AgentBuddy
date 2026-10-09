@@ -38,7 +38,7 @@ function legacyInternal(): LegacyInternal | undefined {
 /** A per-pack record with the stored one's entries it lacks */
 const withMissing = (current: Record<string, string>, legacy: Record<string, string> | undefined) => ({ ...legacy, ...current });
 
-type MigrationRegistry = Pick<PackRegistry, 'getPackRegistration' | 'shippedPacks' | 'loadedPacks' | 'pluginIds' | 'systemIds'>;
+type MigrationRegistry = Pick<PackRegistry, 'getPackRegistration' | 'shippedPacks' | 'loadedPacks' | 'pluginIds' | 'systemIds' | 'getRegisteredEntityTypes'>;
 
 /** The manifests of the external packs installed on disk, whether or not they loaded this boot */
 export type InstalledManifests = () => ReadonlyArray<Pick<PackManifest, 'id' | 'features'>>;
@@ -52,9 +52,10 @@ const installedOnDisk: InstalledManifests = () => discoverPacks(resolveAppContex
  */
 export const migration = (registry: MigrationRegistry, installed: InstalledManifests = installedOnDisk): PackMigration => ({
   target: '0.3.15',
-  description: "Move the app's state (onboarding and versions) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, and every pack's plugin settings onto their plugins' refs; drop the seed records each pack's applied content replaced",
+  description: "Move the app's state (onboarding and versions) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, every pack's plugin settings onto their plugins' refs and every written entity's content key and hash onto their names; drop the seed records each pack's applied content replaced",
   up: () => {
     renameSeedRecords();
+    renameContentAttributes(registry);
     moveAppState();
     const owners = ownersIn(registry, installed());
     moveShellState(owners);
@@ -74,14 +75,15 @@ export const migration = (registry: MigrationRegistry, installed: InstalledManif
  * records are dropped and the first boot after this applies each pack's content once, which is what writes
  * the record. That costs an adoption: an item the user edited before anything recorded *which part* they
  * edited is taken as ours and overwritten. That is the merge's rule for an item it has no parts for
- * (`@abuddy/sdk/seed`'s `resolve`), and the alternative is freezing every such item for good.
+ * (`@abuddy/sdk/content`'s `resolve`), and the alternative is freezing every such item for good.
  *
- * **`packSeedDeps` is deliberately not in here.** It is the name the row carries *now*, so `appState`
+ * **`failedAgainst` is deliberately not in here.** It is the name the row carries *now*, so `appState`
  * already reads it: an entry would read the attribute, write it back unchanged and then `drop` it, which
  * deletes the record this migration exists to preserve.
  */
 const RENAMED_SEED_RECORDS = {
-  externalSeedDeps: 'packSeedDeps',
+  externalSeedDeps: 'failedAgainst',
+  packSeedDeps: 'failedAgainst',
 } as const satisfies Record<string, keyof AppState>;
 
 /**
@@ -102,6 +104,41 @@ const DROPPED_SEED_RECORDS = [
   'packSeedHashes', 'seedHashes', 'builtInSeedHashes', 'externalSeedHashes',
   'seedStatFingerprints', 'builtInSeedFingerprints', 'packSeedKeys',
 ] as const;
+
+/**
+ * The two attributes an apply stamps on every entity it writes, under the names they have had.
+ *
+ * They are the app's, not any one pack's: every pack's content carries them, and which entity types exist
+ * is something only the registry knows — which is why this is a host migration rather than a line in each
+ * pack's. `seed` left the vocabulary, and `source` meant "the authored file" here while it means a logger
+ * or an event source everywhere else in the app.
+ */
+const RENAMED_CONTENT_ATTRIBUTES = { seedKey: 'contentKey', sourceHash: 'contentHash' } as const;
+
+/**
+ * Renames them on every entity of every registered type.
+ *
+ * Idempotent, and in the safe order for a run that dies half way: the new name is written before the old
+ * one is dropped, so an interrupted run leaves an entity carrying both and the next pass finishes it. An
+ * entity that already holds the new name is left alone, which is what makes a second run free.
+ */
+function renameContentAttributes(registry: MigrationRegistry): void {
+  let moved = 0;
+  for (const entity of registry.getRegisteredEntityTypes()) {
+    // Untyped: these are attributes the app stamps, not fields any pack declares, and the entity types
+    // are whatever is registered rather than a list written here
+    for (const row of untypedQx(entity as EARS.Entity).pickAll() as Array<Record<string, unknown>>) {
+      const id = row.id as EARS.EntityId;
+      for (const [from, to] of Object.entries(RENAMED_CONTENT_ATTRIBUTES)) {
+        if (row[from] == null || row[to] != null) continue;
+        untypedTx(id).update(to, row[from]);
+        untypedTx(id).drop(from);
+        moved++;
+      }
+    }
+  }
+  if (moved > 0) console.log(`[migration 0.3.15] renamed ${moved} content attribute(s)`);
+}
 
 /** Moves each old-named record onto its new field, keeping what the new one already holds, and drops the ones this
  *  version no longer keeps. Idempotent: every name is removed as it is handled, so a second run finds nothing. */

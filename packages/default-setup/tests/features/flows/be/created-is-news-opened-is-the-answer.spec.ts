@@ -36,7 +36,7 @@ describe('creating a flow', () => {
   /**
    * The half that cannot collapse into the other.
    *
-   * A create made with nobody asking — a seeder, a migration, an action — still has to tell the windows a
+   * A create made with nobody asking — an applier, a migration, an action — still has to tell the windows a
    * flow exists. It simply has no one to open it for.
    */
   it('still tells every window when nobody asked, and opens it for no one', async () => {

@@ -24,11 +24,11 @@ abuddy init my-pack
 
 Creates no feature (add one with `abuddy add feature`). It writes:
 
-- `abuddy.json`: one entity type named after the pack, empty `features`, `dependencies` and `permissions`, `steps` with `register` and `build` barrels, and `boot.seed` with `actions`, `flows` and an `examples` entry using the `examples` seed format (`markdown-tree`)
+- `abuddy.json`: one entity type named after the pack, empty `features`, `dependencies` and `permissions`, `steps` with `register` and `build` barrels, and `content.sources` with `actions`, `flows` and an `examples` entry using the `examples` content format (`markdown-tree`)
 - `package.json` (depends on `@abuddy/sdk`; pins `@abuddy/cli`, `@abuddy/testing`, `vitest`, `typescript`), `tsconfig.json`, `.gitignore`, `src/env.d.ts`
 - `.github/workflows/release.yml`: publishes the GitHub release when `abuddy release` pushes a `v*` tag
 - `src/extensions/steps/register.ts` and `src/extensions/steps/build.ts`
-- `src/seeds/actions/`, `src/seeds/flows/`, `src/seeds/examples/hello.md`
+- `src/content/actions/`, `src/content/flows/`, `src/content/examples/hello.md`
 - `vitest.config.ts`, `tests/setup.ts` (the `@abuddy/testing/harness` setup) and `tests/<name>.spec.ts`
 
 Then runs `generate` and `generate-entries`.
@@ -43,9 +43,9 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 | Step | `abuddy add step <type> [--trigger]` | `src/extensions/steps/<type>/{build.ts,index.ts,fe.ts,types.ts,form.vue}` (`types.ts` declares `DSL<Type>Node` and `<Type>Node`); adds the step to the `steps.register` barrel (and `<register>-fe.ts` if it exists), its build facet to the `steps.build` barrel, and a `steps.definitions` entry |
 | Artifact | `abuddy add artifact <type> [--icon <Icon>]` | `src/extensions/artifacts/viewers/<type>-artifact.vue`; when the manifest declares `artifacts`, adds `{ type, fe: { icon } }` to that register file and the viewer to its `-fe.ts` `componentMap` |
 | Block | `abuddy add block <type> [--input]` | `src/extensions/blocks/display/<Type>Block.vue` (or `input/<Type>Input.vue`); updates the `blocks` register file and its `-fe.ts` when the manifest declares `blocks` |
-| Action | `abuddy add action <name> [--category <cat>]` | `src/seeds/actions/<category>/<name>.ts` (category defaults to the pack id) |
-| Prompt | `abuddy add prompt <name>` | `src/seeds/prompts/<name>.ts` |
-| Flow | `abuddy add flow <name>` | `src/seeds/flows/<name>.ts`. Needs a dependency that provides flow steps (e.g. `default-setup`) |
+| Action | `abuddy add action <name> [--category <cat>]` | `src/content/actions/<category>/<name>.ts` (category defaults to the pack id) |
+| Prompt | `abuddy add prompt <name>` | `src/content/prompts/<name>.ts` |
+| Flow | `abuddy add flow <name>` | `src/content/flows/<name>.ts`. Needs a dependency that provides flow steps (e.g. `default-setup`) |
 | Service | `abuddy add service <name> [--feature <feature>]` | `src/extensions/services/<name>.ts` in `packServices`, or `src/features/<feature>/be/services/<name>.ts` in that feature's `services`. The key is the camelCased name, the value `path#<camelName>Service` |
 | Migration | `abuddy add migration [version] [--version <ver>]` | `src/migrations/<version>.ts` exporting a `PackMigration`, added to `src/migrations/index.ts`; sets `migrations` if unset. Version defaults to the manifest's |
 
@@ -88,10 +88,10 @@ External packs build into `dist/` in the pack layout:
 dist/
   runtime/index.cjs          backend: systems, services, steps, boot hooks, migrations
   runtime/fe.js, fe.css      frontend
-  runtime/seeds/             compiled seeds
+  runtime/seeds/             compiled content
   build/steps.build.mjs      step build facets, for dependents' flow validation (with steps.build)
-  build/seed-runtime.mjs     entity types, repositories and seed hooks, for dependents' unit tests
-  build/seed-compilers.mjs   seed format compiler modules (with seedFormats[].compiler)
+  build/seed-runtime.mjs     entity types, repositories and content writers, for dependents' unit tests
+  build/seed-compilers.mjs   content format compiler modules (with content.formats[].compiler)
   types/pack-types.d.ts      facade types for dependents
   types/snapshot.json        types, facade types, flow helpers, manifest, SDK version
   defs/monaco/<name>-defs.d.ts  editor definitions per dsl entry with a monaco target
@@ -104,10 +104,10 @@ Steps:
 3. Runs `generate` + `generate-entries` (skip with `--skip-generate`)
 4. Checks each feature's `settings` file exists and sets only `plugins.<id>` and `visible`
 5. Resolves every dependency (fails if one can't be), and warns when `src/__generated__` holds a dependency's types from a different version than the one the build resolved
-6. Compiles `boot.seed` into `runtime/seeds/`, validating flows against the dependencies' step build code
+6. Compiles `content.sources` into `runtime/seeds/`, validating flows against the dependencies' step build code
 7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@abuddy/*` packages, `@abuddy/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`. Warns, without failing, when a committed `etc/pack-types.api.md` no longer matches what it bundled (`abuddy facade-report`)
 8. Writes `types/snapshot.json`, and notes entity types with no `entityShapes` entry
-9. Bundles `steps.build`, the seed runtime and any seed compilers into `build/`. The seed runtime is then loaded in a fresh Node process with only `@abuddy/sdk`, as a dependent's tests load it; it fails if repositories or seed hooks need native modules or `@abuddy/sdk`'s optional peers
+9. Bundles `steps.build`, the seed runtime and any seed compilers into `build/`. The seed runtime is then loaded in a fresh Node process with only `@abuddy/sdk`, as a dependent's tests load it; it fails if repositories or content writers need native modules or `@abuddy/sdk`'s optional peers
 10. Bundles the backend runtime into `runtime/index.cjs`
 11. Bundles each `dsl` entry with a `monaco` target into `defs/monaco/<name>-defs.d.ts`, wrapped as `declare module "@app/defs/<name>"`, inlining the pack's own modules, `@abuddy/*` and the entry's `inline` packages
 12. Bundles the FE entry into `runtime/fe.js` (and `fe.css`) with Vite, unless `--skip-fe`. The entry is `src/pack-entry-fe.ts` (or `.js`) if present, else `src/__generated__/pack-entry-fe.ts`
@@ -519,7 +519,7 @@ While a command changes the database it holds a lock on the data dir (`db-write.
 
 **The run history.** The database has two partitions: the app's data, and the run history (`TNode` rows, what each flow step did). Commands read the data only, as the app does, so a query for `TNode` comes back empty until you pass `--volatile`, which reads both. `reset` deletes both either way; its listing counts the run history only with `--volatile`.
 
-**Seeding.** There is no seed command: AgentBuddy seeds each pack's data when it starts (and `abuddy run` re-seeds a pack it rebuilds), so start the app rather than seed a data dir by hand.
+**Writing.** There is no seed command: AgentBuddy content each pack's data when it starts (and `abuddy run` re-applies a pack it rebuilds), so start the app rather than seed a data dir by hand.
 
 **Installed packs.** Entity types, relation kinds and where each type is stored come from the packs installed in the data dir — every enabled pack in `packs/`, the ones the app ships included, read from its own `abuddy.json`; no pack code runs. A data dir with no packs installed knows only the names the app itself declares, which is the truth about it rather than a degraded reading of it.
 
@@ -585,7 +585,7 @@ Replace the database, and the media folder when the backup has one, with a backu
 
 #### `abuddy db reset [--force] [--keep-keys]` (names its data dir)
 
-Delete all of the app's data, as Reset Database in the Database settings does: both database partitions (the data and the run history) and the stored secrets. The app creates its default data (settings, seeded flows, the packs' seeds) on its next start and shows onboarding. Without `--force` it lists the entities per type and each stored secret it would delete.
+Delete all of the app's data, as Reset Database in the Database settings does: both database partitions (the data and the run history) and the stored secrets. The app creates its default data (settings, written flows, the packs' content) on its next start and shows onboarding. Without `--force` it lists the entities per type and each stored secret it would delete.
 
 No backup holds the secrets — `export` and the Database settings' backups copy the databases and the media folder, never the secrets or the data key that encrypts them — so a deleted secret is entered again in Settings → Secrets. That's why the listing names each one by provider and label (never its value), and why `--keep-keys` leaves them where they are and deletes only the data.
 

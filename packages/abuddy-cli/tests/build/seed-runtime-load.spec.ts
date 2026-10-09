@@ -16,10 +16,10 @@ function pack(repository: string): string {
   tmpDirs.push(dir);
   const files: Record<string, string> = {
     'src/repository.ts': repository,
-    'src/__generated__/seed-runtime.ts': [
-      "import type { SeedRuntime } from '@abuddy/sdk/testing';",
+    'src/__generated__/content-runtime.ts': [
+      "import type { ContentRuntime } from '@abuddy/sdk/testing';",
       "import { memoQueries } from '../repository';",
-      "export const seedRuntime: SeedRuntime = { id: 'load-pack', entities: { Memo: 'Memo' }, relKinds: {}, repositories: { memoQueries }, seedHooks: {} };",
+      "export const contentRuntime: ContentRuntime = { id: 'load-pack', entities: { Memo: 'Memo' }, relKinds: {}, repositories: { memoQueries }, contentWriters: {} };",
     ].join('\n'),
   };
   for (const [file, content] of Object.entries(files)) {

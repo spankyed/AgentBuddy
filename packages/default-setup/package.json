@@ -21,8 +21,8 @@
     "facade:update": "abuddy facade-report --update",
     "flow-export:check": "npm test -- tests/extensions/steps/export-example.spec.ts",
     "flow-export:update": "UPDATE_FLOW_EXAMPLE=1 npm test -- tests/extensions/steps/export-example.spec.ts",
-    "seed-parity:check": "npm test -- tests/seeds",
-    "seed-parity:update": "UPDATE_SEED_GOLDEN=1 npm test -- tests/seeds"
+    "seed-parity:check": "npm test -- tests/content",
+    "seed-parity:update": "UPDATE_SEED_GOLDEN=1 npm test -- tests/content"
   },
   "dependencies": {
     "@abuddy/ears": "*",

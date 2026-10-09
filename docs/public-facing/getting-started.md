@@ -1,6 +1,6 @@
 # Getting Started
 
-A **pack** is a self-contained extension for AgentBuddy. It can contribute backend systems, frontend plugins, flow steps, seeds (actions, prompts, flows), artifact viewers, message blocks, services, and data migrations. Packs are declared via an `abuddy.json` manifest and compiled into a distributable archive.
+A **pack** is a self-contained extension for AgentBuddy. It can contribute backend systems, frontend plugins, flow steps, content (actions, prompts, flows), artifact viewers, message blocks, services, and data migrations. Packs are declared via an `abuddy.json` manifest and compiled into a distributable archive.
 
 ## Prerequisites
 
@@ -21,7 +21,7 @@ Whichever `abuddy` you run, inside a pack it hands off to the `@abuddy/cli` vers
 | `@abuddy/ears` | The EARS data engine: what the generated `#generated/ears` and `#generated/repository` build on, and the untyped API packs import directly (`untypedQx`, `tx`, `findRelations`, graph and blueprint helpers, `RepositoryError`; `createEarsEngine` for tests and tooling). The app shares one instance with every pack, as it does `@abuddy/sdk`. A dependency of every pack. |
 | `@abuddy/ui` | Vue components, tiptap and Monaco editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`). Add it when your pack's UI uses them; it brings the editor libraries, so backend-only packs leave it out. Packs use the app's copy at runtime (see `fe.bundleUi` in the manifest docs). |
 | `@abuddy/cli` | The `abuddy` command and build toolchain. A devDependency of every pack. |
-| `@abuddy/testing` | Pack tests: `@abuddy/testing/harness` runs a pack's seeds, systems, services and flows in unit tests without the app, `@abuddy/testing/vitest` configures Vitest for it (`isolatedDataDir`), and `@abuddy/testing` is the Playwright fixture for E2E tests in the app (`@playwright/test` is a peer). |
+| `@abuddy/testing` | Pack tests: `@abuddy/testing/harness` runs a pack's content, systems, services and flows in unit tests without the app, `@abuddy/testing/vitest` configures Vitest for it (`isolatedDataDir`), and `@abuddy/testing` is the Playwright fixture for E2E tests in the app (`@playwright/test` is a peer). |
 
 The five are released together with the same version.
 
@@ -54,7 +54,7 @@ my-pack/
       steps/
         register.ts         # Step registration barrel
         build.ts            # Build-only step facets, shipped to packs that depend on yours
-    seeds/
+    content/
       actions/
       flows/
       examples/             # markdown rows of the pack's entity type (the `examples` seed format)
@@ -65,7 +65,7 @@ my-pack/
   tests/
     setup.ts                # starts the unit test harness
     unit/
-      my-pack.spec.ts       # seeds the examples entry and reads the rows back
+      my-pack.spec.ts       # content the examples entry and reads the rows back
       notes-system.spec.ts  # added with the feature: its system under the app's bus
 ```
 
@@ -87,10 +87,10 @@ The build pipeline (`abuddy build`):
 2. `abuddy generate` and `abuddy generate-entries` — resolve dependencies, write their EARS types and generate `src/__generated__/`
 3. Checks each feature's settings file sets only its own plugin's settings
 4. Resolves dependencies, warning when the generated dependency types are from a different version
-5. Seed compilation — compiles `boot.seed` from `src/seeds/` to `dist/runtime/seeds/`, validating flows with the dependencies' step code
+5. Content compilation — compiles `content.sources` from `src/content/` to `dist/runtime/seeds/`, validating flows with the dependencies' step code
 6. Facade types — bundles `dist/types/pack-types.d.ts`, the types packs that depend on yours import, and fails unless it type-checks on its own and imports only `@abuddy/*` packages, `@abuddy/sdk`'s peers and Node built-ins. Warns if your committed `etc/pack-types.api.md` has fallen behind it
 7. Snapshot — writes `dist/types/snapshot.json` (types, facade types, flow helpers, manifest) for downstream packs
-8. Build code for dependents — `dist/build/steps.build.mjs` (step build code), `dist/build/seed-runtime.mjs` (your entity types, repositories and seed hooks, for their unit tests) and `dist/build/seed-compilers.mjs` (your seed formats' compiler modules). The build loads the seed runtime the way their tests do, and fails if it can't: repositories and seed hooks can't use native modules or optional `@abuddy/sdk` peers such as `@tiptap/pm`
+8. Build code for dependents — `dist/build/steps.build.mjs` (step build code), `dist/build/seed-runtime.mjs` (your entity types, repositories and content writers, for their unit tests) and `dist/build/seed-compilers.mjs` (your seed formats' compiler modules). The build loads the seed runtime the way their tests do, and fails if it can't: repositories and content writers can't use native modules or optional `@abuddy/sdk` peers such as `@tiptap/pm`
 9. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot hooks, migrations)
 10. FE bundling — bundles `src/__generated__/pack-entry-fe.ts` into `dist/runtime/fe.js` via Vite
 
@@ -130,7 +130,7 @@ To release a version, run `abuddy release [patch|minor|major] [--beta]`: it chec
 npm test
 ```
 
-Unit tests run your pack without the app, through `@abuddy/testing/harness`: seeds and repositories against an in-memory database, systems under the app's bus, services with others mocked, and flows on the brain with `services.inference` mocked, including your dependencies' behaviour. The scaffold wires it up in `vitest.config.ts` and `tests/setup.ts`; run `abuddy build` once first, so dependencies are fetched. See [Testing](testing.md).
+Unit tests run your pack without the app, through `@abuddy/testing/harness`: content and repositories against an in-memory database, systems under the app's bus, services with others mocked, and flows on the brain with `services.inference` mocked, including your dependencies' behaviour. The scaffold wires it up in `vitest.config.ts` and `tests/setup.ts`; run `abuddy build` once first, so dependencies are fetched. See [Testing](testing.md).
 
 ## E2E tests
 
@@ -149,7 +149,7 @@ After restarting, your pack's feature should appear in the sidebar. Run `abuddy 
 ## Useful commands
 
 ```bash
-abuddy info       # Show pack summary (features, steps, seeds, etc.)
+abuddy info       # Show pack summary (features, steps, content, etc.)
 abuddy validate   # Check manifest and file references
 abuddy doctor     # Run health checks
 abuddy clean      # Remove dist/, .abuddy/, __generated__/
@@ -157,15 +157,15 @@ abuddy clean      # Remove dist/, .abuddy/, __generated__/
 
 ## Key concepts
 
-- **Manifest (`abuddy.json`)** — declares everything: features, steps, services, seeds, entities. See [Manifest Reference](manifest.md).
-- **Generated files (`__generated__/`)** — auto-generated from the manifest. Never edit these. They are regenerated on every build. The generated `pack-entry.ts` and `pack-entry-fe.ts` are your pack's registrations: everything it contributes (systems, services, repositories, steps, seeders, DSL types, …) reaches the app through them, never by writing to a registry when a module is imported.
+- **Manifest (`abuddy.json`)** — declares everything: features, steps, services, content, entities. See [Manifest Reference](manifest.md).
+- **Generated files (`__generated__/`)** — auto-generated from the manifest. Never edit these. They are regenerated on every build. The generated `pack-entry.ts` and `pack-entry-fe.ts` are your pack's registrations: everything it contributes (systems, services, repositories, steps, appliers, DSL types, …) reaches the app through them, never by writing to a registry when a module is imported.
 - **Host dependencies** — packs share `vue`, `xstate`, tiptap, `lucide-vue-next` and other libraries, the SDK modules and `@abuddy/ui` with the host app. The build pipeline leaves those imports external and the app's document carries an import map naming its own copy of each, so your pack gets the app's instance.
-- **Seeds** — actions, prompts, flows and entity rows are compiled at build time and seeded when the pack loads. See [Seeds](seeds.md) for what action code may import.
+- **Content** — actions, prompts, flows and entity rows are compiled at build time and seeded when the pack loads. See [Content](content.md) for what action code may import.
 - **`pack://` protocol** — the host loads your pack's FE bundle at runtime via `pack://<id>/runtime/fe.js`. This is handled automatically.
 
 ## Constraints
 
-- Some manifest fields are for built-in packs only: validation rejects `boot.seed.settings` in an external pack, and the app ignores an external pack's `features[].references`.
+- Some manifest fields are for built-in packs only: validation rejects `content.sources.settings` in an external pack, and the app ignores an external pack's `features[].references`.
 - Entity types, relation kinds and service keys must be unique across all installed packs, or the pack fails to load. Service keys also can't be the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`).
 - The app must be restarted after installing or uninstalling a pack.
 
@@ -173,5 +173,5 @@ abuddy clean      # Remove dist/, .abuddy/, __generated__/
 
 - [Manifest Reference](manifest.md) — every field in `abuddy.json`
 - [Features](features.md) — building systems and plugins
-- [Seeds](seeds.md) — writing actions, prompts, and flows
+- [Content](content.md) — writing actions, prompts, and flows
 - [Extensions](extensions.md) — steps, artifacts, and blocks

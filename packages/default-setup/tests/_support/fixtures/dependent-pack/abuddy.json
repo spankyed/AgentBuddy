@@ -7,14 +7,14 @@
   "dependencies": {
     "default-setup": "*"
   },
-  "boot": {
-    "seed": {
+  "content": {
+    "sources": {
       "team-notes": {
-        "path": "src/seeds/team-notes",
+        "path": "src/content/team-notes",
         "format": "default-setup:notes"
       },
       "team-docs": {
-        "path": "src/seeds/team-docs",
+        "path": "src/content/team-docs",
         "format": "default-setup:library"
       }
     }

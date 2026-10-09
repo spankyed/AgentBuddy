@@ -352,18 +352,18 @@ function cacheDep(root: string, depId: string, artifacts: DepFiles): void {
     fs.rmSync(path.join(depDir, PACK_LAYOUT.runtimeDir), { recursive: true, force: true });
     fs.mkdirSync(path.dirname(cachedRuntime), { recursive: true });
     fs.copyFileSync(runtimeEntry, cachedRuntime);
-    if (seedsDir) copySeeds(seedsDir, path.join(depDir, PACK_LAYOUT.seedsDir));
+    if (seedsDir) copyContent(seedsDir, path.join(depDir, PACK_LAYOUT.seedsDir));
   } else if (!runtimeEntry) {
     fs.rmSync(path.join(depDir, PACK_LAYOUT.runtimeDir), { recursive: true, force: true });
   }
 }
 
 /**
- * Copies a pack's compiled seeds. The whole directory, because that is all it holds — it used to pick
+ * Copies a pack's compiled content. The whole directory, because that is all it holds — it used to pick
  * `*.seed.json`, `seeds.json` and `media/` out of a built-in pack's entire `dist/`, which is not where any
- * pack's seeds are written any more.
+ * pack's content is written any more.
  */
-function copySeeds(from: string, to: string): void {
+function copyContent(from: string, to: string): void {
   fs.rmSync(to, { recursive: true, force: true });
   fs.cpSync(from, to, { recursive: true });
 }

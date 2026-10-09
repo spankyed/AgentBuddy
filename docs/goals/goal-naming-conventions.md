@@ -89,9 +89,9 @@ records where that one landed.
 
 **`Context` names at least three unrelated concepts.** 36 exported `*Context` types. An XState machine's
 context (`FlowsContext`, `BrainContext`, `ThreadsContext`, …), a bundle of arguments passed to a function
-(`SeedCompileContext` `abuddy-sdk/src/build/seeds/records.ts:33`, `StepCompileContext` and
-`StepValidationContext` `abuddy-sdk/src/steps/types.ts:14,37`, `ImportContext`
-`abuddy-sdk/src/utils/seed.ts:18`, `CompilationContext` `abuddy-sdk/src/build/seed-compiler.ts:20`,
+(`ContentCompileContext` `abuddy-sdk/src/build/content/items.ts:33`, `StepCompileContext` and
+`StepValidationContext` `abuddy-sdk/src/steps/types.ts:14,37`, `ApplyContext`
+`abuddy-sdk/src/utils/apply.ts:18`, `CompilationContext` `abuddy-sdk/src/build/content-compiler.ts:20`,
 `ExecutionContext` `abuddy-sdk/src/steps/types.ts:142`, `DescriptorContext`
 `abuddy-ui/src/components/node-dimensions.ts:27`, `DbScriptContext`
 `abuddy-cli/src/commands/db/script.ts:44`, two `ConsumerContext`s), the app's environment (`AppContext`,
@@ -120,7 +120,7 @@ behind a filler word, and only the last one names its stage. `PackOrigin`
 
 **`source` is one sense in compounds and three senses bare.** ~707 occurrences. The compounds are
 consistent — `sourceHandle` (146, Vue Flow's edge endpoint), `sourceId` (56, an EARS relation's origin),
-`sourceEntity` (49), `sourceHash` (93, the text a seed record compiled from), `sourcePath` (42, a backup
+`sourceEntity` (49), `contentHash` (93, the text a seed record compiled from), `sourcePath` (42, a backup
 copy's origin), `sourceTab` (70), `sourceThreadId` (34) — each naming the origin of the thing the compound
 names. The bare fields are not: in the pack install path alone, `installPack(slug, source?)`
 (`abuddy-host/src/packs/pack-installer.ts:324`) takes a kind, `installPackFromLocal(source)`
@@ -162,7 +162,7 @@ Final.
    that already police shape, not in a new top-level guard.
 
 8. **Pack-facing types are renamed like everything else.** `StepCompileContext`, `StepValidationContext`,
-   `StepDecompileContext`, `ExecutionContext`, `SeedHookContext`, `ImportContext` and `CompilationContext`
+   `StepDecompileContext`, `ExecutionContext`, `ContentWriteContext`, `ApplyContext` and `CompilationContext`
    are exported from `@abuddy/sdk` and appear in `etc/*.api.md` and default-setup's facade. No release has
    shipped them to anyone, so there is no surface to preserve: rename them, run `api:update` and
    `facade:update`, and follow the rename into the CLI's scaffold templates and the fixture packs. Carving
@@ -171,7 +171,7 @@ Final.
 
 9. **`source` keeps its compounds and loses its bare fields.** Every compound names the same abstract
    sense, "the origin of X", disambiguated by what follows: `sourceHandle` and `sourceId` are a directed
-   edge's origin, `sourcePath` a copy's, `sourceHash` the text a record compiled from, `sourceTab` and
+   edge's origin, `sourcePath` a copy's, `contentHash` the text a record compiled from, `sourceTab` and
    `sourceThreadId` a UI or thread origin. Those are correct and stay. What is not correct is a bare
    `source` field, which names the sense without saying of what — and the pack install path has three of
    them meaning different things: `installPack(slug, source?)` is a *kind* (`local` | `url` | a GitHub

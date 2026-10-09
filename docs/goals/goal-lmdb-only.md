@@ -87,7 +87,7 @@ The user wants **LMDB-only**: reads query LMDB directly, writes are committed sy
   - notes/threads `create`
   - `appState.update` then `get`
   - `linkOne` (unlink, then add) and `ensure` (revoke, then grant)
-  - the seeders' re-read after import
+  - the appliers' re-read after import
   - `tx(type)` writes `createdAt` first, so the entity exists mid-transaction.
 - **Callers that must stay synchronous.** `qx`/`tx` are called inside xstate `assign`/`enqueueActions`:
   - logs, threads and brain flow systems
@@ -108,7 +108,7 @@ The user wants **LMDB-only**: reads query LMDB directly, writes are committed sy
 - **Engines without LMDB.**
   - The SDK test runtime makes a new memory engine per test (`packages/abuddy-sdk/src/testing/index.ts:54-59,104`), about 600 resets per default-setup run.
   - `memoryTraceStore` (`testing/host.ts:105-124`) fakes the trace store.
-  - SDK round-trip and seeder specs, and host and api specs, build raw memory engines.
+  - SDK round-trip and applier specs, and host and api specs, build raw memory engines.
   - The ears contract `persistence.spec.ts` pins sink call order.
   - The benchmark loads data with `bulkLoadAttr`.
   - `api/tests/runtime/restart-persistence.spec.ts:36` asserts nothing is visible before hydrate.

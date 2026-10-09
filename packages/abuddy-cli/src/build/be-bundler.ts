@@ -131,7 +131,7 @@ export async function bundlePackStepBuild(
 }
 
 /**
- * Bundle the compiler modules named in the pack's seedFormats into dist/build/seed-compilers.mjs,
+ * Bundle the compiler modules named in the pack's content.formats into dist/build/seed-compilers.mjs,
  * one export per format name. Dependent packs' `abuddy build` compiles this pack's formats with it,
  * since the pack's sources aren't installed. Shared-instance and host-shared packages stay external.
  */
@@ -143,7 +143,7 @@ export async function bundlePackSeedCompilers(
 ): Promise<{ success: boolean; error?: string }> {
   for (const [name, modulePath] of Object.entries(compilers)) {
     if (!fs.existsSync(path.resolve(packDir, modulePath))) {
-      return { success: false, error: `seed format "${name}": compiler module not found: ${modulePath}` };
+      return { success: false, error: `content format "${name}": compiler module not found: ${modulePath}` };
     }
   }
   const contents = Object.entries(compilers)
@@ -192,8 +192,8 @@ export async function bundlePackFlowHelpersModule(
 export const SEED_RUNTIME_FILE = 'seed-runtime.mjs';
 
 /**
- * Bundle the pack's seed runtime (src/__generated__/seed-runtime.ts: entity types, repositories,
- * seed hooks) into dist/build/seed-runtime.mjs. Only the shared-instance packages (@abuddy/sdk and
+ * Bundle the pack's seed runtime (src/__generated__/content-runtime.ts: entity types, repositories,
+ * content writers) into dist/build/seed-runtime.mjs. Only the shared-instance packages (@abuddy/sdk and
  * @abuddy/ears) stay external, so a dependent's unit tests can load it with just their own installed
  * and share their instances. The
  * build then loads it that way, so a bundle that can't load fails here.
@@ -203,9 +203,9 @@ export async function bundlePackSeedRuntime(
   outputDir: string,
   options: BundleRuntimeOptions = {},
 ): Promise<{ success: boolean; error?: string }> {
-  const entryPath = path.join(packDir, 'src', '__generated__', 'seed-runtime.ts');
+  const entryPath = path.join(packDir, 'src', '__generated__', 'content-runtime.ts');
   if (!fs.existsSync(entryPath)) {
-    return { success: false, error: 'No src/__generated__/seed-runtime.ts. Run "abuddy generate-entries" first.' };
+    return { success: false, error: 'No src/__generated__/content-runtime.ts. Run "abuddy generate-entries" first.' };
   }
   const outfile = path.join(outputDir, 'build', SEED_RUNTIME_FILE);
   try {

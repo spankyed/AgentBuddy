@@ -25,11 +25,11 @@ if (typeof globalThis.localStorage === 'undefined') {
 // The pack's runtime on the harness: in-memory EARS, systems, services and steps, no app host
 import * as path from 'path';
 import { setupPackTests } from '@abuddy/testing/harness';
-import { seedRuntime } from '../src/__generated__/seed-runtime.ts';
+import { contentRuntime } from '../src/__generated__/content-runtime.ts';
 import { registration } from '../src/__generated__/pack-entry.ts';
-import { setCompiledDir } from '../src/__generated__/seeders.ts';
+import { setCompiledDir } from '../src/__generated__/appliers.ts';
 
 // Where `abuddy build` writes this pack's compiled seeds, as the app points the pack module at them. Spelled
 // out rather than taken from `PACK_LAYOUT`, which is `@abuddy/host`'s and no pack may import
 setCompiledDir(path.resolve(__dirname, '..', 'dist', 'runtime', 'seeds'));
-await setupPackTests({ seedRuntime, registration });
+await setupPackTests({ contentRuntime, registration });

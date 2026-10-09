@@ -1,12 +1,12 @@
 // default-setup's own flows for brain tests, and reading what they ran (flows as DSL: importFlows from the harness)
 import * as path from 'node:path';
-import { importCompiledSeeds } from '@abuddy/sdk/utils';
+import { importCompiledContent } from '@abuddy/sdk/utils';
 import type { FlowStepTrace } from '@abuddy/testing/harness';
 import { repository } from '#generated/repository.ts';
 
 /** default-setup's compiled actions, prompts and flows, seeded as the app's boot seed seeds them */
 export function seedDefaultFlows(): void {
-  importCompiledSeeds({ compiledDir: path.resolve(__dirname, '../../dist', 'runtime', 'seeds'), include: { library: new Set(), notes: new Set(), settings: new Set() } });
+  importCompiledContent({ compiledDir: path.resolve(__dirname, '../../dist', 'runtime', 'seeds'), include: { library: new Set(), notes: new Set(), settings: new Set() } });
 }
 
 /** The label of the action an action step ran */

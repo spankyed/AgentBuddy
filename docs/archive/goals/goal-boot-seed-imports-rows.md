@@ -1,7 +1,7 @@
 > **Done** (`7b57dcf7d`, `4ce82972c`, `242e9597c` on master). The text below is the plan as written; Decision 7
 > turned out to be wrong and the Outcome says why. For the rule this established, see
-> [`docs/public-facing/seeds.md`](../../public-facing/seeds.md) and
-> [`packages/default-setup/src/seeds/CLAUDE.md`](../../../packages/default-setup/src/seeds/CLAUDE.md).
+> [`docs/public-facing/content.md`](../../public-facing/content.md) and
+> [`packages/default-setup/src/content/CLAUDE.md`](../../../packages/default-setup/src/content/CLAUDE.md).
 
 # Goal: `boot.seed` holds only entries that import rows, and a registration carries no seed facts
 

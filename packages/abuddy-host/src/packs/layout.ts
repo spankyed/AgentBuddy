@@ -302,7 +302,7 @@ export async function extractPackArchive(archive: string, destDir: string, expec
 }
 
 /** A pack's compiled seed files, relative to the seeds directory holding them */
-export function packSeedFiles(seedsDir: string): string[] {
+export function packContentFiles(seedsDir: string): string[] {
   return fs.existsSync(seedsDir) ? listFiles(seedsDir).sort() : [];
 }
 

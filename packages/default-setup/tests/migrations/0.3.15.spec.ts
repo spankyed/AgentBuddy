@@ -1,5 +1,5 @@
 // 0.3.15 drops the app's state from the settings (the host moved it to AppState first), and marks rows seeded before
-// the seeder recorded what it wrote as unedited — without that every row an older version seeded stays frozen. Action
+// the applier recorded what it wrote as unedited — without that every row an older version seeded stays frozen. Action
 // logs moved from `log-service` to `action:<label>`, so whoever hid `log-service` gets `action:*` hidden too. The
 // settings' copies of the root flow and of the flow the brain runs are dropped: the role and the brain own them. Link
 // blocks, which named this pack's plugins by bare id, name their refs, and a link to a plugin since removed is dropped. And 0.3.14 stored every default as if the user had chosen it:

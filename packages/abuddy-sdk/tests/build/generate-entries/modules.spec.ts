@@ -1,7 +1,7 @@
 // The generated modules' own surface.
 //
 // What the generated modules import and re-export: a diamond dependency resolved once, the EARS facade,
-// the SDK re-exports, seeders, flow helpers, the type barrel, and the snapshot format that carries them.
+// the SDK re-exports, appliers, flow helpers, the type barrel, and the snapshot format that carries them.
 //
 // One of five files split from a 1,365-line original; `_support/pack.ts` holds the fixture and why.
 //
@@ -20,7 +20,7 @@ import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { PROVENANCE_KINDS, _buildProvenance } from '../../../src/build/manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../../src/types/sdk-entities.ts';
-import type { PackFeatureEntry, PackManifest, PackPluginEntry, PackSnapshot, PackSystemEntry, SeedFormatConfig } from '../../../src/build/manifest.ts';
+import type { PackFeatureEntry, PackManifest, PackPluginEntry, PackSnapshot, PackSystemEntry, ContentFormatConfig } from '../../../src/build/manifest.ts';
 import type { PackFeature, PackFeaturePlugin, PackFeatureSystem, PackRegistration } from '../../../src/framework/index.ts';
 import { setupPackFixture, PACK_SNAPSHOT_FORMAT, dependency, facade, generate, generatePackFiles, manifest, root, system, withPlugin, write, writePluginEntry, writeSystemEntry  } from './_support/pack.ts';
 
@@ -104,8 +104,8 @@ describe('generated imports', () => {
   // because no runtime resolves an extensionless specifier in ESM — which the second assertion pins.
   it('names generated modules by the file that is there', () => {
     const files = generate({ features: [system('memos')] });
-    expect(files['src/__generated__/pack-entry.ts']).toContain("import { seeders } from './seeders.ts';");
-    expect(files['src/__generated__/pack-entry.ts']).not.toMatch(/from '\.\/seeders';/);
+    expect(files['src/__generated__/pack-entry.ts']).toContain("import { appliers } from './appliers.ts';");
+    expect(files['src/__generated__/pack-entry.ts']).not.toMatch(/from '\.\/appliers';/);
   });
 
   it('keeps dots in extensionless names and normalizes backslashes', () => {
@@ -179,84 +179,89 @@ describe("the SDK's entities and relation kinds", () => {
   });
 });
 
-describe('generated seeders', () => {
-  it('registers the generic seeder with its format settings, and SDK seeders for specialty keys', () => {
+describe('generated appliers', () => {
+  it('registers the generic applier with its format settings, and SDK appliers for specialty keys', () => {
     const files = generate({
       entities: { Memo: 'Memo' },
-      seedFormats: {
-        memos: { format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'], tree: { relKind: 'has_memo' }, media: 'media' },
-        help: { compiler: 'src/seeds/compilers/help.ts' },
+      content: {
+        formats: {
+          memos: { format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'], tree: { relKind: 'has_memo' }, media: 'media' },
+          help: { compiler: 'src/content/compilers/help.ts' },
+        },
+        sources: {
+          actions: 'src/content/actions',
+          flows: { path: 'src/content/flows' },
+          memos: { path: 'src/content/memos', format: 'memos' },
+        },
+        artifacts: { help: { path: 'src/content/help', format: 'help' } },
       },
-      boot: { seed: {
-        actions: 'src/seeds/actions',
-        flows: { path: 'src/seeds/flows' },
-        memos: { path: 'src/seeds/memos', format: 'memos' },
-        help: { path: 'src/seeds/help', format: 'help' },
-      } },
     });
-    const seeders = files['src/__generated__/seeders.ts'];
-    expect(seeders).toContain(`export const seeders: Seeder[] = [\n  createSeeder({ key: 'actions', entities: ['Action'], identity: ['label'] }),`);
-    expect(seeders).toContain('  createFlowSeeder(),');
-    expect(seeders).toContain('  createSeeder({"key":"memos","entities":["Memo"],"identity":["title","parent"],"relKind":"has_memo","media":true}),');
-    expect(seeders).not.toContain('help');
+    const appliers = files['src/__generated__/appliers.ts'];
+    expect(appliers).toContain(`export const appliers: ContentApplier[] = [\n  createFormatApplier({ key: 'actions', entities: ['Action'], identity: ['label'] }),`);
+    expect(appliers).toContain('  createFlowApplier(),');
+    expect(appliers).toContain('  createFormatApplier({"key":"memos","entities":["Memo"],"identity":["title","parent"],"relKind":"has_memo","media":true}),');
+    expect(appliers).not.toContain('help');
   });
 
   it("uses a dependency's format settings for an entry naming it", () => {
-    const deps = { 'base-pack': { ...dependency({ seedFormats: { notes: { format: 'markdown-tree', entity: 'Note', identity: ['title'], tree: { branch: 'index.md' } } } }), types: { entities: { Note: 'Note' }, relKinds: {} } } };
-    const seeders = generate({ dependencies: { 'base-pack': '*' }, boot: { seed: { team: { path: 'src/seeds/team', format: 'base-pack:notes' } } } }, deps)['src/__generated__/seeders.ts'];
-    expect(seeders).toContain('  createSeeder({"key":"team","entities":["Note"],"identity":["title"]}),');
-    expect(() => generate({ dependencies: { 'base-pack': '*' }, boot: { seed: { team: { path: 'p', format: 'base-pack:missing' } } } }, deps))
-      .toThrow('Seed "team": dependency "base-pack" has no format "missing"');
+    const deps = { 'base-pack': { ...dependency({ content: { formats: { notes: { format: 'markdown-tree', entity: 'Note', identity: ['title'], tree: { branch: 'index.md' } } } } }), types: { entities: { Note: 'Note' }, relKinds: {} } } };
+    const appliers = generate({ dependencies: { 'base-pack': '*' }, content: { sources: { team: { path: 'src/content/team', format: 'base-pack:notes' } } } }, deps)['src/__generated__/appliers.ts'];
+    expect(appliers).toContain('  createFormatApplier({"key":"team","entities":["Note"],"identity":["title"]}),');
+    expect(() => generate({ dependencies: { 'base-pack': '*' }, content: { sources: { team: { path: 'p', format: 'base-pack:missing' } } } }, deps))
+      .toThrow('Content "team": dependency "base-pack" has no format "missing"');
   });
 
-  it("registers a pack seeder module under a seed key that isn't an identifier", () => {
-    const seeders = generate({ boot: { seed: { 'my-memos': { seeder: 'src/seeds/memos.ts' } } } })['src/__generated__/seeders.ts'];
-    expect(seeders).toContain("import { apply as __seeder_my_memos } from '../seeds/memos.ts';");
-    expect(seeders).toContain('  { key: "my-memos", apply: __seeder_my_memos },');
+  it("registers a pack applier module under a content key that isn't an identifier", () => {
+    const appliers = generate({ content: { sources: { 'my-memos': { applier: 'src/content/memos.ts' } } } })['src/__generated__/appliers.ts'];
+    expect(appliers).toContain("import { apply as __applier_my_memos } from '../content/memos.ts';");
+    expect(appliers).toContain('  { key: "my-memos", apply: __applier_my_memos },');
   });
 
-  it("registers a pack seeder module for a format entry naming one, and boot-seeds the compiled entry", () => {
+  it("registers a pack applier module for a content source naming one, and still compiles it", () => {
     const files = generate({
-      seedFormats: { settings: { compiler: 'src/seeds/compilers/settings.ts' } },
-      boot: { seed: { settings: { path: 'src/seeds/settings.ts', format: 'settings', seeder: 'src/seeds/settings-seeder.ts' } } },
+      entities: { Memo: 'Memo' },
+      content: {
+        formats: { settings: { compiler: 'src/content/compilers/settings.ts', entity: 'Memo' } },
+        sources: { settings: { path: 'src/content/settings.ts', format: 'settings', applier: 'src/content/settings-applier.ts' } },
+      },
     });
-    const seeders = files['src/__generated__/seeders.ts'];
-    expect(seeders).toContain("import { apply as __seeder_settings } from '../seeds/settings-seeder.ts';");
-    expect(seeders).toContain('  { key: "settings", apply: __seeder_settings },');
-    expect(seeders).not.toContain('createSeeder');
+    const appliers = files['src/__generated__/appliers.ts'];
+    expect(appliers).toContain("import { apply as __applier_settings } from '../content/settings-applier.ts';");
+    expect(appliers).toContain('  { key: "settings", apply: __applier_settings },');
+    expect(appliers).not.toContain('createFormatApplier');
   });
 
   it('accepts format entities from the SDK and dependencies, and rejects one nobody declares', () => {
     const deps = { 'base-pack': { ...dependency({}), types: { entities: { Note: 'Note' }, relKinds: {} } } };
-    expect(() => generate({ dependencies: { 'base-pack': '*' }, seedFormats: {
+    expect(() => generate({ dependencies: { 'base-pack': '*' }, content: { formats: {
       notes: { format: 'markdown-tree', entity: 'Note' },
       actions2: { format: 'json', entity: 'Action', identity: ['label'] },
-    } }, deps)).not.toThrow();
+    } } }, deps)).not.toThrow();
     // Unused formats are checked too: dependents may use them
-    expect(() => generate({ seedFormats: { notes: { format: 'json', entity: 'Memo' } } }))
-      .toThrow(`Seed format "notes": entity "Memo" isn't declared by this pack, its dependencies or the SDK`);
-    expect(() => generate({ seedFormats: { notes: { format: 'markdown-tree', entity: 'Action', tree: { branchEntity: 'Folder' } } } }))
+    expect(() => generate({ content: { formats: { notes: { format: 'json', entity: 'Memo' } } } }))
+      .toThrow(`Content format "notes": entity "Memo" isn't declared by this pack, its dependencies or the SDK`);
+    expect(() => generate({ content: { formats: { notes: { format: 'markdown-tree', entity: 'Action', tree: { branchEntity: 'Folder' } } } } }))
       .toThrow(`entity "Folder" isn't declared`);
   });
 
-  it("registers the pack's seed hooks by entity type", () => {
-    write('src/memo-hooks.ts', 'export const memoSeedHooks = {};');
-    const entry = generate({ entities: { Memo: 'Memo' }, seedHooks: { Memo: 'src/memo-hooks.ts#memoSeedHooks' } })['src/__generated__/pack-entry.ts'];
-    expect(entry).toContain("import { memoSeedHooks as __seedHooks_0 } from '../memo-hooks.ts';");
-    expect(entry).toContain('seedHooks: { "Memo": __seedHooks_0 },');
-    expect(() => generate({ entities: { Memo: 'Memo' }, seedHooks: { Memo: 'src/memo-hooks.ts#missing' } }))
-      .toThrow(`Seed hooks for "Memo": src/memo-hooks.ts doesn't export "missing"`);
+  it("registers the pack's content writers by entity type", () => {
+    write('src/memo-writers.ts', 'export const memoWriter = {};');
+    const entry = generate({ entities: { Memo: 'Memo' }, content: { writers: { Memo: 'src/memo-writers.ts#memoWriter' } } })['src/__generated__/pack-entry.ts'];
+    expect(entry).toContain("import { memoWriter as __contentWriter_0 } from '../memo-writers.ts';");
+    expect(entry).toContain('contentWriters: { "Memo": __contentWriter_0 },');
+    expect(() => generate({ entities: { Memo: 'Memo' }, content: { writers: { Memo: 'src/memo-writers.ts#missing' } } }))
+      .toThrow(`A content writer for "Memo": src/memo-writers.ts doesn't export "missing"`);
   });
 
-  it('names seed hook imports validly whatever the entity is called', () => {
-    write('src/hooks.ts', 'export const docHooks = {};\nexport const noteHooks = {};');
+  it('names content writer imports validly whatever the entity is called', () => {
+    write('src/writers.ts', 'export const docWriter = {};\nexport const noteWriter = {};');
     const files = generate({
       entities: { 'team-doc': 'team-doc', 'team.note': 'team.note' },
-      seedHooks: { 'team-doc': 'src/hooks.ts#docHooks', 'team.note': 'src/hooks.ts#noteHooks' },
+      content: { writers: { 'team-doc': 'src/writers.ts#docWriter', 'team.note': 'src/writers.ts#noteWriter' } },
     });
-    for (const file of ['src/__generated__/pack-entry.ts', 'src/__generated__/seed-runtime.ts']) {
+    for (const file of ['src/__generated__/pack-entry.ts', 'src/__generated__/content-runtime.ts']) {
       expect(() => transformSync(files[file], { loader: 'ts' }), file).not.toThrow();
-      expect(files[file]).toContain('seedHooks: { "team-doc": __seedHooks_0, "team.note": __seedHooks_1 },');
+      expect(files[file]).toContain('contentWriters: { "team-doc": __contentWriter_0, "team.note": __contentWriter_1 },');
     }
   });
 });
@@ -331,7 +336,7 @@ describe('the snapshot format', () => {
     $manifestVersion: true, $schema: true, artifacts: true, blocks: true, boot: true, build: true, builtIn: true, commands: true,
     dependencies: true, description: true, dsl: true, entities: true, entityShapes: true, help: true, fe: true, features: true,
     hostVersion: true, id: true, license: true, migrations: true, name: true, packServices: true,
-    permissions: true, relKinds: true, seedFormats: true, seedHooks: true, settingsSections: true, steps: true, version: true,
+    permissions: true, relKinds: true, content: true, settingsSections: true, steps: true, version: true,
   };
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
     designation: true, id: true, plugin: true, references: true, repositories: true, services: true,
@@ -340,16 +345,16 @@ describe('the snapshot format', () => {
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
   const MANIFEST_SYSTEM_EVENTS_FIELDS: Record<keyof NonNullable<PackSystemEntry['events']>, true> = { incoming: true };
   const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { contract: true, default: true, entry: true };
-  /** A dependency's seed formats, which a dependent's `boot.seed` compiles its own sources with */
-  const SEED_FORMAT_FIELDS: Record<keyof SeedFormatConfig, true> = {
+  /** A dependency's seed formats, which a dependent's `content.sources` compiles its own sources with */
+  const SEED_FORMAT_FIELDS: Record<keyof ContentFormatConfig, true> = {
     compiler: true, entity: true, fields: true, format: true, identity: true, media: true, tree: true,
   };
-  const SEED_TREE_FIELDS: Record<keyof NonNullable<SeedFormatConfig['tree']>, true> = { branch: true, branchEntity: true, relKind: true };
-  const SEED_FIELD_FIELDS: Record<keyof NonNullable<SeedFormatConfig['fields']>[string], true> = { default: true, from: true, type: true };
+  const SEED_TREE_FIELDS: Record<keyof NonNullable<ContentFormatConfig['tree']>, true> = { branch: true, branchEntity: true, relKind: true };
+  const SEED_FIELD_FIELDS: Record<keyof NonNullable<ContentFormatConfig['fields']>[string], true> = { default: true, from: true, type: true };
   /** The registration the runtime bundle exports, which the app loads */
   const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
     id: true, features: true, services: true, ears: true, repositories: true, boot: true, migrations: true, steps: true,
-    artifacts: true, blocks: true, seedHooks: true, seeders: true, commands: true, help: true, settingsSections: true,
+    artifacts: true, blocks: true, contentWriters: true, appliers: true, commands: true, help: true, settingsSections: true,
   };
   const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
     designation: true, system: true, plugin: true, services: true, settings: true,
@@ -392,9 +397,9 @@ describe('the snapshot format', () => {
       fields: ['defs', 'flowHelpers', 'format', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
         fields: [
-          '$manifestVersion', '$schema', 'artifacts', 'blocks', 'boot', 'build', 'builtIn', 'commands', 'dependencies', 'description', 'dsl',
+          '$manifestVersion', '$schema', 'artifacts', 'blocks', 'boot', 'build', 'builtIn', 'commands', 'content', 'dependencies', 'description', 'dsl',
           'entities', 'entityShapes', 'fe', 'features', 'help', 'hostVersion', 'id', 'license', 'migrations', 'name', 'packServices',
-          'permissions', 'relKinds', 'seedFormats', 'seedHooks', 'settingsSections', 'steps', 'version',
+          'permissions', 'relKinds', 'settingsSections', 'steps', 'version',
         ],
         feature: ['designation', 'id', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
         system: ['contract', 'entry', 'events'],
@@ -405,7 +410,7 @@ describe('the snapshot format', () => {
         seedField: ['default', 'from', 'type'],
       },
       registration: {
-        fields: ['artifacts', 'blocks', 'boot', 'commands', 'ears', 'features', 'help', 'id', 'migrations', 'repositories', 'seedHooks', 'seeders', 'services', 'settingsSections', 'steps'],
+        fields: ['appliers', 'artifacts', 'blocks', 'boot', 'commands', 'contentWriters', 'ears', 'features', 'help', 'id', 'migrations', 'repositories', 'services', 'settingsSections', 'steps'],
         feature: ['designation', 'plugin', 'services', 'settings', 'system'],
         system: ['machine', 'receives'],
         plugin: ['receives'],

@@ -20,8 +20,8 @@ import { GENERATED_BEHIND_A_CONTRACT } from '../../../scripts/check-import-speci
  * assert nothing.
  */
 const GENERATED_MODULES = [
-  'dsl-types-fe', 'ears', 'events', 'fe', 'flow-helpers', 'pack-entry', 'pack-entry-fe', 'pack-types',
-  'paths', 'ref', 'references', 'repositories', 'repository', 'seed-runtime', 'seeders', 'services',
+  'appliers', 'content-runtime', 'dsl-types-fe', 'ears', 'events', 'fe', 'flow-helpers', 'pack-entry', 'pack-entry-fe', 'pack-types',
+  'paths', 'ref', 'references', 'repositories', 'repository', 'services',
   'step-types', 'system-specs', 'types',
 ];
 

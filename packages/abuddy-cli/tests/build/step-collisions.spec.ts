@@ -21,7 +21,7 @@ describe('buildPackConfigFromManifest step definitions', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'step-collisions-'));
     const dependency = stepsModule(tmp, 'dependency.steps.build.mjs', 'collide_step');
     stepsModule(tmp, 'build.mjs', 'collide_step');
-    const manifest = { id: 'demo', name: 'Demo', version: '1.0.0', boot: { seed: { flows: 'src/seeds/flows' } }, steps: { build: 'build.mjs', definitions: [] } } as unknown as PackManifest;
+    const manifest = { id: 'demo', name: 'Demo', version: '1.0.0', boot: { seed: { flows: 'src/content/flows' } }, steps: { build: 'build.mjs', definitions: [] } } as unknown as PackManifest;
 
     const config = await buildPackConfigFromManifest(manifest, tmp, { dependencyStepModules: [dependency] });
     await expect(config.loadDefinitions!()).rejects.toThrow(/Step type "collide_step" is defined by this pack and by a dependency/);

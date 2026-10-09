@@ -18,7 +18,7 @@ export interface PackMigration {
  *
  * **A registration carries code; the manifest and the compiled artifacts carry facts.** So nothing here
  * describes a pack's seeding: which keys it seeds is `seeds.json`'s, where its compiled seeds are follows
- * from where the pack is installed, and what a seed leaves alone the seeder decides from the rows — an
+ * from where the pack is installed, and what a seed leaves alone the applier decides from the rows — an
  * unchanged hash, an edited row, one the user deleted. A fact put here is a second account of one of those.
  */
 export interface PackBootHooks {
@@ -76,10 +76,10 @@ export interface PackRegistration {
   steps?: import('../steps/types.ts').StepDefinition[];
   artifacts?: import('../artifacts/types.ts').ArtifactDefinition[];
   blocks?: import('../blocks/types.ts').BlockDefinition[];
-  /** Seed hooks for the entity types this pack owns (abuddy.json `seedHooks`) */
-  seedHooks?: Record<string, import('../seed/hooks.ts').SeedHooks>;
-  /** The pack's seeders, one per seeded key (abuddy.json `boot.seed`), which `importCompiledSeeds` runs for the pack's compiled seeds */
-  seeders?: import('../utils/seed.ts').Seeder[];
+  /** Content writers for the entity types this pack owns (abuddy.json `contentWriters`) */
+  contentWriters?: Record<string, import('../content/writers.ts').ContentWriter>;
+  /** The pack's appliers, one per seeded key (abuddy.json `content.sources`), which `importCompiledContent` runs for the pack's compiled seeds */
+  appliers?: import('../utils/apply.ts').ContentApplier[];
   /** The slash commands this pack adds to the chat (abuddy.json `commands`) */
   commands?: import('./pack-commands.ts').PackCommand[];
   /**

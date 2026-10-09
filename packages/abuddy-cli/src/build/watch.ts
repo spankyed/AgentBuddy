@@ -11,10 +11,10 @@ const DEBOUNCE_MS = 300;
  * **What `--watch` rebuilds is the backend runtime and nothing else**, which is less than `abuddy build`
  * does and is the point of it: it is the backend edit loop, where the runtime bundle is the only output
  * whose staleness the app can see. Measured 2026-10-07 on default-setup, 1,071 modules into a 956KB
- * bundle: **40ms** against the 23.7s a full build costs — the seeds, the facade types, the step build and
+ * bundle: **40ms** against the 23.7s a full build costs — the content, the facade types, the step build and
  * the DSL defs are the other 23.6s, and none of them moves when a system's source does.
  *
- * So an edit to a seed source or to `abuddy.json` is **not** covered here, and the loop does not pretend
+ * So an edit to a content source or to `abuddy.json` is **not** covered here, and the loop does not pretend
  * otherwise: it names what it watches on startup, and `abuddy build` is what follows those.
  */
 export interface WatchOptions {

@@ -1,18 +1,18 @@
 // The lookups only the backend's registry (createPackRegistry) keeps of what registered packs contributed
-import type { SeedHooks } from '@abuddy/sdk/seed';
-import type { Seeder } from '@abuddy/sdk/utils';
+import type { ContentWriter } from '@abuddy/sdk/content';
+import type { ContentApplier } from '@abuddy/sdk/utils';
 import { checkFeatureSettings, type FeatureSettings, type PackCommand, type HelpEntry, type PackSettingsDefaults } from '@abuddy/sdk/framework';
 import { resolveName } from '@abuddy/sdk/ids';
 import { createLogger } from '@abuddy/sdk/logger';
 
-/** Seed hooks per entity type, each type's owned by the pack that registered it */
-export function createSeedHookStore() {
-  const byEntity = new Map<string, { hooks: SeedHooks; packId: string }>();
+/** Content writers per entity type, each type's owned by the pack that registered it */
+export function createContentWriterStore() {
+  const byEntity = new Map<string, { hooks: ContentWriter; packId: string }>();
   return {
-    register(entity: string, hooks: SeedHooks, packId: string): void {
+    register(entity: string, hooks: ContentWriter, packId: string): void {
       const existing = byEntity.get(entity);
       if (existing && existing.packId !== packId) {
-        throw new Error(`Seed hooks for "${entity}" are already registered by pack "${existing.packId}"`);
+        throw new Error(`Content writers for "${entity}" are already registered by pack "${existing.packId}"`);
       }
       byEntity.set(entity, { hooks, packId });
     },
@@ -21,26 +21,26 @@ export function createSeedHookStore() {
         if (entry.packId === packId) byEntity.delete(entity);
       }
     },
-    get: (entity: string): SeedHooks | undefined => byEntity.get(entity)?.hooks,
+    get: (entity: string): ContentWriter | undefined => byEntity.get(entity)?.hooks,
   };
 }
 
-/** Each pack's seeders: two packs may declare the same seed key with different seeders */
-export function createSeederStore() {
-  const byPack = new Map<string, readonly Seeder[]>();
+/** Each pack's appliers: two packs may declare the same seed key with different appliers */
+export function createApplierStore() {
+  const byPack = new Map<string, readonly ContentApplier[]>();
   return {
-    register(packId: string, seeders: readonly Seeder[]): void {
+    register(packId: string, appliers: readonly ContentApplier[]): void {
       const keys = new Set<string>();
-      for (const { key } of seeders) {
-        if (keys.has(key)) throw new Error(`Pack "${packId}" registers two seeders for seed key "${key}"`);
+      for (const { key } of appliers) {
+        if (keys.has(key)) throw new Error(`Pack "${packId}" registers two appliers for seed key "${key}"`);
         keys.add(key);
       }
-      if (seeders.length > 0) byPack.set(packId, seeders);
+      if (appliers.length > 0) byPack.set(packId, appliers);
     },
     unregister(packId: string): void {
       byPack.delete(packId);
     },
-    get: (packId: string): readonly Seeder[] => byPack.get(packId) ?? [],
+    get: (packId: string): readonly ContentApplier[] => byPack.get(packId) ?? [],
   };
 }
 

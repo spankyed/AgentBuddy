@@ -1,5 +1,5 @@
 // Prompts (Prompt rows), which llm steps run: the SDK declares Prompt, and its flow compiler and
-// seeders resolve prompts by label
+// appliers resolve prompts by label
 import { RepositoryError, RepositoryErrorCode, installedEngine as ears } from '@abuddy/ears';
 import { EARS } from '../types/entities.ts';
 import { trash } from './trash.ts';
@@ -14,7 +14,7 @@ export interface PromptInput {
   /** A JSON schema for structured output */
   outputSchema?: unknown;
   category?: string;
-  sourceHash?: string;
+  contentHash?: string;
 }
 
 /** Reads and writes of prompts; deleted prompts stay stored, and reads leave them out */

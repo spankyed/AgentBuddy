@@ -157,7 +157,7 @@ describe('findInternalPackageImports', () => {
 
   it('allows public names, a public name aliased to an underscore, a pack-local one and other packages', () => {
     write('pack/feature.ts', [
-      "import { importCompiledSeeds, ensureDirectoryExists } from '@abuddy/sdk/utils';",
+      "import { importCompiledContent, ensureDirectoryExists } from '@abuddy/sdk/utils';",
       "import { formatProviderError as _formatProviderError } from '@abuddy/sdk/actions';",
       "import { _fmt } from './_helpers/format.ts';",
       "import * as utils from '@abuddy/sdk/utils';",
@@ -1856,13 +1856,13 @@ describe('findCrossFeatureImports', () => {
 
 describe('findRepositoryCasts', () => {
   it.each([
-    ['packages/abuddy-sdk/src/seed/seeder.ts', "import { repository } from '@abuddy/ears';\nexport const flows = repository as unknown as { flowsCommands: object };"],
+    ['packages/abuddy-sdk/src/content/format-applier.ts', "import { repository } from '@abuddy/ears';\nexport const flows = repository as unknown as { flowsCommands: object };"],
     ['packages/abuddy-host/src/settings/index.ts', 'export const settings = (repository as unknown) as Settings;'],
     ['packages/default-setup/src/features/notes/be/system.ts', 'const notes = (services.repository as unknown as Record<string, unknown>).noteQueries;'],
     ['packages/renderer/src/view.vue', '<script setup lang="ts">\nconst r = repository as unknown as Repos;\n</script>'],
   ])('flags %s', (file, code) => {
     write(file, code);
-    const line = file.endsWith('.vue') || file.includes('seeder') ? 2 : 1;
+    const line = file.endsWith('.vue') || file.includes('applier') ? 2 : 1;
     expect(findRepositoryCasts([`src/${file}`], root)).toEqual([expect.stringMatching(new RegExp(`^src/${file}:${line}: .*repository as unknown`))]);
   });
 

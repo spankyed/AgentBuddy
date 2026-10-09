@@ -2,17 +2,17 @@
 // answers with. The help comes from this pack's compiled seeds, so it is read the first time the app asks
 // rather than at registration; the base settings are this pack's own source, imported directly.
 import { seedPath } from '@abuddy/sdk/build';
-import { getCompiledDir } from '#generated/seeders.ts';
+import { getCompiledDir } from '#generated/appliers.ts';
 import { loadJSON } from '@abuddy/sdk/utils';
 import { isPlainObject } from '@abuddy/sdk/utils/pure';
 import type { HelpEntry } from '@abuddy/sdk/framework';
 import type { SettingsData } from './types.ts';
-import baseSettings from '../seeds/default-settings.ts';
+import baseSettings from '../content/default-settings.ts';
 
 /**
  * The base settings this pack contributes: its `general` and `assistant` sections, with no plugin's slice.
  *
- * **An import, because this is this pack's own source, and not a seed entry.** `boot.seed` is for entries
+ * **An import, because this is this pack's own source, and not a seed entry.** `content.sources` is for entries
  * that import rows into the database, and these are never written to one: the settings row holds only what
  * the user changed, and the store composes these defaults underneath it from this pack's registration. A
  * pack compiling its own content to disk only to read it back needs the build to have run before the app
@@ -22,7 +22,7 @@ import baseSettings from '../seeds/default-settings.ts';
  * feature declares its own settings, and whether its tab shows, in `features[].settings`.
  */
 export function getBaseSettings(): SettingsData {
-  assertNoPluginSlice(baseSettings, 'src/seeds/default-settings.ts');
+  assertNoPluginSlice(baseSettings, 'src/content/default-settings.ts');
   return baseSettings;
 }
 

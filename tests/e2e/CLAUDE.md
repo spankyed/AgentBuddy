@@ -352,7 +352,7 @@ data dir, the pack loader: things no harness test can reach.
 | `app-integration/db-cli.spec.ts` | `abuddy db` on the running app's data dir (`electronApp`'s `userData`): a query reads it with a stale-data warning, `exec` and `reset` are refused |
 | `app-integration/dev-reload.spec.ts` | `POST /dev/reload` of the pack the app ships refreshes the installed copy from what was rebuilt, re-seeds the changed seed data and resends startup data. The one spec in this suite that has caught a regression: a pack is loaded from the data dir, so without that refresh a rebuild reached the app only by accident, which no harness can see |
 | `app-integration/feature-addressing.spec.ts` | A name becoming an address: every path where a feature ref had to resolve and, when it didn't, the app ran on with the click or the setting silently lost |
-| `app-integration/import-pack-seeds.spec.ts` | Settings → Import Pack Seeds: compiles default-setup's notes and library entries into a seeds directory, previews it, imports a selection, re-imports in keep-existing mode |
+| `app-integration/import-pack-content.spec.ts` | Settings → Import Pack Content: compiles default-setup's notes and library entries into a compiled content directory, previews it, imports a selection, re-imports in keep-existing mode |
 | `app-integration/plugin-sends.spec.ts` | Backend sends to plugins through the bus: the code system's file watcher and terminal output, and the browser system's startup data after a pack reload, reach their plugins (recorded with `applicationState.system.inspect`) |
 | `app-integration/secrets.spec.ts` | Settings → Secrets: adds and selects API keys, and checks the key strings reach no log, stored file or renderer state |
 

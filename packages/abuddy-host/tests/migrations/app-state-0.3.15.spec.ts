@@ -61,7 +61,7 @@ const OLD_SETTINGS = {
 const MOVED = {
   hasOnboarded: true,
   // Only written for a pack whose apply failed, and the move doesn't produce one
-  packSeedDeps: {},
+  failedAgainst: {},
   // The shell's state, which 0.3.14's settings here don't hold
   pluginVisibility: {},
 };
@@ -119,7 +119,7 @@ describe('the 0.3.15 app migration', () => {
   // it would describe a pack that applied nothing, so the records are dropped and the first boot after this
   // applies each pack's content once.
   //
-  // `externalSeedDeps` is the one that still moves: what a failed apply faced is still `packSeedDeps`.
+  // `externalSeedDeps` is the one that still moves: what a failed apply faced is still `failedAgainst`.
   describe('the seed records a row kept per kind of pack', () => {
     const APP_STATE_ID = 'AppState-app' as EARS.EntityId;
     const OLD = {
@@ -139,7 +139,7 @@ describe('the 0.3.15 app migration', () => {
 
       move();
 
-      expect(appState.get()).toMatchObject({ packSeedDeps: { 'memo-pack': 'd1' } });
+      expect(appState.get()).toMatchObject({ failedAgainst: { 'memo-pack': 'd1' } });
     });
 
     // Dropped rather than moved, and the row is what says so: a record carried onto a new name is one a
@@ -178,11 +178,11 @@ describe('the 0.3.15 app migration', () => {
     // `appState.update` sets the whole field, so this is what the row holds when the move runs
     it('keeps what the new field already holds', () => {
       writeOld();
-      appState.update({ packSeedDeps: { 'memo-pack': 'newer' } });
+      appState.update({ failedAgainst: { 'memo-pack': 'newer' } });
 
       move();
 
-      expect(appState.get().packSeedDeps).toEqual({ 'memo-pack': 'newer' });
+      expect(appState.get().failedAgainst).toEqual({ 'memo-pack': 'newer' });
     });
   });
 

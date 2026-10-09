@@ -2,7 +2,7 @@
 
 A pack has two kinds of tests:
 
-- **Unit tests** (`npm test`, vitest) run your pack's code without the app, through `@abuddy/testing/harness`: seeds and repositories, systems, services and flows, with your dependencies' behaviour.
+- **Unit tests** (`npm test`, vitest) run your pack's code without the app, through `@abuddy/testing/harness`: content and repositories, systems, services and flows, with your dependencies' behaviour.
 - **E2E tests** (`abuddy test`, Playwright) run your pack in AgentBuddy, UI included. See the `@abuddy/testing` fixture (`abuddy init-tests`).
 
 This page covers unit tests.
@@ -47,17 +47,17 @@ What you may pass it:
 
 ```typescript
 // tests/setup.ts
-import { seedRuntime } from '#generated/seed-runtime.ts';
+import { contentRuntime } from '#generated/content-runtime.ts';
 import { registration } from '#generated/pack-entry.ts';
 import { setupPackTests } from '@abuddy/testing/harness';
 
-await setupPackTests({ seedRuntime, registration });
+await setupPackTests({ contentRuntime, registration });
 ```
 
-- **What's registered:** your entity types, repositories, seed hooks and seeders, and, with `registration`, your systems, services, steps and feature settings. Each dependency's full backend runtime (its systems, services and steps, on your pack's `@abuddy/sdk`) is registered too.
-- **Without `registration`**, only data code runs: each dependency contributes its seed runtime (entity types, repositories, seed hooks). Pass your seeders (`import { seeders } from '#generated/seeders.ts'`, `setupPackTests({ seedRuntime, seeders })`) for `importSeeds`; a registration carries its own. These tests start faster and never load a dependency's runtime.
-- **The registered packs are the test file's own:** the harness registers your pack and its dependencies in a registry it creates for the file, which the SDK's lookups (`getDesignated`, `stepRegistry`, `getPackCommands`, `services`, …) read. To test how your pack reacts to another pack (its commands, feature settings or seeders), register one with `registerPack({ id, features: { … }, … })` from `@abuddy/testing/harness`, and `unregisterPack(id)` when done.
-- **A lookup filled directly:** for what no pack registers (a step type or designation only one test needs), fill `testPacks` from `@abuddy/sdk/testing` (`steps`, `designations`, `artifacts`, `blocks`, `services`, `seedHooks`, `seeders`, `commands`); its entries are found before the registered packs'. Empty it with `testPacks.clear()`.
+- **What's registered:** your entity types, repositories, content writers and appliers, and, with `registration`, your systems, services, steps and feature settings. Each dependency's full backend runtime (its systems, services and steps, on your pack's `@abuddy/sdk`) is registered too.
+- **Without `registration`**, only data code runs: each dependency contributes its seed runtime (entity types, repositories, content writers). Pass your appliers (`import { appliers } from '#generated/appliers.ts'`, `setupPackTests({ contentRuntime, appliers })`) for `importContent`; a registration carries its own. These tests start faster and never load a dependency's runtime.
+- **The registered packs are the test file's own:** the harness registers your pack and its dependencies in a registry it creates for the file, which the SDK's lookups (`getDesignated`, `stepRegistry`, `getPackCommands`, `services`, …) read. To test how your pack reacts to another pack (its commands, feature settings or appliers), register one with `registerPack({ id, features: { … }, … })` from `@abuddy/testing/harness`, and `unregisterPack(id)` when done.
+- **A lookup filled directly:** for what no pack registers (a step type or designation only one test needs), fill `testPacks` from `@abuddy/sdk/testing` (`steps`, `designations`, `artifacts`, `blocks`, `services`, `content.writers`, `appliers`, `commands`); its entries are found before the registered packs'. Empty it with `testPacks.clear()`.
 - **Run `abuddy build` once first**, so dependencies are fetched into `.abuddy/deps/`.
 - **The pack is found** at or above the vitest project's root (`--root`, `test.root`, a workspace project's directory), which `isolatedDataDir()`'s `globalSetup` passes to the harness; pass `packDir` to `setupPackTests` to name it yourself.
 - **Each test starts from an empty database** (a fresh EARS engine, with your repositories registered; no secrets or media). Apps a test starts stop after it; service mocks last one test. `resetTestData()` does the same mid-test: a fresh engine, the secrets emptied and the media store cleared; registrations stay. `testMediaPath(entityId?)` names the media store (or one row's folder in it) for a test that asserts on seeded media.
@@ -66,26 +66,26 @@ await setupPackTests({ seedRuntime, registration });
 - **A system error the test didn't expect fails it.** Take expected ones with `takeSystemErrors()` from `@abuddy/testing/harness`: it returns the `SYSTEM_ERROR` events systems reported with `reportError` (without `step`) since the last call (`message`, `source`, `stack`, …), and clears them. Logs from `createLogger` print to the console and reach `onLog` subscribers, as in the app.
 - **A pack scaffolded before the harness** (no `tests/setup.ts`) gets it from `abuddy add feature`, with the system test it scaffolds. A vitest config the pack has (`vitest.config.*` or `vite.config.*`) is kept: add the harness setup to it as the command prints. `@abuddy/testing` is added at your `@abuddy/sdk` range (they're released together); when your `@abuddy/testing` has no harness or your vitest is older than 3, the command prints the `npm install` that upgrades them.
 
-## Seeds
+## Content
 
 ```typescript
-import { importSeeds } from '@abuddy/testing/harness';
+import { importContent } from '@abuddy/testing/harness';
 import { findAll } from '#generated/ears.ts';
 
-it('seeds notes', async () => {
-  expect(await importSeeds({ keys: ['team-notes'] })).toEqual({ 'team-notes': { created: 1, updated: 0, skipped: 0 } });
+it('content notes', async () => {
+  expect(await importContent({ keys: ['team-notes'] })).toEqual({ 'team-notes': { created: 1, updated: 0, skipped: 0 } });
   expect(findAll('Note')[0].shortCode).toMatch(/^NOTE-/);
 });
 ```
 
-`importSeeds({ keys?, mode? })` compiles your seed entries (your formats and your dependencies') and seeds them. Without `keys` it seeds every entry naming a format and no `seeder`. Name `actions`, `prompts` and `flows` to seed those, before running flows.
+`importContent({ keys?, mode? })` compiles your content sources (your formats and your dependencies') and writes them. Without `keys` it content every entry naming a format and no `applier`. Name `actions`, `prompts` and `flows` to write those, before running flows.
 
 ## Systems
 
 `startApp` runs registered systems under the same bus the app uses, and plays the client:
 
 ```typescript
-import { importSeeds, startApp } from '@abuddy/testing/harness';
+import { importContent, startApp } from '@abuddy/testing/harness';
 import { repository } from '#generated/repository.ts';
 
 it('stores a memo a client adds and sends it back', async () => {
@@ -201,11 +201,11 @@ mockInference('unused', { embedding: (value) => [value.length, 0], image: pngByt
 Flows run in unit tests as they do in the app. The brain runs the root flow, the one flow marked `root: true`, when the app starts, and every other flow runs as a subflow something spawned: default-setup's `Root Flow` spawns its long-running work modes, each kept alive by `entry([keepAlive()])`. An event reaches every running flow. Your pack or a dependency (default-setup) must provide the brain and settings systems:
 
 ```typescript
-import { importFlows, mockInference, importSeeds, startApp } from '@abuddy/testing/harness';
+import { importFlows, mockInference, importContent, startApp } from '@abuddy/testing/harness';
 import { entry, keepAlive, subflow } from '#generated/flow-helpers.ts';
 
 it('summarizes a note', async () => {
-  await importSeeds({ keys: ['prompts', 'flows'] });
+  await importContent({ keys: ['prompts', 'flows'] });
   // The app's root flow is default-setup's: host your flow the way it hosts long-running flows
   importFlows({ 'Root Flow': { root: true, tracks: [entry([subflow('Notes Summary')], [keepAlive()])] } });
   mockInference('Buy milk');
@@ -218,7 +218,7 @@ it('summarizes a note', async () => {
 });
 ```
 
-- **`importFlows(dsl)`** compiles flow DSL and imports it as the flow seeder does. Import before `startApp`: the brain starts the root flow when the app starts.
+- **`importFlows(dsl)`** compiles flow DSL and imports it as the flow applier does. Import before `startApp`: the brain starts the root flow when the app starts.
 - **`runFlow(label, { event?, data?, timeoutMs? })`** (default timeout 10 000 ms, covering its sends and settling) sends `event` with `data` as its payload, as a client sends an event to the brain, and waits for the flow labelled `label`, which must be running (the root flow or a subflow).
   - It resolves once every track of that flow the event triggered has finished: steps completed or failed, apart from steps that wait by design (keep-alive).
   - Without `event`, it resolves with the entry tracks the flow ran when it started.
@@ -234,7 +234,7 @@ it('summarizes a note', async () => {
 
 `@abuddy/testing/harness`:
 
-- **Setup and data:** `setupPackTests` (`PackTestOptions`), `importSeeds` (`ImportOptions`), `importFlows`, `resetTestData`, `testMediaPath`, `SeedRuntime`, and `registerPack`/`unregisterPack` (another pack in the test file's registry).
+- **Setup and data:** `setupPackTests` (`PackTestOptions`), `importContent` (`ImportContentOptions`), `importFlows`, `resetTestData`, `testMediaPath`, `ContentRuntime`, and `registerPack`/`unregisterPack` (another pack in the test file's registry).
 - **Frontend:** `startShell` (`StartShellOptions`, `TestShell`, `TestPlugin`).
 - **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowStepTrace`, `RunFlowOptions` and `PluginEvent` (what `emitted` and `nextEmit` return: the event exactly as sent) and `Message` (`{ to, event }`, what the test bus carries).
 - **Mocks and host state:** `mockService`, `mockInference`, `addTestSecret`, `takeSystemErrors`.
@@ -252,4 +252,4 @@ it('summarizes a note', async () => {
   afterAll(stopFeTestRuntime);
   ```
 
-- **`registeredSeedKeys(packId)`** (`@abuddy/sdk/utils`) — the seed keys a registered pack has seeders for, which are the only keys an import of its seeds can seed. Assert against it when a test needs to know that a seeder is registered under the key its seed entry names, rather than inferring it from a `importSeeds` count.
+- **`registeredContentKeys(packId)`** (`@abuddy/sdk/utils`) — the content keys a registered pack has appliers for, which are the only keys an import of its content can write. Assert against it when a test needs to know that an applier is registered under the key its content source names, rather than inferring it from a `importContent` count.

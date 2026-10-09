@@ -14,6 +14,8 @@ export interface ActionInput {
     // (undocumented)
     category?: string;
     // (undocumented)
+    contentHash?: string;
+    // (undocumented)
     description?: string;
     // (undocumented)
     input?: Record<string, ActionParameter>;
@@ -21,8 +23,6 @@ export interface ActionInput {
     label: string;
     // (undocumented)
     output?: unknown;
-    // (undocumented)
-    sourceHash?: string;
 }
 
 // @public
@@ -95,14 +95,14 @@ export interface PromptInput {
     // (undocumented)
     category?: string;
     // (undocumented)
+    contentHash?: string;
+    // (undocumented)
     description?: string;
     // (undocumented)
     inputs?: Record<string, TemplateInput>;
     // (undocumented)
     label: string;
     outputSchema?: unknown;
-    // (undocumented)
-    sourceHash?: string;
     // (undocumented)
     templateFn: string;
 }

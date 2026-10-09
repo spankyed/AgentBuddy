@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, installEngine, installedEngine, repository } from '@abuddy/ears';
 import { getPackCommands, getPackSettingsDefaults, type PackFeatureSystem, type PackRegistration } from '@abuddy/sdk/framework';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
-import { _seedHookRegistry } from '@abuddy/sdk/seed';
+import { _contentWriterRegistry } from '@abuddy/sdk/content';
 import { SDK_ENTITIES } from '@abuddy/sdk/types';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
@@ -214,21 +214,21 @@ describe('registerPack feature settings', () => {
   const memos = { settings: { visible: false, plugins: { memos: { sort: 'newest' } } } };
 
   it("rejects a pack whose feature settings change another plugin's, registering none of it", () => {
-    const hooks = { ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: {} } };
+    const hooks = { ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: {} } };
     const invalid = { ...memos, settings: { plugins: { threads: { hidden: true } } } };
     expect(() => registerPack({ id: 'bad-pack', ...hooks, features: { memos: invalid } } as unknown as PackRegistration))
       .toThrow('Feature "memos" settings set "plugins.threads"');
     expect(getPackExtensions('bad-pack')).toBeNull();
-    expect(_seedHookRegistry.get('Memo')).toBeUndefined();
+    expect(_contentWriterRegistry.get('Memo')).toBeUndefined();
     expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
   });
 });
 
-describe('registerPack seed hooks', () => {
+describe('registerPack content writers', () => {
   const memoHooks = { find: () => undefined };
 
   it('rejects hooks for an entity another pack owns, rolling back what the pack registered', () => {
-    registerPack({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: memoHooks } } as unknown as PackRegistration);
+    registerPack({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: memoHooks } } as unknown as PackRegistration);
     registered.push('memo-pack');
 
     const other = {
@@ -236,27 +236,27 @@ describe('registerPack seed hooks', () => {
       ears: { entities: { Card: 'Card' }, relKinds: {} },
       artifacts: [{ type: 'card-view' }],
       commands: [{ name: 'card', placeholder: 'Title' }],
-      seedHooks: { Card: {}, Memo: {} },
+      contentWriters: { Card: {}, Memo: {} },
     };
     expect(() => registerPack(other as unknown as PackRegistration))
-      .toThrow('Seed hooks for "Memo" are already registered by pack "memo-pack"');
+      .toThrow('Content writers for "Memo" are already registered by pack "memo-pack"');
 
     expect(getPackExtensions('other-pack')).toBeNull();
-    expect(_seedHookRegistry.get('Memo')).toBe(memoHooks);
-    expect(_seedHookRegistry.get('Card')).toBeUndefined();
+    expect(_contentWriterRegistry.get('Memo')).toBe(memoHooks);
+    expect(_contentWriterRegistry.get('Card')).toBeUndefined();
     expect(artifactRegistry.has('card-view')).toBe(false);
     expect(getPackCommands()).toEqual([]);
   });
 
   it("drops a pack's hooks when it unregisters, freeing the entity for another pack", () => {
-    registerPack({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: memoHooks } } as unknown as PackRegistration);
+    registerPack({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, contentWriters: { Memo: memoHooks } } as unknown as PackRegistration);
     unregisterPack('memo-pack');
-    expect(_seedHookRegistry.get('Memo')).toBeUndefined();
+    expect(_contentWriterRegistry.get('Memo')).toBeUndefined();
 
     const theirs = {};
-    registerPack({ id: 'other-pack', seedHooks: { Memo: theirs } } as unknown as PackRegistration);
+    registerPack({ id: 'other-pack', contentWriters: { Memo: theirs } } as unknown as PackRegistration);
     registered.push('other-pack');
-    expect(_seedHookRegistry.get('Memo')).toBe(theirs);
+    expect(_contentWriterRegistry.get('Memo')).toBe(theirs);
   });
 });
 
@@ -302,7 +302,7 @@ describe('packSeedTargets', () => {
 
   /**
    * A seed target is where a pack's seeds are and what it depends on, and nothing else: what a seed leaves
-   * alone the seeder decides from the rows, so nothing about a pack's seeding travels on its registration.
+   * alone the applier decides from the rows, so nothing about a pack's seeding travels on its registration.
    */
   it("carries each pack's own id and directory, whoever ships it", () => {
     registerPack({ id: 'shipped-pack' } as PackRegistration, origin('shipped-pack', true));

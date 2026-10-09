@@ -137,7 +137,7 @@ describe('abuddy validate', () => {
     expect(output).toContain('its snapshot is format (none), written by an older abuddy CLI');
   });
 
-  describe('seed entries (the checks code generation makes)', () => {
+  describe('content sources (the checks code generation makes)', () => {
     const DEFAULT_SETUP = path.resolve(import.meta.dirname, '../../../default-setup');
     function editManifest(edit: (manifest: any) => void) {
       const manifest = readManifest();
@@ -147,42 +147,42 @@ describe('abuddy validate', () => {
 
     it('reports a format entity no pack declares', async () => {
       editManifest((manifest) => {
-        manifest.seedFormats = { ...manifest.seedFormats, memos: { format: 'markdown-tree', entity: 'Memo', identity: ['title'] } };
+        manifest.content!.formats = { ...manifest.content!.formats, memos: { format: 'markdown-tree', entity: 'Memo', identity: ['title'] } };
       });
 
       const { exitCode, output } = await runValidate();
 
       expect(exitCode).toBe(1);
-      expect(output).toContain(`Seed format "memos": entity "Memo" isn't declared by this pack, its dependencies or the SDK`);
+      expect(output).toContain(`Content format "memos": entity "Memo" isn't declared by this pack, its dependencies or the SDK`);
     });
 
     it("reports a format a dependency doesn't have", async () => {
       editManifest((manifest) => {
         manifest.dependencies = { 'default-setup': `file:${DEFAULT_SETUP}` };
-        manifest.boot = { ...manifest.boot, seed: { ...manifest.boot?.seed, memos: { path: 'src/seeds/memos', format: 'default-setup:nope' } } };
+        manifest.content = { ...manifest.content, sources: { ...manifest.content?.sources, memos: { path: 'src/content/memos', format: 'default-setup:nope' } } };
       });
 
       const { exitCode, output } = await runValidate();
 
       expect(exitCode).toBe(1);
-      expect(output).toContain('Seed "memos": dependency "default-setup" has no format "nope"');
+      expect(output).toContain('Content "memos": dependency "default-setup" has no format "nope"');
     });
 
-    it('reports a seed hooks module without the named export', async () => {
-      fs.mkdirSync(path.join(pack, 'src', 'seeds'), { recursive: true });
-      fs.writeFileSync(path.join(pack, 'src', 'seeds', 'hooks.ts'), 'export const otherHooks = {};\n');
+    it('reports a content writer module without the named export', async () => {
+      fs.mkdirSync(path.join(pack, 'src', 'content'), { recursive: true });
+      fs.writeFileSync(path.join(pack, 'src', 'content', 'writers.ts'), 'export const otherWriter = {};\n');
       editManifest((manifest) => {
         manifest.entities = { ...manifest.entities, Memo: 'Memo' };
-        manifest.seedHooks = { Memo: 'src/seeds/hooks.ts#memoHooks' };
+        manifest.content = { ...manifest.content, writers: { Memo: 'src/content/writers.ts#memoWriter' } };
       });
 
       const { exitCode, output } = await runValidate();
 
       expect(exitCode).toBe(1);
-      expect(output).toContain(`Seed hooks for "Memo": src/seeds/hooks.ts doesn't export "memoHooks"`);
+      expect(output).toContain(`A content writer for "Memo": src/content/writers.ts doesn't export "memoWriter"`);
     });
 
-    it('passes a pack whose seed entries check out', async () => {
+    it('passes a pack whose content sources check out', async () => {
       expect((await runValidate()).exitCode).toBeUndefined();
     });
   });

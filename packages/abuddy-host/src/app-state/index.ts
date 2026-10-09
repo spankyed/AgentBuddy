@@ -43,7 +43,7 @@ export interface AppState {
    * revision (`AppliedContent.revision`) says whether its data changed, and this says whether anything it
    * depends on has applied since — the other thing that could change the outcome.
    */
-  packSeedDeps: Record<string, string>;
+  failedAgainst: Record<string, string>;
   /**
    * The plugins whose sidebar tab the user showed or hid, by ref. A plugin not here shows as its feature declares
    * (`features[].settings`' `visible`), so a pack's default reaches everyone who never touched its tab.
@@ -54,7 +54,7 @@ export interface AppState {
 }
 
 const FIELDS = [
-  'hasOnboarded', 'version', 'packVersions', 'packSeedDeps',
+  'hasOnboarded', 'version', 'packVersions', 'failedAgainst',
   'pluginVisibility', 'lastActivePlugin',
 ] as const satisfies readonly (keyof AppState)[];
 
@@ -89,7 +89,7 @@ export const appState = {
       hasOnboarded: row.hasOnboarded ?? false,
       ...(row.version !== undefined && { version: row.version }),
       packVersions: row.packVersions ?? {},
-      packSeedDeps: row.packSeedDeps ?? {},
+      failedAgainst: row.failedAgainst ?? {},
       pluginVisibility: row.pluginVisibility ?? {},
       ...(row.lastActivePlugin != null && { lastActivePlugin: row.lastActivePlugin }),
     };

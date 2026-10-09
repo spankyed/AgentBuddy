@@ -6,8 +6,8 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
 import { registerPack, startApp, unregisterPack, type TestApp } from '@abuddy/testing/harness'
-import { importCompiledSeeds } from '@abuddy/sdk/utils'
-import { createSeeder } from '@abuddy/sdk/seed'
+import { importCompiledContent } from '@abuddy/sdk/utils'
+import { createFormatApplier } from '@abuddy/sdk/content'
 import type { PackCommand } from '@abuddy/sdk/framework'
 import { repository } from '#generated/repository.ts'
 import { services } from '#generated/services.ts'
@@ -24,15 +24,15 @@ const field = (key: string, value: string) => [{ type: 'field' as const, fields:
 const documentNamed = (name: string) => repository.libraryQueries.getDocuments().find((document) => document.name === name)!
 
 /**
- * The dependent pack, registered as the app registers an installed pack: its seeders for default-setup's formats,
+ * The dependent pack, registered as the app registers an installed pack: its appliers for default-setup's formats,
  * as its registration carries them, and the commands it declares
  */
 function registerTeamNotes(commands: PackCommand[] = []): void {
   registerPack({
     id: 'team-notes',
-    seeders: [
-      createSeeder({ key: 'library', entities: ['Collection', 'Document'], identity: ['name'], media: true }),
-      createSeeder({ key: 'notes', entities: ['Note'], identity: ['title', 'parent'], relKind: 'contains' }),
+    appliers: [
+      createFormatApplier({ key: 'library', entities: ['Collection', 'Document'], identity: ['name'], media: true }),
+      createFormatApplier({ key: 'notes', entities: ['Note'], identity: ['title', 'parent'], relKind: 'contains' }),
     ],
     commands,
   })
@@ -62,16 +62,16 @@ function dependentPack(records: unknown[]): string {
 }
 
 const document = (name: string, command: string) =>
-  ({ entity: 'Document', name, content: field(command, 'Team argument'), tags: [], sourceHash: `team-${command}` })
+  ({ entity: 'Document', name, content: field(command, 'Team argument'), tags: [], contentHash: `team-${command}` })
 
-const folder = (name: string, children: unknown[]) => ({ entity: 'Collection', name, sourceHash: `team-${name}`, children })
+const folder = (name: string, children: unknown[]) => ({ entity: 'Collection', name, contentHash: `team-${name}`, children })
 
 /** Its own command document, under the internal/commands folders default-setup seeds */
 const dependentPackCommands = (documentName: string, command: string) =>
   dependentPack([folder('internal', [folder('commands', [document(documentName, command)])])])
 
 async function seededApp(): Promise<TestApp> {
-  importCompiledSeeds({ compiledDir: DIST, include: { library: new Set(['internal']) } })
+  importCompiledContent({ compiledDir: DIST, include: { library: new Set(['internal']) } })
   // threads checks onboarding with the brain when a client connects
   const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
   await app.connect()
@@ -126,32 +126,32 @@ describe('slash commands from the library commands folder', () => {
   })
 
   it("reports only a failure for seeds that don't name their pack, even when no section is selected", async () => {
-    // With every section deselected no seeder runs, so nothing else reads the missing pack id
+    // With every section deselected no applier runs, so nothing else reads the missing pack id
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'unnamed-seeds-'))
     dependentDirs.push(dir)
     fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, seeds: [] }))
-    const nothing = Object.fromEntries(Object.keys(manifest.boot.seed).map((key) => [key, []]))
+    const nothing = Object.fromEntries(Object.keys(manifest.content.sources).map((key) => [key, []]))
     const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
     await app.connect()
 
-    await app.send('host/packs', { type: 'IMPORT_PACK_SEEDS', directory: dir, include: nothing, mode: 'replace-on-collision', restartBrain: false })
-    const failed = await app.nextEmit('host/settings', 'PACK_SEEDS_IMPORT_FAILED') as unknown as { error: string }
+    await app.send('host/packs', { type: 'IMPORT_PACK_CONTENT', directory: dir, include: nothing, mode: 'replace-on-collision', restartBrain: false })
+    const failed = await app.nextEmit('host/settings', 'PACK_CONTENT_IMPORT_FAILED') as unknown as { error: string }
 
     expect(failed.error).toContain("doesn't name the pack that compiled these seeds")
-    expect(app.emitted('host/settings').map((event) => event.type)).not.toContain('PACK_SEEDS_IMPORTED')
+    expect(app.emitted('host/settings').map((event) => event.type)).not.toContain('PACK_CONTENT_IMPORTED')
   })
 
   it("reports the records a seed import couldn't seed, with the counts of the rest", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'failing-seeds-'))
     dependentDirs.push(dir)
     fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId: manifest.id, seeds: [] }))
-    const note = (title: string) => ({ entity: 'Note', title, noteType: 'document', content: 'x', sourceHash: `hash-${title}` })
+    const note = (title: string) => ({ entity: 'Note', title, noteType: 'document', content: 'x', contentHash: `hash-${title}` })
     fs.writeFileSync(path.join(dir, 'notes.seed.json'), JSON.stringify({ records: [note(''), note('kept')] }))
     const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
     await app.connect()
 
-    await app.send('host/packs', { type: 'IMPORT_PACK_SEEDS', directory: dir, include: { notes: null }, mode: 'replace-on-collision', restartBrain: false })
-    const imported = await app.nextEmit('host/settings', 'PACK_SEEDS_IMPORTED') as unknown as { result: Record<string, { created: number }>; errors: string[] }
+    await app.send('host/packs', { type: 'IMPORT_PACK_CONTENT', directory: dir, include: { notes: null }, mode: 'replace-on-collision', restartBrain: false })
+    const imported = await app.nextEmit('host/settings', 'PACK_CONTENT_IMPORTED') as unknown as { result: Record<string, { created: number }>; errors: string[] }
 
     expect(imported.result.notes.created).toBe(1)
     expect(imported.errors).toHaveLength(1)
@@ -161,7 +161,7 @@ describe('slash commands from the library commands folder', () => {
   it('sends the chat the commands a pack seed import brings', async () => {
     const app = await startApp({ systems: ['library', 'threads', 'brain', 'host/settings', 'host/packs'] })
     await app.connect()
-    await app.send('host/packs', { type: 'IMPORT_PACK_SEEDS', directory: DIST, include: { library: ['internal'] }, mode: 'replace-on-collision', restartBrain: false })
+    await app.send('host/packs', { type: 'IMPORT_PACK_CONTENT', directory: DIST, include: { library: ['internal'] }, mode: 'replace-on-collision', restartBrain: false })
     expect(commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))).toContain('cdx-goal')
   })
 
@@ -185,7 +185,7 @@ describe('slash commands from the library commands folder', () => {
     await seededApp()
     const before = repository.libraryQueries.getCollections()
 
-    importCompiledSeeds({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
+    importCompiledContent({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
 
     const collections = repository.libraryQueries.getCollections()
     expect(collections.filter((collection) => collection.name === 'internal')).toHaveLength(1)
@@ -213,7 +213,7 @@ describe('slash commands from the library commands folder', () => {
   // The bus asks every system to publish when a pack is installed, updated or rebuilt while the app runs
   it('sends the chat the commands a pack seeded while the app runs brings', async () => {
     const app = await seededApp()
-    importCompiledSeeds({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
+    importCompiledContent({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
 
     await app.send('threads', { type: 'SEND_STATE' })
 
@@ -231,7 +231,7 @@ describe('slash commands from the library commands folder', () => {
 
   it("sends the library plugin its index again when asked to publish, with what the pack seeded", async () => {
     const app = await seededApp()
-    importCompiledSeeds({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
+    importCompiledContent({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
 
     const sentBefore = app.emitted('library').filter((event) => event.type === 'LIBRARY_CONNECTED').length
 
@@ -248,7 +248,7 @@ describe('slash commands from the library commands folder', () => {
     await seededApp()
 
     // The dependent pack's own root-level commands folder, not default-setup's internal/commands
-    importCompiledSeeds({ compiledDir: dependentPack([folder('commands', [document('Team commands', 'team-standup')])]) })
+    importCompiledContent({ compiledDir: dependentPack([folder('commands', [document('Team commands', 'team-standup')])]) })
 
     const named = repository.libraryQueries.getCollections()
     expect(named.filter((collection) => collection.name === 'commands')).toHaveLength(1)
@@ -260,7 +260,7 @@ describe('slash commands from the library commands folder', () => {
     await seededApp()
     const mine = repository.libraryCommands.createDocument('Team commands', field('mine', 'Untouched'), [], undefined)
 
-    importCompiledSeeds({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
+    importCompiledContent({ compiledDir: dependentPackCommands('Team commands', 'team-standup') })
 
     expect(commandDocuments().map((document) => document.name)).toContain('Team commands')
     expect(services.library.commands().map((command) => command.name)).toContain('team-standup')

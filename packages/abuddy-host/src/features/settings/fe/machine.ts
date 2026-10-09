@@ -6,7 +6,7 @@ import type { SettingsDocument } from '../be/store.ts'
 import type { OutgoingSettingsEvents } from '../be/types.ts'
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services'
 import { sendToSystem } from '../../../events.ts'
-import type { PackSeedsPreview } from '@abuddy/sdk/build'
+import type { PackContentPreview } from '@abuddy/sdk/build'
 import type { HelpEntry } from '@abuddy/sdk/framework';
 import type { FeatureRef } from '@abuddy/sdk/ids';
 
@@ -21,10 +21,10 @@ export const id = 'settings' as const;
 
 export type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace';
 
-export interface PackSeedsImport {
+export interface PackContentImport {
   status: 'idle' | 'previewing' | 'selecting' | 'importing' | 'success' | 'error';
   directory: string | null;
-  preview: PackSeedsPreview | null;
+  preview: PackContentPreview | null;
   /** Per seed key (as the preview lists them): the item keys currently ticked. */
   selection: Record<string, string[]>;
   /** Which seed key rows are currently expanded in the UI. */
@@ -38,7 +38,7 @@ export interface PackSeedsImport {
 }
 
 
-function freshPackSeeds(): PackSeedsImport {
+function freshPackSeeds(): PackContentImport {
   return {
     status: 'idle',
     directory: null,
@@ -66,7 +66,7 @@ export interface SettingsContext {
   secrets: SecretInfo[];
   secretsStatus: SecretsStatus | null;
   cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
-  packSeedsImport: PackSeedsImport;
+  packContentImport: PackContentImport;
   activeTab: 'general' | 'plugins' | 'help';
   generalNavItem: 'personal' | 'secrets' | 'projects' | 'application' | 'json';
   selectedPluginId: string | null;
@@ -95,22 +95,22 @@ type UIEvent =
   | { type: 'SETTINGS.RESET'; target?: { entityType: 'section' | 'plugin'; label: string } }
   | { type: 'SETTINGS.LOAD' }
   | { type: 'CLI.TEST'; provider: string }
-  | { type: 'PACK_SEEDS.PREVIEW'; directory: string }
-  | { type: 'PACK_SEEDS.TOGGLE_EXPAND'; key: string }
-  | { type: 'PACK_SEEDS.TOGGLE_TYPE_ALL'; key: string }
-  | { type: 'PACK_SEEDS.TOGGLE_ITEM'; key: string; item: string }
-  | { type: 'PACK_SEEDS.SET_MODE'; mode: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace' }
-  | { type: 'PACK_SEEDS.TOGGLE_RESTART_BRAIN' }
-  | { type: 'PACK_SEEDS.CONFIRM_IMPORT' }
-  | { type: 'PACK_SEEDS.CANCEL' }
-  | { type: 'PACK_SEEDS.RESET_STATUS' }
+  | { type: 'PACK_CONTENT.PREVIEW'; directory: string }
+  | { type: 'PACK_CONTENT.TOGGLE_EXPAND'; key: string }
+  | { type: 'PACK_CONTENT.TOGGLE_TYPE_ALL'; key: string }
+  | { type: 'PACK_CONTENT.TOGGLE_ITEM'; key: string; item: string }
+  | { type: 'PACK_CONTENT.SET_MODE'; mode: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace' }
+  | { type: 'PACK_CONTENT.TOGGLE_RESTART_BRAIN' }
+  | { type: 'PACK_CONTENT.CONFIRM_IMPORT' }
+  | { type: 'PACK_CONTENT.CANCEL' }
+  | { type: 'PACK_CONTENT.RESET_STATUS' }
   | { type: 'APP.RESET' }
 
 export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent
-  | { type: 'PACK_SEEDS_IMPORTED'; result: Record<string, { created: number; updated: number; skipped: number }>; errors: string[] }
-  | { type: 'PACK_SEEDS_IMPORT_FAILED'; error: string }
-  | { type: 'PACK_SEEDS_PREVIEW'; preview: PackSeedsPreview }
-  | { type: 'PACK_SEEDS_PREVIEW_FAILED'; error: string }
+  | { type: 'PACK_CONTENT_IMPORTED'; result: Record<string, { created: number; updated: number; skipped: number }>; errors: string[] }
+  | { type: 'PACK_CONTENT_IMPORT_FAILED'; error: string }
+  | { type: 'PACK_CONTENT_PREVIEW'; preview: PackContentPreview }
+  | { type: 'PACK_CONTENT_PREVIEW_FAILED'; error: string }
   | { type: 'APP_RESET_COMPLETE' }
   | { type: 'APP_RESET_FAILED'; error: string }
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
@@ -250,16 +250,16 @@ export function createSettingsMachine(io: SettingsIO) {
       };
     }),
 
-    previewPackSeeds: assign(({ context, event }) => {
-      const ev = event as { type: 'PACK_SEEDS.PREVIEW'; directory: string };
+    previewPackContent: assign(({ context, event }) => {
+      const ev = event as { type: 'PACK_CONTENT.PREVIEW'; directory: string };
       // The packs system owns seed orchestration; its answers come back to this plugin, which draws them
       sendToSystem('packs', {
-        type: 'PREVIEW_PACK_SEEDS',
+        type: 'PREVIEW_PACK_CONTENT',
         directory: ev.directory,
       });
       return {
-        packSeedsImport: {
-          ...context.packSeedsImport,
+        packContentImport: {
+          ...context.packContentImport,
           status: 'previewing' as const,
           directory: ev.directory,
           preview: null,
@@ -273,11 +273,11 @@ export function createSettingsMachine(io: SettingsIO) {
     }),
 
     setPackSeedsPreview: assign(({ context, event }) => {
-      const ev = event as { type: 'PACK_SEEDS_PREVIEW'; preview: PackSeedsPreview };
-      const selection = Object.fromEntries(Object.entries(ev.preview.seeds).map(([key, items]) => [key, items.map(i => i.key)]));
+      const ev = event as { type: 'PACK_CONTENT_PREVIEW'; preview: PackContentPreview };
+      const selection = Object.fromEntries(Object.entries(ev.preview.content).map(([key, items]) => [key, items.map(i => i.key)]));
       return {
-        packSeedsImport: {
-          ...context.packSeedsImport,
+        packContentImport: {
+          ...context.packContentImport,
           status: 'selecting' as const,
           preview: ev.preview,
           selection,
@@ -290,10 +290,10 @@ export function createSettingsMachine(io: SettingsIO) {
     }),
 
     setPackSeedsPreviewFailed: assign(({ context, event }) => {
-      const ev = event as { type: 'PACK_SEEDS_PREVIEW_FAILED'; error: string };
+      const ev = event as { type: 'PACK_CONTENT_PREVIEW_FAILED'; error: string };
       return {
-        packSeedsImport: {
-          ...context.packSeedsImport,
+        packContentImport: {
+          ...context.packContentImport,
           status: 'error' as const,
           preview: null,
           result: null,
@@ -304,30 +304,30 @@ export function createSettingsMachine(io: SettingsIO) {
     }),
 
     togglePackSeedsExpand: assign(({ context, event }) => {
-      const ev = event as { type: 'PACK_SEEDS.TOGGLE_EXPAND'; key: string };
+      const ev = event as { type: 'PACK_CONTENT.TOGGLE_EXPAND'; key: string };
       return {
-        packSeedsImport: {
-          ...context.packSeedsImport,
+        packContentImport: {
+          ...context.packContentImport,
           expanded: {
-            ...context.packSeedsImport.expanded,
-            [ev.key]: !context.packSeedsImport.expanded[ev.key],
+            ...context.packContentImport.expanded,
+            [ev.key]: !context.packContentImport.expanded[ev.key],
           },
         },
       };
     }),
 
     togglePackSeedsTypeAll: assign(({ context, event }) => {
-      const ev = event as { type: 'PACK_SEEDS.TOGGLE_TYPE_ALL'; key: string };
-      const preview = context.packSeedsImport.preview;
+      const ev = event as { type: 'PACK_CONTENT.TOGGLE_TYPE_ALL'; key: string };
+      const preview = context.packContentImport.preview;
       if (!preview) return {};
-      const currentlySelected = context.packSeedsImport.selection[ev.key] ?? [];
-      const allKeys = (preview.seeds[ev.key] ?? []).map(i => i.key);
+      const currentlySelected = context.packContentImport.selection[ev.key] ?? [];
+      const allKeys = (preview.content[ev.key] ?? []).map(i => i.key);
       const nextSelection = currentlySelected.length === allKeys.length ? [] : allKeys;
       return {
-        packSeedsImport: {
-          ...context.packSeedsImport,
+        packContentImport: {
+          ...context.packContentImport,
           selection: {
-            ...context.packSeedsImport.selection,
+            ...context.packContentImport.selection,
             [ev.key]: nextSelection,
           },
         },
@@ -335,16 +335,16 @@ export function createSettingsMachine(io: SettingsIO) {
     }),
 
     togglePackSeedsItem: assign(({ context, event }) => {
-      const ev = event as { type: 'PACK_SEEDS.TOGGLE_ITEM'; key: string; item: string };
-      const current = context.packSeedsImport.selection[ev.key] ?? [];
+      const ev = event as { type: 'PACK_CONTENT.TOGGLE_ITEM'; key: string; item: string };
+      const current = context.packContentImport.selection[ev.key] ?? [];
       const next = current.includes(ev.item)
         ? current.filter(k => k !== ev.item)
         : [...current, ev.item];
       return {
-        packSeedsImport: {
-          ...context.packSeedsImport,
+        packContentImport: {
+          ...context.packContentImport,
           selection: {
-            ...context.packSeedsImport.selection,
+            ...context.packContentImport.selection,
             [ev.key]: next,
           },
         },
@@ -352,29 +352,29 @@ export function createSettingsMachine(io: SettingsIO) {
     }),
 
     confirmPackSeedsImport: assign(({ context }) => {
-      const { directory, preview, selection, importMode, restartBrain } = context.packSeedsImport;
+      const { directory, preview, selection, importMode, restartBrain } = context.packContentImport;
       if (!directory || !preview) return {};
 
       // null = import all items of this key, [] = skip, string[] = filter.
       // An empty key should be skipped — not treated as "import everything".
       const toIncludeField = (key: string): string[] | null => {
         const selected = selection[key] ?? [];
-        const total = preview.seeds[key].length;
+        const total = preview.content[key].length;
         if (total === 0) return [];
         return selected.length === total ? null : selected;
       };
 
       sendToSystem('packs', {
-        type: 'IMPORT_PACK_SEEDS',
+        type: 'IMPORT_PACK_CONTENT',
         directory,
-        include: Object.fromEntries(Object.keys(preview.seeds).map((key) => [key, toIncludeField(key)])),
+        include: Object.fromEntries(Object.keys(preview.content).map((key) => [key, toIncludeField(key)])),
         mode: importMode,
         restartBrain,
       });
 
       return {
-        packSeedsImport: {
-          ...context.packSeedsImport,
+        packContentImport: {
+          ...context.packContentImport,
           status: 'importing' as const,
           result: null,
           errors: [],
@@ -384,14 +384,14 @@ export function createSettingsMachine(io: SettingsIO) {
     }),
 
     cancelPackSeeds: assign(() => ({
-      packSeedsImport: freshPackSeeds(),
+      packContentImport: freshPackSeeds(),
     })),
 
     setPackSeedsImported: assign(({ context, event }) => {
-      const ev = event as Extract<SettingsEvents, { type: 'PACK_SEEDS_IMPORTED' }>;
+      const ev = event as Extract<SettingsEvents, { type: 'PACK_CONTENT_IMPORTED' }>;
       return {
-        packSeedsImport: {
-          ...context.packSeedsImport,
+        packContentImport: {
+          ...context.packContentImport,
           status: 'success' as const,
           result: ev.result,
           errors: ev.errors,
@@ -401,10 +401,10 @@ export function createSettingsMachine(io: SettingsIO) {
     }),
 
     setPackSeedsImportFailed: assign(({ context, event }) => {
-      const ev = event as { type: 'PACK_SEEDS_IMPORT_FAILED'; error: string };
+      const ev = event as { type: 'PACK_CONTENT_IMPORT_FAILED'; error: string };
       return {
-        packSeedsImport: {
-          ...context.packSeedsImport,
+        packContentImport: {
+          ...context.packContentImport,
           status: 'error' as const,
           result: null,
           errors: [],
@@ -414,7 +414,7 @@ export function createSettingsMachine(io: SettingsIO) {
     }),
 
     resetPackSeedsStatus: assign(() => ({
-      packSeedsImport: freshPackSeeds(),
+      packContentImport: freshPackSeeds(),
     })),
   },
   }).createMachine({
@@ -427,7 +427,7 @@ export function createSettingsMachine(io: SettingsIO) {
     secrets: [],
     secretsStatus: null,
     cliTestResults: {},
-    packSeedsImport: freshPackSeeds(),
+    packContentImport: freshPackSeeds(),
     activeTab: 'general',
     generalNavItem: 'application',
     selectedPluginId: null as string | null,
@@ -493,53 +493,53 @@ export function createSettingsMachine(io: SettingsIO) {
         'CLI_TEST_RESULT': {
           actions: 'setCliTestResult',
         },
-        'PACK_SEEDS.PREVIEW': {
-          actions: 'previewPackSeeds',
+        'PACK_CONTENT.PREVIEW': {
+          actions: 'previewPackContent',
         },
-        'PACK_SEEDS.TOGGLE_EXPAND': {
+        'PACK_CONTENT.TOGGLE_EXPAND': {
           actions: 'togglePackSeedsExpand',
         },
-        'PACK_SEEDS.TOGGLE_TYPE_ALL': {
+        'PACK_CONTENT.TOGGLE_TYPE_ALL': {
           actions: 'togglePackSeedsTypeAll',
         },
-        'PACK_SEEDS.TOGGLE_ITEM': {
+        'PACK_CONTENT.TOGGLE_ITEM': {
           actions: 'togglePackSeedsItem',
         },
-        'PACK_SEEDS.SET_MODE': {
+        'PACK_CONTENT.SET_MODE': {
           actions: assign(({ context, event }) => ({
-            packSeedsImport: {
-              ...context.packSeedsImport,
+            packContentImport: {
+              ...context.packContentImport,
               importMode: (event as any).mode,
             },
           })),
         },
-        'PACK_SEEDS.TOGGLE_RESTART_BRAIN': {
+        'PACK_CONTENT.TOGGLE_RESTART_BRAIN': {
           actions: assign(({ context }) => ({
-            packSeedsImport: {
-              ...context.packSeedsImport,
-              restartBrain: !context.packSeedsImport.restartBrain,
+            packContentImport: {
+              ...context.packContentImport,
+              restartBrain: !context.packContentImport.restartBrain,
             },
           })),
         },
-        'PACK_SEEDS.CONFIRM_IMPORT': {
+        'PACK_CONTENT.CONFIRM_IMPORT': {
           actions: 'confirmPackSeedsImport',
         },
-        'PACK_SEEDS.CANCEL': {
+        'PACK_CONTENT.CANCEL': {
           actions: 'cancelPackSeeds',
         },
-        'PACK_SEEDS.RESET_STATUS': {
+        'PACK_CONTENT.RESET_STATUS': {
           actions: 'resetPackSeedsStatus',
         },
-        PACK_SEEDS_PREVIEW: {
+        PACK_CONTENT_PREVIEW: {
           actions: 'setPackSeedsPreview',
         },
-        PACK_SEEDS_PREVIEW_FAILED: {
+        PACK_CONTENT_PREVIEW_FAILED: {
           actions: 'setPackSeedsPreviewFailed',
         },
-        PACK_SEEDS_IMPORTED: {
+        PACK_CONTENT_IMPORTED: {
           actions: 'setPackSeedsImported',
         },
-        PACK_SEEDS_IMPORT_FAILED: {
+        PACK_CONTENT_IMPORT_FAILED: {
           actions: 'setPackSeedsImportFailed',
         },
         'APP.RESET': {

@@ -38,7 +38,7 @@ const problems = (dir: string, key: PackRuleKey): string[] => packRuleProblems(d
 describe('internal-package-imports', () => {
   it.each([
     ['src/system.ts', "import { _getMediaPath } from '@abuddy/sdk/utils';\n", 'src/system.ts:1: _getMediaPath from @abuddy/sdk/utils'],
-    ['src/probe.ts', "const { _seedHookRegistry } = await import('@abuddy/sdk/seed');\n", 'src/probe.ts:1: _seedHookRegistry from @abuddy/sdk/seed'],
+    ['src/probe.ts', "const { _contentWriterRegistry } = await import('@abuddy/sdk/content');\n", 'src/probe.ts:1: _contentWriterRegistry from @abuddy/sdk/content'],
     ['src/panel.vue', "<template><div /></template>\n<script setup lang=\"ts\">\nimport { _rootEvents as bus } from '@abuddy/sdk/runtime';\n</script>\n", 'src/panel.vue:3: _rootEvents from @abuddy/sdk/runtime'],
   ])('refuses %s', (file, content, problem) => {
     expect(problems(pack({ [file]: content }), 'internal-package-imports')).toEqual([problem]);
@@ -47,7 +47,7 @@ describe('internal-package-imports', () => {
   it('accepts public API, a pack-local underscore and the generated facades', () => {
     const dir = pack({
       'src/system.ts': [
-        "import { importCompiledSeeds, ensureDirectoryExists } from '@abuddy/sdk/utils';",
+        "import { importCompiledContent, ensureDirectoryExists } from '@abuddy/sdk/utils';",
         "import { formatProviderError as _formatProviderError } from '@abuddy/sdk/actions';",
         "import { _fmt } from './_helpers/format.ts';",
         '',

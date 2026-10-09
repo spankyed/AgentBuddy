@@ -183,7 +183,7 @@ npm run spec -- <target> # You don't say what the target is; it works that out:
                          #   a spec path    -> that spec        a directory -> every spec under it
                          #   part of a name -> every spec whose path contains it — how you run one while
                          #                     working: `npm run spec -- chain-schedule` is 1.7s
-                         #   a pack's src/seeds/** or one of its build inputs (abuddy.json, package.json,
+                         #   a pack's src/content/** or one of its build inputs (abuddy.json, package.json,
                          #                     tsconfig.json) -> the walk, plus the specs that read what
                          #                     building it produces. Named by default, run by spec:full
                          # A source file runs one vitest over every host project, because that is the

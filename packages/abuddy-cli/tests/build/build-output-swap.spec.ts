@@ -42,7 +42,7 @@ describe('a build that fails', () => {
     packFixture({ at: root, manifest: {
       id: 'built-in-pack', name: 'Built-in', builtIn: true,
       features: [{ id: 'memos', settings: 'src/memos/settings.ts' }],
-      boot: { seed: { flows: 'src/seeds/flows' } },
+      content: { sources: { flows: 'src/content/flows' } },
     } });
     const cwd = process.cwd();
     process.chdir(root);
@@ -67,7 +67,7 @@ describe('a pack whose seed compiler modules fail to bundle', () => {
       manifest: {
         id: 'built-in-pack', name: 'Built-in', builtIn: true,
         // Not used by an entry here, so only the bundle for dependents compiles it
-        seedFormats: { tags: { compiler: 'src/tags.ts', entity: 'Relation' } },
+        content: { sources: { flows: 'src/content/flows' }, formats: { tags: { compiler: 'src/tags.ts', entity: 'Relation' } } },
       },
     });
     const cwd = process.cwd();

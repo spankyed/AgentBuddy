@@ -78,8 +78,8 @@ looks like a service:
 2. **`untypedQx` / `untypedTx` from `@abuddy/ears`** — and this one is *documented as a pack affordance*:
    the root guide says pack code "queries untyped with `untypedQx`". Gating the repository while this stays
    open locks the front door and leaves the side door in the manual.
-3. **Seeds**, which touch `services` not at all. A seeder calls
-   `createEntityWithDefaults(record.entity, …)` (`abuddy-sdk/src/seed/seeder.ts:164`) with the entity name
+3. **Seeds**, which touch `services` not at all. An applier calls
+   `createEntityWithDefaults(record.entity, …)` (`abuddy-sdk/src/content/format-applier.ts:164`) with the entity name
    taken from the pack's compiled seed data.
 
 **What is enforced today is declaration, not use.** The registry refuses a pack that *declares* a reserved

@@ -22,35 +22,35 @@ const MANIFEST_TEMPLATE = (name: string) => {
     dependencies: {},
     permissions: [],
     steps: { register: 'src/extensions/steps/register.ts', build: 'src/extensions/steps/build.ts', definitions: [] },
-    boot: {
-      seed: {
-        actions: 'src/seeds/actions',
-        flows: 'src/seeds/flows',
-        // Rows of the pack's own entity type, from markdown, with the format below: no seeding code needed
-        [SEED_ROWS_KEY]: { path: `src/seeds/${SEED_ROWS_KEY}`, format: SEED_ROWS_KEY },
+    content: {
+      sources: {
+        actions: 'src/content/actions',
+        flows: 'src/content/flows',
+        // Entities of the pack's own type, from markdown, with the format below: no code needed
+        [EXAMPLE_CONTENT_KEY]: { path: `src/content/${EXAMPLE_CONTENT_KEY}`, format: EXAMPLE_CONTENT_KEY },
       },
-    },
-    seedFormats: {
-      [SEED_ROWS_KEY]: {
-        format: 'markdown-tree',
-        entity: pascalName,
-        identity: ['title'],
-        fields: {
-          title: { from: 'frontmatter.title', default: 'filename', type: 'string' },
-          content: { from: 'body' },
+      formats: {
+        [EXAMPLE_CONTENT_KEY]: {
+          format: 'markdown-tree',
+          entity: pascalName,
+          identity: ['title'],
+          fields: {
+            title: { from: 'frontmatter.title', default: 'filename', type: 'string' },
+            content: { from: 'body' },
+          },
         },
       },
     },
   }, null, 2);
 };
 
-/** The scaffold's example seed entry key */
-const SEED_ROWS_KEY = 'examples';
+/** The scaffold's example content key */
+const EXAMPLE_CONTENT_KEY = 'examples';
 
-const EXAMPLE_SEED_ROW_TEMPLATE = `---
+const EXAMPLE_CONTENT_TEMPLATE = `---
 title: Hello
 ---
-Seeded from src/seeds/${SEED_ROWS_KEY}/hello.md by the "${SEED_ROWS_KEY}" seed entry and format in abuddy.json.
+Written from src/content/${EXAMPLE_CONTENT_KEY}/hello.md by the "${EXAMPLE_CONTENT_KEY}" content source and format in abuddy.json.
 `;
 
 /**
@@ -110,7 +110,7 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   devDependencies: {
     // Pinned per project: a global, Homebrew or app-bundled `abuddy` hands off to this one
     '@abuddy/cli': `^${cliVersion()}`,
-    // Unit tests run the pack's seeds and repositories in memory (@abuddy/testing/harness)
+    // Unit tests run the pack's content and repositories in memory (@abuddy/testing/harness)
     ...UNIT_TEST_DEV_DEPENDENCIES(SDK_RANGE()),
     // The scaffold's tsconfig uses Node types
     '@types/node': '^22.15.17',
@@ -265,14 +265,14 @@ export async function init(args: string[]) {
     throw new Error(`Directory "${name}" already exists`);
   }
 
-  fs.mkdirSync(path.join(dir, 'src', 'seeds', 'actions'), { recursive: true });
-  fs.mkdirSync(path.join(dir, 'src', 'seeds', 'flows'), { recursive: true });
-  fs.mkdirSync(path.join(dir, 'src', 'seeds', SEED_ROWS_KEY), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'src', 'content', 'actions'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'src', 'content', 'flows'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'src', 'content', EXAMPLE_CONTENT_KEY), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'extensions', 'steps'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'tests'), { recursive: true });
 
   fs.writeFileSync(path.join(dir, 'abuddy.json'), MANIFEST_TEMPLATE(name));
-  fs.writeFileSync(path.join(dir, 'src', 'seeds', SEED_ROWS_KEY, 'hello.md'), EXAMPLE_SEED_ROW_TEMPLATE);
+  fs.writeFileSync(path.join(dir, 'src', 'content', EXAMPLE_CONTENT_KEY, 'hello.md'), EXAMPLE_CONTENT_TEMPLATE);
   fs.writeFileSync(path.join(dir, 'package.json'), PACKAGE_JSON_TEMPLATE(name));
   fs.writeFileSync(path.join(dir, 'tsconfig.json'), TSCONFIG_TEMPLATE);
   fs.writeFileSync(path.join(dir, '.gitignore'), GITIGNORE_TEMPLATE);
@@ -290,7 +290,7 @@ export async function init(args: string[]) {
   scaffoldUnitTestSetup(dir);
   fs.writeFileSync(
     path.join(dir, 'tests', `${name}.spec.ts`),
-    renderTemplate('pack/tests/example.spec.ts', { NAME: name, SEED_KEY: SEED_ROWS_KEY, PASCAL: toPascalCase(name) }),
+    renderTemplate('pack/tests/example.spec.ts', { NAME: name, CONTENT_KEY: EXAMPLE_CONTENT_KEY, PASCAL: toPascalCase(name) }),
   );
 
   const initManifest = readManifest(dir);
@@ -298,7 +298,7 @@ export async function init(args: string[]) {
   await generateEntries([], dir, depTypes, depSnapshots);
 
   console.log(`\nCreated pack "${name}" at ./${name}/`);
-  console.log(`\nImport types in your seed code:`);
+  console.log(`\nImport types in your content code:`);
   console.log(`  import type { ActionMeta } from '@abuddy/sdk/build';`);
   console.log(`  import type { Services, Z } from '#generated/services.ts';`);
   console.log(`\nNext steps:`);

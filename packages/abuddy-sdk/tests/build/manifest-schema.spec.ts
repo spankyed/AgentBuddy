@@ -94,7 +94,7 @@ describe('the pack id', () => {
   });
 });
 
-describe('seedFormats and boot.seed entries', () => {
+describe('content.formats, content.sources and content.artifacts', () => {
   const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'Memo' }, dependencies: { 'base-pack': '*' } };
   const memos = {
     format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'],
@@ -102,47 +102,65 @@ describe('seedFormats and boot.seed entries', () => {
     fields: { title: { from: 'frontmatter.title', default: 'filename', type: 'string' }, body: { from: 'body' } },
     media: 'media',
   };
-  const errorsFor = (seed: Record<string, unknown>, seedFormats: Record<string, unknown> = { memos }) =>
-    parseManifest({ ...pack, seedFormats, boot: { seed } }).errors;
+  const errorsFor = (sources: Record<string, unknown>, formats: Record<string, unknown> = { memos }) =>
+    parseManifest({ ...pack, content: { formats, sources } }).errors;
+  const artifactErrors = (artifacts: Record<string, unknown>, formats: Record<string, unknown> = { memos }) =>
+    parseManifest({ ...pack, content: { formats, artifacts } }).errors;
 
-  it('accepts specialty paths, entries naming own or dependency formats, seeder entries, and format entries with a seeder', () => {
+  it('accepts specialty paths, sources naming own or dependency formats, applier sources, and format sources with an applier', () => {
     expect(errorsFor({
-      actions: 'src/seeds/actions',
-      flows: { path: 'src/seeds/flows' },
-      memos: { path: 'src/seeds/memos', format: 'memos' },
-      tags: { path: 'src/seeds/tags.json', format: 'tags' },
-      docs: { path: 'src/seeds/docs', format: 'docs' },
-      notes: { path: 'src/seeds/notes', format: 'base-pack:notes' },
-      custom: { seeder: 'src/seeds/custom.ts' },
-      pinned: { path: 'src/seeds/pinned.json', format: 'tags', seeder: 'src/seeds/pinned.ts' },
+      actions: 'src/content/actions',
+      flows: { path: 'src/content/flows' },
+      memos: { path: 'src/content/memos', format: 'memos' },
+      tags: { path: 'src/content/tags.json', format: 'tags' },
+      docs: { path: 'src/content/docs', format: 'docs' },
+      notes: { path: 'src/content/notes', format: 'base-pack:notes' },
+      custom: { applier: 'src/content/custom.ts' },
+      pinned: { path: 'src/content/pinned.json', format: 'tags', applier: 'src/content/pinned.ts' },
     }, {
       memos,
       tags: { format: 'json', entity: 'Memo', identity: ['name'] },
-      docs: { compiler: 'src/seeds/compilers/docs.ts', entity: ['Memo'] },
+      docs: { compiler: 'src/content/compilers/docs.ts', entity: ['Memo'] },
     })).toEqual([]);
   });
 
   it('rejects a path string for a key the SDK does not compile', () => {
-    expect(errorsFor({ library: 'src/seeds/library' })).toEqual([expect.stringMatching(/"boot\.seed\.library": Unknown seed key "library"/)]);
+    expect(errorsFor({ library: 'src/content/library' })).toEqual([expect.stringMatching(/"content\.sources\.library": Unknown content key "library"/)]);
   });
 
-  it('rejects an entry that is neither { path, format } (with or without a seeder) nor { seeder }', () => {
-    const shape = /Seed "memos" must be \{ "path", "format" \}, optionally with "seeder", or \{ "seeder" \}/;
-    expect(errorsFor({ memos: { path: 'src/seeds/memos' } })).toEqual([expect.stringMatching(shape)]);
+  it('rejects a source that is neither { path, format } (with or without an applier) nor { applier }', () => {
+    const shape = /Content "memos" must be \{ "path", "format" \}, optionally with "applier", or \{ "applier" \}/;
+    expect(errorsFor({ memos: { path: 'src/content/memos' } })).toEqual([expect.stringMatching(shape)]);
     expect(errorsFor({ memos: { format: 'memos' } })).toEqual([expect.stringMatching(shape)]);
-    expect(errorsFor({ memos: { seeder: 's.ts', path: 'p' } })).toEqual([expect.stringMatching(shape)]);
-    expect(errorsFor({ memos: { seeder: 's.ts', format: 'memos' } })).toEqual([expect.stringMatching(shape)]);
+    expect(errorsFor({ memos: { applier: 's.ts', path: 'p' } })).toEqual([expect.stringMatching(shape)]);
+    expect(errorsFor({ memos: { applier: 's.ts', format: 'memos' } })).toEqual([expect.stringMatching(shape)]);
     expect(errorsFor({ memos: {} })).toEqual([expect.stringMatching(shape)]);
   });
 
-  it('rejects format settings on an entry: they belong to a seedFormats format', () => {
+  /**
+   * An artifact is compiled and never written, so it takes no applier — and a key is a file name in the
+   * compiled output, so the two sections cannot share one.
+   */
+  it('takes { path, format } for an artifact, and refuses an applier or a key a source has', () => {
+    expect(artifactErrors({ faqs: { path: 'src/content/faqs', format: 'memos' } })).toEqual([]);
+    expect(artifactErrors({ faqs: { path: 'p', format: 'memos', applier: 'a.ts' } }))
+      .toEqual([expect.stringMatching(/Artifact "faqs" must be \{ "path", "format" \}: it is compiled and never written/)]);
+    expect(artifactErrors({ faqs: { format: 'memos' } }))
+      .toEqual([expect.stringMatching(/Artifact "faqs" must be \{ "path", "format" \}/)]);
+    expect(parseManifest({
+      ...pack,
+      content: { formats: { memos }, sources: { memos: { path: 'p', format: 'memos' } }, artifacts: { memos: { path: 'q', format: 'memos' } } },
+    }).errors).toEqual([expect.stringMatching(/"memos" is both a content source and an artifact/)]);
+  });
+
+  it('rejects format settings on a source: they belong to a content.formats format', () => {
     expect(errorsFor({ memos: { path: 'p', format: 'memos', fields: { title: { from: 'body' } } } })).toEqual([expect.stringMatching(/Unrecognized key.*fields/)]);
     expect(errorsFor({ memos: { path: 'p', format: 'memos', entity: 'Memo' } })).toEqual([expect.stringMatching(/Unrecognized key.*entity/)]);
   });
 
-  it("treats settings as a pack's own seed key: an entry, in any pack", () => {
-    expect(errorsFor({ settings: 'src/seeds/default-settings.ts' })).toEqual([expect.stringMatching(/"boot\.seed\.settings": Unknown seed key "settings": only actions, prompts, flows take a path/)]);
-    expect(errorsFor({ settings: { path: 'src/seeds/settings.json', format: 'memos', seeder: 'src/seeds/settings.ts' } })).toEqual([]);
+  it("treats settings as a pack's own content key: a source, in any pack", () => {
+    expect(errorsFor({ settings: 'src/content/default-settings.ts' })).toEqual([expect.stringMatching(/"content\.sources\.settings": Unknown content key "settings": only actions, prompts, flows take a path/)]);
+    expect(errorsFor({ settings: { path: 'src/content/settings.json', format: 'memos', applier: 'src/content/settings.ts' } })).toEqual([]);
   });
 
   // `earlySystem` was a built-in pack's privilege, policed by a refinement that named it. The capability is
@@ -171,63 +189,65 @@ describe('seedFormats and boot.seed entries', () => {
   });
 
   it('rejects anything but a path on a specialty key', () => {
-    expect(errorsFor({ actions: { path: 'src/seeds/actions', format: 'memos' } })).toEqual([expect.stringMatching(/"actions" is compiled by the SDK/)]);
+    expect(errorsFor({ actions: { path: 'src/content/actions', format: 'memos' } })).toEqual([expect.stringMatching(/"actions" is compiled by the SDK/)]);
   });
 
-  it('rejects seed keys that aren\'t plain names: they become file paths and identifiers', () => {
+  it('rejects content keys that aren\'t plain names: they become file paths and identifiers', () => {
     for (const key of ['../x', 'x/y', 'a_b', 'Memos', '']) {
       expect(errorsFor({ [key]: { path: 'p', format: 'memos' } }), key).toEqual([expect.stringMatching(/Must be a lowercase letter, then lowercase letters, digits and hyphens/)]);
     }
     expect(errorsFor({ 'quick-memos': { path: 'p', format: 'memos' } })).toEqual([]);
   });
 
-  it("rejects a format name that isn't in seedFormats, or a dependency prefix that isn't a dependency", () => {
-    expect(errorsFor({ memos: { path: 'p', format: 'notes' } })).toEqual([expect.stringMatching(/"boot\.seed\.memos\.format": Seed "memos": no format "notes" in seedFormats/)]);
+  it("rejects a format name that isn't in content.formats, or a dependency prefix that isn't a dependency", () => {
+    expect(errorsFor({ memos: { path: 'p', format: 'notes' } })).toEqual([expect.stringMatching(/"content\.sources\.memos\.format": Content "memos": no format "notes" in content\.formats/)]);
     expect(errorsFor({ memos: { path: 'p', format: 'other-pack:notes' } })).toEqual([expect.stringMatching(/format "other-pack:notes" names "other-pack", which isn't a dependency/)]);
-    expect(errorsFor({ memos: { path: 'p', format: 'Not A Name' } })).toEqual([expect.stringMatching(/Must be a seedFormats name, or "<dependency id>:<name>"/)]);
+    expect(errorsFor({ memos: { path: 'p', format: 'Not A Name' } })).toEqual([expect.stringMatching(/Must be a content\.formats name, or "<dependency id>:<name>"/)]);
+    // An artifact's format is checked in the same two places
+    expect(artifactErrors({ faqs: { path: 'p', format: 'notes' } }))
+      .toEqual([expect.stringMatching(/"content\.artifacts\.faqs\.format": Content "faqs": no format "notes" in content\.formats/)]);
   });
 
   it('rejects unknown format keys, bad field sources, and format/compiler misuse', () => {
-    const seed = { memos: { path: 'p', format: 'memos' } };
-    expect(errorsFor(seed, { memos: { format: 'json', entityType: 'Memo' } })).toEqual([expect.stringMatching(/Unrecognized key.*entityType/)]);
-    expect(errorsFor(seed, { memos: { format: 'markdown-tree', fields: { title: { from: 'heading' } } } }))
-      .toEqual([expect.stringMatching(/"seedFormats\.memos\.fields\.title\.from": Must be "body", "filename", "path" or "frontmatter\.<name>"/)]);
-    expect(errorsFor(seed, { memos: { format: 'json', compiler: 'c.ts' } })).toEqual([expect.stringMatching(/needs "format" or "compiler", not both/)]);
-    expect(errorsFor(seed, { memos: { entity: 'Memo' } })).toEqual([expect.stringMatching(/needs "format" or "compiler", not both/)]);
-    expect(errorsFor(seed, { memos: { format: 'json', fields: { title: { from: 'body' } } } })).toEqual([expect.stringMatching(/"fields" applies only to format "markdown-tree"/)]);
-    expect(errorsFor({}, { Memos: { format: 'json' } })).toEqual([expect.stringMatching(/Must be lowercase alphanumeric with hyphens/)]);
+    const sources = { memos: { path: 'p', format: 'memos' } };
+    expect(errorsFor(sources, { memos: { format: 'json', entityType: 'Memo' } })).toEqual([expect.stringMatching(/Unrecognized key.*entityType/)]);
+    expect(errorsFor(sources, { memos: { format: 'markdown-tree', fields: { title: { from: 'heading' } } } }))
+      .toEqual([expect.stringMatching(/"content\.formats\.memos\.fields\.title\.from": Must be "body", "filename", "path" or "frontmatter\.<name>"/)]);
+    expect(errorsFor(sources, { memos: { format: 'json', compiler: 'c.ts' } })).toEqual([expect.stringMatching(/needs "format" or "compiler", not both/)]);
+    expect(errorsFor(sources, { memos: { entity: 'Memo' } })).toEqual([expect.stringMatching(/needs "format" or "compiler", not both/)]);
+    expect(errorsFor(sources, { memos: { format: 'json', fields: { title: { from: 'body' } } } })).toEqual([expect.stringMatching(/"fields" applies only to format "markdown-tree"/)]);
+    expect(errorsFor({}, { Memos: { format: 'json' } })).toEqual([expect.stringMatching(/Must be a lowercase letter, then lowercase letters, digits and hyphens/)]);
   });
 
-  it('rejects a markdown-tree format with a list of entities: it seeds one entity type', () => {
-    const seed = { memos: { path: 'p', format: 'memos' } };
-    expect(errorsFor(seed, { memos: { ...memos, entity: ['Memo'] } }))
-      .toEqual([expect.stringMatching(/"seedFormats\.memos\.entity": Format "markdown-tree" seeds one entity type/)]);
+  it('rejects a markdown-tree format with a list of entities: it writes one entity type', () => {
+    expect(errorsFor({ memos: { path: 'p', format: 'memos' } }, { memos: { ...memos, entity: ['Memo'] } }))
+      .toEqual([expect.stringMatching(/"content\.formats\.memos\.entity": Format "markdown-tree" writes one entity type/)]);
   });
 
-  it('rejects a media directory outside the entry\'s path', () => {
-    const seed = { memos: { path: 'p', format: 'memos' } };
+  it('rejects a media directory outside the source\'s path', () => {
+    const sources = { memos: { path: 'p', format: 'memos' } };
     for (const media of ['..', '../shared', 'media/../..', '/abs', 'C:/x', 'a\\b', './media', 'media/', '']) {
-      expect(errorsFor(seed, { memos: { ...memos, media } }), media)
-        .toEqual([expect.stringMatching(/"seedFormats\.memos\.media": Must be a relative directory under the entry's path/)]);
+      expect(errorsFor(sources, { memos: { ...memos, media } }), media)
+        .toEqual([expect.stringMatching(/"content\.formats\.memos\.media": Must be a relative directory under the entry's path/)]);
     }
-    expect(errorsFor(seed, { memos: { ...memos, media: 'assets/images' } })).toEqual([]);
+    expect(errorsFor(sources, { memos: { ...memos, media: 'assets/images' } })).toEqual([]);
   });
 });
 
-describe('seedHooks', () => {
+describe('content.writers', () => {
   const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'Memo' } };
 
-  it('accepts hooks for an entity type the pack declares', () => {
-    expect(parseManifest({ ...pack, seedHooks: { Memo: 'src/memo-hooks.ts#memoSeedHooks' } }).errors).toEqual([]);
+  it('accepts a writer for an entity type the pack declares', () => {
+    expect(parseManifest({ ...pack, content: { writers: { Memo: 'src/memo-writers.ts#memoWriter' } } }).errors).toEqual([]);
   });
 
-  it("rejects hooks for an entity type the pack doesn't declare", () => {
-    expect(parseManifest({ ...pack, seedHooks: { Action: 'src/hooks.ts#actionHooks' } }).errors)
-      .toEqual([expect.stringMatching(/Seed hooks for "Action": only entity types this pack declares/)]);
+  it("rejects a writer for an entity type the pack doesn't declare", () => {
+    expect(parseManifest({ ...pack, content: { writers: { Action: 'src/writers.ts#actionWriter' } } }).errors)
+      .toEqual([expect.stringMatching(/A content writer for "Action": only entity types this pack declares/)]);
   });
 
   it('rejects a target without an export name', () => {
-    expect(parseManifest({ ...pack, seedHooks: { Memo: 'src/memo-hooks.ts' } }).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
+    expect(parseManifest({ ...pack, content: { writers: { Memo: 'src/memo-writers.ts' } } }).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
   });
 });
 

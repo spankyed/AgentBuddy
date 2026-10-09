@@ -71,8 +71,8 @@
               <h4 class="text-sm font-medium text-emerald-400 mb-1">
                 Successfully imported {{ importedCount }} item{{ importedCount !== 1 ? 's' : '' }}
               </h4>
-              <ul v-if="importErrors.length" class="text-sm text-neutral-400 list-disc list-inside">
-                <li v-for="(error, idx) in importErrors" :key="idx">{{ error }}</li>
+              <ul v-if="applyErrors.length" class="text-sm text-neutral-400 list-disc list-inside">
+                <li v-for="(error, idx) in applyErrors" :key="idx">{{ error }}</li>
               </ul>
             </div>
           </div>
@@ -87,7 +87,7 @@
                 Import failed
               </h4>
               <ul class="text-sm text-neutral-400 list-disc list-inside">
-                <li v-for="(error, idx) in importErrors" :key="idx">{{ error }}</li>
+                <li v-for="(error, idx) in applyErrors" :key="idx">{{ error }}</li>
               </ul>
             </div>
           </div>
@@ -266,7 +266,7 @@ const libraryActor: LibraryActor = usePlugin()
 // Import state
 const isImporting = useSelector(libraryActor, (state) => state.context.libraryImport.status === 'importing')
 const importStatus = useSelector(libraryActor, (state) => state.context.libraryImport.status)
-const importErrors = useSelector(libraryActor, (state) => state.context.libraryImport.errors)
+const applyErrors = useSelector(libraryActor, (state) => state.context.libraryImport.errors)
 const importedCount = useSelector(libraryActor, (state) => state.context.libraryImport.importedCount)
 
 // Export state

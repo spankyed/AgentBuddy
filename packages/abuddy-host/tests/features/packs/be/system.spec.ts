@@ -50,7 +50,7 @@ function packSource(version: string, { failsImport = false, id = PACK_ID } = {})
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)} } };`);
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.snapshot), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   if (failsImport) {
-    // Compiled data with no seeds.json: the seeder can't tell whose records these are, so seeding fails
+    // Compiled data with no seeds.json: the applier can't tell whose records these are, so seeding fails
     fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'seeds'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'seeds', 'flows.seed.json'), '[]');
   }
@@ -455,7 +455,7 @@ describe('what a reinstall does not redo', () => {
 // accident, through the file times that were once in the seed hash: the seed failed again and wrote the error
 // back. Seeds are keyed on content now, so the same pack installed again is the same bytes and nothing is
 // re-imported — and what keeps this honest is `recordInstalled` preserving `lastError`, which belongs to the
-// seed outcome (`recordSeedOutcomes`) and is not an install's to clear. `activationProblem` reads it, so the
+// seed outcome (`recordApplyOutcomes`) and is not an install's to clear. `activationProblem` reads it, so the
 // install still says the pack's data failed to seed, which is what the user needs to know.
 describe('reinstalling a pack whose data did not seed', () => {
   const outcomes = (sent: AnyEventObject[]) =>
@@ -563,7 +563,7 @@ describe('updating to a release that holds another pack', () => {
  * version before it, which the next boot's apply would read as the user's edits.
  */
 describe('importing a pack’s content', () => {
-  /** A compiled directory the real generic seeder can read, with one memo item */
+  /** A compiled directory the real generic applier can read, with one memo item */
   function compiledMemos(): string {
     const dir = path.join(tmpDir, 'compiled');
     fs.mkdirSync(dir, { recursive: true });
@@ -571,29 +571,29 @@ describe('importing a pack’s content', () => {
       version: 1, packId: PACK_ID, seeds: [{ key: 'memos', seeded: true, count: 1 }],
     }));
     fs.writeFileSync(path.join(dir, 'memos.seed.json'), JSON.stringify({
-      records: [{ entity: 'Memo', name: 'Intro', body: 'Hello', sourceHash: 'intro-v1' }],
+      records: [{ entity: 'Memo', name: 'Intro', body: 'Hello', contentHash: 'intro-v1' }],
     }));
     return dir;
   }
 
   it('records what it wrote and leaves the revision where it is', async () => {
     const { startTestRuntime, testPacks } = await import('@abuddy/sdk/testing');
-    const { createSeeder } = await import('@abuddy/sdk/seed');
+    const { createFormatApplier } = await import('@abuddy/sdk/content');
     resetTestData();
     startTestRuntime({ entityTypes: ['Memo'] });
     appliedContent.record(PACK_ID, { revision: 'the-revision', wrote: new Map() });
-    testPacks.seeders.set(PACK_ID, [createSeeder({ key: 'memos', entities: ['Memo'], identity: ['name'] })]);
+    testPacks.appliers.set(PACK_ID, [createFormatApplier({ key: 'memos', entities: ['Memo'], identity: ['name'] })]);
 
     const system = runPacksSystem();
     try {
-      system.send({ type: 'IMPORT_PACK_SEEDS', directory: compiledMemos(), mode: 'replace-on-collision' });
+      system.send({ type: 'IMPORT_PACK_CONTENT', directory: compiledMemos(), mode: 'replace-on-collision' });
       await vi.waitFor(() => {
-        expect(emitted(system.sent).map((e) => e.type)).toContain('PACK_SEEDS_IMPORTED');
+        expect(emitted(system.sent).map((e) => e.type)).toContain('PACK_CONTENT_IMPORTED');
       });
 
       const content = appliedContent.get(PACK_ID);
       expect(Object.values(content.items), 'the item the import wrote, with a part per field')
-        .toEqual([{ entityType: 'Memo', sourceHash: 'intro-v1', parts: { body: expect.any(String), name: expect.any(String) } }]);
+        .toEqual([{ entityType: 'Memo', contentHash: 'intro-v1', parts: { body: expect.any(String), name: expect.any(String) } }]);
       expect(content.revision, 'asking for the data again is not a change to what the pack declares')
         .toBe('the-revision');
 
@@ -607,12 +607,12 @@ describe('importing a pack’s content', () => {
       untypedTx(memos()[0]!.id).destroy();
       expect(memos(), 'a destroyed entity leaves nothing behind, which is the premise').toEqual([]);
 
-      system.send({ type: 'IMPORT_PACK_SEEDS', directory: compiledMemos(), mode: 'replace-on-collision' });
+      system.send({ type: 'IMPORT_PACK_CONTENT', directory: compiledMemos(), mode: 'replace-on-collision' });
       await vi.waitFor(() => {
         expect(memos(), 'the content the user asked for was not put back').toHaveLength(1);
       });
     } finally {
-      testPacks.seeders.delete(PACK_ID);
+      testPacks.appliers.delete(PACK_ID);
       system.stop();
     }
   });

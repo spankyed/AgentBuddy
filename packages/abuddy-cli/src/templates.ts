@@ -17,7 +17,7 @@
 //   `compilerOptions` to add a condition.
 // - `ENV_DTS_TEMPLATE` is a `.d.ts`, and electron-builder strips every `.d.ts` from the packaged app whatever
 //   its `files` array says — measured on a `--dir` build: zero remain in app.asar.
-// - `EXAMPLE_SEED_ROW_TEMPLATE` is markdown, and the same file list excludes `'!**/*.md'`.
+// - `EXAMPLE_CONTENT_TEMPLATE` is markdown, and the same file list excludes `'!**/*.md'`.
 // - `GITIGNORE_TEMPLATE` would be a `templates/pack/.gitignore`, which npm reads as ignore rules for that
 //   subtree when packing — silently dropping template files.
 //

@@ -1,7 +1,7 @@
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import type { HelpEntry } from '@abuddy/sdk/framework';
-import type { ImportCounts } from '@abuddy/sdk/utils';
-import type { PackSeedsPreview } from '@abuddy/sdk/seed';
+import type { ApplyResult } from '@abuddy/sdk/utils';
+import type { PackContentPreview } from '@abuddy/sdk/content';
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
 import type { SettingsDocument } from './store.ts';
 // The settings feature's contract: what its system receives, what it sends its plugin, and its context.
@@ -53,10 +53,10 @@ export type OutgoingSettingsEvents =
   // The four seed events are sent by the `packs` system, not this one: the work is pack-level and lives
   // there, while the view that draws it is the settings plugin, whose inbox this type is.
   /** `errors` lists the records that couldn't be seeded (`<key>: <error>`); the rest were imported */
-  | { type: 'PACK_SEEDS_IMPORTED'; result: Record<string, ImportCounts>; errors: string[] }
-  | { type: 'PACK_SEEDS_IMPORT_FAILED'; error: string }
-  | { type: 'PACK_SEEDS_PREVIEW'; preview: PackSeedsPreview }
-  | { type: 'PACK_SEEDS_PREVIEW_FAILED'; error: string }
+  | { type: 'PACK_CONTENT_IMPORTED'; result: Record<string, ApplyResult>; errors: string[] }
+  | { type: 'PACK_CONTENT_IMPORT_FAILED'; error: string }
+  | { type: 'PACK_CONTENT_PREVIEW'; preview: PackContentPreview }
+  | { type: 'PACK_CONTENT_PREVIEW_FAILED'; error: string }
   | { type: 'APP_RESET_COMPLETE' }
   | { type: 'APP_RESET_FAILED'; error: string }
   /** The stored API keys, without values, and how they're protected */

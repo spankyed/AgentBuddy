@@ -48,78 +48,92 @@ export const DslEntrySchema = z.object({
   inline: z.array(z.string()).describe('Packages whose declarations are bundled into the editor definitions, besides @abuddy/* and the pack\'s own modules. The editor loads no node_modules, so a type it needs from another package belongs here.').optional(),
 }).strict();
 
-/** Seed keys compiled and seeded by the SDK's own compilers; they take a path, as a string or `{ path }` */
-export const SPECIALTY_SEED_KEYS: readonly string[] = ['actions', 'prompts', 'flows'];
+/** Content keys compiled by the SDK's own compilers; they take a path, as a string or `{ path }` */
+export const SPECIALTY_CONTENT_KEYS: readonly string[] = ['actions', 'prompts', 'flows'];
 
-const SeedFieldSpecSchema = z.object({
+const ContentFieldSpecSchema = z.object({
   from: z.string().regex(/^(body|filename|path|frontmatter\.[\w-]+)$/, 'Must be "body", "filename", "path" or "frontmatter.<name>"')
     .describe('Where the value comes from: the markdown body, the display name of the file or directory, its relative path, or a frontmatter field.'),
   default: z.unknown().describe('Used when the source is absent. The string "filename" means the display name.').optional(),
   type: z.literal('string').describe('Coerce a present value to a string (YAML reads an unquoted 2024 as a number).').optional(),
 }).strict();
 
-const SeedTreeSpecSchema = z.object({
+const ContentTreeSpecSchema = z.object({
   branch: z.string().describe('A directory\'s own markdown file (e.g. "index.md"), giving the directory\'s frontmatter and body.').optional(),
-  branchEntity: z.string().describe('The entity type directories seed. Defaults to `entity`.').optional(),
-  relKind: z.string().describe('The relation from a parent row to each child row. Defaults to "contains".').optional(),
+  branchEntity: z.string().describe('The entity type directories become. Defaults to `entity`.').optional(),
+  relKind: z.string().describe('The relation from a parent entity to each child. Defaults to "contains".').optional(),
 }).strict();
 
-const SEED_FORMAT_NAME = /^[a-z][a-z0-9-]*$/;
+const CONTENT_NAME = /^[a-z][a-z0-9-]*$/;
 
 /** A relative directory: `/`-separated names, none of them `.` or `..` */
 const MEDIA_PATH = /^(?!\.{1,2}(?:\/|$))(?!.*\/\.{1,2}(?:\/|$))[^/\\:]+(?:\/[^/\\:]+)*$/;
 
-/** A format name in the pack's own `seedFormats`, or `<dependency id>:<name>` */
-const SEED_FORMAT_REF = /^(?:([a-z][a-z0-9-]*):)?([a-z][a-z0-9-]*)$/;
+/** A format name in the pack's own `content.formats`, or `<dependency id>:<name>` */
+const CONTENT_FORMAT_REF = /^(?:([a-z][a-z0-9-]*):)?([a-z][a-z0-9-]*)$/;
 
-/** How a source becomes records: a built-in format or a compiler module, with the settings it uses */
-export const SeedFormatSchema = z.object({
+/** How a source becomes items: a built-in format or a compiler module, with the settings it uses */
+export const ContentFormatSchema = z.object({
   format: z.enum(['markdown-tree', 'json']).describe('A built-in format: a directory of markdown, or a JSON array of records.').optional(),
   compiler: z.string().describe('A module in this pack whose default export compiles an entry\'s path into records. Used instead of "format".').optional(),
   entity: z.union([z.string(), z.array(z.string()).min(1)])
-    .describe('The entity types the format\'s records seed. Omitted, entries using it are compiled but not seeded.').optional(),
+    .describe('The entity types the format\'s items are written as. Omitted, sources using it are compiled and never written (content.artifacts).').optional(),
   identity: z.array(z.string()).min(1)
-    .describe('Fields matched to find an existing row ("parent" = the tree parent). Ignored for entity types whose owning pack registers a find seed hook.').optional(),
-  tree: SeedTreeSpecSchema.describe('Walk subdirectories as parent rows.').optional(),
-  fields: z.record(z.string(), SeedFieldSpecSchema).describe('Record fields for markdown-tree: field name → where its value comes from.').optional(),
+    .describe('Fields matched to find an existing entity ("parent" = the tree parent). Ignored for entity types whose owning pack registers a content writer with "find".').optional(),
+  tree: ContentTreeSpecSchema.describe('Walk subdirectories as parent entities.').optional(),
+  fields: z.record(z.string(), ContentFieldSpecSchema).describe('Item fields for markdown-tree: field name → where its value comes from.').optional(),
   media: z.string().regex(MEDIA_PATH, 'Must be a relative directory under the entry\'s path, without "." or ".." segments')
-    .describe('A directory under an entry\'s path copied with the seeds; media/<file> links become media://<id>/<file>.').optional(),
+    .describe('A directory under a source\'s path copied with the content; media/<file> links become media://<id>/<file>.').optional(),
 }).strict().superRefine((format, ctx) => {
-  if (!format.format === !format.compiler) ctx.addIssue({ code: 'custom', message: 'A seed format needs "format" or "compiler", not both' });
+  if (!format.format === !format.compiler) ctx.addIssue({ code: 'custom', message: 'A content format needs "format" or "compiler", not both' });
   if (format.fields && format.format !== 'markdown-tree') ctx.addIssue({ code: 'custom', path: ['fields'], message: '"fields" applies only to format "markdown-tree"' });
   if (format.format === 'markdown-tree' && Array.isArray(format.entity)) {
-    ctx.addIssue({ code: 'custom', path: ['entity'], message: 'Format "markdown-tree" seeds one entity type: set "entity" to a string, and "tree.branchEntity" for directories' });
+    ctx.addIssue({ code: 'custom', path: ['entity'], message: 'Format "markdown-tree" writes one entity type: set "entity" to a string, and "tree.branchEntity" for directories' });
   }
 });
 
-/** A `boot.seed` entry: a source and the format that compiles it, a pack seeder module, or both */
-export const SeedEntryConfigSchema = z.object({
+/** A `content.sources` entry: a source and the format that compiles it, a pack applier module, or both */
+export const ContentSourceSchema = z.object({
   path: z.string().describe('Source directory or file, relative to the pack root.').optional(),
-  format: z.string().regex(SEED_FORMAT_REF, 'Must be a seedFormats name, or "<dependency id>:<name>"')
-    .describe('The format compiling `path`: a name in this pack\'s seedFormats, or "<dependency id>:<name>" for a dependency\'s.').optional(),
-  seeder: z.string().describe('A pack module exporting apply(ctx), used instead of the generic seeder. Alone, the build compiles nothing for the entry and the module brings its own data; with "path" and "format", the module seeds the compiled records.').optional(),
+  format: z.string().regex(CONTENT_FORMAT_REF, 'Must be a content.formats name, or "<dependency id>:<name>"')
+    .describe('The format compiling `path`: a name in this pack\'s content.formats, or "<dependency id>:<name>" for a dependency\'s.').optional(),
+  applier: z.string().describe('A pack module exporting apply(ctx), used instead of the format applier. Alone, the build compiles nothing for the source and the module brings its own data; with "path" and "format", the module writes the compiled items.').optional(),
 }).strict();
 
-// Seed keys name files and folders in the compiled output (<key>.seed.json, media/<key>) and generated identifiers
-const SeedSectionSchema = z.record(z.string().regex(SEED_FORMAT_NAME, 'Must be a lowercase letter, then lowercase letters, digits and hyphens'), z.union([z.string(), SeedEntryConfigSchema])).superRefine((seed, ctx) => {
-  for (const [key, entry] of Object.entries(seed)) {
-    if (SPECIALTY_SEED_KEYS.includes(key)) {
+// Content keys name files and folders in the compiled output (<key>.seed.json, media/<key>) and generated identifiers
+const CONTENT_KEY_SCHEMA = z.string().regex(CONTENT_NAME, 'Must be a lowercase letter, then lowercase letters, digits and hyphens');
+
+const ContentSourcesSchema = z.record(CONTENT_KEY_SCHEMA, z.union([z.string(), ContentSourceSchema])).superRefine((sources, ctx) => {
+  for (const [key, entry] of Object.entries(sources)) {
+    if (SPECIALTY_CONTENT_KEYS.includes(key)) {
       if (typeof entry === 'object' && (!entry.path || Object.keys(entry).some((field) => field !== 'path'))) {
         ctx.addIssue({ code: 'custom', path: [key], message: `"${key}" is compiled by the SDK: give its source as a path or { "path": … }` });
       }
     } else if (typeof entry === 'string') {
-      ctx.addIssue({ code: 'custom', path: [key], message: `Unknown seed key "${key}": only ${SPECIALTY_SEED_KEYS.join(', ')} take a path; other seeds are { "path", "format" } or { "seeder" }` });
-    } else if ((entry.path === undefined) !== (entry.format === undefined) || (!entry.path && !entry.seeder)) {
-      ctx.addIssue({ code: 'custom', path: [key], message: `Seed "${key}" must be { "path", "format" }, optionally with "seeder", or { "seeder" }` });
+      ctx.addIssue({ code: 'custom', path: [key], message: `Unknown content key "${key}": only ${SPECIALTY_CONTENT_KEYS.join(', ')} take a path; other sources are { "path", "format" } or { "applier" }` });
+    } else if ((entry.path === undefined) !== (entry.format === undefined) || (!entry.path && !entry.applier)) {
+      ctx.addIssue({ code: 'custom', path: [key], message: `Content "${key}" must be { "path", "format" }, optionally with "applier", or { "applier" }` });
     }
   }
 });
 
-export const BootConfigSchema = z.object({
-  hooks: z.string().describe('Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and seeds) and onShutdown (when the pack\'s backend stops).').optional(),
-  seed: SeedSectionSchema
-    .describe('Seed data sources. Keys are seed names; the specialty keys (actions, prompts, flows) take a path, other keys an entry object.').optional(),
-}).strict().describe('Boot sequence configuration.');
+/**
+ * A compiled artefact the pack reads back itself, never written to the database: the build produces
+ * `<key>.seed.json` and the pack's own code reads it.
+ *
+ * It is a key of its own because the alternative was a `content.sources` entry whose format declared no
+ * entity: compiled, indexed, given an applier that could only find nothing to do, and a standing
+ * contradiction with "every source a pack declares is applied". The format it names must declare no
+ * `entity`, which is the whole of what makes it an artefact rather than content.
+ */
+const ContentArtifactsSchema = z.record(CONTENT_KEY_SCHEMA, ContentSourceSchema).superRefine((artifacts, ctx) => {
+  for (const [key, entry] of Object.entries(artifacts)) {
+    if (!entry.path || !entry.format || entry.applier) {
+      ctx.addIssue({ code: 'custom', path: [key], message: `Artifact "${key}" must be { "path", "format" }: it is compiled and never written, so it takes no applier` });
+    }
+  }
+});
+
 
 const SystemSchema = z.object({
   entry: z.string().describe('Path to the backend system module.'),
@@ -149,6 +163,21 @@ const IdentifierSchema = z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must be an iden
 
 /** A named export of a pack source file */
 const ExportTargetSchema = z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"');
+
+export const ContentConfigSchema = z.object({
+  sources: ContentSourcesSchema
+    .describe('Content this pack writes into the database. Keys name the content; the specialty keys (actions, prompts, flows) take a path, other keys an entry object.').optional(),
+  artifacts: ContentArtifactsSchema
+    .describe('Compiled artefacts the pack reads back itself, never written to the database. Each names a format declaring no entity.').optional(),
+  formats: z.record(CONTENT_KEY_SCHEMA, ContentFormatSchema)
+    .describe('Named formats that turn a source into items. A content source names one; a dependent pack names one of these as "<this pack id>:<name>".').optional(),
+  writers: z.record(z.string(), ExportTargetSchema)
+    .describe('How one entity type this pack declares is found, created, updated and removed when content is written as it ("path#exportName" of a ContentWriter object). Any pack writing that entity type goes through them.').optional(),
+}).strict().describe("A pack's content: what it ships, how it is compiled, and how it reaches the database.");
+
+export const BootConfigSchema = z.object({
+  hooks: z.string().describe('Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and content) and onShutdown (when the pack\'s backend stops).').optional(),
+}).strict().describe('Boot sequence configuration.');
 
 const ServicesSchema = z.record(IdentifierSchema, ExportTargetSchema);
 
@@ -242,6 +271,7 @@ export const ManifestSchema = z.object({
   commands: z.array(CommandEntrySchema)
     .describe('Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack\'s flows handle; a name must be unique across the app.').optional(),
   boot: BootConfigSchema.optional(),
+  content: ContentConfigSchema.optional(),
   steps: StepsSchema.describe('Flow step definitions.').optional(),
   artifacts: z.string().describe('Path to artifact type registration module.').optional(),
   blocks: z.string().describe('Path to message block registration module.').optional(),
@@ -249,10 +279,6 @@ export const ManifestSchema = z.object({
   fe: FEConfigSchema.optional(),
   build: BuildConfigSchema.optional(),
   dsl: z.record(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
-  seedFormats: z.record(z.string().regex(SEED_FORMAT_NAME, 'Must be lowercase alphanumeric with hyphens'), SeedFormatSchema)
-    .describe('Named seed formats: how a source becomes records. boot.seed entries name one; dependents name them as "<pack id>:<name>".').optional(),
-  seedHooks: z.record(z.string(), ExportTargetSchema)
-    .describe('Seed hooks for entity types this pack declares: entity type → "path#exportName" of a SeedHooks object. Any pack seeding the type uses them.').optional(),
 }).strict().superRefine((manifest, ctx) => {
   // Which plugin opens first is one plugin's annotation, so a pack naming two has said nothing
   const claimedDefault = (manifest.features ?? []).filter((feature) => feature.plugin?.default);
@@ -265,14 +291,24 @@ export const ManifestSchema = z.object({
     });
   }
 
-  for (const [key, entry] of Object.entries(manifest.boot?.seed ?? {})) {
-    if (typeof entry !== 'object' || !entry.format) continue;
-    const [, pack, name] = SEED_FORMAT_REF.exec(entry.format) ?? [];
-    if (!name) continue;
-    if (pack === undefined && !manifest.seedFormats?.[name]) {
-      ctx.addIssue({ code: 'custom', path: ['boot', 'seed', key, 'format'], message: `Seed "${key}": no format "${name}" in seedFormats` });
-    } else if (pack !== undefined && !(pack in (manifest.dependencies ?? {}))) {
-      ctx.addIssue({ code: 'custom', path: ['boot', 'seed', key, 'format'], message: `Seed "${key}": format "${entry.format}" names "${pack}", which isn't a dependency` });
+  // Both kinds of entry name a format, and both are checked against the same two places
+  for (const section of ['sources', 'artifacts'] as const) {
+    for (const [key, entry] of Object.entries(manifest.content?.[section] ?? {})) {
+      if (typeof entry !== 'object' || !entry.format) continue;
+      const [, pack, name] = CONTENT_FORMAT_REF.exec(entry.format) ?? [];
+      if (!name) continue;
+      const at = ['content', section, key, 'format'];
+      if (pack === undefined && !manifest.content?.formats?.[name]) {
+        ctx.addIssue({ code: 'custom', path: at, message: `Content "${key}": no format "${name}" in content.formats` });
+      } else if (pack !== undefined && !(pack in (manifest.dependencies ?? {}))) {
+        ctx.addIssue({ code: 'custom', path: at, message: `Content "${key}": format "${entry.format}" names "${pack}", which isn't a dependency` });
+      }
+    }
+  }
+  // A key is a file name in the compiled output, so the two sections cannot share one
+  for (const key of Object.keys(manifest.content?.artifacts ?? {})) {
+    if (key in (manifest.content?.sources ?? {})) {
+      ctx.addIssue({ code: 'custom', path: ['content', 'artifacts', key], message: `"${key}" is both a content source and an artifact: they compile to the same file` });
     }
   }
   // The chat lists each name once, so a pack declares it once
@@ -285,9 +321,9 @@ export const ManifestSchema = z.object({
     commandNames.add(command.name);
   });
   const declared = new Set(Object.values(manifest.entities ?? {}));
-  for (const entity of Object.keys(manifest.seedHooks ?? {})) {
+  for (const entity of Object.keys(manifest.content?.writers ?? {})) {
     if (!declared.has(entity)) {
-      ctx.addIssue({ code: 'custom', path: ['seedHooks', entity], message: `Seed hooks for "${entity}": only entity types this pack declares in "entities" can have seed hooks` });
+      ctx.addIssue({ code: 'custom', path: ['content', 'writers', entity], message: `A content writer for "${entity}": only entity types this pack declares in "entities" can have one` });
     }
   }
 });

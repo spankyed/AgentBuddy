@@ -11,7 +11,7 @@ import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const brainLogger = createLogger('brain', { debug: true });
 
-/** The prompt (seeds/prompts/db-query-system.ts) that describes the database and the query API to the model */
+/** The prompt (content/prompts/db-query-system.ts) that describes the database and the query API to the model */
 const QUERY_SYSTEM_PROMPT = 'DB Query System';
 
 /**

@@ -1,6 +1,6 @@
 # Manifest Reference
 
-The `abuddy.json` file at the root of your pack is the single source of truth. It declares features, extensions, seeds, entities, dependencies, and boot-time hooks. The CLI reads it to generate code, compile seeds, and bundle your pack.
+The `abuddy.json` file at the root of your pack is the single source of truth. It declares features, extensions, content, entities, dependencies, and boot-time hooks. The CLI reads it to generate code, compile content, and bundle your pack.
 
 ## Field reference
 
@@ -21,16 +21,16 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `blocks` | `string` | no | Path to block registration file |
 | `migrations` | `string` | no | Path to migrations index file |
 | `packServices` | `Record<string, string>` | no | Pack-level services, in the same form as [`features[].services`](#packfeatureentry-fields) |
-| `commands` | `{ name, placeholder }[]` | no | Slash commands the pack adds to the chat: `name` as typed after the `/` (`^[a-z][a-z0-9-]*$`, unique across the app: `abuddy build` fails when a dependency, or anything it depends on, declares it), `placeholder` what the composer shows after it. Sending one fires a `user.command` event your flows handle; see [Slash commands](seeds.md#slash-commands) |
+| `commands` | `{ name, placeholder }[]` | no | Slash commands the pack adds to the chat: `name` as typed after the `/` (`^[a-z][a-z0-9-]*$`, unique across the app: `abuddy build` fails when a dependency, or anything it depends on, declares it), `placeholder` what the composer shows after it. Sending one fires a `user.command` event your flows handle; see [Slash commands](content.md#slash-commands) |
 | `entities` | `Record<string, string>` | no | EARS entity type declarations; see [Entities and relations](#entities-and-relations) |
 | `relKinds` | `Record<string, string>` | no | EARS relation kind declarations; see [Entities and relations](#entities-and-relations) |
 | `dependencies` | `Record<string, string>` | no | Pack dependencies (`id` -> semver, `github:owner/repo range`, or `file:path`) |
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
-| `boot` | `PackBootConfig` | no | Boot hooks and seeds; see [Boot configuration](#boot-configuration) |
+| `boot` | `PackBootConfig` | no | Boot hooks and content; see [Boot configuration](#boot-configuration) |
 | `fe` | `object` | no | FE-only registrations; see [Frontend configuration](#frontend-configuration) |
 | `entityShapes` | `Record<string, { source, type }>` | no | Entity type -> TS interface mappings |
-| `seedFormats` | `Record<string, SeedFormatConfig>` | no | Named seed formats: how a source becomes records. `boot.seed` entries name them, dependents as `<pack id>:<name>`; see [Seeds](seeds.md#seeding-entities) |
-| `seedHooks` | `Record<string, string>` | no | Seed hooks for entity types this pack declares: the entity type's value in `entities` -> `path#exportName` of a `SeedHooks` object (`find`, `create`, `update`, `remove`, all optional). Every pack seeding that type goes through them; see [Seeds](seeds.md#seed-hooks) |
+| `content.formats` | `Record<string, ContentFormatConfig>` | no | Named seed formats: how a source becomes records. `content.sources` entries name them, dependents as `<pack id>:<name>`; see [Content](content.md#writing-entities) |
+| `content.writers` | `Record<string, string>` | no | Content writers for entity types this pack declares: the entity type's value in `entities` -> `path#exportName` of a `ContentWriter` object (`find`, `create`, `update`, `remove`, all optional). Every pack writing that type goes through them; see [Content](content.md#seed-hooks) |
 | `dsl` | `Record<string, DslEntry>` | no | Monaco editor type definitions for code the app edits; see [DSL definitions](#dsl-definitions) |
 
 ## Features
@@ -137,10 +137,10 @@ The `boot` object configures hooks that run during app startup:
 {
   "boot": {
     "hooks": "src/hooks.ts",
-    "seed": {
-      "actions": "src/seeds/actions",
-      "prompts": "src/seeds/prompts",
-      "flows": { "path": "src/seeds/flows" }
+    "sources": {
+      "actions": "src/content/actions",
+      "prompts": "src/content/prompts",
+      "flows": { "path": "src/content/flows" }
     }
   }
 }
@@ -149,48 +149,48 @@ The `boot` object configures hooks that run during app startup:
 | Field | Type | Description |
 |---|---|---|
 | `hooks` | `string` | Module exporting lifecycle hooks (see below) |
-| `seed` | `Record<string, string \| SeedEntryConfig>` | Seed sources: `actions`, `prompts` and `flows` take a path; any other key is `{ path, format }` (optionally with `seeder`) or `{ seeder }`. **Every entry imports rows into the database** — that is what `boot.seed` is for, so content your own code reads back is an ordinary import of your own source, not an entry here. Declare a feature's default settings with `features[].settings` |
+| `seed` | `Record<string, string \| ContentSourceConfig>` | Content sources: `actions`, `prompts` and `flows` take a path; any other key is `{ path, format }` (optionally with `applier`) or `{ applier }`. **Every content source writes entities into the database** — that is what `content.sources` is for, so content your own code reads back is an ordinary import of your own source, not an entry here. Declare a feature's default settings with `features[].settings` |
 
 The `hooks` module's named exports become the pack's boot hooks:
 
 ```typescript
 // src/hooks.ts
-export const onInit = () => ensureDefaults();     // after EARS hydration, before migrations and seeds
+export const onInit = () => ensureDefaults();     // after EARS hydration, before migrations and content
 export const onShutdown = () => stopProcesses(); // when the pack's backend stops (app exit, pack unload or reload)
 ```
 
 | Export | Runs |
 |---|---|
-| `onInit` | Once per boot, after EARS hydration and before migrations and seeds. Create rows the pack's systems expect to exist here |
+| `onInit` | Once per boot, after EARS hydration and before migrations and content. Create rows the pack's systems expect to exist here |
 | `onShutdown` | When the pack's backend stops. Release what outlives its actors: processes, timers, listeners |
 
 Every system starts when the bus does, after hydration. There is no way for a feature to ask to start before it.
 
-### SeedEntryConfig
+### ContentSourceConfig
 
 `actions`, `prompts` and `flows` accept a path or `{ "path": … }`. Any other key is one of:
 
 | Shape | Description |
 |---|---|
-| `{ "path", "format" }` | `path`: source directory or file, relative to the pack root. `format`: a name in this pack's `seedFormats`, or `"<dependency id>:<name>"` for a dependency's; that dependency must be declared in `dependencies` |
-| `{ "path", "format", "seeder" }` | Compiled with the format, and seeded by the pack module's `seed(ctx)` instead of the generic seeder |
-| `{ "seeder" }` | A pack module exporting `seed(ctx)`, used instead of a format and the generic seeder |
+| `{ "path", "format" }` | `path`: source directory or file, relative to the pack root. `format`: a name in this pack's `content.formats`, or `"<dependency id>:<name>"` for a dependency's; that dependency must be declared in `dependencies` |
+| `{ "path", "format", "applier" }` | Compiled with the format, and written by the pack module's `seed(ctx)` instead of the format applier |
+| `{ "applier" }` | A pack module exporting `seed(ctx)`, used instead of a format and the format applier |
 
-An entry can't carry format settings, and an unknown key given a path string fails validation. See [Seeds](seeds.md#seeding-entities) for examples.
+An entry can't carry format settings, and an unknown key given a path string fails validation. See [Content](content.md#writing-entities) for examples.
 
-### SeedFormatConfig
+### ContentFormatConfig
 
-A `seedFormats` value, keyed by the format name: a lowercase letter, then lowercase letters, digits and hyphens. It needs exactly one of `format` and `compiler`.
+A `content.formats` value, keyed by the format name: a lowercase letter, then lowercase letters, digits and hyphens. It needs exactly one of `format` and `compiler`.
 
 | Field | Type | Description |
 |---|---|---|
 | `format` | `"markdown-tree" \| "json"` | Compile an entry's source with a built-in format: a directory of markdown, or a JSON array of records |
 | `compiler` | `string` | A module in this pack whose default export compiles an entry's source into records. Bundled into `dist/build/seed-compilers.mjs` for dependents |
-| `entity` | `string \| string[]` | Entity types the records seed (the pack's, a dependency's or the SDK's). Omitted, entries are compiled but not seeded |
-| `identity` | `string[]` | Fields matched to find an existing row (`"parent"` = the tree parent). Ignored when the type's owning pack registers a `find` seed hook |
+| `entity` | `string \| string[]` | Entity types the records seed (the pack's, a dependency's or the SDK's). Omitted, entries are compiled but not written |
+| `identity` | `string[]` | Fields matched to find an existing row (`"parent"` = the tree parent). Ignored when the type's owning pack registers a `find` content writer |
 | `tree` | `{ branch?, branchEntity?, relKind? }` | Walk subdirectories as parent rows: a directory's own file, its entity type, and the parent → child relation (default `contains`) |
 | `fields` | `Record<string, { from, default?, type? }>` | `markdown-tree` only: record field → `body`, `filename`, `path` or `frontmatter.<name>` |
-| `media` | `string` | Directory under an entry's `path` copied with the seeds; `media/<file>` links become `media://<id>/<file>` |
+| `media` | `string` | Directory under an entry's `path` copied with the content; `media/<file>` links become `media://<id>/<file>` |
 
 ## Frontend configuration
 
@@ -346,9 +346,9 @@ For each entry with a `monaco` target, `abuddy build` writes `dist/defs/monaco/<
   },
 
   "boot": {
-    "seed": {
-      "actions": "src/seeds/actions",
-      "flows": "src/seeds/flows"
+    "sources": {
+      "actions": "src/content/actions",
+      "flows": "src/content/flows"
     }
   }
 }

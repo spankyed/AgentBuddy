@@ -6,9 +6,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { registerSeedRuntime, resetTestData, startTestRuntime, type SeedRuntime } from '../../src/testing/index.ts';
-import { compileBuiltinFormat } from '../../src/build/seeds/records.ts';
-import { createSeeder } from '../../src/seed/seeder.ts';
+import { registerContentRuntime, resetTestData, startTestRuntime, type ContentRuntime } from '../../src/testing/index.ts';
+import { compileBuiltinFormat } from '../../src/build/content/items.ts';
+import { createFormatApplier } from '../../src/content/format-applier.ts';
 import { findRelations } from '@abuddy/ears';
 import type { PackManifest } from '../../src/build/manifest.ts';
 
@@ -25,13 +25,13 @@ describe.skipIf(!built)("a built pack's seed runtime", () => {
     process.env.ABUDDY_ENV ??= 'test';
     process.env.ABUDDY_USER_DATA_DIR ??= dir;
     startTestRuntime();
-    const { seedRuntime } = await import(pathToFileURL(FACET).href) as { seedRuntime: SeedRuntime };
-    registerSeedRuntime(seedRuntime);
+    const { contentRuntime } = await import(pathToFileURL(FACET).href) as { contentRuntime: ContentRuntime };
+    registerContentRuntime(contentRuntime);
     resetTestData();
   });
   afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
 
-  it("registers the pack's repositories and seed hooks, so seeding goes through them", async () => {
+  it("registers the pack's repositories and content writers, so seeding goes through them", async () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(DEFAULT_SETUP, 'abuddy.json'), 'utf-8')) as PackManifest;
     const source = path.join(dir, 'notes');
     fs.mkdirSync(path.join(source, 'plan'), { recursive: true });
@@ -41,10 +41,10 @@ describe.skipIf(!built)("a built pack's seed runtime", () => {
     const compiled = path.join(dir, 'compiled');
     fs.mkdirSync(compiled);
     fs.writeFileSync(path.join(compiled, 'seeds.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
-    fs.writeFileSync(path.join(compiled, 'notes.seed.json'), JSON.stringify({ records: compileBuiltinFormat('notes', manifest.seedFormats!.notes, source) }));
+    fs.writeFileSync(path.join(compiled, 'notes.seed.json'), JSON.stringify({ records: compileBuiltinFormat('notes', manifest.content!.formats!.notes, source) }));
 
-    const format = manifest.seedFormats!.notes;
-    const counts = createSeeder({ key: 'notes', entities: ['Note'], identity: format.identity, relKind: format.tree?.relKind }).apply({ compiledDir: compiled, log: () => {} });
+    const format = manifest.content!.formats!.notes;
+    const counts = createFormatApplier({ key: 'notes', entities: ['Note'], identity: format.identity, relKind: format.tree?.relKind }).apply({ compiledDir: compiled, log: () => {} });
     expect(counts).toEqual({ created: 3, updated: 0, skipped: 0 });
 
     const notes = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>('Note', 'title', 'Intro');

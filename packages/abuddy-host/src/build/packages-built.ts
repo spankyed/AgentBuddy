@@ -480,8 +480,8 @@ const digestOf = (contents: Buffer | null): string =>
  *
  * It is the first entry in the root `CLAUDE.md`'s list of time-wasters — a prose edit runs nothing — and that
  * was a claim about the chain that the chain did not hold. Guides sit *inside* declared trees rather than at
- * a package root (`default-setup/src/seeds`, `abuddy-host/src/migrations` and `src/packs/runtime`,
- * `default-setup/tests/seeds`, `tests/e2e`), so a sentence of prose re-ran up to four steps, `compile` among
+ * a package root (`default-setup/src/content`, `abuddy-host/src/migrations` and `src/packs/runtime`,
+ * `default-setup/tests/content`, `tests/e2e`), so a sentence of prose re-ran up to four steps, `compile` among
  * them. Skipped here rather than excluded per step, because the steps that reach them take their inputs from
  * derived lists where there is no literal array to add an entry to.
  *
@@ -492,8 +492,9 @@ const digestOf = (contents: Buffer | null): string =>
  *
  * `READS_MARKDOWN` is the other half: directory names whose markdown is **content**, read or shipped rather
  * than read by a person. `etc` holds the recorded API reports `api:check` compares against — a hand-edited
- * one must invalidate it, which is the one hole the deleted stamp could not see. `seeds` is a pack's seed
- * sources, compiled into rows a user gets. `templates` is the CLI's scaffold, rendered into a new pack.
+ * one must invalidate it, which is the one hole the deleted stamp could not see. `content` is a pack's
+ * content sources, compiled into entities a user gets. `templates` is the CLI's scaffold, rendered into a
+ * new pack.
  * `fixtures` is test input.
  *
  * **The condition that would make this wrong** is a check that asserts one of these files' *text*: it would
@@ -504,14 +505,14 @@ const digestOf = (contents: Buffer | null): string =>
  * `fingerprint-scope.integration.spec.ts` holds each of these trees to being unskippable rather than
  * trusting the list, and mutates it to prove it can fail.
  */
-export const READS_MARKDOWN: ReadonlySet<string> = new Set(['etc', 'seeds', 'templates', 'fixtures']);
+export const READS_MARKDOWN: ReadonlySet<string> = new Set(['etc', 'content', 'templates', 'fixtures']);
 
 const GUIDE = 'CLAUDE.md';
 
 const isProse = (file: string): boolean => {
   if (!file.endsWith('.md')) return false;
   // A guide is prose wherever it sits, a content tree included: two live under a `seeds/` directory
-  // (`default-setup/src/seeds`, `default-setup/tests/seeds`), and keying on them was this rule's first draft
+  // (`default-setup/src/content`, `default-setup/tests/content`), and keying on them was this rule's first draft
   if (file === GUIDE || file.endsWith(`/${GUIDE}`)) return true;
   return !file.split('/').some((segment) => READS_MARKDOWN.has(segment));
 };

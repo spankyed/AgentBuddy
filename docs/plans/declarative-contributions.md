@@ -13,7 +13,7 @@ system and plugin entries with their contracts, repositories, settings sections,
 relation kinds, the boot seed and its policy, dependencies and `hostVersion`.
 
 **Imperative**, in the `PackRegistration` object the pack's runtime module exports
-(`abuddy-sdk/src/framework/pack-registration.ts:64-80`): `steps`, `artifacts`, `blocks`, `seedHooks`,
+(`abuddy-sdk/src/framework/pack-registration.ts:64-80`): `steps`, `artifacts`, `blocks`, `content.writers`,
 `services`, `repositories`, `migrations`, `ears`, `boot`. These are only knowable by **loading and
 evaluating the pack's module**.
 
