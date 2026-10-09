@@ -47,7 +47,7 @@ const cacheEntry = (id: string, exports: unknown) =>
   ({ id, filename: id, loaded: true, exports, children: [], paths: [] }) as unknown as NodeJS.Module;
 
 /** Puts each bridged module in the require cache, under the bridge key and under the host's own path for it */
-function seedBridgedModules(cache: NodeJS.Dict<NodeJS.Module>, modules: Readonly<Record<string, unknown>>, hostRequire: NodeRequire): void {
+function primeRequireCache(cache: NodeJS.Dict<NodeJS.Module>, modules: Readonly<Record<string, unknown>>, hostRequire: NodeRequire): void {
   for (const [specifier, exports] of Object.entries(modules)) {
     const key = `${BRIDGE_PREFIX}${specifier}`;
     if (cache[key]) continue;
@@ -87,7 +87,7 @@ let hostModulesKept = false;
  * **Pack code requires a bridged module long after the load that produced it.** esbuild defers a module's
  * body into an `__init` the bundle calls on first use, so default-setup's `extensions/steps/action/runtime.ts`
  * runs its `require('@abuddy/sdk/logger')` when an action step first runs — any time, under any stack. A
- * scoped patch is gone by then, and seeding the cache cannot cover it: Node resolves before it looks in the
+ * scoped patch is gone by then, and priming the cache cannot cover it: Node resolves before it looks in the
  * cache, and an installed pack has no `node_modules` for a bare specifier to resolve through. In a checkout
  * the workspace one sits above the pack and answers, which is why this is invisible until a pack is
  * installed — and then every action step fails with `Cannot find module '@abuddy/sdk/logger'`.
@@ -108,7 +108,7 @@ export function keepHostModulesResolvable(options: Pick<ModuleBridgeOptions, 'mo
   const originalResolve = moduleInternals._resolveFilename;
   const hostRequire = createRequire(options.resolveFrom ?? import.meta.url);
   const resolveFromHost = hostPackageResolver(options.hostPackages ?? [], hostRequire);
-  seedBridgedModules(hostRequire.cache, options.modules, hostRequire);
+  primeRequireCache(hostRequire.cache, options.modules, hostRequire);
 
   moduleInternals._resolveFilename = function resolve(this: unknown, request: string, parent: unknown, ...rest: unknown[]) {
     if (request in options.modules) return `${BRIDGE_PREFIX}${request}`;
@@ -135,7 +135,7 @@ export function withModuleBridge<T>(options: ModuleBridgeOptions, fn: () => T): 
   // host provides is exactly what the bridge exists to prevent
   const resolveFromHost = hostPackageResolver(options.hostPackages ?? [], hostRequire);
 
-  seedBridgedModules(cache, options.modules, hostRequire);
+  primeRequireCache(cache, options.modules, hostRequire);
 
   moduleInternals._resolveFilename = function resolve(this: unknown, request: string, parent: unknown, ...rest: unknown[]) {
     if (request in options.modules) return `${BRIDGE_PREFIX}${request}`;

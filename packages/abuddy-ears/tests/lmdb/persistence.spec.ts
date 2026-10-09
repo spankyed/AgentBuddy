@@ -293,7 +293,7 @@ describe('Sharded Router', () => {
     { src: 123 as any, tgt: 'Document-1', label: 'non-string src' },
   ])('hydrateRelationMetadata warns on invalid input: $label', ({ src, tgt }) => {
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    sharded.hydrateRelationMetadata('Relation-seed', 'TEST', src, tgt);
+    sharded.hydrateRelationMetadata('Relation-1', 'TEST', src, tgt);
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('[Sharded] Invalid'));
     spy.mockRestore();
   });
@@ -460,7 +460,7 @@ describe('Query Layer', () => {
     dbs = openEnvAt(dir);
     const adapter = makeLmdbAdapter(dbs);
 
-    // Seed data
+    // Given
     // Corrupt index key — use transactionSync to avoid unhandled async rejections
     dbs.entities.transactionSync(() => {
       dbs.attrs.put(`TestKind\x1FEntity-123\x1FnotANumber`, { t: 'string', v: 'corrupt' });

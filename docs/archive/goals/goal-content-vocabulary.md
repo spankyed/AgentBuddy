@@ -354,7 +354,7 @@ rewritten mid-plan to do that rename and Phase 4 did it — so it was removed ra
 - **The packaged-authoring template** (`1a8f0e856`). `tests/scripts/test-packaged-authoring.sh` writes the example
   pack's specs itself, so they were the last callers of `applyPack`, and `test:packaged-authoring` was the check that
   found them. They are what a pack author copies, which is the reason the harness took the plain name.
-- **`seedRelationMetadata`** (`5a7717ff2`). A third sense of the word, in `@abuddy/ears`'s sharded router: not content
+- **`hydrateRelationMetadata`** (then `seedRelationMetadata`) (`5a7717ff2`). A third sense of the word, in `@abuddy/ears`'s sharded router: not content
   and not a query's start, but what hydration tells the router about a relation it has just read off disk. Renamed
   `hydrateRelationMetadata`, the word this repo already uses for loading persisted data into memory, and the last
   `content` mentions in `query.ts` and `typed.ts` prose went with it. `@abuddy/ears/src` now holds one occurrence of the

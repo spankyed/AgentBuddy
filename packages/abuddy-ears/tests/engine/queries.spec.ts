@@ -1,4 +1,4 @@
-// The engine's contract: query builder seeds, filters, ordering and terminals; blueprints; the repository registry
+// The engine's contract: query builder starts, filters, ordering and terminals; blueprints; the repository registry
 import { beforeEach, describe, expect, it } from 'vitest';
 import { bp } from '../../src/index.ts';
 import { engine, type Id } from './helpers.ts';
@@ -22,8 +22,8 @@ beforeEach(() => {
   e.query.tx(t.a).grant('focus');
 });
 
-describe('seeds', () => {
-  it('no seed, a type, types, an id, ids, and unknown ones', () => {
+describe('starts', () => {
+  it('no start, a type, types, an id, ids, and unknown ones', () => {
     expect(e.query.qx().count()).toBe(8);
     expect(e.query.qx('Task').ids()).toEqual([t.a, t.b, t.c, t.d]);
     expect(e.query.qx(['Project', 'Task']).ids()).toEqual([p, t.a, t.b, t.c, t.d]);
@@ -31,13 +31,13 @@ describe('seeds', () => {
     expect(e.query.qx([t.c, 'Task-none' as Id, t.a]).ids()).toEqual([t.c, t.a]);
     expect(e.query.qx('Task-none' as Id).ids()).toEqual([]);
     // Deliberate: a name the engine doesn't know as a type is read as an id, so it finds nothing rather than
-    // throwing. A seed can't be told apart from a typo or a type whose pack isn't installed — the engine has no
+    // throwing. A start can't be told apart from a typo or a type whose pack isn't installed — the engine has no
     // way to know which was meant — and the case below pins the other side of it, an id with no type prefix.
     expect(e.query.qx('Memo').ids()).toEqual([]);
     expect(e.query.qx(undefined).count()).toBe(8);
   });
 
-  it('an id or ids seed finds only entities still in the engine', () => {
+  it('an id or ids start finds only entities still in the engine', () => {
     e.query.tx(t.b).destroy();
     expect(e.query.qx(t.b).ids()).toEqual([]);
     expect(e.query.qx([t.a, t.b, t.c]).ids()).toEqual([t.a, t.c]);

@@ -473,12 +473,12 @@ const codeState = setup({
         })
       })
 
-      // Seed activeFilePath from persistence so addTab's "preserve context.activeFilePath
+      // Restore activeFilePath from persistence so addTab's "preserve context.activeFilePath
       // during restore" branch keeps the previously-active tab focused. If the persisted
       // active path no longer matches a tab (corrupt or stale storage),
       // fall back to the first persisted tab so the editor isn't blank on load.
       const persistedPaths = new Set(persistedTabs.map(t => t.path))
-      const seededActive = persistedActive && persistedPaths.has(persistedActive)
+      const restoredActive = persistedActive && persistedPaths.has(persistedActive)
         ? persistedActive
         : persistedTabs[0]?.path ?? null
 
@@ -494,7 +494,7 @@ const codeState = setup({
         pendingTabOrder: tabOrder.length > 0 ? tabOrder : undefined,
         pendingPersistedMetadata: metadataMap.size > 0 ? metadataMap : undefined,
         tabGroups: persistedGroups,
-        activeFilePath: seededActive,
+        activeFilePath: restoredActive,
         panelTerminalId: restoredPanelTerminal,
         panelTerminalExpanded: restoredPanelTerminal ? persistedExpanded : false,
         pendingTerminalTabIds: terminalTabIds.length > 0 ? terminalTabIds : undefined

@@ -120,8 +120,8 @@ class TerminalPool {
    * Returns an existing entry or constructs a new one. Pass `sendInput` as the
    * callback to forward xterm's onData (user input + synthesized responses
    * from live queries) to the backend pty. The callback is wired only AFTER
-   * any initial seed from terminalEventBus has been fully parsed, so
-   * synthesized responses during the seed are dropped.
+   * any replay from terminalEventBus has been fully parsed, so
+   * synthesized responses during the replay are dropped.
    */
   ensure(info: TerminalInfo, sendInput: (data: string) => void): PoolEntry {
     const existing = this.entries.get(info.id)
@@ -206,9 +206,9 @@ class TerminalPool {
       return true
     })
 
-    // Subscribe to pty output for this terminal. This happens BEFORE the seed
-    // so writes are queued in order behind the seed (xterm processes writes
-    // FIFO, so cbSeed fires before any live data is parsed).
+    // Subscribe to pty output for this terminal. This happens BEFORE the replay
+    // so writes are queued in order behind it (xterm processes writes
+    // FIFO, so cbReplay fires before any live data is parsed).
     const unsubscribe = terminalEventBus.subscribe(info.id, (_id, data) => {
       if (entry.isShowingLoadingContent) {
         term.clear()
@@ -218,9 +218,9 @@ class TerminalPool {
     })
     entry.disposables.push({ dispose: unsubscribe })
 
-    // Seed from persisted output (first open after app restart) and wire
-    // onData only after the seed has been fully parsed, so any DA/DSR/OSC
-    // responses xterm synthesizes during the seed go nowhere.
+    // Replay the persisted output (first open after app restart) and wire
+    // onData only after the replay has been fully parsed, so any DA/DSR/OSC
+    // responses xterm synthesizes during it go nowhere.
     const storedOutput = terminalEventBus.getOutput(info.id)
     if (storedOutput) {
       term.write(storedOutput, () => {
@@ -282,7 +282,7 @@ class TerminalPool {
    * Force the native scrollbar to match the desired viewport position after
    * attach/fit. Uses term.write('', cb) as the wait primitive so the callback
    * fires only after every queued xterm write has been fully parsed — this
-   * handles large seeds that may still be parsing when we'd otherwise race.
+   * handles a large replay that may still be parsing when we'd otherwise race.
    * Reading scrollHeight synchronously forces layout, so the viewport spacer
    * is up to date when we write scrollTop.
    *

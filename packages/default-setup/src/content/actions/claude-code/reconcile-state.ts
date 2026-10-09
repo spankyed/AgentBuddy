@@ -8,7 +8,7 @@
  * Without this:
  *   - chat.ts keeps queueing every new user message against the phantom
  *     "running" turn and the queue never drains.
- *   - The FE seeds chatStates from the thread entity, so the chat panel
+ *   - The FE initialises chatStates from the thread entity, so the chat panel
  *     shows "working" indefinitely after a crash mid-turn.
  *
  * Runs on flow entry before keepAlive.
