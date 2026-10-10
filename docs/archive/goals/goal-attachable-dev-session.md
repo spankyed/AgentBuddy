@@ -721,3 +721,54 @@ the **record**, not the directory: a dir with no `.abuddy-profile.json` is not a
 rule `listProfiles` and `notAProfile` already read. Proven live afterwards: `--fresh` named a profile,
 spawned into it and answered; the printed name attached on the next question (`state: "attached"`); and
 `--fresh --rm`'s dir was gone once its supervisor exited.
+
+### What a live `npm start` found, and why that item was in the Finished-when
+
+Phase 4 recorded *"a live `dev` or `npm start` publishes `<dataDir>/session.json`"* having run only `abuddy
+dev`. Running the other half found **two defects, neither reachable from any spec**, which is the argument
+for that item being a live run rather than a case.
+
+**`npm start` published nothing at all.** Its watcher asked `resolveAppContext()` with no argument, and
+Phase 7 made the build something a *selector* names — so the only way to answer with no argument is the
+`ABUDDY_ENV` handoff, which a Vite watcher is not given (the app sets it for processes *it* spawns). The
+app came up perfectly and reported `[dev] not attachable: App build unknown`, so the loop looked fine and
+was simply undriveable. The fix is `{ build: 'development' }`, which is what the comment two lines above
+the spawn already said this hook is: a development run by definition. Nothing could have caught it —
+`resolveAppContext`'s `build` is optional *because* a spawned process legitimately omits it, so a no-argument
+call typechecks everywhere and is only wrong in a process the app did not spawn.
+
+**And `readDevToolsPort` trusted a port that was not this launch's.** Its own doc comment said a launcher
+*"waits for a new one rather than trusting what is there"*, and the implementation read whatever was in
+`DevToolsActivePort` — a file Chromium leaves behind, as watching it survive the app that wrote it showed.
+So a session could name a port belonging to a browser that was gone, and `drive` then refused an app that
+was running: a failure that reads as a bug in the attach rather than in the publish. It now takes `after`,
+the instant before the spawn, and a file not newer than that is "not yet" exactly as an absent one is —
+not optional, because a caller that forgets it is back to the defect. Both callers pass the instant from
+before their launch.
+
+Proven live afterwards: `npm start` published `{"debugPort":59047,…,"startedBy":"dev"}` 8s in, and
+`abuddy drive --eval 'return document.title'` answered
+`{"value":"Agent X","state":"attached","startedBy":"dev","supervisorPid":90993}`.
+
+### The retired names, grep-verified rather than asserted
+
+Phases 1 and 7 recorded that `--instance`, `--ephemeral`, `--app` and `--app-root` name nothing and that
+`abuddy run` is gone. The command was gone (`Unknown command: run`); **the names were not**, and one of
+them shipped:
+
+- **`abuddy init` scaffolded `"dev": "abuddy run"`** into every new pack's `package.json`, so `npm run dev`
+  in a scaffolded pack ran a command that does not exist.
+- Two error messages told the user to pass `--app-root <path>` (`beta-app.ts`, and the fixture's
+  app-resolution failure), `abuddy clean --apps` described the builds `--app beta` downloaded, and
+  `abuddy profiles new` printed `abuddy run --profile <name>` as the next thing to type.
+- `docs/public-facing/getting-started.md` and `architecture.md` carried `abuddy run`, `--app-root`,
+  `--app beta` and `ABUDDY_APP=beta` as commands to run.
+- Around sixty source comments and spec names referred to `abuddy run`.
+
+All of it moved. Three things deliberately left: `--ephemeral` in default-setup's codex actions, which is
+the **codex CLI's** flag; a `.changeset` entry, which is published release notes; and other goals' and
+plans' docs under `docs/goals/` and `docs/plans/`, which record what was true when they were written.
+
+**The lesson is the method, not the list.** A record saying a name is gone is a claim about the whole tree,
+and the only thing that establishes one is the grep. Four of these had been asserted in an Outcome and
+committed.
