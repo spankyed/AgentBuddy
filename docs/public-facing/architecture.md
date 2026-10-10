@@ -125,7 +125,7 @@ export const registration: PackRegistration = {
   blocks?: BlockDefinition[];
   content.writers?: Record<string, ContentWriter>;  // abuddy.json `content.writers`, keyed by entity type
   appliers?: ContentApplier[];              // one per content.sources key, which applying the pack's compiled content runs
-  commands?: PackCommand[];        // abuddy.json `commands`
+  commands?: PackCommand[];        // abuddy.json `extensions.commands`
 };
 ```
 
@@ -147,7 +147,7 @@ export default {
   appExtensions?: Record<string, Component>;
   artifacts?: ArtifactDefinition[];
   blocks?: BlockDefinition[];
-  dslTypes?: Record<string, DslTypeConfig>;  // abuddy.json `dsl` entries with a `monaco` target
+  dslTypes?: Record<string, DslTypeConfig>;  // abuddy.json `extensions.dsl` entries with a `monaco` target
 } satisfies PackFERegistration;
 ```
 
@@ -230,7 +230,7 @@ Components, editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/
 
 At runtime your pack uses the app's copy: `abuddy build` turns `@abuddy/ui` imports into references to the modules the app exposes, the same way it handles the shared SDK modules. Your `fe.js` stays small, and stateful modules (the Monaco configuration, editor extensions) have one instance across the app. `@abuddy/ui` changes follow semver, and your pack's `hostVersion` states which apps it runs in.
 
-To ship your own copy instead, set `fe.bundleUi` in `abuddy.json`. All of `@abuddy/ui` is then bundled into `fe.js`, so the pack never mixes its copy with the app's.
+To ship your own copy instead, set `build.bundleUi` in `abuddy.json`. All of `@abuddy/ui` is then bundled into `fe.js`, so the pack never mixes its copy with the app's.
 
 ### Backend: the module bridge
 

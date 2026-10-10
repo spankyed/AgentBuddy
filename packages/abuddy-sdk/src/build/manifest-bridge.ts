@@ -90,7 +90,7 @@ async function loadPackDefinitions(manifest: PackManifest, packDir: string, depe
     steps: [...steps.values()],
     // Both are declared outright in the manifest, so nothing is loaded for either: what a build needs of an
     // artifact or a block is its type and, for a block, its kind. The facets are code only a running app reaches
-    artifacts: Object.keys(manifest.artifacts ?? {}).map((type) => ({ type })),
-    blocks: Object.entries(manifest.blocks ?? {}).map(([type, entry]) => ({ type, kind: entry.kind })),
+    artifacts: Object.keys(manifest.extensions?.artifacts ?? {}).map((type) => ({ type })),
+    blocks: Object.entries(manifest.extensions?.blocks ?? {}).map(([type, entry]) => ({ type, kind: entry.kind })),
   };
 }

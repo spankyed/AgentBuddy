@@ -326,14 +326,46 @@ const EntityShapeSchema = z.object({
  */
 const BuildConfigSchema = z.object({
   opaqueDeps: z.array(z.string()).describe('Dependencies the frontend bundle includes whole instead of tree-shaking, by package name. For a prebuilt bundle — a dependency shipped as one already-minified file, or compiled from another language — where the shake removes almost nothing and walking it is most of the build. Each ships as it is, so nothing inside it is dead-code eliminated.').optional(),
+  bundleUi: z.boolean().describe('Bundle a copy of @abuddy/ui into the pack instead of using the host app\'s. All of @abuddy/ui is bundled, so the pack never mixes the two.').optional(),
 }).strict().describe('Build-time configuration: settings that change what the build produces, never what the app loads.');
 
 const FEConfigSchema = z.object({
   tiptapPlugins: z.string().describe('Path to tiptap plugin registration module.').optional(),
   appExtensions: z.record(IdentifierSchema, z.string()).describe('Named app extensions. Keys are extension names (identifiers), values are paths to Vue components.').optional(),
-  bundleUi: z.boolean().describe('Bundle a copy of @abuddy/ui into the pack instead of using the host app\'s. All of @abuddy/ui is bundled, so the pack never mixes the two.').optional(),
-}).strict().describe('Frontend-specific pack configuration.');
+}).strict().describe('Frontend contributions: what the pack adds to the app\'s own UI.');
 
+/**
+ * What the pack gives the host, as against what it is made of (`features`) or what data it ships
+ * (`content`). Every entry is a contribution the app registers and some other pack or the shell can
+ * reach; a setting that only changes what `abuddy build` produces is `build`, not one of these.
+ */
+const ExtensionsSchema = z.object({
+  steps: z.record(EXTENSION_TYPE_SCHEMA, StepEntrySchema)
+    .describe('Flow step types this pack contributes, keyed by type. Each names where its build, frontend and runtime facets live; the type is the key, so a pack cannot declare one twice.').optional(),
+  artifacts: z.record(EXTENSION_TYPE_SCHEMA, ArtifactEntrySchema)
+    .describe('Artifact types this pack contributes, keyed by type. Each names its icon and viewer; the type is the key, so a pack cannot declare one twice.').optional(),
+  blocks: z.record(EXTENSION_TYPE_SCHEMA, BlockEntrySchema)
+    .describe('Message blocks this pack contributes, keyed by block type. Each names where its code lives; the type is the key, so a pack cannot declare one twice.').optional(),
+  commands: z.array(CommandEntrySchema)
+    .describe('Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack\'s flows handle; a name must be unique across the app.').optional(),
+  services: ServicesSchema
+    .describe('Pack-level services, belonging to no one feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file. A feature\'s own are its `services`.').optional(),
+  dsl: z.record(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
+  fe: FEConfigSchema.optional(),
+}).strict().describe('What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types and frontend extensions.');
+
+
+/**
+ * The keys that live under `extensions`, which `.strict()` would otherwise refuse at the root with no
+ * more than "Unrecognized key". Derived from the section's own shape, so a key added to it is named here
+ * too; `bundleUi` is the one that moved to `build` instead, `extensions` being what the pack gives the
+ * app and a packaging choice giving it nothing.
+ */
+export const _MOVED_ROOT_KEYS: Readonly<Record<string, string>> = {
+  ...Object.fromEntries(Object.keys(ExtensionsSchema.shape).map((key) => [key, `extensions.${key}`])),
+  packServices: 'extensions.services',
+  bundleUi: 'build.bundleUi',
+};
 
 // ── Main manifest schema ────────────────────────────────────────────
 
@@ -365,26 +397,15 @@ export const ManifestSchema = z.object({
     .describe('Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries.').optional(),
   features: z.record(FEATURE_ID_SCHEMA, FeatureEntrySchema)
     .describe('Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice.').optional(),
-  packServices: ServicesSchema
-    .describe('Pack-level services not tied to a specific feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
+  extensions: ExtensionsSchema.optional(),
   help: ExportTargetSchema
     .describe('Help entries this pack answers with, listed under Help in the app\'s Settings view. "path#exportName" of a function returning them; it is called the first time the list is read, so a pack may read its compiled content then.').optional(),
   settingsSections: ExportTargetSchema
     .describe('Sections of the app settings this pack owns, with their defaults, beside the "plugins" section the app keeps itself. "path#exportName" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled content then.').optional(),
-  commands: z.array(CommandEntrySchema)
-    .describe('Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack\'s flows handle; a name must be unique across the app.').optional(),
   boot: BootConfigSchema.optional(),
   content: ContentConfigSchema.optional(),
-  steps: z.record(EXTENSION_TYPE_SCHEMA, StepEntrySchema)
-    .describe('Flow step types this pack contributes, keyed by type. Each names where its build, frontend and runtime facets live; the type is the key, so a pack cannot declare one twice.').optional(),
-  artifacts: z.record(EXTENSION_TYPE_SCHEMA, ArtifactEntrySchema)
-    .describe('Artifact types this pack contributes, keyed by type. Each names its icon and viewer; the type is the key, so a pack cannot declare one twice.').optional(),
-  blocks: z.record(EXTENSION_TYPE_SCHEMA, BlockEntrySchema)
-    .describe('Message blocks this pack contributes, keyed by block type. Each names where its code lives; the type is the key, so a pack cannot declare one twice.').optional(),
   migrations: z.string().describe('Path to migrations index module.').optional(),
-  fe: FEConfigSchema.optional(),
   build: BuildConfigSchema.optional(),
-  dsl: z.record(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
 }).strict().superRefine((manifest, ctx) => {
   // Which plugin opens first is one plugin's annotation, so a pack naming two has said nothing
   const claimedDefault = Object.entries(manifest.features ?? {}).filter(([, feature]) => feature.plugin?.default);
@@ -418,9 +439,9 @@ export const ManifestSchema = z.object({
   }
   // The chat lists each name once, so a pack declares it once
   const commandNames = new Set<string>();
-  manifest.commands?.forEach((command, index) => {
+  manifest.extensions?.commands?.forEach((command, index) => {
     if (commandNames.has(command.name)) {
-      ctx.addIssue({ code: 'custom', path: ['commands', index, 'name'], message: `Command "${command.name}" is declared twice` });
+      ctx.addIssue({ code: 'custom', path: ['extensions', 'commands', index, 'name'], message: `Command "${command.name}" is declared twice` });
       return;
     }
     commandNames.add(command.name);

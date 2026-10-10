@@ -76,7 +76,7 @@ describe('a package with source has a suite', () => {
 const SPANS_PACKAGES: Record<string, string> = {
   'packages/abuddy-cli/tests/build/fe-bundler-ui-theme.spec.ts':
     "its four tests are a chain across three packages: @abuddy/ui's preset defines the shades its components "
-    + 'name, the renderer applies that preset instead of copying the colours, and a built fe.bundleUi pack '
+    + 'name, the renderer applies that preset instead of copying the colours, and a built build.bundleUi pack '
     + 'ships CSS for them. Moving it to @abuddy/ui would put a dependency on the app\'s tree and a fixture '
     + "pack's build output into a leaf package's suite; splitting it would lose the chain",
 };

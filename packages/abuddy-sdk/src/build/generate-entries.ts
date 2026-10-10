@@ -344,8 +344,8 @@ export function generatePackFiles(
    * The slash commands the pack declares. A name a dependency declares too fails the build: the app would
    * refuse to register the pack.
    */
-  function declaredCommands(): NonNullable<PackManifest['commands']> {
-    const commands = manifest.commands ?? [];
+  function declaredCommands(): NonNullable<NonNullable<PackManifest['extensions']>['commands']> {
+    const commands = manifest.extensions?.commands ?? [];
     const taken = _mergeProvenance('commands', [...depSnapshots]);
     for (const { name } of commands) {
       const owner = taken[name];
@@ -392,7 +392,7 @@ export function generatePackFiles(
    */
   function checkServiceNames(): void {
     const serviceNames = (m: PackManifest): string[] => [
-      ...Object.keys(m.packServices ?? {}),
+      ...Object.keys(m.extensions?.services ?? {}),
       ...packFeatures(m).flatMap((f) => Object.keys(f.services ?? {})),
     ];
     const taken = new Map<string, string>();
@@ -440,10 +440,10 @@ export function generatePackFiles(
     const features = packFeatures(manifest);
     const targets = [
       ...features.flatMap((f) => [...Object.values(f.services ?? {}), ...Object.values(f.repositories ?? {})]),
-      ...Object.values(manifest.packServices ?? {}),
+      ...Object.values(manifest.extensions?.services ?? {}),
       ...Object.values(manifest.content?.writers ?? {}),
-      ...Object.values(manifest.blocks ?? {}).flatMap((b) => (b.be ? [b.be] : [])),
-      ...Object.values(manifest.steps ?? {}).flatMap((s) => [s.build, s.trigger?.facet, s.trigger?.register, s.runtime?.handler, s.fe].filter((t): t is string => t !== undefined)),
+      ...Object.values(manifest.extensions?.blocks ?? {}).flatMap((b) => (b.be ? [b.be] : [])),
+      ...Object.values(manifest.extensions?.steps ?? {}).flatMap((s) => [s.build, s.trigger?.facet, s.trigger?.register, s.runtime?.handler, s.fe].filter((t): t is string => t !== undefined)),
       ...(manifest.settingsSections ? [manifest.settingsSections] : []),
       ...(manifest.help ? [manifest.help] : []),
     ].map((target) => target.split('#')[0]);
@@ -547,7 +547,7 @@ export function generatePackFiles(
    */
   function blockDefinitions(): { imports: string[]; literal: string } {
     const imports: string[] = [];
-    const items = Object.entries(manifest.blocks ?? {}).map(([type, entry], index) => {
+    const items = Object.entries(manifest.extensions?.blocks ?? {}).map(([type, entry], index) => {
       const parts = [`type: '${type}'`];
       if (entry.kind) parts.push(`kind: '${entry.kind}'`);
       if (entry.be) {
@@ -568,7 +568,7 @@ export function generatePackFiles(
    */
   function blockDefinitionsFE(): { imports: string[]; literal: string } {
     const imports: string[] = [];
-    const items = Object.entries(manifest.blocks ?? {}).map(([type, entry], index) => {
+    const items = Object.entries(manifest.extensions?.blocks ?? {}).map(([type, entry], index) => {
       const parts = [`type: '${type}'`];
       if (entry.kind) parts.push(`kind: '${entry.kind}'`);
       if (entry.fe) {
@@ -709,7 +709,7 @@ ${items.join('\n')}
    * bundle, where a barrel of `fe: { icon }` literals put the whole icon set.
    */
   function artifactDefinitions(): string {
-    const items = Object.keys(manifest.artifacts ?? {}).map((type) => `    { type: '${type}' },`);
+    const items = Object.keys(manifest.extensions?.artifacts ?? {}).map((type) => `    { type: '${type}' },`);
     return items.length ? `[\n${items.join('\n')}\n  ]` : '';
   }
 
@@ -718,7 +718,7 @@ ${items.join('\n')}
    * declares. The icons are one import from `lucide-vue-next`, which the host provides the frontend.
    */
   function artifactDefinitionsFE(): { imports: string[]; literal: string } {
-    const entries = Object.entries(manifest.artifacts ?? {});
+    const entries = Object.entries(manifest.extensions?.artifacts ?? {});
     if (entries.length === 0) return { imports: [], literal: '' };
     const icons = [...new Set(entries.map(([, entry]) => entry.icon))].sort();
     const imports = [`import { ${icons.join(', ')} } from 'lucide-vue-next';`];
@@ -784,7 +784,7 @@ ${items.join('\n')}
    * facets rather than being declared — the step's directory is one fact and the manifest states it once,
    * as the path to a facet.
    */
-  const stepDefinitions: StepDeclaration[] = Object.entries(manifest.steps ?? {}).map(([type, entry]) => ({
+  const stepDefinitions: StepDeclaration[] = Object.entries(manifest.extensions?.steps ?? {}).map(([type, entry]) => ({
     type,
     kind: entry.kind,
     dsl: entry.dsl,
@@ -925,7 +925,7 @@ ${contractCheck}`;
       return `    '${f.id}': { ${parts.join(', ')} },\n`;
     }).join('');
 
-    const fe = manifest.fe ?? {};
+    const fe = manifest.extensions?.fe ?? {};
 
     const blocks = blockDefinitionsFE();
     const artifacts = artifactDefinitionsFE();
@@ -1354,7 +1354,7 @@ ${nodeEntity}`;
 
   function generateServices(): string {
     const features = packFeatures(manifest);
-    const packServices = manifest.packServices ?? {};
+    const packServices = manifest.extensions?.services ?? {};
     const imports: string[] = [];
     const entries: string[] = [];
 
@@ -1788,7 +1788,7 @@ export type { ImportMode } from '@abuddy/sdk/utils';
 
   /** The `dsl` entries the host's code editors get: a `monaco` target with globals */
   function monacoDslEntries() {
-    return Object.entries(manifest.dsl ?? {}).filter(([, def]) => def.targets.includes('monaco') && def.globals);
+    return Object.entries(manifest.extensions?.dsl ?? {}).filter(([, def]) => def.targets.includes('monaco') && def.globals);
   }
 
   function generateDslTypesFe(): string {

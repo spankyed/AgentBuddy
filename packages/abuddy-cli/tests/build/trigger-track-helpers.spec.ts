@@ -24,7 +24,7 @@ describe('generated trigger track builders', () => {
     fs.writeFileSync(path.join(stepDir, 'legacy.ts'), "export const old = { trackField: 'whenever' };\n");
     const manifest = {
       id: 'ticks', name: 'Ticks', version: '1.0.0',
-      steps: { tick: { kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } },
+      extensions: { steps: { tick: { kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } } },
     } as unknown as PackManifest;
 
     const files = generatePackFiles(manifest, { packRoot: tmp });

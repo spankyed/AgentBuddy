@@ -329,7 +329,7 @@ async function buildIntoStaging(args: string[]) {
   }
 
   // ── Step build facets (for dependents' flow validation) ─────────────
-  if (manifest.steps && Object.keys(manifest.steps).length > 0) {
+  if (Object.keys(manifest.extensions?.steps ?? {}).length > 0) {
     const stepBuild = await bundlePackStepBuild(root, outputDir, { release, recordReads: reads?.forPhase('stepBuild') });
     if (stepBuild.success) {
       console.log(`  step build: dist/${PACK_LAYOUT.stepsBuild}`);
@@ -349,7 +349,7 @@ async function buildIntoStaging(args: string[]) {
   if (contentCompilersBundled) console.log(`  content compilers: dist/${PACK_LAYOUT.buildDir}/${CONTENT_COMPILERS_FILE}`);
 
   // ── DSL editor definitions ───────────────────────────────────────────
-  if (manifest.dsl) {
+  if (manifest.extensions?.dsl) {
     const dslScope = abuddyScope(root);
     const dslHash = 'missing' in dslScope ? null : dslInputsHash(root, dslScope.dirs);
     const dslStale = dslHash === null ? 'scope incomplete'

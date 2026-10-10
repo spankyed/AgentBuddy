@@ -64,7 +64,7 @@ Never:
 So installing an external pack today means trusting it as much as the app itself. The token work closed the API to web pages and other local processes, but not to pack frontends.
 
 **What depends on the shared realm.**
-- `@abuddy/ui` components render inside the host's DOM and styles; with `fe.bundleUi` a pack bundles its own copy.
+- `@abuddy/ui` components render inside the host's DOM and styles; with `build.bundleUi` a pack bundles its own copy.
 - Host-shared frontend state lives in `@abuddy/sdk/fe`: `usePlugin`/`PluginScope` and `useShell`, menu state, the tiptap plugin and DSL type lookups (`FePackRegistryView`).
 - Pack extensions the host renders directly: app extensions (`getAppExtension`), tiptap plugins, blocks and artifact viewers (`fe` facets of `BlockDefinition` / `ArtifactDefinition`), step forms.
 - The E2E fixture (`@abuddy/testing`) finds pack plugins through `window.applicationState` and matches the `pack://` URL.

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { parseManifest } from '../../src/build/validate.ts';
+import { _MOVED_ROOT_KEYS } from '../../src/build/manifest-schema.ts';
 
 describe('parseManifest', () => {
   it('accepts default-setup abuddy.json', () => {
@@ -84,10 +85,33 @@ describe('parseManifest', () => {
     expect(parseManifest({ ...pack, features: parsed }).errors).toEqual([]);
   });
 
+  /**
+   * `.strict()` refuses a contribution key at the root, which is the whole of the rule — but on its own it
+   * says no more than "Unrecognized key", and the one thing a reader needs is where the key went. The names
+   * are derived from the section's own shape, so a key added to `extensions` is named here without an edit.
+   */
+  it('names where a contribution key went when it is found at the root', () => {
+    const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+    for (const [key, to] of Object.entries(_MOVED_ROOT_KEYS)) {
+      expect(parseManifest({ ...pack, [key]: {} }).errors, key)
+        .toEqual([expect.stringContaining(`"${key}" is now "${to}"`)]);
+    }
+    // Every key the section holds, and the two that moved elsewhere
+    expect(Object.keys(_MOVED_ROOT_KEYS).sort())
+      .toEqual(['artifacts', 'blocks', 'bundleUi', 'commands', 'dsl', 'fe', 'packServices', 'services', 'steps']);
+  });
+
+  // The hint is for a key that moved; an unrecognized key that never existed gets the plain message
+  it('says nothing extra about a root key that was never a contribution', () => {
+    const errors = parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', nonsense: 1 }).errors;
+    expect(errors).toEqual([expect.stringContaining('nonsense')]);
+    expect(errors[0]).not.toContain('is now');
+  });
+
   it('rejects an app extension name that is not an identifier', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    expect(parseManifest({ ...pack, fe: { appExtensions: { 'my-ext': 'x.vue' } } }).errors).toEqual([expect.stringContaining('Must be an identifier')]);
-    expect(parseManifest({ ...pack, fe: { appExtensions: { welcome: 'x.vue' } } }).errors).toEqual([]);
+    expect(parseManifest({ ...pack, extensions: { fe: { appExtensions: { 'my-ext': 'x.vue' } } } }).errors).toEqual([expect.stringContaining('Must be an identifier')]);
+    expect(parseManifest({ ...pack, extensions: { fe: { appExtensions: { welcome: 'x.vue' } } } }).errors).toEqual([]);
   });
 });
 
@@ -262,22 +286,22 @@ describe('services', () => {
   const feature = (services: Record<string, string>) => ({ ...pack, features: { memos: { services } } });
 
   it('accepts feature and pack-level services naming their export', () => {
-    expect(parseManifest({ ...feature({ memo: 'src/features/memos/be/services/memo.ts#memoService' }), packServices: { cache: 'src/cache#cacheService' } }).errors).toEqual([]);
+    expect(parseManifest({ ...feature({ memo: 'src/features/memos/be/services/memo.ts#memoService' }), extensions: { services: { cache: 'src/cache#cacheService' } } }).errors).toEqual([]);
   });
 
   it('rejects a service path without an export name', () => {
     expect(parseManifest(feature({ memo: 'src/features/memos/be/services/memo.ts' })).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
-    expect(parseManifest({ ...pack, packServices: { cache: 'src/cache' } }).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
+    expect(parseManifest({ ...pack, extensions: { services: { cache: 'src/cache' } } }).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
   });
 
   it('rejects a service name that is not an identifier', () => {
-    expect(parseManifest({ ...pack, packServices: { 'my-cache': 'src/cache.ts#cacheService' } }).errors).toEqual([expect.stringMatching(/Must be an identifier/)]);
+    expect(parseManifest({ ...pack, extensions: { services: { 'my-cache': 'src/cache.ts#cacheService' } } }).errors).toEqual([expect.stringMatching(/Must be an identifier/)]);
   });
 });
 
 describe('commands', () => {
   const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-  const withCommands = (commands: Array<Record<string, unknown>>) => ({ ...pack, commands });
+  const withCommands = (commands: Array<Record<string, unknown>>) => ({ ...pack, extensions: { commands } });
 
   it('accepts lowercase names with hyphens, each with its placeholder', () => {
     expect(parseManifest(withCommands([{ name: 'standup', placeholder: 'Topic' }, { name: 'team-digest', placeholder: 'Week (optional)' }])).errors).toEqual([]);

@@ -66,7 +66,7 @@ describe('pack FE Tailwind setup', () => {
 
   it('fails the build when a pack that bundles @abuddy/ui has a tailwind.config that throws', async () => {
     const packDir = makePack({
-      manifest: { fe: { bundleUi: true } },
+      manifest: { build: { bundleUi: true } },
       tailwindConfig: "throw new Error('bad tailwind config');\n",
     });
     const result = await build(packDir);
@@ -77,7 +77,7 @@ describe('pack FE Tailwind setup', () => {
 
   it("fails the build when a bundleUi pack's tailwind.config has no usable content", async () => {
     const packDir = makePack({
-      manifest: { fe: { bundleUi: true } },
+      manifest: { build: { bundleUi: true } },
       tailwindConfig: 'export default { theme: {} };\n',
     });
     const result = await build(packDir);
@@ -86,16 +86,16 @@ describe('pack FE Tailwind setup', () => {
   });
 
   it("fails the build when a bundleUi pack can't resolve @abuddy/ui", async () => {
-    const packDir = makePack({ manifest: { fe: { bundleUi: true } }, linkNodeModules: false });
+    const packDir = makePack({ manifest: { build: { bundleUi: true } }, linkNodeModules: false });
     const result = await build(packDir);
     expect(result.success).toBe(false);
     expect(result.error).toContain('@abuddy/ui');
-    expect(result.error).toContain('fe.bundleUi');
+    expect(result.error).toContain('build.bundleUi');
   });
 
   /** A bundleUi pack whose @abuddy/ui resolves but has no build: a checkout before packages:build */
   function uiWithoutBuild(): string {
-    const packDir = makePack({ manifest: { fe: { bundleUi: true } }, linkNodeModules: false });
+    const packDir = makePack({ manifest: { build: { bundleUi: true } }, linkNodeModules: false });
     const modules = path.join(packDir, 'node_modules', '@abuddy');
     fs.mkdirSync(path.join(modules, 'ui'), { recursive: true });
     for (const entry of fs.readdirSync(path.join(REPO_ROOT, 'node_modules'))) {
@@ -133,12 +133,12 @@ describe('pack FE Tailwind setup', () => {
     expect(result.error).toContain('@abuddy/ui has no built modules');
   });
 
-  it("fails the build when abuddy.json can't be read, so fe.bundleUi is unknown", async () => {
+  it("fails the build when abuddy.json can't be read, so build.bundleUi is unknown", async () => {
     const packDir = makePack({ manifest: '{ not json' });
     const result = await build(packDir);
     expect(result.success).toBe(false);
     expect(result.error).toContain('abuddy.json');
-    expect(result.error).toContain('fe.bundleUi');
+    expect(result.error).toContain('build.bundleUi');
   });
 
   /**
@@ -187,11 +187,11 @@ describe('pack FE Tailwind setup when Tailwind cannot be loaded', () => {
   });
 
   it('fails the build for a pack that bundles @abuddy/ui', async () => {
-    const packDir = makePack({ manifest: { fe: { bundleUi: true } } });
+    const packDir = makePack({ manifest: { build: { bundleUi: true } } });
     const result = await buildWithoutTailwind(packDir);
     expect(result.success).toBe(false);
     expect(result.error).toContain("Tailwind CSS couldn't be loaded");
-    expect(result.error).toContain('fe.bundleUi');
+    expect(result.error).toContain('build.bundleUi');
   });
 
   it('fails the build for a pack that has its own tailwind.config', async () => {

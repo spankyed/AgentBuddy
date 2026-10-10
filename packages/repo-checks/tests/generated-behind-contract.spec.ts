@@ -69,8 +69,10 @@ function fixture(): PackManifest {
         repositories: { memoQueries: 'src/features/memos/be/repository/index.ts#memoQueries' },
       },
     },
-    steps: { tick: { kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } },
-    dsl: { action: { prefix: '@', targets: ['monaco'], globals: { memos: 'NoteDTO' } } },
+    extensions: {
+      steps: { tick: { kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } },
+      dsl: { action: { prefix: '@', targets: ['monaco'], globals: { memos: 'NoteDTO' } } },
+    },
   } as unknown as PackManifest;
 }
 

@@ -271,7 +271,7 @@ export const LAYERS: {
   // it imported `@abuddy/ears` and `@abuddy/testing` and declared neither until this row existed.
   //
   // `@abuddy/ui` is here as the pack FE bundler's *subject* rather than as a dependency of this code: `src`
-  // only ever resolves it by name — the Tailwind content globs, the host-proxy decision (`fe.bundleUi`),
+  // only ever resolves it by name — the Tailwind content globs, the host-proxy decision (`build.bundleUi`),
   // `CHECKOUT_PACKAGES` — and the one real import is a test checking that proxying against the real module.
   { name: '@abuddy/cli', dir: 'packages/abuddy-cli',
     allowed: ['@abuddy/ears', '@abuddy/sdk', '@abuddy/host', '@abuddy/ui', '@abuddy/testing'] },

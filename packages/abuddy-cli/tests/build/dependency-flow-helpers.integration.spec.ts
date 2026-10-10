@@ -36,12 +36,14 @@ function writePack(name: string, files: Record<string, string>): string {
 
 const baseManifest = {
   id: 'base-pack', name: 'Base', version: '1.0.0',
-  steps: {
-    // A step's directory is the dirname of the first facet it names, which is where its `types.ts` and,
-    // for a custom helper, its `helpers.ts` are read from
-    pour: { build: 'src/steps/pour/build.ts#pourStepBuild', dsl: { primaryField: 'cup' } },
-    choose: { build: 'src/steps/choose/build.ts#chooseStepBuild', dsl: { custom: true } },
-    tick: { kind: 'trigger', trigger: { facet: 'src/steps/tick/build.ts#tickTriggerBuild' } },
+  extensions: {
+    steps: {
+      // A step's directory is the dirname of the first facet it names, which is where its `types.ts` and,
+      // for a custom helper, its `helpers.ts` are read from
+      pour: { build: 'src/steps/pour/build.ts#pourStepBuild', dsl: { primaryField: 'cup' } },
+      choose: { build: 'src/steps/choose/build.ts#chooseStepBuild', dsl: { custom: true } },
+      tick: { kind: 'trigger', trigger: { facet: 'src/steps/tick/build.ts#tickTriggerBuild' } },
+    },
   },
 } as unknown as PackManifest;
 

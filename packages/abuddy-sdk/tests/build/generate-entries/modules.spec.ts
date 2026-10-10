@@ -338,10 +338,14 @@ describe('the snapshot format', () => {
   };
   /** The snapshot's manifest, which a dependent's codegen reads (features, services, content formats, version…) */
   const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
-    $manifestVersion: true, $schema: true, artifacts: true, blocks: true, boot: true, build: true, builtIn: true, commands: true,
-    dependencies: true, description: true, dsl: true, entities: true, entityShapes: true, help: true, fe: true, features: true,
-    hostVersion: true, id: true, license: true, migrations: true, name: true, packServices: true,
-    permissions: true, relKinds: true, content: true, settingsSections: true, steps: true, version: true,
+    $manifestVersion: true, $schema: true, boot: true, build: true, builtIn: true,
+    dependencies: true, description: true, entities: true, entityShapes: true, extensions: true, help: true, features: true,
+    hostVersion: true, id: true, license: true, migrations: true, name: true,
+    permissions: true, relKinds: true, content: true, settingsSections: true, version: true,
+  };
+  /** What the pack contributes, which a dependent reads to know what it may send to and build with */
+  const MANIFEST_EXTENSION_FIELDS: Record<keyof NonNullable<PackManifest['extensions']>, true> = {
+    artifacts: true, blocks: true, commands: true, dsl: true, fe: true, services: true, steps: true,
   };
   // No `id`: a feature's id is the key its entry sits under, which is what makes a duplicate unrepresentable
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
@@ -382,6 +386,7 @@ describe('the snapshot format', () => {
       fields: Object.keys(SNAPSHOT_FIELDS).sort(),
       manifest: {
         fields: Object.keys(MANIFEST_FIELDS).sort(),
+        extensions: Object.keys(MANIFEST_EXTENSION_FIELDS).sort(),
         feature: Object.keys(MANIFEST_FEATURE_FIELDS).sort(),
         system: Object.keys(MANIFEST_SYSTEM_FIELDS).sort(),
         systemEvents: Object.keys(MANIFEST_SYSTEM_EVENTS_FIELDS).sort(),
@@ -403,10 +408,11 @@ describe('the snapshot format', () => {
       fields: ['defs', 'flowHelpers', 'format', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
         fields: [
-          '$manifestVersion', '$schema', 'artifacts', 'blocks', 'boot', 'build', 'builtIn', 'commands', 'content', 'dependencies', 'description', 'dsl',
-          'entities', 'entityShapes', 'fe', 'features', 'help', 'hostVersion', 'id', 'license', 'migrations', 'name', 'packServices',
-          'permissions', 'relKinds', 'settingsSections', 'steps', 'version',
+          '$manifestVersion', '$schema', 'boot', 'build', 'builtIn', 'content', 'dependencies', 'description',
+          'entities', 'entityShapes', 'extensions', 'features', 'help', 'hostVersion', 'id', 'license', 'migrations', 'name',
+          'permissions', 'relKinds', 'settingsSections', 'version',
         ],
+        extensions: ['artifacts', 'blocks', 'commands', 'dsl', 'fe', 'services', 'steps'],
         feature: ['designation', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],

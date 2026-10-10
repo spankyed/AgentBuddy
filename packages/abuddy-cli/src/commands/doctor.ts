@@ -64,7 +64,7 @@ export async function doctor(_args: string[]) {
 
   check('Step files present', () => {
     const missing: string[] = [];
-    for (const [type, entry] of Object.entries(manifest.steps ?? {})) {
+    for (const [type, entry] of Object.entries(manifest.extensions?.steps ?? {})) {
       const targets = [entry.build, entry.trigger?.facet, entry.trigger?.register, entry.runtime?.handler, entry.fe];
       for (const target of targets) {
         if (target && !fs.existsSync(path.join(root, target.split('#')[0]!))) missing.push(`${type} (${target})`);

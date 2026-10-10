@@ -223,16 +223,352 @@
       "services": {}
     }
   },
-  "commands": [
-    {
-      "name": "pr2md",
-      "placeholder": "PR number or GitHub URL (optional)"
+  "extensions": {
+    "steps": {
+      "action": {
+        "build": "src/extensions/steps/action/build.ts#actionStepBuild",
+        "fe": "src/extensions/steps/action/fe.ts#actionStepFE",
+        "runtime": {
+          "handler": "src/extensions/steps/action/runtime.ts#handler",
+          "isAsync": true
+        },
+        "dsl": {
+          "custom": true
+        }
+      },
+      "llm": {
+        "build": "src/extensions/steps/llm/build.ts#llmStepBuild",
+        "fe": "src/extensions/steps/llm/fe.ts#llmStepFE",
+        "runtime": {
+          "handler": "src/extensions/steps/llm/runtime.ts#handler",
+          "isAsync": true
+        },
+        "dsl": {
+          "primaryField": "prompt"
+        }
+      },
+      "fire": {
+        "build": "src/extensions/steps/fire/build.ts#fireStepBuild",
+        "fe": "src/extensions/steps/fire/fe.ts#fireStepFE",
+        "runtime": {
+          "handler": "src/extensions/steps/fire/runtime.ts#handler"
+        },
+        "dsl": {
+          "primaryField": "event"
+        }
+      },
+      "subflow": {
+        "build": "src/extensions/steps/subflow/build.ts#flowStepBuild",
+        "fe": "src/extensions/steps/subflow/fe.ts#flowStepFE",
+        "runtime": {
+          "spawnsSubflow": true
+        },
+        "dsl": {
+          "primaryField": "flow"
+        }
+      },
+      "query": {
+        "build": "src/extensions/steps/query/build.ts#queryStepBuild",
+        "fe": "src/extensions/steps/query/fe.ts#queryStepFE",
+        "runtime": {
+          "handler": "src/extensions/steps/query/runtime.ts#handler",
+          "isAsync": true
+        },
+        "dsl": {
+          "primaryField": "prompt"
+        }
+      },
+      "create": {
+        "build": "src/extensions/steps/create/build.ts#createStepBuild",
+        "fe": "src/extensions/steps/create/fe.ts#createStepFE",
+        "runtime": {
+          "handler": "src/extensions/steps/create/runtime.ts#handler",
+          "isAsync": true
+        },
+        "dsl": {
+          "primaryField": "entity"
+        }
+      },
+      "update": {
+        "build": "src/extensions/steps/update/build.ts#updateStepBuild",
+        "fe": "src/extensions/steps/update/fe.ts#updateStepFE",
+        "runtime": {
+          "handler": "src/extensions/steps/update/runtime.ts#handler",
+          "isAsync": true
+        },
+        "dsl": {
+          "primaryField": "target"
+        }
+      },
+      "transform": {
+        "build": "src/extensions/steps/transform/build.ts#transformStepBuild",
+        "fe": "src/extensions/steps/transform/fe.ts#transformStepFE",
+        "runtime": {
+          "handler": "src/extensions/steps/transform/runtime.ts#handler",
+          "isAsync": true
+        },
+        "dsl": {
+          "primaryField": "script"
+        }
+      },
+      "keep_alive": {
+        "build": "src/extensions/steps/keep-alive/build.ts#keepAliveStepBuild",
+        "fe": "src/extensions/steps/keep-alive/fe.ts#keepAliveStepFE",
+        "runtime": {
+          "handler": "src/extensions/steps/keep-alive/runtime.ts#handler",
+          "waits": true
+        },
+        "dsl": {}
+      },
+      "kill": {
+        "build": "src/extensions/steps/kill/build.ts#killStepBuild",
+        "fe": "src/extensions/steps/kill/fe.ts#killStepFE",
+        "runtime": {
+          "handler": "src/extensions/steps/kill/runtime.ts#handler",
+          "sync": true
+        },
+        "dsl": {
+          "defaultLabel": "Kill Flow"
+        }
+      },
+      "switch": {
+        "build": "src/extensions/steps/switch/build.ts#switchStepBuild",
+        "fe": "src/extensions/steps/switch/fe.ts#switchStepFE",
+        "runtime": {
+          "handler": "src/extensions/steps/switch/runtime.ts#handler"
+        },
+        "dsl": {
+          "custom": true
+        }
+      },
+      "schedule": {
+        "kind": "trigger",
+        "trigger": {
+          "facet": "src/extensions/steps/schedule/build.ts#scheduleTriggerBuild",
+          "register": "src/extensions/steps/schedule/runtime.ts#register"
+        },
+        "fe": "src/extensions/steps/schedule/fe.ts#scheduleTriggerFE"
+      },
+      "listener": {
+        "kind": "trigger",
+        "trigger": {
+          "facet": "src/extensions/steps/listener/build.ts#listenerTriggerBuild"
+        },
+        "fe": "src/extensions/steps/listener/fe.ts#listenerTriggerFE"
+      }
     },
-    {
-      "name": "instructions",
-      "placeholder": "Thread instructions text"
+    "artifacts": {
+      "text": {
+        "icon": "FileText",
+        "fe": "src/extensions/artifacts/viewers/text-artifact.vue"
+      },
+      "code": {
+        "icon": "Code",
+        "fe": "src/extensions/artifacts/viewers/code-artifact.vue"
+      },
+      "review": {
+        "icon": "CheckSquare",
+        "fe": "src/extensions/artifacts/viewers/review-artifact.vue"
+      },
+      "image": {
+        "icon": "Image",
+        "fe": "src/extensions/artifacts/viewers/image-artifact.vue"
+      },
+      "slack": {
+        "icon": "MessageSquare",
+        "fe": "src/extensions/artifacts/viewers/slack-artifact.vue"
+      },
+      "todo": {
+        "icon": "ListTodo",
+        "fe": "src/extensions/artifacts/viewers/todo-artifact.vue"
+      },
+      "project": {
+        "icon": "Layers",
+        "fe": "src/extensions/artifacts/viewers/project-artifact.vue"
+      },
+      "json": {
+        "icon": "FileText",
+        "fe": "src/extensions/artifacts/viewers/json-artifact.vue"
+      },
+      "graph": {
+        "icon": "Network",
+        "fe": "src/extensions/artifacts/viewers/graph-artifact.vue"
+      },
+      "table": {
+        "icon": "Table",
+        "fe": "src/extensions/artifacts/viewers/table-artifact.vue"
+      },
+      "markdown": {
+        "icon": "BookText",
+        "fe": "src/extensions/artifacts/viewers/markdown-artifact.vue"
+      },
+      "claude-session": {
+        "icon": "Wrench",
+        "fe": "src/extensions/artifacts/viewers/claude-session-artifact.vue"
+      },
+      "codex-session": {
+        "icon": "Bot",
+        "fe": "src/extensions/artifacts/viewers/codex-session-artifact.vue"
+      },
+      "diff": {
+        "icon": "GitBranch",
+        "fe": "src/extensions/artifacts/viewers/diff-artifact.vue"
+      },
+      "plan": {
+        "icon": "ClipboardList",
+        "fe": "src/extensions/artifacts/viewers/plan-artifact.vue"
+      },
+      "note": {
+        "icon": "StickyNote",
+        "fe": "src/extensions/artifacts/viewers/note-artifact.vue"
+      }
+    },
+    "blocks": {
+      "prompt": {
+        "fe": "src/extensions/blocks/display/PromptBlock.vue"
+      },
+      "note": {
+        "fe": "src/extensions/blocks/display/NoteBlock.vue"
+      },
+      "markdown": {
+        "fe": "src/extensions/blocks/display/MarkdownBlock.vue"
+      },
+      "link": {
+        "fe": "src/extensions/blocks/display/LinkBlock.vue"
+      },
+      "tool-activity": {
+        "fe": "src/extensions/blocks/display/ToolActivityBlock.vue"
+      },
+      "thinking": {
+        "fe": "src/extensions/blocks/display/ThinkingBlock.vue"
+      },
+      "tool-input": {
+        "fe": "src/extensions/blocks/display/ToolInputBlock.vue"
+      },
+      "context-usage": {
+        "fe": "src/extensions/blocks/display/ContextUsageBlock.vue"
+      },
+      "session-list": {
+        "fe": "src/extensions/blocks/display/SessionListBlock.vue"
+      },
+      "actions": {
+        "kind": "input",
+        "fe": "src/extensions/blocks/display/ActionButtons.vue"
+      },
+      "toggles": {
+        "kind": "input",
+        "fe": "src/extensions/blocks/display/TogglesBlock.vue"
+      },
+      "file-picker": {
+        "kind": "input",
+        "fe": "src/extensions/blocks/input/FilePickerInput.vue"
+      },
+      "choice": {
+        "kind": "input",
+        "fe": "src/extensions/blocks/input/ChoiceInput.vue"
+      },
+      "text": {
+        "kind": "input",
+        "fe": "src/extensions/blocks/input/TextInput.vue"
+      },
+      "approval": {
+        "kind": "input",
+        "fe": "src/extensions/blocks/input/ApprovalButtons.vue"
+      },
+      "button-group": {
+        "kind": "input",
+        "fe": "src/extensions/blocks/input/ButtonGroupInput.vue"
+      },
+      "question": {
+        "kind": "input",
+        "fe": "src/extensions/blocks/input/QuestionInput.vue"
+      },
+      "project-select": {
+        "kind": "input",
+        "fe": "src/extensions/blocks/input/ProjectSelectInput.vue"
+      }
+    },
+    "commands": [
+      {
+        "name": "pr2md",
+        "placeholder": "PR number or GitHub URL (optional)"
+      },
+      {
+        "name": "instructions",
+        "placeholder": "Thread instructions text"
+      }
+    ],
+    "dsl": {
+      "action": {
+        "entry": "src/defs/action.ts",
+        "targets": [
+          "monaco"
+        ],
+        "prefix": "action:",
+        "inline": [
+          "ai",
+          "@ai-sdk/provider",
+          "@ai-sdk/provider-utils",
+          "@ai-sdk/gateway",
+          "@standard-schema/spec"
+        ],
+        "globals": {
+          "services": "typeof _dsl.services",
+          "z": "typeof _dsl.z",
+          "flowId": "string"
+        }
+      },
+      "prompt": {
+        "entry": "src/defs/prompt.ts",
+        "targets": [
+          "monaco"
+        ],
+        "prefix": "prompt:",
+        "globals": {
+          "usePrompt": "typeof _dsl.usePrompt"
+        }
+      },
+      "database": {
+        "entry": "src/defs/database.ts",
+        "targets": [
+          "monaco"
+        ],
+        "prefix": "database:",
+        "globals": {
+          "EARS": "typeof _dsl.EARS",
+          "qx": "typeof _dsl.qx",
+          "getAllEntities": "typeof _dsl.getAllEntities",
+          "getAll": "typeof _dsl.getAll",
+          "queryEntitiesByRelationTo": "typeof _dsl.queryEntitiesByRelationTo",
+          "getAttr": "typeof _dsl.getAttr",
+          "getAttrs": "typeof _dsl.getAttrs",
+          "getRoles": "typeof _dsl.getRoles",
+          "getEntitiesOfType": "typeof _dsl.getEntitiesOfType",
+          "queryEntitiesByAttribute": "typeof _dsl.queryEntitiesByAttribute",
+          "queryEntitiesInRelationTo": "typeof _dsl.queryEntitiesInRelationTo",
+          "findRelations": "typeof _dsl.findRelations",
+          "getRelationStats": "typeof _dsl.getRelationStats",
+          "getSchemaStats": "typeof _dsl.getSchemaStats",
+          "tx": "typeof _dsl.tx",
+          "destroyEntity": "typeof _dsl.destroyEntity",
+          "prepareEntity": "typeof _dsl.prepareEntity",
+          "createEntityWithDefaults": "typeof _dsl.createEntityWithDefaults",
+          "updateEntity": "typeof _dsl.updateEntity",
+          "createRelation": "typeof _dsl.createRelation",
+          "removeRelation": "typeof _dsl.removeRelation",
+          "removeRelationById": "typeof _dsl.removeRelationById",
+          "grantRole": "typeof _dsl.grantRole",
+          "revokeRole": "typeof _dsl.revokeRole"
+        }
+      }
+    },
+    "fe": {
+      "tiptapPlugins": "src/extensions/tiptap/index.ts",
+      "appExtensions": {
+        "welcome": "src/extensions/app/Welcome.vue"
+      }
     }
-  ],
+  },
   "boot": {
     "hooks": "src/features/hooks.ts"
   },
@@ -364,346 +700,12 @@
       "type": "NoteEntity"
     }
   },
-  "steps": {
-    "action": {
-      "build": "src/extensions/steps/action/build.ts#actionStepBuild",
-      "fe": "src/extensions/steps/action/fe.ts#actionStepFE",
-      "runtime": {
-        "handler": "src/extensions/steps/action/runtime.ts#handler",
-        "isAsync": true
-      },
-      "dsl": {
-        "custom": true
-      }
-    },
-    "llm": {
-      "build": "src/extensions/steps/llm/build.ts#llmStepBuild",
-      "fe": "src/extensions/steps/llm/fe.ts#llmStepFE",
-      "runtime": {
-        "handler": "src/extensions/steps/llm/runtime.ts#handler",
-        "isAsync": true
-      },
-      "dsl": {
-        "primaryField": "prompt"
-      }
-    },
-    "fire": {
-      "build": "src/extensions/steps/fire/build.ts#fireStepBuild",
-      "fe": "src/extensions/steps/fire/fe.ts#fireStepFE",
-      "runtime": {
-        "handler": "src/extensions/steps/fire/runtime.ts#handler"
-      },
-      "dsl": {
-        "primaryField": "event"
-      }
-    },
-    "subflow": {
-      "build": "src/extensions/steps/subflow/build.ts#flowStepBuild",
-      "fe": "src/extensions/steps/subflow/fe.ts#flowStepFE",
-      "runtime": {
-        "spawnsSubflow": true
-      },
-      "dsl": {
-        "primaryField": "flow"
-      }
-    },
-    "query": {
-      "build": "src/extensions/steps/query/build.ts#queryStepBuild",
-      "fe": "src/extensions/steps/query/fe.ts#queryStepFE",
-      "runtime": {
-        "handler": "src/extensions/steps/query/runtime.ts#handler",
-        "isAsync": true
-      },
-      "dsl": {
-        "primaryField": "prompt"
-      }
-    },
-    "create": {
-      "build": "src/extensions/steps/create/build.ts#createStepBuild",
-      "fe": "src/extensions/steps/create/fe.ts#createStepFE",
-      "runtime": {
-        "handler": "src/extensions/steps/create/runtime.ts#handler",
-        "isAsync": true
-      },
-      "dsl": {
-        "primaryField": "entity"
-      }
-    },
-    "update": {
-      "build": "src/extensions/steps/update/build.ts#updateStepBuild",
-      "fe": "src/extensions/steps/update/fe.ts#updateStepFE",
-      "runtime": {
-        "handler": "src/extensions/steps/update/runtime.ts#handler",
-        "isAsync": true
-      },
-      "dsl": {
-        "primaryField": "target"
-      }
-    },
-    "transform": {
-      "build": "src/extensions/steps/transform/build.ts#transformStepBuild",
-      "fe": "src/extensions/steps/transform/fe.ts#transformStepFE",
-      "runtime": {
-        "handler": "src/extensions/steps/transform/runtime.ts#handler",
-        "isAsync": true
-      },
-      "dsl": {
-        "primaryField": "script"
-      }
-    },
-    "keep_alive": {
-      "build": "src/extensions/steps/keep-alive/build.ts#keepAliveStepBuild",
-      "fe": "src/extensions/steps/keep-alive/fe.ts#keepAliveStepFE",
-      "runtime": {
-        "handler": "src/extensions/steps/keep-alive/runtime.ts#handler",
-        "waits": true
-      },
-      "dsl": {}
-    },
-    "kill": {
-      "build": "src/extensions/steps/kill/build.ts#killStepBuild",
-      "fe": "src/extensions/steps/kill/fe.ts#killStepFE",
-      "runtime": {
-        "handler": "src/extensions/steps/kill/runtime.ts#handler",
-        "sync": true
-      },
-      "dsl": {
-        "defaultLabel": "Kill Flow"
-      }
-    },
-    "switch": {
-      "build": "src/extensions/steps/switch/build.ts#switchStepBuild",
-      "fe": "src/extensions/steps/switch/fe.ts#switchStepFE",
-      "runtime": {
-        "handler": "src/extensions/steps/switch/runtime.ts#handler"
-      },
-      "dsl": {
-        "custom": true
-      }
-    },
-    "schedule": {
-      "kind": "trigger",
-      "trigger": {
-        "facet": "src/extensions/steps/schedule/build.ts#scheduleTriggerBuild",
-        "register": "src/extensions/steps/schedule/runtime.ts#register"
-      },
-      "fe": "src/extensions/steps/schedule/fe.ts#scheduleTriggerFE"
-    },
-    "listener": {
-      "kind": "trigger",
-      "trigger": {
-        "facet": "src/extensions/steps/listener/build.ts#listenerTriggerBuild"
-      },
-      "fe": "src/extensions/steps/listener/fe.ts#listenerTriggerFE"
-    }
-  },
-  "artifacts": {
-    "text": {
-      "icon": "FileText",
-      "fe": "src/extensions/artifacts/viewers/text-artifact.vue"
-    },
-    "code": {
-      "icon": "Code",
-      "fe": "src/extensions/artifacts/viewers/code-artifact.vue"
-    },
-    "review": {
-      "icon": "CheckSquare",
-      "fe": "src/extensions/artifacts/viewers/review-artifact.vue"
-    },
-    "image": {
-      "icon": "Image",
-      "fe": "src/extensions/artifacts/viewers/image-artifact.vue"
-    },
-    "slack": {
-      "icon": "MessageSquare",
-      "fe": "src/extensions/artifacts/viewers/slack-artifact.vue"
-    },
-    "todo": {
-      "icon": "ListTodo",
-      "fe": "src/extensions/artifacts/viewers/todo-artifact.vue"
-    },
-    "project": {
-      "icon": "Layers",
-      "fe": "src/extensions/artifacts/viewers/project-artifact.vue"
-    },
-    "json": {
-      "icon": "FileText",
-      "fe": "src/extensions/artifacts/viewers/json-artifact.vue"
-    },
-    "graph": {
-      "icon": "Network",
-      "fe": "src/extensions/artifacts/viewers/graph-artifact.vue"
-    },
-    "table": {
-      "icon": "Table",
-      "fe": "src/extensions/artifacts/viewers/table-artifact.vue"
-    },
-    "markdown": {
-      "icon": "BookText",
-      "fe": "src/extensions/artifacts/viewers/markdown-artifact.vue"
-    },
-    "claude-session": {
-      "icon": "Wrench",
-      "fe": "src/extensions/artifacts/viewers/claude-session-artifact.vue"
-    },
-    "codex-session": {
-      "icon": "Bot",
-      "fe": "src/extensions/artifacts/viewers/codex-session-artifact.vue"
-    },
-    "diff": {
-      "icon": "GitBranch",
-      "fe": "src/extensions/artifacts/viewers/diff-artifact.vue"
-    },
-    "plan": {
-      "icon": "ClipboardList",
-      "fe": "src/extensions/artifacts/viewers/plan-artifact.vue"
-    },
-    "note": {
-      "icon": "StickyNote",
-      "fe": "src/extensions/artifacts/viewers/note-artifact.vue"
-    }
-  },
-  "blocks": {
-    "prompt": {
-      "fe": "src/extensions/blocks/display/PromptBlock.vue"
-    },
-    "note": {
-      "fe": "src/extensions/blocks/display/NoteBlock.vue"
-    },
-    "markdown": {
-      "fe": "src/extensions/blocks/display/MarkdownBlock.vue"
-    },
-    "link": {
-      "fe": "src/extensions/blocks/display/LinkBlock.vue"
-    },
-    "tool-activity": {
-      "fe": "src/extensions/blocks/display/ToolActivityBlock.vue"
-    },
-    "thinking": {
-      "fe": "src/extensions/blocks/display/ThinkingBlock.vue"
-    },
-    "tool-input": {
-      "fe": "src/extensions/blocks/display/ToolInputBlock.vue"
-    },
-    "context-usage": {
-      "fe": "src/extensions/blocks/display/ContextUsageBlock.vue"
-    },
-    "session-list": {
-      "fe": "src/extensions/blocks/display/SessionListBlock.vue"
-    },
-    "actions": {
-      "kind": "input",
-      "fe": "src/extensions/blocks/display/ActionButtons.vue"
-    },
-    "toggles": {
-      "kind": "input",
-      "fe": "src/extensions/blocks/display/TogglesBlock.vue"
-    },
-    "file-picker": {
-      "kind": "input",
-      "fe": "src/extensions/blocks/input/FilePickerInput.vue"
-    },
-    "choice": {
-      "kind": "input",
-      "fe": "src/extensions/blocks/input/ChoiceInput.vue"
-    },
-    "text": {
-      "kind": "input",
-      "fe": "src/extensions/blocks/input/TextInput.vue"
-    },
-    "approval": {
-      "kind": "input",
-      "fe": "src/extensions/blocks/input/ApprovalButtons.vue"
-    },
-    "button-group": {
-      "kind": "input",
-      "fe": "src/extensions/blocks/input/ButtonGroupInput.vue"
-    },
-    "question": {
-      "kind": "input",
-      "fe": "src/extensions/blocks/input/QuestionInput.vue"
-    },
-    "project-select": {
-      "kind": "input",
-      "fe": "src/extensions/blocks/input/ProjectSelectInput.vue"
-    }
-  },
-  "fe": {
-    "tiptapPlugins": "src/extensions/tiptap/index.ts",
-    "appExtensions": {
-      "welcome": "src/extensions/app/Welcome.vue"
-    }
-  },
   "build": {
     "opaqueDeps": [
       "elkjs"
     ]
   },
   "migrations": "src/migrations/index.ts",
-  "dsl": {
-    "action": {
-      "entry": "src/defs/action.ts",
-      "targets": [
-        "monaco"
-      ],
-      "prefix": "action:",
-      "inline": [
-        "ai",
-        "@ai-sdk/provider",
-        "@ai-sdk/provider-utils",
-        "@ai-sdk/gateway",
-        "@standard-schema/spec"
-      ],
-      "globals": {
-        "services": "typeof _dsl.services",
-        "z": "typeof _dsl.z",
-        "flowId": "string"
-      }
-    },
-    "prompt": {
-      "entry": "src/defs/prompt.ts",
-      "targets": [
-        "monaco"
-      ],
-      "prefix": "prompt:",
-      "globals": {
-        "usePrompt": "typeof _dsl.usePrompt"
-      }
-    },
-    "database": {
-      "entry": "src/defs/database.ts",
-      "targets": [
-        "monaco"
-      ],
-      "prefix": "database:",
-      "globals": {
-        "EARS": "typeof _dsl.EARS",
-        "qx": "typeof _dsl.qx",
-        "getAllEntities": "typeof _dsl.getAllEntities",
-        "getAll": "typeof _dsl.getAll",
-        "queryEntitiesByRelationTo": "typeof _dsl.queryEntitiesByRelationTo",
-        "getAttr": "typeof _dsl.getAttr",
-        "getAttrs": "typeof _dsl.getAttrs",
-        "getRoles": "typeof _dsl.getRoles",
-        "getEntitiesOfType": "typeof _dsl.getEntitiesOfType",
-        "queryEntitiesByAttribute": "typeof _dsl.queryEntitiesByAttribute",
-        "queryEntitiesInRelationTo": "typeof _dsl.queryEntitiesInRelationTo",
-        "findRelations": "typeof _dsl.findRelations",
-        "getRelationStats": "typeof _dsl.getRelationStats",
-        "getSchemaStats": "typeof _dsl.getSchemaStats",
-        "tx": "typeof _dsl.tx",
-        "destroyEntity": "typeof _dsl.destroyEntity",
-        "prepareEntity": "typeof _dsl.prepareEntity",
-        "createEntityWithDefaults": "typeof _dsl.createEntityWithDefaults",
-        "updateEntity": "typeof _dsl.updateEntity",
-        "createRelation": "typeof _dsl.createRelation",
-        "removeRelation": "typeof _dsl.removeRelation",
-        "removeRelationById": "typeof _dsl.removeRelationById",
-        "grantRole": "typeof _dsl.grantRole",
-        "revokeRole": "typeof _dsl.revokeRole"
-      }
-    }
-  },
   "settingsSections": "src/app-settings/index.ts#settingsSections",
   "help": "src/app-settings/index.ts#helpEntries"
 }

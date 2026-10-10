@@ -218,8 +218,8 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     // produces: the service whose manifest and generated files are asserted below
     expect((await callCli(pack, 'add', ['service', 'cache'])).code).toBe(0);
     const manifest = JSON.parse(fs.readFileSync(path.join(pack, 'abuddy.json'), 'utf-8'));
-    expect(manifest.packServices).toEqual({ cache: 'src/extensions/services/cache.ts#cacheService' });
-    expect(manifest.steps).toEqual({
+    expect(manifest.extensions.services).toEqual({ cache: 'src/extensions/services/cache.ts#cacheService' });
+    expect(manifest.extensions.steps).toEqual({
       ping: {
         kind: 'step',
         build: 'src/extensions/steps/ping/build.ts#pingStepBuild',

@@ -6,9 +6,6 @@
   "hostVersion": ">=0.3.0",
   "entities": {},
   "relKinds": {},
-  "fe": {
-    "bundleUi": true
-  },
   "features": {
     "scribbles": {
       "settings": "src/features/scribbles/settings.ts",
@@ -19,5 +16,8 @@
     }
   },
   "dependencies": {},
-  "permissions": []
+  "permissions": [],
+  "build": {
+    "bundleUi": true
+  }
 }

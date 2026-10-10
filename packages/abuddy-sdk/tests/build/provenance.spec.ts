@@ -11,7 +11,7 @@ const dep = (id: string, source: ProvenanceSource) => [id, source] as const;
 
 describe('_mergeProvenance', () => {
   it('attributes a dependency\'s own names to that dependency', () => {
-    expect(_mergeProvenance('commands', [dep('base-pack', { manifest: { commands: [{ name: 'note' }] } })]))
+    expect(_mergeProvenance('commands', [dep('base-pack', { manifest: { extensions: { commands: [{ name: 'note' }] } } })]))
       .toEqual({ note: 'base-pack' });
   });
 
@@ -29,7 +29,7 @@ describe('_mergeProvenance', () => {
    */
   it('lets a dependency that declares a name itself win over one that only inherited it', () => {
     const inheritedOnly = dep('left-pack', { manifest: {}, provenance: { commands: { note: 'deep-pack' } } });
-    const declaresIt = dep('right-pack', { manifest: { commands: [{ name: 'note' }] } });
+    const declaresIt = dep('right-pack', { manifest: { extensions: { commands: [{ name: 'note' }] } } });
 
     expect(_mergeProvenance('commands', [inheritedOnly, declaresIt])).toEqual({ note: 'right-pack' });
     // …and the reverse order still prefers the one that declares it, because its manifest pass is last
@@ -43,7 +43,7 @@ describe('_mergeProvenance', () => {
    */
   it("credits a dependency for a name it redeclares over the one it inherited it from", () => {
     const merged = _mergeProvenance('commands', [
-      dep('mid-pack', { manifest: { commands: [{ name: 'note' }] }, provenance: { commands: { note: 'deep-pack' } } }),
+      dep('mid-pack', { manifest: { extensions: { commands: [{ name: 'note' }] } }, provenance: { commands: { note: 'deep-pack' } } }),
     ]);
     expect(merged).toEqual({ note: 'mid-pack' });
   });
@@ -67,7 +67,7 @@ describe('_mergeProvenance', () => {
     const manifest = {
       entities: { Note: 'Note' },
       relKinds: { tagged: 'tagged' },
-      commands: [{ name: 'note' }],
+      extensions: { commands: [{ name: 'note' }] },
       features: { memos: { plugin: {} }, headless: {} },
     };
     const cases: Array<[keyof typeof PROVENANCE_KINDS, Record<string, string>]> = [
@@ -100,7 +100,7 @@ describe('a name that means something to an ordinary object', () => {
   });
 
   it('is recorded like any other name when a pack does declare it', () => {
-    const merged = _mergeProvenance('commands', [dep('base-pack', { manifest: { commands: [{ name: 'constructor' }] } })]);
+    const merged = _mergeProvenance('commands', [dep('base-pack', { manifest: { extensions: { commands: [{ name: 'constructor' }] } } })]);
     expect(merged['constructor']).toBe('base-pack');
   });
 
@@ -127,7 +127,7 @@ describe('a name that means something to an ordinary object', () => {
 describe('_buildProvenance', () => {
   it('records every kind that declared something', () => {
     const provenance = _buildProvenance(
-      [dep('base-pack', { manifest: { entities: { Note: 'Note' }, commands: [{ name: 'note' }] } })],
+      [dep('base-pack', { manifest: { entities: { Note: 'Note' }, extensions: { commands: [{ name: 'note' }] } } })],
       { id: 'app-pack', manifest: { features: { app: { plugin: {} } } } },
     );
     expect(provenance).toEqual({ entities: { Note: 'base-pack' }, commands: { note: 'base-pack' }, plugins: { 'app-pack/app': 'app-pack' } });

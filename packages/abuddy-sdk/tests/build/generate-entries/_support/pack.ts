@@ -74,17 +74,34 @@ export function write(file: string, content: string): void {
   fs.writeFileSync(path.join(root, file), content);
 }
 
+/** The contribution keys a manifest holds under `extensions`, which a case here may write flat */
+const EXTENSION_KEYS = ['steps', 'artifacts', 'blocks', 'commands', 'dsl', 'fe', 'services'] as const;
+
 /**
- * A manifest for a case, over the minimum. `features` may be written as a list of entries carrying their
- * `id`, which this keys by that id: the cases below are about what codegen *emits*, and a list reads better
- * where a case declares several features and the `system()`/`withPlugin()` helpers build them. The manifest's
- * own shape is `manifest-schema.spec.ts`'s subject, including that a duplicate id is unrepresentable.
+ * A manifest for a case, over the minimum, with two conveniences the cases below are the reason for.
+ *
+ * `features` may be written as a list of entries carrying their `id`, which this keys by that id, and a
+ * contribution key may be written at the root, which this moves under `extensions`. Both are because
+ * these cases are about what codegen *emits*: a list reads better where a case declares several features
+ * and the `system()`/`withPlugin()` helpers build them, and one flat key reads better than a section
+ * wrapping it. The manifest's own shape is `manifest-schema.spec.ts`'s subject — that a duplicate feature
+ * id is unrepresentable, and that a contribution key at the root is refused.
  */
 export function manifest(fields: Record<string, unknown>): PackManifest {
   const features = Array.isArray(fields.features)
     ? Object.fromEntries((fields.features as { id: string }[]).map(({ id, ...entry }) => [id, entry]))
     : fields.features;
-  return { id: 'demo-pack', name: 'Demo', version: '1.0.0', ...fields, ...(features ? { features } : {}) } as unknown as PackManifest;
+  const flat = EXTENSION_KEYS.filter((key) => key in fields);
+  const extensions = flat.length > 0 || fields.extensions
+    ? { ...(fields.extensions as object), ...Object.fromEntries(flat.map((key) => [key, fields[key]])) }
+    : undefined;
+  const rest = Object.fromEntries(Object.entries(fields).filter(([key]) => !flat.includes(key as typeof EXTENSION_KEYS[number])));
+  return {
+    id: 'demo-pack', name: 'Demo', version: '1.0.0',
+    ...rest,
+    ...(features ? { features } : {}),
+    ...(extensions ? { extensions } : {}),
+  } as unknown as PackManifest;
 }
 
 /** The exports every facade `abuddy build` bundles publishes, and the declaration each gets by default */

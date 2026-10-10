@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { ManifestSchema } from './manifest-schema.ts';
+import { _MOVED_ROOT_KEYS, ManifestSchema } from './manifest-schema.ts';
 import { packFeatures, type PackManifest } from './manifest.ts';
 
 export interface ManifestValidation {
@@ -14,9 +14,23 @@ export function parseManifest(raw: unknown): ManifestValidation {
 
   const errors = result.error.issues.map(issue => {
     const fieldPath = issue.path.length > 0 ? `"${issue.path.join('.')}"` : 'root';
-    return `abuddy.json ${fieldPath}: ${issue.message}`;
+    return `abuddy.json ${fieldPath}: ${issue.message}${movedKeyHint(issue)}`;
   });
   return { errors, warnings: [] };
+}
+
+/**
+ * Where a key the manifest no longer has at its root lives now. `.strict()` reports an unrecognized key
+ * and says nothing about where it went, which is the whole of what a reader needs — so the names are
+ * appended to that one message rather than accepted anywhere.
+ */
+function movedKeyHint(issue: { code: string; keys?: string[] }): string {
+  if (issue.code !== 'unrecognized_keys') return '';
+  const moved = (issue.keys ?? []).flatMap((key) => {
+    const to = _MOVED_ROOT_KEYS[key];
+    return to ? [`"${key}" is now "${to}"`] : [];
+  });
+  return moved.length > 0 ? ` (${moved.join(', ')})` : '';
 }
 
 export function validateManifest(manifestPath: string): ManifestValidation {

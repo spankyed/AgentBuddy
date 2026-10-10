@@ -33,7 +33,7 @@ src/extensions/steps/my-step/
   form.vue      # Step configuration form
 ```
 
-It writes the manifest entry under `steps` naming those two facets, and regenerates `__generated__/`. Add a
+It writes the manifest entry under `extensions.steps` naming those two facets, and regenerates `__generated__/`. Add a
 `runtime.ts` and name it in the entry to give the step something to run. A type the manifest already
 declares is refused.
 
@@ -198,24 +198,26 @@ export interface MyStepNode extends NodeBase {
 
 ### Manifest
 
-A step is declared in `abuddy.json`, keyed by its type, with each facet named where its code is:
+A step is declared in `abuddy.json` under `extensions.steps`, keyed by its type, with each facet named where its code is:
 
 ```json
 {
-  "steps": {
-    "my-step": {
-      "build": "src/extensions/steps/my-step/build.ts#myStepStepBuild",
-      "fe": "src/extensions/steps/my-step/fe.ts#myStepStepFE",
-      "runtime": { "handler": "src/extensions/steps/my-step/runtime.ts#handler", "isAsync": true },
-      "dsl": { "primaryField": "action" }
-    },
-    "my-trigger": {
-      "kind": "trigger",
-      "trigger": {
-        "facet": "src/extensions/steps/my-trigger/build.ts#myTriggerBuild",
-        "register": "src/extensions/steps/my-trigger/runtime.ts#register"
+  "extensions": {
+    "steps": {
+      "my-step": {
+        "build": "src/extensions/steps/my-step/build.ts#myStepStepBuild",
+        "fe": "src/extensions/steps/my-step/fe.ts#myStepStepFE",
+        "runtime": { "handler": "src/extensions/steps/my-step/runtime.ts#handler", "isAsync": true },
+        "dsl": { "primaryField": "action" }
       },
-      "fe": "src/extensions/steps/my-trigger/fe.ts#myTriggerFE"
+      "my-trigger": {
+        "kind": "trigger",
+        "trigger": {
+          "facet": "src/extensions/steps/my-trigger/build.ts#myTriggerBuild",
+          "register": "src/extensions/steps/my-trigger/runtime.ts#register"
+        },
+        "fe": "src/extensions/steps/my-trigger/fe.ts#myTriggerFE"
+      }
     }
   }
 }
@@ -272,7 +274,7 @@ An artifact is a typed content item (code, image, markdown, …) shown in a thre
 abuddy add artifact chart --icon BarChart3
 ```
 
-Writes the manifest entry under `artifacts` and creates `src/extensions/artifacts/viewers/chart-artifact.vue`. A type the manifest already declares is refused.
+Writes the manifest entry under `extensions.artifacts` and creates `src/extensions/artifacts/viewers/chart-artifact.vue`. A type the manifest already declares is refused.
 
 ### Viewer component
 
@@ -297,12 +299,14 @@ defineProps<{ artifact: ArtifactItem<{ points: number[] }> }>();
 
 ### Manifest
 
-An artifact is declared in `abuddy.json`, keyed by its type:
+An artifact is declared in `abuddy.json` under `extensions.artifacts`, keyed by its type:
 
 ```json
 {
-  "artifacts": {
-    "chart": { "icon": "BarChart3", "fe": "src/extensions/artifacts/viewers/chart-artifact.vue" }
+  "extensions": {
+    "artifacts": {
+      "chart": { "icon": "BarChart3", "fe": "src/extensions/artifacts/viewers/chart-artifact.vue" }
+    }
   }
 }
 ```
@@ -349,7 +353,7 @@ abuddy add block rating                # display block
 abuddy add block color-picker --input  # input block
 ```
 
-Writes the manifest entry under `blocks` and creates `src/extensions/blocks/display/RatingBlock.vue` or `src/extensions/blocks/input/ColorPickerInput.vue`. The scaffolded display block declares an example `text` prop; the input block declares `label`, `disabled` and `response` and emits `submit` and `cancel`. A type the manifest already declares is refused.
+Writes the manifest entry under `extensions.blocks` and creates `src/extensions/blocks/display/RatingBlock.vue` or `src/extensions/blocks/input/ColorPickerInput.vue`. The scaffolded display block declares an example `text` prop; the input block declares `label`, `disabled` and `response` and emits `submit` and `cancel`. A type the manifest already declares is refused.
 
 ### Block components
 
@@ -380,15 +384,17 @@ defineEmits<{ submit: [value: { color: string }]; cancel: [] }>();
 
 ### Manifest
 
-A block is declared in `abuddy.json`, keyed by its type. Each entry names where its code lives, and codegen
+A block is declared in `abuddy.json` under `extensions.blocks`, keyed by its type. Each entry names where its code lives, and codegen
 splits the two facets between the entries: the component goes into the pack's frontend bundle, the backend
 facet into its runtime, so a backend process never loads a Vue component to know a block exists.
 
 ```json
 {
-  "blocks": {
-    "rating": { "fe": "src/extensions/blocks/display/RatingBlock.vue" },
-    "color-picker": { "kind": "input", "fe": "src/extensions/blocks/input/ColorPickerInput.vue" }
+  "extensions": {
+    "blocks": {
+      "rating": { "fe": "src/extensions/blocks/display/RatingBlock.vue" },
+      "color-picker": { "kind": "input", "fe": "src/extensions/blocks/input/ColorPickerInput.vue" }
+    }
   }
 }
 ```
@@ -523,7 +529,7 @@ The block answers with a `ButtonGroupResponse` — `{ buttonId, state }`. Respon
 
 ### App extensions
 
-`fe.appExtensions` maps a slot name to a Vue component file: `{ "welcome": "src/extensions/app/Welcome.vue" }`. The app renders one slot, `welcome`: an overlay shown to first-time users during onboarding. A pack registering a slot another pack registered replaces it.
+`extensions.fe.appExtensions` maps a slot name to a Vue component file: `{ "welcome": "src/extensions/app/Welcome.vue" }`. The app renders one slot, `welcome`: an overlay shown to first-time users during onboarding. A pack registering a slot another pack registered replaces it.
 
 ### PackFERegistration
 
@@ -533,9 +539,9 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 |---|---|
 | `features` | Each feature with a `plugin`: its `plugin.entry`, its `designation`, and `default: true` on the one whose `plugin` sets `default` (else the first). The first pack registered with a default opens by default; a role another pack's plugin plays refuses the pack |
 | `steps` / `artifacts` / `blocks` | each entry's `fe` facet, imported into the generated frontend entry (an artifact's `icon` with it) |
-| `tiptapPlugins` | `fe.tiptapPlugins` |
-| `appExtensions` | `fe.appExtensions` |
-| `dslTypes` | `dsl` entries with a `monaco` target (`__generated__/dsl-types-fe.ts`) |
+| `tiptapPlugins` | `extensions.fe.tiptapPlugins` |
+| `appExtensions` | `extensions.fe.appExtensions` |
+| `dslTypes` | `extensions.dsl` entries with a `monaco` target (`__generated__/dsl-types-fe.ts`) |
 
 The renderer registers it for your pack; nothing in your frontend registers anything itself.
 

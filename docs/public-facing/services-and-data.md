@@ -5,7 +5,7 @@
 Services are stateless modules that systems and actions can call. They come in two flavors:
 
 - **Feature services** — scoped to a feature, declared in `features.<id>.services`
-- **Pack-level services** — shared across the pack, declared in `packServices`
+- **Pack-level services** — shared across the pack, declared in `extensions.services`
 
 ### Scaffolding
 
@@ -38,8 +38,10 @@ Each entry names the file and its export, as `"path#exportName"`. The export can
 **Pack-level:**
 ```json
 {
-  "packServices": {
-    "cache": "src/extensions/services/cache.ts#cacheService"
+  "extensions": {
+    "services": {
+      "cache": "src/extensions/services/cache.ts#cacheService"
+    }
   }
 }
 ```

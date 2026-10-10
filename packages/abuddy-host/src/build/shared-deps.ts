@@ -119,7 +119,7 @@ export const SHARED_DEPS: Record<string, SharedDep> = {
 
 /**
  * Packages the host shares with every subpath they export, keyed by specifier. A pack that bundles
- * @abuddy/ui (fe.bundleUi) imports ProseMirror and tiptap's Vue menus through these; sharing them
+ * @abuddy/ui (build.bundleUi) imports ProseMirror and tiptap's Vue menus through these; sharing them
  * keeps one ProseMirror in the app, the host's.
  */
 const SHARED_SUBPATH_PACKAGES = ['@tiptap/pm', '@tiptap/vue-3'];
@@ -130,7 +130,7 @@ const SHARED_SUBPATH_PACKAGES = ['@tiptap/pm', '@tiptap/vue-3'];
  * `fromDir` is the directory that owns the dependency — the pack being built, or the renderer — never
  * this module's own location. Resolving from here worked only because the CLI happened to sit in a
  * checkout whose node_modules had tiptap; under a global install, `npx` or pnpm it found nothing,
- * returned no subpaths, and a `fe.bundleUi` pack quietly inlined its own ProseMirror — the duplicate
+ * returned no subpaths, and a `build.bundleUi` pack quietly inlined its own ProseMirror — the duplicate
  * instance this list exists to prevent.
  */
 function exportedSubpaths(name: string, fromDirs: readonly string[]): string[] {

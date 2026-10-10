@@ -139,7 +139,7 @@ export function _cliFormatMismatchMessage({ problem }: SnapshotFormatMismatch): 
 export const PROVENANCE_KINDS = {
   entities: (m: ProvenanceManifest) => Object.keys(m.entities ?? {}),
   relKinds: (m: ProvenanceManifest) => Object.keys(m.relKinds ?? {}),
-  commands: (m: ProvenanceManifest) => (m.commands ?? []).map((c) => c.name),
+  commands: (m: ProvenanceManifest) => (m.extensions?.commands ?? []).map((c) => c.name),
   // Keyed by ref, so a dependent reusing one of its dependency's feature ids keeps both apart
   plugins: (m: ProvenanceManifest, packId: string) => Object.entries(m.features ?? {}).filter(([, f]) => f.plugin).map(([id]) => resolveName(id, packId)),
 } as const;
@@ -153,7 +153,7 @@ export type PackProvenance = Partial<Record<ProvenanceKind, Record<string, strin
 export interface ProvenanceManifest {
   entities?: Record<string, string>;
   relKinds?: Record<string, string>;
-  commands?: ReadonlyArray<{ name: string }>;
+  extensions?: { commands?: ReadonlyArray<{ name: string }> };
   features?: Record<string, { plugin?: unknown }>;
 }
 

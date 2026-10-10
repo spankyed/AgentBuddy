@@ -35,7 +35,7 @@ Finished when:
   commit — Decision 6 landed ahead of the phases), and no manifest or schema spells `designated`.
 - `packServices` exists in no manifest and no schema; a pack-level service is `extensions.services`.
 - `abuddy.checks.json` exists nowhere — in no pack, scaffold, fixture, doc or reader — and the rules a
-  pack switches off are `checks.allow` in its manifest; `fe.bundleUi` exists in no manifest and no
+  pack switches off are `checks.allow` in its manifest; `build.bundleUi` exists in no manifest and no
   schema, a pack bundling its own `@abuddy/ui` saying so with `build.bundleUi`.
 - `$manifestVersion` exists in no manifest and no schema, `PACK_LAYOUT_VERSION` is renamed
   `PACK_FORMAT_VERSION` and still `1`, and neither it nor `verifyPack` uses `Math.floor`.
@@ -100,9 +100,14 @@ and the step `index.ts` files are gone, and a duplicate id or type is unrepresen
 [`docs/reference/declarative-contributions.md`](../reference/declarative-contributions.md) records the
 shape and [`extensions.md`](../public-facing/extensions.md) documents each key.
 
-What that leaves of this goal is the **grouping** — Decision 9's `extensions` section — which is now a pure
-relocation over shapes that are already right, and the decisions about `data`, `boot` and the root keys that
-nothing above touched. Confirm each name a phase acts on before acting; several no longer exist.
+**Decision 9's grouping has landed too**: `steps`, `artifacts`, `blocks`, `commands`, `dsl` and `fe` sit
+under `extensions`, `packServices` is `extensions.services`, and `fe.bundleUi` is `build.bundleUi`
+(Decision 17's half of it). A contribution key found at the root is refused with the name it moved to
+(`_MOVED_ROOT_KEYS`, `manifest-schema.ts`).
+
+What that leaves of this goal is the decisions about `data`, `boot`, `lifecycle`, the root key *order* and
+the renames — none of which anything above touched. Confirm each name a phase acts on before acting;
+several no longer exist.
 
 ## Background (2026-09-19, at 4f24d04f7)
 
@@ -613,7 +618,7 @@ anything here needs it.
 
 **9. Every extension point moves under `extensions`**: `steps`, `artifacts`, `blocks`, `commands`,
 `dsl`, `fe` (tiptap plugins, app extensions) and `packServices`, which becomes `extensions.services`.
-This is VS Code's `contributes`. **`fe.bundleUi` is not one of them** and goes to `build` (Decision 17):
+This is VS Code's `contributes`. **`build.bundleUi` is not one of them** and goes to `build` (Decision 17):
 `extensions` is what the pack gives the app, and a packaging choice gives it nothing.
 
 `packServices` is the pack-level counterpart of `features[].services` — the same `path#export` map for
@@ -1074,7 +1079,7 @@ moving keys within the manifest.
   the file, and `manifest.md` gains `build` and `checks` beside the other sections.
 
 **Done when:** `abuddy.checks.json` appears in no source, doc, scaffold or fixture, and
-`loadPackChecks` touches no filesystem; `fe.bundleUi` appears in no manifest and no schema;
+`loadPackChecks` touches no filesystem; `build.bundleUi` appears in no manifest and no schema;
 `tests/packs/bundled-ui-pack` still bundles its own `@abuddy/ui` and its Playwright suite passes; a pack
 allowing a non-switchable rule still fails naming the switchable set; `npm run schema:check` passes with
 the regenerated schema committed, `npm run api:update` has been run, and the chain is green.
@@ -1088,14 +1093,14 @@ the regenerated schema committed, `npm run api:update` has been run, and the cha
   loader and the installed-pack layout all read a manifest. Worth its own goal if authors ask for it.
 - **`permissions`**, which only fixtures declare and nothing enforces yet. Leave the key where it is.
 - **Deleting the pre-release migrations.** `v0.3.14` is tagged and the app has no users, so the five
-  default-setup migrations (`0.3.0`, `0.3.1`, `0.3.13`, `0.3.14`, `0.3.15`) and the host's
-  `app/0.3.15.ts` move data shapes that exist only in a developer's own data dir. The runners stay
+  default-setup migrations (`0.3.0`, `0.3.1`, `0.3.13`, `0.3.14`, `0.4.0`) and the host's
+  `app/0.4.0.ts` move data shapes that exist only in a developer's own data dir. The runners stay
   regardless, since external packs migrate against their own versions. (`markWrittenEntityUnedited` was the
   other half of this item and is already gone: the merge adopts an entity it wrote but has no recorded
   parts for, which is what that function did to one release's entities by hand.) This is not a manifest
   change and does not belong in this goal: it is a decision about real data in a real data dir, which
   is the owner's to make and to time, and it is only safe if they are willing to reset a dev install
-  that still holds a pre-`0.3.15` shape. Worth doing before the first release that has users, when the
+  that still holds a pre-`0.4.0` shape. Worth doing before the first release that has users, when the
   slate is genuinely clean and nothing is lost by it.
 - **Giving `SearchIndex` and `IndexedDoc` typed shapes.** They are the only two of default-setup's
   twelve entities with none, so their rows are untyped wherever they are read. The types are written

@@ -214,7 +214,7 @@ holds both, and was the first spec for any `code` frontend machine.
 
 ## Services
 
-Service aggregation generated in `__generated__/services.ts`. Feature services are declared in `abuddy.json` `features.<id>.services` and live in `src/features/<name>/be/services/`; the pack declares no top-level `packServices`. Systems and actions call them through `services.<key>`, next to the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`, `filesystem`):
+Service aggregation generated in `__generated__/services.ts`. Feature services are declared in `abuddy.json` `features.<id>.services` and live in `src/features/<name>/be/services/`; the pack declares no pack-level `extensions.services`. Systems and actions call them through `services.<key>`, next to the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`, `filesystem`):
 
 `chat`, `artifact`, `threads`, `cli`, `codex`, `library`, `action`, `prompt`, `brain`, `scheduler`, `database`
 
@@ -251,7 +251,7 @@ Content sources compiled to JSON by `abuddy build`, as `abuddy.json` `content.fo
 - `actions/`, `prompts/`, `flows/` — compiled by the SDK's own compilers (the manifest names their paths and `onUserEdit: "offer"`, the only three entries that declare it: these are the pack's, customised, so a user who has edited one still gets its fixes offered. Every other entry is `theirs`)
 - `default-settings.ts` — the `general` and `assistant` sections' defaults, **not a content item**: `src/app-settings/index.ts` imports it (`getBaseSettings`, which refuses a base file setting a plugin's slice — a feature's own defaults are its `settings.ts`, which the registry holds under its ref) and the pack's registration contributes it, so nothing about settings is compiled, written to disk or imported into the database
 - `notes/` — welcome note, compiled with the `notes` format (`markdown-tree` for `Note`: frontmatter fields, `index.md` directories)
-- `library/` — internal docs (`internal/commands/*.md`, the editable half of the slash commands `services.library.commands()` lists, the rest declared in `abuddy.json` `commands`), compiled with the `library` format: `_compilers/library.ts` turns it into Collection and Document records, with sections parsed from the markdown
+- `library/` — internal docs (`internal/commands/*.md`, the editable half of the slash commands `services.library.commands()` lists, the rest declared in `abuddy.json` `extensions.commands`), compiled with the `library` format: `_compilers/library.ts` turns it into Collection and Document records, with sections parsed from the markdown
 - `faqs/` — markdown FAQ files, compiled with the `faqs` format (`_compilers/faqs.ts`), not written; `src/app-settings/index.ts` reads `faqs.content.json` and registers them as this pack's `help` entries, which the app's Help tab shows
 - `_compilers/` — the formats' compiler modules, bundled into `dist/build/content-compilers.mjs` so dependents can use the formats
 - `writers/` — content writers for Note (`notes.ts`) and Document/Collection (`library.ts`), registered through `content.writers` in `abuddy.json`. Collection is a `container`, so a dependent pack's documents nest in this pack's folders instead of forking them, and both `find`s match a name within its parent folder
@@ -282,7 +282,7 @@ Step definitions in `src/extensions/steps/`. Each step directory contains:
 - `form.vue` — optional editor form component
 - `runtime.ts` — optional runtime handler (action, create, fire, llm, query, schedule, switch, transform, update)
 
-A new step is one directory and one `abuddy.json` entry under `steps`, keyed by its type: `build.ts` exports
+A new step is one directory and one `abuddy.json` entry under `extensions.steps`, keyed by its type: `build.ts` exports
 its `StepBuildFacet` (a trigger's exports its `TriggerFacet`), `fe.ts` its `StepFEFacet`, `runtime.ts` the
 handler the entry names. There are no barrels — codegen sends each facet where it is used, and writes
 `src/__generated__/steps-build.ts`, bundled to `dist/build/steps.build.mjs`, which packs depending on
@@ -296,7 +296,7 @@ first run rather than at pack load — which is also what keeps `vue` and the ic
 
 ## Artifacts
 
-Declared in `abuddy.json` under `artifacts`, keyed by type: each entry names a `lucide-vue-next` icon and the
+Declared in `abuddy.json` under `extensions.artifacts`, keyed by type: each entry names a `lucide-vue-next` icon and the
 viewer that opens it. 16 types, each with a viewer component in `src/extensions/artifacts/viewers/`:
 
 text, code, review, image, slack, todo, project, json, graph, table, markdown, claude-session, codex-session, diff, plan, note
@@ -333,7 +333,7 @@ an answer.
 
 ## Message blocks
 
-Declared in `abuddy.json` under `blocks`, keyed by type: each entry names the component that draws it and,
+Declared in `abuddy.json` under `extensions.blocks`, keyed by type: each entry names the component that draws it and,
 where there is one, the `"path#export"` of its backend facet. Codegen splits those between the two entries,
 so adding a block is one directory and one manifest entry and no barrel. Two kinds:
 

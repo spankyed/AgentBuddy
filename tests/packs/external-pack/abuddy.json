@@ -39,12 +39,14 @@
       "services": {}
     }
   },
-  "commands": [
-    {
-      "name": "memo-note",
-      "placeholder": "Memo text"
-    }
-  ],
+  "extensions": {
+    "commands": [
+      {
+        "name": "memo-note",
+        "placeholder": "Memo text"
+      }
+    ]
+  },
   "dependencies": {
     "default-setup": "*"
   },

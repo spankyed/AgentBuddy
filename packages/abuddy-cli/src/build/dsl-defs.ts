@@ -58,7 +58,7 @@ export async function bundleDslDefs(
   manifest: PackManifest,
   recordReads?: RecordReads,
 ): Promise<{ success: true; files: string[] } | { success: false; error: string }> {
-  const entries = Object.entries(manifest.dsl ?? {}).filter(([, def]) => def.targets.includes('monaco'));
+  const entries = Object.entries(manifest.extensions?.dsl ?? {}).filter(([, def]) => def.targets.includes('monaco'));
   if (entries.length === 0) return { success: true, files: [] };
   const compilerOptions = packCompilerOptions(packDir);
   const files: string[] = [];

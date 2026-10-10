@@ -75,8 +75,8 @@ describe('abuddy add step', () => {
   it('generates flow helpers for the kebab-case step that typecheck with tsc', async () => {
     await addStep(['my-other-step'], pack);
     const manifest = readManifest();
-    manifest.steps['my-step'].dsl = { primaryField: 'label' };
-    manifest.steps['my-other-step'].dsl = {};
+    manifest.extensions.steps['my-step'].dsl = { primaryField: 'label' };
+    manifest.extensions.steps['my-other-step'].dsl = {};
     writeManifest(manifest);
     await generateEntries([], pack);
 
@@ -109,7 +109,7 @@ describe('abuddy add step in a pack without steps', () => {
     await addStep(['ping'], bare);
 
     const manifest = JSON.parse(fs.readFileSync(path.join(bare, 'abuddy.json'), 'utf-8'));
-    expect(manifest.steps).toEqual({
+    expect(manifest.extensions.steps).toEqual({
       ping: {
         kind: 'step',
         build: 'src/extensions/steps/ping/build.ts#pingStepBuild',
@@ -136,7 +136,7 @@ describe('abuddy add artifact and block', () => {
     expect(viewer).toContain("import type { ArtifactItem } from '@abuddy/sdk/artifacts';");
     expect(viewer).toContain('defineProps<{ artifact: ArtifactItem }>();');
 
-    expect(readManifest().artifacts).toEqual({
+    expect(readManifest().extensions.artifacts).toEqual({
       chart: { icon: 'FileText', fe: 'src/extensions/artifacts/viewers/chart-artifact.vue' },
       table: { icon: 'Table2', fe: 'src/extensions/artifacts/viewers/table-artifact.vue' },
     });
@@ -160,7 +160,7 @@ describe('abuddy add artifact and block', () => {
     expect(input).toMatch(/defineProps<\{[\s\S]*label\?: string;/);
     expect(input).toMatch(/defineEmits<\{[\s\S]*submit: \[response: unknown\];/);
 
-    expect(readManifest().blocks).toEqual({
+    expect(readManifest().extensions.blocks).toEqual({
       'rating': { fe: 'src/extensions/blocks/display/RatingBlock.vue' },
       'color-picker': { kind: 'input', fe: 'src/extensions/blocks/input/ColorPickerInput.vue' },
     });

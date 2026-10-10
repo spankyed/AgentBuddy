@@ -9,7 +9,7 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
 /**
  * @abuddy/ui's components are Tailwind class names, and some name colours that exist only where a
- * Tailwind config defines them. Inside the app they resolve; a pack that sets `fe.bundleUi` runs its
+ * Tailwind config defines them. Inside the app they resolve; a pack that sets `build.bundleUi` runs its
  * own Tailwind build over its own config, so without the package's preset those classes matched
  * nothing and Tailwind emitted no CSS — the component rendered with its accent missing and nothing
  * said so. The preset travels with the components to close that.
@@ -72,10 +72,10 @@ describe("@abuddy/ui's Tailwind preset", () => {
   });
 });
 
-/** The built fixture: a pack with fe.bundleUi that renders a themed component */
+/** The built fixture: a pack with build.bundleUi that renders a themed component */
 const FIXTURE_CSS = path.join(REPO_ROOT, 'tests', 'packs', 'bundled-ui-pack', 'dist', 'runtime', 'fe.css');
 
-describe.skipIf(!fs.existsSync(FIXTURE_CSS))('a built fe.bundleUi pack', () => {
+describe.skipIf(!fs.existsSync(FIXTURE_CSS))('a built build.bundleUi pack', () => {
   it("ships CSS for @abuddy/ui's themed classes", () => {
     const css = fs.readFileSync(FIXTURE_CSS, 'utf-8');
     // The fixture renders @abuddy/ui's button with variant="primary"

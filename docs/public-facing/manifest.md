@@ -16,22 +16,35 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `license` | `string` | no | SPDX license identifier |
 | `builtIn` | `boolean` | no | `true` for packs built into the app only |
 | `features` | `Record<string, PackFeatureEntry>` | no | Feature declarations (system + plugin bundles), keyed by feature id |
-| `steps` | `Record<string, StepEntry>` | no | Flow step types, keyed by type. Each names its facets: `build` (or `trigger`), `fe`, `runtime` and `dsl`. The build facets are shipped as `build/steps.build.mjs`, so packs depending on yours validate flows with your step code; see [Steps](extensions.md#steps) |
-| `artifacts` | `Record<string, { icon, fe? }>` | no | Artifact types, keyed by type; see [Artifacts](extensions.md#artifacts) |
-| `blocks` | `Record<string, { kind?, fe?, be? }>` | no | Message blocks, keyed by type; see [Blocks](extensions.md#blocks) |
+| `extensions` | `object` | no | What the pack contributes to the app; see [Extensions](#extensions) |
 | `migrations` | `string` | no | Path to migrations index file |
-| `packServices` | `Record<string, string>` | no | Pack-level services, in the same form as [a feature's `services`](#packfeatureentry-fields) |
-| `commands` | `{ name, placeholder }[]` | no | Slash commands the pack adds to the chat: `name` as typed after the `/` (`^[a-z][a-z0-9-]*$`, unique across the app: `abuddy build` fails when a dependency, or anything it depends on, declares it), `placeholder` what the composer shows after it. Sending one fires a `user.command` event your flows handle; see [Slash commands](content.md#slash-commands) |
 | `entities` | `Record<string, string>` | no | EARS entity type declarations; see [Entities and relations](#entities-and-relations) |
 | `relKinds` | `Record<string, string>` | no | EARS relation kind declarations; see [Entities and relations](#entities-and-relations) |
 | `dependencies` | `Record<string, string>` | no | Pack dependencies (`id` -> semver, `github:owner/repo range`, or `file:path`) |
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
 | `boot` | `PackBootConfig` | no | Boot hooks and content; see [Boot configuration](#boot-configuration) |
-| `fe` | `object` | no | FE-only registrations; see [Frontend configuration](#frontend-configuration) |
 | `entityShapes` | `Record<string, { source, type }>` | no | Entity type -> TS interface mappings |
 | `content.formats` | `Record<string, ContentFormatConfig>` | no | Named content formats: how a source becomes records. `content.sources` entries name them, dependents as `<pack id>:<name>`; see [Content](content.md#writing-entities) |
 | `content.writers` | `Record<string, string>` | no | Content writers for entity types this pack declares: the entity type's value in `entities` -> `path#exportName` of a `ContentWriter` object (`find`, `create`, `update`, `remove`, all optional). Every pack writing that type goes through them; see [Content](content.md#content-hooks) |
-| `dsl` | `Record<string, DslEntry>` | no | Monaco editor type definitions for code the app edits; see [DSL definitions](#dsl-definitions) |
+
+## Extensions
+
+`extensions` is what the pack gives the host, as against what it is made of (`features`) or what data it
+ships (`content`). Every entry is a contribution the app registers and other packs or the shell can reach.
+
+| Field | Type | Description |
+|---|---|---|
+| `steps` | `Record<string, StepEntry>` | Flow step types, keyed by type. Each names its facets: `build` (or `trigger`), `fe`, `runtime` and `dsl`. The build facets are shipped as `build/steps.build.mjs`, so packs depending on yours validate flows with your step code; see [Steps](extensions.md#steps) |
+| `artifacts` | `Record<string, { icon, fe? }>` | Artifact types, keyed by type; see [Artifacts](extensions.md#artifacts) |
+| `blocks` | `Record<string, { kind?, fe?, be? }>` | Message blocks, keyed by type; see [Blocks](extensions.md#blocks) |
+| `commands` | `{ name, placeholder }[]` | Slash commands the pack adds to the chat: `name` as typed after the `/` (`^[a-z][a-z0-9-]*$`, unique across the app: `abuddy build` fails when a dependency, or anything it depends on, declares it), `placeholder` what the composer shows after it. Sending one fires a `user.command` event your flows handle; see [Slash commands](content.md#slash-commands) |
+| `services` | `Record<string, string>` | Pack-level services, belonging to no one feature, in the same form as [a feature's `services`](#packfeatureentry-fields) |
+| `dsl` | `Record<string, DslEntry>` | Monaco editor type definitions for code the app edits; see [DSL definitions](#dsl-definitions) |
+| `fe` | `object` | Frontend contributions; see [Frontend configuration](#frontend-configuration) |
+
+**A setting that only changes what `abuddy build` produces is not one of these**: it goes in `build`, which
+holds `opaqueDeps` and `bundleUi`. `extensions` is what the pack gives the app, and a packaging choice gives
+it nothing.
 
 ## Features
 
@@ -95,32 +108,48 @@ Any other key (a top-level key other than `plugins` and `visible`, another plugi
 
 ## Steps
 
-Flow step definitions use the structured object form.
+Flow step types are declared under `extensions.steps`, keyed by type.
 
 ```json
 {
-  "steps": {
-    "register": "src/extensions/steps/register.ts",
-    "build": "src/extensions/steps/build.ts",
-    "definitions": [
-      { "type": "my-step", "path": "src/extensions/steps/my-step", "kind": "step" },
-      { "type": "my-trigger", "path": "src/extensions/steps/my-trigger", "kind": "trigger" }
-    ]
+  "extensions": {
+    "steps": {
+      "my-step": {
+        "build": "src/extensions/steps/my-step/build.ts#myStepStepBuild",
+        "fe": "src/extensions/steps/my-step/fe.ts#myStepStepFE",
+        "runtime": { "handler": "src/extensions/steps/my-step/runtime.ts#handler", "isAsync": true },
+        "dsl": { "primaryField": "action" }
+      },
+      "my-trigger": {
+        "kind": "trigger",
+        "trigger": {
+          "facet": "src/extensions/steps/my-trigger/build.ts#myTriggerBuild",
+          "register": "src/extensions/steps/my-trigger/runtime.ts#register"
+        },
+        "fe": "src/extensions/steps/my-trigger/fe.ts#myTriggerFE"
+      }
+    }
   }
 }
 ```
 
-The `register` path points to a hand-maintained barrel file that imports and exports all step definitions. The `definitions` array is used by `generate-entries` for flow-helper codegen.
+Codegen sends each facet where it is used, so no barrel keeps them in step with each other: `build` and
+`runtime` go to the pack's backend registration, `fe` to its frontend one, and `build` (or `trigger`) alone
+to `src/__generated__/steps-build.ts`, which `abuddy build` bundles to `dist/build/steps.build.mjs` — the
+module a *dependent* pack's build loads to validate its flows with your step code.
 
-The `build` path points to a second barrel with only each step's build facet (`compile`, `validate`, `decompile`, `getLabel`, trigger facets) and no FE or runtime imports. `abuddy build` bundles it to `dist/build/steps.build.mjs`, and packs that depend on yours load it to validate their flows with your step code. Without `build`, the CLI validates this pack's own flows with `register`, and dependents get no step code.
+A step's directory is the dirname of the first facet it names: its `types.ts` and, for `dsl.custom`, its
+`helpers.ts` are read from there.
 
 ### StepEntry fields
 
 | Field | Type | Description |
 |---|---|---|
-| `type` | `string` | Step type identifier |
-| `path` | `string` | Directory containing the step definition |
-| `kind` | `"step" \| "trigger"` | Whether this is a regular step or a trigger |
+| `kind` | `"step" \| "trigger"` | Whether this is a regular step or a trigger. `step` is the default |
+| `build` | `string` | `"path#exportName"` of its `StepBuildFacet` (`compile`, `validate`, `getLabel`, `decompile`). A trigger declares `trigger` instead |
+| `trigger` | `{ facet, register? }` | For a trigger: `"path#exportName"` of its `TriggerFacet`, and of the function that starts it |
+| `fe` | `string` | `"path#exportName"` of its `StepFEFacet`: what the flow editor draws and the form it opens |
+| `runtime` | `{ handler?, sync?, isAsync?, waits?, spawnsSubflow? }` | What the brain runs, and the flags it reads before running it. `handler` is loaded on the step's first run unless `sync`; see [Steps](extensions.md#runtime-facet) |
 | `dsl` | `{ primaryField?, defaultLabel?, custom? }` | Generates a flow helper for the step, named after the type (`keep_alive` → `keepAlive`). Without `dsl`, the step gets no helper |
 
 A step's `dsl` fields:
@@ -205,12 +234,13 @@ A `content.formats` value, keyed by the format name: a lowercase letter, then lo
 
 ```json
 {
-  "fe": {
-    "tiptapPlugins": "src/extensions/tiptap/index.ts",
-    "appExtensions": {
-      "welcome": "src/extensions/app/Welcome.vue"
-    },
-    "bundleUi": false
+  "extensions": {
+    "fe": {
+      "tiptapPlugins": "src/extensions/tiptap/index.ts",
+      "appExtensions": {
+        "welcome": "src/extensions/app/Welcome.vue"
+      }
+    }
   }
 }
 ```
@@ -219,7 +249,9 @@ A `content.formats` value, keyed by the format name: a lowercase letter, then lo
 |---|---|---|
 | `tiptapPlugins` | `string` | Tiptap plugin registration module |
 | `appExtensions` | `Record<string, string>` | Named app extensions: extension name (an identifier) → Vue component path |
-| `bundleUi` | `boolean` | Bundle a copy of `@abuddy/ui` into the pack instead of using the app's (default `false`). All of `@abuddy/ui` is bundled, so the pack never mixes the two. |
+
+Carrying your own copy of `@abuddy/ui` is `build.bundleUi`, not one of these: it changes what the build
+produces rather than giving the app anything.
 
 The frontend entry itself isn't declared here: `abuddy build` bundles `src/pack-entry-fe.ts` (or `.js`) if present, else the generated `src/__generated__/pack-entry-fe.ts`, into the pack's `runtime/fe.js`, with any extracted styles as `runtime/fe.css`. The app loads whichever of those two files the installed pack has.
 
@@ -228,7 +260,8 @@ The frontend entry itself isn't declared here: `abuddy build` bundles `src/pack-
 ```json
 {
   "build": {
-    "opaqueDeps": ["elkjs"]
+    "opaqueDeps": ["elkjs"],
+    "bundleUi": false
   }
 }
 ```
@@ -236,6 +269,7 @@ The frontend entry itself isn't declared here: `abuddy build` bundles `src/pack-
 | Field | Type | Description |
 |---|---|---|
 | `opaqueDeps` | `string[]` | Dependencies the frontend bundle includes whole instead of tree-shaking, by package name |
+| `bundleUi` | `boolean` | Bundle a copy of `@abuddy/ui` into the pack instead of using the app's (default `false`). All of `@abuddy/ui` is bundled, so the pack never mixes the two |
 
 Everything under `build` changes what `abuddy build` produces, or how long it takes, and nothing the app
 loads — which is what separates it from the sections above.
@@ -295,13 +329,15 @@ The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action` a
 
 ```json
 {
-  "dsl": {
-    "action": {
-      "entry": "src/defs/action.ts",
-      "targets": ["monaco"],
-      "prefix": "action:",
-      "inline": ["ai"],
-      "globals": { "services": "typeof _dsl.services" }
+  "extensions": {
+    "dsl": {
+      "action": {
+        "entry": "src/defs/action.ts",
+        "targets": ["monaco"],
+        "prefix": "action:",
+        "inline": ["ai"],
+        "globals": { "services": "typeof _dsl.services" }
+      }
     }
   }
 }
@@ -348,10 +384,12 @@ For each entry with a `monaco` target, `abuddy build` writes `dist/defs/monaco/<
     }
   },
 
-  "steps": {
-    "bookmark-check": {
-      "build": "src/extensions/steps/bookmark-check/build.ts#bookmarkCheckStepBuild",
-      "fe": "src/extensions/steps/bookmark-check/fe.ts#bookmarkCheckStepFE"
+  "extensions": {
+    "steps": {
+      "bookmark-check": {
+        "build": "src/extensions/steps/bookmark-check/build.ts#bookmarkCheckStepBuild",
+        "fe": "src/extensions/steps/bookmark-check/fe.ts#bookmarkCheckStepFE"
+      }
     }
   },
 

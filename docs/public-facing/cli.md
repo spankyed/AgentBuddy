@@ -46,7 +46,7 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 | Action | `abuddy add action <name> [--category <cat>]` | `src/content/actions/<category>/<name>.ts` (category defaults to the pack id) |
 | Prompt | `abuddy add prompt <name>` | `src/content/prompts/<name>.ts` |
 | Flow | `abuddy add flow <name>` | `src/content/flows/<name>.ts`. Needs a dependency that provides flow steps (e.g. `default-setup`) |
-| Service | `abuddy add service <name> [--feature <feature>]` | `src/extensions/services/<name>.ts` in `packServices`, or `src/features/<feature>/be/services/<name>.ts` in that feature's `services`. The key is the camelCased name, the value `path#<camelName>Service` |
+| Service | `abuddy add service <name> [--feature <feature>]` | `src/extensions/services/<name>.ts` in `extensions.services`, or `src/features/<feature>/be/services/<name>.ts` in that feature's `services`. The key is the camelCased name, the value `path#<camelName>Service` |
 | Migration | `abuddy add migration [version] [--version <ver>]` | `src/migrations/<version>.ts` exporting a `PackMigration`, added to `src/migrations/index.ts`; sets `migrations` if unset. Version defaults to the manifest's |
 
 Only `add feature`, `add service` and `add step` update `abuddy.json` entries and run `generate-entries`; `add migration` only sets `migrations`, and the rest just write files. In a pack whose dependencies aren't installed yet, `generate-entries` can't read a system's events through `@abuddy/sdk`: the files and `abuddy.json` are still written, and `npm install` regenerates the entries (the pack's `prepare` script).
@@ -109,7 +109,7 @@ Steps:
 8. Writes `types/snapshot.json`, and notes entity types with no `entityShapes` entry
 9. Bundles `steps.build`, the content runtime and any content compilers into `build/`. The content runtime is then loaded in a fresh Node process with only `@abuddy/sdk`, as a dependent's tests load it; it fails if repositories or content writers need native modules or `@abuddy/sdk`'s optional peers
 10. Bundles the backend runtime into `runtime/index.cjs`
-11. Bundles each `dsl` entry with a `monaco` target into `defs/monaco/<name>-defs.d.ts`, wrapped as `declare module "@app/defs/<name>"`, inlining the pack's own modules, `@abuddy/*` and the entry's `inline` packages
+11. Bundles each `extensions.dsl` entry with a `monaco` target into `defs/monaco/<name>-defs.d.ts`, wrapped as `declare module "@app/defs/<name>"`, inlining the pack's own modules, `@abuddy/*` and the entry's `inline` packages
 12. Bundles the FE entry into `runtime/fe.js` (and `fe.css`) with Vite, unless `--skip-fe`. The entry is `src/pack-entry-fe.ts` (or `.js`) if present, else `src/__generated__/pack-entry-fe.ts`
 
 Bundle and gate failures are all reported, and the command exits with code 1. `--release` minifies and drops source maps.

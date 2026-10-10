@@ -16,16 +16,18 @@ proposes lifting becomes a member of the derivation family it describes. That is
 
 ## Today's three layers
 
-**1. `abuddy.json` — one shape for every contribution key.** Each is a keyed map whose entries declare
-*what the items are* and name *where each facet's code is*:
+**1. `abuddy.json` — one shape for every contribution key, and one section holding them.** Each is a keyed
+map whose entries declare *what the items are* and name *where each facet's code is*; `extensions` is where
+the pack's contributions sit, as against what it is made of (`features`) or what data it ships (`content`):
 
 | key | what it declares |
 |---|---|
 | `features` | `{ <id>: { designation?, settings?, system?, plugin?, services?, repositories? } }` |
-| `steps` | `{ <type>: { kind?, build \| trigger, fe?, runtime?, dsl? } }` |
-| `blocks` | `{ <type>: { kind?, fe?, be? } }` |
-| `artifacts` | `{ <type>: { icon, fe? } }` |
-| `dsl` | `{ <name>: { entry, targets, prefix?, globals? } }` |
+| `extensions.steps` | `{ <type>: { kind?, build \| trigger, fe?, runtime?, dsl? } }` |
+| `extensions.blocks` | `{ <type>: { kind?, fe?, be? } }` |
+| `extensions.artifacts` | `{ <type>: { icon, fe? } }` |
+| `extensions.dsl` | `{ <name>: { entry, targets, prefix?, globals? } }` |
+| `extensions.commands`, `extensions.services`, `extensions.fe` | the rest of what the pack gives the app |
 
 See [`extensions.md`](../public-facing/extensions.md) for each. The key is the item's identity, which is
 what makes a duplicate unrepresentable: JSON cannot hold one key twice, so nothing has to check for one and
@@ -98,12 +100,14 @@ plugin accepts by `require`-ing a bundle that statically imports eleven XState m
     }
   },
 
-  "steps": {
-    "llm": {
-      "build":   "src/extensions/steps/llm/build.ts#llmStepBuild",
-      "fe":      "src/extensions/steps/llm/fe.ts#llmStepFE",
-      "runtime": { "handler": "src/extensions/steps/llm/runtime.ts#handler", "isAsync": true },
-      "dsl":     { "primaryField": "prompt" }
+  "extensions": {
+    "steps": {
+      "llm": {
+        "build":   "src/extensions/steps/llm/build.ts#llmStepBuild",
+        "fe":      "src/extensions/steps/llm/fe.ts#llmStepFE",
+        "runtime": { "handler": "src/extensions/steps/llm/runtime.ts#handler", "isAsync": true },
+        "dsl":     { "primaryField": "prompt" }
+      }
     }
   }
 }

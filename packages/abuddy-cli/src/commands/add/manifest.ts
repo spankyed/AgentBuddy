@@ -14,11 +14,18 @@ export function addFeature(manifest: PackManifest, id: string, entry: PackFeatur
   manifest.features[id] = entry;
 }
 
+/** The `extensions` section, created on the first contribution a scaffold adds to the pack */
+function extensions(manifest: PackManifest): NonNullable<PackManifest['extensions']> {
+  manifest.extensions ??= {};
+  return manifest.extensions;
+}
+
 /** Adds a flow step: `entry` names where each of its facets lives */
 export function addStep(manifest: PackManifest, type: string, entry: StepEntry): void {
-  if (!manifest.steps) manifest.steps = {};
-  if (manifest.steps[type]) throw new Error(`Step "${type}" already exists in manifest`);
-  manifest.steps[type] = entry;
+  const ext = extensions(manifest);
+  ext.steps ??= {};
+  if (ext.steps[type]) throw new Error(`Step "${type}" already exists in manifest`);
+  ext.steps[type] = entry;
 }
 
 /** Adds an artifact type: `icon` is a lucide-vue-next export name, `component` the path to its viewer */
@@ -27,9 +34,10 @@ export function addArtifact(
   type: string,
   entry: { icon: string; component: string },
 ): void {
-  if (!manifest.artifacts) manifest.artifacts = {};
-  if (manifest.artifacts[type]) throw new Error(`Artifact "${type}" already exists in manifest`);
-  manifest.artifacts[type] = { icon: entry.icon, fe: entry.component };
+  const ext = extensions(manifest);
+  ext.artifacts ??= {};
+  if (ext.artifacts[type]) throw new Error(`Artifact "${type}" already exists in manifest`);
+  ext.artifacts[type] = { icon: entry.icon, fe: entry.component };
 }
 
 /** Adds a message block: `component` is the path to the `.vue` file that draws it */
@@ -38,18 +46,20 @@ export function addBlock(
   type: string,
   entry: { kind?: 'input'; component: string },
 ): void {
-  if (!manifest.blocks) manifest.blocks = {};
-  if (manifest.blocks[type]) throw new Error(`Block "${type}" already exists in manifest`);
-  manifest.blocks[type] = { ...(entry.kind ? { kind: entry.kind } : {}), fe: entry.component };
+  const ext = extensions(manifest);
+  ext.blocks ??= {};
+  if (ext.blocks[type]) throw new Error(`Block "${type}" already exists in manifest`);
+  ext.blocks[type] = { ...(entry.kind ? { kind: entry.kind } : {}), fe: entry.component };
 }
 
 /** Adds a pack-level service: `target` is "path#exportName" of the service object */
 export function addPackService(manifest: PackManifest, key: string, target: string): void {
-  if (!manifest.packServices) manifest.packServices = {};
-  if (manifest.packServices[key]) {
+  const ext = extensions(manifest);
+  ext.services ??= {};
+  if (ext.services[key]) {
     throw new Error(`Pack service "${key}" already exists in manifest`);
   }
-  manifest.packServices[key] = target;
+  ext.services[key] = target;
 }
 
 /** Adds a feature service: `target` is "path#exportName" of the service object */
