@@ -32,7 +32,8 @@ import {
   freshProfileName, profileDir, profileFor, profileInUse, parseProfileFlags, removeProfile, PROFILE_USAGE,
   type ProfileMode,
 } from '../app/profiles';
-import { askAttached, attachableApp, spawnDevApp, type AttachableApp } from '../app/drive-attach.ts';
+import { askAttached, attachableApp, spawnOrAttach, type AttachableApp } from '../app/drive-attach.ts';
+import type { DevSession } from '@abuddy/host/dev-session';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 import { fixtureEnv } from './test';
@@ -404,13 +405,36 @@ async function answerAttached(
       return { notes: [...notes, `--${ask} failed: ${result.error ?? 'no reason given'}`], code: 1 };
     }
     return {
-      line: JSON.stringify({ value: result?.value, state, startedBy: answer.startedBy, supervisorPid: answer.supervisorPid }),
+      line: answerLine({ value: result?.value, state, startedBy: answer.startedBy, supervisorPid: answer.supervisorPid }),
       notes,
       code: 0,
     };
   } catch (error) {
     return { notes: [...notes, errorMessage(error)], code: 1 };
   }
+}
+
+/**
+ * The one JSON object a question puts on stdout, built in one place so the documented contract has one
+ * declaration.
+ *
+ * **`?? null`, because `JSON.stringify` drops an `undefined` value entirely.** `--eval 'void 0'` answered
+ * `{"state":…,"startedBy":…,"supervisorPid":…}` with no `value` at all, which a caller reading `.value`
+ * cannot tell from a verb that never ran — and the exit code, which is what says that, was 0 either way.
+ * A verb that answers nothing answers `null`.
+ */
+export function answerLine(answer: {
+  value: unknown;
+  state: 'attached' | 'spawned';
+  startedBy: DevSession['startedBy'];
+  supervisorPid: number;
+}): string {
+  return JSON.stringify({
+    value: answer.value ?? null,
+    state: answer.state,
+    startedBy: answer.startedBy,
+    supervisorPid: answer.supervisorPid,
+  });
 }
 
 /** Says there is no app, and what the two ways forward are. Exit 3, and nothing on stdout. */
@@ -451,6 +475,18 @@ export async function drive(args: string[]) {
    * `--spawn`, rather than acquiring a process nobody asked for.
    */
   if (ask !== undefined) {
+    // Advertised for the script half and meaningless here: a question attaches over a debug port, and only
+    // a `development` build gets one (`debugPortArgsFor`). Accepting it silently answered from the
+    // development app while naming another, which is the class of mistake `dev` refuses unknown options
+    // over — a flag that reads as having been obeyed
+    if (flags.build !== undefined) {
+      throw new Error(
+        `--build ${flags.build} names a build to launch, and a question launches nothing: it attaches to the `
+        + 'app `abuddy dev` or `npm start` is holding, which only a development build can be — a packaged or '
+        + 'test app publishes no session. Drop it, or use `abuddy drive <script> --build` for a run that '
+        + 'launches its own app.',
+      );
+    }
     const target = askTarget(mode, withSecrets);
     const live = attachableApp(target.dir);
     if (live) return report(await answerAttached(live, root, ask, argument, 'attached'));
@@ -458,8 +494,8 @@ export async function drive(args: string[]) {
     // otherwise ask for a directory and then refuse to use it
     if (spawnFlag || mode.kind === 'fresh') {
       if (target.note !== undefined) console.error(target.note);
-      const started = await spawnDevApp(root, target.dir, target.spawnArgs);
-      return report(await answerAttached(started, root, ask, argument, 'spawned'));
+      const { app, state } = await spawnOrAttach(root, target.dir, target.spawnArgs);
+      return report(await answerAttached(app, root, ask, argument, state));
     }
     return report(noAppHere(target.dir));
   }

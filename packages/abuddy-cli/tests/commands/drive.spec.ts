@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { driveScripts, DRIVE_USAGE, scaffold, takeOneShotFlags } from '../../src/commands/drive';
+import { answerLine, drive, driveScripts, DRIVE_USAGE, scaffold, takeOneShotFlags } from '../../src/commands/drive';
 
 let root: string;
 
@@ -185,5 +185,59 @@ describe('takeOneShotFlags', () => {
     // The default is the whole point: a question that acquires a process without being told to is what
     // the flag exists to prevent
     expect(takeOneShotFlags(['--state']).spawn).toBe(false);
+  });
+});
+
+/**
+ * **A flag a command advertises and ignores reads as having been obeyed**, which is the class `dev` refuses
+ * unknown options over. The usage offers `--build` for the script half, and the question half parsed it and
+ * never looked at it: `drive --eval x --build beta` answered from the *development* app while naming beta.
+ *
+ * Refusing is the right answer rather than honouring it, and the reason is structural: a question attaches
+ * over a debug port, and only a development build is given one (`debugPortArgsFor`). There is no beta app
+ * to attach to, so a `--build` that worked would have to launch one — which is the script half's job.
+ */
+describe('--build on a question', () => {
+  it('is refused, and says why a question cannot take one', async () => {
+    await expect(drive(['--state', '--build', 'beta'])).rejects.toThrow(/a question launches nothing/);
+    await expect(drive(['--eval', 'return 1', '--build=beta'])).rejects.toThrow(/publishes no session/);
+  });
+
+  /** Still a script flag: the usage offers it, so the refusal must not reach that half. */
+  it('is still offered for a script', () => {
+    expect(DRIVE_USAGE).toMatch(/--build <name\|path>/);
+  });
+});
+
+/**
+ * **The answer has four keys, and a verb that answered nothing is one of the cases.**
+ *
+ * A caller reads this with `jq` or `JSON.parse`, so a missing key and a null one are not the same thing:
+ * `JSON.stringify` drops an `undefined` value outright, and `--eval 'void 0'` emitted an object with no
+ * `value` at all. The exit code was 0 either way, so nothing else said the verb had run.
+ */
+describe("a question's one line", () => {
+  const parse = (value: unknown) =>
+    JSON.parse(answerLine({ value, state: 'attached', startedBy: 'dev', supervisorPid: 42 })) as Record<string, unknown>;
+
+  it('keeps all four keys whatever the verb answered', () => {
+    for (const value of [undefined, null, 0, '', false, { a: 1 }, [1, 2]]) {
+      expect(Object.keys(parse(value)).sort(), JSON.stringify(value) ?? 'undefined')
+        .toEqual(['startedBy', 'state', 'supervisorPid', 'value']);
+    }
+  });
+
+  /** The firing case: a verb answering nothing says so with `null` rather than by the key going missing. */
+  it('answers null for a verb that returned nothing', () => {
+    expect(parse(undefined).value).toBeNull();
+    expect(answerLine({ value: undefined, state: 'spawned', startedBy: 'drive', supervisorPid: 7 }))
+      .toBe('{"value":null,"state":"spawned","startedBy":"drive","supervisorPid":7}');
+  });
+
+  /** A falsy answer is the answer, not an absent one. */
+  it('does not confuse a falsy value with nothing', () => {
+    expect(parse(0).value).toBe(0);
+    expect(parse('').value).toBe('');
+    expect(parse(false).value).toBe(false);
   });
 });
