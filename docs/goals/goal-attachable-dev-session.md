@@ -391,3 +391,52 @@ This goal's own:
 - **`setViewport` refuses when attached** rather than emulating, and says why.
 - Run the narrow checks during a phase and the chain once at its end, per the root `CLAUDE.md` table
   ("What to run after a change").
+
+## Outcome
+
+### Phase 1 — profile replaces instance (`e1992b632`)
+
+Done. `--instance` → `--profile`, `abuddy instances` → `abuddy profiles`, `src/app/instances.ts` →
+`profiles.ts`, `instance-secrets.ts` → `profile-secrets.ts`, `<cli data>/instances/` → `profiles/`, and
+`--ephemeral` → `--fresh --rm`. `npm run typecheck`, `npm run spec packages/abuddy-cli` (209 cases) and
+`npm run chain` (198.3s) all green.
+
+Three choices the plan left open, taken here:
+
+- **No migration of the old directory**, on the user's instruction mid-phase: a one-shot rename reading
+  `instances/` is the kind of code nobody finds to delete later, and what it would carry is disposable by
+  definition. Decision 2 and the rename plan were corrected to match. The migration and its four cases were
+  written, mutation-checked and then removed; what replaced them is a sentence. Cost on this machine: the
+  old root held one empty `.ephemeral/` and no named profile, so nothing was orphaned in fact.
+- **`abuddy profiles --ephemeral` became `--all`**, since Finished-when requires `--ephemeral` to name
+  nothing in the CLI. `--all` is the usual spelling for including what a listing hides, and the CLI already
+  uses it that way in `clean --all`.
+- **`ephemeral` stays as the property and the `.ephemeral/` directory.** The flag changed; the concept did
+  not, and renaming the field would have been a second vocabulary for one idea.
+
+No scan was committed for "no `instance` left in a user-facing string". It was run by hand and is what found
+the last four sites, but as a gate it would fire forever on the single-instance lock — the other sense of the
+word, which the corrected prose now discusses more rather than less. A check whose subject is a finished
+migration is neither a gate nor an assertion (root `CLAUDE.md`, "A check that cannot fail today").
+
+### Phase 2 — the lock question
+
+**The data dir scopes Electron's single-instance lock. The app name does not.** Observed 2026-10-09 with a
+two-process probe, the pair Decision 8 asked for:
+
+| Probe | Result |
+|---|---|
+| same app name, **different** data dirs | both took the lock (`lock=true`, `lock=true`) |
+| **different** app names, same data dir | the second was refused (`lock=true`, `lock=false`) |
+
+And the mechanism directly, rather than inferred from the pair: while the lock is held the data dir contains
+`SingletonLock` (a symlink naming `<hostname>-<pid>`), `SingletonCookie` and `SingletonSocket` — Chromium's
+`ProcessSingleton`, which lives in the user data directory. So `app.setPath('userData')` is what decides it
+and `app.setName` is immaterial.
+
+What that means for this goal: the four environments run side by side because their **dirs** differ, not
+their names; a profile is what lets two apps of one environment coexist; and every refusal `drive` and
+`dev` make is about one data dir, which is what the attach design already assumed.
+
+Corrected: `packages/main/CLAUDE.md` (two places, which said the app name) and `SingleInstanceApp.ts`
+(which said "them"). `abuddy-cli/src/commands/drive.ts` was already right and is unchanged.
