@@ -16,6 +16,7 @@
 import * as fs from 'node:fs';
 import { _appDirOf, APP_ENVS, appDataDirFor, type AppEnv } from '@abuddy/sdk/env';
 import { readHostInfo } from '@abuddy/host/packs';
+import { readSession } from '@abuddy/host/dev-session';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 import { cliDirs, type CliDirs } from '../app/app-target';
 import {
@@ -55,6 +56,8 @@ export interface EnvironmentRow {
   /** What the app that last used it recorded of itself (`host.json`), where it wrote one */
   version?: string;
   inUse: boolean;
+  /** What an attachable app published here: who started it, and the pid that ends it */
+  session?: { startedBy: 'dev' | 'drive'; supervisorPid: number };
 }
 
 export function environmentRows(resolve: (env: AppEnv) => string = appDataDirFor): EnvironmentRow[] {
@@ -71,15 +74,36 @@ export function environmentRows(resolve: (env: AppEnv) => string = appDataDirFor
       // half of the answer, and a missing line reads as a bug in the listing
       ...(hasAppData ? { version: readHostInfo(dir).version } : {}),
       inUse: exists && profileInUse(dir),
+      // The session an attachable app published, so a row says who started the app holding this dir and
+      // what ends it. The development dir is where a `drive --spawn` lands by default, which makes this
+      // the row a forgotten app is found on
+      ...(exists ? { session: readSession(dir) } : {}),
     };
   });
 }
 
-const note = (profile: ListedProfile): string => (profile.inUse
-  ? 'an app is running on it'
-  : profile.leaked
-    ? 'left by a run that has gone'
-    : profile.ephemeral ? 'ephemeral' : '');
+/**
+ * What a row says beside its name, and the first clause is the one that matters.
+ *
+ * **A line printed once is not documentation.** A question that started an app says so, but forty minutes
+ * later that has scrolled away — and on the caller this is for, an agent's stdout, it was read by nothing.
+ * So the listing is where a forgotten app is found: who started it, how long it has been up, and the pid
+ * that ends it. `abuddy dev` is the `docker ps` to a spawn's `docker run`.
+ */
+const note = (profile: ListedProfile): string => {
+  const session = readSession(profile.dir);
+  if (session) {
+    const by = session.startedBy === 'drive' ? 'a question' : 'abuddy dev';
+    return `running, started by ${by} — pid ${session.supervisorPid}`;
+  }
+  // An app with no session file is one that published no debug port, so nothing can attach to it — still
+  // running, and still worth saying, because it is what makes the dir unavailable
+  return profile.inUse
+    ? 'an app is running on it'
+    : profile.leaked
+      ? 'left by a run that has gone'
+      : profile.ephemeral ? 'ephemeral' : '';
+};
 
 /**
  * What a listing asks of the machine. Both are parameters so a spec can answer for a temp tree and watch
@@ -102,7 +126,10 @@ export function list(dirs: CliDirs, { sizes, all, resolve, bytes = dirBytes }: L
 
   console.log(`\n  ${'ENVIRONMENT'.padEnd(width)}${sizes ? '    SIZE' : ''}  APP         DATA DIR`);
   for (const row of envs) {
-    const state = !row.exists ? '  (none yet)' : !row.hasAppData ? '  (no app data)' : row.inUse ? '  (running)' : '';
+    const running = row.session === undefined
+      ? '  (running)'
+      : `  (running, started by ${row.session.startedBy === 'drive' ? 'a question' : 'abuddy dev'} — pid ${row.session.supervisorPid})`;
+    const state = !row.exists ? '  (none yet)' : !row.hasAppData ? '  (no app data)' : row.inUse ? running : '';
     console.log(`  ${row.env.padEnd(width)}${sizes ? `  ${(row.exists ? sized(row.dir) : '—').padStart(6)}` : ''}`
       + `  ${(row.version ?? '—').padEnd(10)}  ${row.dir}${state}`);
   }
