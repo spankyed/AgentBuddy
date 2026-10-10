@@ -229,9 +229,6 @@ export interface StepNodeFacet {
 
 export interface StepNodeConfig {
   icon: unknown;
-  color: string;
-  bgColor: string;
-  hoverBgColor: string;
   connectionRules: { inputs: number; outputs: number };
   category: 'trigger' | 'action' | 'logic' | 'data' | 'ai';
   isImplemented?: boolean;

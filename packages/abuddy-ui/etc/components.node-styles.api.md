@@ -65,9 +65,6 @@ export const isTriggerNode: (nodeType: string | undefined) => boolean;
 
 // @public (undocumented)
 export interface NodeConfig {
-    // (undocumented)
-    bgColor: string;
-    // (undocumented)
     color: string;
     // (undocumented)
     connectionRules: {
@@ -76,8 +73,6 @@ export interface NodeConfig {
     };
     // (undocumented)
     defaultLabel?: string;
-    // (undocumented)
-    hoverBgColor: string;
     // (undocumented)
     icon: Component;
     // (undocumented)

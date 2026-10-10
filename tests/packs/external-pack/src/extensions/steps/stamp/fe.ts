@@ -3,12 +3,9 @@ import type { StepFEFacet } from '@abuddy/sdk/steps';
 import { Stamp } from 'lucide-vue-next';
 
 export const stampStepFE: StepFEFacet = {
-  colorKey: 'violet',
+  colorKey: 'purple',
   nodeConfig: {
     icon: Stamp,
-    color: 'text-violet-400',
-    bgColor: 'bg-violet-500/10',
-    hoverBgColor: 'group-hover:bg-violet-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
     category: 'action',
     isImplemented: true,

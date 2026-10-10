@@ -7,9 +7,6 @@ export const queryStepFE: StepFEFacet = {
   colorKey: 'cyan',
   nodeConfig: {
     icon: Search,
-    color: 'text-cyan-400',
-    bgColor: 'bg-cyan-500/10',
-    hoverBgColor: 'group-hover:bg-cyan-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
     category: 'data',
     isImplemented: true,

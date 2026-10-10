@@ -7,9 +7,6 @@ export const llmStepFE: StepFEFacet = {
   colorKey: 'indigo',
   nodeConfig: {
     icon: Sparkle,
-    color: 'text-indigo-400',
-    bgColor: 'bg-indigo-500/10',
-    hoverBgColor: 'group-hover:bg-indigo-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
     category: 'ai',
     isImplemented: true,

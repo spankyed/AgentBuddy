@@ -205,18 +205,12 @@ export interface StepLayoutDescriptor {
 // @public (undocumented)
 export interface StepNodeConfig {
     // (undocumented)
-    bgColor: string;
-    // (undocumented)
     category: 'trigger' | 'action' | 'logic' | 'data' | 'ai';
-    // (undocumented)
-    color: string;
     // (undocumented)
     connectionRules: {
         inputs: number;
         outputs: number;
     };
-    // (undocumented)
-    hoverBgColor: string;
     // (undocumented)
     icon: unknown;
     // (undocumented)

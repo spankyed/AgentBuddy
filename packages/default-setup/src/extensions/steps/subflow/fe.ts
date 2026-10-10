@@ -7,9 +7,6 @@ export const flowStepFE: StepFEFacet = {
   colorKey: 'purple',
   nodeConfig: {
     icon: Workflow,
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-500/10',
-    hoverBgColor: 'group-hover:bg-purple-500/15',
     connectionRules: { inputs: 1, outputs: 1 },
     category: 'logic',
     isImplemented: true,
