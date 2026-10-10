@@ -66,18 +66,19 @@ const BASE_PACK = {
     id: 'base-pack', name: 'Base', version: '1.0.0',
     entities: { Tag: 'Tag', Item: 'Item' },
     entityShapes: { Tag: { source: 'src/types.ts', type: 'TagEntity' }, Item: { source: 'src/types.ts', type: 'ItemEntity' } },
-    features: [{
-      id: 'calendar',
-      system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' },
-      plugin: { entry: 'src/plugin.ts', contract: 'src/plugin.types.ts#Contract' },
-      services: { search: 'src/search.ts#searchService' },
-      repositories: { tagQueries: 'src/repository.ts#tagQueries' },
-    }, {
+    features: {
+      calendar: {
+        system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' },
+        plugin: { entry: 'src/plugin.ts', contract: 'src/plugin.types.ts#Contract' },
+        services: { search: 'src/search.ts#searchService' },
+        repositories: { tagQueries: 'src/repository.ts#tagQueries' },
+      },
       // A second plugin of the dependency, which declares no inbox: nothing may send it
-      id: 'inbox',
-      system: { entry: 'src/inbox.ts', contract: 'src/inbox.contract.ts#Contract' },
-      plugin: { entry: 'src/inbox-plugin.ts' },
-    }],
+      inbox: {
+        system: { entry: 'src/inbox.ts', contract: 'src/inbox.contract.ts#Contract' },
+        plugin: { entry: 'src/inbox-plugin.ts' },
+      },
+    },
   }),
   'src/types.ts': 'export interface TagEntity { name: string }\nexport interface ItemEntity { title: string }\n',
   // The system's contract: a declared type the manifest names, which is what the facade publishes
@@ -129,7 +130,7 @@ const APP_PACK = {
     entities: { Memo: 'Memo' },
     // Same type name as the dependency's Item shape
     entityShapes: { Memo: { source: 'src/types.ts', type: 'ItemEntity' } },
-    features: [{ id: 'memos', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { entry: 'src/plugin.ts' } }],
+    features: { memos: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { entry: 'src/plugin.ts' } } },
   }),
   'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean }\n',
   'src/plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'memos' } as unknown as Plugin;\n",

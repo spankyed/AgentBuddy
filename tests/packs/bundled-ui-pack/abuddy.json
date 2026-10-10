@@ -9,16 +9,15 @@
   "fe": {
     "bundleUi": true
   },
-  "features": [
-    {
-      "id": "scribbles",
+  "features": {
+    "scribbles": {
       "settings": "src/features/scribbles/settings.ts",
       "plugin": {
         "entry": "src/features/scribbles/fe/plugin.ts"
       },
       "services": {}
     }
-  ],
+  },
   "dependencies": {},
   "permissions": []
 }

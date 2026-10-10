@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { APP_ONLY_EXPORTS, HOST_RESOLVED_BINARIES, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
-import { CONTENT_COMPILERS_FILE } from '@abuddy/sdk/build';
+import { CONTENT_COMPILERS_FILE, STEPS_BUILD_MODULE } from '@abuddy/sdk/build';
 import { checkContentRuntimeLoads } from './content-runtime-check';
 import type { RecordReads } from './build-reads';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
@@ -104,7 +104,7 @@ export async function bundlePackRuntime(
 }
 
 /**
- * Bundle the pack's build-time step definitions (manifest steps.build) into
+ * Bundle the pack's build-time step definitions (the module codegen writes from its `steps` entries) into
  * dist/build/steps.build.mjs. Dependent packs' `abuddy build` imports it to validate
  * and compile flows with this pack's real step code. Shared-instance and host-shared
  * packages stay external and resolve from the importing pack's node_modules.
@@ -112,12 +112,11 @@ export async function bundlePackRuntime(
 export async function bundlePackStepBuild(
   packDir: string,
   outputDir: string,
-  entry: string,
   options: BundleRuntimeOptions = {},
 ): Promise<{ success: boolean; error?: string }> {
-  const entryPath = path.resolve(packDir, entry);
+  const entryPath = path.resolve(packDir, STEPS_BUILD_MODULE);
   if (!fs.existsSync(entryPath)) {
-    return { success: false, error: `steps.build entry not found: ${entry}` };
+    return { success: false, error: `No ${STEPS_BUILD_MODULE}. Run "abuddy generate-entries" first.` };
   }
   try {
     await bundlePackSource(packDir, options, {

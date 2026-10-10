@@ -22,7 +22,7 @@
 //   subtree when packing — silently dropping template files.
 //
 // The register-array entries and import lines `add/{block,artifact,migration}.ts` build are not templates
-// either: they edit a file that is already there, through `updateRegisterArray`/`updateComponentMap`.
+// either: they edit a file that is already there, through `updateRegisterArray`.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 

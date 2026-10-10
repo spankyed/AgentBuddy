@@ -6,6 +6,7 @@ import type { PackManifest } from './manifest.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import { _mergeStepDefinitions } from '../steps/merge.ts';
 import { resolveContentSources, type ContentDependency } from './content/resolve.ts';
+import { STEPS_BUILD_MODULE } from './generate-entries.ts';
 
 function findExportedArray(mod: Record<string, unknown>): unknown[] | null {
   for (const value of Object.values(mod)) {
@@ -48,7 +49,7 @@ function mergeStep(steps: Map<string, StepDefinition>, def: StepDefinition): voi
 
 /**
  * The definitions a pack compiles with: its dependencies' steps (their build/steps.build.mjs), then its own
- * steps, artifacts and blocks. A pack step whose type a dependency defines throws.
+ * steps, plus the artifacts and blocks its manifest declares. A pack step whose type a dependency defines throws.
  */
 async function loadPackDefinitions(manifest: PackManifest, packDir: string, dependencyStepModules: readonly string[]): Promise<PackBuildDefinitions> {
   const steps = new Map<string, StepDefinition>();
@@ -75,8 +76,9 @@ async function loadPackDefinitions(manifest: PackManifest, packDir: string, depe
     return findExportedArray(await import(pathToFileURL(fullPath).href)) ?? [];
   };
 
-  // Build-only definitions avoid loading runtime and FE code (Vue components) in the CLI
-  for (const step of await loadArray(manifest.steps?.build ?? manifest.steps?.register, 'steps') as StepDefinition[]) {
+  // Build-only definitions avoid loading runtime and FE code (Vue components) in the CLI: codegen writes
+  // the pack's build facets into this module, and the build bundles it for dependents
+  for (const step of await loadArray(STEPS_BUILD_MODULE, 'steps') as StepDefinition[]) {
     const dependency = dependencyStepTypes.get(step.type);
     if (dependency) {
       throw new Error(`Step type "${step.type}" is defined by this pack and by a dependency (${dependency}); rename this pack's step`);
@@ -86,7 +88,9 @@ async function loadPackDefinitions(manifest: PackManifest, packDir: string, depe
 
   return {
     steps: [...steps.values()],
-    artifacts: await loadArray(manifest.artifacts, 'artifacts') as PackBuildDefinitions['artifacts'],
-    blocks: await loadArray(manifest.blocks, 'blocks') as PackBuildDefinitions['blocks'],
+    // Both are declared outright in the manifest, so nothing is loaded for either: what a build needs of an
+    // artifact or a block is its type and, for a block, its kind. The facets are code only a running app reaches
+    artifacts: Object.keys(manifest.artifacts ?? {}).map((type) => ({ type })),
+    blocks: Object.entries(manifest.blocks ?? {}).map(([type, entry]) => ({ type, kind: entry.kind })),
   };
 }

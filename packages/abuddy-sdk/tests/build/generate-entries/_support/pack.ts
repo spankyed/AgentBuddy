@@ -74,8 +74,17 @@ export function write(file: string, content: string): void {
   fs.writeFileSync(path.join(root, file), content);
 }
 
+/**
+ * A manifest for a case, over the minimum. `features` may be written as a list of entries carrying their
+ * `id`, which this keys by that id: the cases below are about what codegen *emits*, and a list reads better
+ * where a case declares several features and the `system()`/`withPlugin()` helpers build them. The manifest's
+ * own shape is `manifest-schema.spec.ts`'s subject, including that a duplicate id is unrepresentable.
+ */
 export function manifest(fields: Record<string, unknown>): PackManifest {
-  return { id: 'demo-pack', name: 'Demo', version: '1.0.0', ...fields } as unknown as PackManifest;
+  const features = Array.isArray(fields.features)
+    ? Object.fromEntries((fields.features as { id: string }[]).map(({ id, ...entry }) => [id, entry]))
+    : fields.features;
+  return { id: 'demo-pack', name: 'Demo', version: '1.0.0', ...fields, ...(features ? { features } : {}) } as unknown as PackManifest;
 }
 
 /** The exports every facade `abuddy build` bundles publishes, and the declaration each gets by default */

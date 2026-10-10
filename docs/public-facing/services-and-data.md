@@ -4,7 +4,7 @@
 
 Services are stateless modules that systems and actions can call. They come in two flavors:
 
-- **Feature services** — scoped to a feature, declared in `features[].services`
+- **Feature services** — scoped to a feature, declared in `features.<id>.services`
 - **Pack-level services** — shared across the pack, declared in `packServices`
 
 ### Scaffolding
@@ -47,14 +47,13 @@ Each entry names the file and its export, as `"path#exportName"`. The export can
 **Feature-level:**
 ```json
 {
-  "features": [
-    {
-      "id": "bookmarks",
+  "features": {
+    "bookmarks": {
       "services": {
         "bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"
       }
     }
-  ]
+  }
 }
 ```
 
@@ -372,15 +371,14 @@ Declare them in the feature's `repositories` (name → `path#exportName`):
 
 ```json
 {
-  "features": [
-    {
-      "id": "bookmarks",
+  "features": {
+    "bookmarks": {
       "repositories": {
         "bookmarkQueries": "src/features/bookmarks/be/repository/queries.ts#bookmarkQueries",
         "bookmarkCommands": "src/features/bookmarks/be/repository/commands.ts#bookmarkCommands"
       }
     }
-  ]
+  }
 }
 ```
 

@@ -89,8 +89,7 @@ export async function addFeature(args: string[], root: string) {
   }
 
   const manifest = readManifest(root);
-  addFeatureToManifest(manifest, {
-    id: name,
+  addFeatureToManifest(manifest, name, {
     ...(designation !== undefined && { designation }),
     settings: `src/features/${name}/settings.ts`,
     system: { entry: `src/features/${name}/be/system.ts`, contract: `src/features/${name}/be/contract.ts#Contract` },

@@ -46,13 +46,13 @@ src/
 Each feature lives in `src/features/<name>/` with this layout:
 
 - `be/system.ts` — XState backend system machine
-- `be/contract.ts` — the feature's backend leaf: its system's `Contract` (`context`, `incoming`, `internal`, `outgoing`), which `abuddy.json` names at `features[].system.contract`. Its own module rather than the types barrel, since `#generated/types` star-exports that and one `Contract` per feature would collide there; codegen reads it as a declared type, without resolving the machine
-- `be/repository/` — EARS read/write layer: `xQueries`/`xCommands` objects declared in `abuddy.json` `features[].repositories`, carried by the generated pack entry's registration and registered by the host with the app's engine; use them through `repository` from `#generated/repository`
+- `be/contract.ts` — the feature's backend leaf: its system's `Contract` (`context`, `incoming`, `internal`, `outgoing`), which `abuddy.json` names at `features.<id>.system.contract`. Its own module rather than the types barrel, since `#generated/types` star-exports that and one `Contract` per feature would collide there; codegen reads it as a declared type, without resolving the machine
+- `be/repository/` — EARS read/write layer: `xQueries`/`xCommands` objects declared in `abuddy.json` `features.<id>.repositories`, carried by the generated pack entry's registration and registered by the host with the app's engine; use them through `repository` from `#generated/repository`
 - `be/services/` — Service modules, each exporting the `<key>Service` object exposed to systems and actions (see Services)
 - `be/types.ts` — Shared types
 - `fe/plugin.ts` — Frontend plugin definition (id, label, icon, state machine, canvas/panel components)
 - `fe/state.ts` — XState frontend state machine
-- `fe/contract.ts` — the feature's frontend leaf: its plugin's published state, the events its `Contract` opens an inbox to, and the `Contract` itself. It imports no machine, no other feature and nothing from `#generated/*` but `types` and `ears`, which is what lets codegen read the contract without resolving the machine (`check:specifiers`); `abuddy.json` names it at `features[].plugin.contract`
+- `fe/contract.ts` — the feature's frontend leaf: its plugin's published state, the events its `Contract` opens an inbox to, and the `Contract` itself. It imports no machine, no other feature and nothing from `#generated/*` but `types` and `ears`, which is what lets codegen read the contract without resolving the machine (`check:specifiers`); `abuddy.json` names it at `features.<id>.plugin.contract`
 - `fe/canvas/` — Main view components
 - `fe/references.ts` — which of the feature's things are linkable from an editor, and how (if applicable)
 - `settings.ts` — Per-feature default settings
@@ -74,7 +74,7 @@ Frontend components don't render untrusted text as markup: script injected into 
 
 Backend systems wired via `__generated__/pack-entry.ts`, each feature's with `packSystem()` from the SDK. Each system file default-exports a `SystemEntry` (the manifest names only the path, not an export name). The logs system is the bus's like any other: what the in-app viewer shows is what `onLog` delivers from the moment the bus starts it, so the boot lines before that — hydration, each `onInit`, the migrations, the content — reach stdout and the log file only.
 
-Code names a system by feature id, and reaches another system with the typed `sendToSystem(name, event)` from `__generated__/events`, never its actor. Each system file defines its events with `defineSystem()`; its identity is its feature's, from `abuddy.json`. A feature's designation comes only from `abuddy.json` `features[].designation`. It is a role, not a name: it need not equal the feature id, and every one default-setup declares happens to.
+Code names a system by feature id, and reaches another system with the typed `sendToSystem(name, event)` from `__generated__/events`, never its actor. Each system file defines its events with `defineSystem()`; its identity is its feature's, from `abuddy.json`. A feature's designation comes only from `abuddy.json` `features.<id>.designation`. It is a role, not a name: it need not equal the feature id, and every one default-setup declares happens to.
 
 ## What a system sends a plugin: pick the channel, then the shape
 
@@ -214,7 +214,7 @@ holds both, and was the first spec for any `code` frontend machine.
 
 ## Services
 
-Service aggregation generated in `__generated__/services.ts`. Feature services are declared in `abuddy.json` `features[].services` and live in `src/features/<name>/be/services/`; the pack declares no top-level `packServices`. Systems and actions call them through `services.<key>`, next to the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`, `filesystem`):
+Service aggregation generated in `__generated__/services.ts`. Feature services are declared in `abuddy.json` `features.<id>.services` and live in `src/features/<name>/be/services/`; the pack declares no top-level `packServices`. Systems and actions call them through `services.<key>`, next to the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`, `filesystem`):
 
 `chat`, `artifact`, `threads`, `cli`, `codex`, `library`, `action`, `prompt`, `brain`, `scheduler`, `database`
 
@@ -238,7 +238,7 @@ Typed facades (no module augmentation):
 - `__generated__/ears.ts` — `PackShapes` (entity type → attribute interface), `EntityName`, and the typed `qx`/`tx`/`find*`/`createEntity`/`createEntityWithDefaults`/`updateEntity`/`getAttr` helpers built with `defineEars`. Feature code imports `tx` from here; migrations write with the unchecked `untypedTx` from `@abuddy/ears`, as does the Database console's transaction code (which exposes it to console code under the name `tx`), which runs through `@abuddy/sdk/database-console` (`features/database/be/execute/`)
 - `__generated__/events.ts` — `SendablePluginEvents` (receiving plugin ID → the events it gets: its own system's, plus the inbox that plugin's `Contract` declares — the flows plugin takes the three action events it handles, the logs plugin `LOG_ADDED` from any pack), `PackSystemEvents` (system → the events it receives), and typed `broadcastToPlugin`/`sendToPlugin`/`sendToSystem` built with `defineEvents`. Frontend state machines and systems send to systems with `sendToSystem` (to the brain's role with `{ role: 'brain' }`); backend code sends to plugins with `broadcastToPlugin`, which reaches every window, and frontend code with `sendToPlugin`, which reaches this window's actor. Don't import these from `@abuddy/sdk/events`; a plugin that takes events from anywhere but its own system declares them in its `Contract`'s `inbox` (`fe/contract.ts`). Subscriptions (`onConnected`, `onIncoming`) come from `@abuddy/sdk/events`, `onLog` from `@abuddy/sdk/logger`. A system answers whoever asked with the `reply` its handler is handed (`spec.actions({ … })`, built by `defineSystem`), which is absent when the message named no sender — there is no `reply` to import
 - `__generated__/services.ts` — the `services` proxy typed as `Services` (with `services.repository` typed as `Repositories`, and `services.emitter`'s sends typed with the pack's events; actions name systems `default-setup/<feature>`)
-- `__generated__/repository.ts` — `repository`, typed with every repository in `features[].repositories`
+- `__generated__/repository.ts` — `repository`, typed with every repository in `features.<id>.repositories`
 
 Logging and actions:
 - Log with `createLogger(source)` from `@abuddy/sdk/logger`. The brain and step runtimes use `createLogger('brain', { debug: true })`, whose debug messages follow the brain plugin's inspect switch (`setDebugEnabled('brain', …)`). Errors go through `reportError`, with `step` context in step runtimes. Backend code has no `console.*` (`check:specifiers`)
@@ -282,17 +282,27 @@ Step definitions in `src/extensions/steps/`. Each step directory contains:
 - `form.vue` — optional editor form component
 - `runtime.ts` — optional runtime handler (action, create, fire, llm, query, schedule, switch, transform, update)
 
-A new step goes in both barrels: `src/extensions/steps/register.ts` (the full definition) and `src/extensions/steps/build.ts` (the build facet); `register-fe.ts` registers the FE configs. `abuddy.json` `steps.build` points at the latter; it's bundled to `dist/build/steps.build.mjs`, which packs depending on default-setup use to validate their flows. `tests/extensions/steps/build-barrel.spec.ts` fails when the barrels diverge.
+A new step is one directory and one `abuddy.json` entry under `steps`, keyed by its type: `build.ts` exports
+its `StepBuildFacet` (a trigger's exports its `TriggerFacet`), `fe.ts` its `StepFEFacet`, `runtime.ts` the
+handler the entry names. There are no barrels — codegen sends each facet where it is used, and writes
+`src/__generated__/steps-build.ts`, bundled to `dist/build/steps.build.mjs`, which packs depending on
+default-setup use to validate their flows.
+
+**The handler and a trigger's `register` are named, not imported**, so their modules load on the step's
+first run rather than at pack load — which is also what keeps `vue` and the icon set out of
+`dist/runtime/index.cjs`, since a step's `fe` facet never reaches the backend registration at all.
 
 13 steps: **action**, **llm**, **switch**, **fire**, **transform**, **query**, **subflow**, **create**, **update**, **keep_alive** (in `keep-alive/`), **kill**, **schedule** (trigger), **listener** (trigger).
 
 ## Artifacts
 
-Artifact type definitions in `src/extensions/artifacts/register.ts`. 16 types registered, each with a viewer component in `src/extensions/artifacts/viewers/`:
+Declared in `abuddy.json` under `artifacts`, keyed by type: each entry names a `lucide-vue-next` icon and the
+viewer that opens it. 16 types, each with a viewer component in `src/extensions/artifacts/viewers/`:
 
 text, code, review, image, slack, todo, project, json, graph, table, markdown, claude-session, codex-session, diff, plan, note
 
-FE registration: `src/extensions/artifacts/register-fe.ts` (eagerly loads all viewer components for the renderer).
+Both facets are frontend ones, so codegen puts them in the pack's frontend entry alone and the backend
+registration carries each type and nothing else.
 
 **An interactive viewer is self-contained, and does it in three moves.** Most viewers only render, but one that
 the user can act on — `todo-artifact.vue`, `claude-session-artifact.vue`, `codex-session-artifact.vue` — holds
@@ -323,13 +333,17 @@ an answer.
 
 ## Message blocks
 
-Block definitions in `src/extensions/blocks/register.ts`. Two kinds:
+Declared in `abuddy.json` under `blocks`, keyed by type: each entry names the component that draws it and,
+where there is one, the `"path#export"` of its backend facet. Codegen splits those between the two entries,
+so adding a block is one directory and one manifest entry and no barrel. Two kinds:
 
 **Display blocks** (default): prompt, note, markdown, link, tool-activity, thinking, tool-input, context-usage, session-list
 
 **Input blocks** (`kind: 'input'`): actions, toggles, file-picker, choice, text, approval, button-group, question, project-select
 
-FE registration: `src/extensions/blocks/register-fe.ts`.
+The components live under `src/extensions/blocks/{display,input}/`, which is where `abuddy add block` puts
+them — but `kind` is the manifest's and not the folder's: `actions` and `toggles` are input blocks sitting in
+`display/`.
 
 ## Extensions
 

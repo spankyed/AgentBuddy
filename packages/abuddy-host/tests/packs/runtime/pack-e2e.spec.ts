@@ -35,21 +35,17 @@ function installTestPack() {
     id: TEST_PACK_ID,
     name: 'E2E Test Pack',
     version: '1.0.0',
-    features: [
-      {
-        id: 'hello',
+    features: {
+      hello: {
         system: {
           entry: 'src/features/hello/be/system.ts',
           events: { incoming: ['HELLO_PING'] },
         },
         plugin: { entry: 'src/features/hello/fe/plugin.ts' },
       },
-      {
-        id: 'dataOnly',
-        // No system — plugin only
-        plugin: { entry: 'src/features/dataOnly/fe/plugin.ts' },
-      },
-    ],
+      // No system — plugin only
+      dataOnly: { plugin: { entry: 'src/features/dataOnly/fe/plugin.ts' } },
+    },
   }, null, 2));
 
   fs.writeFileSync(path.join(TEST_PACK_DIR, PACK_LAYOUT.integrity), JSON.stringify({

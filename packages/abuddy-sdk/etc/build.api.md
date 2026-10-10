@@ -461,7 +461,6 @@ export const FEATURE_ID_PATTERN: RegExp;
 
 // @public (undocumented)
 export const FeatureEntrySchema: z.ZodObject<{
-    id: z.ZodEffects<z.ZodString, string, string>;
     designation: z.ZodOptional<z.ZodString>;
     settings: z.ZodOptional<z.ZodString>;
     typesEntry: z.ZodOptional<z.ZodString>;
@@ -505,7 +504,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     references: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
-    id: string;
     designation?: string | undefined;
     settings?: string | undefined;
     typesEntry?: string | undefined;
@@ -525,7 +523,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     repositories?: Record<string, string> | undefined;
     references?: string | undefined;
 }, {
-    id: string;
     designation?: string | undefined;
     settings?: string | undefined;
     typesEntry?: string | undefined;
@@ -619,8 +616,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         type: string;
         source: string;
     }>>>;
-    features: z.ZodOptional<z.ZodArray<z.ZodObject<{
-        id: z.ZodEffects<z.ZodString, string, string>;
+    features: z.ZodOptional<z.ZodRecord<z.ZodEffects<z.ZodString, string, string>, z.ZodObject<{
         designation: z.ZodOptional<z.ZodString>;
         settings: z.ZodOptional<z.ZodString>;
         typesEntry: z.ZodOptional<z.ZodString>;
@@ -664,7 +660,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
         references: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
-        id: string;
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
@@ -684,7 +679,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
     }, {
-        id: string;
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
@@ -703,7 +697,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
-    }>, "many">>;
+    }>>>;
     packServices: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     help: z.ZodOptional<z.ZodString>;
     settingsSections: z.ZodOptional<z.ZodString>;
@@ -938,74 +932,168 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     }>>;
-    steps: z.ZodOptional<z.ZodObject<{
-        register: z.ZodString;
+    steps: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
+        kind: z.ZodOptional<z.ZodEnum<["step", "trigger"]>>;
         build: z.ZodOptional<z.ZodString>;
-        definitions: z.ZodArray<z.ZodObject<{
-            type: z.ZodString;
-            path: z.ZodString;
-            kind: z.ZodOptional<z.ZodEnum<["step", "trigger"]>>;
-            dsl: z.ZodOptional<z.ZodObject<{
-                primaryField: z.ZodOptional<z.ZodString>;
-                defaultLabel: z.ZodOptional<z.ZodString>;
-                custom: z.ZodOptional<z.ZodLiteral<true>>;
-            }, "strict", z.ZodTypeAny, {
-                primaryField?: string | undefined;
-                defaultLabel?: string | undefined;
-                custom?: true | undefined;
-            }, {
-                primaryField?: string | undefined;
-                defaultLabel?: string | undefined;
-                custom?: true | undefined;
-            }>>;
+        trigger: z.ZodOptional<z.ZodObject<{
+            facet: z.ZodString;
+            register: z.ZodOptional<z.ZodString>;
         }, "strict", z.ZodTypeAny, {
-            type: string;
-            path: string;
-            kind?: "step" | "trigger" | undefined;
-            dsl?: {
-                primaryField?: string | undefined;
-                defaultLabel?: string | undefined;
-                custom?: true | undefined;
-            } | undefined;
+            facet: string;
+            register?: string | undefined;
         }, {
-            type: string;
-            path: string;
-            kind?: "step" | "trigger" | undefined;
-            dsl?: {
-                primaryField?: string | undefined;
-                defaultLabel?: string | undefined;
-                custom?: true | undefined;
-            } | undefined;
-        }>, "many">;
+            facet: string;
+            register?: string | undefined;
+        }>>;
+        fe: z.ZodOptional<z.ZodString>;
+        runtime: z.ZodOptional<z.ZodEffects<z.ZodObject<{
+            handler: z.ZodOptional<z.ZodString>;
+            sync: z.ZodOptional<z.ZodLiteral<true>>;
+            isAsync: z.ZodOptional<z.ZodLiteral<true>>;
+            waits: z.ZodOptional<z.ZodLiteral<true>>;
+            spawnsSubflow: z.ZodOptional<z.ZodLiteral<true>>;
+        }, "strict", z.ZodTypeAny, {
+            handler?: string | undefined;
+            sync?: true | undefined;
+            isAsync?: true | undefined;
+            waits?: true | undefined;
+            spawnsSubflow?: true | undefined;
+        }, {
+            handler?: string | undefined;
+            sync?: true | undefined;
+            isAsync?: true | undefined;
+            waits?: true | undefined;
+            spawnsSubflow?: true | undefined;
+        }>, {
+            handler?: string | undefined;
+            sync?: true | undefined;
+            isAsync?: true | undefined;
+            waits?: true | undefined;
+            spawnsSubflow?: true | undefined;
+        }, {
+            handler?: string | undefined;
+            sync?: true | undefined;
+            isAsync?: true | undefined;
+            waits?: true | undefined;
+            spawnsSubflow?: true | undefined;
+        }>>;
+        dsl: z.ZodOptional<z.ZodObject<{
+            primaryField: z.ZodOptional<z.ZodString>;
+            defaultLabel: z.ZodOptional<z.ZodString>;
+            custom: z.ZodOptional<z.ZodLiteral<true>>;
+        }, "strict", z.ZodTypeAny, {
+            primaryField?: string | undefined;
+            defaultLabel?: string | undefined;
+            custom?: true | undefined;
+        }, {
+            primaryField?: string | undefined;
+            defaultLabel?: string | undefined;
+            custom?: true | undefined;
+        }>>;
     }, "strict", z.ZodTypeAny, {
-        register: string;
-        definitions: {
-            type: string;
-            path: string;
-            kind?: "step" | "trigger" | undefined;
-            dsl?: {
-                primaryField?: string | undefined;
-                defaultLabel?: string | undefined;
-                custom?: true | undefined;
-            } | undefined;
-        }[];
+        trigger?: {
+            facet: string;
+            register?: string | undefined;
+        } | undefined;
+        kind?: "step" | "trigger" | undefined;
         build?: string | undefined;
+        fe?: string | undefined;
+        runtime?: {
+            handler?: string | undefined;
+            sync?: true | undefined;
+            isAsync?: true | undefined;
+            waits?: true | undefined;
+            spawnsSubflow?: true | undefined;
+        } | undefined;
+        dsl?: {
+            primaryField?: string | undefined;
+            defaultLabel?: string | undefined;
+            custom?: true | undefined;
+        } | undefined;
     }, {
-        register: string;
-        definitions: {
-            type: string;
-            path: string;
-            kind?: "step" | "trigger" | undefined;
-            dsl?: {
-                primaryField?: string | undefined;
-                defaultLabel?: string | undefined;
-                custom?: true | undefined;
-            } | undefined;
-        }[];
+        trigger?: {
+            facet: string;
+            register?: string | undefined;
+        } | undefined;
+        kind?: "step" | "trigger" | undefined;
         build?: string | undefined;
-    }>>;
-    artifacts: z.ZodOptional<z.ZodString>;
-    blocks: z.ZodOptional<z.ZodString>;
+        fe?: string | undefined;
+        runtime?: {
+            handler?: string | undefined;
+            sync?: true | undefined;
+            isAsync?: true | undefined;
+            waits?: true | undefined;
+            spawnsSubflow?: true | undefined;
+        } | undefined;
+        dsl?: {
+            primaryField?: string | undefined;
+            defaultLabel?: string | undefined;
+            custom?: true | undefined;
+        } | undefined;
+    }>, {
+        trigger?: {
+            facet: string;
+            register?: string | undefined;
+        } | undefined;
+        kind?: "step" | "trigger" | undefined;
+        build?: string | undefined;
+        fe?: string | undefined;
+        runtime?: {
+            handler?: string | undefined;
+            sync?: true | undefined;
+            isAsync?: true | undefined;
+            waits?: true | undefined;
+            spawnsSubflow?: true | undefined;
+        } | undefined;
+        dsl?: {
+            primaryField?: string | undefined;
+            defaultLabel?: string | undefined;
+            custom?: true | undefined;
+        } | undefined;
+    }, {
+        trigger?: {
+            facet: string;
+            register?: string | undefined;
+        } | undefined;
+        kind?: "step" | "trigger" | undefined;
+        build?: string | undefined;
+        fe?: string | undefined;
+        runtime?: {
+            handler?: string | undefined;
+            sync?: true | undefined;
+            isAsync?: true | undefined;
+            waits?: true | undefined;
+            spawnsSubflow?: true | undefined;
+        } | undefined;
+        dsl?: {
+            primaryField?: string | undefined;
+            defaultLabel?: string | undefined;
+            custom?: true | undefined;
+        } | undefined;
+    }>>>;
+    artifacts: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        icon: z.ZodString;
+        fe: z.ZodOptional<z.ZodString>;
+    }, "strict", z.ZodTypeAny, {
+        icon: string;
+        fe?: string | undefined;
+    }, {
+        icon: string;
+        fe?: string | undefined;
+    }>>>;
+    blocks: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        kind: z.ZodOptional<z.ZodEnum<["display", "input"]>>;
+        fe: z.ZodOptional<z.ZodString>;
+        be: z.ZodOptional<z.ZodString>;
+    }, "strict", z.ZodTypeAny, {
+        kind?: "display" | "input" | undefined;
+        fe?: string | undefined;
+        be?: string | undefined;
+    }, {
+        kind?: "display" | "input" | undefined;
+        fe?: string | undefined;
+        be?: string | undefined;
+    }>>>;
     migrations: z.ZodOptional<z.ZodString>;
     fe: z.ZodOptional<z.ZodObject<{
         tiptapPlugins: z.ZodOptional<z.ZodString>;
@@ -1050,6 +1138,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     name: string;
     id: string;
     version: string;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+    } | undefined;
+    fe?: {
+        tiptapPlugins?: string | undefined;
+        appExtensions?: Record<string, string> | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1057,10 +1153,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }> | undefined;
-    artifacts?: string | undefined;
-    build?: {
-        opaqueDeps?: string[] | undefined;
-    } | undefined;
+    artifacts?: Record<string, {
+        icon: string;
+        fe?: string | undefined;
+    }> | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
@@ -1075,8 +1171,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         type: string;
         source: string;
     }> | undefined;
-    features?: {
-        id: string;
+    features?: Record<string, {
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
@@ -1095,7 +1190,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
-    }[] | undefined;
+    }> | undefined;
     packServices?: Record<string, string> | undefined;
     help?: string | undefined;
     settingsSections?: string | undefined;
@@ -1138,31 +1233,45 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
-    steps?: {
-        register: string;
-        definitions: {
-            type: string;
-            path: string;
-            kind?: "step" | "trigger" | undefined;
-            dsl?: {
-                primaryField?: string | undefined;
-                defaultLabel?: string | undefined;
-                custom?: true | undefined;
-            } | undefined;
-        }[];
+    steps?: Record<string, {
+        trigger?: {
+            facet: string;
+            register?: string | undefined;
+        } | undefined;
+        kind?: "step" | "trigger" | undefined;
         build?: string | undefined;
-    } | undefined;
-    blocks?: string | undefined;
+        fe?: string | undefined;
+        runtime?: {
+            handler?: string | undefined;
+            sync?: true | undefined;
+            isAsync?: true | undefined;
+            waits?: true | undefined;
+            spawnsSubflow?: true | undefined;
+        } | undefined;
+        dsl?: {
+            primaryField?: string | undefined;
+            defaultLabel?: string | undefined;
+            custom?: true | undefined;
+        } | undefined;
+    }> | undefined;
+    blocks?: Record<string, {
+        kind?: "display" | "input" | undefined;
+        fe?: string | undefined;
+        be?: string | undefined;
+    }> | undefined;
     migrations?: string | undefined;
-    fe?: {
-        tiptapPlugins?: string | undefined;
-        appExtensions?: Record<string, string> | undefined;
-        bundleUi?: boolean | undefined;
-    } | undefined;
 }, {
     name: string;
     id: string;
     version: string;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+    } | undefined;
+    fe?: {
+        tiptapPlugins?: string | undefined;
+        appExtensions?: Record<string, string> | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1170,10 +1279,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }> | undefined;
-    artifacts?: string | undefined;
-    build?: {
-        opaqueDeps?: string[] | undefined;
-    } | undefined;
+    artifacts?: Record<string, {
+        icon: string;
+        fe?: string | undefined;
+    }> | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
@@ -1188,8 +1297,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         type: string;
         source: string;
     }> | undefined;
-    features?: {
-        id: string;
+    features?: Record<string, {
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
@@ -1208,7 +1316,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
-    }[] | undefined;
+    }> | undefined;
     packServices?: Record<string, string> | undefined;
     help?: string | undefined;
     settingsSections?: string | undefined;
@@ -1251,31 +1359,45 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
-    steps?: {
-        register: string;
-        definitions: {
-            type: string;
-            path: string;
-            kind?: "step" | "trigger" | undefined;
-            dsl?: {
-                primaryField?: string | undefined;
-                defaultLabel?: string | undefined;
-                custom?: true | undefined;
-            } | undefined;
-        }[];
+    steps?: Record<string, {
+        trigger?: {
+            facet: string;
+            register?: string | undefined;
+        } | undefined;
+        kind?: "step" | "trigger" | undefined;
         build?: string | undefined;
-    } | undefined;
-    blocks?: string | undefined;
+        fe?: string | undefined;
+        runtime?: {
+            handler?: string | undefined;
+            sync?: true | undefined;
+            isAsync?: true | undefined;
+            waits?: true | undefined;
+            spawnsSubflow?: true | undefined;
+        } | undefined;
+        dsl?: {
+            primaryField?: string | undefined;
+            defaultLabel?: string | undefined;
+            custom?: true | undefined;
+        } | undefined;
+    }> | undefined;
+    blocks?: Record<string, {
+        kind?: "display" | "input" | undefined;
+        fe?: string | undefined;
+        be?: string | undefined;
+    }> | undefined;
     migrations?: string | undefined;
-    fe?: {
-        tiptapPlugins?: string | undefined;
-        appExtensions?: Record<string, string> | undefined;
-        bundleUi?: boolean | undefined;
-    } | undefined;
 }>, {
     name: string;
     id: string;
     version: string;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+    } | undefined;
+    fe?: {
+        tiptapPlugins?: string | undefined;
+        appExtensions?: Record<string, string> | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1283,10 +1405,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }> | undefined;
-    artifacts?: string | undefined;
-    build?: {
-        opaqueDeps?: string[] | undefined;
-    } | undefined;
+    artifacts?: Record<string, {
+        icon: string;
+        fe?: string | undefined;
+    }> | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
@@ -1301,8 +1423,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         type: string;
         source: string;
     }> | undefined;
-    features?: {
-        id: string;
+    features?: Record<string, {
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
@@ -1321,7 +1442,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
-    }[] | undefined;
+    }> | undefined;
     packServices?: Record<string, string> | undefined;
     help?: string | undefined;
     settingsSections?: string | undefined;
@@ -1364,31 +1485,45 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
-    steps?: {
-        register: string;
-        definitions: {
-            type: string;
-            path: string;
-            kind?: "step" | "trigger" | undefined;
-            dsl?: {
-                primaryField?: string | undefined;
-                defaultLabel?: string | undefined;
-                custom?: true | undefined;
-            } | undefined;
-        }[];
+    steps?: Record<string, {
+        trigger?: {
+            facet: string;
+            register?: string | undefined;
+        } | undefined;
+        kind?: "step" | "trigger" | undefined;
         build?: string | undefined;
-    } | undefined;
-    blocks?: string | undefined;
+        fe?: string | undefined;
+        runtime?: {
+            handler?: string | undefined;
+            sync?: true | undefined;
+            isAsync?: true | undefined;
+            waits?: true | undefined;
+            spawnsSubflow?: true | undefined;
+        } | undefined;
+        dsl?: {
+            primaryField?: string | undefined;
+            defaultLabel?: string | undefined;
+            custom?: true | undefined;
+        } | undefined;
+    }> | undefined;
+    blocks?: Record<string, {
+        kind?: "display" | "input" | undefined;
+        fe?: string | undefined;
+        be?: string | undefined;
+    }> | undefined;
     migrations?: string | undefined;
-    fe?: {
-        tiptapPlugins?: string | undefined;
-        appExtensions?: Record<string, string> | undefined;
-        bundleUi?: boolean | undefined;
-    } | undefined;
 }, {
     name: string;
     id: string;
     version: string;
+    build?: {
+        opaqueDeps?: string[] | undefined;
+    } | undefined;
+    fe?: {
+        tiptapPlugins?: string | undefined;
+        appExtensions?: Record<string, string> | undefined;
+        bundleUi?: boolean | undefined;
+    } | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1396,10 +1531,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         globals?: Record<string, string> | undefined;
         inline?: string[] | undefined;
     }> | undefined;
-    artifacts?: string | undefined;
-    build?: {
-        opaqueDeps?: string[] | undefined;
-    } | undefined;
+    artifacts?: Record<string, {
+        icon: string;
+        fe?: string | undefined;
+    }> | undefined;
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
@@ -1414,8 +1549,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         type: string;
         source: string;
     }> | undefined;
-    features?: {
-        id: string;
+    features?: Record<string, {
         designation?: string | undefined;
         settings?: string | undefined;
         typesEntry?: string | undefined;
@@ -1434,7 +1568,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
-    }[] | undefined;
+    }> | undefined;
     packServices?: Record<string, string> | undefined;
     help?: string | undefined;
     settingsSections?: string | undefined;
@@ -1477,27 +1611,33 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
-    steps?: {
-        register: string;
-        definitions: {
-            type: string;
-            path: string;
-            kind?: "step" | "trigger" | undefined;
-            dsl?: {
-                primaryField?: string | undefined;
-                defaultLabel?: string | undefined;
-                custom?: true | undefined;
-            } | undefined;
-        }[];
+    steps?: Record<string, {
+        trigger?: {
+            facet: string;
+            register?: string | undefined;
+        } | undefined;
+        kind?: "step" | "trigger" | undefined;
         build?: string | undefined;
-    } | undefined;
-    blocks?: string | undefined;
+        fe?: string | undefined;
+        runtime?: {
+            handler?: string | undefined;
+            sync?: true | undefined;
+            isAsync?: true | undefined;
+            waits?: true | undefined;
+            spawnsSubflow?: true | undefined;
+        } | undefined;
+        dsl?: {
+            primaryField?: string | undefined;
+            defaultLabel?: string | undefined;
+            custom?: true | undefined;
+        } | undefined;
+    }> | undefined;
+    blocks?: Record<string, {
+        kind?: "display" | "input" | undefined;
+        fe?: string | undefined;
+        be?: string | undefined;
+    }> | undefined;
     migrations?: string | undefined;
-    fe?: {
-        tiptapPlugins?: string | undefined;
-        appExtensions?: Record<string, string> | undefined;
-        bundleUi?: boolean | undefined;
-    } | undefined;
 }>;
 
 // @public (undocumented)
@@ -1589,8 +1729,18 @@ export interface PackContentPreviewItem {
     key: string;
 }
 
+// @public
+export type PackFeature = PackFeatureEntry & {
+    id: string;
+};
+
 // @public (undocumented)
 export type PackFeatureEntry = z.infer<typeof FeatureEntrySchema>;
+
+// @public
+export function packFeatures(manifest: {
+    features?: Record<string, PackFeatureEntry>;
+}): PackFeature[];
 
 // @public
 export interface PackFlowHelpers {
@@ -1686,8 +1836,7 @@ export interface ProvenanceManifest {
     // (undocumented)
     entities?: Record<string, string>;
     // (undocumented)
-    features?: ReadonlyArray<{
-        id: string;
+    features?: Record<string, {
         plugin?: unknown;
     }>;
     // (undocumented)
@@ -1788,11 +1937,52 @@ export const StepDSLMetaSchema: z.ZodObject<{
 // @public (undocumented)
 export type StepEntry = z.infer<typeof StepEntrySchema>;
 
-// @public (undocumented)
-export const StepEntrySchema: z.ZodObject<{
-    type: z.ZodString;
-    path: z.ZodString;
+// @public
+export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
     kind: z.ZodOptional<z.ZodEnum<["step", "trigger"]>>;
+    build: z.ZodOptional<z.ZodString>;
+    trigger: z.ZodOptional<z.ZodObject<{
+        facet: z.ZodString;
+        register: z.ZodOptional<z.ZodString>;
+    }, "strict", z.ZodTypeAny, {
+        facet: string;
+        register?: string | undefined;
+    }, {
+        facet: string;
+        register?: string | undefined;
+    }>>;
+    fe: z.ZodOptional<z.ZodString>;
+    runtime: z.ZodOptional<z.ZodEffects<z.ZodObject<{
+        handler: z.ZodOptional<z.ZodString>;
+        sync: z.ZodOptional<z.ZodLiteral<true>>;
+        isAsync: z.ZodOptional<z.ZodLiteral<true>>;
+        waits: z.ZodOptional<z.ZodLiteral<true>>;
+        spawnsSubflow: z.ZodOptional<z.ZodLiteral<true>>;
+    }, "strict", z.ZodTypeAny, {
+        handler?: string | undefined;
+        sync?: true | undefined;
+        isAsync?: true | undefined;
+        waits?: true | undefined;
+        spawnsSubflow?: true | undefined;
+    }, {
+        handler?: string | undefined;
+        sync?: true | undefined;
+        isAsync?: true | undefined;
+        waits?: true | undefined;
+        spawnsSubflow?: true | undefined;
+    }>, {
+        handler?: string | undefined;
+        sync?: true | undefined;
+        isAsync?: true | undefined;
+        waits?: true | undefined;
+        spawnsSubflow?: true | undefined;
+    }, {
+        handler?: string | undefined;
+        sync?: true | undefined;
+        isAsync?: true | undefined;
+        waits?: true | undefined;
+        spawnsSubflow?: true | undefined;
+    }>>;
     dsl: z.ZodOptional<z.ZodObject<{
         primaryField: z.ZodOptional<z.ZodString>;
         defaultLabel: z.ZodOptional<z.ZodString>;
@@ -1807,24 +1997,89 @@ export const StepEntrySchema: z.ZodObject<{
         custom?: true | undefined;
     }>>;
 }, "strict", z.ZodTypeAny, {
-    type: string;
-    path: string;
+    trigger?: {
+        facet: string;
+        register?: string | undefined;
+    } | undefined;
     kind?: "step" | "trigger" | undefined;
+    build?: string | undefined;
+    fe?: string | undefined;
+    runtime?: {
+        handler?: string | undefined;
+        sync?: true | undefined;
+        isAsync?: true | undefined;
+        waits?: true | undefined;
+        spawnsSubflow?: true | undefined;
+    } | undefined;
     dsl?: {
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
         custom?: true | undefined;
     } | undefined;
 }, {
-    type: string;
-    path: string;
+    trigger?: {
+        facet: string;
+        register?: string | undefined;
+    } | undefined;
     kind?: "step" | "trigger" | undefined;
+    build?: string | undefined;
+    fe?: string | undefined;
+    runtime?: {
+        handler?: string | undefined;
+        sync?: true | undefined;
+        isAsync?: true | undefined;
+        waits?: true | undefined;
+        spawnsSubflow?: true | undefined;
+    } | undefined;
+    dsl?: {
+        primaryField?: string | undefined;
+        defaultLabel?: string | undefined;
+        custom?: true | undefined;
+    } | undefined;
+}>, {
+    trigger?: {
+        facet: string;
+        register?: string | undefined;
+    } | undefined;
+    kind?: "step" | "trigger" | undefined;
+    build?: string | undefined;
+    fe?: string | undefined;
+    runtime?: {
+        handler?: string | undefined;
+        sync?: true | undefined;
+        isAsync?: true | undefined;
+        waits?: true | undefined;
+        spawnsSubflow?: true | undefined;
+    } | undefined;
+    dsl?: {
+        primaryField?: string | undefined;
+        defaultLabel?: string | undefined;
+        custom?: true | undefined;
+    } | undefined;
+}, {
+    trigger?: {
+        facet: string;
+        register?: string | undefined;
+    } | undefined;
+    kind?: "step" | "trigger" | undefined;
+    build?: string | undefined;
+    fe?: string | undefined;
+    runtime?: {
+        handler?: string | undefined;
+        sync?: true | undefined;
+        isAsync?: true | undefined;
+        waits?: true | undefined;
+        spawnsSubflow?: true | undefined;
+    } | undefined;
     dsl?: {
         primaryField?: string | undefined;
         defaultLabel?: string | undefined;
         custom?: true | undefined;
     } | undefined;
 }>;
+
+// @public
+export const STEPS_BUILD_MODULE = "src/__generated__/steps-build.ts";
 
 // @public (undocumented)
 export function toDisplayName(str: string): string;

@@ -15,12 +15,12 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `hostVersion` | `string` | no | Semver range of compatible host versions (e.g. `">=0.3.0"`) |
 | `license` | `string` | no | SPDX license identifier |
 | `builtIn` | `boolean` | no | `true` for packs built into the app only |
-| `features` | `PackFeatureEntry[]` | no | Feature declarations (system + plugin bundles) |
-| `steps` | `{ register, build?, definitions[] }` | no | Flow step registration. `build` is a barrel of build-only step facets (no FE or runtime imports), shipped as `build/steps.build.mjs` so packs depending on yours validate flows with your step code; `abuddy init` scaffolds it and `abuddy add step` adds to it |
-| `artifacts` | `string` | no | Path to artifact registration file |
-| `blocks` | `string` | no | Path to block registration file |
+| `features` | `Record<string, PackFeatureEntry>` | no | Feature declarations (system + plugin bundles), keyed by feature id |
+| `steps` | `Record<string, StepEntry>` | no | Flow step types, keyed by type. Each names its facets: `build` (or `trigger`), `fe`, `runtime` and `dsl`. The build facets are shipped as `build/steps.build.mjs`, so packs depending on yours validate flows with your step code; see [Steps](extensions.md#steps) |
+| `artifacts` | `Record<string, { icon, fe? }>` | no | Artifact types, keyed by type; see [Artifacts](extensions.md#artifacts) |
+| `blocks` | `Record<string, { kind?, fe?, be? }>` | no | Message blocks, keyed by type; see [Blocks](extensions.md#blocks) |
 | `migrations` | `string` | no | Path to migrations index file |
-| `packServices` | `Record<string, string>` | no | Pack-level services, in the same form as [`features[].services`](#packfeatureentry-fields) |
+| `packServices` | `Record<string, string>` | no | Pack-level services, in the same form as [a feature's `services`](#packfeatureentry-fields) |
 | `commands` | `{ name, placeholder }[]` | no | Slash commands the pack adds to the chat: `name` as typed after the `/` (`^[a-z][a-z0-9-]*$`, unique across the app: `abuddy build` fails when a dependency, or anything it depends on, declares it), `placeholder` what the composer shows after it. Sending one fires a `user.command` event your flows handle; see [Slash commands](content.md#slash-commands) |
 | `entities` | `Record<string, string>` | no | EARS entity type declarations; see [Entities and relations](#entities-and-relations) |
 | `relKinds` | `Record<string, string>` | no | EARS relation kind declarations; see [Entities and relations](#entities-and-relations) |
@@ -35,13 +35,12 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 
 ## Features
 
-The `features` array is the primary way to add functionality. Each entry bundles a backend system, frontend plugin, settings, and services.
+The `features` map is the primary way to add functionality. Each entry is keyed by its feature id and bundles a backend system, frontend plugin, settings, and services.
 
 ```json
 {
-  "features": [
-    {
-      "id": "bookmarks",
+  "features": {
+    "bookmarks": {
       "designation": "bookmarks",
       "settings": "src/features/bookmarks/settings.ts",
       "system": {
@@ -54,7 +53,7 @@ The `features` array is the primary way to add functionality. Each entry bundles
         "bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"
       }
     }
-  ]
+  }
 }
 ```
 
@@ -62,7 +61,11 @@ The `features` array is the primary way to add functionality. Each entry bundles
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `id` | `string` | yes | Unique feature identifier: a lowercase letter, then letters and digits (`^[a-z][a-zA-Z0-9]*$`, e.g. `notes`, `calendarEvents`). It becomes an identifier in generated code, so JavaScript reserved words (`default`, `export`, …) aren't allowed |
+The entry's **key** is the feature id: a lowercase letter, then letters and digits
+(`^[a-z][a-zA-Z0-9]*$`, e.g. `notes`, `calendarEvents`). It becomes an identifier in generated code, so
+JavaScript reserved words (`default`, `export`, …) aren't allowed. Being a key is what makes a duplicate id
+unrepresentable.
+
 | `designation` | `string` | no | Links the system to an EARS designation. Must equal the feature `id` (`abuddy validate` checks it) |
 | `settings` | `string` | no | Path to a module default-exporting the feature's default settings; see [Feature settings](#feature-settings) |
 | `system` | `{ entry, contract?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`; how it's declared doesn't matter. `contract` is `"path#Export"` of the system's contract — a declared type holding its `incoming`, `internal`, `outgoing` and `context` (`SystemContract`, `@abuddy/sdk/framework`) — which the build reads without running or resolving the machine, so it lives in a leaf module such as `be/contract.ts`. Omit it for a system that sends and receives nothing. What its plugin receives is the contract's outgoing events; a plugin that also takes events from another feature or another pack declares those itself, in its own `Contract` (`plugin.contract`). `events.incoming` lists event types the bus routes to the system besides those its machine declares. |
@@ -149,7 +152,7 @@ The `boot` object configures hooks that run during app startup:
 | Field | Type | Description |
 |---|---|---|
 | `hooks` | `string` | Module exporting lifecycle hooks (see below) |
-| `content` | `Record<string, string \| ContentSourceConfig>` | Content sources: `actions`, `prompts` and `flows` take a path; any other key is `{ path, format }` (optionally with `applier`) or `{ applier }`. **Every content source writes entities into the database** — that is what `content.sources` is for, so content your own code reads back is an ordinary import of your own source, not an entry here. Declare a feature's default settings with `features[].settings` |
+| `content` | `Record<string, string \| ContentSourceConfig>` | Content sources: `actions`, `prompts` and `flows` take a path; any other key is `{ path, format }` (optionally with `applier`) or `{ applier }`. **Every content source writes entities into the database** — that is what `content.sources` is for, so content your own code reads back is an ordinary import of your own source, not an entry here. Declare a feature's default settings with `features.<id>.settings` |
 
 The `hooks` module's named exports become the pack's boot hooks:
 
@@ -332,9 +335,8 @@ For each entry with a `monaco` target, `abuddy build` writes `dist/defs/monaco/<
     "Bookmark": "Bookmark"
   },
 
-  "features": [
-    {
-      "id": "bookmarks",
+  "features": {
+    "bookmarks": {
       "settings": "src/features/bookmarks/settings.ts",
       "system": {
         "entry": "src/features/bookmarks/be/system.ts"
@@ -344,11 +346,13 @@ For each entry with a `monaco` target, `abuddy build` writes `dist/defs/monaco/<
       },
       "services": {}
     }
-  ],
+  },
 
   "steps": {
-    "register": "src/extensions/steps/register.ts",
-    "definitions": []
+    "bookmark-check": {
+      "build": "src/extensions/steps/bookmark-check/build.ts#bookmarkCheckStepBuild",
+      "fe": "src/extensions/steps/bookmark-check/fe.ts#bookmarkCheckStepFE"
+    }
   },
 
   "boot": {

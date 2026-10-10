@@ -1065,7 +1065,7 @@ describe('CHECKS', () => {
   it('reports a leaf reaching another feature under both rules, running one rule at a time', () => {
     writeAt('pack/abuddy.json', JSON.stringify({
       id: 'demo-pack', name: 'Demo', version: '1.0.0',
-      features: [{ id: 'memos', plugin: { entry: 'src/features/memos/fe/plugin.ts', contract: 'src/features/memos/fe/contract.ts#Contract' } }],
+      features: { memos: { plugin: { entry: 'src/features/memos/fe/plugin.ts', contract: 'src/features/memos/fe/contract.ts#Contract' } } },
     }));
     writeAt('pack/src/features/memos/fe/contract.ts', "import type { T } from '../../calendar/fe/state.ts';\nexport type Contract = { state: { t: T } };");
     writeAt('pack/src/features/memos/fe/plugin.ts', 'export type P = { id: string };');
@@ -1424,7 +1424,7 @@ describe('findPackOwnAliases', () => {
   it('is the only rule that reacts to one, the resolvers skipping it', () => {
     writeAt('pack/abuddy.json', JSON.stringify({
       id: 'demo-pack', name: 'Demo', version: '1.0.0',
-      features: [{ id: 'memos', plugin: { contract: 'src/features/memos/fe/contract.ts#Contract' } }],
+      features: { memos: { plugin: { contract: 'src/features/memos/fe/contract.ts#Contract' } } },
     }));
     writeAt('pack/src/features/memos/fe/contract.ts', "import type { P } from '@/__generated__/fe';");
     writeAt('pack/src/features/code/fe/panel.ts', "import { id } from '@/features/memos/fe/state';");
@@ -1575,10 +1575,9 @@ describe('findContractLeafImports', () => {
   it('flags an entry the manifest names under an unconventional filename', () => {
     writeAt('pack/abuddy.json', JSON.stringify({
       id: 'demo-pack', name: 'Demo', version: '1.0.0',
-      features: [{
-        id: 'memos',
-        plugin: { entry: 'src/features/memos/fe/machine.ts', contract: 'src/features/memos/fe/contract.ts#Contract' },
-      }],
+      features: {
+        memos: { plugin: { entry: 'src/features/memos/fe/machine.ts', contract: 'src/features/memos/fe/contract.ts#Contract' } },
+      },
     }));
     writeAt(`${src}/features/memos/fe/contract.ts`, "import type { M } from './machine';");
     writeAt(`${src}/features/memos/fe/machine.ts`, 'export type M = { id: string };');

@@ -7,7 +7,7 @@ export async function info(_args: string[]) {
   const manifest = readManifest(root);
 
   const features = manifest.features?.length ?? 0;
-  const steps = Array.isArray(manifest.steps?.definitions) ? manifest.steps.definitions.length : 0;
+  const steps = Object.keys(manifest.steps ?? {}).length;
   const packServices = manifest.packServices ? Object.keys(manifest.packServices).length : 0;
   const deps = manifest.dependencies ? Object.keys(manifest.dependencies).length : 0;
   const hasDist = fs.existsSync(path.join(root, 'dist'));

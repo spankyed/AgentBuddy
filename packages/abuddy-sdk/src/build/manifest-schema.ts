@@ -27,18 +27,63 @@ const keysAreTypeNames = (declared: Record<string, string>, ctx: z.RefinementCtx
 
 // ── Sub-schemas ─────────────────────────────────────────────────────
 
+/** A named export of a pack source file */
+const ExportTargetSchema = z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"');
+
 export const StepDSLMetaSchema = z.object({
   primaryField: z.string().describe('The field whose value becomes the step label in the flow editor.').optional(),
   defaultLabel: z.string().describe('Fallback label when primaryField is empty.').optional(),
   custom: z.literal(true).describe('Marks the step as a custom (non-built-in) type.').optional(),
 }).strict();
 
-export const StepEntrySchema = z.object({
-  type: z.string().describe('Step type identifier.'),
-  path: z.string().describe('Directory containing the step definition.'),
-  kind: z.enum(['step', 'trigger']).describe('Whether this is a regular step or a trigger.').optional(),
-  dsl: StepDSLMetaSchema.describe('DSL configuration for flow-helper generation.').optional(),
+/**
+ * What a step's runtime facet is: the flags the brain reads before it runs anything, and the handler it
+ * runs, named as a `"path#exportName"` so the module holding it is loaded on the step's first run rather
+ * than at pack load. A step whose whole behaviour is a flag (`subflow`) declares no handler; one with no
+ * handler at all is completed for it, so a step that means to wait declares the handler that waits.
+ */
+const StepRuntimeSchema = z.object({
+  handler: ExportTargetSchema.describe('"path#exportName" of the function that runs the step. Loaded on its first run, unless `sync`.').optional(),
+  sync: z.literal(true).describe("The handler's sends have to land in the brain's own dispatch, so its module is imported with the pack entry rather than on the step's first run. For a handler that both ends the flow and completes itself, where the two sends must be ordered with the transition that called it.").optional(),
+  isAsync: z.literal(true).describe('The handler returns a promise, so the brain reports a rejection as the step\'s error.').optional(),
+  waits: z.literal(true).describe('The step holds the flow at this node instead of completing.').optional(),
+  spawnsSubflow: z.literal(true).describe('The step runs another flow, which the brain spawns in place of a step node.').optional(),
+}).strict().superRefine((runtime, ctx) => {
+  if (runtime.sync && runtime.isAsync) {
+    ctx.addIssue({ code: 'custom', message: '`sync` and `isAsync` are opposites: a handler whose sends must land in the brain\'s dispatch cannot be awaited' });
+  }
+  if (runtime.sync && !runtime.handler) {
+    ctx.addIssue({ code: 'custom', message: '`sync` describes how a handler is loaded, so it needs one' });
+  }
+});
+
+/** A trigger's facet: its eager half by reference, and the `register` it only needs while running */
+const StepTriggerSchema = z.object({
+  facet: ExportTargetSchema.describe('"path#exportName" of the TriggerFacet: how a track compiles, decompiles and validates.'),
+  register: ExportTargetSchema.describe('"path#exportName" of the function that starts the trigger. Loaded when it is first registered.').optional(),
 }).strict();
+
+/**
+ * One step type: its facets, each named where its code is. A step's `build` facet is what a dependent
+ * pack's `abuddy build` validates flows with, its `fe` facet is what the flow editor draws, and its
+ * `runtime` is what the brain runs — so the three go to three different places and none of them is a
+ * barrel the author keeps in step with the others.
+ */
+export const StepEntrySchema = z.object({
+  kind: z.enum(['step', 'trigger']).describe('Whether this is a regular step or a trigger. "step" is the default.').optional(),
+  build: ExportTargetSchema.describe('"path#exportName" of its StepBuildFacet (compile, validate, getLabel, decompile). A trigger declares `trigger` instead.').optional(),
+  trigger: StepTriggerSchema.describe('For a trigger: its TriggerFacet and the function that starts it.').optional(),
+  fe: ExportTargetSchema.describe('"path#exportName" of its StepFEFacet: what the flow editor draws and the form it opens.').optional(),
+  runtime: StepRuntimeSchema.describe('What the brain runs, and the flags it reads before running it.').optional(),
+  dsl: StepDSLMetaSchema.describe('DSL configuration for flow-helper generation.').optional(),
+}).strict().superRefine((entry, ctx) => {
+  if (entry.kind === 'trigger' && entry.build) {
+    ctx.addIssue({ code: 'custom', message: 'A trigger declares `trigger`, not `build`' });
+  }
+  if (entry.kind !== 'trigger' && entry.trigger) {
+    ctx.addIssue({ code: 'custom', message: 'Only a step with `"kind": "trigger"` declares `trigger`' });
+  }
+});
 
 export const DslEntrySchema = z.object({
   entry: z.string().describe('Path to the DSL type definition module.'),
@@ -189,8 +234,36 @@ const RESERVED_FEATURE_IDS = new Set([
 
 const IdentifierSchema = z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must be an identifier');
 
-/** A named export of a pack source file */
-const ExportTargetSchema = z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"');
+/**
+ * The key of an extension point entry: the *type* a pack contributes, which is data rather than a name in
+ * generated code — so unlike a feature id it may hold `_` and `-` (`keep_alive`, `project-select` both
+ * exist). An extension point is a map keyed by this, which is what makes a duplicate type unrepresentable:
+ * JSON cannot hold one key twice, so nothing has to check for it and nothing can forget to.
+ */
+const EXTENSION_TYPE_SCHEMA = z.string()
+  .regex(/^[a-z][a-z0-9_-]*$/, 'Must be a lowercase letter, then lowercase letters, digits, underscores and hyphens');
+
+/**
+ * One message block: what it is, and where the code that draws it lives. `fe` is a path because a `.vue`
+ * file's component is its default export, the way `fe.appExtensions` names one.
+ */
+export const BlockEntrySchema = z.object({
+  kind: z.enum(['display', 'input']).describe('Whether the chat renders it as content or as something the user acts on. Display is the default.').optional(),
+  fe: z.string().describe('Path to the component that draws it (a .vue file, taken by its default export).').optional(),
+  be: ExportTargetSchema.describe('"path#exportName" of its backend facet (BlockBEFacet), for a block that summarises itself in a transcript.').optional(),
+}).strict();
+
+/**
+ * One artifact type: the icon the chat lists it under, and the viewer that opens it. `icon` is the name of
+ * a `lucide-vue-next` export, which is the icon set the host provides every pack's frontend
+ * (`SHARED_DEPS`), so a pack names one rather than shipping a component; a name lucide does not export
+ * fails the pack's own typecheck on the generated frontend entry.
+ */
+export const ArtifactEntrySchema = z.object({
+  icon: z.string().regex(/^[A-Z][A-Za-z0-9]*$/, 'Must be the name of a lucide-vue-next export, e.g. "ListTodo"')
+    .describe('Name of the lucide-vue-next icon shown in the artifact list.'),
+  fe: z.string().describe('Path to the viewer that opens it (a .vue file, taken by its default export). Without one the host shows the text viewer.').optional(),
+}).strict();
 
 export const ContentConfigSchema = z.object({
   sources: ContentSourcesSchema
@@ -216,10 +289,17 @@ export const CommandEntrySchema = z.object({
   placeholder: z.string().min(1).describe('What the chat shows after the command: the argument it takes, or what it does.'),
 }).strict();
 
+/**
+ * A feature id: the key its entry sits under. It becomes a name in generated code, so unlike a step or
+ * block *type* it is an identifier — no hyphens, no underscores — and not a word generated code already
+ * uses. Being a key is what makes a duplicate unrepresentable: two features with one id used to collapse
+ * last-wins across five generated modules, silently.
+ */
+const FEATURE_ID_SCHEMA = z.string()
+  .regex(FEATURE_ID_PATTERN, 'Must start with a lowercase letter and contain only letters and digits (e.g. "notes", "calendarEvents")')
+  .refine((id) => !RESERVED_FEATURE_IDS.has(id), (id) => ({ message: `"${id}" is reserved in generated code: pick another feature id` }));
+
 export const FeatureEntrySchema = z.object({
-  id: z.string().regex(FEATURE_ID_PATTERN, 'Must start with a lowercase letter and contain only letters and digits (e.g. "notes", "calendarEvents")')
-    .refine((id) => !RESERVED_FEATURE_IDS.has(id), (id) => ({ message: `"${id}" is reserved in generated code: pick another feature id` }))
-    .describe('Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code; not a reserved word.'),
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: z.string().describe('Path to default settings file.').optional(),
   typesEntry: z.string().describe('Additional types to include in the generated type barrel.').optional(),
@@ -254,11 +334,6 @@ const FEConfigSchema = z.object({
   bundleUi: z.boolean().describe('Bundle a copy of @abuddy/ui into the pack instead of using the host app\'s. All of @abuddy/ui is bundled, so the pack never mixes the two.').optional(),
 }).strict().describe('Frontend-specific pack configuration.');
 
-const StepsSchema = z.object({
-  register: z.string().describe('Path to the step registration barrel file.'),
-  build: z.string().describe('Path to a module exporting build-time step definitions only (validate/compile/decompile, trigger facets; no runtime or FE imports). Bundled to build/steps.build.mjs for dependent packs.').optional(),
-  definitions: z.array(StepEntrySchema).describe('Step definitions for codegen.'),
-}).strict();
 
 // ── Main manifest schema ────────────────────────────────────────────
 
@@ -288,8 +363,8 @@ export const ManifestSchema = z.object({
     .describe(`EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines ${Object.keys(SDK_REL_KINDS).join(', ')}.`).optional(),
   entityShapes: z.record(z.string(), EntityShapeSchema)
     .describe('Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries.').optional(),
-  features: z.array(FeatureEntrySchema)
-    .describe('Feature definitions. Each feature bundles a backend system, frontend plugin, services, and settings.').optional(),
+  features: z.record(FEATURE_ID_SCHEMA, FeatureEntrySchema)
+    .describe('Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice.').optional(),
   packServices: ServicesSchema
     .describe('Pack-level services not tied to a specific feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
   help: ExportTargetSchema
@@ -300,22 +375,24 @@ export const ManifestSchema = z.object({
     .describe('Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack\'s flows handle; a name must be unique across the app.').optional(),
   boot: BootConfigSchema.optional(),
   content: ContentConfigSchema.optional(),
-  steps: StepsSchema.describe('Flow step definitions.').optional(),
-  artifacts: z.string().describe('Path to artifact type registration module.').optional(),
-  blocks: z.string().describe('Path to message block registration module.').optional(),
+  steps: z.record(EXTENSION_TYPE_SCHEMA, StepEntrySchema)
+    .describe('Flow step types this pack contributes, keyed by type. Each names where its build, frontend and runtime facets live; the type is the key, so a pack cannot declare one twice.').optional(),
+  artifacts: z.record(EXTENSION_TYPE_SCHEMA, ArtifactEntrySchema)
+    .describe('Artifact types this pack contributes, keyed by type. Each names its icon and viewer; the type is the key, so a pack cannot declare one twice.').optional(),
+  blocks: z.record(EXTENSION_TYPE_SCHEMA, BlockEntrySchema)
+    .describe('Message blocks this pack contributes, keyed by block type. Each names where its code lives; the type is the key, so a pack cannot declare one twice.').optional(),
   migrations: z.string().describe('Path to migrations index module.').optional(),
   fe: FEConfigSchema.optional(),
   build: BuildConfigSchema.optional(),
   dsl: z.record(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
 }).strict().superRefine((manifest, ctx) => {
   // Which plugin opens first is one plugin's annotation, so a pack naming two has said nothing
-  const claimedDefault = (manifest.features ?? []).filter((feature) => feature.plugin?.default);
+  const claimedDefault = Object.entries(manifest.features ?? {}).filter(([, feature]) => feature.plugin?.default);
   if (claimedDefault.length > 1) {
-    const at = (manifest.features ?? []).indexOf(claimedDefault[1]!);
     ctx.addIssue({
       code: 'custom',
-      path: ['features', at, 'plugin', 'default'],
-      message: `Two features claim the default plugin: "${claimedDefault[0]!.id}" and "${claimedDefault[1]!.id}". Only one may.`,
+      path: ['features', claimedDefault[1]![0], 'plugin', 'default'],
+      message: `Two features claim the default plugin: "${claimedDefault[0]![0]}" and "${claimedDefault[1]![0]}". Only one may.`,
     });
   }
 

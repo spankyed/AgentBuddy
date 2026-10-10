@@ -77,10 +77,9 @@ describe('pack-loader', () => {
         id: 'test-pack',
         name: 'Test Pack',
         version: '1.0.0',
-        features: [{
-          id: 'myFeature',
-          system: { entry: 'src/features/myFeature/be/system.ts', events: { incoming: ['DO_THING'] } },
-        }],
+        features: {
+          myFeature: { system: { entry: 'src/features/myFeature/be/system.ts', events: { incoming: ['DO_THING'] } } },
+        },
       }, "{ myFeature: { system: { machine: { id: 'test-system' }, receives: ['DO_THING'] } } }");
 
       const result = loadExternalPacks();
@@ -262,7 +261,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
 
   it('loads systems, services and EARS from the runtime registration', () => {
     const dir = makeBundledPack('bundled-pack', registration('bundled-pack'), {
-      features: [{ id: 'widget', system: { entry: 'src/x.ts', events: { incoming: ['EXTRA'] } } }],
+      features: { widget: { system: { entry: 'src/x.ts', events: { incoming: ['EXTRA'] } } } },
     });
 
     const [pack] = loadExternalPacks();

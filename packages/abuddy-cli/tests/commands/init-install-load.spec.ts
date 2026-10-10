@@ -53,11 +53,12 @@ describe('pack full lifecycle: init → install → load', () => {
     // A built runtime with a simple system, standing in for abuddy build (which needs esbuild + SDK deps)
     const manifest = JSON.parse(fs.readFileSync(path.join(packDir, 'abuddy.json'), 'utf-8'));
     delete manifest.hostVersion;
-    manifest.features = [{
-      id: 'main',
-      system: { entry: 'src/features/main/be/system.ts', events: { incoming: ['TEST_EVENT'] } },
-      plugin: { entry: 'src/features/main/fe/plugin.ts' },
-    }];
+    manifest.features = {
+      main: {
+        system: { entry: 'src/features/main/be/system.ts', events: { incoming: ['TEST_EVENT'] } },
+        plugin: { entry: 'src/features/main/fe/plugin.ts' },
+      },
+    };
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify(manifest, null, 2));
     writeBuild(packDir, manifest.id, "{ main: { system: { machine: { id: 'my-test-pack-system' }, receives: ['TEST_EVENT'] }, plugin: { receives: [] } } }");
 

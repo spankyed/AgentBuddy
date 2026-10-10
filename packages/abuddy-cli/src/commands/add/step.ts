@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import { regenerateAfterScaffold } from '../generate-entries';
-import { validateName, toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, hasFlag, updateRegisterArray } from './write';
-import { readManifest, writeManifest, addStepDefinition } from './manifest';
+import { validateName, toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, hasFlag } from './write';
+import { readManifest, writeManifest, addStep as addStepToManifest } from './manifest';
 import { renderTemplate } from '../../templates.ts';
 
 
@@ -41,61 +41,31 @@ export async function addStep(args: string[], root: string) {
   const created: string[] = [];
   const files: [string, string][] = [
     [path.join(stepDir, 'build.ts'), renderTemplate('pack/src/extensions/steps/step/build.ts', { TYPE: type, CAMEL: camel, PASCAL: pascal, LABEL: toLabel(type) })],
-    [path.join(stepDir, 'index.ts'), renderTemplate('pack/src/extensions/steps/step/index.ts', { CAMEL: camel })],
-    [path.join(stepDir, 'fe.ts'), renderTemplate('pack/src/extensions/steps/step/fe.ts', { TYPE: type, CAMEL: camel, LABEL: toLabel(type) })],
+    [path.join(stepDir, 'fe.ts'), renderTemplate('pack/src/extensions/steps/step/fe.ts', { CAMEL: camel, LABEL: toLabel(type) })],
     [path.join(stepDir, 'types.ts'), renderTemplate('pack/src/extensions/steps/step/types.ts', { PASCAL: pascal, TYPE: type })],
     [path.join(stepDir, 'form.vue'), renderTemplate('pack/src/extensions/steps/step/form.vue', { PASCAL: pascal })],
   ];
+
+  const dir = `src/extensions/steps/${type}`;
+  const manifest = readManifest(root);
+  addStepToManifest(manifest, type, {
+    kind: isTrigger ? 'trigger' : 'step',
+    // A trigger's build-time facet is its TriggerFacet; a step's is its StepBuildFacet
+    ...(isTrigger
+      ? { trigger: { facet: `${dir}/build.ts#${camel}StepBuild` } }
+      : { build: `${dir}/build.ts#${camel}StepBuild` }),
+    fe: `${dir}/fe.ts#${camel}StepFE`,
+  });
+  writeManifest(root, manifest);
 
   for (const [filePath, content] of files) {
     if (writeIfNotExists(filePath, content)) created.push(filePath);
   }
 
-  const manifest = readManifest(root);
-  // Sets steps.register for a pack with no steps yet
-  addStepDefinition(manifest, {
-    type,
-    path: `src/extensions/steps/${type}`,
-    kind: isTrigger ? 'trigger' : 'step',
-  });
-  const stepsConfig = manifest.steps!;
-  const registerPath = stepsConfig.register;
-  // A pack not made by `abuddy init` may have no step lists yet
-  for (const [file, template] of [[registerPath, renderTemplate('pack/src/extensions/steps/register.ts')], [stepsConfig.build, renderTemplate('pack/src/extensions/steps/build.ts')]] as const) {
-    if (file && writeIfNotExists(path.join(root, file), template)) created.push(path.join(root, file));
-  }
-
-  if (registerPath) {
-    const exportName = `${camel}Step`;
-
-    updateRegisterArray(
-      path.join(root, registerPath),
-      `import { ${exportName} } from './${type}/index.ts';`,
-      `  ${exportName},\n`,
-    );
-
-    const feRegisterPath = registerPath.replace(/\.ts$/, '-fe.ts');
-    const feExportName = `${camel}StepFE`;
-    updateRegisterArray(
-      path.join(root, feRegisterPath),
-      `import { ${feExportName} } from './${type}/fe.ts';`,
-      `  ${feExportName},\n`,
-    );
-  }
-
-  if (stepsConfig.build) {
-    updateRegisterArray(
-      path.join(root, stepsConfig.build),
-      `import { ${camel}StepBuild } from './${type}/build.ts';`,
-      `  ${camel}StepBuild,\n`,
-    );
-  }
-
-  writeManifest(root, manifest);
-
   const regenerated = await regenerateAfterScaffold(root);
 
   console.log(`\nCreated step "${type}":`);
   logCreated(root, created);
-  if (regenerated) console.log(`\n  manifest + register files updated, __generated__/ regenerated`);
+  console.log(`  ~ abuddy.json (steps.${type})`);
+  if (regenerated) console.log(`\n  __generated__/ regenerated`);
 }

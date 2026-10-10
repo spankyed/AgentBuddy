@@ -1,4 +1,4 @@
-import type { StepDefinition } from '@abuddy/sdk/steps';
+import type { TriggerFacet } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
 import { Cron } from 'croner';
 
@@ -45,16 +45,12 @@ export function validate(node: Record<string, unknown>): { valid: boolean; error
 }
 
 /** Build-time facets only (no runtime or FE imports); loaded by `abuddy build` in dependent packs. */
-export const scheduleTriggerBuild: StepDefinition = {
-  type: 'schedule',
-  kind: 'trigger',
-  trigger: {
-    trackField: 'schedule',
-    compile,
-    decompile,
-    persistent: true,
-    queryFields: ['cronExpression'],
-    validateTrack,
-    validate,
-  },
+export const scheduleTriggerBuild: TriggerFacet = {
+  trackField: 'schedule',
+  compile,
+  decompile,
+  persistent: true,
+  queryFields: ['cronExpression'],
+  validateTrack,
+  validate,
 };

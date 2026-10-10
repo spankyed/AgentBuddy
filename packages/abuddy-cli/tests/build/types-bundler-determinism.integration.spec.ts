@@ -27,12 +27,13 @@ const PACK: Record<string, string> = {
     id: 'facade-pack', name: 'Facade', version: '1.0.0',
     entities: { Tag: 'Tag' },
     entityShapes: { Tag: { source: 'src/types.ts', type: 'TagEntity' } },
-    features: [{
-      id: 'tags',
-      system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' },
-      services: { tags: 'src/tags.ts#tagsService' },
-      repositories: { tagQueries: 'src/repository.ts#tagQueries' },
-    }],
+    features: {
+      tags: {
+        system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' },
+        services: { tags: 'src/tags.ts#tagsService' },
+        repositories: { tagQueries: 'src/repository.ts#tagQueries' },
+      },
+    },
   }),
   'src/types.ts': "import type { EARS } from '@abuddy/sdk';\nexport interface TagEntity { name: string; parent?: EARS.EntityId<'Tag'> }\n",
   'src/system.contract.ts': [

@@ -27,7 +27,7 @@ The SDK compiles three content keys itself:
 - **Prompts** — parameterized text templates for LLM calls
 - **Flows** — declarative event-driven workflows that orchestrate actions
 
-A feature's default settings go in `features[].settings` (see [Feature settings](manifest.md#feature-settings)); the settings entity and its content are default-setup's (its `settings` entry and format).
+A feature's default settings go in `features.<id>.settings` (see [Feature settings](manifest.md#feature-settings)); the settings entity and its content are default-setup's (its `settings` entry and format).
 
 Any other entity type — yours, a dependency's, or the SDK's — is written from markdown or JSON with a format and a content source in `abuddy.json`, and no SDK code (see [Writing entities](#writing-entities)).
 

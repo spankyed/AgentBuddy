@@ -68,7 +68,7 @@ describe('_mergeProvenance', () => {
       entities: { Note: 'Note' },
       relKinds: { tagged: 'tagged' },
       commands: [{ name: 'note' }],
-      features: [{ id: 'memos', plugin: {} }, { id: 'headless' }],
+      features: { memos: { plugin: {} }, headless: {} },
     };
     const cases: Array<[keyof typeof PROVENANCE_KINDS, Record<string, string>]> = [
       ['entities', { Note: 'base-pack' }],
@@ -128,7 +128,7 @@ describe('_buildProvenance', () => {
   it('records every kind that declared something', () => {
     const provenance = _buildProvenance(
       [dep('base-pack', { manifest: { entities: { Note: 'Note' }, commands: [{ name: 'note' }] } })],
-      { id: 'app-pack', manifest: { features: [{ id: 'app', plugin: {} }] } },
+      { id: 'app-pack', manifest: { features: { app: { plugin: {} } } } },
     );
     expect(provenance).toEqual({ entities: { Note: 'base-pack' }, commands: { note: 'base-pack' }, plugins: { 'app-pack/app': 'app-pack' } });
   });

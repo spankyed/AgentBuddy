@@ -1,4 +1,4 @@
-import type { StepDefinition } from '@abuddy/sdk/steps';
+import type { StepBuildFacet } from '@abuddy/sdk/steps';
 import type { StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepBranch } from '@abuddy/sdk/steps';
 import { BinaryOperator, BinaryOperator as Op } from '@abuddy/sdk/utils';
 import { EARS } from '@abuddy/sdk';
@@ -179,7 +179,4 @@ export function branches(node: Record<string, unknown>): StepBranch[] {
 }
 
 /** Build-time facets only (no runtime or FE imports); loaded by `abuddy build` in dependent packs. */
-export const switchStepBuild: StepDefinition = {
-  type: 'switch',
-  build: { compile, validate, getLabel, decompile, branches },
-};
+export const switchStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile, branches };

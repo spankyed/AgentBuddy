@@ -36,7 +36,7 @@ const manifest = (...entities: string[]) => JSON.stringify({
   id: ID, name: ID, version: '1.0.0',
   entities: Object.fromEntries(entities.map((name) => [name, name])),
   entityShapes: Object.fromEntries(entities.map((name) => [name, { source: 'src/types.ts', type: `${name}Entity` }])),
-  features: [{ id: 'notifier', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' } }],
+  features: { notifier: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' } } },
 });
 
 let parent: string;

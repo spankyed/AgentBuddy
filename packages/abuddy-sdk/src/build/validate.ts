@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { ManifestSchema } from './manifest-schema.ts';
-import type { PackManifest } from './manifest.ts';
+import { packFeatures, type PackManifest } from './manifest.ts';
 
 export interface ManifestValidation {
   errors: string[];
@@ -47,7 +47,7 @@ export function validateManifest(manifestPath: string): ManifestValidation {
 export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'>): ManifestValidation {
   const errors: string[] = [];
   const designatedBy = new Map<string, string>();
-  for (const feature of manifest.features ?? []) {
+  for (const feature of packFeatures(manifest)) {
     const files: [string, string | undefined][] = [
       ['settings', feature.settings],
       ['system.entry', feature.system?.entry],

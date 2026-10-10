@@ -27,38 +27,36 @@ Creates:
 
 ```
 src/extensions/steps/my-step/
-  build.ts      # myStepStepBuild: type + build facet only (no FE or runtime imports)
-  index.ts      # myStepStep: spreads build.ts, adds fe (add runtime here)
-  fe.ts         # myStepStepFE: node config, form component
+  build.ts      # myStepStepBuild: its StepBuildFacet (no FE or runtime imports)
+  fe.ts         # myStepStepFE: its StepFEFacet — node config, form component
   types.ts      # DSL and compiled node types
   form.vue      # Step configuration form
 ```
 
-It adds `myStepStep` to the `steps.register` barrel, `myStepStepFE` to its `-fe.ts` sibling (`register-fe.ts`), and `myStepStepBuild` to the `steps.build` barrel when the manifest has one; appends the definition to `steps.definitions` (without `dsl`); and regenerates `__generated__/`.
+It writes the manifest entry under `steps` naming those two facets, and regenerates `__generated__/`. Add a
+`runtime.ts` and name it in the entry to give the step something to run. A type the manifest already
+declares is refused.
 
 ### Build facet (build.ts)
 
 ```typescript
-import type { StepDefinition, StepCompileResult, StepValidationError } from '@abuddy/sdk/steps';
+import type { StepBuildFacet, StepCompileResult, StepValidationError } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
 import type { DSLMyStepNode } from './types.ts';
 
-export const myStepStepBuild: StepDefinition = {
-  type: 'my-step',
-  build: {
-    compile(node, nodeId, ts, ctx): StepCompileResult {
-      const step = node as unknown as DSLMyStepNode;
-      return {
-        entity: { id: nodeId, entityType: EARS.Entity.Node, createdAt: ts, nodeType: 'my-step', label: step.label ?? 'My Step' },
-        relations: [],
-      };
-    },
-    validate(step, path, ctx): StepValidationError[] {
-      return [];
-    },
-    getLabel(step, index) {
-      return typeof step.label === 'string' ? step.label : `My Step ${index}`;
-    },
+export const myStepStepBuild: StepBuildFacet = {
+  compile(node, nodeId, ts, ctx): StepCompileResult {
+    const step = node as unknown as DSLMyStepNode;
+    return {
+      entity: { id: nodeId, entityType: EARS.Entity.Node, createdAt: ts, nodeType: 'my-step', label: step.label ?? 'My Step' },
+      relations: [],
+    };
+  },
+  validate(step, path, ctx): StepValidationError[] {
+    return [];
+  },
+  getLabel(step, index) {
+    return typeof step.label === 'string' ? step.label : `My Step ${index}`;
   },
 };
 ```
@@ -75,24 +73,28 @@ export const myStepStepBuild: StepDefinition = {
 ### Runtime facet
 
 ```typescript
-// index.ts
-export const myStepStep: StepDefinition = {
-  ...myStepStepBuild,
-  runtime: {
-    isAsync: true,
-    handler: async (tNode, node, ctx, actor) => {
-      const a = actor as { send(event: unknown): void };
-      a.send({ type: 'COMPLETE', result: { ok: true } });
-    },
-  },
-  fe: myStepStepFE.fe,
-};
+// runtime.ts
+import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
+
+export async function handler(tNode: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
+  const a = actor as { send(event: unknown): void };
+  a.send({ type: 'COMPLETE', result: { ok: true } });
+}
 ```
+
+```json
+{ "runtime": { "handler": "src/extensions/steps/my-step/runtime.ts#handler", "isAsync": true } }
+```
+
+The handler is named rather than imported, so its module — and whatever it reaches, models, the filesystem,
+a terminal — loads on the step's first run and not at pack load. The flags beside it are data, because the
+brain reads them before it decides how to run the step; `sync` is the one that changes the loading.
 
 | Member | Description |
 |---|---|
 | `handler(tNode, node, executionContext, actor)` | Runs the step. `tNode` is its trace node, `node` the compiled entity, `executionContext` has `flowTNodeId`, `event`, `steps` (earlier runs), `lastStep` and `runtime` (`getFlowActor`, `getAppServices`). Finish with `actor.send({ type: 'COMPLETE', result })`, or `actor.send({ type: 'ERROR', error })` with the error `reportError({ error, source, step: { phase, tNodeId, … } })` (`@abuddy/sdk/logger`) returns. A type without a handler completes with `{ executed: true }` |
 | `isAsync` | The handler returns a promise; a rejection is reported and sent as `ERROR` |
+| `sync` | The handler's module is imported with the pack entry rather than on the step's first run, so its sends land in the brain's own dispatch. For a handler whose sends have to be ordered with the transition that called it — `kill` ends the flow *and* completes itself, and a tick's delay leaves the step reading as still running. Exclusive with `isAsync` |
 | `spawnsSubflow` | The brain spawns a sub-flow machine for the node instead of a step machine (the `subflow` step) |
 | `waits` | The step never completes on its own (keep-alive). `runFlow` in `@abuddy/testing` treats such a step as settled |
 
@@ -121,31 +123,30 @@ A trigger (`kind: 'trigger'`) compiles a DSL track, not a step:
 | `validateTrack?(track)` | `{ valid, errors }` before compiling |
 | `validate?(node)` | `{ valid, errors }` for a compiled node on persist |
 
-Keep `register` (and its runtime imports) out of `build.ts`: default-setup's `schedule` step spreads the build facet in `index.ts` and adds `register` there with a dynamic import.
+`register` is declared beside the facet rather than inside it, for the same reason a step's handler is:
+`trigger.facet` names the eager half, which `build.ts` exports, and `trigger.register` names the function
+whose module is loaded when the trigger is first registered.
 
 ### Frontend facet (fe.ts)
 
 ```typescript
-import type { StepDefinition } from '@abuddy/sdk/steps';
+import type { StepFEFacet } from '@abuddy/sdk/steps';
 import { defineAsyncComponent } from 'vue';
 import { Box } from 'lucide-vue-next';
 
-export const myStepStepFE: StepDefinition = {
-  type: 'my-step',
-  fe: {
-    loadComponents: () => ({
-      form: defineAsyncComponent(() => import('./form.vue')),
-    }),
-    nodeConfig: {
-      label: 'My Step',
-      icon: Box,
-      color: 'text-indigo-400',
-      bgColor: 'bg-indigo-700/20',
-      hoverBgColor: 'group-hover:bg-indigo-700/30',
-      connectionRules: { inputs: -1, outputs: -1 },
-      category: 'logic',
-      isImplemented: true,
-    },
+export const myStepStepFE: StepFEFacet = {
+  loadComponents: () => ({
+    form: defineAsyncComponent(() => import('./form.vue')),
+  }),
+  nodeConfig: {
+    label: 'My Step',
+    icon: Box,
+    color: 'text-indigo-400',
+    bgColor: 'bg-indigo-700/20',
+    hoverBgColor: 'group-hover:bg-indigo-700/30',
+    connectionRules: { inputs: -1, outputs: -1 },
+    category: 'logic',
+    isImplemented: true,
   },
 };
 ```
@@ -195,43 +196,48 @@ export interface MyStepNode extends NodeBase {
 
 `generate-entries` re-exports every definition's `types.ts` from `#generated/step-types`, and each `export interface … extends NodeBase` joins the pack's `Node` row union.
 
-### Registration
-
-Three barrels, each exporting an array:
-
-| Barrel | Export | Contents | Loaded by |
-|---|---|---|---|
-| `steps.register` (`register.ts`) | `steps` | Full definitions (`index.ts`) | The pack's backend runtime |
-| `register-fe.ts` next to it | `stepsFE` | FE definitions (`fe.ts`) | The generated FE entry, when the file exists |
-| `steps.build` (`build.ts`) | `steps` | Build-only definitions (`build.ts`) | `abuddy build`; bundled to `dist/build/steps.build.mjs` |
-
-```typescript
-// src/extensions/steps/register.ts
-import type { StepDefinition } from '@abuddy/sdk/steps';
-import { myStepStep } from './my-step/index.ts';
-
-export const steps: StepDefinition[] = [
-  myStepStep,
-];
-```
-
-`abuddy add step` updates all three.
-
 ### Manifest
+
+A step is declared in `abuddy.json`, keyed by its type, with each facet named where its code is:
 
 ```json
 {
   "steps": {
-    "register": "src/extensions/steps/register.ts",
-    "build": "src/extensions/steps/build.ts",
-    "definitions": [
-      { "type": "my-step", "path": "src/extensions/steps/my-step", "kind": "step" }
-    ]
+    "my-step": {
+      "build": "src/extensions/steps/my-step/build.ts#myStepStepBuild",
+      "fe": "src/extensions/steps/my-step/fe.ts#myStepStepFE",
+      "runtime": { "handler": "src/extensions/steps/my-step/runtime.ts#handler", "isAsync": true },
+      "dsl": { "primaryField": "action" }
+    },
+    "my-trigger": {
+      "kind": "trigger",
+      "trigger": {
+        "facet": "src/extensions/steps/my-trigger/build.ts#myTriggerBuild",
+        "register": "src/extensions/steps/my-trigger/runtime.ts#register"
+      },
+      "fe": "src/extensions/steps/my-trigger/fe.ts#myTriggerFE"
+    }
   }
 }
 ```
 
-`abuddy build` validates this pack's flows with the `build` barrel (or `register` without one), with each dependency's `build/steps.build.mjs` loaded as the definitions it compiles with (the build's own, not the app's); a step type this pack and a dependency both define fails the build. Without `build`, dependents get no step code for your steps.
+| Field | What it is |
+|---|---|
+| `kind` | `step` (the default) or `trigger` |
+| `build` | `"path#exportName"` of its `StepBuildFacet`. A trigger declares `trigger` instead |
+| `trigger` | For a trigger: `{ facet, register? }` — its `TriggerFacet`, and the function that starts it |
+| `fe` | `"path#exportName"` of its `StepFEFacet` |
+| `runtime` | `{ handler?, isAsync?, waits?, spawnsSubflow? }` |
+| `dsl` | DSL configuration for flow-helper generation (below) |
+
+Codegen sends each facet where it is used, so no barrel keeps them in step with each other: `build` and
+`runtime` to the pack's backend registration, `fe` to its frontend one, and `build` (or `trigger`) alone to
+`src/__generated__/steps-build.ts`, which `abuddy build` bundles to `dist/build/steps.build.mjs` — the
+module a *dependent* pack's build loads to validate its flows with your step code. A dependency's step types
+are loaded that way too, and a type this pack and a dependency both define fails the build.
+
+A step's directory is the dirname of the first facet it names: `types.ts` and, for `dsl.custom`,
+`helpers.ts` are read from there.
 
 ### Flow helpers
 
@@ -245,7 +251,7 @@ export const steps: StepDefinition[] = [
 | `{ primaryField: 'action' }` | `action(action, opts?)`: `opts` takes the other fields of the first `export interface DSL…Node` in the step's `types.ts`; `generate-entries` fails when there is none |
 | `{ custom: true }` | Re-exports everything from `<path>/helpers.ts` |
 
-A `kind: 'trigger'` definition whose `build.ts` (or `index.ts`) contains `trackField: '<name>'` (other than `event`) gets `<name>(value, exits, label?)`, returning a track.
+A `kind: 'trigger'` entry whose declared facet module contains `trackField: '<name>'` (other than `event`) gets `<name>(value, exits, label?)`, returning a track.
 
 The helper is named after `type` in camelCase, with `-` and `_` separating words (`keep_alive` → `keepAlive`, `my-step` → `myStep`). The scaffolded `types.ts` names its DSL interface `DSL<Type>Node` (`DSLMyStepNode`), which `primaryField` reads.
 
@@ -257,8 +263,8 @@ An artifact is a typed content item (code, image, markdown, …) shown in a thre
 
 | `fe` field | Required | Description |
 |---|---|---|
-| `icon` | yes | Lucide component for the artifact list |
-| `component` | no | The viewer, set in `register-fe.ts`. Without one, the host shows the text viewer |
+| `icon` | yes | The icon shown in the artifact list |
+| `component` | no | The viewer. Without one, the host shows the text viewer |
 
 ### Scaffolding
 
@@ -266,7 +272,7 @@ An artifact is a typed content item (code, image, markdown, …) shown in a thre
 abuddy add artifact chart --icon BarChart3
 ```
 
-Creates `src/extensions/artifacts/viewers/chart-artifact.vue`. When the manifest has `artifacts`, it adds `{ type: 'chart', fe: { icon: BarChart3 } }` to that array (importing the icon from `lucide-vue-next` unless the file already does) and `'chart': ChartArtifact` to a `componentMap` object in `register-fe.ts` (both files must exist; neither is created).
+Writes the manifest entry under `artifacts` and creates `src/extensions/artifacts/viewers/chart-artifact.vue`. A type the manifest already declares is refused.
 
 ### Viewer component
 
@@ -289,45 +295,25 @@ defineProps<{ artifact: ArtifactItem<{ points: number[] }> }>();
 
 `ArtifactItem<TContent>` is `{ id, type, title, content: TContent, color?, metadata?: { createdAt, updatedAt?, … } }`. The scaffolded viewer declares `artifact` and shows its title and content.
 
-### Registration
-
-default-setup's layout: `register.ts` holds the definitions with icons, `register-fe.ts` adds components.
-
-```typescript
-// src/extensions/artifacts/register.ts
-import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
-import { BarChart3 } from 'lucide-vue-next';
-
-export const artifacts: ArtifactDefinition[] = [
-  { type: 'chart', fe: { icon: BarChart3 } },
-];
-```
-
-```typescript
-// src/extensions/artifacts/register-fe.ts
-import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
-import { artifacts } from './register.ts';
-import ChartArtifact from './viewers/chart-artifact.vue';
-
-const componentMap: Record<string, unknown> = {
-  'chart': ChartArtifact,
-};
-
-export const artifactsFE: ArtifactDefinition[] = artifacts.map(def => ({
-  ...def,
-  fe: def.fe ? { ...def.fe, component: componentMap[def.type] } : undefined,
-}));
-```
-
 ### Manifest
+
+An artifact is declared in `abuddy.json`, keyed by its type:
 
 ```json
 {
-  "artifacts": "src/extensions/artifacts/register.ts"
+  "artifacts": {
+    "chart": { "icon": "BarChart3", "fe": "src/extensions/artifacts/viewers/chart-artifact.vue" }
+  }
 }
 ```
 
-The backend runtime imports `artifacts` from that path; the generated FE entry imports `artifactsFE` from the `-fe.ts` sibling when it exists.
+| Field | Required | What it is |
+|---|---|---|
+| `icon` | yes | The name of a `lucide-vue-next` export. That is the icon set the host provides every pack's frontend, so a pack names one rather than shipping a component; a name lucide doesn't export fails the pack's typecheck |
+| `fe` | no | The viewer that opens it — a `.vue` file, taken by its default export |
+
+Both of an artifact's facets are frontend ones, so the backend registration carries the type alone and the
+icon set never reaches a pack's backend bundle.
 
 ### Creating artifacts from the backend
 
@@ -343,10 +329,9 @@ default-setup's threads feature provides `services.artifact` (declare `default-s
 
 ### default-setup's artifact types
 
-| Type | Viewer |
-|---|---|
-| `text`, `code`, `review`, `image`, `slack`, `todo`, `project`, `json`, `markdown`, `claude-session`, `codex-session`, `diff`, `plan`, `note` | Own viewer |
-| `graph`, `table` | Icon only (text viewer) |
+`text`, `code`, `review`, `image`, `slack`, `todo`, `project`, `json`, `graph`, `table`, `markdown`,
+`claude-session`, `codex-session`, `diff`, `plan`, `note` — each with its own viewer under
+`src/extensions/artifacts/viewers/`.
 
 ---
 
@@ -364,7 +349,7 @@ abuddy add block rating                # display block
 abuddy add block color-picker --input  # input block
 ```
 
-Creates `src/extensions/blocks/display/RatingBlock.vue` or `src/extensions/blocks/input/ColorPickerInput.vue`. When the manifest has `blocks`, it adds `{ type }` (with `kind: 'input'`) to that array and the component to the `componentMap` in `register-fe.ts` (both files must exist). The scaffolded display block declares an example `text` prop; the input block declares `label`, `disabled` and `response` and emits `submit` and `cancel`.
+Writes the manifest entry under `blocks` and creates `src/extensions/blocks/display/RatingBlock.vue` or `src/extensions/blocks/input/ColorPickerInput.vue`. The scaffolded display block declares an example `text` prop; the input block declares `label`, `disabled` and `response` and emits `submit` and `cancel`. A type the manifest already declares is refused.
 
 ### Block components
 
@@ -393,49 +378,33 @@ defineEmits<{ submit: [value: { color: string }]; cancel: [] }>();
 </template>
 ```
 
-### Registration
+### Manifest
 
-```typescript
-// src/extensions/blocks/register.ts
-import type { BlockDefinition } from '@abuddy/sdk/blocks';
+A block is declared in `abuddy.json`, keyed by its type. Each entry names where its code lives, and codegen
+splits the two facets between the entries: the component goes into the pack's frontend bundle, the backend
+facet into its runtime, so a backend process never loads a Vue component to know a block exists.
 
-export const blocks: BlockDefinition[] = [
-  { type: 'rating' },
-  { type: 'color-picker', kind: 'input' },
-];
+```json
+{
+  "blocks": {
+    "rating": { "fe": "src/extensions/blocks/display/RatingBlock.vue" },
+    "color-picker": { "kind": "input", "fe": "src/extensions/blocks/input/ColorPickerInput.vue" }
+  }
+}
 ```
 
-```typescript
-// src/extensions/blocks/register-fe.ts
-import type { BlockDefinition } from '@abuddy/sdk/blocks';
-import { blocks } from './register.ts';
-import RatingBlock from './display/RatingBlock.vue';
-import ColorPickerInput from './input/ColorPickerInput.vue';
+| Field | Required | What it is |
+|---|---|---|
+| `kind` | no | `display` (the default) or `input` |
+| `fe` | no | The component that draws it — a `.vue` file, taken by its default export. The host renders it |
+| `be` | no | `"path#exportName"` of its `BlockBEFacet` |
 
-const componentMap: Record<string, unknown> = {
-  'rating': RatingBlock,
-  'color-picker': ColorPickerInput,
-};
-
-export const blocksFE: BlockDefinition[] = blocks.map(def => ({
-  ...def,
-  fe: componentMap[def.type] ? { component: componentMap[def.type] } : undefined,
-}));
-```
-
-The host renders `fe.component`.
+The key is the type, so a pack cannot declare one twice, and a path naming no file fails the build naming
+the block and the path.
 
 ### Backend facet
 
 `be.generateAsideText(block, response, context)` returns the one-line summary shown when an auto-hidden (`autoHide`) message collapses after its response, or `null` for the default. `context` is `' — <label>'` or `''`. The threads service consults it only when the message's primary interactive block is one of `approval`, `choice`, `text`, `question`, `file-picker`, `project-select` or `button-group`.
-
-### Manifest
-
-```json
-{
-  "blocks": "src/extensions/blocks/register.ts"
-}
-```
 
 ### Sending blocks from the backend
 
@@ -563,12 +532,11 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 | Field | Source |
 |---|---|
 | `features` | Each feature with a `plugin`: its `plugin.entry`, its `designation`, and `default: true` on the one whose `plugin` sets `default` (else the first). The first pack registered with a default opens by default; a role another pack's plugin plays refuses the pack |
-| `steps` | `stepsFE` from `register-fe.ts` next to `steps.register` |
-| `artifacts` / `blocks` | `artifactsFE` / `blocksFE` from the `-fe.ts` siblings |
+| `steps` / `artifacts` / `blocks` | each entry's `fe` facet, imported into the generated frontend entry (an artifact's `icon` with it) |
 | `tiptapPlugins` | `fe.tiptapPlugins` |
 | `appExtensions` | `fe.appExtensions` |
 | `dslTypes` | `dsl` entries with a `monaco` target (`__generated__/dsl-types-fe.ts`) |
 
 The renderer registers it for your pack; nothing in your frontend registers anything itself.
 
-`features[].references` (`ReferenceTypeConfig`s from `@abuddy/sdk/fe/references`: how an entity type appears and navigates when referenced in the UI) is read only for built-in packs.
+`features.<id>.references` (`ReferenceTypeConfig`s from `@abuddy/sdk/fe/references`: how an entity type appears and navigates when referenced in the UI) is read only for built-in packs.

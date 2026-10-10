@@ -126,11 +126,11 @@ describe('update step', () => {
 describe('create and update build', () => {
   const compileCtx = { actions: new Map(), prompts: new Map(), flows: new Map() }
   const roundTrip = (build: typeof createStepBuild, dsl: Record<string, unknown>) =>
-    build.build!.decompile!(build.build!.compile(dsl, 'Node-1', 1, compileCtx).entity, { actionMap: new Map(), promptMap: new Map(), flowMap: new Map() })
+    build.decompile!(build.compile(dsl, 'Node-1', 1, compileCtx).entity, { actionMap: new Map(), promptMap: new Map(), flowMap: new Map() })
 
   it("round-trips update's target, fields, onMissing and entity", () => {
     const dsl = update('$.lastStep.result.id', { label: 'change', map: { content: '$.event.data.payload' }, params: { favorite: true }, onMissing: 'create', entity: 'Note' })
-    expect(updateStepBuild.build!.compile(dsl, 'Node-1', 1, compileCtx).entity).toMatchObject({ target: '$.lastStep.result.id' })
+    expect(updateStepBuild.compile(dsl, 'Node-1', 1, compileCtx).entity).toMatchObject({ target: '$.lastStep.result.id' })
     expect(roundTrip(updateStepBuild, dsl)).toEqual(dsl)
   })
 
@@ -141,9 +141,9 @@ describe('create and update build', () => {
 
   it("rejects update's onMissing create without an entity type", () => {
     const ctx = { actions: new Set<string>(), prompts: new Set<string>(), flowNames: new Set<string>(), nodeLabels: new Set<string>(), path: 'p' }
-    expect(updateStepBuild.build!.validate(update('$.lastStep.result.id', { onMissing: 'create' }), 'p', ctx)).toEqual([
+    expect(updateStepBuild.validate(update('$.lastStep.result.id', { onMissing: 'create' }), 'p', ctx)).toEqual([
       { path: 'p.entity', message: '"onMissing: \'create\'" needs "entity", the entity type to create' },
     ])
-    expect(updateStepBuild.build!.validate(update('Note-1', { onMissing: 'create', entity: 'Note' }), 'p', ctx)).toEqual([])
+    expect(updateStepBuild.validate(update('Note-1', { onMissing: 'create', entity: 'Note' }), 'p', ctx)).toEqual([])
   })
 })

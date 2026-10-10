@@ -84,7 +84,7 @@ it('sends to its own system and plugin', () => {
   expect(() => services.emitter.sendToSystem('data-pack/memos', { type: 'GET_MEMOS' })).not.toThrow();
   expect(() => services.emitter.broadcastToPlugin('data-pack/memos', { type: 'MEMOS_UPDATED' })).not.toThrow();
   expect(() => services.emitter.broadcastToPlugin('data-pack/ghost', { type: 'MEMOS_UPDATED' })).toThrow('No registered plugin is named "data-pack/ghost"');
-});`, { features: [{ id: 'memos', system: { entry: 'src/features/memos/be/system.ts' }, plugin: { entry: 'src/features/memos/fe/index.ts' } }] });
+});`, { features: { memos: { system: { entry: 'src/features/memos/be/system.ts' }, plugin: { entry: 'src/features/memos/fe/index.ts' } } } });
     // inherent: runs a pack's own vitest suite — the nested runner is the thing under test
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+1 passed/);

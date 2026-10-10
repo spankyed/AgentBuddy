@@ -1,6 +1,6 @@
-// Writing a scaffold's files: create-if-absent, the report of what was created, and the two edits that add a
+// Writing a scaffold's files: create-if-absent, the report of what was created, and the one edit that adds a
 // line to a file that is already there. The templates themselves are files under `templates/`, read through
-// `src/templates.ts` — this module was called `templates.ts` while it held them.
+// `src/templates.ts`.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -73,27 +73,6 @@ export function updateRegisterArray(
   const arrayCloseIdx = content.lastIndexOf('];');
   if (arrayCloseIdx === -1) return false;
   content = content.slice(0, arrayCloseIdx) + arrayEntry + content.slice(arrayCloseIdx);
-
-  fs.writeFileSync(filePath, content);
-  return true;
-}
-
-export function updateComponentMap(
-  filePath: string,
-  importLine: string,
-  mapKey: string,
-  mapValue: string,
-): boolean {
-  if (!fs.existsSync(filePath)) return false;
-  let content = fs.readFileSync(filePath, 'utf-8');
-
-  if (content.includes(`'${mapKey}'`) || content.includes(`"${mapKey}"`)) return false;
-
-  content = insertAfterLastImport(content, importLine);
-
-  const mapCloseIdx = content.lastIndexOf('};');
-  if (mapCloseIdx === -1) return false;
-  content = content.slice(0, mapCloseIdx) + `  '${mapKey}': ${mapValue},\n` + content.slice(mapCloseIdx);
 
   fs.writeFileSync(filePath, content);
   return true;

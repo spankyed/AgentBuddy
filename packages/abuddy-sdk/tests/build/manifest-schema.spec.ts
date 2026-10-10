@@ -50,10 +50,7 @@ describe('parseManifest', () => {
   it('rejects unknown keys in feature system entries', () => {
     const result = parseManifest({
       id: 'test-pack', name: 'Test', version: '0.1.0',
-      features: [{
-        id: 'main',
-        system: { entry: 'src/system.ts', exportName: 'mainEntry' },
-      }],
+      features: { main: { system: { entry: 'src/system.ts', exportName: 'mainEntry' } } },
     });
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors[0]).toContain('exportName');
@@ -73,9 +70,18 @@ describe('parseManifest', () => {
   it('rejects feature ids generated code reserves: reserved words', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
     for (const id of ['default', 'export', 'eval']) {
-      expect(parseManifest({ ...pack, features: [{ id }] }).errors).toEqual([expect.stringContaining(`"${id}" is reserved in generated code`)]);
+      expect(parseManifest({ ...pack, features: { [id]: {} } }).errors).toEqual([expect.stringContaining(`"${id}" is reserved in generated code`)]);
     }
-    expect(parseManifest({ ...pack, features: [{ id: 'defaults' }, { id: 'specs' }] }).errors).toEqual([]);
+    expect(parseManifest({ ...pack, features: { defaults: {}, specs: {} } }).errors).toEqual([]);
+  });
+
+  // JSON cannot hold a key twice, so this is a property of the format rather than a check anything runs:
+  // two features with one id used to collapse last-wins across five generated modules, silently
+  it('cannot be given one feature id twice', () => {
+    const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+    const parsed = JSON.parse('{"notes": {"settings": "a.ts"}, "notes": {"settings": "b.ts"}}');
+    expect(Object.keys(parsed)).toEqual(['notes']);
+    expect(parseManifest({ ...pack, features: parsed }).errors).toEqual([]);
   });
 
   it('rejects an app extension name that is not an identifier', () => {
@@ -167,21 +173,21 @@ describe('content.formats, content.sources and content.artifacts', () => {
   // gone, so there is nothing left to permit and no bespoke message to write: an unknown key is an unknown
   // key, which `.strict()` refuses for every pack alike
   it('refuses features[].earlySystem as the unknown key it now is, in any pack', () => {
-    const features = [{ id: 'logs', earlySystem: true, system: { entry: 'src/logs/system.ts' } }];
-    expect(parseManifest({ ...pack, features }).errors).toEqual([expect.stringMatching(/features\.0.*[Uu]nrecognized key/)]);
-    expect(parseManifest({ ...pack, builtIn: true, features }).errors).toEqual([expect.stringMatching(/features\.0.*[Uu]nrecognized key/)]);
+    const features = { logs: { earlySystem: true, system: { entry: 'src/logs/system.ts' } } };
+    expect(parseManifest({ ...pack, features }).errors).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
+    expect(parseManifest({ ...pack, builtIn: true, features }).errors).toEqual([expect.stringMatching(/features\.logs.*[Uu]nrecognized key/)]);
   });
 
   // Which plugin opens first is an annotation on the plugin, not a feature id at the root: an id there
-  // could name a feature the pack doesn't have, and codegen then emitted no default at all — quietly
-  // worse than leaving it out, which falls back to the pack's first plugin
+  // could name a feature the pack doesn't have, and codegen then emitted no default at all. A pack
+  // claiming none has no default plugin, which the shell handles.
   it('takes the default plugin from the plugin that claims it, and refuses two claims', () => {
     const plugin = (id: string, isDefault?: boolean) =>
-      ({ id, plugin: { entry: `src/${id}/fe/plugin.ts`, ...(isDefault ? { default: true } : {}) } });
+      ({ [id]: { plugin: { entry: `src/${id}/fe/plugin.ts`, ...(isDefault ? { default: true } : {}) } } });
 
-    expect(parseManifest({ ...pack, features: [plugin('notes'), plugin('cards', true)] }).errors).toEqual([]);
-    expect(parseManifest({ ...pack, features: [plugin('notes', true), plugin('cards', true)] }).errors)
-      .toEqual([expect.stringMatching(/"features\.1\.plugin\.default": Two features claim the default plugin: "notes" and "cards"/)]);
+    expect(parseManifest({ ...pack, features: { ...plugin('notes'), ...plugin('cards', true) } }).errors).toEqual([]);
+    expect(parseManifest({ ...pack, features: { ...plugin('notes', true), ...plugin('cards', true) } }).errors)
+      .toEqual([expect.stringMatching(/"features\.cards\.plugin\.default": Two features claim the default plugin: "notes" and "cards"/)]);
   });
 
   it('has no root defaultPlugin to name a feature that may not exist', () => {
@@ -253,7 +259,7 @@ describe('content.writers', () => {
 
 describe('services', () => {
   const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-  const feature = (services: Record<string, string>) => ({ ...pack, features: [{ id: 'memos', services }] });
+  const feature = (services: Record<string, string>) => ({ ...pack, features: { memos: { services } } });
 
   it('accepts feature and pack-level services naming their export', () => {
     expect(parseManifest({ ...feature({ memo: 'src/features/memos/be/services/memo.ts#memoService' }), packServices: { cache: 'src/cache#cacheService' } }).errors).toEqual([]);
@@ -293,6 +299,6 @@ describe('commands', () => {
   it("rejects a name the pack declares twice, and one on a feature: they're the pack's", () => {
     expect(parseManifest(withCommands([{ name: 'standup', placeholder: 'a' }, { name: 'standup', placeholder: 'b' }])).errors)
       .toEqual([expect.stringContaining('Command "standup" is declared twice')]);
-    expect(parseManifest({ ...pack, features: [{ id: 'memos', commands: [{ name: 'standup', placeholder: 'a' }] }] }).errors[0]).toContain('commands');
+    expect(parseManifest({ ...pack, features: { memos: { commands: [{ name: 'standup', placeholder: 'a' }] } } }).errors[0]).toContain('commands');
   });
 });

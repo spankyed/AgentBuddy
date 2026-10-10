@@ -16,7 +16,7 @@
 // two-project run and the high end in an eleven-project one. Which is why the count is the durable
 // figure here and a per-case millisecond is not.
 import { describe, expect, it } from 'vitest';
-import { setupPackFixture, dependency, generate, system, writePluginEntry  } from './_support/pack.ts';
+import { setupPackFixture, dependency, generate, system, write, writePluginEntry  } from './_support/pack.ts';
 
 setupPackFixture();
 
@@ -55,7 +55,7 @@ describe('generated frontend entry', () => {
     ] });
     const fe = files['src/__generated__/pack-entry-fe.ts'];
 
-    expect(fe).toContain("  features: {\n    'settings': { plugin: __plugin_settings, designation: 'settings', default: true },\n    'memos': { plugin: __plugin_memos },\n  },");
+    expect(fe).toContain("  features: {\n    'settings': { plugin: __plugin_settings, designation: 'settings' },\n    'memos': { plugin: __plugin_memos },\n  },");
     expect(fe).toContain("import __plugin_settings from '../settings/plugin.ts';");
     expect(fe).not.toContain('_module');
   });
@@ -77,13 +77,18 @@ describe('generated frontend entry', () => {
     expect(fe).toContain("'settings': { plugin: __plugin_settings },");
   });
 
-  it("falls back to the pack's first plugin when none claims it", () => {
+  /**
+   * There is no fallback to "the pack's first plugin": `features` is a map, so the first key is whatever
+   * order JSON tooling left behind, and a default chosen that way would move without anyone editing it. A
+   * pack claiming none has no default plugin, which the shell already handles.
+   */
+  it('name no default when no plugin claims it', () => {
     const files = generate({ features: [
       { id: 'settings', plugin: { entry: writePluginEntry('src/settings/plugin') } },
       { id: 'memos', plugin: { entry: writePluginEntry('src/memos/plugin') } },
     ] });
 
-    expect(files['src/__generated__/pack-entry-fe.ts']).toContain("'settings': { plugin: __plugin_settings, default: true },");
+    expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('default: true');
   });
 
   // So a frontend send to that role resolves, as it does on the backend
@@ -97,7 +102,7 @@ describe('generated frontend entry', () => {
     const fe = files['src/__generated__/pack-entry-fe.ts'];
     expect(fe).toContain("'scheduler': { designation: 'clock' },");
     expect(fe).not.toContain("'worker'");
-    expect(fe).toContain("'memos': { plugin: __plugin_memos, default: true },");
+    expect(fe).toContain("'memos': { plugin: __plugin_memos },");
   });
 });
 
@@ -198,5 +203,183 @@ describe('generated registrations', () => {
     expect(files['src/__generated__/appliers.ts']).toContain('export const appliers: ContentApplier[] = [];');
     expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('dslTypes');
     expect(files).not.toHaveProperty(['src/__generated__/dsl-types-fe.ts']);
+  });
+});
+
+describe('generated step registrations', () => {
+  const stepPack = () => {
+    write('src/steps/llm/build.ts', 'export const llmStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\n');
+    write('src/steps/llm/fe.ts', 'export const llmStepFE = { nodeConfig: { label: \'LLM\' } };\n');
+    write('src/steps/llm/runtime.ts', 'export function handler() {}\n');
+    write('src/steps/cron/build.ts', 'export const cronTrigger = { trackField: \'schedule\', compile: () => ({}), decompile: () => ({}) };\n');
+    write('src/steps/cron/fe.ts', 'export const cronTriggerFE = { nodeConfig: { label: \'Cron\' } };\n');
+    write('src/steps/cron/runtime.ts', 'export function register() {}\n');
+    return {
+      steps: {
+        llm: {
+          build: 'src/steps/llm/build.ts#llmStepBuild',
+          fe: 'src/steps/llm/fe.ts#llmStepFE',
+          runtime: { handler: 'src/steps/llm/runtime.ts#handler', isAsync: true },
+        },
+        cron: {
+          kind: 'trigger',
+          trigger: { facet: 'src/steps/cron/build.ts#cronTrigger', register: 'src/steps/cron/runtime.ts#register' },
+          fe: 'src/steps/cron/fe.ts#cronTriggerFE',
+        },
+      },
+    };
+  };
+
+  // Three places, three subsets: the backend runs a step, a dependent pack validates flows with it, and the
+  // editor draws it. None of them is a barrel somebody keeps in step with the other two.
+  it("send each facet where it is used: build and runtime to the backend, build alone to the module dependents load, fe to the frontend", () => {
+    const files = generate(stepPack());
+
+    const be = files['src/__generated__/pack-entry.ts'];
+    expect(be).toContain("import { llmStepBuild as __stepBuild_0 } from '../steps/llm/build.ts';");
+    expect(be).toContain("{ type: 'llm', build: __stepBuild_0, runtime: { handler: async (tNode, node, ctx, actor) => (await import('../steps/llm/runtime.ts')).handler(tNode, node, ctx, actor), isAsync: true } },");
+    expect(be).toContain("{ type: 'cron', kind: 'trigger', trigger: { ...__stepTrigger_1, register: async (node, ctx) => (await import('../steps/cron/runtime.ts')).register(node, ctx) } },");
+    expect(be).not.toContain('llmStepFE');
+
+    const build = files['src/__generated__/steps-build.ts'];
+    expect(build).toContain("  { type: 'llm', build: __stepBuild_0 },\n  { type: 'cron', kind: 'trigger', trigger: __stepTrigger_1 },");
+    expect(build).not.toContain('runtime');
+    expect(build).not.toContain('StepFE');
+
+    const fe = files['src/__generated__/pack-entry-fe.ts'];
+    expect(fe).toContain("  steps: [\n    { type: 'llm', fe: __stepFE_0 },\n    { type: 'cron', kind: 'trigger', fe: __stepFE_1 },\n  ],");
+    expect(fe).not.toContain('runtime');
+    expect(fe).not.toContain('StepBuild');
+  });
+
+  // The module is what a dependent pack's `abuddy build` loads, so the backend and it are generated from the
+  // same entries rather than from two barrels that can name different facets
+  it('name the same build facet in the backend entry and the module dependents load', () => {
+    const files = generate(stepPack());
+    for (const file of ['src/__generated__/pack-entry.ts', 'src/__generated__/steps-build.ts']) {
+      expect(files[file], file).toContain("import { llmStepBuild as __stepBuild_0 } from '../steps/llm/build.ts';");
+      expect(files[file], file).toContain("import { cronTrigger as __stepTrigger_1 } from '../steps/cron/build.ts';");
+    }
+  });
+
+  it('write no build module for a pack with no steps', () => {
+    const files = generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
+    expect(files).not.toHaveProperty(['src/__generated__/steps-build.ts']);
+    expect(files['src/__generated__/pack-entry.ts']).not.toContain('steps:');
+  });
+
+  it("carry a runtime of flags alone for a step whose behaviour is one", () => {
+    write('src/steps/sub/build.ts', 'export const subStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\n');
+    const files = generate({ steps: { subflow: { build: 'src/steps/sub/build.ts#subStepBuild', runtime: { spawnsSubflow: true } } } });
+    expect(files['src/__generated__/pack-entry.ts']).toContain("{ type: 'subflow', build: __stepBuild_0, runtime: { spawnsSubflow: true } },");
+  });
+
+  /**
+   * The trap this flag exists for: `kill` both ends the flow and completes itself, and those two sends have
+   * to be ordered with the transition that called the handler. Behind a lazy import they land a tick later,
+   * the flow stops first and the step's own COMPLETE reaches an actor that is gone — so the step reads as
+   * still running. `default-setup/tests/extensions/steps/kill/step.spec.ts` is what fails when it regresses.
+   */
+  it('import a sync handler with the entry rather than on first run', () => {
+    write('src/steps/kill/build.ts', 'export const killStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\n');
+    write('src/steps/kill/runtime.ts', 'export function handler() {}\n');
+    const files = generate({ steps: { kill: { build: 'src/steps/kill/build.ts#killStepBuild', runtime: { handler: 'src/steps/kill/runtime.ts#handler', sync: true } } } });
+    const be = files['src/__generated__/pack-entry.ts'];
+
+    expect(be).toContain("import { handler as __stepHandler_0 } from '../steps/kill/runtime.ts';");
+    expect(be).toContain("{ type: 'kill', build: __stepBuild_0, runtime: { handler: __stepHandler_0 } },");
+    expect(be).not.toContain('await import');
+  });
+
+  it('fail naming the step and the export for a facet the module does not export', () => {
+    write('src/steps/llm/build.ts', 'export const other = {};\n');
+    expect(() => generate({ steps: { llm: { build: 'src/steps/llm/build.ts#llmStepBuild' } } }))
+      .toThrow('Step "llm": build: src/steps/llm/build.ts doesn\'t export "llmStepBuild"');
+  });
+});
+
+describe('generated artifact registrations', () => {
+  // Both of an artifact's facets are frontend ones, so the backend entry carries the type alone — which is
+  // what keeps the icon set out of a backend bundle
+  it("name each artifact's icon and viewer in the frontend entry, and nothing but its type in the backend", () => {
+    write('src/artifacts/todo.vue', '<template><div /></template>\n');
+    const files = generate({
+      features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }],
+      artifacts: {
+        todo: { icon: 'ListTodo', fe: 'src/artifacts/todo.vue' },
+        graph: { icon: 'Network' },
+      },
+    });
+
+    const be = files['src/__generated__/pack-entry.ts'];
+    expect(be).toContain("  artifacts: [\n    { type: 'todo' },\n    { type: 'graph' },\n  ],");
+    expect(be).not.toContain('lucide-vue-next');
+    expect(be).not.toContain('todo.vue');
+
+    const fe = files['src/__generated__/pack-entry-fe.ts'];
+    expect(fe).toContain("import { ListTodo, Network } from 'lucide-vue-next';");
+    expect(fe).toContain("import __artifactFE_0 from '../artifacts/todo.vue';");
+    expect(fe).toContain("  artifacts: [\n    { type: 'todo', fe: { icon: ListTodo, component: __artifactFE_0 } },\n    { type: 'graph', fe: { icon: Network } },\n  ],");
+  });
+
+  // Two artifacts on one icon is ordinary — default-setup's `text` and `json` share FileText
+  it('import each named icon once however many artifacts name it', () => {
+    const files = generate({ artifacts: { text: { icon: 'FileText' }, json: { icon: 'FileText' } } });
+    expect(files['src/__generated__/pack-entry-fe.ts'].match(/from 'lucide-vue-next'/g)).toHaveLength(1);
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain("import { FileText } from 'lucide-vue-next';");
+  });
+
+  it('carry no artifacts for a pack that declares none', () => {
+    const files = generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
+    expect(files['src/__generated__/pack-entry.ts']).not.toContain('artifacts:');
+    expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('artifacts:');
+  });
+
+  it('fail naming the artifact and the file for a viewer path naming nothing', () => {
+    expect(() => generate({ artifacts: { todo: { icon: 'ListTodo', fe: 'src/artifacts/missing.vue' } } }))
+      .toThrow('Artifact "todo": fe: no file at src/artifacts/missing.vue');
+  });
+});
+
+describe('generated block registrations', () => {
+  // The type is the manifest key and the kind is data, so neither half imports a barrel to learn them: the
+  // backend entry carries the facet a backend process can run and the frontend entry the component
+  it('split each declared block by facet: the backend facet into the backend entry, the component into the frontend', () => {
+    write('src/blocks/aside.ts', 'export const asideFacet = { generateAsideText: () => null };\n');
+    write('src/blocks/Rating.vue', '<template><div /></template>\n');
+    const files = generate({
+      features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }],
+      blocks: {
+        rating: { fe: 'src/blocks/Rating.vue' },
+        approval: { kind: 'input', fe: 'src/blocks/Rating.vue', be: 'src/blocks/aside.ts#asideFacet' },
+      },
+    });
+
+    const be = files['src/__generated__/pack-entry.ts'];
+    expect(be).toContain("import { asideFacet as __blockBE_1 } from '../blocks/aside.ts';");
+    expect(be).toContain("  blocks: [\n    { type: 'rating' },\n    { type: 'approval', kind: 'input', be: __blockBE_1 },\n  ],");
+    expect(be).not.toContain('Rating.vue');
+
+    const fe = files['src/__generated__/pack-entry-fe.ts'];
+    expect(fe).toContain("import __blockFE_0 from '../blocks/Rating.vue';");
+    expect(fe).toContain("  blocks: [\n    { type: 'rating', fe: { component: __blockFE_0 } },\n    { type: 'approval', kind: 'input', fe: { component: __blockFE_1 } },\n  ],");
+    expect(fe).not.toContain('asideFacet');
+  });
+
+  it('carry no blocks for a pack that declares none', () => {
+    const files = generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
+    expect(files['src/__generated__/pack-entry.ts']).not.toContain('blocks:');
+    expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('blocks:');
+  });
+
+  it('fail naming the block and the file for a component path naming nothing', () => {
+    expect(() => generate({ blocks: { rating: { fe: 'src/blocks/Missing.vue' } } }))
+      .toThrow('Block "rating": fe: no file at src/blocks/Missing.vue');
+  });
+
+  it("fail naming the block and the export for a backend facet the module doesn't export", () => {
+    write('src/blocks/aside.ts', 'export const asideFacet = {};\n');
+    expect(() => generate({ blocks: { rating: { be: 'src/blocks/aside.ts#missing' } } }))
+      .toThrow('Block "rating": be: src/blocks/aside.ts doesn\'t export "missing"');
   });
 });

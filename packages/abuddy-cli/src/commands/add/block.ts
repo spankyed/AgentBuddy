@@ -1,7 +1,7 @@
 import * as path from 'node:path';
-import { validateName, toPascalCase, writeIfNotExists, logCreated, hasFlag, updateRegisterArray, updateComponentMap } from './write';
+import { validateName, toPascalCase, writeIfNotExists, logCreated, hasFlag } from './write';
 import { renderTemplate } from '../../templates.ts';
-import { readManifest } from './manifest';
+import { readManifest, writeManifest, addBlock as addBlockToManifest } from './manifest';
 
 const HELP = `
 Usage: abuddy add block <type> [options]
@@ -31,43 +31,23 @@ export async function addBlock(args: string[], root: string) {
   const isInput = hasFlag(args, '--input');
   const pascal = toPascalCase(type);
 
-  const created: string[] = [];
-  let componentFileName: string;
-  let importName: string;
+  // Each branch renders its template by name, which is how `scaffold-templates.spec.ts` sees that a
+  // template under `templates/` has a caller at all
+  const [componentPath, component] = isInput
+    ? [`src/extensions/blocks/input/${pascal}Input.vue`, renderTemplate('pack/src/extensions/blocks/input/block.vue', { PASCAL: pascal })]
+    : [`src/extensions/blocks/display/${pascal}Block.vue`, renderTemplate('pack/src/extensions/blocks/display/block.vue', { PASCAL: pascal })];
 
-  if (isInput) {
-    componentFileName = `input/${pascal}Input.vue`;
-    importName = `${pascal}Input`;
-    const filePath = path.join(root, 'src', 'extensions', 'blocks', componentFileName);
-    if (writeIfNotExists(filePath, renderTemplate('pack/src/extensions/blocks/input/block.vue', { PASCAL: pascal }))) created.push(filePath);
-  } else {
-    componentFileName = `display/${pascal}Block.vue`;
-    importName = `${pascal}Block`;
-    const filePath = path.join(root, 'src', 'extensions', 'blocks', componentFileName);
-    if (writeIfNotExists(filePath, renderTemplate('pack/src/extensions/blocks/display/block.vue', { PASCAL: pascal }))) created.push(filePath);
-  }
-
+  // The manifest entry first: it is the declaration, and a block declared with no component is a
+  // clearer failure than a component no manifest names
   const manifest = readManifest(root);
-  const registerPath = manifest.blocks;
+  addBlockToManifest(manifest, type, { ...(isInput ? { kind: 'input' as const } : {}), component: componentPath });
+  writeManifest(root, manifest);
 
-  if (registerPath) {
-    const kindStr = isInput ? `, kind: 'input'` : '';
-    updateRegisterArray(
-      path.join(root, registerPath),
-      '',
-      `  { type: '${type}'${kindStr} },\n`,
-    );
-
-    const feRegisterPath = registerPath.replace(/\.ts$/, '-fe.ts');
-    updateComponentMap(
-      path.join(root, feRegisterPath),
-      `import ${importName} from './${componentFileName}';`,
-      type,
-      importName,
-    );
-  }
+  const created: string[] = [];
+  const filePath = path.join(root, componentPath);
+  if (writeIfNotExists(filePath, component)) created.push(filePath);
 
   console.log(`\nCreated block "${type}":`);
   logCreated(root, created);
-  if (registerPath) console.log(`\n  register files updated`);
+  console.log(`  ~ abuddy.json (blocks.${type})`);
 }

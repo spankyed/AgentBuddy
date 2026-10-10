@@ -141,15 +141,10 @@
       "description": "Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries."
     },
     "features": {
-      "type": "array",
-      "items": {
+      "type": "object",
+      "additionalProperties": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^[a-z][a-zA-Z0-9]*$",
-            "description": "Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code; not a reserved word."
-          },
           "designation": {
             "type": "string",
             "description": "Links the system to an EARS designation."
@@ -243,12 +238,9 @@
             "description": "Path to a module declaring which of this feature's things are linkable from an editor (protocol, category, icon, navigate). Built-in packs only. Ignored for external packs."
           }
         },
-        "required": [
-          "id"
-        ],
         "additionalProperties": false
       },
-      "description": "Feature definitions. Each feature bundles a backend system, frontend plugin, services, and settings."
+      "description": "Feature definitions, keyed by feature id. Each feature bundles a backend system, frontend plugin, services, and settings; the id is the key, so a pack cannot declare one twice."
     },
     "packServices": {
       "type": "object",
@@ -496,80 +488,161 @@
     },
     "steps": {
       "type": "object",
-      "properties": {
-        "register": {
-          "type": "string",
-          "description": "Path to the step registration barrel file."
-        },
-        "build": {
-          "type": "string",
-          "description": "Path to a module exporting build-time step definitions only (validate/compile/decompile, trigger facets; no runtime or FE imports). Bundled to build/steps.build.mjs for dependent packs."
-        },
-        "definitions": {
-          "type": "array",
-          "items": {
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "step",
+              "trigger"
+            ],
+            "description": "Whether this is a regular step or a trigger. \"step\" is the default."
+          },
+          "build": {
+            "type": "string",
+            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+            "description": "\"path#exportName\" of its StepBuildFacet (compile, validate, getLabel, decompile). A trigger declares `trigger` instead."
+          },
+          "trigger": {
             "type": "object",
             "properties": {
-              "type": {
+              "facet": {
                 "type": "string",
-                "description": "Step type identifier."
+                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                "description": "\"path#exportName\" of the TriggerFacet: how a track compiles, decompiles and validates."
               },
-              "path": {
+              "register": {
                 "type": "string",
-                "description": "Directory containing the step definition."
-              },
-              "kind": {
-                "type": "string",
-                "enum": [
-                  "step",
-                  "trigger"
-                ],
-                "description": "Whether this is a regular step or a trigger."
-              },
-              "dsl": {
-                "type": "object",
-                "properties": {
-                  "primaryField": {
-                    "type": "string",
-                    "description": "The field whose value becomes the step label in the flow editor."
-                  },
-                  "defaultLabel": {
-                    "type": "string",
-                    "description": "Fallback label when primaryField is empty."
-                  },
-                  "custom": {
-                    "type": "boolean",
-                    "const": true,
-                    "description": "Marks the step as a custom (non-built-in) type."
-                  }
-                },
-                "additionalProperties": false,
-                "description": "DSL configuration for flow-helper generation."
+                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                "description": "\"path#exportName\" of the function that starts the trigger. Loaded when it is first registered."
               }
             },
             "required": [
-              "type",
-              "path"
+              "facet"
             ],
-            "additionalProperties": false
+            "additionalProperties": false,
+            "description": "For a trigger: its TriggerFacet and the function that starts it."
           },
-          "description": "Step definitions for codegen."
-        }
+          "fe": {
+            "type": "string",
+            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+            "description": "\"path#exportName\" of its StepFEFacet: what the flow editor draws and the form it opens."
+          },
+          "runtime": {
+            "type": "object",
+            "properties": {
+              "handler": {
+                "type": "string",
+                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                "description": "\"path#exportName\" of the function that runs the step. Loaded on its first run, unless `sync`."
+              },
+              "sync": {
+                "type": "boolean",
+                "const": true,
+                "description": "The handler's sends have to land in the brain's own dispatch, so its module is imported with the pack entry rather than on the step's first run. For a handler that both ends the flow and completes itself, where the two sends must be ordered with the transition that called it."
+              },
+              "isAsync": {
+                "type": "boolean",
+                "const": true,
+                "description": "The handler returns a promise, so the brain reports a rejection as the step's error."
+              },
+              "waits": {
+                "type": "boolean",
+                "const": true,
+                "description": "The step holds the flow at this node instead of completing."
+              },
+              "spawnsSubflow": {
+                "type": "boolean",
+                "const": true,
+                "description": "The step runs another flow, which the brain spawns in place of a step node."
+              }
+            },
+            "additionalProperties": false,
+            "description": "What the brain runs, and the flags it reads before running it."
+          },
+          "dsl": {
+            "type": "object",
+            "properties": {
+              "primaryField": {
+                "type": "string",
+                "description": "The field whose value becomes the step label in the flow editor."
+              },
+              "defaultLabel": {
+                "type": "string",
+                "description": "Fallback label when primaryField is empty."
+              },
+              "custom": {
+                "type": "boolean",
+                "const": true,
+                "description": "Marks the step as a custom (non-built-in) type."
+              }
+            },
+            "additionalProperties": false,
+            "description": "DSL configuration for flow-helper generation."
+          }
+        },
+        "additionalProperties": false
       },
-      "required": [
-        "register",
-        "definitions"
-      ],
-      "additionalProperties": false,
-      "description": "Flow step definitions."
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_-]*$"
+      },
+      "description": "Flow step types this pack contributes, keyed by type. Each names where its build, frontend and runtime facets live; the type is the key, so a pack cannot declare one twice."
     },
     "artifacts": {
-      "type": "string",
-      "description": "Path to artifact type registration module."
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "icon": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9]*$",
+            "description": "Name of the lucide-vue-next icon shown in the artifact list."
+          },
+          "fe": {
+            "type": "string",
+            "description": "Path to the viewer that opens it (a .vue file, taken by its default export). Without one the host shows the text viewer."
+          }
+        },
+        "required": [
+          "icon"
+        ],
+        "additionalProperties": false
+      },
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_-]*$"
+      },
+      "description": "Artifact types this pack contributes, keyed by type. Each names its icon and viewer; the type is the key, so a pack cannot declare one twice."
     },
     "blocks": {
-      "type": "string",
-      "description": "Path to message block registration module."
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "display",
+              "input"
+            ],
+            "description": "Whether the chat renders it as content or as something the user acts on. Display is the default."
+          },
+          "fe": {
+            "type": "string",
+            "description": "Path to the component that draws it (a .vue file, taken by its default export)."
+          },
+          "be": {
+            "type": "string",
+            "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+            "description": "\"path#exportName\" of its backend facet (BlockBEFacet), for a block that summarises itself in a transcript."
+          }
+        },
+        "additionalProperties": false
+      },
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_-]*$"
+      },
+      "description": "Message blocks this pack contributes, keyed by block type. Each names where its code lives; the type is the key, so a pack cannot declare one twice."
     },
     "migrations": {
       "type": "string",

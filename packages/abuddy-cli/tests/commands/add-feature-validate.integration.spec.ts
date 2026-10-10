@@ -1,5 +1,5 @@
 // abuddy.json is a feature's only config: `abuddy add feature` writes its designation there, and `abuddy validate`
-// checks features[] against the pack on disk
+// checks the manifest's `features` against the pack on disk
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -90,7 +90,7 @@ describe('abuddy add feature', () => {
     installDependencies();
     await addFeature(['memos', '--designation', 'memos'], pack);
 
-    expect(readManifest().features).toEqual([expect.objectContaining({ id: 'memos', designation: 'memos' })]);
+    expect(readManifest().features).toEqual({ memos: expect.objectContaining({ designation: 'memos' }) });
     expect((await runValidate()).exitCode).toBeUndefined();
   });
 
@@ -100,7 +100,7 @@ describe('abuddy add feature', () => {
     installDependencies();
     await addFeature(['memos', '--designation', 'inbox'], pack);
 
-    expect(readManifest().features).toEqual([expect.objectContaining({ id: 'memos', designation: 'inbox' })]);
+    expect(readManifest().features).toEqual({ memos: expect.objectContaining({ designation: 'inbox' }) });
     expect((await runValidate()).exitCode).toBeUndefined();
   });
 });
@@ -110,7 +110,7 @@ describe('abuddy validate', () => {
     await addFeature(['memos'], pack);
     const manifest = readManifest();
     // A role that is not the feature's id, which is the half of this case's title that the fixture has to show
-    manifest.features[0].designation = 'inbox';
+    manifest.features.memos.designation = 'inbox';
     fs.writeFileSync(path.join(pack, 'abuddy.json'), JSON.stringify(manifest, null, 2));
     fs.rmSync(path.join(pack, 'src', 'features', 'memos', 'settings.ts'));
 

@@ -91,6 +91,19 @@ declare, both by removing a restriction rather than adding a feature: an externa
 own entity volatile (Decision 5), and a feature's designation need no longer equal its id
 (Decision 6). Nothing a pack can express today stops being expressible.
 
+## What the manifest already is
+
+**Four of the keys this goal surveys have since been reshaped, so the Background below describes a tree
+that has moved.** `features`, `steps`, `blocks` and `artifacts` are each a keyed map of individual
+declarations, every entry naming its own facets by `"path#export"`; the step, block and artifact barrels
+and the step `index.ts` files are gone, and a duplicate id or type is unrepresentable.
+[`docs/reference/declarative-contributions.md`](../reference/declarative-contributions.md) records the
+shape and [`extensions.md`](../public-facing/extensions.md) documents each key.
+
+What that leaves of this goal is the **grouping** — Decision 9's `extensions` section — which is now a pure
+relocation over shapes that are already right, and the decisions about `data`, `boot` and the root keys that
+nothing above touched. Confirm each name a phase acts on before acting; several no longer exist.
+
 ## Background (2026-09-19, at 4f24d04f7)
 
 `packages/default-setup/abuddy.json` is 552 lines and 23 top-level keys (24 at the survey; Decision 12

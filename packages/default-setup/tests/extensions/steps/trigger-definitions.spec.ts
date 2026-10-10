@@ -1,7 +1,15 @@
 import { stepRegistry, type StepDefinition } from '@abuddy/sdk/steps';
 import { testPacks } from '@abuddy/sdk/testing';
-import { listenerTrigger } from '#extensions/steps/listener/index.ts';
-import { scheduleTrigger } from '#extensions/steps/schedule/index.ts';
+import { steps as buildSteps } from '#generated/steps-build.ts';
+import { listenerTriggerFE } from '#extensions/steps/listener/fe.ts';
+import { scheduleTriggerFE } from '#extensions/steps/schedule/fe.ts';
+
+// The definitions as the pack registers them: the build-time facets codegen writes from `abuddy.json`,
+// with the frontend facet the renderer registers beside them
+const definition = (type: string, fe: unknown): StepDefinition =>
+  ({ ...buildSteps.find(s => s.type === type)!, fe: fe as StepDefinition['fe'] });
+const listenerTrigger = definition('listener', listenerTriggerFE);
+const scheduleTrigger = definition('schedule', scheduleTriggerFE);
 
 // Steps a test registers go in the test runtime's stand-in, over the pack's registered ones
 const register = (step: StepDefinition) => testPacks.steps.set(step.type, step);

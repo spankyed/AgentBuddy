@@ -7,10 +7,9 @@ import { importFlows, startApp, type FlowRun } from '@abuddy/testing/harness'
 import { kill, on, transform } from '#generated/flow-helpers.ts'
 import { killStepBuild } from '#extensions/steps/kill/build.ts'
 
-const build = killStepBuild.build!
-const { compile, getLabel } = build
+const { compile, getLabel } = killStepBuild
 // `decompile` is optional on the facet; kill declares one, and these cases are what says so
-const decompile = build.decompile!
+const decompile = killStepBuild.decompile!
 
 const run = async (label: string, steps: unknown[]): Promise<FlowRun> => {
   importFlows({ [label]: { root: true, tracks: [on('go', [steps as never])] } })

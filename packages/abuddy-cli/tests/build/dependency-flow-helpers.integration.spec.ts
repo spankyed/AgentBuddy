@@ -37,12 +37,11 @@ function writePack(name: string, files: Record<string, string>): string {
 const baseManifest = {
   id: 'base-pack', name: 'Base', version: '1.0.0',
   steps: {
-    register: 'src/steps/register.ts',
-    definitions: [
-      { type: 'pour', path: 'src/steps/pour', dsl: { primaryField: 'cup' } },
-      { type: 'choose', path: 'src/steps/choose', dsl: { custom: true } },
-      { type: 'tick', path: 'src/steps/tick', kind: 'trigger' },
-    ],
+    // A step's directory is the dirname of the first facet it names, which is where its `types.ts` and,
+    // for a custom helper, its `helpers.ts` are read from
+    pour: { build: 'src/steps/pour/build.ts#pourStepBuild', dsl: { primaryField: 'cup' } },
+    choose: { build: 'src/steps/choose/build.ts#chooseStepBuild', dsl: { custom: true } },
+    tick: { kind: 'trigger', trigger: { facet: 'src/steps/tick/build.ts#tickTriggerBuild' } },
   },
 } as unknown as PackManifest;
 
@@ -76,7 +75,9 @@ beforeAll(async () => {
       "import type { DSLChooseOption } from './types.ts';",
       "export function choose(options: DSLChooseOption[]): DSLStepNode { return { type: 'choose', options }; }",
     ].join('\n'),
-    'src/steps/tick/build.ts': "export const tickTriggerBuild = { type: 'tick', kind: 'trigger', trigger: { trackField: 'every' } };\n",
+    'src/steps/pour/build.ts': 'export const pourStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\n',
+    'src/steps/choose/build.ts': 'export const chooseStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\n',
+    'src/steps/tick/build.ts': "export const tickTriggerBuild = { trackField: 'every' };\n",
   });
   for (const [file, content] of Object.entries(generatePackFiles(baseManifest, { packRoot: base }))) {
     fs.mkdirSync(path.dirname(path.join(base, file)), { recursive: true });

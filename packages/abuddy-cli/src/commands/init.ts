@@ -18,10 +18,9 @@ const MANIFEST_TEMPLATE = (name: string) => {
     hostVersion: '>=0.3.0',
     entities: { [pascalName]: pascalName },
     relKinds: {},
-    features: [],
+    features: {},
     dependencies: {},
     permissions: [],
-    steps: { register: 'src/extensions/steps/register.ts', build: 'src/extensions/steps/build.ts', definitions: [] },
     content: {
       sources: {
         actions: 'src/content/actions',
@@ -268,7 +267,6 @@ export async function init(args: string[]) {
   fs.mkdirSync(path.join(dir, 'src', 'content', 'actions'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'content', 'flows'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'src', 'content', EXAMPLE_CONTENT_KEY), { recursive: true });
-  fs.mkdirSync(path.join(dir, 'src', 'extensions', 'steps'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'tests'), { recursive: true });
 
   fs.writeFileSync(path.join(dir, 'abuddy.json'), MANIFEST_TEMPLATE(name));
@@ -282,11 +280,6 @@ export async function init(args: string[]) {
   // What `init` prints below scrolls away; this is what the author reads in six months
   fs.writeFileSync(path.join(dir, 'README.md'), renderTemplate('pack/README.md', { NAME: name }));
   fs.writeFileSync(path.join(dir, 'src', 'env.d.ts'), ENV_DTS_TEMPLATE);
-  fs.writeFileSync(
-    path.join(dir, 'src', 'extensions', 'steps', 'register.ts'),
-    renderTemplate('pack/src/extensions/steps/register.ts'),
-  );
-  fs.writeFileSync(path.join(dir, 'src', 'extensions', 'steps', 'build.ts'), renderTemplate('pack/src/extensions/steps/build.ts'));
   scaffoldUnitTestSetup(dir);
   fs.writeFileSync(
     path.join(dir, 'tests', `${name}.spec.ts`),

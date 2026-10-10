@@ -1,4 +1,4 @@
-import type { StepDefinition, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
+import type { StepBuildFacet, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
 import { expandRecord, collapseRecord, mapProblems } from '@abuddy/sdk/steps';
 import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
@@ -64,7 +64,4 @@ function decompile(node: Record<string, unknown>, ctx: StepDecompileContext): Re
 }
 
 /** Build-time facets only (no runtime or FE imports); loaded by `abuddy build` in dependent packs. */
-export const flowStepBuild: StepDefinition = {
-  type: 'subflow',
-  build: { compile, validate, getLabel, decompile },
-};
+export const flowStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile };

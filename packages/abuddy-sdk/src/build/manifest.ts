@@ -23,6 +23,21 @@ export type PackPermission = z.infer<typeof PackPermissionSchema>;
 export type PackSystemEntry = NonNullable<PackFeatureEntry['system']>;
 export type PackPluginEntry = NonNullable<PackFeatureEntry['plugin']>;
 
+/** A feature with the id it is declared under: what everything reading a manifest's features works with */
+export type PackFeature = PackFeatureEntry & { id: string };
+
+/**
+ * A manifest's features as a list, each carrying the id it is keyed by. `features` is a map, so a duplicate
+ * id is unrepresentable and nothing has to check for one; everything that reads them wants the id beside
+ * the entry, which is this one derivation rather than an id written twice.
+ *
+ * The order is the manifest's own. Generated code follows it — the `NodeEntity` union, the plugin list a
+ * pack's frontend registers — so it is a declaration like any other key order in the file.
+ */
+export function packFeatures(manifest: { features?: Record<string, PackFeatureEntry> }): PackFeature[] {
+  return Object.entries(manifest.features ?? {}).map(([id, entry]) => ({ ...entry, id }));
+}
+
 // Not part of abuddy.json — used for dist/snapshot.json and build-time type exchange.
 
 /**
@@ -126,7 +141,7 @@ export const PROVENANCE_KINDS = {
   relKinds: (m: ProvenanceManifest) => Object.keys(m.relKinds ?? {}),
   commands: (m: ProvenanceManifest) => (m.commands ?? []).map((c) => c.name),
   // Keyed by ref, so a dependent reusing one of its dependency's feature ids keeps both apart
-  plugins: (m: ProvenanceManifest, packId: string) => (m.features ?? []).filter((f) => f.plugin).map((f) => resolveName(f.id, packId)),
+  plugins: (m: ProvenanceManifest, packId: string) => Object.entries(m.features ?? {}).filter(([, f]) => f.plugin).map(([id]) => resolveName(id, packId)),
 } as const;
 
 export type ProvenanceKind = keyof typeof PROVENANCE_KINDS;
@@ -139,7 +154,7 @@ export interface ProvenanceManifest {
   entities?: Record<string, string>;
   relKinds?: Record<string, string>;
   commands?: ReadonlyArray<{ name: string }>;
-  features?: ReadonlyArray<{ id: string; plugin?: unknown }>;
+  features?: Record<string, { plugin?: unknown }>;
 }
 
 /**

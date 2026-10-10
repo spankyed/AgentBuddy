@@ -8,6 +8,7 @@ import {
   entitiesWithoutShapes,
   CONTENT_COMPILERS_FILE,
   _buildProvenance,
+  packFeatures,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type ContentDependency,
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
@@ -144,7 +145,7 @@ async function buildIntoStaging(args: string[]) {
     await generateEntries([], undefined, depTypes, depSnapshots);
   }
 
-  const settingsProblems = await featureSettingsProblems(root, manifest.features ?? []);
+  const settingsProblems = await featureSettingsProblems(root, packFeatures(manifest));
   if (settingsProblems.length > 0) {
     throw new Error(`Invalid feature settings:\n${settingsProblems.map(p => `  - ${p}`).join('\n')}`);
   }
@@ -328,8 +329,8 @@ async function buildIntoStaging(args: string[]) {
   }
 
   // ── Step build facets (for dependents' flow validation) ─────────────
-  if (manifest.steps?.build) {
-    const stepBuild = await bundlePackStepBuild(root, outputDir, manifest.steps.build, { release, recordReads: reads?.forPhase('stepBuild') });
+  if (manifest.steps && Object.keys(manifest.steps).length > 0) {
+    const stepBuild = await bundlePackStepBuild(root, outputDir, { release, recordReads: reads?.forPhase('stepBuild') });
     if (stepBuild.success) {
       console.log(`  step build: dist/${PACK_LAYOUT.stepsBuild}`);
     } else {

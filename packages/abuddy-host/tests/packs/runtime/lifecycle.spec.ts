@@ -112,7 +112,7 @@ describe('activating and tearing down a pack at runtime', () => {
       id: PACK_ID,
       name: 'Activate Pack',
       version: '1.0.0',
-      features: [{ id: 'main', system: { entry: 'src/features/main/be/system.ts' } }],
+      features: { main: { system: { entry: 'src/features/main/be/system.ts' } } },
       commands: [{ name: 'activate-memo', placeholder: 'Text' }],
     });
     // The runtime carries what generate-entries writes from the manifest, commands and appliers included

@@ -14,9 +14,8 @@
     }
   },
   "relKinds": {},
-  "features": [
-    {
-      "id": "memos",
+  "features": {
+    "memos": {
       "settings": "src/features/memos/settings.ts",
       "system": {
         "entry": "src/features/memos/be/system.ts",
@@ -32,15 +31,14 @@
         "memoCommands": "src/features/memos/be/repository.ts#memoCommands"
       }
     },
-    {
-      "id": "notes",
+    "notes": {
       "settings": "src/features/notes/settings.ts",
       "plugin": {
         "entry": "src/features/notes/fe/plugin.ts"
       },
       "services": {}
     }
-  ],
+  },
   "commands": [
     {
       "name": "memo-note",

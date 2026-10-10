@@ -1,4 +1,4 @@
-// `abuddy validate` checks each abuddy.json features[] entry against the pack on disk
+// `abuddy validate` checks each abuddy.json `features` entry against the pack on disk
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -21,7 +21,6 @@ function pack(files: string[]): string {
 }
 
 const memos = {
-  id: 'memos',
   settings: 'src/features/memos/settings.ts',
   system: { entry: 'src/features/memos/be/system.ts' },
   plugin: { entry: 'src/features/memos/fe/plugin.ts' },
@@ -31,7 +30,7 @@ const memosFiles = [memos.settings, memos.system.entry, memos.plugin.entry];
 describe('validateFeatures', () => {
   it('accepts features whose files exist and whose designation is the feature id', () => {
     const root = pack(memosFiles);
-    expect(validateFeatures(root, { features: [{ ...memos, designation: 'memos' }] })).toEqual({ errors: [], warnings: [] });
+    expect(validateFeatures(root, { features: { memos: { ...memos, designation: 'memos' } } })).toEqual({ errors: [], warnings: [] });
   });
 
   it.each([
@@ -40,21 +39,20 @@ describe('validateFeatures', () => {
     ['plugin.entry', memos.plugin.entry],
   ])('reports a missing %s file', (field, missing) => {
     const root = pack(memosFiles.filter(file => file !== missing));
-    expect(validateFeatures(root, { features: [memos] }).errors).toEqual([`Feature "memos": ${field} file "${missing}" not found`]);
+    expect(validateFeatures(root, { features: { memos } }).errors).toEqual([`Feature "memos": ${field} file "${missing}" not found`]);
   });
 
   // `inbox`, not `memos`: a designation equal to the feature's id is what this case is *not* about, and a
   // rename made it exactly that for a while, leaving the name to claim what the fixture no longer showed
   it('accepts a designation that differs from the feature id: a designation is a role, not a name', () => {
     const root = pack(memosFiles);
-    expect(validateFeatures(root, { features: [{ ...memos, designation: 'inbox' }] }).errors).toEqual([]);
+    expect(validateFeatures(root, { features: { memos: { ...memos, designation: 'inbox' } } }).errors).toEqual([]);
   });
 
   it('reports one role claimed by two features of the same pack', () => {
     const root = pack(memosFiles);
-    const other = { ...memos, id: 'scraps' };
     const errors = validateFeatures(root, {
-      features: [{ ...memos, designation: 'inbox' }, { ...other, designation: 'inbox' }],
+      features: { memos: { ...memos, designation: 'inbox' }, scraps: { ...memos, designation: 'inbox' } },
     }).errors;
     expect(errors).toEqual(['Feature "scraps": designation "inbox" is already claimed by feature "memos"']);
   });
@@ -62,7 +60,7 @@ describe('validateFeatures', () => {
   it('accepts two features with different designations', () => {
     const root = pack(memosFiles);
     expect(validateFeatures(root, {
-      features: [{ ...memos, designation: 'memos' }, { ...memos, id: 'scraps', designation: 'scraps' }],
+      features: { memos: { ...memos, designation: 'memos' }, scraps: { ...memos, designation: 'scraps' } },
     }).errors).toEqual([]);
   });
 });
@@ -73,18 +71,18 @@ describe('typesEntry', () => {
   it('accepts one whose module exists, written with or without its extension', () => {
     const root = pack([...memosFiles, 'src/features/memos/be/types.ts']);
     for (const typesEntry of ['src/features/memos/be/types', 'src/features/memos/be/types.ts']) {
-      expect(validateFeatures(root, { features: [{ ...memos, typesEntry }] })).toEqual({ errors: [], warnings: [] });
+      expect(validateFeatures(root, { features: { memos: { ...memos, typesEntry } } })).toEqual({ errors: [], warnings: [] });
     }
   });
 
   it('reports one whose module is not there', () => {
     const root = pack(memosFiles);
-    expect(validateFeatures(root, { features: [{ ...memos, typesEntry: 'src/features/memos/be/typos' }] }).errors)
+    expect(validateFeatures(root, { features: { memos: { ...memos, typesEntry: 'src/features/memos/be/typos' } } }).errors)
       .toEqual(['Feature "memos": typesEntry file "src/features/memos/be/typos.ts" not found']);
   });
 
   it('says nothing about a feature that declares none', () => {
     const root = pack(memosFiles);
-    expect(validateFeatures(root, { features: [memos] })).toEqual({ errors: [], warnings: [] });
+    expect(validateFeatures(root, { features: { memos } })).toEqual({ errors: [], warnings: [] });
   });
 });

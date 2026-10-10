@@ -1,7 +1,7 @@
 import { readFileSync, existsSync, statSync } from 'fs';
 import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
-import { extname, join } from 'path';
-import { _mergeProvenance, PROVENANCE_KINDS, type PackManifest, type PackFeatureEntry, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
+import { dirname, extname, join } from 'path';
+import { _mergeProvenance, packFeatures, PROVENANCE_KINDS, type PackManifest, type PackFeature, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { formatEntities } from './content/items.ts';
@@ -207,6 +207,21 @@ export function getCompiledDir(): string {
 /** Extensions a manifest path can name a module by; anything else (`memo.types`) is part of the name */
 const MODULE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs', '.vue', '.json', '.css']);
 
+/**
+ * The module codegen writes the build-time step facets into, which `abuddy build` bundles to
+ * `dist/build/steps.build.mjs` — what a dependent pack's build validates its flows with.
+ */
+export const STEPS_BUILD_MODULE = 'src/__generated__/steps-build.ts';
+
+/** One step as codegen reads it: its manifest entry, its type (the map's key) and the directory its modules sit in */
+interface StepDeclaration {
+  type: string;
+  kind?: 'step' | 'trigger';
+  dsl?: StepEntry['dsl'];
+  entry: StepEntry;
+  path: string;
+}
+
 /** Extensions of the TypeScript sources codegen reads exports from */
 const TS_SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts']);
 
@@ -350,11 +365,11 @@ export function generatePackFiles(
   function checkRepositoryNames(): void {
     const taken = new Map<string, string>();
     for (const [depId, snap] of depSnapshots) {
-      for (const feature of snap.manifest.features ?? []) {
+      for (const feature of packFeatures(snap.manifest)) {
         for (const name of Object.keys(feature.repositories ?? {})) taken.set(name, depId);
       }
     }
-    for (const feature of manifest.features ?? []) {
+    for (const feature of packFeatures(manifest)) {
       for (const name of Object.keys(feature.repositories ?? {})) {
         const owner = taken.get(name);
         if (owner) {
@@ -378,7 +393,7 @@ export function generatePackFiles(
   function checkServiceNames(): void {
     const serviceNames = (m: PackManifest): string[] => [
       ...Object.keys(m.packServices ?? {}),
-      ...(m.features ?? []).flatMap((f) => Object.keys(f.services ?? {})),
+      ...packFeatures(m).flatMap((f) => Object.keys(f.services ?? {})),
     ];
     const taken = new Map<string, string>();
     for (const [depId, snap] of depSnapshots) {
@@ -422,11 +437,13 @@ export function generatePackFiles(
 
   /** Every file whose exports codegen reads, so one TypeScript program covers them all */
   function exportedFromFiles(): string[] {
-    const features = manifest.features ?? [];
+    const features = packFeatures(manifest);
     const targets = [
       ...features.flatMap((f) => [...Object.values(f.services ?? {}), ...Object.values(f.repositories ?? {})]),
       ...Object.values(manifest.packServices ?? {}),
       ...Object.values(manifest.content?.writers ?? {}),
+      ...Object.values(manifest.blocks ?? {}).flatMap((b) => (b.be ? [b.be] : [])),
+      ...Object.values(manifest.steps ?? {}).flatMap((s) => [s.build, s.trigger?.facet, s.trigger?.register, s.runtime?.handler, s.fe].filter((t): t is string => t !== undefined)),
       ...(manifest.settingsSections ? [manifest.settingsSections] : []),
       ...(manifest.help ? [manifest.help] : []),
     ].map((target) => target.split('#')[0]);
@@ -474,7 +491,7 @@ export function generatePackFiles(
    * The contract is a *type*, so the check is that the module declares one: a name that is only a value is the
    * mistake worth catching, since reading it would silently yield an empty inbox.
    */
-  function contractTarget(feature: PackFeatureEntry, kind: 'system' | 'plugin'): ContractTarget | undefined {
+  function contractTarget(feature: PackFeature, kind: 'system' | 'plugin'): ContractTarget | undefined {
     const declared = kind === 'system' ? feature.system?.contract : feature.plugin?.contract;
     if (!declared) return undefined;
     const label = `Feature "${feature.id}": ${kind}.contract`;
@@ -486,7 +503,7 @@ export function generatePackFiles(
   }
 
   /** The contract each of `features` declares for `kind`, by feature id; a feature that declares none is absent */
-  function contractsOf(features: PackFeatureEntry[], kind: 'system' | 'plugin'): Map<string, ContractTarget> {
+  function contractsOf(features: PackFeature[], kind: 'system' | 'plugin'): Map<string, ContractTarget> {
     return new Map(features.flatMap((feature) => {
       const target = contractTarget(feature, kind);
       return target ? [[feature.id, target] as const] : [];
@@ -494,7 +511,7 @@ export function generatePackFiles(
   }
 
   /** The event types a contract declares, with the feature named on anything the reader throws */
-  function contractEventTypes(feature: PackFeatureEntry, kind: 'system' | 'plugin', read: (file: string, name: string) => string[]): string[] {
+  function contractEventTypes(feature: PackFeature, kind: 'system' | 'plugin', read: (file: string, name: string) => string[]): string[] {
     const contract = contractTarget(feature, kind);
     if (!contract) return [];
     try {
@@ -506,12 +523,12 @@ export function generatePackFiles(
   }
 
   /** The event types a feature's system sends, read from its contract */
-  function sentEventTypes(feature: PackFeatureEntry): string[] {
+  function sentEventTypes(feature: PackFeature): string[] {
     return contractEventTypes(feature, 'system', outgoingEventTypesOf);
   }
 
   /** The event types a plugin's contract declares that any other plugin or system may send it */
-  function acceptedEventTypes(feature: PackFeatureEntry): string[] {
+  function acceptedEventTypes(feature: PackFeature): string[] {
     return contractEventTypes(feature, 'plugin', inboxEventTypesOf);
   }
 
@@ -523,7 +540,209 @@ export function generatePackFiles(
    * **shape** was accepted, not that this sender was allowed to send it. `Message.from` is a label the generated
    * sends stamp, not a claim the bus checks — `docs/goals/wont-do/goal-sender-enforced-audiences.md` says why.
    */
-  function receivedEventTypes(feature: PackFeatureEntry): string[] {
+  /**
+   * The blocks a manifest declares, for the backend registration: the type is the map's key and the kind is
+   * plain data, so the literal is written out rather than imported from a barrel. Only the backend facet is
+   * a reference, and it is the half a backend process can run.
+   */
+  function blockDefinitions(): { imports: string[]; literal: string } {
+    const imports: string[] = [];
+    const items = Object.entries(manifest.blocks ?? {}).map(([type, entry], index) => {
+      const parts = [`type: '${type}'`];
+      if (entry.kind) parts.push(`kind: '${entry.kind}'`);
+      if (entry.be) {
+        const { source, exportName } = valueExport(`Block "${type}": be`, entry.be);
+        const local = `__blockBE_${index}`;
+        imports.push(`import { ${exportName} as ${local} } from '${toImportPath(root, source)}';`);
+        parts.push(`be: ${local}`);
+      }
+      return `    { ${parts.join(', ')} },`;
+    });
+    return { imports, literal: items.length ? `[\n${items.join('\n')}\n  ]` : '' };
+  }
+
+  /**
+   * The same blocks for the frontend registration, carrying the component each declares instead of the
+   * backend facet. A component is taken by its default export, as a plugin's entry is, so the manifest
+   * names a file rather than a `"path#export"` target.
+   */
+  function blockDefinitionsFE(): { imports: string[]; literal: string } {
+    const imports: string[] = [];
+    const items = Object.entries(manifest.blocks ?? {}).map(([type, entry], index) => {
+      const parts = [`type: '${type}'`];
+      if (entry.kind) parts.push(`kind: '${entry.kind}'`);
+      if (entry.fe) {
+        const local = `__blockFE_${index}`;
+        imports.push(`import ${local} from '${toImportPath(root, componentFile(`Block "${type}": fe`, entry.fe))}';`);
+        parts.push(`fe: { component: ${local} }`);
+      }
+      return `    { ${parts.join(', ')} },`;
+    });
+    return { imports, literal: items.length ? `[\n${items.join('\n')}\n  ]` : '' };
+  }
+
+  /**
+   * A step's facets, each as an import and a member of the literal codegen writes. Three callers want
+   * three subsets — the backend registration (build or trigger, plus runtime), the generated build module
+   * a dependent pack loads (build or trigger alone) and the frontend registration (fe) — so each facet is
+   * emitted once here and picked there.
+   *
+   * `handler` and `register` are wrapped in a lazy import rather than imported: a step's runtime module is
+   * what reaches models, the filesystem and the terminal, and it is loaded on the step's first run. The
+   * flags beside it are data, because the brain reads them before deciding how to run the step.
+   */
+  function stepFacet(label: string, target: string, local: string): { import: string; expr: string } {
+    const { source, exportName } = valueExport(label, target);
+    return { import: `import { ${exportName} as ${local} } from '${toImportPath(root, source)}';`, expr: local };
+  }
+
+  /** A function reached through `await import(...)`, so its module loads when the step first needs it */
+  function lazyCall(label: string, target: string, args: string): string {
+    const { source, exportName } = valueExport(label, target);
+    return `async (${args}) => (await import('${toImportPath(root, source)}')).${exportName}(${args})`;
+  }
+
+  /** The steps a manifest declares, for the backend registration: the build-time facet and the runtime */
+  function stepDefinitionsBE(): { imports: string[]; literal: string } {
+    const imports: string[] = [];
+    const items = stepDefinitions.map((step, index) => {
+      const parts = [`type: '${step.type}'`];
+      if (step.kind) parts.push(`kind: '${step.kind}'`);
+      if (step.entry.build) {
+        const facet = stepFacet(`Step "${step.type}": build`, step.entry.build, `__stepBuild_${index}`);
+        imports.push(facet.import);
+        parts.push(`build: ${facet.expr}`);
+      }
+      if (step.entry.trigger) {
+        const facet = stepFacet(`Step "${step.type}": trigger.facet`, step.entry.trigger.facet, `__stepTrigger_${index}`);
+        imports.push(facet.import);
+        const register = step.entry.trigger.register
+          ? `, register: ${lazyCall(`Step "${step.type}": trigger.register`, step.entry.trigger.register, 'node, ctx')}`
+          : '';
+        parts.push(register ? `trigger: { ...${facet.expr}${register} }` : `trigger: ${facet.expr}`);
+      }
+      const runtime = stepRuntimeLiteral(step, index);
+      if (runtime) {
+        imports.push(...runtime.imports);
+        parts.push(`runtime: ${runtime.literal}`);
+      }
+      return `    { ${parts.join(', ')} },`;
+    });
+    return { imports, literal: items.length ? `[\n${items.join('\n')}\n  ]` : '' };
+  }
+
+  /** A step's runtime facet: its flags, and its handler — behind a lazy import unless it declares `sync` */
+  function stepRuntimeLiteral(step: StepDeclaration, index: number): { imports: string[]; literal: string } | undefined {
+    const runtime = step.entry.runtime;
+    if (!runtime) return undefined;
+    const imports: string[] = [];
+    const parts: string[] = [];
+    if (runtime.handler) {
+      const label = `Step "${step.type}": runtime.handler`;
+      if (runtime.sync) {
+        // The one case the module is imported with the entry: the handler's sends have to land in the
+        // brain's own dispatch, and `await import(...)` puts them a tick too late
+        const facet = stepFacet(label, runtime.handler, `__stepHandler_${index}`);
+        imports.push(facet.import);
+        parts.push(`handler: ${facet.expr}`);
+      } else {
+        parts.push(`handler: ${lazyCall(label, runtime.handler, 'tNode, node, ctx, actor')}`);
+      }
+    }
+    for (const flag of ['isAsync', 'waits', 'spawnsSubflow'] as const) {
+      if (runtime[flag]) parts.push(`${flag}: true`);
+    }
+    return parts.length ? { imports, literal: `{ ${parts.join(', ')} }` } : undefined;
+  }
+
+  /**
+   * The module a dependent pack's `abuddy build` loads to validate its flows: the build-time facets alone,
+   * with no runtime handler and nothing frontend. It is generated from the same manifest entries the
+   * backend registration is, so the two cannot name different facets — which is what the hand-written
+   * second barrel could do and what `build-barrel.spec.ts` existed to catch.
+   */
+  function generateStepsBuild(): string {
+    if (stepDefinitions.length === 0) return '';
+    const imports: string[] = [];
+    const items = stepDefinitions.map((step, index) => {
+      const parts = [`type: '${step.type}'`];
+      if (step.kind) parts.push(`kind: '${step.kind}'`);
+      if (step.entry.build) {
+        const facet = stepFacet(`Step "${step.type}": build`, step.entry.build, `__stepBuild_${index}`);
+        imports.push(facet.import);
+        parts.push(`build: ${facet.expr}`);
+      }
+      if (step.entry.trigger) {
+        const facet = stepFacet(`Step "${step.type}": trigger.facet`, step.entry.trigger.facet, `__stepTrigger_${index}`);
+        imports.push(facet.import);
+        parts.push(`trigger: ${facet.expr}`);
+      }
+      return `  { ${parts.join(', ')} },`;
+    });
+    return `${HEADER}
+import type { StepDefinition } from '@abuddy/sdk/steps';
+${imports.join('\n')}
+
+export const steps: StepDefinition[] = [
+${items.join('\n')}
+];
+`;
+  }
+
+  /** The steps a manifest declares, for the frontend registration: what the flow editor draws */
+  function stepDefinitionsFE(): { imports: string[]; literal: string } {
+    const imports: string[] = [];
+    const items = stepDefinitions.filter((step) => step.entry.fe).map((step, index) => {
+      const facet = stepFacet(`Step "${step.type}": fe`, step.entry.fe!, `__stepFE_${index}`);
+      imports.push(facet.import);
+      const parts = [`type: '${step.type}'`];
+      if (step.kind) parts.push(`kind: '${step.kind}'`);
+      parts.push(`fe: ${facet.expr}`);
+      return `    { ${parts.join(', ')} },`;
+    });
+    return { imports, literal: items.length ? `[\n${items.join('\n')}\n  ]` : '' };
+  }
+
+  /**
+   * The artifact types a manifest declares, for the backend registration: the type alone, since both facets
+   * an artifact has are frontend ones. This is what keeps `lucide-vue-next` out of the pack's backend
+   * bundle, where a barrel of `fe: { icon }` literals put the whole icon set.
+   */
+  function artifactDefinitions(): string {
+    const items = Object.keys(manifest.artifacts ?? {}).map((type) => `    { type: '${type}' },`);
+    return items.length ? `[\n${items.join('\n')}\n  ]` : '';
+  }
+
+  /**
+   * The same artifacts for the frontend registration, each with the icon it names and the viewer it
+   * declares. The icons are one import from `lucide-vue-next`, which the host provides the frontend.
+   */
+  function artifactDefinitionsFE(): { imports: string[]; literal: string } {
+    const entries = Object.entries(manifest.artifacts ?? {});
+    if (entries.length === 0) return { imports: [], literal: '' };
+    const icons = [...new Set(entries.map(([, entry]) => entry.icon))].sort();
+    const imports = [`import { ${icons.join(', ')} } from 'lucide-vue-next';`];
+    const items = entries.map(([type, entry], index) => {
+      const facet = [`icon: ${entry.icon}`];
+      if (entry.fe) {
+        const local = `__artifactFE_${index}`;
+        imports.push(`import ${local} from '${toImportPath(root, componentFile(`Artifact "${type}": fe`, entry.fe))}';`);
+        facet.push(`component: ${local}`);
+      }
+      return `    { type: '${type}', fe: { ${facet.join(', ')} } },`;
+    });
+    return { imports, literal: `[\n${items.join('\n')}\n  ]` };
+  }
+
+  /** A manifest path naming a component file, taken by its default export */
+  function componentFile(label: string, manifestPath: string): string {
+    const normalized = manifestPath.split('\\').join('/');
+    const file = join(root, normalized);
+    if (!existsSync(file) || !statSync(file).isFile()) throw new Error(`${label}: no file at ${normalized}`);
+    return normalized;
+  }
+
+  function receivedEventTypes(feature: PackFeature): string[] {
     const own = feature.system ? sentEventTypes(feature) : [];
     return [...new Set([...own, ...acceptedEventTypes(feature)])].sort();
   }
@@ -547,7 +766,7 @@ export function generatePackFiles(
   }
 
   /** A feature's settings module, imported by its default export */
-  function settingsSource(feature: PackFeatureEntry): string {
+  function settingsSource(feature: PackFeature): string {
     const label = `Feature "${feature.id}"`;
     const file = sourceFileOf(feature.settings!);
     if (!file) throw new Error(`${label}: no settings file found at ${feature.settings} (.ts or /index.ts)`);
@@ -555,18 +774,33 @@ export function generatePackFiles(
     return feature.settings!;
   }
 
-  function typesEntry(feature: PackFeatureEntry): string {
+  function typesEntry(feature: PackFeature): string {
     return feature.typesEntry ?? `src/features/${feature.id}/be/types`;
   }
 
-  const stepsRegister = manifest.steps?.register;
+  /**
+   * The steps this pack declares, each with the directory its modules sit in: the dirname of the first
+   * facet it names. A step's `types.ts` and `helpers.ts` are read from there, because they sit beside the
+   * facets rather than being declared — the step's directory is one fact and the manifest states it once,
+   * as the path to a facet.
+   */
+  const stepDefinitions: StepDeclaration[] = Object.entries(manifest.steps ?? {}).map(([type, entry]) => ({
+    type,
+    kind: entry.kind,
+    dsl: entry.dsl,
+    entry,
+    path: stepDir(entry),
+  }));
 
-  const stepDefinitions: StepEntry[] = manifest.steps?.definitions ?? [];
+  function stepDir(entry: StepEntry): string {
+    const first = entry.build ?? entry.trigger?.facet ?? entry.runtime?.handler ?? entry.fe;
+    return first ? dirname(first.split('#')[0]!) : '';
+  }
 
   // ── Backend entry ──────────────────────────────────────────────
 
   function generateBackendEntry(): string {
-    const features = manifest.features ?? [];
+    const features = packFeatures(manifest);
     const systemFeatures = features.filter(f => f.system);
     // Every system's events are read, a system without a plugin's too: an entry that lost them (annotated
     // `: SystemEntry`) would give the facade types nothing but `{ type: string }`
@@ -578,7 +812,7 @@ export function generatePackFiles(
 
     // `incoming` — the extra event types a manifest declares its system accepts — is the only option
     // `packSystem` takes, so there is nothing here to combine
-    const systemExpr = (f: PackFeatureEntry): string => {
+    const systemExpr = (f: PackFeature): string => {
       const incoming = f.system!.events?.incoming;
       const options = incoming?.length ? `, { incoming: ${JSON.stringify(incoming)} }` : '';
       return `packSystem(${systemBinding(f.id)}${options})`;
@@ -604,6 +838,9 @@ export function generatePackFiles(
       : '';
 
     const writerEntries = contentWriterEntries();
+    const blocks = blockDefinitions();
+    const artifacts = artifactDefinitions();
+    const steps = stepDefinitionsBE();
     // The pack's settings sections: a function returning them, called the first time the defaults are read
     const sections = manifest.settingsSections
       ? valueExport('settingsSections', manifest.settingsSections)
@@ -635,9 +872,8 @@ ${hooksImport}
 ${writerEntries.map(([, path, exportName], i) => `import { ${exportName} as __contentWriter_${i} } from '${path}';`).join('\n')}
 ${settingsImports}
 ${manifest.migrations ? `import { migrations } from '${toImportPath(root, manifest.migrations)}';` : ''}
-${stepsRegister ? `import { steps } from '${toImportPath(root, stepsRegister)}';` : ''}
-${manifest.artifacts ? `import { artifacts } from '${toImportPath(root, manifest.artifacts)}';` : ''}
-${manifest.blocks ? `import { blocks } from '${toImportPath(root, manifest.blocks)}';` : ''}
+${steps.imports.join('\n')}
+${blocks.imports.join('\n')}
 import { appliers } from './appliers.ts';
 export { setCompiledDir } from './appliers.ts';
 ${sections ? `import { ${sections.exportName} as __settingsSections } from '${toImportPath(root, sections.source)}';` : ''}
@@ -648,9 +884,9 @@ export const registration: PackRegistration = {
   features: {${featuresLiteral ? `\n${featuresLiteral},\n  ` : ''}},
   services: featureServices,
 ${hasRepositories() ? '  repositories,' : ''}
-${stepsRegister ? '  steps,' : ''}
-${manifest.artifacts ? '  artifacts,' : ''}
-${manifest.blocks ? '  blocks,' : ''}
+${steps.literal ? `  steps: ${steps.literal},` : ''}
+${artifacts ? `  artifacts: ${artifacts},` : ''}
+${blocks.literal ? `  blocks: ${blocks.literal},` : ''}
 ${writerEntries.length > 0 ? `  contentWriters: { ${writerEntries.map(([entity], i) => `${JSON.stringify(entity)}: __contentWriter_${i}`).join(', ')} },` : ''}
   appliers,
 ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
@@ -669,7 +905,7 @@ ${contractCheck}`;
   // ── Frontend entry ─────────────────────────────────────────────
 
   function generateFrontendEntry(): string {
-    const features = manifest.features ?? [];
+    const features = packFeatures(manifest);
     const pluginFeatures = features.filter(f => f.plugin);
 
     // The plugin module is passed through as the author wrote it, keyed by its feature as the backend entry is: the
@@ -677,8 +913,10 @@ ${contractCheck}`;
     const pluginImports = pluginFeatures
       .map(f => `import ${pluginBinding(f.id)} from '${toImportPath(root, f.plugin!.entry)}';`)
       .join('\n');
-    // The feature whose plugin claims it, else the pack's first
-    const defaultFeature = pluginFeatures.find(f => f.plugin?.default) ?? pluginFeatures[0];
+    // The feature whose plugin claims it, and no fallback: `features` is a map, so "the pack's first" would
+    // be whatever key order JSON tooling left behind. A pack claiming none has no default plugin, which the
+    // shell handles (`defaultPlugin: null`, `wantsDefaultPlugin`)
+    const defaultFeature = pluginFeatures.find(f => f.plugin?.default);
     // A designated feature with no plugin is listed for its role, so a frontend send to that role resolves
     const featureEntries = features.filter((f) => f.plugin || f.designation).map((f) => {
       const parts = f.plugin ? [`plugin: ${pluginBinding(f.id)}`] : [];
@@ -689,39 +927,29 @@ ${contractCheck}`;
 
     const fe = manifest.fe ?? {};
 
-    const feExts: Record<string, string> = {};
-    for (const field of ['steps', 'artifacts', 'blocks'] as const) {
-      const manifestField = manifest[field];
-      if (!manifestField) continue;
-      const pathStr = typeof manifestField === 'string' ? manifestField : manifestField.register;
-      const fePath = pathStr.replace(/\.ts$/, '-fe.ts');
-      if (!existsSync(join(root, fePath))) continue;
-      feExts[field] = toImportPath(root, fePath);
-    }
+    const blocks = blockDefinitionsFE();
+    const artifacts = artifactDefinitionsFE();
+    const steps = stepDefinitionsFE();
 
     const extraImports: string[] = [];
     if (fe.tiptapPlugins) {
       extraImports.push(`import { tiptapPlugins } from '${toImportPath(root, fe.tiptapPlugins)}';`);
     }
-    for (const field of ['artifacts', 'blocks', 'steps'] as const) {
-      if (feExts[field]) {
-        extraImports.push(`import { ${field}FE } from '${feExts[field]}';`);
-      }
-    }
+    extraImports.push(...steps.imports, ...artifacts.imports, ...blocks.imports);
     const appExt = Object.entries(fe.appExtensions ?? {});
     for (const [key, extPath] of appExt) {
       extraImports.push(`import __appExtension_${key} from '${toImportPath(root, extPath)}';`);
     }
 
     const regProps: string[] = [];
-    if (feExts.steps) regProps.push(`  steps: stepsFE,`);
+    if (steps.literal) regProps.push(`  steps: ${steps.literal},`);
     if (fe.tiptapPlugins) regProps.push(`  tiptapPlugins,`);
     if (appExt.length) {
       const extObj = appExt.map(([key]) => `${key}: __appExtension_${key}`).join(', ');
       regProps.push(`  appExtensions: { ${extObj} },`);
     }
-    if (feExts.artifacts) regProps.push(`  artifacts: artifactsFE,`);
-    if (feExts.blocks) regProps.push(`  blocks: blocksFE,`);
+    if (artifacts.literal) regProps.push(`  artifacts: ${artifacts.literal},`);
+    if (blocks.literal) regProps.push(`  blocks: ${blocks.literal},`);
 
     if (monacoDslEntries().length > 0) {
       extraImports.push(`import { dslTypes } from './dsl-types-fe.ts';`);
@@ -815,8 +1043,8 @@ export const {
   // compile (a FeatureRef is accepted wherever a send takes one). Frontend-safe: it imports only `@abuddy/sdk/ids`.
   function generateRef(): string {
     const names = [...new Set([
-      ...(manifest.features ?? []).map((f) => f.id),
-      ...[...depSnapshots].flatMap(([depId, snap]) => (snap.manifest.features ?? []).map((f) => `${depId}/${f.id}`)),
+      ...packFeatures(manifest).map((f) => f.id),
+      ...[...depSnapshots].flatMap(([depId, snap]) => packFeatures(snap.manifest).map((f) => `${depId}/${f.id}`)),
       ...Object.keys(_mergeProvenance('plugins', [...depSnapshots])),
       ...Object.keys(HOST_PLUGIN_EVENT_TYPES),
       ...Object.keys(HOST_SYSTEM_EVENT_TYPES),
@@ -855,7 +1083,7 @@ export const getDataDirPath = (name: string): string => _packDataDir('${manifest
   // dependencies declare as `<packId>/<featureId>`. Kept apart from events.ts, which backend systems import,
   // because these reach the frontend SDK.
   function generateFe(): string {
-    const features = manifest.features ?? [];
+    const features = packFeatures(manifest);
     const pluginFeatures = features.filter(f => f.plugin);
     if (!publishesPluginState(manifest, manifest.id)) return '';
     const own = pluginFeatures.map(f => f.id);
@@ -969,7 +1197,7 @@ export function readPluginState(name: PluginName, selector: (state: never) => un
    * what passes between a feature's own two halves is nobody else's to send.
    */
   function generateEvents(): string {
-    const features = manifest.features ?? [];
+    const features = packFeatures(manifest);
     const systemFeatures = features.filter(f => f.system);
     const pluginFeatures = features.filter(f => f.plugin);
     const hasSystems = systemFeatures.length > 0;
@@ -1059,7 +1287,7 @@ export const { broadcastToPlugin, sendToWindow, sendToPlugin, sendToSystem } = /
 
   /** The events each system receives and sends, from its spec; type-only, so facades carry no machines or contexts */
   function generateSystemSpecs(): string {
-    const systemFeatures = (manifest.features ?? []).filter(f => f.system);
+    const systemFeatures = packFeatures(manifest).filter(f => f.system);
     if (!systemFeatures.length) return '';
     const contracts = contractsOf(systemFeatures, 'system');
     const imports = [...contracts]
@@ -1094,7 +1322,7 @@ ${entries}
     // Every feature, not only the ones with a system: the barrel is how one feature names another's types
     // (`#generated/types`), and a feature may have repositories or services and no system at all — whose argument
     // and return types are exactly what its callers need. Having a types module is what decides, below.
-    const features = manifest.features ?? [];
+    const features = packFeatures(manifest);
 
     const perFeature = features.map(f => {
       const lines: string[] = [];
@@ -1125,7 +1353,7 @@ ${nodeEntity}`;
   }
 
   function generateServices(): string {
-    const features = manifest.features ?? [];
+    const features = packFeatures(manifest);
     const packServices = manifest.packServices ?? {};
     const imports: string[] = [];
     const entries: string[] = [];
@@ -1199,7 +1427,7 @@ export type EntityId = EARS.EntityId;
   /** [name, source module specifier, export name] of each repository the manifest declares */
   function repositoryEntries(): [string, string, string][] {
     const seen = new Map<string, string>();
-    return (manifest.features ?? []).flatMap(f => Object.entries(f.repositories ?? {}).map(([name, target]) => {
+    return packFeatures(manifest).flatMap(f => Object.entries(f.repositories ?? {}).map(([name, target]) => {
       if (seen.has(name)) throw new Error(`Repository "${name}" is declared by features "${seen.get(name)}" and "${f.id}"`);
       seen.set(name, f.id);
       const { source, exportName } = valueExport(`Repository "${name}" (feature "${f.id}")`, target);
@@ -1208,7 +1436,7 @@ export type EntityId = EARS.EntityId;
   }
 
   function hasRepositories(): boolean {
-    return (manifest.features ?? []).some(f => Object.keys(f.repositories ?? {}).length > 0);
+    return packFeatures(manifest).some(f => Object.keys(f.repositories ?? {}).length > 0);
   }
 
   /** `repository`, typed with this pack's repositories and its dependencies'. Type-only imports: no cycles. */
@@ -1282,7 +1510,7 @@ export type { Repositories } from './repository.ts';
   }
 
   function generateReferences(): string {
-    const features = manifest.features ?? [];
+    const features = packFeatures(manifest);
     const referenceFeatures = features.filter(f => f.references);
 
     const imports = referenceFeatures.map((f, i) => {
@@ -1439,7 +1667,7 @@ export type { ImportMode } from '@abuddy/sdk/utils';
   }
 
   /** A step's helper: its name and code, or a re-export of its custom helpers module */
-  function emitStepHelper(step: StepEntry): { name?: string; imports: string[]; helper?: string; reExport?: string } | null {
+  function emitStepHelper(step: StepDeclaration): { name?: string; imports: string[]; helper?: string; reExport?: string } | null {
     if (!step.dsl) return null;
     const dsl = step.dsl;
     const name = toCamelCase(step.type);
@@ -1479,15 +1707,13 @@ export type { ImportMode } from '@abuddy/sdk/utils';
     };
   }
 
-  function emitTriggerTrackBuilder(step: StepEntry): { name: string; helper: string } | null {
+  function emitTriggerTrackBuilder(step: StepDeclaration): { name: string; helper: string } | null {
     if (step.kind !== 'trigger') return null;
-    // trackField lives with the build facets (build.ts); older layouts define it in index.ts,
-    // possibly next to a helper build.ts, so check each file until one defines it
-    const match = ['build.ts', 'index.ts']
-      .map(f => join(root, step.path, f))
-      .filter(f => existsSync(f))
-      .map(f => readFileSync(f, 'utf-8').match(/trackField:\s*['"](\w+)['"]/))
-      .find(Boolean);
+    // `trackField` is a member of the TriggerFacet, so it is read from the module the manifest names for it
+    // rather than guessed at by filename
+    const facet = step.entry.trigger?.facet;
+    const file = facet && sourceFileOf(facet.split('#')[0]!);
+    const match = file ? readFileSync(file, 'utf-8').match(/trackField:\s*['"](\w+)['"]/) : null;
     if (!match) return null;
     const trackField = match[1];
     if (trackField === 'event') return null;
@@ -1624,6 +1850,7 @@ ${entries.join('\n')}
     ['src/__generated__/content-runtime.ts', generateContentRuntime()],
     ['src/__generated__/flow-helpers.ts', generateFlowHelpers()],
     ['src/__generated__/step-types.ts', generateStepTypes()],
+    [STEPS_BUILD_MODULE, generateStepsBuild()],
     ['src/__generated__/dsl-types-fe.ts', generateDslTypesFe()],
   ] as [string, string][]).filter(([, content]) => content);
 
