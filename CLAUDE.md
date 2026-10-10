@@ -482,8 +482,12 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # Each step is cached on the inputs it declares (scripts/lib/chain-steps.ts), so a
                          # doc edit runs nothing and a one-package edit runs that package's suite. The E2E
                          # suite is opt-in rather than a gate.
-                         # **Never pipe a backgrounded run**: it buffers output and prints only a failing
-                         # step's, which `| tail` discards and a passing re-run never brings back.
+                         # **Every step that ran leaves its output** in this run's own directory, named on
+                         # the last line (node_modules/.cache/abuddy-chain/runs/<started>Z-<pid>/), with the
+                         # retry of a failed step beside its first attempt rather than over it. So piping a
+                         # run is harmless and the output is still answerable after the terminal has gone.
+                         # The newest `KEEP_RUNS` of them are kept, the writer pruning the rest, and a
+                         # cached run writes no directory at all, having run nothing.
                          # **One run per checkout**, held by a lock beside the stamps
                          # (node_modules/.cache/abuddy-chain/chain.lock): two runs share those stamps, so
                          # each would cache results the other took against a different tree, and `cached`

@@ -6,6 +6,10 @@
 // printed only if it fails, so a failure is not buried under six passing suites, and the summary says
 // where the time went — which otherwise has to be reconstructed from log file mtimes.
 //
+// Every step's output is also **kept**, in this run's own directory (`lib/chain-evidence.ts`), which is what
+// makes the printing a convenience rather than the only copy. A run whose output was piped away, or read in
+// a terminal that has since scrolled, is still answerable afterwards.
+//
 // HOW MUCH OF THE MACHINE IT TAKES, AND WHY THAT IS A BUDGET
 //
 // The steps are parallelisable and the hard part was never the ordering: after `packages:ensure` and
@@ -37,6 +41,7 @@ import * as path from 'node:path';
 import { changedInputs, diffableStamp, firstChange, freshnessSweep, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, REPO_ROOT, stampedRun, stampRecord, unitStaleReason } from '@abuddy/host/build/packages-built';
 import { CHAIN_STEPS, type ChainStep, chainSteps, needsApp, orderedSteps, poolStepName, STEP_TABLES } from './lib/chain-steps.ts';
 import { stampFor, STAMP_DIR, unitFor } from './lib/chain-stamps.ts';
+import { evidenceLine, openRunEvidence, pruneRunEvidence, type RunEvidence } from './lib/chain-evidence.ts';
 import { CHAIN_FLAGS } from './lib/chain-flags.ts';
 import { CHAIN_WAIT_MS, ChainLockHeld, chainInvocation, holdChainLock } from './lib/chain-lock.ts';
 import type { ExclusiveLock } from '@abuddy/host/exclusive-lock';
@@ -198,15 +203,32 @@ function whatMoved(
  * the two unit pools did exactly that. Only steps that declare them get any, because most steps' commands
  * would reject an argument they do not know.
  */
-async function run(step: string, timeout: TimeoutClass, force: readonly string[] = [], env: NodeJS.ProcessEnv = process.env): Promise<Result> {
+async function run(step: string, timeout: TimeoutClass, force: readonly string[] = [], env: NodeJS.ProcessEnv = process.env, label = step): Promise<Result> {
   // `npm test` is the E2E suite and takes no `run`
   const args = step === 'test' ? ['test'] : ['run', step];
   // npm forwards what follows `--` to the script's own command, which is how this chain was given `--all`
   const withForce = force.length === 0 ? args : [...args, '--', ...force];
   // The bound is the step's declared class, so it carries no machine — see `step-timeouts.ts`
   const { code, output, ms, timedOut } = await boundedSpawn('npm', withForce, TIMEOUT_MS[timeout].ms, { env });
-  return { step, ms, code, output, timedOut };
+  const result = { step, ms, code, output, timedOut };
+  // Here rather than where a step's result is read, because this is the one place a step's bytes exist and
+  // every caller passes through it — the never-cached steps, `runAndStamp`, and the classification retry,
+  // whose output had no reader at all. Written as the step ends, so a run that is interrupted keeps what
+  // finished. `label` is the retry's one reason to differ from the step: it must not land on the first
+  // attempt's file, which is the overwrite that made the chain's own diagnostic destructive.
+  evidence?.keep(label, result);
+  return result;
 }
+
+/**
+ * Where this run's per-step output goes, assigned once `main` holds the lock.
+ *
+ * One binding rather than a parameter threaded through `run` and `runAndStamp`: neither decides anything
+ * about it, and a parameter on both would be two signatures carrying a thing they only pass on. Being
+ * `undefined` until then is also what keeps `--dry` writing nothing — by construction, since a dry plan
+ * returns before this is set, rather than by a branch somebody has to remember.
+ */
+let evidence: RunEvidence | undefined;
 
 
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
@@ -446,8 +468,11 @@ async function main(): Promise<void> {
     return;
   }
 
+  // After the lock, which is what makes one run the only writer of either store
+  evidence = openRunEvidence({ startedAt: new Date(started), pid: process.pid });
   const dispatchSweep = freshnessSweep();
   pruneStamps();
+  pruneRunEvidence();
 
   // **Read before the run, not after it.** The drift report quotes this to whoever is about to type a
   // number, and a reading taken as the run returns is of this run's own teardown: measured 2026-10-08, this
@@ -551,7 +576,7 @@ async function main(): Promise<void> {
       // chain ran zero tests and called the step green. `recordsVerdict` (`scripts/lib/unit-pool.ts`) carries
       // the evidence and why a *build* under the same re-run still records.
       const retry = await run(step.name, step.timeout, all ? step.forceArgs ?? [] : [],
-        { ...envFor(step), [DIAGNOSTIC_RUN_ENV]: '1' });
+        { ...envFor(step), [DIAGNOSTIC_RUN_ENV]: '1' }, `${step.name}.retry`);
       // The verdict reports what the chain cost. The retry is a diagnostic after it, so a 60s re-run must not
       // land on the one number a reader compares between runs.
       classifyMs = retry.ms;
@@ -661,6 +686,9 @@ async function main(): Promise<void> {
   if (outgrown !== '') console.log(outgrown);
 
   console.log(`\n${verdictText()} in ${secs(Date.now() - started - classifyMs)}${reran}${skipped}${` on ${cores(budget)}`}${floor}`);
+  // After the verdict, so it is the last thing on screen and a reader who scrolled past everything else
+  // still has it. Only when there is some: a fully cached run ran nothing and made no directory.
+  if (evidence !== undefined && evidence.kept() > 0) console.log(dim(evidenceLine(evidence.dir, evidence.kept())));
   // Not process.exit(): it drops whatever stdout has still to flush, and the failing step's captured output
   // printed just above is the one thing here worth reading. Measured: piped, process.exit() delivers 64KB
   // of a 500KB write, and @app/default-setup's suite output alone is 654KB.

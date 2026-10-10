@@ -15,6 +15,9 @@ import { commandText, rootScripts } from './npm-scripts.ts';
 /**
  * Beside the package builds' and the pools' stamps, in the same cache directory and the same format, so one
  * `fingerprintUnit` and one reader cover all three.
+ *
+ * It holds two other things, each named so that `pruneStamps` passes over it: the chain's lock
+ * (`chain-lock.ts`) and a directory per run of what its steps said (`chain-evidence.ts`).
  */
 export const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-chain');
 
@@ -34,7 +37,14 @@ export const STAMP_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'abuddy-
  * pools' *"give no two of their projects the same stamp"* exists to prevent; this store was the only one of
  * the three without the check.
  */
-export const stampFor = (step: string): string => path.join(STAMP_DIR, `${step.replace(/[:/]/g, '-')}.json`);
+export const stampFor = (step: string): string => path.join(STAMP_DIR, `${flatStepName(step)}.json`);
+
+/**
+ * The flattening itself, so that a step is spelled one way in everything this directory holds — its stamp
+ * and, beside it, the evidence file `chain-evidence.ts` writes. Two copies of it would let the two names for
+ * one step drift apart, which is the thing a reader of the directory would have to know about.
+ */
+export const flatStepName = (step: string): string => step.replace(/[:/]/g, '-');
 
 /**
  * A chain step as a build unit: the same shape, so it goes through the same freshness check.
