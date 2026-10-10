@@ -20,7 +20,7 @@ vi.mock('node:fs', async (importOriginal) => {
   };
 });
 
-const { writePrivateFile } = await import('../../src/secrets/private-file.ts');
+const { writePrivateFile } = await import('../src/private-file.ts');
 
 const platform = process.platform;
 const dirs: string[] = [];

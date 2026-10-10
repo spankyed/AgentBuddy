@@ -52,7 +52,7 @@ describe('the checkout a pack\'s @abuddy packages come from', () => {
 describe('the commands that refresh a checkout before loading its packages', () => {
   const source = (file: string) => fs.readFileSync(path.join(import.meta.dirname, '..', '..', 'src', file), 'utf-8');
 
-  it.each(['commands/test.ts', 'commands/run.ts', 'commands/build.ts'])('%s asks the checkout to build', (file) => {
+  it.each(['commands/test.ts', 'commands/dev.ts', 'commands/build.ts'])('%s asks the checkout to build', (file) => {
     expect(source(file)).toContain('ensureCheckoutPackages(');
   });
 

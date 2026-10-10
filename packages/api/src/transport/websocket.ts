@@ -10,6 +10,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { SERVER_CONFIG, apiToken, apiTokenIsOwn, isApiToken } from '@/boot/config';
 import { appPacks, appStore, backendActor } from '@/runtime';
 import { reloadPackById } from '@abuddy/host/packs/runtime';
+import { writePrivateFile } from '@abuddy/host/private-file';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { ApiEndpoint } from '@abuddy/host/process-liveness';
 import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
@@ -86,17 +87,6 @@ function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) 
 
   res.writeHead(404);
   res.end();
-}
-
-/**
- * Writes a file only this user can read: a new file created with those permissions, then moved over any file already
- * there, so neither an existing file's permissions nor a half-written one is ever what a reader finds.
- */
-function writePrivateFile(file: string, content: string): void {
-  const temp = `${file}.${process.pid}.tmp`;
-  fs.rmSync(temp, { force: true });
-  fs.writeFileSync(temp, content, { mode: 0o600, flag: 'wx' });
-  fs.renameSync(temp, file);
 }
 
 /**

@@ -19,9 +19,29 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { _electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { appHelper, attachToApp, readDevToolsPort, waitForAppReady, type AttachedApp } from '@abuddy/testing';
+import { appHelper, attachToApp, waitForAppReady, type AttachedApp } from '@abuddy/testing';
 
 const APP_ROOT = path.resolve(import.meta.dirname, '../../..');
+
+/**
+ * The port Chromium picked, read here rather than imported.
+ *
+ * `--remote-debugging-port=0` means it chooses, and it writes the number into `DevToolsActivePort` in the
+ * data dir. Six lines inline, because the production reader belongs to the CLI (`app/session-file.ts`) and
+ * its one caller is the command that publishes a session — a test reading a file it just caused to be
+ * written needs nothing from that module.
+ */
+async function devToolsPort(dataDir: string, timeoutMs = 15_000): Promise<number> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const port = Number(fs.readFileSync(path.join(dataDir, 'DevToolsActivePort'), 'utf-8').split('\n')[0]);
+      if (Number.isInteger(port) && port > 0) return port;
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(`No debug port appeared in ${dataDir} within ${timeoutMs}ms`);
+}
 
 /** The main window among the app's targets, by the same predicate the fixture and the attach path use. */
 async function mainWindow(app: ElectronApplication): Promise<Page> {
@@ -57,7 +77,7 @@ test.describe('a connected page and a launched one', () => {
 
     // Read rather than assumed: `--remote-debugging-port=0` means Chromium picks one, and the number it
     // picked is the only thing that can say which
-    attached = await attachToApp({ debugPort: await readDevToolsPort(dataDir) });
+    attached = await attachToApp({ debugPort: await devToolsPort(dataDir) });
   });
 
   test.afterAll(async () => {
@@ -90,7 +110,7 @@ test.describe('a connected page and a launched one', () => {
   test('survive the connection going away, which is what a launch cannot', async () => {
     // The row that decided the design: a launched `Page` dies with its window, where a CDP client can let
     // go and come back. A session that reconnects is why an app outlives the questions asked of it.
-    const port = await readDevToolsPort(dataDir);
+    const port = await devToolsPort(dataDir);
     await attached.detach();
     attached = await attachToApp({ debugPort: port });
     expect(await attached.page.evaluate(() => (window as unknown as Record<string, string>).__attachParity))

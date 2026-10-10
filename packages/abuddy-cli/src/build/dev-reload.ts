@@ -7,7 +7,7 @@ import { API_HOST, API_TOKEN_HEADER, errorMessage } from '@abuddy/sdk/utils/pure
 /**
  * Asking a running app to reload a pack's backend: the `/dev/reload` client, and what one came to.
  *
- * It lives beside the bundlers rather than in `commands/run`, because two commands ask it — `run` after
+ * It lives beside the bundlers rather than in `commands/dev`, because two commands ask it — `run` after
  * reinstalling, and `build --watch` after rebuilding the runtime — and `run` already imports `build`, so
  * the second caller reaching into the first would close a cycle.
  */

@@ -13,7 +13,8 @@
  */
 import * as fs from 'node:fs';
 import type { Page } from '@playwright/test';
-import { DRIVE_REF, createSession, type SessionPage } from './session.ts';
+import { DRIVE_REF, createSession, type EngineSession, type SessionPage } from './session.ts';
+import { appHelper, waitForAppReady } from '../index.ts';
 import { ENGINE_TOKEN_HEADER, isPixels, startEngineServer, type ExtraVerbs } from './server.ts';
 import { engineRecipe, publishEngineMarker, removeEngineMarker } from './marker.ts';
 import { connectApiClient } from './api-client.ts';
@@ -184,6 +185,68 @@ export const checkedViewport = (viewport: { width: number; height: number }): { 
  * the fixture's copy is what `describeFailure` quotes if the session fails, and draining it would take
  * those errors out of that report. Two listeners cost nothing and leave the fixture untouched.
  */
+/**
+ * A session over an app something else is holding, for one question or many.
+ *
+ * **This is the whole of what attaching adds**, and it is assembled from the same four pieces a launched
+ * session is: the page (over CDP rather than from a launch), the app helper over it, the session's own
+ * connection to the API, and the log. `createSession` cannot tell which it was given, which is the property
+ * the design rests on.
+ *
+ * Two of the launched session's ingredients are not available and are not faked. There is **no window**, so
+ * `setViewport` sets the emulated viewport rather than moving a window somebody is looking at — the right
+ * answer for a connection that did not open it. And there are **no historical renderer errors**: a listener
+ * wired on connect sees everything from then on, where the fixture's array goes back to the launch. Both are
+ * stated rather than papered over, because a session that quietly answers from less is worse than one that
+ * says what it has.
+ */
+export async function attachedSession(options: AttachedSessionOptions): Promise<AttachedSession> {
+  const { attachToApp } = await import('./cdp-page.ts');
+  const { page, detach } = await attachToApp({ debugPort: options.debugPort });
+  await waitForAppReady(page);
+
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(`[page error] ${error.stack ?? error.message}`));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(`[console.error] ${message.text()}`);
+  });
+
+  const sessionPage = asSessionPage(page, appHelper(page, options.screenshotDir));
+  const api = await connectApiClient(await apiAddressFromWindow(sessionPage));
+  await api.claim(DRIVE_REF);
+
+  const session = createSession({
+    page: sessionPage,
+    api,
+    takeErrors: () => errors.splice(0, errors.length),
+    // Read per call, as the launched session does: the app writes to it for as long as it is up
+    readLog: () => (options.logPath !== undefined && fs.existsSync(options.logPath) ? fs.readFileSync(options.logPath, 'utf-8') : ''),
+  });
+
+  return {
+    session,
+    // Lets go without closing: the app was not this connection's to open and is not its to end
+    detach: async () => {
+      api.close();
+      await detach();
+    },
+  };
+}
+
+export interface AttachedSessionOptions {
+  /** From the app's session file — the port it published */
+  readonly debugPort: number;
+  /** Where `/screenshot` writes */
+  readonly screenshotDir: string;
+  /** The app's log, which `/logs` reads. Absent means `/logs` answers empty rather than guessing */
+  readonly logPath?: string;
+}
+
+export interface AttachedSession {
+  readonly session: EngineSession;
+  readonly detach: () => Promise<void>;
+}
+
 export async function runDriveEngine(options: DriveEngineOptions): Promise<void> {
   const { page, app, outputDir, logPath, log = (line: string) => console.log(line) } = options;
 

@@ -103,14 +103,50 @@ function handleHotReload() {
       /** Spawn a new electron process */
       const inspectMode = process.env.ELECTRON_INSPECT === 'true';
       const electronArgs = inspectMode ? ['--inspect', '.'] : ['.'];
-      
+
       if (inspectMode) {
         console.log('Starting Electron with Node.js inspector on port 9229');
       }
-      
+
+      // `npm start` is a development run by definition (this whole hook is behind that check), so the app
+      // it spawns is attachable and publishes a session. The port is Chromium's to choose — a fixed one
+      // collides with whatever holds it and with a second app
+      electronArgs.push('--remote-debugging-port=0');
+
       electronApp = spawn(String(electronPath), electronArgs, {
         stdio: 'inherit',
       });
+
+      /**
+       * The session file, so `abuddy drive` can reach the app this loop is holding — which is the half
+       * worth having: `abuddy dev` serves a *pack's* frontend, where this one serves the renderer itself,
+       * so it is the app you are most often looking at.
+       *
+       * **The pid is Electron's here, where `abuddy dev` records its own.** The field means "the process to
+       * signal to end this", and the direction differs between the two: `dev` is a supervisor whose
+       * teardown closes the app, while this watcher exits *with* Electron (the listener below). So in both
+       * cases one signal ends the app and the tooling holding it.
+       *
+       * Fire and forget: the port appears a moment after launch, and a run that never becomes attachable
+       * is still a perfectly good dev loop. It is republished on every restart, because each rebuild
+       * spawns a new app with a new port.
+       */
+      const spawned = electronApp;
+      void (async () => {
+        try {
+          const { publishSession, readDevToolsPort } = await import('@abuddy/host/dev-session');
+          const { resolveAppContext } = await import('@abuddy/sdk/env');
+          const { userDataDir } = resolveAppContext();
+          const debugPort = await readDevToolsPort(userDataDir);
+          if (spawned !== electronApp) return;  // a rebuild replaced it while the port was being waited for
+          const unpublish = publishSession({
+            debugPort, dataDir: userDataDir, supervisorPid: spawned.pid ?? process.pid, startedBy: 'dev',
+          });
+          spawned.addListener('exit', unpublish);
+        } catch (error) {
+          console.warn(`[dev] not attachable: ${error instanceof Error ? error.message : error}`);
+        }
+      })();
 
       /** Stops the watch script when the application has been quit */
       electronApp.addListener('exit', process.exit);

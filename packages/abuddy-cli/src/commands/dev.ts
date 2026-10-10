@@ -4,13 +4,15 @@ import * as path from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { build } from './build';
-import { findPackRoot, readManifest } from '../utils';
+import { findPackRootOrNone, readManifest } from '../utils';
+import { publishSession, readDevToolsPort, startedByFromEnv } from '@abuddy/host/dev-session';
 import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
 import { reloadPack, type AppPlace, type DevReload } from '../build/dev-reload.ts';
 import { cliDirs, parseAppFlags, resolveLaunchApp, type AppTarget } from '../app/app-target';
 import { profileFor, parseProfileFlags, removeProfile, PROFILE_USAGE } from '../app/profiles';
 import { copySecretsInto } from '../app/profile-secrets.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 import type { AppEnv } from '@abuddy/sdk/env';
 import { readApiEndpoint } from '@abuddy/host/process-liveness';
 import { withoutSourceCondition } from '@abuddy/host/build/source-resolution';
@@ -18,10 +20,15 @@ import { installPackFromLocal, readHostInfo } from '@abuddy/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
 
 const HELP = `
-Usage: abuddy run [--app-root <path> | --app beta]
+Usage: abuddy dev [--app-root <path> | --app beta]
 
-Launch AgentBuddy with this pack installed, and keep it in step with your edits: FE changes
-reload the window through Vite, BE changes rebuild, reinstall and reload in place.
+Launch AgentBuddy and hold it. With a pack in hand it is installed and kept in step with your
+edits: FE changes reload the window through Vite, BE changes rebuild, reinstall and reload in
+place. Run from a checkout with no pack above it, it launches the app and holds it, and that
+is all — no build, no install, no watcher and no dev server.
+
+A development app is launched with a debug port and publishes <dataDir>/session.json, which is
+what lets \`abuddy drive\` ask it questions instead of launching one of its own.
 
 An app already running on the same data dir is used as it is; otherwise one is launched, and
 closing this command closes the app it started.
@@ -34,7 +41,7 @@ ${PROFILE_USAGE}
 
 With no app named: the AgentBuddy checkout this pack is built against, if there is one, else the newest
 Beta build its hostVersion accepts. Nothing is remembered and nothing is asked.
-With no profile named, the shared development data dir is used, as before.
+With no profile named, the shared development data dir is used.
 
 Note that --app beta reloads by restarting rather than in place: a packaged build refuses a
 pack reload, and publishes no API token for one.
@@ -93,14 +100,33 @@ function appLaunchEnv(place: AppPlace): NodeJS.ProcessEnv {
   return out;
 }
 
+/**
+ * The debug port, or nothing — the one gate between this design and an open port on a user's app.
+ *
+ * **It is computed from the resolved environment and from nothing else.** Not an argv flag anyone can pass,
+ * not a session file's contents, not a variable: `development` only, so a `test` context (every `abuddy
+ * test` run) and a packaged build a user installed never get one. `--remote-debugging-port` is
+ * unauthenticated control of the renderer, and the renderer holds the app's API token, so the gate is the
+ * load-bearing part rather than a precaution. Chromium binds it to loopback by default and nothing here
+ * widens that.
+ *
+ * `0` means Chromium picks a free port, which is the only safe way to ask: a fixed one collides with
+ * whatever else holds it and with a second app. It then writes the number it picked into the data dir,
+ * which `readDevToolsPort` reads.
+ */
+export function debugPortArgs(place: AppPlace): string[] {
+  return resolveAppContext(place).env === 'development' ? ['--remote-debugging-port=0'] : [];
+}
+
 /** Starts the app. A checkout runs its own sources with its own electron, so a pack needs none installed. */
 function launchApp(app: AppTarget, place: AppPlace): ChildProcess {
   const options = { env: appLaunchEnv(place), stdio: 'ignore' as const, detached: false };
+  const debug = debugPortArgs(place);
   if (app.kind === 'source') {
     const electron = createRequire(path.join(app.root, 'package.json'))('electron') as string;
-    return spawn(electron, [app.root], { ...options, cwd: app.root });
+    return spawn(electron, [app.root, ...debug], { ...options, cwd: app.root });
   }
-  return spawn(app.executable, [], options);
+  return spawn(app.executable, debug, options);
 }
 
 /** Resolves once the child is gone, killing it outright if it will not go. */
@@ -134,7 +160,7 @@ interface SessionHooks {
   teardown?: () => Promise<void>;
 }
 
-export async function run(args: string[]) {
+export async function dev(args: string[]) {
   const hooks: SessionHooks = {};
   try {
     await session(args, hooks);
@@ -153,15 +179,27 @@ async function session(args: string[], hooks: SessionHooks) {
     return;
   }
 
-  const root = findPackRoot(process.cwd());
-  const srcDir = path.join(root, 'src');
-
-  if (!fs.existsSync(srcDir)) {
+  /**
+   * **The pack is optional, and that is the whole of what `dev` does without one.**
+   *
+   * A checkout with no `abuddy.json` above it is a first-class case rather than an error: it is how this
+   * repo drives its own app, and refusing it would leave the app most often looked at the one command that
+   * cannot hold it. With no pack there is nothing to build, install, watch or serve, so what is left is the
+   * launch, the session file and the hold — and every pack-shaped step below hangs off `pack` being there.
+   *
+   * `src/` is required only when there is something to watch: a pack without it cannot be developed, where
+   * a checkout without one is not a pack at all.
+   */
+  const root = findPackRootOrNone(process.cwd());
+  const pack = root === undefined ? undefined : {
+    root,
+    srcDir: path.join(root, 'src'),
+    manifest: readManifest(root),
+    feEntry: findFEEntry(root),
+  };
+  if (pack && !fs.existsSync(pack.srcDir)) {
     throw new Error('No src/ directory to watch');
   }
-
-  const manifest = readManifest(root);
-  const feEntry = findFEEntry(root);
 
   const { mode, withSecrets, rest } = parseProfileFlags(args);
   const flags = parseAppFlags(rest);
@@ -170,9 +208,9 @@ async function session(args: string[], hooks: SessionHooks) {
   // is how a removed or misspelled flag reads as having been obeyed.
   const unknown = flags.args.filter(arg => arg.startsWith('-'));
   if (unknown.length > 0) {
-    throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See abuddy run --help.`);
+    throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See abuddy dev --help.`);
   }
-  const app = await resolveLaunchApp({ flags, hostVersion: manifest.hostVersion ?? '*', from: root });
+  const app = await resolveLaunchApp({ flags, hostVersion: pack?.manifest.hostVersion ?? '*', from: pack?.root ?? process.cwd() });
   const env = appEnv(app);
   const profile = profileFor(mode, cliDirs());
   if (profile?.created && withSecrets) {
@@ -189,6 +227,38 @@ async function session(args: string[], hooks: SessionHooks) {
   let server: { close: () => unknown } | undefined;
   let markerFor: string | undefined;
 
+  /**
+   * Publishes `<dataDir>/session.json`, so something can attach to the app this command holds.
+   *
+   * **The pid is this process's**, not the app's: this is the supervisor, and signalling it runs the
+   * teardown below, which closes the app it holds — one signal ends both. Nothing goes the other way, so a
+   * record naming the app would free the data dir and leave this process, its watcher and its dev server
+   * running with nothing to serve.
+   *
+   * A launch with no debug port publishes nothing. That is the honest answer rather than a record with a
+   * hole in it: the file means "attachable", and a `test` or packaged context is not.
+   */
+  let unpublish: (() => void) | undefined;
+  async function publish(spawned: ChildProcess): Promise<void> {
+    if (debugPortArgs(place).length === 0) return;
+    try {
+      const debugPort = await readDevToolsPort(userDataDir);
+      unpublish = publishSession({
+        debugPort,
+        apiPort: readApiEndpoint(apiPortFile)?.port,
+        dataDir: userDataDir,
+        supervisorPid: process.pid,
+        startedBy: startedByFromEnv(),
+      });
+      console.log(`  attachable on debug port ${debugPort} — \`abuddy drive\` can reach it\n`);
+    } catch (error) {
+      // A port that never appeared leaves the app perfectly usable and only un-drivable, so this is a
+      // warning rather than a failed launch: whoever wanted to watch the app still has it
+      void spawned;
+      console.warn(`  not attachable: ${errorMessage(error)}\n`);
+    }
+  }
+
   // One-shot: `teardown` calls this and then exits, which fires the `exit` handler and would otherwise
   // close the Vite server and remove the marker a second time
   let cleanedUp = false;
@@ -196,6 +266,9 @@ async function session(args: string[], hooks: SessionHooks) {
     if (cleanedUp) return;
     cleanedUp = true;
     if (markerFor !== undefined) removeDevServerMarker(userDataDir, markerFor);
+    // Before the app goes: a session file naming a dead supervisor is a miss rather than a lie, but
+    // leaving one is leaving a record of something that is not there
+    unpublish?.();
     server?.close();
     // Only one this command launched: an app that was already up outlives it
     child?.kill();
@@ -237,11 +310,13 @@ async function session(args: string[], hooks: SessionHooks) {
     console.log(`  abuddy db --data-dir "${profile.dir}" to read it\n`);
   }
 
-  // The build and the app both read the @abuddy packages' dist; from a checkout that dist is built on demand
-  ensureCheckoutPackages(root);
+  if (pack) {
+    // The build and the app both read the @abuddy packages' dist; from a checkout that dist is built on demand
+    ensureCheckoutPackages(pack.root);
 
-  console.log('Running initial build...\n');
-  await build([]);
+    console.log('Running initial build...\n');
+    await build([]);
+  }
 
   // An app already on this data dir is the one to use: a second Electron over the same LMDB store is not a
   // choice anyone wants. Only an app this command started is one it may close.
@@ -252,21 +327,33 @@ async function session(args: string[], hooks: SessionHooks) {
     child = launchApp(app, place);
     await waitForApi(apiPortFile, child);
     console.log(`  up on ${env} data in ${userDataDir}\n`);
+    // Published only for an app this command started, and after its API is up so the session carries the
+    // port a driver needs. An app that was already here has a session of its own or is not attachable, and
+    // either way is not this command's to describe.
+    await publish(child);
+  }
+
+  if (!pack) {
+    // The launch and the hold, which is all there is without a pack. Returning here is what makes every
+    // step below — install, dev server, watchers, reload — a pack's rather than the command's.
+    console.log('No pack here: holding the app. Ctrl-C to close it.\n');
+    await new Promise(() => {});
+    return;
   }
 
   // After the app has started, so `readHostInfo` reads what this app records rather than a previous one's
   console.log(`Installing pack to the ${env} app...`);
-  const result = await installToApp(root, place);
+  const result = await installToApp(pack.root, place);
   console.log(`  ${result.dir}\n`);
 
-  if (!feEntry) {
+  if (!pack.feEntry) {
     console.log('No FE entry found. Falling back to watch + rebuild + reload mode.\n');
-    await watchRebuildFallback(root, srcDir, manifest.id, place);
+    await watchRebuildFallback(pack.root, pack.srcDir, pack.manifest.id, place);
     return;
   }
 
   const vite = await import('vite');
-  server = await vite.createServer(await packDevServerConfig(root, feEntry));
+  server = await vite.createServer(await packDevServerConfig(pack.root, pack.feEntry));
 
   const devServer = server as import('vite').ViteDevServer;
   await devServer.listen();
@@ -278,17 +365,17 @@ async function session(args: string[], hooks: SessionHooks) {
   }
 
   // Outside the installed pack: its directory is the verified pack, replaced by every install below
-  writeDevServerMarker(userDataDir, manifest.id, { port, pid: process.pid });
-  markerFor = manifest.id;
+  writeDevServerMarker(userDataDir, pack.manifest.id, { port, pid: process.pid });
+  markerFor = pack.manifest.id;
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  fs.watch(path.join(root, 'abuddy.json'), () => {
+  fs.watch(path.join(pack.root, 'abuddy.json'), () => {
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(async () => {
       console.log('\nabuddy.json changed — regenerating entries...');
       try {
         const { generateEntries } = await import('./generate-entries');
-        await generateEntries(['--force'], root);
+        await generateEntries(['--force'], pack.root);
       } catch (err) {
         console.error(`Regeneration failed: ${err instanceof Error ? err.message : err}`);
       }
@@ -298,7 +385,7 @@ async function session(args: string[], hooks: SessionHooks) {
   // BE file watcher: rebuild → install → hot-reload backend
   let beDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   let beReloading = false;
-  fs.watch(srcDir, { recursive: true }, (_eventType, filename) => {
+  fs.watch(pack.srcDir, { recursive: true }, (_eventType, filename) => {
     if (!filename || filename.endsWith('.vue') || filename.endsWith('.css')) return;
     if (!filename.endsWith('.ts') && !filename.endsWith('.tsx')) return;
     if (filename.endsWith('.d.ts')) return;
@@ -311,9 +398,9 @@ async function session(args: string[], hooks: SessionHooks) {
         console.log('Rebuilding...');
         await build([]);
         console.log('Installing...');
-        await installToApp(root, place);
+        await installToApp(pack.root, place);
         console.log('Triggering BE reload...');
-        reportReload(await reloadPack(manifest.id, place), 'BE changes');
+        reportReload(await reloadPack(pack.manifest.id, place), 'BE changes');
       } catch {
         console.warn('Rebuild failed. Fix the error to apply BE changes.\n');
       } finally {

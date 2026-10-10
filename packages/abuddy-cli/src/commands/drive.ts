@@ -27,11 +27,13 @@ import * as path from 'node:path';
 import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process';
 import { findPackRootOrNone, readManifest } from '../utils';
 import { cliDirs, parseAppFlags, resolveLaunchApp } from '../app/app-target';
-import { profileFor, profileInUse, parseProfileFlags, removeProfile, PROFILE_USAGE } from '../app/profiles';
+import { profileDir, profileFor, profileInUse, parseProfileFlags, removeProfile, PROFILE_USAGE, type ProfileMode } from '../app/profiles';
+import { askAttached, attachableApp, type AttachableApp } from '../app/drive-attach.ts';
+import { resolveAppContext } from '@abuddy/sdk/env';
 import { ONE_SHOT_ASKS, type AskName, type EngineAsk } from '../app/drive-engine.ts';
 import { oneShot } from '../app/drive-one-shot.ts';
 import { fixtureEnv } from './test';
-import { appEnv } from './run';
+import { appEnv } from './dev';
 import { copySecretsInto } from '../app/profile-secrets.ts';
 import { resolvePlaywrightCli } from '../app/playwright';
 import { renderTemplate } from '../templates.ts';
@@ -366,6 +368,36 @@ function driveTarget(cwd: string): DriveTarget {
   return { root: checkout, hostVersion: '*' };
 }
 
+/**
+ * Which data dir a question is asked of: the profile named, or the development one.
+ *
+ * It resolves the *dir* without creating it, which is the difference that matters on this path. A miss here
+ * falls through to the launch below, and a command that then launched would have minted a profile on the way
+ * to deciding it could not use one — a directory left behind by a question that did nothing.
+ */
+function attachPlace(mode: ProfileMode): { env: 'development'; userDataDir?: string } {
+  if (mode.kind !== 'named') return { env: 'development' };
+  return { env: 'development', userDataDir: profileDir(cliDirs(), mode.name) };
+}
+
+/** What a one-shot asks of a session, by the flag that was passed. */
+async function answerAttached(
+  live: AttachableApp, root: string, ask: AskName, argument: string | undefined,
+): Promise<{ line: string; code: number }> {
+  const screenshotDir = path.join(root, DRIVE_DIR, 'screenshots');
+  const answer = await askAttached(live, root, screenshotDir, async (session) => {
+    if (ask === 'state') return session.state();
+    if (argument === undefined) throw new Error(`--${ask} needs something to run`);
+    return ask === 'eval' ? session.evaluate(argument) : session.qx(argument);
+  });
+  const result = answer.value as { ok?: boolean; value?: unknown; error?: string };
+  // The app it answered from, and who started it — the case worth distinguishing is an app a previous
+  // question left running, which nobody is minding
+  console.error(`Attached to the ${live.session.startedBy === 'drive' ? 'app a previous question started' : 'development app'} (pid ${answer.supervisorPid}).`);
+  if (result?.ok === false) return { line: JSON.stringify(result), code: 1 };
+  return { line: JSON.stringify(result?.value ?? result), code: 0 };
+}
+
 export async function drive(args: string[]) {
   if (args.includes('--help') || args.includes('-h')) {
     console.log(HELP);
@@ -386,6 +418,26 @@ export async function drive(args: string[]) {
   if (attach && asking === undefined) throw new Error('--attach needs a question: add --eval, --query or --state.');
 
   const resultsDir = path.join(root, DRIVE_DIR, 'results');
+
+  /**
+   * **The fast path: an app that published a session file is asked over a connection.**
+   *
+   * Above every one of the steps below, because none of them applies: nothing is built, no app is resolved
+   * and nothing is launched — and what answers is not this command's to close. It falls through to the rest
+   * when there is no live session, which keeps today's behaviour for a cold checkout rather than replacing
+   * it before there is something to replace it with.
+   */
+  if (asking !== undefined && !serve && !attach) {
+    const dataDir = resolveAppContext(attachPlace(mode)).userDataDir;
+    const live = attachableApp(dataDir);
+    if (live) {
+      const outcome = await answerAttached(live, root, ask as AskName, argument);
+      console.log(outcome.line);
+      process.exitCode = outcome.code;
+      return;
+    }
+  }
+
   /**
    * `--attach` asks a session someone else is running, so it builds nothing, resolves no app and launches
    * nothing — and it must not close what it did not start. Short-circuited here, above every one of those.

@@ -37,6 +37,14 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // read every key the user has stored. Published as a subpath so the api's spec can mock it by specifier
   // rather than by a path into this package's src/ (`repo-checks/tests/spec-placement.spec.ts`).
   ['@abuddy/host/secrets/vault', 'host-only — a pack that could open the vault would read every stored key'],
+  // A 0600 atomic write. A pack has `services.filesystem` for files the user asked it to touch; this one
+  // writes the app's own private records — the API's token, the secrets store, the dev session — and a pack
+  // that could call it could write them.
+  ['@abuddy/host/private-file', 'host-only — it writes the app\'s own private records, not a pack\'s files'],
+  // The dev session file: what a launcher publishes so something can attach to the app it holds, including
+  // the debug port. Only a launcher writes one and only a driver reads one, and a pack is neither; a pack
+  // that could read it would have the port that controls the renderer.
+  ['@abuddy/host/dev-session', 'host-only — only a launcher publishes one and only a driver reads one'],
   // Build-time only: consumed by vite configs and the abuddy CLI, never by a
   // loaded pack's runtime code.
   ['@abuddy/host/build/shared-deps', 'build-time only'],

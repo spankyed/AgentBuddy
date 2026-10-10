@@ -31,7 +31,7 @@ npm run drive -- drive/notes.ts  # just one
 **It drives the *built* app**, loaded from `file://` — `npm run build:app` and `npm run compile` are what
 put the thing you are looking at on disk, and the run warns when either has gone stale rather than
 quietly showing you the previous build. So this is not the tool for a question about a dev server: nothing
-here stands one up, and `npm start`'s renderer and `abuddy run`'s pack server are not in the picture.
+here stands one up, and `npm start`'s renderer and `abuddy dev`'s pack server are not in the picture.
 
 **Every script here is `abuddy drive`**, which is also what a pack author runs — the npm scripts are thin
 calls to it, so `npm run drive -- --help` is the reference and a flag works the same from either side. With

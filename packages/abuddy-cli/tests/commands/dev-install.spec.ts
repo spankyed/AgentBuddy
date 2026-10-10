@@ -31,7 +31,7 @@ describe('abuddy run', () => {
   it("installs with the version and pack format of the dev app that last used the data dir, so both are checked", async () => {
     const { recordHostInfo } = await import('@abuddy/host/packs');
     recordHostInfo(userDataDir, { version: '0.9.1', packFormat: 3 });
-    const { installToApp } = await import('../../src/commands/run');
+    const { installToApp } = await import('../../src/commands/dev');
 
     await installToApp('/pack');
 
@@ -40,7 +40,7 @@ describe('abuddy run', () => {
 
   it('reads the version at each install, as the dev app may start in between', async () => {
     const { recordHostInfo } = await import('@abuddy/host/packs');
-    const { installToApp } = await import('../../src/commands/run');
+    const { installToApp } = await import('../../src/commands/dev');
     await installToApp('/pack');
     recordHostInfo(userDataDir, { version: '1.0.0', packFormat: 1 });
     await installToApp('/pack');
@@ -114,14 +114,14 @@ describe('abuddy run reloads', () => {
  */
 describe('the environment abuddy run targets', () => {
   it('follows the app it resolved', async () => {
-    const { appEnv } = await import('../../src/commands/run');
+    const { appEnv } = await import('../../src/commands/dev');
     expect(appEnv({ kind: 'source', root: '/repo' })).toBe('development');
     expect(appEnv({ kind: 'packaged', executable: '/Applications/AgentBuddy Beta.app', version: '0.4.0-beta.1' }))
       .toBe('beta');
   });
 
   it('never targets production', async () => {
-    const { appEnv } = await import('../../src/commands/run');
+    const { appEnv } = await import('../../src/commands/dev');
     const every = [
       { kind: 'source', root: '/repo' },
       { kind: 'packaged', executable: '/Applications/AgentBuddy Beta.app', version: '0.4.0-beta.1' },

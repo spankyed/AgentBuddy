@@ -2,7 +2,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
-import { writePrivateFile } from './private-file.ts';
+import { writePrivateFile } from '../private-file.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /** Holds data keys by account name */

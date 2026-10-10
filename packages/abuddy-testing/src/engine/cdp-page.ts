@@ -14,38 +14,12 @@
  * `playwright-core` is imported lazily and is an optional peer: a published CLI must not drag 11MB into an
  * install of someone who only runs `abuddy build`, and nothing but this path needs it.
  */
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 // **The published types come from `@playwright/test`, not from `playwright-core`.** The runtime import is
 // `playwright-core` — that is the package this needs and declares — but typing the exported surface from it
 // made tsc write bare `playwright` as the specifier in this package's declarations, which it does not
 // depend on and which `published-imports` refuses. One hoisted `playwright-core` is what lets the two be
 // the same `Page`, so the public type can be the one the fixture already hands round.
 import type { Browser, Page } from '@playwright/test';
-
-/**
- * The port Chromium chose, from the file it writes in the data dir.
- *
- * `--remote-debugging-port=0` means "pick a free one", which is the only safe way to ask: a fixed port is
- * a collision with whatever else is on it and with a second app. Chromium then writes `DevToolsActivePort`
- * — the port on the first line, a browser-target path on the second — so the number is read rather than
- * agreed. It appears a moment after launch, so this waits for it; a file left by a previous run of the
- * same data dir is why the caller deletes it before launching rather than trusting what is there.
- */
-export async function readDevToolsPort(dataDir: string, timeoutMs = 15_000): Promise<number> {
-  const file = path.join(dataDir, 'DevToolsActivePort');
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    // Absent is the ordinary case for the first few polls, and a half-written first line reads as NaN —
-    // both are "not yet" rather than failures, so neither ends the wait
-    try {
-      const port = Number(fs.readFileSync(file, 'utf-8').split('\n')[0]);
-      if (Number.isInteger(port) && port > 0) return port;
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-  throw new Error(`No debug port appeared at ${file} within ${timeoutMs}ms.`);
-}
 
 /** What the app published, and what this needs to find it */
 export interface AttachOptions {

@@ -723,7 +723,8 @@ export {
  * Beside the engine's exports because it is the same job from the other end: `asSessionPage` takes the
  * `Page` either of them produced and cannot tell which, so there is one set of verbs rather than two.
  */
-export { attachToApp, readDevToolsPort, type AttachedApp, type AttachOptions } from './engine/cdp-page.ts';
+export { attachToApp, findWindow, type AttachedApp, type AttachOptions, type AttachTargets } from './engine/cdp-page.ts';
+export { attachedSession, type AttachedSession, type AttachedSessionOptions } from './engine/index.ts';
 
 /**
  * The app's own window, so `/set-viewport` resizes it rather than drawing into a corner of it.
