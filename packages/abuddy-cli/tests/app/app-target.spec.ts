@@ -9,8 +9,7 @@ import {
   parseAppFlags,
   resolveLaunchApp,
   resolvePinnedApp,
-  type CliDirs,
-} from '../../src/app/app-target';
+  type CliDirs, BUILD_NAMES, buildChoice, isBuildName } from '../../src/app/app-target';
 import { fixtureEnv } from '../../src/commands/test';
 import { cliBin } from '../../src/utils';
 import { packagedExecutable } from '../../src/app/beta-app';
@@ -66,6 +65,37 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+/**
+ * The one line of disambiguation the collapse rests on, and the case that makes it falsifiable.
+ *
+ * `--app` and `--app-root` split on the *shape of the value*, so one flag needs a rule for which shape it
+ * was handed: a value in the known-name set is a build, anything else is a path. With one reserved name it
+ * cannot be ambiguous today — and `./beta` is the escape hatch for the day a checkout is named after a
+ * channel, which is how every other tool spells "the directory".
+ *
+ * Mutation: make the rule `endsWith('/')` or drop the set lookup, and the pair below disagrees.
+ */
+describe('what a --build value selects', () => {
+  it('reads a known name as the build and anything else as a path', () => {
+    expect(buildChoice('beta')).toEqual({ beta: true });
+    expect(buildChoice('./beta')).toEqual({ source: './beta' });
+    expect(buildChoice('/Users/me/AgentBuddy')).toEqual({ source: '/Users/me/AgentBuddy' });
+    expect(buildChoice('~/checkouts/beta')).toEqual({ source: '~/checkouts/beta' });
+  });
+
+  /**
+   * The names and the type are one declaration, so a build added to the set cannot be missed by the type
+   * or the other way round — the repo's rule for a list and its type.
+   */
+  it('derives what counts as a name from the one list', () => {
+    expect(BUILD_NAMES.length).toBeGreaterThan(0);
+    for (const name of BUILD_NAMES) expect(isBuildName(name)).toBe(true);
+    expect(isBuildName('nightly')).toBe(false);
+    // A path that merely contains a name is not one, which is the near miss worth pinning
+    expect(isBuildName('./beta')).toBe(false);
+  });
 });
 
 describe('parseAppFlags', () => {
