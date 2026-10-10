@@ -3,15 +3,20 @@
  *
  * Two kinds of directory, listed apart because the difference is the whole point. An **environment** is
  * where an app of that channel keeps its data whatever anyone does — `production`, `beta`, `development`,
- * `test`, one per `APP_ENVS` — and nothing here removes one. An **profile** is a data dir you can throw
+ * `test`, one per `APP_ENVS` — and nothing here removes one. A **profile** is a data dir you can throw
  * away (`app/profiles.ts`), created on demand by `abuddy dev --profile x` or by `new` below. The word is
  * `profile` and not `instance` because an instance of an app is a running process, which is what Electron's
  * single-instance lock is about; a named, disposable data dir that leaves the app's identity alone is a
  * browser profile.
  *
- * **The environments are listed because that is where the bytes are**: measured 2026-10-02, 1.4GB under
- * `production` and 1.5GB under `development` against 180MB of profiles. Reclaiming any of it is `rm` here,
- * so there is one door to deleting a data dir rather than two.
+ * **The environments are listed because that is where the bytes are**, and the two differ in a way worth
+ * knowing before reaching for either verb. Measured 2026-10-10: `development` held 1.6GB of which `trim`
+ * gave back **1.3GB**, nearly all of it `Cache` and `Code Cache`; `production` held 1.4GB and gave back
+ * **13MB**, because its bulk is 666MB of `Partitions` — the in-app browser's logged-in sessions — beside
+ * 712MB of the user's own media and database. So a dev dir is mostly disposable and a production one is
+ * mostly not, which is why the verbs split on who owns a directory rather than on how big it is: `rm`
+ * removes a profile, which is yours to throw away, and `trim` reclaims only what Chromium rebuilds, which
+ * is the one thing that is safe to do to an environment nothing may remove.
  */
 import * as fs from 'node:fs';
 import { _appDirOf, APP_ENVS, appDataDirFor, type AppEnv } from '@abuddy/sdk/env';
@@ -21,7 +26,7 @@ import { errorMessage } from '@abuddy/sdk/utils/pure';
 import { cliDirs, type CliDirs } from '../app/app-target';
 import {
   dirBytes, profileInUse, profileNameProblem, listProfiles, mintProfile, openProfile,
-  removeProfile, renameProfile, size, type ListedProfile,
+  removeProfile, renameProfile, size, trimDataDir, type ListedProfile,
 } from '../app/profiles';
 
 const HELP = `
@@ -29,9 +34,15 @@ Usage: abuddy profiles [--sizes] [--all]
        abuddy profiles new [name]
        abuddy profiles rename <from> <to>
        abuddy profiles rm <name>... | --leaked
+       abuddy profiles trim [<build> | <name>]...
 
 List every AgentBuddy data dir on this machine: the environments an app of each channel uses, and the
 profiles you created. Works outside a pack — a data dir belongs to you rather than to any pack.
+
+\`trim\` removes the caches Chromium rebuilds by itself — where nearly all of a data dir's size is, measured
+1.3GB of a 1.6GB development dir against 5MB of app data — from the dirs you name, or from every one of
+them. It never touches your data, your settings or the in-app browser's logins, so it takes no --force; it
+skips a dir an app is running on, because those files are open.
 
 Options:
   --sizes        Add a size column. Off by default because it walks every directory: measured, 674ms for
@@ -197,6 +208,57 @@ export function remove(dirs: CliDirs, names: string[], leaked: boolean): void {
   if (reclaimed > 0) console.log(`\n  reclaimed ${size(reclaimed)}`);
 }
 
+/**
+ * The data dirs a name stands for: a build's, a profile's, or every one there is.
+ *
+ * **One lookup for both kinds, which only works because the two cannot collide.** A profile may not be
+ * named after a build (`profileNameProblem`), so a name is unambiguously one or the other and nobody has to
+ * say which with a flag. A name that is neither lists what there is rather than resolving to a path the
+ * caller never typed.
+ */
+function dataDirsNamed(
+  dirs: CliDirs, names: string[], resolve: (env: AppEnv) => string,
+): { label: string; dir: string }[] {
+  const profiles = listProfiles(dirs);
+  if (names.length === 0) {
+    return [
+      ...APP_ENVS.map((env) => ({ label: env, dir: resolve(env) })),
+      ...profiles.map((profile) => ({ label: profile.name, dir: profile.dir })),
+    ];
+  }
+  return names.map((name) => {
+    if ((APP_ENVS as readonly string[]).includes(name)) return { label: name, dir: resolve(name as AppEnv) };
+    const found = profiles.find((profile) => profile.name === name);
+    if (found) return { label: found.name, dir: found.dir };
+    const known = [...APP_ENVS, ...profiles.map((profile) => profile.name)].join(', ');
+    throw new Error(`"${name}" is neither a build nor a profile. There is: ${known}.`);
+  });
+}
+
+/**
+ * Reclaims the caches Chromium rebuilds, and says what each dir gave back.
+ *
+ * A dir it skipped says why on its own line rather than being left out, because "nothing happened" and
+ * "there was nothing there" are different answers and the one that matters — an app is running — is the
+ * one a silent listing would hide.
+ */
+export function trim(
+  dirs: CliDirs, names: string[],
+  { resolve = appDataDirFor, bytes = dirBytes }: { resolve?: (env: AppEnv) => string; bytes?: (dir: string) => number } = {},
+): void {
+  const targets = dataDirsNamed(dirs, names, resolve);
+  const width = Math.max(...targets.map((target) => target.label.length), 7);
+  let freed = 0;
+  console.log('');
+  for (const { label, dir } of targets) {
+    const result = trimDataDir(dir, bytes);
+    freed += result.freed;
+    const outcome = result.refused ?? (result.freed === 0 ? 'nothing to trim' : `freed ${size(result.freed)}`);
+    console.log(`  ${label.padEnd(width)}  ${outcome.padEnd(26)}  ${dir}`);
+  }
+  console.log(`\n  reclaimed ${size(freed)}${freed === 0 ? '' : ' — the app rebuilds what it needs'}\n`);
+}
+
 export async function profiles(args: string[]): Promise<void> {
   if (args.includes('--help') || args.includes('-h')) {
     console.log(HELP);
@@ -238,6 +300,9 @@ export async function profiles(args: string[]): Promise<void> {
       remove(dirs, rest, leaked);
       return;
     }
+    case 'trim':
+      trim(dirs, rest);
+      return;
     default:
       throw new Error(`Unknown subcommand "${subcommand}". See abuddy profiles --help.`);
   }

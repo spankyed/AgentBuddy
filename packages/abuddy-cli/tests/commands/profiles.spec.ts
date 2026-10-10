@@ -9,8 +9,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { _appDirOf, type AppEnv } from '@abuddy/sdk/env';
-import { create, environmentRows, list, remove } from '../../src/commands/profiles';
-import { listProfiles, openProfile } from '../../src/app/profiles';
+import { create, environmentRows, list, remove, trim } from '../../src/commands/profiles';
+import { listProfiles, openProfile, REGENERABLE_DIRS } from '../../src/app/profiles';
 import { publishSession } from '@abuddy/host/dev-session';
 import type { CliDirs } from '../../src/app/app-target';
 
@@ -241,5 +241,96 @@ describe('the listing', () => {
     vi.mocked(console.log).mockClear();
     list(dirs, { sizes: false, all: true, resolve, bytes });
     expect(printed()).toContain('4242-throwaway');
+  });
+});
+
+/**
+ * **`trim` is the answer to "where did 1.6GB go", and the list is the whole of its correctness.**
+ *
+ * Measured 2026-10-10 on the author's development dir: `Cache` 1.0GB and `Code Cache` 312MB against 5MB in
+ * `abuddy/`. So what matters is not that it frees bytes but that it frees *only* the ones Chromium will
+ * make again — every excluded directory below is something a user would notice losing.
+ */
+describe('trim', () => {
+  /** A data dir with a cache, the user's data, and the two state dirs that are not cache. */
+  const dataDir = (env: AppEnv, cacheBytes = 3) => {
+    const dir = resolve(env);
+    for (const name of REGENERABLE_DIRS) {
+      fs.mkdirSync(path.join(dir, name), { recursive: true });
+      fs.writeFileSync(path.join(dir, name, 'blob'), 'x'.repeat(cacheBytes));
+    }
+    fs.mkdirSync(_appDirOf(dir), { recursive: true });
+    fs.writeFileSync(path.join(_appDirOf(dir), 'ears-db'), 'the user\'s notes');
+    for (const keep of ['Local Storage', 'Partitions', 'Preferences']) {
+      fs.mkdirSync(path.join(dir, keep), { recursive: true });
+      fs.writeFileSync(path.join(dir, keep, 'state'), 'keep me');
+    }
+    return dir;
+  };
+
+  it('removes every cache it names and nothing else', () => {
+    const dir = dataDir('development');
+
+    trim(dirs, ['development'], { resolve, bytes: () => 1024 });
+
+    for (const name of REGENERABLE_DIRS) expect(fs.existsSync(path.join(dir, name)), name).toBe(false);
+    // The three a user would notice, and the data itself
+    expect(fs.readFileSync(path.join(_appDirOf(dir), 'ears-db'), 'utf-8')).toBe("the user's notes");
+    for (const keep of ['Local Storage', 'Partitions', 'Preferences']) {
+      expect(fs.existsSync(path.join(dir, keep, 'state')), keep).toBe(true);
+    }
+  });
+
+  /**
+   * The firing case for the refusal: those files are open under a live browser, so the sweep would be
+   * deleting beneath it and what it freed would partly come back.
+   */
+  it('skips a dir an app is running on, and says so', () => {
+    const dir = dataDir('development');
+    fs.writeFileSync(path.join(_appDirOf(dir), 'api-port'), JSON.stringify({ port: 3001, pid: process.pid }));
+
+    trim(dirs, ['development'], { resolve, bytes: () => 1024 });
+
+    expect(printed()).toMatch(/development.*an app is running on it/);
+    expect(fs.existsSync(path.join(dir, 'Cache'))).toBe(true);
+  });
+
+  it('takes every dir there is when nothing is named', () => {
+    dataDir('development');
+    dataDir('beta');
+    const probe = openProfile(dirs, 'probe');
+    fs.mkdirSync(path.join(probe.dir, 'Cache'), { recursive: true });
+
+    trim(dirs, [], { resolve, bytes: () => 1024 });
+
+    expect(fs.existsSync(path.join(resolve('development'), 'Cache'))).toBe(false);
+    expect(fs.existsSync(path.join(resolve('beta'), 'Cache'))).toBe(false);
+    expect(fs.existsSync(path.join(probe.dir, 'Cache'))).toBe(false);
+    // A build nobody has run has no dir, which is an answer rather than an error
+    expect(printed()).toMatch(/production.*no data dir yet/);
+  });
+
+  /**
+   * One lookup for builds and profiles, which only works because a profile may not be named after a build.
+   * A name that is neither lists what there is rather than resolving to a path nobody typed.
+   */
+  it('takes a profile by name, and refuses a name that is neither', () => {
+    const probe = openProfile(dirs, 'probe');
+    fs.mkdirSync(path.join(probe.dir, 'Code Cache'), { recursive: true });
+
+    trim(dirs, ['probe'], { resolve, bytes: () => 1024 });
+    expect(fs.existsSync(path.join(probe.dir, 'Code Cache'))).toBe(false);
+
+    expect(() => trim(dirs, ['nope'], { resolve, bytes: () => 1024 }))
+      .toThrow(/neither a build nor a profile.*production.*probe/s);
+  });
+
+  it('totals what it freed', () => {
+    dataDir('development', 1024);
+
+    trim(dirs, ['development'], { resolve, bytes: () => 2048 });
+
+    // Seven caches at the stubbed size
+    expect(printed()).toMatch(/reclaimed 14kB/);
   });
 });

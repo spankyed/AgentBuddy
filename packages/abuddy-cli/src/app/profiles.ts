@@ -128,6 +128,61 @@ export interface OpenedProfile {
   created: boolean;
 }
 
+/**
+ * Chromium's own caches inside a data dir: everything it will make again, and nothing anybody would miss.
+ *
+ * **This is where a development data dir's size is.** Measured 2026-10-10: 1.6GB in all, of which `Cache`
+ * was 1.0GB and `Code Cache` 312MB, against **5MB** in `abuddy/` — the notes, flows and keys. So
+ * reclaiming one is a cache sweep, and removing the directory is the wrong instrument: it would throw away
+ * the 5MB that cannot be got back to free the 1.3GB that comes back by itself.
+ *
+ * **A production dir is the other shape**, which is the reason the exclusions below are not a precaution:
+ * the same measurement gave back 13MB of its 1.4GB, because 666MB of it is `Partitions` and the rest is
+ * the user's media and database. Sweeping by size rather than by name would have taken the browser's
+ * logins first.
+ *
+ * **What is deliberately not here is the rest of the list**, and each exclusion is something a user would
+ * notice: `Local Storage` holds the panel sizes and whatever `runFrontendMigrations` moved, `Partitions`
+ * holds the in-app browser's logged-in sessions (`persist:browser`, 292MB of that same dir), and
+ * `Preferences`, `Cookies`, `Session Storage` and `Trust Tokens` are state rather than cache. The app
+ * writes none of the names below — `getDataDirPath` refuses them outright so a pack cannot shadow one —
+ * which is what makes them Chromium's alone to rebuild.
+ */
+export const REGENERABLE_DIRS = [
+  'Cache', 'Code Cache', 'GPUCache', 'DawnGraphiteCache', 'DawnWebGPUCache', 'Shared Dictionary', 'blob_storage',
+] as const;
+
+/** What a trim freed on one data dir, and what it left alone because an app is using it. */
+export interface Trimmed {
+  readonly dir: string;
+  readonly freed: number;
+  /** Why nothing was removed, when nothing was */
+  readonly refused?: string;
+}
+
+/**
+ * Removes the caches above from one data dir and answers with what that freed.
+ *
+ * **Refused while an app is running on it**, because Chromium has those files open: the sweep would be
+ * deleting under a live browser, and what it reclaimed would partly come straight back. The app is the
+ * thing to close, so that is what the message says rather than offering a flag to do it anyway.
+ *
+ * A dir that is not there is not an error — a build nobody has run has nothing to trim, and saying so with
+ * a zero is the same answer in a form the caller can total.
+ */
+export function trimDataDir(dir: string, bytes: (dir: string) => number = dirBytes): Trimmed {
+  if (!fs.existsSync(dir)) return { dir, freed: 0, refused: 'no data dir yet' };
+  if (profileInUse(dir)) return { dir, freed: 0, refused: 'an app is running on it' };
+  let freed = 0;
+  for (const name of REGENERABLE_DIRS) {
+    const cache = path.join(dir, name);
+    if (!fs.existsSync(cache)) continue;
+    freed += bytes(cache);
+    fs.rmSync(cache, { recursive: true, force: true });
+  }
+  return { dir, freed };
+}
+
 /** A profile by name, created if it isn't there yet. */
 export function openProfile(dirs: CliDirs, name: string): OpenedProfile {
   const dir = profileDir(dirs, name);
