@@ -95,7 +95,7 @@ CLI needs no gate — reaching for the CLI *is* the opt-in. One condition in the
    installs once — equal hashes mean the app placed it, so mark those `'app'`, or every current install
    silently becomes a fork.
 4. **`/dev/reload`'s step-0 refresh respects `updatesWith`**, or a fork is clobbered by the very loop a fork
-   author lives in. Verify that `abuddy run` in the fork's own directory is the path that serves them.
+   author lives in. Verify that `abuddy dev` in the fork's own directory is the path that serves them.
 5. **`abuddy replace <id> <source>`** and the UI's "Replace default"; plain install onto a shipped id
    refused. Uninstall of an app-owned pack records `enabled: false`.
 6. **Delete `builtIn`** — the type, the schema entry, `default-setup`'s declaration, and `abuddy pack`'s

@@ -84,7 +84,7 @@ re-derived:
   building" and re-checks on the next change.
 - **A failed build never ends the dev session.** Half-typed source is normal while editing. Report it
   where the dev output goes and keep watching.
-- **`abuddy run` gets the same treatment as `npm start`.** It has the same shape — a long-running session
+- **`abuddy dev` gets the same treatment as `npm start`.** It has the same shape — a long-running session
   over a pack linked to a checkout — and today it ensures once at startup (`commands/run.ts`).
 
 ## Phases
@@ -115,14 +115,14 @@ re-derived:
   built-in pack is not rebuilt by either. Verified by hand and recorded in the Outcome with the observed
   timings.
 
-### Phase 3 — `abuddy run`
+### Phase 3 — `abuddy dev`
 
 - `commands/run.ts` keeps its startup `ensureCheckoutPackages(root)` and adds the watcher for the session,
   for a pack whose packages come from a checkout (`checkoutFor`) and not otherwise.
 - The rebuild loop still calls `build()`, which does not ensure — the reason is in `buildCommand`'s
   comment and does not change.
-- **Done when:** `abuddy run` in a pack linked to a checkout rebuilds that checkout's stale package on an
-  SDK edit; `abuddy run` in a pack with installed packages starts no watcher. A spec covers the second.
+- **Done when:** `abuddy dev` in a pack linked to a checkout rebuilds that checkout's stale package on an
+  SDK edit; `abuddy dev` in a pack with installed packages starts no watcher. A spec covers the second.
 
 ### Phase 4 — the record
 

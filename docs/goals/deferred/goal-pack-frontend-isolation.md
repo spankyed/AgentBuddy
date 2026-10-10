@@ -20,7 +20,7 @@ Finished when:
 - npm run typecheck, api:check (sdk, ui, ears), packages:build + packages:check, and the renderer,
   sdk, cli and default-setup unit suites pass.
 - npm run build, the E2E suite, npm run test:external-pack, npm run test:packaged-authoring and the
-  example pack's `abuddy test --app-root <repo>` pass.
+  example pack's `abuddy test --build <repo>` pass.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
 Never:
@@ -120,9 +120,9 @@ So installing an external pack today means trusting it as much as the app itself
 
 - Implement Open decision 4 for tiptap plugins, blocks, artifact viewers, step forms and app extensions.
 - `@abuddy/testing` finds isolated plugins, and `abuddy test` / `abuddy init-tests` scaffolds keep working for pack authors (`packages/abuddy-testing/CLAUDE.md`).
-- `abuddy run`'s frontend hot reload (the `pack://` dev server proxy) works inside the isolated context.
+- `abuddy dev`'s frontend hot reload (the `pack://` dev server proxy) works inside the isolated context.
 
-**Done when:** the fixture packs, the example pack and `test:packaged-authoring` pass; `abuddy run` reloads an isolated pack's frontend in an E2E spec.
+**Done when:** the fixture packs, the example pack and `test:packaged-authoring` pass; `abuddy dev` reloads an isolated pack's frontend in an E2E spec.
 
 ### Phase 4 — proof and docs
 
