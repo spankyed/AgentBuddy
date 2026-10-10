@@ -50,10 +50,8 @@ my-pack/
     env.d.ts
     features/
       notes/                # added by `abuddy add feature notes`: settings.ts, be/, fe/
-    extensions/
-      steps/
-        register.ts         # Step registration barrel
-        build.ts            # Build-only step facets, shipped to packs that depend on yours
+    extensions/             # added by `abuddy add step|artifact|block`: one directory each,
+                            # declared in abuddy.json's `extensions` — there is no barrel
     content/
       actions/
       flows/

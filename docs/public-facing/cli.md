@@ -24,10 +24,9 @@ abuddy init my-pack
 
 Creates no feature (add one with `abuddy add feature`). It writes:
 
-- `abuddy.json`: one entity type named after the pack, empty `features`, `dependencies` and `permissions`, `steps` with `register` and `build` barrels, and `content.sources` with `actions`, `flows` and an `examples` entry using the `examples` content format (`markdown-tree`)
+- `abuddy.json`: one entity type named after the pack, empty `features`, `dependencies` and `permissions`, and `content.sources` with `actions`, `flows` and an `examples` entry using the `examples` content format (`markdown-tree`). No `extensions` section: `abuddy add step|artifact|block` each declare their own entry under it
 - `package.json` (depends on `@abuddy/sdk`; pins `@abuddy/cli`, `@abuddy/testing`, `vitest`, `typescript`), `tsconfig.json`, `.gitignore`, `src/env.d.ts`
 - `.github/workflows/release.yml`: publishes the GitHub release when `abuddy release` pushes a `v*` tag
-- `src/extensions/steps/register.ts` and `src/extensions/steps/build.ts`
 - `src/content/actions/`, `src/content/flows/`, `src/content/examples/hello.md`
 - `vitest.config.ts`, `tests/setup.ts` (the `@abuddy/testing/harness` setup) and `tests/<name>.spec.ts`
 
@@ -40,7 +39,7 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 | Entity | Command | What it creates |
 |---|---|---|
 | Feature | `abuddy add feature <name> [--label <Label>] [--icon <Icon>] [--designation <role>]` | See below |
-| Step | `abuddy add step <type> [--trigger]` | `src/extensions/steps/<type>/{build.ts,index.ts,fe.ts,types.ts,form.vue}` (`types.ts` declares `DSL<Type>Node` and `<Type>Node`); adds the step to the `steps.register` barrel (and `<register>-fe.ts` if it exists), its build facet to the `steps.build` barrel, and a `steps.definitions` entry |
+| Step | `abuddy add step <type> [--trigger]` | `src/extensions/steps/<type>/{build.ts,fe.ts,types.ts,form.vue}` (`types.ts` declares `DSL<Type>Node` and `<Type>Node`); with `--trigger`, `trigger.ts` in place of `build.ts`, holding a `TriggerFacet` rather than a `StepBuildFacet`. Declares one `extensions.steps.<type>` entry naming each facet: its `node` (the label and field defaults both the backend and the canvas read), its `build` or `trigger`, and its `fe` |
 | Artifact | `abuddy add artifact <type> [--icon <Icon>]` | `src/extensions/artifacts/viewers/<type>-artifact.vue`; when the manifest declares `artifacts`, adds `{ type, fe: { icon } }` to that register file and the viewer to its `-fe.ts` `componentMap` |
 | Block | `abuddy add block <type> [--input]` | `src/extensions/blocks/display/<Type>Block.vue` (or `input/<Type>Input.vue`); updates the `blocks` register file and its `-fe.ts` when the manifest declares `blocks` |
 | Action | `abuddy add action <name> [--category <cat>]` | `src/content/actions/<category>/<name>.ts` (category defaults to the pack id) |
@@ -49,7 +48,7 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 | Service | `abuddy add service <name> [--feature <feature>]` | `src/extensions/services/<name>.ts` in `extensions.services`, or `src/features/<feature>/be/services/<name>.ts` in that feature's `services`. The key is the camelCased name, the value `path#<camelName>Service` |
 | Migration | `abuddy add migration [version] [--version <ver>]` | `src/migrations/<version>.ts` exporting a `PackMigration`, added to `src/migrations/index.ts`; sets `migrations` if unset. Version defaults to the manifest's |
 
-Only `add feature`, `add service` and `add step` update `abuddy.json` entries and run `generate-entries`; `add migration` only sets `migrations`, and the rest just write files. In a pack whose dependencies aren't installed yet, `generate-entries` can't read a system's events through `@abuddy/sdk`: the files and `abuddy.json` are still written, and `npm install` regenerates the entries (the pack's `prepare` script).
+`add feature`, `add service`, `add step`, `add artifact` and `add block` each declare what they add in `abuddy.json` and then run `generate-entries`, because the manifest entry is the whole declaration and codegen is what carries it into the pack's entries — there is no barrel to edit. `add migration` declares its own entry too. `add action`, `add prompt` and `add flow` only write files, their content being found by the directory `content.sources` already names. In a pack whose dependencies aren't installed yet, `generate-entries` can't read a system's events through `@abuddy/sdk`: the files and `abuddy.json` are still written, and `npm install` regenerates the entries (the pack's `prepare` script).
 
 **`add feature`.** The name is the feature id: a lowercase letter, then letters and digits (`notes`, `calendarEvents`), because it becomes an identifier in generated code. `--designation`, if given, must equal the name. It creates:
 
@@ -404,7 +403,7 @@ Health checks with pass/warn/fail output:
 - `id` and `hostVersion` are set
 - `src/__generated__/` exists (warn)
 - Each feature's `system.entry` and `plugin.entry` exist
-- Each `steps.definitions[].path` exists
+- Each facet path an `extensions.steps` entry names exists (its `node`, `build` or `trigger`, `runtime.handler` and `fe`)
 
 #### `abuddy facade-report [--update]`
 
