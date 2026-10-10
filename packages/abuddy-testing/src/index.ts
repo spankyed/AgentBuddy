@@ -330,6 +330,145 @@ async function findMainWindow(electronApp: ElectronApplication): Promise<Page> {
   throw describeFailure('Main window with applicationState did not appear within timeout', electronApp);
 }
 
+/** The state a ready app is in, as the dot-path `waitForState` takes. */
+export const APP_READY_STATE = 'running.connected';
+
+/**
+ * Waits until the app is ready to be driven, dismissing onboarding on the way.
+ *
+ * **The dismissal is inside the predicate, not a step before it.** Onboarding can arrive at any point
+ * during the boot, so a check-then-dismiss-then-wait has a window in which it appears after the check and
+ * the second wait hangs to its deadline. `engine/index.ts`' `reloadWindow` already learned that for a
+ * reloaded window; this is the same shape, used by every caller.
+ *
+ * `window.__disableOnboardingUI` is defined unconditionally (`renderer/src/main.ts`), so a page that
+ * arrived over CDP reaches it exactly as a launched one does. It sends `ONBOARDING_COMPLETE`, which is a
+ * write to the data dir — the one thing this does that outlives the call, and what a caller reports.
+ *
+ * `state` is a parameter with a default because the caller this leaves room for wants onboarding **left
+ * up**: driving the onboarding screens themselves, which nothing can do today. A hard-coded terminal state
+ * would make that a rewrite rather than an argument.
+ */
+export function waitForAppReady(page: Page, { state = APP_READY_STATE, timeout = 45_000 } = {}): Promise<unknown> {
+  return page.waitForFunction(({ path: want, dismiss }) => {
+    const win = window as unknown as {
+      applicationState?: { getSnapshot(): { value?: unknown } };
+      __disableOnboardingUI?: () => void;
+    };
+    const value = win.applicationState?.getSnapshot().value;
+    if (typeof value !== 'object' || value === null) return value === want;
+    // Dismissed from inside the poll because it can arrive at any point during the boot
+    if (dismiss && 'onboarding' in value) win.__disableOnboardingUI?.();
+    let current: unknown = value;
+    for (const part of want.split('.')) {
+      if (typeof current === 'object' && current !== null && part in current) current = (current as Record<string, unknown>)[part];
+      else return current === part;
+    }
+    return true;
+  }, { path: state, dismiss: state === 'running.connected' }, { timeout });
+}
+
+/**
+ * The `AppHelper` over a page, as a free function.
+ *
+ * **It was only ever a function of a `Page`** — every method is `page.evaluate`, `page.waitForFunction` or
+ * `page.screenshot` — and looked fixture-bound because the fixture is where it was constructed. A page that
+ * arrived over CDP rather than from a launch gets the same verbs from the same code, which is what makes
+ * one implementation serve both and is the reason this is extracted rather than copied.
+ *
+ * `screenshotDir` is the one thing it closes over; the report directory is resolved per call, since a run
+ * that reports nothing should leave no directory behind.
+ */
+export function appHelper(page: Page, screenshotDir: string): AppHelper {
+  const app: AppHelper = {
+    sendEvent: async (event) => {
+      await page.evaluate((e) => {
+        (window as any).applicationState.send(e);
+      }, event);
+    },
+  
+    getState: async () => {
+      return page.evaluate(() => {
+        return (window as any).applicationState?.getSnapshot()?.value;
+      });
+    },
+  
+    getContext: async () => {
+      return page.evaluate(() => {
+        const snap = (window as any).applicationState?.getSnapshot();
+        return {
+          activePluginId: snap?.context?.activePlugin?.id ?? '',
+          pluginIds: (snap?.context?.plugins ?? []).map((p: any) => p.id),
+        };
+      });
+    },
+  
+    screenshot: async (name) => {
+      // Made on first use, not at fixture setup: every run of every spec used to leave an empty
+      // `tests/screenshots/` behind, including suites that screenshot nothing
+      fs.mkdirSync(screenshotDir, { recursive: true });
+      const filePath = path.join(screenshotDir, `${name}.png`);
+      return page.screenshot({ path: filePath });
+    },
+  
+    report: async (name, value) => {
+      // Made on first use, as the screenshot dir is: a run that reports nothing leaves nothing behind
+      const reportDir = resolveReportDir();
+      fs.mkdirSync(reportDir, { recursive: true });
+      const filePath = path.join(reportDir, `${name}.json`);
+      fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+      console.log(`[drive:report] ${name} ${JSON.stringify(value)}`);
+      return filePath;
+    },
+  
+    navigate: async (pluginId) => {
+      const id0 = resolvePlugin(pluginId);
+      await page.evaluate((id) => {
+        (window as any).applicationState.send({ type: 'SELECT_PLUGIN', plugin: id });
+      }, id0);
+      await page.waitForFunction((id) => {
+        const snap = (window as any).applicationState?.getSnapshot();
+        if (snap?.context?.activePlugin?.id !== id) return false;
+        // The state switching is not the canvas being on screen: Vue renders on the next flush, and a
+        // test that clicks or screenshots straight after a navigate needs that flush to have happened.
+        // data-active-plugin (WebApp.vue) is written in the flush that swaps the canvas.
+        return document.querySelector(`[data-active-plugin="${id}"]`) !== null;
+      }, id0, { timeout: 10_000 });
+    },
+  
+    waitForPlugin: async (pluginId, timeout = 30_000) => {
+      // A host plugin is known once the app has any; a pack's registers later, at its ref
+      await page.waitForFunction(() => ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).length > 0, null, { timeout });
+      const id = resolvePlugin(pluginId);
+      await page.waitForFunction((target) =>
+        ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).some((p: { id: string }) => p.id === target), id, { timeout });
+    },
+  
+    waitForState: async (check, timeout = 10_000) => {
+      await page.waitForFunction((c) => {
+        const snap = (window as any).applicationState?.getSnapshot();
+        const val = snap?.value;
+        if (typeof val === 'object' && val !== null) {
+          const parts = c.split('.');
+          let current: any = val;
+          for (const part of parts) {
+            if (typeof current === 'object' && current !== null && part in current) {
+              current = current[part];
+            } else if (current === part) {
+              return true;
+            } else {
+              return false;
+            }
+          }
+          return true;
+        }
+        return val === c;
+      }, check, { timeout });
+    },
+  };
+  return app;
+}
+
 export function createTest(options: CreateTestOptions = {}) {
   const appLaunch = resolveApp(options);
   const screenshotDir = resolveScreenshotDir(options.screenshotDir);
@@ -477,33 +616,12 @@ export function createTest(options: CreateTestOptions = {}) {
         }
       };
 
-      await waitOrDescribe('App did not reach connected state', page.waitForFunction(() => {
-        const snap = (window as any).applicationState?.getSnapshot();
-        if (!snap) return false;
-        const val = snap.value;
-        if (typeof val === 'object' && val !== null) {
-          if ('running' in val) return val.running === 'connected';
-          if ('onboarding' in val) return true;
-        }
-        return false;
-      }, null, { timeout: 45_000 }));
+      await waitOrDescribe('App did not reach connected state', waitForAppReady(page));
 
       const startedAt = launchStartedAt.get(electronApp);
       if (startedAt !== undefined) {
         launchStartedAt.delete(electronApp);
         console.log(`[e2e] app connected ${Date.now() - startedAt}ms after launch`);
-      }
-
-      const inOnboarding = await page.evaluate(() => {
-        const snap = (window as any).applicationState?.getSnapshot();
-        return snap && typeof snap.value === 'object' && 'onboarding' in snap.value;
-      });
-      if (inOnboarding) {
-        await page.evaluate(() => (window as any).__disableOnboardingUI?.());
-        await page.waitForFunction(() => {
-          const snap = (window as any).applicationState?.getSnapshot();
-          return snap?.value?.running === 'connected';
-        }, null, { timeout: 10_000 });
       }
 
       /**
@@ -565,95 +683,7 @@ export function createTest(options: CreateTestOptions = {}) {
     },
 
     app: async ({ appPage: page }, use) => {
-
-      const app: AppHelper = {
-        sendEvent: async (event) => {
-          await page.evaluate((e) => {
-            (window as any).applicationState.send(e);
-          }, event);
-        },
-
-        getState: async () => {
-          return page.evaluate(() => {
-            return (window as any).applicationState?.getSnapshot()?.value;
-          });
-        },
-
-        getContext: async () => {
-          return page.evaluate(() => {
-            const snap = (window as any).applicationState?.getSnapshot();
-            return {
-              activePluginId: snap?.context?.activePlugin?.id ?? '',
-              pluginIds: (snap?.context?.plugins ?? []).map((p: any) => p.id),
-            };
-          });
-        },
-
-        screenshot: async (name) => {
-          // Made on first use, not at fixture setup: every run of every spec used to leave an empty
-          // `tests/screenshots/` behind, including suites that screenshot nothing
-          fs.mkdirSync(screenshotDir, { recursive: true });
-          const filePath = path.join(screenshotDir, `${name}.png`);
-          return page.screenshot({ path: filePath });
-        },
-
-        report: async (name, value) => {
-          // Made on first use, as the screenshot dir is: a run that reports nothing leaves nothing behind
-          const reportDir = resolveReportDir();
-          fs.mkdirSync(reportDir, { recursive: true });
-          const filePath = path.join(reportDir, `${name}.json`);
-          fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
-          console.log(`[drive:report] ${name} ${JSON.stringify(value)}`);
-          return filePath;
-        },
-
-        navigate: async (pluginId) => {
-          const id0 = resolvePlugin(pluginId);
-          await page.evaluate((id) => {
-            (window as any).applicationState.send({ type: 'SELECT_PLUGIN', plugin: id });
-          }, id0);
-          await page.waitForFunction((id) => {
-            const snap = (window as any).applicationState?.getSnapshot();
-            if (snap?.context?.activePlugin?.id !== id) return false;
-            // The state switching is not the canvas being on screen: Vue renders on the next flush, and a
-            // test that clicks or screenshots straight after a navigate needs that flush to have happened.
-            // data-active-plugin (WebApp.vue) is written in the flush that swaps the canvas.
-            return document.querySelector(`[data-active-plugin="${id}"]`) !== null;
-          }, id0, { timeout: 10_000 });
-        },
-
-        waitForPlugin: async (pluginId, timeout = 30_000) => {
-          // A host plugin is known once the app has any; a pack's registers later, at its ref
-          await page.waitForFunction(() => ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).length > 0, null, { timeout });
-          const id = resolvePlugin(pluginId);
-          await page.waitForFunction((target) =>
-            ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).some((p: { id: string }) => p.id === target), id, { timeout });
-        },
-
-        waitForState: async (check, timeout = 10_000) => {
-          await page.waitForFunction((c) => {
-            const snap = (window as any).applicationState?.getSnapshot();
-            const val = snap?.value;
-            if (typeof val === 'object' && val !== null) {
-              const parts = c.split('.');
-              let current: any = val;
-              for (const part of parts) {
-                if (typeof current === 'object' && current !== null && part in current) {
-                  current = current[part];
-                } else if (current === part) {
-                  return true;
-                } else {
-                  return false;
-                }
-              }
-              return true;
-            }
-            return val === c;
-          }, check, { timeout });
-        },
-      };
-
-      await use(app);
+      await use(appHelper(page, screenshotDir));
     },
   });
 
@@ -686,6 +716,14 @@ export {
   runDriveEngine, safeName, verb,
   type DriveEngineOptions, type EngineMarker, type EngineWindow, type ExtraVerbs, type Reader, type Verb,
 } from './engine/index.ts';
+
+/**
+ * Attaching to an app something else launched, which is the other way a session gets its page.
+ *
+ * Beside the engine's exports because it is the same job from the other end: `asSessionPage` takes the
+ * `Page` either of them produced and cannot tell which, so there is one set of verbs rather than two.
+ */
+export { attachToApp, readDevToolsPort, type AttachedApp, type AttachOptions } from './engine/cdp-page.ts';
 
 /**
  * The app's own window, so `/set-viewport` resizes it rather than drawing into a corner of it.

@@ -38,6 +38,8 @@
   },
   "peerDependencies": {
     "@playwright/test": ">=1.40.0",
+    "playwright": ">=1.40.0",
+    "playwright-core": ">=1.40.0",
     "vitest": ">=3.0.0",
     "@vitejs/plugin-vue": "^6.0.1"
   },
@@ -50,6 +52,12 @@
   },
   "peerDependenciesMeta": {
     "@playwright/test": {
+      "optional": true
+    },
+    "playwright": {
+      "optional": true
+    },
+    "playwright-core": {
       "optional": true
     },
     "vitest": {
