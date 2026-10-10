@@ -354,7 +354,7 @@
           "propertyNames": {
             "pattern": "^[a-z][a-z0-9_-]*$"
           },
-          "description": "Flow step types this pack contributes, keyed by type. Each names where its build, frontend and runtime facets live; the type is the key, so a pack cannot declare one twice."
+          "description": "Flow step types this pack contributes. Each names where its node, build, frontend and runtime facets live. The type is the key, so a pack cannot declare one twice."
         },
         "artifacts": {
           "type": "object",
@@ -379,7 +379,7 @@
           "propertyNames": {
             "pattern": "^[a-z][a-z0-9_-]*$"
           },
-          "description": "Artifact types this pack contributes, keyed by type. Each names its icon and viewer; the type is the key, so a pack cannot declare one twice."
+          "description": "Artifact types this pack contributes. Each names its icon and viewer. The type is the key, so a pack cannot declare one twice."
         },
         "blocks": {
           "type": "object",
@@ -409,7 +409,7 @@
           "propertyNames": {
             "pattern": "^[a-z][a-z0-9_-]*$"
           },
-          "description": "Message blocks this pack contributes, keyed by block type. Each names where its code lives; the type is the key, so a pack cannot declare one twice."
+          "description": "Message blocks this pack contributes. Each names where its code lives. The type is the key, so a pack cannot declare one twice."
         },
         "commands": {
           "type": "array",

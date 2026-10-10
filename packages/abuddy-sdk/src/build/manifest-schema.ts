@@ -341,17 +341,32 @@ const FEConfigSchema = z.object({
 }).strict().describe('Frontend contributions: what the pack adds to the app\'s own UI.');
 
 /**
+ * An extension point keyed by the type it contributes: the key grammar and the clause every one of them
+ * repeats, said once. Three records spelling it out is three places it can drift from
+ * `EXTENSION_TYPE_SCHEMA` — and the rule is the same rule, since what makes a contribution unique is that
+ * JSON cannot hold a key twice.
+ *
+ * `dsl` is deliberately not one of these: its keys are DSL namespace names rather than contributed types,
+ * so they answer to no type grammar.
+ */
+function extensionPoint<T extends z.ZodTypeAny>(
+  entry: T,
+  what: string,
+): z.ZodOptional<z.ZodRecord<typeof EXTENSION_TYPE_SCHEMA, T>> {
+  return z.record(EXTENSION_TYPE_SCHEMA, entry)
+    .describe(`${what} The type is the key, so a pack cannot declare one twice.`)
+    .optional();
+}
+
+/**
  * What the pack gives the host, as against what it is made of (`features`) or what data it ships
  * (`content`). Every entry is a contribution the app registers and some other pack or the shell can
  * reach; a setting that only changes what `abuddy build` produces is `build`, not one of these.
  */
 const ExtensionsSchema = z.object({
-  steps: z.record(EXTENSION_TYPE_SCHEMA, StepEntrySchema)
-    .describe('Flow step types this pack contributes, keyed by type. Each names where its build, frontend and runtime facets live; the type is the key, so a pack cannot declare one twice.').optional(),
-  artifacts: z.record(EXTENSION_TYPE_SCHEMA, ArtifactEntrySchema)
-    .describe('Artifact types this pack contributes, keyed by type. Each names its icon and viewer; the type is the key, so a pack cannot declare one twice.').optional(),
-  blocks: z.record(EXTENSION_TYPE_SCHEMA, BlockEntrySchema)
-    .describe('Message blocks this pack contributes, keyed by block type. Each names where its code lives; the type is the key, so a pack cannot declare one twice.').optional(),
+  steps: extensionPoint(StepEntrySchema, 'Flow step types this pack contributes. Each names where its node, build, frontend and runtime facets live.'),
+  artifacts: extensionPoint(ArtifactEntrySchema, 'Artifact types this pack contributes. Each names its icon and viewer.'),
+  blocks: extensionPoint(BlockEntrySchema, 'Message blocks this pack contributes. Each names where its code lives.'),
   commands: z.array(CommandEntrySchema)
     .describe('Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack\'s flows handle; a name must be unique across the app.').optional(),
   services: ServicesSchema
