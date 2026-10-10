@@ -24,14 +24,19 @@ Finished when:
 - Phases 1-7 are implemented and each meets its "Done when"; every new guard is mutation-checked.
 - `--instance`, `--ephemeral`, `--app` and `--app-root` name nothing in the CLI; `--profile`, `--fresh`,
   `--fresh --rm` and `--build` do. No profile is named after a build.
-- `abuddy dev` exists, `abuddy run` does not, and drive's `--serve`/`--attach` are gone with
-  abuddy-testing/src/engine/{server,marker}.ts and abuddy-cli/src/app/drive-{engine,one-shot}.ts.
+- `abuddy dev` exists, `abuddy run` does not, and `dev` runs in a checkout with no pack.
+- **If and only if Phase 6 ran** (its measurement is the condition): drive's `--serve`/`--attach` are gone
+  with abuddy-testing/src/engine/{server,marker}.ts and abuddy-cli/src/app/drive-{engine,one-shot}.ts. If
+  it did not, this goal is still finished, and the Outcome says so with the number that decided it.
 - A live `dev` or `npm start` publishes <dataDir>/session.json; `drive` attaches to one and starts an app
   when there is none; `abuddy test` publishes none.
 - The debug port is on in `development` only, and a spec fails if a packaged or test context gets it.
 - Decision 8's lock question is settled by observation, and all three places say the same thing.
 - `npm run typecheck`, `npm run spec` over each touched package, `npm run chain`, and — once Phase 7
   lands — `npm test -- smoke` and a real `abuddy dev` with `drive --eval` against it.
+- Every `drive` path says whose app it joined, or what it started and how to end it; `abuddy profiles`
+  shows which data dirs have a live app; cli.md carries the "Which app, and how long it lives" table.
+  The attach plan's "Telling the user" is the spec for all three.
 - A final summary: phase -> done/deferred, evidence, and the conventional choices made.
 - The three plan docs and this doc are in docs/archive/plans/ and docs/archive/goals/, each with its
   status blockquote, this doc with an Outcome section, committed.
@@ -128,11 +133,19 @@ Final.
     builds the pack and installs it into the data dir (`abuddy-testing/src/index.ts:357`), which is
     exactly why `drive` does none of that itself (`drive.ts:477`: *"No build here: the fixture builds the
     pack itself"*). An autostart that copied dev's *environment* would hand a pack author an app without
-    their pack, or with a stale copy of it. `dev` already builds and installs it (`ensureCheckoutPackages`,
-    door 3 in `abuddy-testing/CLAUDE.md`), so calling `dev` gets that for nothing.
+    their pack, or with a stale copy of it. `dev` already does it — `installToApp` (`run.ts:61`, called at
+    `:259`) is the pack install, and `ensureCheckoutPackages` beside it is the different job of building
+    the `@abuddy` packages' `dist` that a pack compiles against — so spawning `dev` gets both for nothing.
     **No `dev --no-watch`.** A flag whose only purpose is to let one caller skip a step is the thing that
-    drifts, and a watcher costs nothing while nothing is edited. One launcher is also what keeps the
-    "session file's writers are derived, not listed" case to one row instead of two.
+    drifts, and a watcher costs nothing while nothing is edited. It also keeps the "session file's writers
+    are derived, not listed" population at the two the design already has, `dev` and `npm start`, rather
+    than a third that nobody would think to look for.
+    **Two things this requires of `dev`, neither of them a new mode.** It must **stop requiring a pack** —
+    `findPackRoot` (`run.ts:156`) throws at a checkout root, so without this Decision 10 leaves this repo's
+    own `npm run drive:eval` able to attach and unable to autostart; with no pack it skips the build, the
+    install, the watcher and the Vite server and only launches and publishes, which is what the attach
+    plan's design block already says `dev` is. And autostart **spawns it detached** (`.unref()`), because
+    `dev` never returns and its own teardown SIGKILLs the app it holds; the attach plan has both.
 11. **Autostart starts the `development` app, and `dev` reclaims one a tool started.** A blank app
     cannot answer most of what `drive` is asked, so the default is the developer's own data, and
     `drive --eval` keeps one meaning rather than one per whichever app was up. What makes that safe is
@@ -144,7 +157,18 @@ Final.
     development app is the one somebody may be looking at; a reclaim is what ends it. A persistent
     scratch is `--profile drive`, by name, never a default.
 13. **Every `drive` run says which path it took** — attached, reclaimed and started, or started cold —
-    and says when it completed onboarding, which Decision 14 makes possible.
+    and says when it completed onboarding, which Decision 14 makes possible. **A run that started an app
+    also says the app is still running and how to stop it**, because autostart leaves a detached process
+    a question began and nothing on `development` reaps (Decision 12): in a pack repo that is Electron, a
+    file watcher and a Vite dev server, and in a checkout with no pack it is Electron alone. The two ways
+    out are `abuddy dev`, which reclaims it, and the pid in the session file. **An attach says whose app
+    it joined** — `startedBy` is in the session file, and "a previous question started it" is the case
+    where nobody is minding the app.
+    **And because a line printed once is not documentation**, `abuddy profiles` gains a *running* column —
+    pid, `startedBy`, uptime, debug port, with the environments' data dirs beside the profiles — over
+    `profileInUse` and `recordIsStale`, which already answer liveness. The run says it and the listing
+    finds it later; that pair is the remedy, and an idle reap on `development` is not, for the reason
+    Decision 12 gives. The attach plan's "Telling the user" has the exact lines and the user-facing table.
 14. **Onboarding is dismissed on every path, and there is no policy flag.** The readiness wait becomes one
     extracted function, `waitForAppReady(page)`, called by the fixture, by autostart and by attach alike:
     a single `waitForFunction` for `running === 'connected'` that calls `window.__disableOnboardingUI()`
@@ -204,7 +228,9 @@ That plan's phase 2. `dev` and `npm start` publish `<dataDir>/session.json`; `dr
 one and launches its own when there is none; `test` publishes none.
 
 **Done when:** every "Done when" of that plan's phase 2; the environment gate's firing case passes (a
-packaged or `test` context never gets the flag); `abuddy test` publishes no session file.
+packaged or `test` context never gets the flag); `abuddy test` publishes no session file; **`abuddy dev`
+at a checkout root publishes one**, which today throws before it can (Decision 10), while a run in a pack
+repo still builds and installs that pack.
 
 ### Phase 5 — autostart
 
@@ -219,7 +245,9 @@ repo installs the pack**, which is the other half of Decision 10 and fails if au
 environment rather than calling `dev`; two concurrent `drive` calls start **one** app (assert one pid —
 the lock's firing case); every run says which path it took, naming onboarding when it completed it
 (Decisions 13 and 14), which a never-onboarded profile is the case for; a `drive`-profile app idles out
-and a `development` one does not (Decision 12). Then measure the end-to-end one-shot
+and a `development` one does not (Decision 12); `abuddy profiles` shows a running app with its pid and
+`startedBy`, and stops showing it once that app has gone (both halves — a listing that cannot go back to
+empty is a stale record, not a status). Then measure the end-to-end one-shot
 (`npm run measure`, per that plan's Verification) and record the number in the Outcome.
 
 ### Phase 6 — the deletion
