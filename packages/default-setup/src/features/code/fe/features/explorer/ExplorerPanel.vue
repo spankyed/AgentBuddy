@@ -344,7 +344,7 @@ const onEmptySpaceDrop = (e: DragEvent) => {
     if (!isDragging.value && e.dataTransfer?.types.includes('Files')) {
       e.preventDefault()
       e.stopPropagation()
-      const getPath = (window as any).electronAPI?.fileUtils?.getPathForFile
+      const getPath = window.electronAPI?.fileUtils?.getPathForFile
       if (getPath && e.dataTransfer.files.length > 0) {
         const paths: string[] = []
         for (const file of e.dataTransfer.files) {

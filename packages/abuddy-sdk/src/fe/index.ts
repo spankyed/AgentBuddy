@@ -1,11 +1,10 @@
 // Types describing what a pack contributes — pack-facing, unlike the
 // registration functions in ./host.
 
-// Declares window.electronAPI; a type-only re-export survives in the emitted declarations
-// The empty export is what keeps this module in the emitted declarations: drop it and every pack importing
-// `@abuddy/sdk/fe` loses the `window.electronAPI` global, with nothing to say so.
-// eslint-disable-next-line no-useless-empty-export
-export type {} from './electron-api.ts';
+// The preload bridge: its declaration, and the `window.electronAPI` global that is a view of it. Naming
+// the types is also what keeps this module in the emitted declarations — without a re-export of some kind,
+// every pack importing `@abuddy/sdk/fe` loses the global with nothing to say so.
+export type { _HostBridge } from './electron-api.ts';
 // The event type that global's `speech.onEvent` hands back. Exported by name because two host packages need
 // it too — they reached it through a `types/speech.d.ts` at the repo root until 2026-10-02, which no
 // manifest could describe, so nothing could derive that they compile this file

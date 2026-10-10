@@ -157,7 +157,7 @@ export function useExplorerDragDrop({ selectedPaths, onMove, onCopyFiles }: Drag
     const files = e.dataTransfer?.files
     if (!files) return []
 
-    const getPath = (window as any).electronAPI?.fileUtils?.getPathForFile
+    const getPath = window.electronAPI?.fileUtils?.getPathForFile
     if (!getPath) return []
 
     const paths: string[] = []

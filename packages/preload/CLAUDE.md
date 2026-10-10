@@ -81,11 +81,20 @@ Every `on*` subscription returns an unsubscribe function. Main also broadcasts `
 The renderer and packs don't import this package's types. `Window.electronAPI` is declared in `packages/abuddy-sdk/src/fe/electron-api.ts`, a published contract re-exported by `@abuddy/sdk/fe`, so pack authors see it too (`packages/renderer/src/electron.d.ts` only points there). `SpeechEvent`, the event type that global's `speech.onEvent` hands back, is published from `@abuddy/sdk/fe` beside it, which is what this package and `@app/main` both import. When you change the surface here:
 
 1. Add the main handler (`ipcMain.handle` for `invoke`, `ipcMain.on` for `send`).
-2. Expose it in `src/index.ts`.
-3. Update `electron-api.ts` and run `npm run api:update` in `packages/abuddy-sdk` (see the root `CLAUDE.md`, "SDK packages").
+2. Declare it on `_HostBridge` in `electron-api.ts`, and leave it out of `PackFacingBridge`'s `Omit`s unless pack authors should not be pointed at it.
+3. Expose it in `src/index.ts`. The typecheck fails until steps 2 and 3 agree, in either direction.
+4. Run `npm run api:update` in `packages/abuddy-sdk` (see the root `CLAUDE.md`, "SDK packages").
 
 The declaration marks `electronAPI` optional, because it is missing outside Electron (vitest/jsdom). Callers use `window.electronAPI?.…`.
 
-Not every member is declared, and **nothing checks the two lists against each other** — which is why this paragraph had gone stale by one entry before anyone noticed. As of 2026-10-10 the SDK type lacks `apiToken` (on purpose, above), `fileUtils.getPathForFile`, `shell.openImageExternal` and `apiStatus.openLogFile`. default-setup reaches `getPathForFile` through `(window as any)`, and the renderer's error page — plain script in `packages/renderer/index.html`, so outside the type anyway — calls `openLogFile` beside `reload` and `relaunch`. Nothing calls `openImageExternal` at all.
+**The surface and the declaration are one thing, and the compiler holds them to each other.** `_HostBridge` (`abuddy-sdk/src/fe/electron-api.ts`) is the whole bridge; `src/index.ts` asserts its exposed object `satisfies` it, so a member exposed and not declared is an excess property and one declared and not exposed is missing. **Each group asserts its own slice too** (`satisfies _HostBridge['shell']`, and so on), because the groups are consts: assigning one into the final literal is an ordinary assignment, so an excess property *inside* a group passes the outer check alone.
 
-**Closing that for good means making the surface and the type one declaration**, the way this repo does elsewhere: a list of member paths that the type is derived from, which a spec then holds the exposed object to. It is not done, because the type is published (`api:update` territory) and the four divergences above are each a separate decision — one deliberate, one dead, two reached through an escape hatch.
+`window.electronAPI` is declared as `PackFacingBridge`, which is `_HostBridge` minus the two members pack authors are not pointed at — `apiToken` and `apiStatus.openLogFile`. The `Omit`s are the only place that list is written; a parallel array of member names beside them would be the same declaration twice.
+
+**Why the whole-bridge type is `_`-prefixed and `@internal`.** Publishing it under a pack-facing name would point pack authors at `apiToken` through a different door than the one the pack-facing view closes. `check:specifiers` refuses pack code importing an `_`-prefixed export — *"an export named `_x` is @internal, the app's alone"* — so this is a boundary something enforces, where the old arrangement was an omission nothing did. Host code that needs those members names the type: the renderer's client casts to `_HostBridge` for `apiToken`.
+
+Three members were exposed and undeclared before that type existed, and the paragraph recording which was itself wrong by one. What happened to each is the pattern for the next one:
+
+- `fileUtils.getPathForFile` — **declared**, because four of default-setup's drop targets already used it through `(window as any)`. A member a pack needs is pack-facing; the casts are gone.
+- `apiStatus.openLogFile` — **declared and host-only**: the renderer's error page is its one caller.
+- `shell.openImageExternal` — **deleted**, along with main's 31-line handler. Nothing called either. A member nothing reaches is not an undocumented capability, it is dead code.

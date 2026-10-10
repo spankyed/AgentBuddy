@@ -1,5 +1,5 @@
 import {ipcRenderer, contextBridge, webFrame, webUtils} from 'electron';
-import type {SpeechEvent} from '@abuddy/sdk/fe';
+import type {_HostBridge, SpeechEvent} from '@abuddy/sdk/fe';
 
 const DEFAULT_API_PORT = 3001;
 
@@ -29,11 +29,11 @@ const windowControls = {
   minimize: () => ipcRenderer.send('window:minimize'),
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window:close'),
-};
+} satisfies _HostBridge['windowControls'];
 
 const plugins = {
   popout: (pluginId: string, title?: string) => ipcRenderer.invoke('plugin:popout', pluginId, title) as Promise<void>,
-};
+} satisfies _HostBridge['plugins'];
 
 // File utilities
 const fileUtils = {
@@ -45,7 +45,7 @@ const fileUtils = {
   readFile: (filePath: string) => ipcRenderer.invoke('file:read', filePath),
   readFileBase64: (filePath: string) => ipcRenderer.invoke('file:read-base64', filePath) as Promise<string>,
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
-};
+} satisfies _HostBridge['fileUtils'];
 
 // Get the API port, and the token the API requires (from main, never on the command line)
 const apiPort = getApiPort();
@@ -56,9 +56,8 @@ const startupId = getStartupId();
 const shell = {
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   showItemInFolder: (filePath: string) => ipcRenderer.invoke('shell:showItemInFolder', filePath),
-  openImageExternal: (url: string) => ipcRenderer.invoke('shell:openImageExternal', url),
   openPath: (filePath: string) => ipcRenderer.invoke('shell:openPath', filePath),
-};
+} satisfies _HostBridge['shell'];
 
 // Media utilities
 const media = {
@@ -68,7 +67,7 @@ const media = {
     ipcRenderer.invoke('media:delete', entityId, filename) as Promise<void>,
   deleteAll: (entityId: string) =>
     ipcRenderer.invoke('media:delete-all', entityId) as Promise<void>,
-};
+} satisfies _HostBridge['media'];
 
 // Speech recognition
 const speechRecognition = {
@@ -80,13 +79,13 @@ const speechRecognition = {
     ipcRenderer.on('speech:event', handler);
     return () => { ipcRenderer.removeListener('speech:event', handler); };
   },
-};
+} satisfies _HostBridge['speechRecognition'];
 
 // Zoom utilities
 const zoom = {
   getZoomFactor: () => webFrame.getZoomFactor(),
   notifyZoomChanged: (factor: number) => ipcRenderer.send('zoom:changed', factor),
-};
+} satisfies _HostBridge['zoom'];
 
 // API status events (backend crash/restart notifications from main process)
 const apiStatus = {
@@ -116,7 +115,7 @@ const apiStatus = {
       handlers.forEach(({ channel, handler }) => ipcRenderer.removeListener(channel, handler));
     };
   },
-};
+} satisfies _HostBridge['apiStatus'];
 
 const rendererLog = {
   write: (entry: {
@@ -127,7 +126,7 @@ const rendererLog = {
     meta?: unknown;
     fatal?: boolean;
   }) => ipcRenderer.invoke('renderer-log:write', entry),
-};
+} satisfies _HostBridge['rendererLog'];
 
 // Browser API
 interface TabState {
@@ -206,7 +205,7 @@ const browser = {
   // Query
   getTabs: () => ipcRenderer.invoke('browser:get-tabs') as Promise<TabState[]>,
   getActiveTab: () => ipcRenderer.invoke('browser:get-active-tab') as Promise<number | null>,
-};
+} satisfies _HostBridge['browser'];
 
 // Protocol action listener (abuddy:// deep link handling)
 const protocolAction = {
@@ -216,10 +215,19 @@ const protocolAction = {
     ipcRenderer.on('protocol-action', handler);
     return () => { ipcRenderer.removeListener('protocol-action', handler); };
   },
-};
+} satisfies _HostBridge['protocolAction'];
 
 // Expose APIs to renderer
-contextBridge.exposeInMainWorld('electronAPI', {
+/**
+ * **The whole bridge, held to its one declaration.** `satisfies` is the gate in both directions: a member
+ * exposed and not declared is an excess property, and one declared and not exposed is missing. Each group
+ * above asserts its own slice as well, because these are consts — assigning one here is an ordinary
+ * assignment, so an excess property *inside* a group would pass this check alone.
+ *
+ * `_HostBridge` rather than the pack-facing view, since what a window has is the whole of it; which members
+ * pack authors are pointed at is `HOST_ONLY_BRIDGE_MEMBERS`' business, one declaration away.
+ */
+const electronAPI = {
   windowControls,
   plugins,
   fileUtils,
@@ -235,4 +243,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   browser,
   protocolAction,
   rendererReady: () => ipcRenderer.send('renderer:ready'),
-});
+} satisfies _HostBridge;
+
+contextBridge.exposeInMainWorld('electronAPI', electronAPI);

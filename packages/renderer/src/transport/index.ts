@@ -1,16 +1,21 @@
 import { createWSClient, wsLink, createTRPCClient, type TRPCClient } from '@trpc/client';
 import { API_HOST } from '@abuddy/sdk/utils/pure';
 import type { AppRouter } from '@app/api';   // ← BE import Type‑only!
+import type { _HostBridge } from '@abuddy/sdk/fe';
 
 type ApiClient = TRPCClient<AppRouter>;
 
 /** The port this window launched with. The API can move after a restart — see reconnectApiClient. */
 const initialPort = (typeof window !== 'undefined' && window.electronAPI?.apiPort) || 3001;
 /**
- * The token the API requires, which main gives the app's windows. The preload exposes it as `electronAPI.apiToken`,
- * which only this client reads: it's deliberately left out of the SDK's `Window.electronAPI` type packs see.
+ * The token the API requires, which main gives the app's windows, and which only this client reads.
+ *
+ * The cast is to `_HostBridge` — the **whole** bridge a window has — because `window.electronAPI` is
+ * declared as the pack-facing view of it, and `apiToken` is one of the two members that view omits
+ * (`HOST_ONLY_BRIDGE_MEMBERS`). So host code names the type it means rather than re-declaring the member
+ * it wants, which is what this line did while the two types were written by hand.
  */
-const apiToken = (typeof window !== 'undefined' && (window.electronAPI as { apiToken?: string } | undefined)?.apiToken) || '';
+const apiToken = (typeof window !== 'undefined' && (window.electronAPI as _HostBridge | undefined)?.apiToken) || '';
 
 /**
  * A socket offering the API's subprotocol and the token as a second one (the API's `acceptsConnection`). The token
