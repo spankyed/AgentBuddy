@@ -153,7 +153,8 @@ Final.
     of the work. Second, `--spawn` **spawns `dev` detached** (`.unref()`), because `dev` never returns and
     its own teardown closes the app it holds; the attach plan has both, with the signalling rule.
 11. **`--spawn` with no profile named starts the `development` app, and `dev` reclaims one a tool
-    started.** (With `--profile`, it starts one there instead, and that one is reapable — Decision 12.) When an app *is*
+    started.** (With `--profile` it starts one there instead, and that one is reapable — Decision 12.)
+    When an app *is*
     asked for, it is the developer's own data rather than a blank one, because a blank app cannot answer
     most of what `drive` is asked and because `drive --eval` should keep one meaning rather than one per
     whichever app happened to be up. (Whether an app is started at all is Decision 16's: it is not, unless
@@ -162,16 +163,24 @@ Final.
     SIGTERMs its `supervisorPid`, waits for exit and launches, saying what it took; for `startedBy: dev` it refuses
     as today, because a person's app is not a tool's to take. Without it an agent's one-shot would hold
     the dir and the developer's `npm start` would fail, blaming itself.
-12. **The idle reap does not apply to `development`** — only to a profile `drive` was asked to use. The
-    development app is the one somebody may be looking at; a reclaim is what ends it. A persistent
-    scratch is `--profile drive`, by name, never a default.
+12. **The idle reap keys on `startedBy: "drive"` and a dir that is not `development`** — so it takes any
+    profile a spawn used, whichever its name. The development app is exempt because it is the one somebody
+    may be looking at, and a reclaim is what ends it instead (Decision 11). **Stating the key this way is a
+    correction**: "a profile `drive` was asked to use" and "the `drive` profile" are different rules, and
+    under the narrow one a `--spawn --profile myproject` app is reaped by nothing and reclaimed by nothing —
+    the reclaim is per data dir, so `dev` would have to be pointed at `myproject` — which is the
+    leave-a-process-behind problem Decision 16 exists to prevent, back on a non-default path.
+    So **`--profile drive` is a convention and not a reserved name**: it is what the docs suggest calling a
+    scratch, it needs no refusal in `profiles new`, and it idles out exactly as any other spawned profile
+    does. A name is reserved only when something enforces it, and nothing here should.
 13. **Every `drive` run says which path it took** — for a one-shot that is the answer's `state` field
     (Decision 17), and for `dev` it is prose, since a person is watching. **A run that started an app also
     says the app is still running and how to stop it**, because `--spawn` leaves a detached process behind
     and nothing on `development` reaps it (Decision 12): in a pack repo that is Electron, a file watcher
     and a Vite dev server, and in a checkout with no pack it is Electron alone. Decision 16 is what keeps
     this rare — it only ever happens because someone asked. The two ways
-    out are `abuddy dev`, which reclaims it, and the `supervisorPid` in the session file. **An attach says whose app it joined**, as the answer's
+    out are `abuddy dev`, which reclaims it, and the `supervisorPid` in the session file. **An attach says
+    whose app it joined**, as the answer's
     `startedBy` field (Decision 17) rather than as a sentence — "a previous question started it" is the
     case where nobody is minding the app, so it is the one that must not be silent.
     **And because a line printed once is not documentation**, `abuddy profiles` gains a *running* column —
@@ -206,6 +215,10 @@ Final.
     `abuddy dev` and `--spawn` — rather than to acquire a process the question did not ask for. It is also
     what makes Decision 13's hygiene problem small: **nothing is left running that nobody asked for.**
     Spelled to match the `state: "spawned"` the answer carries, so the flag and the field are one word.
+    **Two consequences of "refuses" worth stating**: a refused run must leave nothing behind, so the
+    session file is read *before* a profile is resolved — `openProfile` creates-or-reuses, so the old
+    order would mint an empty dir and then decline to use it; and `--fresh --spawn` is accepted as a
+    no-op, since `--fresh` already implies `--spawn` and the two flags disagree about nothing.
     It does not weaken the case for deleting `--serve`: a spawned app stays, so a cold checkout costs one
     flag on the first question and an attach on every one after — `--serve`'s own bargain, with a flag in
     place of a long-lived foreground process. Everything Decisions 10-13 say about *how* an app is started
@@ -218,7 +231,8 @@ Final.
     non-zero answers apart, which matters because a miss is retryable with `--spawn` and a failed verb is
     not — the root `CLAUDE.md` rule *"a distinct exit code where 'nothing covered this' and 'everything
     passed' are different answers"*, at the code `npm run spec` already uses for it. Both non-zero paths
-    put **nothing** on stdout, so a pipe never receives half an answer. `state` and `startedBy` belong in the data rather than in a
+    put **nothing** on stdout, so a pipe never receives half an answer. `state` and `startedBy` belong in
+    the data rather than in a
     sentence: the first says whether this question acquired a process, the second whose app answered — and
     `attached` + `startedBy: "drive"` is the case Decision 13 singles out, an app a previous question left
     that nobody is minding. `supervisorPid` is what ends it; prose goes to stderr, and only where something was left
@@ -279,7 +293,9 @@ That plan's phase 3, under Decisions 16 and 17. `--spawn` spawns `dev` (Decision
 `holdExclusiveLock`, re-reading after acquiring, and that `dev` publishes the session file; **without the
 flag a miss refuses**. A spawned app on a `drive` profile idles out; a `dev` one does not.
 
-**Done when:** a miss **without** `--spawn` exits **3**, writes nothing to stdout and names both
+**Done when:** a miss **without** `--spawn` exits **3**, leaves **no profile directory behind** (the
+mutation is resolving the profile before reading the session file, which is today's order and passes every
+other case), writes nothing to stdout and names both
 `abuddy dev` and `--spawn` — a gate over input, so the empty stdout is the half to assert, and 3 rather
 than 1 is the half a caller needs (Decision 17), with a failed verb at 1 as the paired case; the answer is
 `{value, state, supervisorPid}` and nothing else, with `state` reading `attached` and `spawned` in the two cases and
@@ -292,7 +308,9 @@ case that fails the moment it routes through the fixture (Decision 10); **a `--s
 installs the pack**, the other half of Decision 10, which fails if it copied dev's environment rather than
 spawning `dev`; two concurrent `--spawn` calls start **one** app (assert one `supervisorPid` — the lock's firing
 case); onboarding is named when it was completed (Decisions 13 and 14), which a never-onboarded profile is
-the case for; a `drive`-profile app idles out and a `development` one does not (Decision 12);
+the case for; a spawned app on a profile **not named `drive`** idles out, a `dev` app on that same profile does not,
+and a `development` one never does — three cases, since the key is two fields (Decision 12) and the
+conventional name is the one value that cannot discriminate between the two readings;
 `abuddy profiles` shows a running app with its `supervisorPid` and `startedBy`, and stops showing it once that app has
 gone (both halves — a listing that cannot go back to empty is a stale record, not a status). Then measure
 the end-to-end one-shot (`npm run measure`, per that plan's Verification) and record it in the Outcome.

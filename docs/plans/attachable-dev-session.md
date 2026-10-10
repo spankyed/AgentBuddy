@@ -74,7 +74,8 @@ one marker (`pack-dev-servers/<id>.json`) that means something else entirely.
 
 **The order matters**: that rename gives `--profile` its name, and this plan changes what the flag
 *means* — it stops saying only where a throwaway app's data goes and starts naming **which app a question
-reaches**, the one whose session file is read, with `--profile drive` reserved as a scratch. Whether that
+reaches**, the one whose session file is read, and a profile a spawn used is one the reap can take.
+Whether that
 app is joined or started is decided by liveness rather than by the flag. A flag should not gain a new name
 and a new behaviour in one change.
 
@@ -183,11 +184,20 @@ mean another one.
 |---|---|
 | no flag | attach to the `development` app; **refuse** if none is live, naming `--spawn` |
 | `--spawn` | the same, but start one and attach to that instead of refusing |
-| `--profile drive` | a scratch kept between sessions, idling out when unused |
+| `--profile drive` | nothing special about the name — the conventional one for a scratch, kept between questions and idling out when unused, as any spawned profile is |
 | `--profile probe`, an attachable app on it | **attach** — the case this plan is for |
-| `--profile probe`, nothing on it | refuse; with `--spawn`, start one there, publish its session file, attach |
+| `--profile probe`, nothing on it | refuse; with `--spawn`, start one there, publish its session file, attach. **The dir is created only on the path that uses it** — see below |
 | `--profile probe`, a non-attachable app on it | the existing `profileInUse` refusal — the dir can be neither launched into nor attached to |
 | `--fresh` / `--fresh --rm` | mints a new dir by definition, so there is never anything to attach to: it implies `--spawn` for a one-shot, since the flag would otherwise ask for a dir and then refuse to use it. Isolation is what was asked for, not a gap |
+| `--fresh --spawn` | **accepted, and a no-op** — `--spawn` is what `--fresh` already implies, so the pair is a caller being explicit rather than a contradiction. Refusing it would be a rule with nothing behind it: there is no behaviour the two flags disagree about |
+
+**A refused run creates nothing, which is a question of ordering.** `openProfile` creates-or-reuses by
+design — `mkdirSync` plus a record file, reporting `created` (`instances.ts:100`) — because that call is
+for `dev --profile x`, where reuse is the point. A one-shot that resolved its profile *before* checking
+liveness would therefore mint an empty profile and then refuse for lack of an app in it, which is the same
+hygiene class Decision 16 exists for: a command that declines to do anything should not leave anything.
+So the order is **read the session file first, and create the dir only on the path that is going to use
+it** — the attach path needs no dir that is not already there, and `--spawn` is the only path that does.
 
 **A checkout with no pack in hand is a first-class case**, not a fallback. `drive` run where no
 `abuddy.json` sits above it drives *this checkout's* app, which is how the repo's own `drive/` scripts run
@@ -286,7 +296,8 @@ things follow, and each is a way to get this wrong:
   and report the exit.
 
 Nobody is left holding it: on the development dir the developer's own `dev`/`npm start` reclaims it
-(Decision 11 in the goal doc), and on a `drive` profile the idle reap takes it (Decision 12). A detached
+(Decision 11 in the goal doc), and on any profile a spawn used the idle reap takes it (Decision 12). A
+detached
 child with no owner is exactly what those two rules exist to answer.
 
 **It starts the `development` app, which is a change in what `drive` touches, and is stated rather than
@@ -333,12 +344,15 @@ makes both readings safe.
 **So the idle reap does not apply to `development`.** A scratch app that nobody is looking at should
 disappear; the development app is the one somebody may be looking at, and closing it under them is worse
 than leaving it. There is at most one, it is the app they would have started anyway, and a reclaim is
-what ends it. The reap stays for a profile `drive` was asked to use.
+what ends it. **The reap's key is `startedBy: "drive"` and a dir that is not `development`**, so it takes
+any profile a spawn used rather than one blessed name — which is what keeps the hygiene property on every
+path and not only the conventional one.
 
-**A scratch that persists is a profile, asked for by name**: `--profile drive`, a fixed path, which is
-why it needs no record of *which* scratch dir to keep, check or reap. `--fresh` and `--fresh --rm` are
-the other half, for a clean one. None of them is the default, so none of them is something an agent gets
-without asking.
+**A scratch that persists is a profile, asked for by name**: `--profile drive` is the name to suggest, a
+fixed path, and nothing enforces it — the reap finds it by `startedBy` and the dir, so there is no record
+of *which* scratch dir to keep, check or reap and no reserved name to defend. `--fresh` and `--fresh --rm`
+are the other half, for a clean one. None of them is the default, so none of them is something an agent
+gets without asking.
 
 **Every run says which app it used and whether it made one**, and for a one-shot that is the answer's own
 fields rather than a sentence — `state` and `startedBy`, under "Telling the user" below. A command that
@@ -621,6 +635,10 @@ below exists.
   an app `dev` holds from one a previous question left — the case Decision 13 calls the one that must not
   be silent, and the one a shape without that field cannot express. Mutation: an `ok` field reintroduced
   alongside a non-zero exit is the trap this replaced, and the case should fail on it.
+- **a refused one-shot leaves no profile behind.** `--profile brandnew` with no `--spawn`: assert the
+  refusal, and assert `<cli data>/profiles/brandnew` does not exist afterwards. The mutation is resolving
+  the profile before reading the session file, which is the order the command has today and which passes
+  every other case in this list.
 - **`test` publishes no session file**, so a `drive` run during a suite does not attach to the test's app.
 - **`dev` at a checkout root publishes one**, which is the firing case for dropping the pack precondition:
   today that path throws *"No abuddy.json found"* before anything is published. Both halves, since the
@@ -656,9 +674,11 @@ below exists.
   write to a developer's dir visible rather than silent.
 - **two `drive` calls at once start one app.** The lock's firing case: without the re-read after acquiring,
   both see nothing attachable and both launch. Assert one `supervisorPid`.
-- **a `drive`-profile app idles out and a `development` one does not**, which is the whole of what
-  `startedBy` and the dir decide between them: a scratch nobody watches goes, the app somebody may be
-  looking at stays until a reclaim ends it.
+- **a spawned app on a profile idles out, a `dev` app on that same profile does not, and a `development`
+  one never does** — three cases, because the key is two fields and a case over one of them cannot settle
+  it. **Use a profile not named `drive`**: a case run on `--profile drive` passes under the narrower rule
+  this replaced, so it is the one reading that cannot discriminate. A scratch nobody watches goes; the app
+  somebody may be looking at stays until a reclaim ends it.
 - **`drive` without `playwright-core` says so.** A lazy import that throws with an install hint is a gate,
   so it needs a case that fires: the attach path with the peer absent names the package and the install,
   rather than failing as a module-not-found from inside a bundle.
