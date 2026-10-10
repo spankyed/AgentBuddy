@@ -9,11 +9,11 @@ import { debugPortArgs } from '../../src/commands/dev';
 
 describe('the debug port', () => {
   it('is given to a development app', () => {
-    expect(debugPortArgs({ env: 'development' })).toEqual(['--remote-debugging-port=0']);
+    expect(debugPortArgs({ build: 'development' })).toEqual(['--remote-debugging-port=0']);
   });
 
   it.each(['production', 'beta', 'test'] as const)('is refused to a %s app', (env) => {
-    expect(debugPortArgs({ env })).toEqual([]);
+    expect(debugPortArgs({ build: env })).toEqual([]);
   });
 
   /**
@@ -22,8 +22,8 @@ describe('the debug port', () => {
    * one field a caller controls freely — rather than asking the resolver what the app *is*.
    */
   it('is not earned by naming a data dir', () => {
-    expect(debugPortArgs({ env: 'production', userDataDir: '/tmp/anything' })).toEqual([]);
-    expect(debugPortArgs({ env: 'test', userDataDir: '/tmp/anything' })).toEqual([]);
+    expect(debugPortArgs({ build: 'production', profile: '/tmp/anything' })).toEqual([]);
+    expect(debugPortArgs({ build: 'test', profile: '/tmp/anything' })).toEqual([]);
   });
 
   /**
@@ -32,6 +32,6 @@ describe('the debug port', () => {
    * could arrange to be listening on first.
    */
   it('asks Chromium to choose, rather than naming one', () => {
-    expect(debugPortArgs({ env: 'development' })).toEqual([expect.stringMatching(/=0$/)]);
+    expect(debugPortArgs({ build: 'development' })).toEqual([expect.stringMatching(/=0$/)]);
   });
 });

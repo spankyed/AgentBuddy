@@ -12,7 +12,7 @@ export async function uninstall(args: string[]) {
     throw new Error('Usage: abuddy uninstall <pack-id> [-d|--dev] [-b|--beta]');
   }
 
-  const { packsDir } = resolveAppContext({ env });
+  const { packsDir } = resolveAppContext({ build: env });
   const manifestPath = path.join(packsDir, packId, 'abuddy.json');
   let name = packId;
   if (fs.existsSync(manifestPath)) {

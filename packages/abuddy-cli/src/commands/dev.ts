@@ -64,7 +64,7 @@ function reportReload(result: DevReload, what: string): void {
 }
 
 /** Installs into the app's data dir, checking hostVersion and the build format against the app that last used it. */
-export function installToApp(root: string, place: AppPlace = { env: 'development' }) {
+export function installToApp(root: string, place: AppPlace = { build: 'development' }) {
   const { packsDir, userDataDir } = resolveAppContext(place);
   const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
   return installPackFromLocal(root, packsDir, { hostVersion, packFormat });
@@ -84,13 +84,13 @@ function appLaunchEnv(place: AppPlace): NodeJS.ProcessEnv {
   if (nodeOptions) out.NODE_OPTIONS = nodeOptions;
   else delete out.NODE_OPTIONS;
   // Only a source run reads this; a packaged build stamps its channel (see `appEnv`)
-  out.ABUDDY_ENV = place.env;
-  if (place.userDataDir !== undefined) {
+  out.ABUDDY_ENV = place.build;
+  if (place.profile !== undefined) {
     // Set only for a profile, and deliberately: it is also what tells Electron the run was pointed at
     // its own dir, which moves the logs inside it (`main/src/app-context.ts`). A plain `abuddy run` should
     // keep writing to the platform log dir, and should keep honouring an ABUDDY_USER_DATA_DIR the caller
     // exported, which naming one here would override.
-    out.ABUDDY_USER_DATA_DIR = place.userDataDir;
+    out.ABUDDY_USER_DATA_DIR = place.profile;
     // A profile holds its own keys, so the data key goes beside them rather than into the OS keychain,
     // where every profile of one channel would share a service name. The app reads this in any
     // environment but production.
@@ -114,7 +114,7 @@ function appLaunchEnv(place: AppPlace): NodeJS.ProcessEnv {
  * which `readDevToolsPort` reads.
  */
 export function debugPortArgs(place: AppPlace): string[] {
-  return resolveAppContext(place).env === 'development' ? ['--remote-debugging-port=0'] : [];
+  return resolveAppContext(place).build === 'development' ? ['--remote-debugging-port=0'] : [];
 }
 
 /** Starts the app. A checkout runs its own sources with its own electron, so a pack needs none installed. */
@@ -250,7 +250,7 @@ async function session(args: string[], hooks: SessionHooks) {
     const { count, from } = copySecretsInto(profile, env);
     console.log(`Copied ${count} secret${count === 1 ? '' : 's'} from ${from}`);
   }
-  const place: AppPlace = { env, userDataDir: profile?.dir };
+  const place: AppPlace = { build: env, ...(profile ? { profile: profile.dir } : {}) };
   const { userDataDir, apiPortFile } = resolveAppContext(place);
 
   // Registered here rather than once the dev server is up, because the ten seconds before that — the

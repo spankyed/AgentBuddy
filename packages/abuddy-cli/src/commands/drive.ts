@@ -316,9 +316,9 @@ function profileArgsFor(mode: ProfileMode): readonly string[] {
   return [];
 }
 
-function attachPlace(mode: ProfileMode): { env: 'development'; userDataDir?: string } {
-  if (mode.kind !== 'named') return { env: 'development' };
-  return { env: 'development', userDataDir: profileDir(cliDirs(), mode.name) };
+function attachPlace(mode: ProfileMode): { build: 'development'; profile?: string } {
+  if (mode.kind !== 'named') return { build: 'development' };
+  return { build: 'development', profile: profileDir(cliDirs(), mode.name) };
 }
 
 /**

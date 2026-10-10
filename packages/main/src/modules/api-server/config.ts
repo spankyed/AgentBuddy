@@ -102,7 +102,7 @@ export const getEnvironment = (port: number, options: { apiToken: string; startu
     AGENTBUDDY_LOG_DIR: options.logDir,
     SHIPPED_PACKS_DIR: shippedPacksDir(),
     // Identity for the API process; resolveAppContext() there reads these
-    ABUDDY_ENV: getAppContext().env,
+    ABUDDY_ENV: getAppContext().build,
     ABUDDY_USER_DATA_DIR: getAppContext().userDataDir,
     ELECTRON_RUN_AS_NODE: '1',
   };

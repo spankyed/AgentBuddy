@@ -38,7 +38,7 @@ export function acceptsConnection(offeredProtocols: string | undefined, token = 
  * for a caller with the API token: `abuddy run` and the built-in pack's watcher read it from the development app's
  * token file, the E2E tests from the app's window. A web page has no way to learn it.
  */
-export function devReloadRefusal(headers: http.IncomingHttpHeaders, env = resolveAppContext().env, token = apiToken()): string | null {
+export function devReloadRefusal(headers: http.IncomingHttpHeaders, env = resolveAppContext().build, token = apiToken()): string | null {
   if (env !== 'development' && env !== 'test') return `pack reloads are for development builds (this one is ${env})`;
   const given = headers[API_TOKEN_HEADER];
   if (!isApiToken(Array.isArray(given) ? given[0] : given, token)) return 'the API token is missing or wrong';

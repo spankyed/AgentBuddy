@@ -18,14 +18,14 @@ afterEach(() => {
 });
 
 describe('resolveAppContext', () => {
-  it('throws when the environment is unknown instead of falling back to production', () => {
-    expect(() => resolveAppContext()).toThrow(/App environment unknown/);
+  it('throws when the build is unknown instead of falling back to production', () => {
+    expect(() => resolveAppContext()).toThrow(/App build unknown/);
   });
 
   it('uses ABUDDY_ENV and derives paths from the platform data dir', () => {
     process.env.ABUDDY_ENV = 'beta';
     const ctx = resolveAppContext();
-    expect(ctx.env).toBe('beta');
+    expect(ctx.build).toBe('beta');
     expect(ctx.appName).toBe('abuddy-beta');
     expect(path.basename(ctx.userDataDir)).toBe('abuddy-beta');
     expect(ctx.userDataDir.startsWith(os.homedir())).toBe(true);
@@ -39,8 +39,8 @@ describe('resolveAppContext', () => {
   it('prefers explicit input over the environment variables', () => {
     process.env.ABUDDY_ENV = 'beta';
     process.env.ABUDDY_USER_DATA_DIR = '/from/env';
-    const ctx = resolveAppContext({ env: 'development', userDataDir: '/explicit' });
-    expect(ctx.env).toBe('development');
+    const ctx = resolveAppContext({ build: 'development', profile: '/explicit' });
+    expect(ctx.build).toBe('development');
     expect(ctx.appName).toBe('abuddy-dev');
     expect(ctx.userDataDir).toBe('/explicit');
     expect(ctx.urlScheme).toBe('abuddy');
@@ -56,10 +56,10 @@ describe('resolveAppContext', () => {
   });
 
   it('maps each environment to its existing app name', () => {
-    expect(resolveAppContext({ env: 'production' }).appName).toBe('abuddy');
-    expect(resolveAppContext({ env: 'beta' }).appName).toBe('abuddy-beta');
-    expect(resolveAppContext({ env: 'development' }).appName).toBe('abuddy-dev');
-    expect(resolveAppContext({ env: 'test' }).appName).toBe('abuddy-test');
+    expect(resolveAppContext({ build: 'production' }).appName).toBe('abuddy');
+    expect(resolveAppContext({ build: 'beta' }).appName).toBe('abuddy-beta');
+    expect(resolveAppContext({ build: 'development' }).appName).toBe('abuddy-dev');
+    expect(resolveAppContext({ build: 'test' }).appName).toBe('abuddy-test');
   });
 
   it('rejects an invalid ABUDDY_ENV', () => {

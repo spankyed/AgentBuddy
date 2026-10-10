@@ -22,7 +22,7 @@ export interface KeyVault {
  * through these rather than spelling the convention again.
  *
  * The third such fact is the credential store's service name, which is the app name: a caller for another
- * environment takes it from `resolveAppContext({ env }).appName`, the same accessor `appStore` reads.
+ * environment takes it from `resolveAppContext({ build: env }).appName`, the same accessor `appStore` reads.
  */
 export const dataKeyAccount = (keyId: string): string => `secrets:${keyId}`;
 

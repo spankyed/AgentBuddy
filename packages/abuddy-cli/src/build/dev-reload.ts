@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import type { AppEnv } from '@abuddy/sdk/env';
+import type { AppBuild } from '@abuddy/sdk/env';
 import { readApiEndpoint } from '@abuddy/host/process-liveness';
 import { API_HOST, API_TOKEN_HEADER, errorMessage } from '@abuddy/sdk/utils/pure';
 
@@ -17,16 +17,22 @@ import { API_HOST, API_TOKEN_HEADER, errorMessage } from '@abuddy/sdk/utils/pure
  * `userDataDir` out is not the same as naming the default one — it lets `ABUDDY_USER_DATA_DIR` from the
  * caller's shell still apply, which is an escape hatch that predates profiles.
  */
+/**
+ * Where an app is: the build it is, and the profile it keeps its data in.
+ *
+ * The same pair `resolveAppContext` takes, under the same two words — it is handed straight to it, so a
+ * second vocabulary here would be one translation step for nothing.
+ */
 export interface AppPlace {
-  env: AppEnv;
-  userDataDir?: string;
+  build: AppBuild;
+  profile?: string;
 }
 
 /** The running app's API: its URL and the token it requires, from the files the API writes */
 function findAppApi(place: AppPlace): { api: { url: string; token: string } } | { problem: string } {
   const { apiPortFile, apiTokenFile } = resolveAppContext(place);
   const endpoint = readApiEndpoint(apiPortFile);
-  if (!endpoint) return { problem: `no running ${place.env} app in ${apiPortFile}` };
+  if (!endpoint) return { problem: `no running ${place.build} app in ${apiPortFile}` };
   let token: string;
   try {
     token = fs.readFileSync(apiTokenFile, 'utf-8').trim();
@@ -51,7 +57,7 @@ export type DevReload =
   | { status: 'unreachable'; detail: string };
 
 /** Asks the running app to reload a pack's runtime, with its API token. */
-export async function reloadPack(packId: string, place: AppPlace = { env: 'development' }): Promise<DevReload> {
+export async function reloadPack(packId: string, place: AppPlace = { build: 'development' }): Promise<DevReload> {
   const found = findAppApi(place);
   if ('problem' in found) return { status: 'not-running', detail: found.problem };
   try {

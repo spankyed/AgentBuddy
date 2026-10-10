@@ -898,7 +898,9 @@ Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas`
 
 ### App environment
 
-Environment identity and data paths come from one resolver, `@abuddy/sdk/env` (`resolveAppContext()`). Don't read `NODE_ENV`, `PLAYWRIGHT_TEST` or platform paths to decide which data dir to use.
+**A build, and the profile it keeps its data in, come from one resolver**: `@abuddy/sdk/env`'s `resolveAppContext({ build?, profile? })`. Those are two axes and one word was doing both jobs — `APP_NAMES[build]` decides the app name, the URL scheme and so Electron's own storage, while the same value decided *where* the data went, as a default a profile overrides. Don't read `NODE_ENV`, `PLAYWRIGHT_TEST` or platform paths to decide which data dir to use.
+
+`ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR` are the **handoff**, not the selector: how a parent process tells a child what it is and where its data is. `--build`/`ABUDDY_BUILD` is what a person types, and the two are deliberately different names — collapsing them would put the choice and the answer under one word, which is the confusion the resolver exists to end.
 
 - The log directory is the one app path the resolver doesn't give you: only the Electron process can ask the platform for it. `packages/main/src/app-context.ts` resolves it once — `app.getPath('logs')`, or `<userDataDir>/logs` when the run was given its own data dir — and hands it to electron-log, to the API (`AGENTBUDDY_LOG_DIR`) and to the IPC that opens the log file, so none of them decides it for itself.
 - The Electron main process infers the environment once at startup (`packages/main/src/app-context.ts`): Playwright → `test`; packaged builds → the channel stamped by `build/build.sh` (`production` | `beta`; an unstamped packaged build refuses to start); source runs → `ABUDDY_ENV` if set, else `development`. It passes `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR` to the API process.

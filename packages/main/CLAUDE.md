@@ -66,7 +66,7 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 `initAppContext()` runs first and is the only place the environment is decided:
 
 - `_inferElectronAppEnv` (`@abuddy/sdk/env`) gets `PLAYWRIGHT_TEST === 'true'`, `app.isPackaged`, the build-time `__ABUDDY_CHANNEL__` and `process.env.ABUDDY_ENV`. `__ABUDDY_CHANNEL__` is `ABUDDY_ENV` at build time (`vite.config.js` `define`), which `build/build.sh` exports as `production` or `beta`; a packaged build without a valid stamp throws.
-- `resolveAppContext({ env })` gives the app name, data dir, `packsDir`, `urlScheme`, …. It then calls `app.setName` and `app.setPath('userData')` (so Electron's own storage and the single-instance lock follow the **data dir**), and writes `ABUDDY_ENV` / `ABUDDY_USER_DATA_DIR` to `process.env`, which the API child inherits.
+- `resolveAppContext({ build })` gives the app name, data dir, `packsDir`, `urlScheme`, …. It then calls `app.setName` and `app.setPath('userData')` (so Electron's own storage and the single-instance lock follow the **data dir**), and writes `ABUDDY_ENV` / `ABUDDY_USER_DATA_DIR` to `process.env`, which the API child inherits.
 - Everything else reads it with `getAppContext()`, which throws if called first. Don't read `app.getPath('userData')`, `NODE_ENV` or `PLAYWRIGHT_TEST` to choose paths.
 
 ## API server (`src/modules/api-server/`)

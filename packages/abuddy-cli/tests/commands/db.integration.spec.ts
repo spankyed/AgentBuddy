@@ -235,8 +235,8 @@ describe('naming the data dir', () => {
       const targetOf = (args: string[]) => parseDbArgs(args, {}, 'usage').target;
       for (const [args, env] of [[[], 'production'], [['--production'], 'production'], [['-d'], 'development'], [['-b'], 'beta']] as const) {
         const target = targetOf([...args]);
-        expect(target.env, args.join(' ') || '(no flag)').toBe(env);
-        expect(target.userDataDir, args.join(' ') || '(no flag)').toBe(resolveAppContext({ env }).userDataDir);
+        expect(target.build, args.join(' ') || '(no flag)').toBe(env);
+        expect(target.userDataDir, args.join(' ') || '(no flag)').toBe(resolveAppContext({ build: env }).userDataDir);
       }
       // Each names a different app's data, so a swap between them can't pass
       const dirs = [[], ['-d'], ['-b']].map((args) => targetOf(args).userDataDir);

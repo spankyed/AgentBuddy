@@ -39,7 +39,7 @@ export const TARGET_USAGE = [
   '  --volatile             Read the run history too (TNode rows), which the app keeps in its own partition',
 ].join('\n');
 
-export type DbTarget = Pick<AppContext, 'env' | 'userDataDir' | 'apiPortFile'> & {
+export type DbTarget = Pick<AppContext, 'build' | 'userDataDir' | 'apiPortFile'> & {
   /** The command named this data dir (`-d`, `-b`, `--production`, `--data-dir` or `--profile`) rather than taking the default */
   named: boolean;
   /** `--volatile`: the run history is read with the rest of the data */
@@ -99,9 +99,9 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
     : profile !== undefined ? profileDataDir(profile, usage)
     : (dev || beta || production) ? appDataDirFor(env)
     : undefined;
-  const context = resolveAppContext({ env, ...(userDataDir !== undefined && { userDataDir }) });
+  const context = resolveAppContext({ build: env, ...(userDataDir !== undefined && { profile: userDataDir }) });
   const target: DbTarget = {
-    env, userDataDir: context.userDataDir, apiPortFile: context.apiPortFile, named: named.length === 1, volatile,
+    build: env, userDataDir: context.userDataDir, apiPortFile: context.apiPortFile, named: named.length === 1, volatile,
     ...(schemaFrom !== undefined && { schemaFrom: path.resolve(schemaFrom) }),
   };
   return { values: parsed.values as typeof parsed.values & Record<keyof O, unknown>, positionals: parsed.positionals, target };
@@ -137,7 +137,7 @@ export async function openTarget(target: DbTarget, { write, command }: OpenOptio
     }
     if (running) io.err(`Warning: AgentBuddy is running on it (${running.why}); what it hasn't written yet isn't here`);
     const db = await openAppDatabase({
-      env: target.env,
+      env: target.build,
       userDataDir: target.userDataDir,
       readOnly: !write,
       includeVolatile: target.volatile,

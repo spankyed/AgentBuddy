@@ -13,7 +13,7 @@ class SingleInstanceApp implements AppModule {
     // their dirs differ, and a profile is what lets two of one environment coexist.
     const isSingleInstance = app.requestSingleInstanceLock();
     if (!isSingleInstance) {
-      console.log(`[MAIN] Another ${getAppContext().env} instance is already running. Exiting.`);
+      console.log(`[MAIN] Another ${getAppContext().build} instance is already running. Exiting.`);
       app.quit();
       process.exit(0);
     }

@@ -183,7 +183,7 @@ const E2E_VIEWPORT = { width: 1400, height: 900 };
 /** The pack's recorded install or apply error in the test app's installed packs, if any. */
 function readPackLastError(packId: string, userDataDir: string): string | undefined {
   try {
-    const registry = JSON.parse(fs.readFileSync(resolveAppContext({ env: 'test', userDataDir }).installedPacksFile, 'utf-8'));
+    const registry = JSON.parse(fs.readFileSync(resolveAppContext({ build: 'test', profile: userDataDir }).installedPacksFile, 'utf-8'));
     return registry.packs?.find((p: { id: string }) => p.id === packId)?.lastError;
   } catch {
     return undefined;
@@ -529,7 +529,7 @@ export function createTest(options: CreateTestOptions = {}) {
             }
           }
           // Install through the same bundle path users get (stage → verify → place)
-          const { packsDir } = resolveAppContext({ env: 'test', userDataDir });
+          const { packsDir } = resolveAppContext({ build: 'test', profile: userDataDir });
           console.log(`[pack] Installing ${manifest.id} from ${archive ?? packDir} into an isolated test data dir...`);
           // `hostVersion` is the launched app's own (its package.json), so this is that app's answer rather than a
           // second opinion. No `packFormat`: whether this app can read the pack's build is the app's to decide, and

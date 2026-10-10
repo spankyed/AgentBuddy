@@ -7,14 +7,16 @@
 // @public
 export const APP_ENVS: readonly ["production", "beta", "development", "test"];
 
+// @public
+export type AppBuild = AppEnv;
+
 // @public (undocumented)
 export interface AppContext {
     apiPortFile: string;
     apiTokenFile: string;
     appDir: string;
     appName: string;
-    // (undocumented)
-    env: AppEnv;
+    build: AppBuild;
     installedPacksFile: string;
     // (undocumented)
     packsDir: string;
@@ -49,10 +51,10 @@ export function parseAppEnv(value: string | undefined): AppEnv | undefined;
 // @public
 export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta'>;
 
-// @public (undocumented)
+// @public
 export function resolveAppContext(input?: {
-    env?: AppEnv;
-    userDataDir?: string;
+    build?: AppBuild;
+    profile?: string;
 }): AppContext;
 
 // (No @packageDocumentation comment for this package)

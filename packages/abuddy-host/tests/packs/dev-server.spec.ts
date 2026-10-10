@@ -21,7 +21,7 @@ let packsDir: string;
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-server-spec-'));
-  ({ userDataDir, packsDir } = resolveAppContext({ env: 'test', userDataDir: path.join(tmp, 'data') }));
+  ({ userDataDir, packsDir } = resolveAppContext({ build: 'test', profile: path.join(tmp, 'data') }));
 });
 
 afterEach(() => {

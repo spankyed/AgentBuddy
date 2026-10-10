@@ -70,7 +70,7 @@ function sourceSecretsFile(env: AppEnv): string {
  */
 function vaultFor(file: SecretsFile, secretsFile: string, env: AppEnv): KeyVault {
   if (file.protection === 'unprotected') return fileKeyVault(dataKeyFile(secretsFile));
-  return osKeyVault(resolveAppContext({ env }).appName);
+  return osKeyVault(resolveAppContext({ build: env }).appName);
 }
 
 export interface SecretCopy {

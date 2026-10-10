@@ -95,7 +95,7 @@ export function installedVersion(appPath: string): string | null {
  * the thing being avoided, so doing it anyway would defeat the wait.
  */
 async function quitApp(product: string, channel: Channel, log: (message: string) => void): Promise<void> {
-  const context = resolveAppContext({ env: channel });
+  const context = resolveAppContext({ build: channel });
   const running = () => findRunningApp({ userDataDir: context.userDataDir, apiPortFile: context.apiPortFile });
   if (!running()) return;
 

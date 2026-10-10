@@ -5,7 +5,7 @@ import { parseTargetEnv, envLabel } from '../utils';
 
 export async function list(args: string[]) {
   const { env } = parseTargetEnv(args);
-  const { packsDir } = resolveAppContext({ env });
+  const { packsDir } = resolveAppContext({ build: env });
   const label = envLabel(env);
 
   if (!fs.existsSync(packsDir)) {

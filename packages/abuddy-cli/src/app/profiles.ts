@@ -91,7 +91,7 @@ const writeRecord = (dir: string, record: ProfileRecord): void => {
  * Electron allows one app per data dir, so both refusals are the same question.
  */
 export function profileInUse(dir: string): boolean {
-  return readApiEndpoint(resolveAppContext({ env: 'development', userDataDir: dir }).apiPortFile) !== null;
+  return readApiEndpoint(resolveAppContext({ build: 'development', profile: dir }).apiPortFile) !== null;
 }
 
 export interface OpenedProfile {
