@@ -621,6 +621,13 @@ build's data, and `--build <name>` says the same thing in the one word the CLI n
 flags could not do are now cases: a value that is not a build is refused *by name* with what the builds are,
 and the shorthands are held to the long form pairwise.
 
+Mutation-checked five ways, which between them reach all seven cases: `-b` mapped to `development` fails the
+pairwise case and nothing else, the unknown-build refusal removed fails the refusal case, a `development`
+default fails two, consuming `--build`'s value without advancing the index fails the leftovers case, and
+reading only the inline `--build=` form fails four. The pairwise case is the one worth noting — it fails on
+the *pair* rather than on either half, which is what says the two spellings are held together rather than
+separately.
+
 **The resolver.** `resolveAppContext({ build?, profile? })`, and `AppContext.build` rather than `.env`, so
 one resolver does not answer in two vocabularies. 27 argument sites, 12 context reads, `AppPlace` and
 `DbTarget`; `api:update` regenerated `env.api.md` and every line of it is this change.
@@ -681,6 +688,11 @@ mid-suite. The case asserts the port is present and the session is not, which is
 the port is what there would be to infer from, and asserting it is also what stops the absence being read
 off an empty or wrong directory. It earned that immediately — the first draft asserted `host.json` beside
 the absence and failed, because the app's own files are a level down under `abuddy/`.
+
+Mutation-checked on both halves, and the subject rather than the spec for the half that has one: making the
+fixture publish a session after launch (four lines, as `abuddy dev` does) fails the case, and pointing the
+read one directory down — the wrong-dir mistake the port assertion exists to catch — fails it with an
+`ENOENT` naming the path.
 
 **`--fresh` on the one-shot path resolved the wrong data dir, and the cause was two answers to one
 question.** `attachPlace` answered `{ build: 'development' }` for `mode.kind === 'fresh'` while
