@@ -191,10 +191,6 @@ abuddy drive --query 'return qx(EARS.Entity.Note).count()'
 With no app running it exits 3 and says so. `--spawn` starts one and keeps it, so a cold checkout costs
 one flag on the first question and an attach on every one after.
 
-**This replaced a session that answered HTTP** — an address, a token, a marker file and a `/close` verb.
-Its attach was quicker, 0.7s against 0.9s measured on one box, and what the 0.3s bought was the removal of
-a second long-lived app beside the one `dev` already holds.
-
 **Three rules, so a verb is guessable.** A POST is a verb and a GET is a noun; one concept has one field
 name, in requests and in responses (`code` is any source the session runs, `plugin` names a plugin
 whichever direction it travels); and every answer is `{ ok, value }`, or `{ ok: false, error }` when the

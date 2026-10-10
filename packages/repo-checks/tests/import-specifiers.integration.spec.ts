@@ -561,10 +561,10 @@ describe('findSharedPackageLists', () => {
 /**
  * Every rule in `CHECKS` is a gate that fails the build, so every one needs a case that proves it bites.
  *
- * This used to be that sentence and nothing else: the file imported `CHECKS` and never read it, so the
- * convention was held up by whoever remembered it — and two rules had landed with no case at all
- * (`findPackOwnAliases`, `findPackageScriptImports`), which is exactly what the sentence promised could not
- * happen. Same shape as `step-build-barrel.spec.ts`: a table and its uses, kept in step by a test.
+ * **A sentence cannot hold that, which is why the table below is read rather than described.** A file that
+ * imports `CHECKS` and never reads it leaves the convention to whoever remembers it, and two rules reached
+ * the tree with no case at all that way (`findPackOwnAliases`, `findPackageScriptImports`). Same shape as
+ * `step-build-barrel.spec.ts`: a table and its uses, kept in step by a test.
  */
 /**
  * One offending example per rule in `CHECKS`, and the call that runs the rule over it.

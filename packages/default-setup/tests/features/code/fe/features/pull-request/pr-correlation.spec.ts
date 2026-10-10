@@ -1,10 +1,11 @@
-// Which answer a PR view takes, now that it takes the one in its own slot rather than the one that passed a check.
+// Which answer a PR view takes: the one in its own slot, keyed by what it asked for.
 //
 // A diff is a view fetching data, and the rule for that job (`packages/default-setup/CLAUDE.md`) is a slot
 // keyed by what was asked: a late or another window's answer writes its own key, the view reads the key it is
-// showing, and there is no guard anyone can forget. What was here before was a guard, and it had the hole a
-// guard can have and a key cannot — it skipped its head check for an answer carrying no head, which is
-// precisely what the branch-only asker's answers carry.
+// showing, and there is no guard anyone can forget. **A guard cannot do this job here**, which is the reason
+// to reach for the key and not merely a preference: the branch-only asker compares against no head, so any
+// check on the answer's head must admit an answer carrying none — and two PRs onto one base, the ordinary
+// case, then let a branch diff land as a PR's files.
 //
 // The file-diff half keeps an in-flight check as well, because its answer **opens a tab**: a key decides
 // which row to write, not whether there should be one. That is the limit the guide names, and the two halves

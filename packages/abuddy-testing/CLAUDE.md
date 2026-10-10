@@ -41,17 +41,16 @@ One helper per kind of run, and there are two kinds:
 | `definePackE2EConfig` | a pack's suite, run by `abuddy test` | anything Playwright takes; the pack's word is last |
 | `defineDriveConfig` | driving scripts, run by `abuddy drive <script>` | the same |
 
-A third stood beside them while a session was an HTTP server with a handshake to protect. A session is a
-connection now and a question needs no runner at all, so there is no setting left that a pack changing it
-would break.
+Two, and no more: a question needs no runner at all — it attaches to an app something else is holding —
+so there is no third kind of run for a helper to own.
 
 - **`timeout` in `definePackE2EConfig` has to stay a literal.** `suite-timeouts.spec.ts` reads a config's
   timeouts as text rather than importing one (importing creates a temp data dir), follows the delegation to
   this module and holds the value to the large size budget. It reads **one helper's body**, not the file,
   because a neighbour declaring `timeout: 0` made reading the file whole report the root suite's as 0ms.
 - **Both take the pack's word last**, because nothing reads their settings back. The rule for which
-  settings a helper may lock: **the ones the tool or its own docs read back** — and with the server gone,
-  neither has any.
+  settings a helper may lock is **the ones the tool or its own docs read back**, and neither helper has
+  any such setting.
 
 ## Vitest: isolated data dirs (`@abuddy/testing/vitest`)
 
@@ -324,12 +323,6 @@ Things worth knowing before changing it:
   which suits a test; a long session would collect every drop and fail at the end over ones already read.
 - **`/events` is capped** (`MAX_SEEN_EVENTS`) and reports what it dropped. The in-page inspector sees all of
   the app's traffic, so a buffer nobody drains grows for as long as the session is up.
-
-**What was here before: an HTTP server.** `drive --serve` held the page and answered loopback requests —
-a server, a token, a marker in Playwright's `outputDir`, a ready-line protocol and a `/close` verb, 851
-lines, all so one app survived between questions. With a session file to read and a connect to attach with,
-none of it is needed: measured 2026-10-10, its attach answered in 0.7s against this one's 1.0s, and what the
-0.3s bought was the removal of a second long-lived app beside the one `dev` already holds.
 
 ## Setup for external packs
 

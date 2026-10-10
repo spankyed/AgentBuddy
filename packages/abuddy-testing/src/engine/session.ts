@@ -3,24 +3,24 @@ import { HOST } from '@abuddy/host/bus';
 import type { BusMessage } from './api-client.ts';
 
 /**
- * The verbs a live drive session answers, over one already-open page. `server.ts` is the channel; this is
- * what the channel calls, and `packages/abuddy-testing/CLAUDE.md` says why the engine exists at all.
+ * The verbs a drive session answers, over one already-open page. `packages/abuddy-testing/CLAUDE.md` says
+ * why the engine exists at all.
  *
  * **Nothing here touches Playwright's or tRPC's types.** The page arrives as `SessionPage` and the bus as
  * `SessionApi`, so every verb is exercised in process against a fake — a session spec that had to launch
- * Electron would be an E2E test, where the subject here is the protocol rather than the app.
+ * Electron would be an E2E test, where the subject here is the behaviour rather than the app.
  *
- * **Ending the session is not here.** `/close` has to answer before anything tears down, and only the
- * channel knows when its reply has been written, so `server.ts` owns that. A session knows only how to do
- * things to an app.
+ * **Ending anything is not here.** `stop` drops this session's listener and nothing else: the page, the
+ * connection and the app belong to whoever opened them, which is what lets a question be asked of an app
+ * somebody else is holding. A session knows only how to do things to an app.
  */
 
 /**
  * What every verb returns, and why a failure is a value rather than a throw.
  *
- * The caller is an HTTP request, so a thrown error becomes a 500 and the agent learns only that
- * something went wrong. `ok: false` with the message keeps the channel usable: a bad query is an answer,
- * not a dropped connection, and the session carries on serving the next request.
+ * A verb is asked for an answer, so a throw tells the asker only that something went wrong and loses
+ * which verb and why. `ok: false` with the message keeps the session usable: a bad query is an answer, and
+ * the next verb can still be asked.
  */
 export type EngineResult = { readonly ok: true; readonly value: unknown }
   | { readonly ok: false; readonly error: string };
@@ -242,7 +242,7 @@ export const evalSource = (body: string): string => `(async () => {
 type Evaluated = { cloneable: true; value: unknown }
   | { cloneable: false; described: string; keys: readonly string[] };
 
-/** What `/wait` waits for: a dotted state path, or a plugin arriving. Exactly one, which `server.ts` checks */
+/** What `wait` waits for: a dotted state path, or a plugin arriving. Exactly one, never both */
 export type WaitTarget = { readonly state: string } | { readonly plugin: string };
 
 /**
@@ -284,7 +284,7 @@ export interface EngineSession {
   drainEvents: () => EngineResult;
   drainDrops: () => Promise<EngineResult>;
   drainErrors: () => EngineResult;
-  /** Installs the in-page bridge and listens on the connection; `server.ts` awaits it before it listens */
+  /** Installs the in-page bridge and listens on the connection; a caller awaits it before asking anything */
   ready: () => Promise<void>;
   /**
    * Drops the connection listener `ready` added. The page's exposed function and its flag survive, nothing
