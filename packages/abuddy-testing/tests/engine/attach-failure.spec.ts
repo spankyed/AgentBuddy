@@ -30,11 +30,20 @@ describe('a step that fails after the attach', () => {
     expect(close).not.toHaveBeenCalled();
   });
 
-  /** The caller needs the reason it failed, not a reason about tidying up. */
+  /**
+   * The caller needs the reason it failed, not a reason about tidying up.
+   *
+   * `close` here is a socket and a CDP connection, and either can throw on one that has already gone — so
+   * this is the ordinary case rather than an exotic one, and letting it through would hand back an error
+   * about closing in place of the refusal this function exists to deliver.
+   */
   it('reports what failed rather than what the cleanup did', async () => {
-    await expect(_closingOnFailure(() => { throw new Error('and the close threw too'); }, async () => {
+    const close = vi.fn(() => { throw new Error('and the close threw too'); });
+
+    await expect(_closingOnFailure(close, async () => {
       throw new Error('the claim was refused');
-    })).rejects.toThrow('and the close threw too');
+    })).rejects.toThrow('the claim was refused');
+    expect(close, 'and it still tried to close').toHaveBeenCalled();
   });
 });
 

@@ -116,8 +116,11 @@ async function apiAddressFromWindow(page: SessionPage): Promise<{ port: number; 
  * there for ever — which reads as the verb hanging rather than as a refusal that was reported. Every step
  * after the attach is wrapped, so the failure is rethrown unchanged and only the cleanup is added.
  *
- * A failure *in the cleanup* is deliberately not caught: it would replace the reason the caller needs with
- * one about tidying up.
+ * **A failure in the cleanup must not replace the one being cleaned up after.** `close` here is a socket
+ * and a CDP connection, either of which can throw on a connection that has already gone — and letting that
+ * through would hand the caller an error about tidying up in place of the refusal or timeout it needs,
+ * which is the one thing this function exists to deliver. So the close is attempted and its own failure
+ * dropped; the work's error is always what is rethrown.
  *
  * @internal
  */
@@ -125,7 +128,10 @@ export async function _closingOnFailure<T>(close: () => Promise<void> | void, wo
   try {
     return await work();
   } catch (error) {
-    await close();
+    // Dropped, never rethrown: see above — a close that fails must not become the reason the caller is given
+    try {
+      await close();
+    } catch { /* the handle is gone, which is what closing wanted */ }
     throw error;
   }
 }
