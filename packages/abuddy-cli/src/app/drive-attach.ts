@@ -131,7 +131,15 @@ const HELD = new Error('another spawn holds this data dir');
  */
 export async function spawnOrAttach(
   from: string, dataDir: string, profileArgs: readonly string[],
-  spawn: (from: string, dataDir: string, profileArgs: readonly string[]) => Promise<AttachableApp> = spawnDevApp,
+  // Both seams are for the one case that cannot be observed otherwise: refused the lock, this waits rather
+  // than spawning, and *which of the two it did* is the whole claim. Reaching it with real timing would
+  // mean a sleep ordering a publish after the wait had begun — and a spec that sleeps and then asserts is
+  // what `spec-waits` refuses, rightly: the first attempt at this case dropped the sleep, passed, and
+  // stopped firing on the mutation that removes the lock
+  { spawn = spawnDevApp, waitFor = waitForSession }: {
+    spawn?: (from: string, dataDir: string, profileArgs: readonly string[]) => Promise<AttachableApp>;
+    waitFor?: (dataDir: string) => Promise<DevSession>;
+  } = {},
 ): Promise<{ app: AttachableApp; state: 'spawned' | 'attached' }> {
   let lock: ExclusiveLock;
   try {
@@ -139,7 +147,7 @@ export async function spawnOrAttach(
   } catch (error) {
     if (error !== HELD) throw error;
     // Another question is already starting an app here. What this one wants is an app, not a spawn
-    const session = await waitForSession(dataDir);
+    const session = await waitFor(dataDir);
     return { app: { session, ...(session.logPath !== undefined && { logPath: session.logPath }) }, state: 'attached' };
   }
   try {

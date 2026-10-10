@@ -13,7 +13,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { holdExclusiveLock } from '@abuddy/host/exclusive-lock';
 import { publishSession, readSession, type DevSession } from '@abuddy/host/dev-session';
 import { spawnOrAttach } from '../../src/app/drive-attach';
@@ -38,23 +38,20 @@ afterEach(() => {
 
 describe('two questions spawning at once', () => {
   it('starts one app, and the loser attaches to it', async () => {
-    // The winner, holding the lock and about to publish — which is where the loser arrives
+    // The winner holds the lock and has not published yet — the state in which a loser without the lock
+    // would spawn a second app. What the loser does *instead* is the claim, so the waiter is injected
+    // rather than ordered by a sleep: `spec-waits` refuses a spec that sleeps and then asserts, and the
+    // version that dropped the sleep passed while no longer firing on the mutation that removes the lock.
     const lock = holdExclusiveLock({ file: path.join(dataDir, 'spawn.lock'), what: 'the other question', refuse: () => new Error('held') });
-    // A **live** pid, and a different one from the spawner's: `readSession` reads a record naming a dead
-    // process as absent, so a made-up pid here would make the loser wait out its whole deadline
-    const published = new Promise<DevSession>((resolve) => setTimeout(() => {
-      publishSession({ debugPort: 44444, dataDir, supervisorPid: process.ppid, startedBy: 'drive' });
-      lock.release();
-      resolve(readSession(dataDir)!);
-    }, 120));
+    const winner: DevSession = { debugPort: 44444, dataDir, supervisorPid: process.ppid, startedBy: 'drive' };
+    const waitFor = vi.fn(async () => winner);
 
-    const loser = await spawnOrAttach('/pack', dataDir, [], spawner);
-    const winner = await published;
+    const loser = await spawnOrAttach('/pack', dataDir, [], { spawn: spawner, waitFor }).finally(() => lock.release());
 
-    // One app: the loser spawned nothing and is talking to the supervisor the winner published
+    // One app: the loser waited for the winner's rather than starting a second
     expect(spawns).toBe(0);
+    expect(waitFor).toHaveBeenCalledWith(dataDir);
     expect(loser.state).toBe('attached');
-    expect(loser.app.session.supervisorPid).toBe(winner.supervisorPid);
     expect(loser.app.session.supervisorPid).toBe(process.ppid);
     expect(loser.app.session.debugPort).toBe(44444);
   });
@@ -67,7 +64,7 @@ describe('two questions spawning at once', () => {
   it('attaches to a session published while it waited for the lock', async () => {
     publishSession({ debugPort: 44444, dataDir, supervisorPid: process.pid, startedBy: 'drive' });
 
-    const answer = await spawnOrAttach('/pack', dataDir, [], spawner);
+    const answer = await spawnOrAttach('/pack', dataDir, [], { spawn: spawner });
 
     expect(spawns).toBe(0);
     expect(answer.state).toBe('attached');
@@ -75,7 +72,7 @@ describe('two questions spawning at once', () => {
   });
 
   it('spawns when it holds the lock and there is nothing to attach to', async () => {
-    const answer = await spawnOrAttach('/pack', dataDir, [], spawner);
+    const answer = await spawnOrAttach('/pack', dataDir, [], { spawn: spawner });
 
     expect(spawns).toBe(1);
     expect(answer.state).toBe('spawned');
@@ -83,12 +80,12 @@ describe('two questions spawning at once', () => {
 
   /** The lock is released whichever way it went, or the next question here waits out its whole deadline. */
   it('leaves the lock free afterwards, and after a failed spawn', async () => {
-    await spawnOrAttach('/pack', dataDir, [], spawner);
+    await spawnOrAttach('/pack', dataDir, [], { spawn: spawner });
     fs.rmSync(path.join(dataDir, 'session.json'));
-    await expect(spawnOrAttach('/pack', dataDir, [], async () => { throw new Error('build failed'); }))
+    await expect(spawnOrAttach('/pack', dataDir, [], { spawn: async () => { throw new Error('build failed'); } }))
       .rejects.toThrow(/build failed/);
 
-    const after = await spawnOrAttach('/pack', dataDir, [], spawner);
+    const after = await spawnOrAttach('/pack', dataDir, [], { spawn: spawner });
 
     expect(after.state).toBe('spawned');
   });
