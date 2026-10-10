@@ -140,17 +140,22 @@ Final.
     drifts, and a watcher costs nothing while nothing is edited. It also keeps the "session file's writers
     are derived, not listed" population at the two the design already has, `dev` and `npm start`, rather
     than a third that nobody would think to look for.
-    **Two things this requires of `dev`, neither of them a new mode.** It must **stop requiring a pack** —
+    **Two things this requires of `dev`, and the first is a restructure rather than a flag.** `dev` gains a
+    **launch-and-hold core**, with the whole pack loop conditional on there being a pack: today
     `findPackRoot` (`run.ts:156`) throws at a checkout root, so without this Decision 10 leaves this repo's
-    own `npm run drive:eval` able to attach and unable to autostart; with no pack it skips the build, the
-    install, the watcher and the Vite server and only launches and publishes, which is what the attach
-    plan's design block already says `dev` is. And autostart **spawns it detached** (`.unref()`), because
-    `dev` never returns and its own teardown SIGKILLs the app it holds; the attach plan has both.
+    own `npm run drive:eval` able to attach and unable to start one. With no pack, what is skipped is the
+    build, `installToApp`, the watchers, the reload path, the Vite server and the `pack-dev-servers`
+    marker — six things, not a branch — leaving the launch, the session file and the hold. **That is a new
+    decision, not a reading of the attach plan's design block**, whose "the supervisor it already is"
+    affirms the existing supervisor and is describing the delta from the engine (no HTTP, no engine, no
+    Playwright) rather than a core with the pack work removed. The Files table is the accurate description
+    of the work. Second, `--spawn` **spawns `dev` detached** (`.unref()`), because `dev` never returns and
+    its own teardown closes the app it holds; the attach plan has both, with the signalling rule.
 11. **`--spawn` starts the `development` app, and `dev` reclaims one a tool started.** A blank app
     cannot answer most of what `drive` is asked, so the default is the developer's own data, and
     `drive --eval` keeps one meaning rather than one per whichever app was up. What makes that safe is
     the reclaim: on the development dir, `dev` reads the session file and, for `startedBy: drive`,
-    SIGTERMs that pid, waits for exit and launches, saying what it took; for `startedBy: dev` it refuses
+    SIGTERMs its `supervisorPid`, waits for exit and launches, saying what it took; for `startedBy: dev` it refuses
     as today, because a person's app is not a tool's to take. Without it an agent's one-shot would hold
     the dir and the developer's `npm start` would fail, blaming itself.
 12. **The idle reap does not apply to `development`** — only to a profile `drive` was asked to use. The
@@ -162,11 +167,11 @@ Final.
     and nothing on `development` reaps it (Decision 12): in a pack repo that is Electron, a file watcher
     and a Vite dev server, and in a checkout with no pack it is Electron alone. Decision 16 is what keeps
     this rare — it only ever happens because someone asked. The two ways
-    out are `abuddy dev`, which reclaims it, and the pid in the session file. **An attach says whose app
+    out are `abuddy dev`, which reclaims it, and the `supervisorPid` in the session file. **An attach says whose app
     it joined** — `startedBy` is in the session file, and "a previous question started it" is the case
     where nobody is minding the app.
     **And because a line printed once is not documentation**, `abuddy profiles` gains a *running* column —
-    pid, `startedBy`, uptime, debug port, with the environments' data dirs beside the profiles — over
+    `supervisorPid`, `startedBy`, uptime, debug port, with the environments' data dirs beside the profiles — over
     `profileInUse` and `recordIsStale`, which already answer liveness. The run says it and the listing
     finds it later; that pair is the remedy, and an idle reap on `development` is not, for the reason
     Decision 12 gives. The attach plan's "Telling the user" has the exact lines and the user-facing table.
@@ -202,12 +207,12 @@ Final.
     place of a long-lived foreground process. Everything Decisions 10-13 say about *how* an app is started
     and reclaimed still holds; only *when* has changed, from "on a miss" to "on request".
 17. **A one-shot's stdout is one JSON object and nothing else**, so it pipes:
-    `{"value": …, "state": "attached" | "spawned", "pid": N}`. **No `ok` field — the exit code is the
+    `{"value": …, "state": "attached" | "spawned", "supervisorPid": N}`. **No `ok` field — the exit code is the
     status**, which is what finally removes `oneShotOutcome`'s trap (an `ok: false` inside a 200, so
     reading the status exited 0 on every real failure, and which this goal was deleting anyway). A failure
     puts **nothing** on stdout, so a pipe never receives half an answer. `state` belongs in the data
     rather than in a sentence because whether a question acquired a process is what a caller needs to
-    know, and `pid` is what ends it; prose goes to stderr, and only where something was left behind.
+    know, and `supervisorPid` is what ends it; prose goes to stderr, and only where something was left behind.
 
 ## Phases
 
@@ -242,13 +247,16 @@ that proves one `SessionPage` serves both; the fixture reaches `connected` throu
 
 ### Phase 4 — the session file
 
-That plan's phase 2. `dev` and `npm start` publish `<dataDir>/session.json`; `drive` attaches to a live
-one and launches its own when there is none; `test` publishes none.
+That plan's phase 2. `dev` and `npm start` publish `<dataDir>/session.json` with the `supervisorPid` that
+ends them; `drive` attaches to a live one and refuses when there is none; `test` publishes none.
 
 **Done when:** every "Done when" of that plan's phase 2; the environment gate's firing case passes (a
 packaged or `test` context never gets the flag); `abuddy test` publishes no session file; **`abuddy dev`
 at a checkout root publishes one**, which today throws before it can (Decision 10), while a run in a pack
-repo still builds and installs that pack.
+repo still builds and installs that pack; the new `npm run dev` carries
+`tsx scripts/drive-preflight.ts &&`, which `drive:serve` had and its replacement would otherwise lose —
+a pack-less `dev` launches a built app without building it, so the stale-build nudge is the one thing
+standing between that and opening yesterday's app in silence.
 
 ### Phase 5 — `--spawn`, and the answer's shape
 
@@ -258,7 +266,7 @@ flag a miss refuses**. A spawned app on a `drive` profile idles out; a `dev` one
 
 **Done when:** a miss **without** `--spawn` exits non-zero, writes nothing to stdout and names both
 `abuddy dev` and `--spawn` — a gate over input, so the empty stdout is the half to assert; the answer is
-`{value, state, pid}` and nothing else, with `state` reading `attached` and `spawned` in the two cases and
+`{value, state, supervisorPid}` and nothing else, with `state` reading `attached` and `spawned` in the two cases and
 no `ok` field (the mutation is reintroducing one beside a non-zero exit); `dev` reclaims a
 `startedBy: drive` app and refuses a `startedBy: dev` one — both halves, since that rule is what makes
 `--spawn` safe (Decision 11), reclaiming unconditionally is the mutation, and the case must **spawn and
@@ -269,7 +277,7 @@ installs the pack**, the other half of Decision 10, which fails if it copied dev
 spawning `dev`; two concurrent `--spawn` calls start **one** app (assert one pid — the lock's firing
 case); onboarding is named when it was completed (Decisions 13 and 14), which a never-onboarded profile is
 the case for; a `drive`-profile app idles out and a `development` one does not (Decision 12);
-`abuddy profiles` shows a running app with its pid and `startedBy`, and stops showing it once that app has
+`abuddy profiles` shows a running app with its `supervisorPid` and `startedBy`, and stops showing it once that app has
 gone (both halves — a listing that cannot go back to empty is a stale record, not a status). Then measure
 the end-to-end one-shot (`npm run measure`, per that plan's Verification) and record it in the Outcome.
 

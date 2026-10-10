@@ -85,7 +85,7 @@ is an answer to "is one live, and if not, make one" rather than a rule about who
 
 ```
 an attachable app   any launcher that starts one writes <dataDir>/session.json:
-                    { debugPort, apiPort, logPath, dataDir, pid, startedBy }
+                    { debugPort, apiPort, logPath, dataDir, supervisorPid, startedBy }
                     `dev` and `npm start` both do. `test` never does.
 
 dev    spawn(electron, [root, '--remote-debugging-port=0', '--enable-logging']) + the session file.
@@ -199,11 +199,17 @@ directory"* (`utils.ts:42`), and then requires `src/` to watch (`run.ts:156`, `:
 `dev` (the goal doc's Decision 10) would leave this repo's own `npm run drive:eval` — the primary caller,
 run from the root — able to attach and unable to start. **The fix is to drop the precondition, not to add
 a mode or a second launcher**: `findPackRootOrNone` already exists (`utils.ts:31`) and `drive.ts` already
-splits on it for exactly this reason, so with no pack `dev` skips the build, the install, the watcher and
-the Vite server and does what this plan's design block above already says it is — launch the app with the
-debug port, publish the session file, hold it. That is not a new shape; it is the shape the block
-describes, with the pack work conditional on there being a pack. A side benefit: `abuddy dev` at the
-checkout root becomes a lighter `npm start` that does not rebuild the renderer.
+splits on it for exactly this reason. **What `dev` gains is a launch-and-hold core**, with the whole pack
+loop conditional: with no pack it skips the build, `installToApp`, the watchers, the reload path, the Vite
+server and the `pack-dev-servers` marker, and does the three things left — launch with the debug port,
+publish the session file, hold it.
+
+**That is a new decision and not a reading of the design block above.** The block's *"the supervisor it
+already is"* affirms the supervisor `dev` is today, pack loop included; it is describing the delta from the
+engine — no HTTP server, no engine, no Playwright — rather than a core with the pack work taken out. Six
+things becoming conditional is a restructure of the command, which the Files table states and this
+paragraph should not undersell. A side benefit: `abuddy dev` at the checkout root becomes a lighter
+`npm start` that does not rebuild the renderer.
 
 ### Starting one when there is none
 
@@ -297,15 +303,30 @@ file already carries what settles it:
 
 ```
 dev / npm start, on the development dir
-  startedBy: drive  -> SIGTERM that pid, wait for exit, launch — and say what it reclaimed
+  startedBy: drive  -> SIGTERM its supervisorPid, wait for exit, launch — and say what it reclaimed
   startedBy: dev    -> refuse, as today. A person's app is not a tool's to take
   no session file   -> launch
 ```
 
-A pid read from a file the app wrote is the only kind this repo permits, and the rule is narrow by
-construction: it reclaims what a tool started for itself and nothing else. **The two commands then
-converge** rather than compete — after a reclaim the next `drive` finds the developer's app live and
+A pid read from a file the process that wrote it owns is the only kind this repo permits, and the rule is
+narrow by construction: it reclaims what a tool started for itself and nothing else. **The two commands
+then converge** rather than compete — after a reclaim the next `drive` finds the developer's app live and
 attaches to it.
+
+**The pid is the supervisor's, not the app's, and the field is named so it cannot be misread.** `dev` is
+what writes the session file, and `dev` is what has to be signalled: `process.on('SIGTERM')` runs its
+`teardown`, which closes the app it holds (`run.ts:229`, `exited(child, 10_000)`), so **one signal ends
+both**. Nothing goes the other way — `run.ts` has no handler that exits `dev` when Electron does, so
+signalling the app instead frees the data dir and leaves a watcher and a Vite server running with nothing
+to serve. That is the defect the name `pid` invites, and it is the same misreading in three places at
+once: the reclaim, the idle reap, and the sentence this design prints to a user telling them how to stop
+an app. So the field is `supervisorPid`, and the app needs none — it is reached through `debugPort`.
+
+**One consequence to carry rather than fix**: `recordIsStale(file, supervisorPid)` then answers "is the
+supervisor there", which is not quite "is the app there". A supervisor whose Electron crashed reads live
+and the attach fails at `connectOverCDP` — which is why the dead-port case in Verification is a real case
+and not a formality. Treating a failed connect as a miss, with the reason named, is the behaviour that
+makes both readings safe.
 
 **So the idle reap does not apply to `development`.** A scratch app that nobody is looking at should
 disappear; the development app is the one somebody may be looking at, and closing it under them is worse
@@ -324,7 +345,8 @@ inside the run rather than discovered from outside it.
 **A run that started one also says it is still running, and how to end it.** Autostart leaves a detached
 process behind that a question began: in a pack repo that is Electron, a recursive file watcher and a Vite
 dev server, and in a checkout with no pack it is Electron alone. Nothing reaps it on `development` by
-design, so the two ways out are `abuddy dev`, which reclaims it, and the pid the session file carries. The
+design, so the two ways out are `abuddy dev`, which reclaims it, and the `supervisorPid` the session file
+carries. The
 reclaim answers correctness — the developer's `npm start` cannot be blocked by it — and this line answers
 the other question, which is who closes it.
 
@@ -439,9 +461,9 @@ is in "Security" below, and it is a condition of the design rather than a mitiga
 
 | File | Change |
 |---|---|
-| `abuddy-cli/src/commands/run.ts` → `dev.ts` | rename; add the two argv entries, publish the session file, and reclaim one a tool started (`startedBy: drive` → SIGTERM its pid, wait for exit, launch, say so); `index.ts` `COMMANDS`/`USAGE`. **Drop the pack precondition**: `findPackRoot` (`:156`) becomes `findPackRootOrNone`, and the build, `installToApp`, the watcher and the Vite server all hang off there being a pack — with none, it launches, publishes and holds. `src/` is only required when there is something to watch (`:159`) |
+| `abuddy-cli/src/commands/run.ts` → `dev.ts` | rename; add the two argv entries, publish the session file, and reclaim one a tool started (`startedBy: drive` → SIGTERM its `supervisorPid`, wait for exit, launch, say so); `index.ts` `COMMANDS`/`USAGE`. **Drop the pack precondition**: `findPackRoot` (`:156`) becomes `findPackRootOrNone`, and the build, `installToApp`, the watcher and the Vite server all hang off there being a pack — with none, it launches, publishes and holds. `src/` is only required when there is something to watch (`:159`) |
 | `abuddy-host/src/private-file.ts` | moved: `writePrivateFile` out of `secrets/private-file.ts`, with a `./private-file` export. It is a 0600 atomic write and nothing about secrets, and a session file is not a secret — reaching for it behind the secrets barrel would be the wrong dependency, and it is not in that barrel today anyway |
-| `abuddy-cli/src/app/session-file.ts` | new: write/read `{ debugPort, apiPort, logPath, dataDir, pid, startedBy }` through `writePrivateFile`, `readDevToolsPort` polling `DevToolsActivePort`, and `--spawn` under `holdExclusiveLock` with the re-read after acquiring. It **spawns `dev` detached** rather than launching Electron itself, so the pack build and install come with it, and waits for the session file rather than for a return — `dev` has none. **`startedBy` is passed in, since `dev` writes the file and cannot know who asked**: `ABUDDY_SESSION_STARTED_BY` on the spawn, defaulting to `dev`. Getting this wrong is silent — `dev` records `dev`, nothing is ever reclaimable, and the developer's `npm start` refuses with a message blaming them — which is why Phase 5's reclaim case must spawn and then reclaim rather than hand-write a session file |
+| `abuddy-cli/src/app/session-file.ts` | new: write/read `{ debugPort, apiPort, logPath, dataDir, supervisorPid, startedBy }` through `writePrivateFile`, `readDevToolsPort` polling `DevToolsActivePort`, and `--spawn` under `holdExclusiveLock` with the re-read after acquiring. It **spawns `dev` detached** rather than launching Electron itself, so the pack build and install come with it, and waits for the session file rather than for a return — `dev` has none. **`startedBy` is passed in, since `dev` writes the file and cannot know who asked**: `ABUDDY_SESSION_STARTED_BY` on the spawn, defaulting to `dev`. Getting this wrong is silent — `dev` records `dev`, nothing is ever reclaimable, and the developer's `npm start` refuses with a message blaming them — which is why Phase 5's reclaim case must spawn and then reclaim rather than hand-write a session file |
 | `packages/dev-mode.js` | `npm start` publishes one too, so the app with renderer HMR is attachable |
 | `abuddy-cli/src/commands/drive.ts` | attach-or-launch for the one-shots; a miss calls `dev`. Delete `--serve`, `--attach`, `takeServeFlag`. **The script path and its config are untouched by decision**, per "What stays": a question attaches, a program gets a dir |
 | `abuddy-testing/src/index.ts` | extract two free functions the fixture then calls: `appHelper(page, resultsDir)`, and `waitForAppReady(page)` — the readiness wait (`index.ts:479-507`) with the onboarding dismissal moved *inside* the predicate. Window-finding is not extracted: `findMainWindow` takes an `ElectronApplication`, and the attach path enumerates `browser.contexts()[0].pages()` with the same `!!window.applicationState` predicate |
@@ -449,9 +471,9 @@ is in "Security" below, and it is a condition of the design rather than a mitiga
 | `abuddy-testing/src/engine/{server,marker}.ts` | delete |
 | `abuddy-cli/src/app/drive-{engine,one-shot}.ts` | delete |
 | `abuddy-testing/package.json` | `playwright-core` as an optional peer beside `@playwright/test`; `@abuddy/cli`'s dependencies are unchanged |
-| root `package.json` | `drive:serve` → `dev`; `drive:eval`/`:query`/`:state` keep their names |
+| root `package.json` | `drive:serve` → `dev`; `drive:eval`/`:query`/`:state` keep their names. **The new `dev` script carries `tsx scripts/drive-preflight.ts &&` like the five `drive*` scripts already do** — see "The stale-build nudge" |
 | `drive/` scaffold | drop the two generated `.mts` files; the Playwright config stays, since scripts still run on the runner |
-| `abuddy-cli/src/commands/profiles.ts` | a **running** column: pid, `startedBy`, uptime and debug port per data dir, read from the session files, with the four environments' dirs listed beside the profiles. See "Telling the user" |
+| `abuddy-cli/src/commands/profiles.ts` | a **running** column: `supervisorPid`, `startedBy`, uptime and debug port per data dir, read from the session files, with the four environments' dirs listed beside the profiles. See "Telling the user" |
 | `docs/public-facing/cli.md` | the **"Which app, and how long it lives"** table — a named deliverable, not a wording pass. Its content is in "Telling the user" |
 | `drive/README.md` | "One session, many questions" is about to be false; it becomes "The app stays between questions", pointing at that table |
 | prose | `abuddy-cli/CLAUDE.md` (the `run`/`drive` rows, `src/app/`, and `:14`'s stale *"used by `build` and `dev`"*), root `CLAUDE.md`'s "E2E visual testing" (which currently sends a reader to `drive:serve` for a question needing several verbs — after this, nothing does), `tests/e2e/CLAUDE.md` |
@@ -462,11 +484,12 @@ is in "Security" below, and it is a condition of the design rather than a mitiga
 nothing else, so it pipes:
 
 ```
-{"value":{"running":"connected"},"state":"attached","pid":48213}
-{"value":{"running":"connected"},"state":"spawned","pid":48651}
+{"value":{"running":"connected"},"state":"attached","supervisorPid":48213}
+{"value":{"running":"connected"},"state":"spawned","supervisorPid":48651}
 ```
 
-`value` is the verb's answer; `state` is `attached` or `spawned`; `pid` is the app the answer came from.
+`value` is the verb's answer; `state` is `attached` or `spawned`; `supervisorPid` is what ends the app
+(the supervisor holding it — see "the pid is the supervisor's" above).
 Three consequences, and the first is the one that removes a defect this plan was already deleting:
 
 - **No `ok` field. The exit code is the status.** `oneShotOutcome`'s trap was an `ok: false` inside a 200,
@@ -474,7 +497,7 @@ Three consequences, and the first is the one that removes a defect this plan was
   envelope but the convention: zero and a value on stdout, or non-zero and a message on stderr with
   **nothing on stdout at all**, so a pipe never receives half an answer.
 - **Which app answered is a field, not a sentence.** `state` tells a caller whether its question acquired
-  a process — the thing worth knowing — and `pid` is what ends it. A reader wanting only the answer pipes
+  a process — the thing worth knowing — and `supervisorPid` is what ends it. A reader wanting only the answer pipes
   through `jq .value`; a reader wanting both has both, in one parse.
 - **Prose goes to stderr, and only where something was left behind.** `spawned` gets one line, because a
   process is now running that was not before; `attached` gets none, because nothing changed.
@@ -482,7 +505,7 @@ Three consequences, and the first is the one that removes a defect this plan was
 ```
 $ abuddy drive --eval 'app.getState()' --spawn
 Started the development app (pid 48651) and left it running — `abuddy dev` takes the directory back.
-{"value":{"running":"connected"},"state":"spawned","pid":48651}
+{"value":{"running":"connected"},"state":"spawned","supervisorPid":48651}
 ```
 
 **`dev` is the other half, and there prose is the whole point** — it is a command a person watches:
@@ -497,7 +520,7 @@ the state is a running app and the inverse is `abuddy dev`, which is why the rec
 
 **And a line printed once is not documentation.** Forty minutes later it has scrolled away, and on this
 caller it is often read by nothing at all, since the one-shot's stdout goes to an agent. So `abuddy
-profiles` gains a **running** column — pid, `startedBy`, uptime, debug port — read from the session files,
+profiles` gains a **running** column — `supervisorPid`, `startedBy`, uptime, debug port — read from the session files,
 with the four environments' data dirs listed beside the profiles, because a profile and a build's default
 dir are both data dirs ([`profiles-not-instances.md`](profiles-not-instances.md)'s three-term table). It
 needs no new mechanism: `profileInUse` and `recordIsStale` (`@abuddy/host/process-liveness`) already
@@ -506,6 +529,25 @@ answer liveness, and this is the `docker ps` to the start line's `docker run`.
 That pair is the whole answer to "who closes this": the run says it, and the listing finds it later. An
 idle reap on `development` is the alternative and is rejected in the goal doc (Decision 12) — a timer that
 can take an app somebody is looking at costs more than a forgotten process does.
+
+### The stale-build nudge
+
+**A pack-less `dev` launches `packages/{main,renderer,api}/dist` without building, so the guard that asks
+whether that is the app you just built matters here.** `scripts/drive-preflight.ts` is that guard — mtimes
+over `chain-steps.ts`' declared inputs, a warning, exit 0, a nudge and never a gate — and all five
+`npm run drive*` scripts already run it first.
+
+**The gap is narrower than it looks, and the fix is an npm script rather than CLI work.** A one-shot run
+the normal way (`npm run drive:eval`) has already had the preflight for this tree, and the `dev` it spawns
+needs no second reading of the same files. What is uncovered is `abuddy dev` or `abuddy drive` invoked
+directly in this checkout, and the new `npm run dev` — which replaces `drive:serve`, the one script in the
+set that had the prefix and whose replacement would lose it. So **`dev` gets the same prefix** and the hole
+closes.
+
+**It cannot move into the CLI, and that is the reason it is a script.** `drive-preflight.ts` imports
+`chain-steps.ts`; `@abuddy/cli` ships to pack authors, who have no chain and no such declaration, so a
+check over it has nothing to read there. A developer in this checkout who calls the bin directly is
+choosing to, which is the same bargain every other repo script makes.
 
 ### What the user is told once, in prose
 
@@ -523,7 +565,7 @@ the lifetime model is the thing a user gets wrong, and nothing states it today:
 with the one sentence that explains the halves — **a question keeps the app so the next question is cheap;
 a script closes it so its result does not depend on what the last one left behind; and a question never
 starts one unless you asked** — the one-app-per-data-dir rule that makes `--profile` the way to get a
-second, the one-shot's output contract (`value`, `state`, `pid`, exit code), and the two ways to end an
+second, the one-shot's output contract (`value`, `state`, `supervisorPid`, exit code), and the two ways to end an
 app `--spawn` started.
 
 ## Phases
@@ -561,7 +603,7 @@ below exists.
 - **nothing attachable, with `--spawn` → starts its own**, and that app answers the same verb *identically*
   to an attached one. This is the case that proves one `SessionPage` serves both, so it must assert
   equality of the two answers, not merely that each works.
-- **the answer's shape, both states.** `{value, state, pid}` and nothing else, `state` reading `attached`
+- **the answer's shape, both states.** `{value, state, supervisorPid}` and nothing else, `state` reading `attached`
   against a live app and `spawned` against none, with the exit code carrying success. Mutation: an `ok`
   field reintroduced alongside a non-zero exit is the trap this replaced, and the case should fail on it.
 - **`test` publishes no session file**, so a `drive` run during a suite does not attach to the test's app.
