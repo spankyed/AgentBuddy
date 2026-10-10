@@ -106,7 +106,7 @@ schema 22 — against 552 and 23/28 at the survey.
 | 12 — `defaultPlugin` moves onto its plugin | landed in `b8d66af4e` |
 | 9 — every extension point under `extensions` | **landed** in `a6aad1e4a` |
 | 17 — `build` for what the app never loads | **half landed**: `build.bundleUi`; `checks` is open |
-| 10 — every content concern under `content` | **half landed**: `content.sources`, `.artifacts`, `.formats` and `.writers` are there; the `writers` → `hooks` rename is open |
+| 10 — every content concern under `content` | **half landed**: all four keys are there; `boot` → `lifecycle` is open |
 | 5 — `partitionPolicy` → `volatile` on the entity | **its removal happened elsewhere**: the key exists in no manifest, schema or reader. What it was also going to *add* — an external pack marking its own entity volatile — is open, and `SDK_EXCLUDED_ENTITY_TYPES` is still the only list |
 
 **Decision 9 arrived with more than the grouping**, which is why Background's "three encodings" and
@@ -124,7 +124,7 @@ shape; [`extensions.md`](../public-facing/extensions.md) and
 deletion of `$manifestVersion` and nothing else.
 
 What is left is the decisions about `data` (3, 4, 5's addition), the feature shape (7, 8, 13), one
-encoding (2), `lifecycle` and the root key *order* (1), the `content.hooks` rename (10), `checks` (17),
+encoding (2), `lifecycle` and the root key *order* (1), `checks` (17),
 `$manifestVersion` (14) and the schema-as-specification work (11). Confirm each name a phase acts on
 before acting; several no longer exist.
 
@@ -669,21 +669,15 @@ a service that belongs to no feature. Renaming it drops the `pack` prefix that o
 apart from the feature key; nesting it under `extensions` does that by position. It then mirrors
 entities exactly: a feature-level home, and a pack-level one for what no feature owns.
 
-**10. Every content concern lives under `content`**: `sources`, `artifacts`, `formats` and `hooks`
-(`hooks` was `writers`).
+**10. Every content concern lives under `content`**: `sources`, `artifacts`, `formats` and `writers`.
 
-> **Half landed, and the other half is one rename.** `content` already holds `sources`, `artifacts`,
-> `formats` and `writers`, and `boot` holds `hooks` alone — so there is no `boot.content` left to move
-> and `boot` is one key away from being `lifecycle`. What is open is `writers` → `hooks`.
+> **The section is there; what is open is `boot`.** `content` already holds all four keys, and `boot`
+> holds `hooks` alone — so there is no `boot.content` left to move and `boot` is one key away from being
+> `lifecycle`.
 >
 > **`content.artifacts` arrived after this decision was written**: compiled artefacts the pack reads
 > back itself rather than writing to the database. It belongs here by the decision's own test and is
 > listed above, but nothing in the reasoning below was written with it in mind.
->
-> **And the rename lands `hooks` on the word `boot` is giving up.** `boot.hooks` becomes `lifecycle`
-> while `content.writers` becomes `content.hooks`, so a reader who knows the old shape meets `hooks`
-> meaning the other thing. That is survivable — they are a section apart and nothing reads both — but it
-> is the kind of collision to notice deliberately rather than discover.
 >
 > **`content.sourcesPolicy` no longer exists** (removed 2026-10-08,
 > [`goal-boot-content-imports-entities.md`](../archive/goals/goal-boot-content-imports-entities.md)): every key a pack
@@ -719,7 +713,7 @@ An earlier draft grouped `lifecycle: { hooks, migrations }`. That fails the sect
 not a search, and neither changes when the other does — a pack adds a migration per release and touches
 its hooks almost never. Both are a single module path, and a key whose value is a path needs no
 container. `content` remains a section because it genuinely is one: sources, artifacts, formats and
-hooks are keys that change together whenever a written format changes.
+writers are keys that change together whenever a written format changes.
 
 **11. The schema is the specification and the docs follow it.** `manifest-schema.ts` gains a
 `.describe()` on every field, `npm run schema:update` regenerates `abuddy.schema.json`, and
@@ -850,19 +844,19 @@ resting on an undocumented invariant is one bad refactor from being wrong.
 
 **15. This is the last cheap rename, and the discipline starts at the first release with users.**
 
-Of the 28 root keys the schema allowed at the survey, this goal renames, moves or deletes 16
+Of the 28 root keys the schema allowed at the survey, this goal renames, moves or deletes 14
 (`artifacts`, `blocks`, `boot`, `commands`, `defaultPlugin`, `dsl`, `entities`, `entityShapes`, `fe`,
-`packServices`, `partitionPolicy`, `relKinds`, `content.formats`, `content.writers`, `steps`,
-`$manifestVersion`); `features` keeps its name and is rewritten inside; and 11 are untouched
+`packServices`, `partitionPolicy`, `relKinds`, `steps`, `$manifestVersion`); `features` keeps its name
+and is rewritten inside; and 11 are untouched
 (`$schema`, `id`, `name`, `version`, `description`, `license`, `builtIn`, `hostVersion`,
 `dependencies`, `permissions`, `migrations`).
 
-**Nine of the sixteen have been spent**, which is what makes the rule below the live question rather
+**Nine of the fourteen have been spent**, which is what makes the rule below the live question rather
 than a forecast: `artifacts`, `blocks`, `commands`, `dsl`, `fe`, `packServices` and `steps` moved under
 `extensions`, `defaultPlugin` moved onto its plugin, and `partitionPolicy` was deleted outright. The
 schema allows **22** root keys now. What is left to spend is `boot`, `entities`, `entityShapes`,
-`relKinds`, `content.formats`, `content.writers` and `$manifestVersion` — seven, and worth doing
-together, since every pack in the world has to be rebuilt either way and there are none.
+`relKinds` and `$manifestVersion` — five, and worth doing together, since every pack in the world has
+to be rebuilt either way and there are none.
 
 Two of those are pure naming and nothing else: `boot.hooks` → `lifecycle` and `typesEntry` → `types`.
 In an additive-only world neither would ever happen, because a cosmetic rename is not worth asking
@@ -1023,18 +1017,16 @@ declared.
 **What it left open**: `settingsSections` and `help` are contributions and are still at the root — see
 Decision 9's note.
 
-### Phase 3 — `content`: one section for applying
+### Phase 3 — `boot` becomes `lifecycle`
 
-**Most of the move has happened elsewhere**: `content` already holds `sources`, `artifacts`, `formats`
-and `writers`, and `boot` holds `hooks` alone. What is left is two renames.
+**The `content` section is already there**, holding `sources`, `artifacts`, `formats` and `writers`, so
+what is left of Decision 10 is the key `boot` has been reduced to.
 
-- Rename `content.writers` → `content.hooks` (Decision 10), and decide where `content.artifacts` sits —
-  it arrived after that decision and it names neither.
-- Flatten what remains of `boot` to `lifecycle: "<path>"`; `migrations` stays a root key (Decision 10).
-- Update `generate-entries.ts` (appliers, content runtime), `build.ts` (compilers), the host's content runtime.
-- Update `tests/scripts/test-packaged-authoring-author.sh`, which edits `m.content.formats` and
-  `m.content.sources` in separate node snippets. Phase 1 names the script for its data-model keys; these
-  are the apply ones, and they are the edits that actually fail here.
+- Flatten `boot: { hooks: "<path>" }` to `lifecycle: "<path>"`; `migrations` stays a root key.
+- Three sites read it, all in `generate-entries.ts`: the hooks import, the registration's `boot` member,
+  and the manifest field itself. `PackRegistration.boot` is the registration's own name for the pair of
+  hooks and is not a manifest key — leave it alone.
+- Update default-setup's and `external-pack`'s manifests and the `abuddy init` scaffold; the other two fixtures declare no `boot`.
 
 **Done when:** no manifest has a `boot` key, `lifecycle` is a string in every manifest that has one,
 and `migrations` is still a root key; no pack re-applies on the next boot — `contentRevision`
@@ -1141,8 +1133,8 @@ fail validation with the message naming the expected form.
   order Decision 9 lists, each feature's in the feature order — and spec all three.
 
 **Done when:** `npm run schema:check` passes; `docs/public-facing/manifest.md` mentions no retired key
-(`entityShapes`, `relKinds`, `content.writers`, `designation`, `boot`, `$manifestVersion`, and
-`settingsSections` and `help` wherever Decision 9's open question puts them); the new spec passes.
+(`entityShapes`, `relKinds`, `designation`, `boot`, `$manifestVersion`, and `settingsSections` and
+`help` wherever Decision 9's open question puts them); the new spec passes.
 Mutations: adding a sixteenth top-level key fails that spec; so does a map whose keys equal its values;
 so does writing the keys in a different order.
 

@@ -578,6 +578,34 @@
     }
   },
   "content": {
+    "sources": {
+      "actions": {
+        "path": "src/content/actions",
+        "onUserEdit": "offer"
+      },
+      "prompts": {
+        "path": "src/content/prompts",
+        "onUserEdit": "offer"
+      },
+      "flows": {
+        "path": "src/content/flows",
+        "onUserEdit": "offer"
+      },
+      "library": {
+        "path": "src/content/library",
+        "format": "library"
+      },
+      "notes": {
+        "path": "src/content/notes",
+        "format": "notes"
+      }
+    },
+    "artifacts": {
+      "faqs": {
+        "path": "src/content/faqs",
+        "format": "faqs"
+      }
+    },
     "formats": {
       "notes": {
         "format": "markdown-tree",
@@ -631,45 +659,12 @@
       },
       "faqs": {
         "compiler": "src/content/_compilers/faqs.ts"
-      },
-      "settings": {
-        "compiler": "src/content/_compilers/settings.ts"
       }
     },
-    "hooks": {
+    "writers": {
       "Collection": "src/content/writers/library.ts#collectionWriter",
       "Document": "src/content/writers/library.ts#documentWriter",
       "Note": "src/content/writers/notes.ts#noteWriter"
-    },
-    "sources": {
-      "actions": "src/content/actions",
-      "prompts": "src/content/prompts",
-      "flows": "src/content/flows",
-      "library": {
-        "path": "src/content/library",
-        "format": "library"
-      },
-      "notes": {
-        "path": "src/content/notes",
-        "format": "notes"
-      },
-      "faqs": {
-        "path": "src/content/faqs",
-        "format": "faqs"
-      },
-      "settings": {
-        "path": "src/content/default-settings.ts",
-        "format": "settings",
-        "applier": "src/content/settings/applier.ts"
-      }
-    },
-    "policy": {
-      "skipAtBoot": [
-        "settings"
-      ],
-      "skipAfterOnboarding": [
-        "notes"
-      ]
     }
   },
   "lifecycle": "src/features/hooks.ts",
