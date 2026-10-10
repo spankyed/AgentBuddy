@@ -840,5 +840,47 @@ property the Outcome had asserted rather than checked has since been checked —
 `@abuddy/testing` 98, `@app/main` 32, `@app/publish-checks` 8. Three workspaces have no suite to run —
 `@app/preload`, `@app/electron-versions`, `@app/typescript-floor` — and this work touched none of them.
 
+### Every guard, and the mutation that proves it
+
+*"Every new guard is mutation-checked"* was done guard by guard as each landed, and scattered across the
+sections above. Collected, because a claim about all of them should be checkable in one place — each row is
+a mutation that was applied to the **subject**, run, and reverted in the same command:
+
+| Guard | Mutation applied | Cases that failed |
+|---|---|---|
+| `debugPortArgs` | the environment gate removed | 4 of 6 |
+| `mayReclaim` | reclaim unconditionally | 1 |
+| `findWindow` | the predicate replaced by `pages()[0]` | 5 of 6 (the E2E spec passed — which is why the unit holds it) |
+| `_chromium`'s install hint | the hint replaced by a bare throw | 2 |
+| `parseTargetEnv` | `-b` → `development` | 1 (the pairwise case) |
+| | the unknown-build refusal removed | 1 |
+| | the default build → `development` | 2 |
+| | `--build`'s value read without advancing | 1 |
+| | only the inline `--build=` form read | 4 |
+| smoke's "publishes no session" | the fixture publishes one, as `dev` does | 1 |
+| | the read pointed one directory down | 1 (`ENOENT`, naming the path) |
+| `reapsWhenIdle` | the profile clause dropped | 1 |
+| | the `startedBy` clause dropped | 2 |
+| `idleVerdict` | a fixed interval instead of the deadline | 1 |
+| `touchSession` | made a no-op | 1 |
+| | made to rewrite the record | 2 |
+| `lastAttachedAt` | answers a time for no session | 1 |
+| | stats the dir instead of the session | 2 |
+| `askTarget`'s round trip | the old two-answer split reinstated | 4 |
+| | made to create the dir it names | 1 |
+| `profileFor`'s `--rm` refusal | the refusal removed | 1 |
+| `openProfile`'s `created` | reads the directory again, not the record | 1 |
+| `freshProfileName` | returns a constant | 1 |
+| `readDevToolsPort`'s `after` | the mtime bound removed | 1 |
+| | the slack widened to an hour | 1 |
+| the build-name refusal | the refusal removed | 8 |
+| | a hand-written list missing a build | 4 |
+| | a substring match instead of the whole name | 1 |
+
+One mutation in the first attempt at `freshProfileName` was **malformed** — it added a parameter no caller
+passes, so nothing fired, and nothing *should* have. It was replaced with the real failure mode (`askTarget`
+creating the dir) rather than counted. A mutation that changes something unreachable proves nothing about
+the test; it only proves the mutation was wrong.
+
 **What this goal cost to get right, in one line**: the implementation was seven phases and the evidence was
 four more rounds, because a record that asserts a property reads exactly like one that checked it.
