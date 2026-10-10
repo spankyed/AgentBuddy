@@ -7,6 +7,39 @@ describe('flows repository', () => {
     resetTestData();
   });
 
+  describe('a new node starts with its step type\'s defaults', () => {
+    // The backend is what creates the node the user adds, and it reads the step's `node` facet to do it.
+    // While that facet was part of `fe`, the backend registration never carried it: every node was created
+    // with none of its fields, and a trigger — whose fields its facet then validates — could not be added
+    // at all. So these go through the repository the CREATE_NODE handler calls, with nothing passed.
+    it('gives a trigger the fields its own validator requires', () => {
+      const flow = repository.flowsCommands.createFlow();
+
+      const schedule = repository.flowsCommands.createNode(flow.id, { nodeType: 'schedule' });
+
+      expect(schedule).toMatchObject({ nodeType: 'schedule', cronExpression: '0 * * * *', label: 'Schedule' });
+    });
+
+    it('gives a step its declared field defaults and its label', () => {
+      const flow = repository.flowsCommands.createFlow();
+
+      expect(repository.flowsCommands.createNode(flow.id, { nodeType: 'switch' }))
+        .toMatchObject({ nodeType: 'switch', label: 'Switch', conditions: [{ label: 'Else' }] });
+      expect(repository.flowsCommands.createNode(flow.id, { nodeType: 'transform' }))
+        .toMatchObject({ nodeType: 'transform', outputType: 'json' });
+      expect(repository.flowsCommands.createNode(flow.id, { nodeType: 'update' }))
+        .toMatchObject({ nodeType: 'update', onMissing: 'fail' });
+    });
+
+    it('lets what the caller passes win over the default', () => {
+      const flow = repository.flowsCommands.createFlow();
+
+      const schedule = repository.flowsCommands.createNode(flow.id, { nodeType: 'schedule', label: 'Nightly', cronExpression: '0 3 * * *' });
+
+      expect(schedule).toMatchObject({ label: 'Nightly', cronExpression: '0 3 * * *' });
+    });
+  });
+
   describe('schedule node validation', () => {
     it('creates schedule nodes with valid 5-field and 6-field cron expressions', () => {
       const flow = repository.flowsCommands.createFlow();

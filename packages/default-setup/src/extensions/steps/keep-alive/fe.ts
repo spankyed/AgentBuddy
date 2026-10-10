@@ -4,8 +4,6 @@ import { Activity } from 'lucide-vue-next';
 export const keepAliveStepFE: StepFEFacet = {
   colorKey: 'emerald',
   nodeConfig: {
-    label: 'Keep alive',
-    defaultLabel: 'Keep alive',
     icon: Activity,
     color: 'text-emerald-400',
     bgColor: 'bg-emerald-500/10',

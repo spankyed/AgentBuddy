@@ -6,8 +6,6 @@ export const actionStepFE: StepFEFacet = {
   loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
   colorKey: 'neutral',
   nodeConfig: {
-    label: 'Action',
-    defaultLabel: 'Do action',
     icon: Play,
     color: 'text-neutral-400',
     bgColor: 'bg-neutral-700/20',

@@ -6,8 +6,6 @@ export const fireStepFE: StepFEFacet = {
   loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
   colorKey: 'amber',
   nodeConfig: {
-    label: 'Fire',
-    defaultLabel: 'Fire event',
     icon: Zap,
     color: 'text-amber-400',
     bgColor: 'bg-amber-500/10',
@@ -16,7 +14,6 @@ export const fireStepFE: StepFEFacet = {
     category: 'action',
     isImplemented: true,
   },
-  defaults: { scope: 'local' },
   layout: {
     getPorts: (node) => [
       { id: `${node.id}-in`, layoutOptions: { 'port.side': 'WEST' } },

@@ -6,8 +6,6 @@ export const createStepFE: StepFEFacet = {
   loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
   colorKey: 'purple',
   nodeConfig: {
-    label: 'Create',
-    defaultLabel: 'Create entity',
     icon: Plus,
     color: 'text-purple-400',
     bgColor: 'bg-purple-500/10',
@@ -16,5 +14,4 @@ export const createStepFE: StepFEFacet = {
     category: 'data',
     isImplemented: true,
   },
-  defaults: { inferLabel: true },
 };

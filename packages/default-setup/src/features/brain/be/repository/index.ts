@@ -198,7 +198,7 @@ export const brainQueries = {
           id: `Event-${n.id}` as EARS.EntityId,
           nodeId: n.id!,
           eventType: `${def.type}.${n.id}`,
-          label: n.label || def.fe?.nodeConfig.label || def.type,
+          label: n.label || def.node?.label || def.type,
           triggerType: def.type,
           ...def.trigger?.queryFields?.reduce((acc: any, field: string) => {
             if (n[field] !== undefined) acc[field] = n[field];

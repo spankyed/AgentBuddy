@@ -1,9 +1,8 @@
 import { services } from '#generated/services.ts';
-import type { PackMigration } from '@abuddy/sdk/framework';
+import type { DeclaredMigration } from '@abuddy/sdk/framework';
 import { ref } from '#generated/ref.ts';
 
-export const migration: PackMigration = {
-  target: '0.3.14',
+export const migration: DeclaredMigration = {
   description: 'Rename code setting lastDirectoryOpened → baseDirectory; move openLinksInApp to browser plugin',
   up: () => {
     const data = services.settings.getAll();

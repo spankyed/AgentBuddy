@@ -4,8 +4,6 @@ import { Plug } from 'lucide-vue-next';
 export const killStepFE: StepFEFacet = {
   colorKey: 'red',
   nodeConfig: {
-    label: 'Kill',
-    defaultLabel: 'Kill flow',
     icon: Plug,
     color: 'text-red-400',
     bgColor: 'bg-red-500/10',

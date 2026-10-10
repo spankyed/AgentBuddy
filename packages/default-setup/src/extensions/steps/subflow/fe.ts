@@ -6,8 +6,6 @@ export const flowStepFE: StepFEFacet = {
   loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
   colorKey: 'purple',
   nodeConfig: {
-    label: 'Flow',
-    defaultLabel: 'Handle flow',
     icon: Workflow,
     color: 'text-purple-400',
     bgColor: 'bg-purple-500/10',
@@ -16,5 +14,4 @@ export const flowStepFE: StepFEFacet = {
     category: 'logic',
     isImplemented: true,
   },
-  defaults: { propagateCtx: true },
 };

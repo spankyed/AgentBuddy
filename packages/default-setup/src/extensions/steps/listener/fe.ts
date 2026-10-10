@@ -5,8 +5,6 @@ import { Radio } from 'lucide-vue-next';
 export const listenerTriggerFE: StepFEFacet = {
   loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
   nodeConfig: {
-    label: 'Listener',
-    defaultLabel: 'On event',
     icon: Radio,
     color: 'text-blue-400',
     bgColor: 'bg-blue-500/10',
@@ -16,5 +14,4 @@ export const listenerTriggerFE: StepFEFacet = {
     isImplemented: true,
   },
   colorKey: 'blue',
-  defaults: { scope: 'global', eventType: '' },
 };

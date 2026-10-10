@@ -4,12 +4,11 @@ import { services } from '#generated/services.ts';
 import { describe, expect, it } from 'vitest'
 import { untypedTx, untypedQx } from '@abuddy/ears'
 import type { EARS as SdkEARS } from '@abuddy/sdk'
-import { migrations } from '../../src/migrations/index.ts'
+import { migration } from '../../src/migrations/0.3.0.ts'
 import threadsSettings from '#features/threads/settings.ts'
 import { ref } from '#generated/ref.ts'
 
 /** The migration as the pack registers it, so this fails too if it was never listed */
-const migration = migrations.find((m) => m.target === '0.3.0')!
 
 /** The settings row as the repository stores it: only what differs from the defaults */
 const stored = () => untypedQx('Settings-app' as SdkEARS.EntityId).pickOne(['data'])?.data as Record<string, unknown>

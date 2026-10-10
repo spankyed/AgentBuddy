@@ -1,9 +1,8 @@
 import { services } from '#generated/services.ts';
-import type { PackMigration } from '@abuddy/sdk/framework';
+import type { DeclaredMigration } from '@abuddy/sdk/framework';
 import { ref } from '#generated/ref.ts';
 
-export const migration: PackMigration = {
-  target: '0.3.0',
+export const migration: DeclaredMigration = {
   description: 'Add codex agent mode if missing; remove the Hermes mode',
   up: () => {
     // The user's own modes, if they stored any: the defaults already have Codex, and patching a merged copy would

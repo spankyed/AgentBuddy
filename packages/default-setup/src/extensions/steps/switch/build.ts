@@ -1,4 +1,4 @@
-import type { StepBuildFacet } from '@abuddy/sdk/steps';
+import type { StepBuildFacet, StepNodeFacet } from '@abuddy/sdk/steps';
 import type { StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepBranch } from '@abuddy/sdk/steps';
 import { BinaryOperator, BinaryOperator as Op } from '@abuddy/sdk/utils';
 import { EARS } from '@abuddy/sdk';
@@ -180,3 +180,10 @@ export function branches(node: Record<string, unknown>): StepBranch[] {
 
 /** Build-time facets only (no runtime or FE imports); loaded by `abuddy build` in dependent packs. */
 export const switchStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile, branches };
+
+/** What a node of this type starts with; the backend writes it and the canvas draws it */
+export const switchStepNode: StepNodeFacet = {
+  label: 'Switch',
+  defaultLabel: 'Choose path',
+  defaults: { conditions: [{ predicate: undefined, label: 'Else' }] },
+};

@@ -5,8 +5,6 @@ import { Clock } from 'lucide-vue-next';
 export const scheduleTriggerFE: StepFEFacet = {
   loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
   nodeConfig: {
-    label: 'Schedule',
-    defaultLabel: 'On schedule',
     icon: Clock,
     color: 'text-cyan-400',
     bgColor: 'bg-cyan-500/10',
@@ -15,5 +13,4 @@ export const scheduleTriggerFE: StepFEFacet = {
     category: 'trigger',
   },
   colorKey: 'cyan',
-  defaults: { cronExpression: '0 * * * *' },
 };

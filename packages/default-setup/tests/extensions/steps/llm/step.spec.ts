@@ -5,7 +5,7 @@ import { repository } from '#generated/repository.ts';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { handler } from '#extensions/steps/llm/runtime.ts';
 import { DEFAULT_MODEL } from '#extensions/steps/llm/model.ts';
-import { llmStepFE } from '#extensions/steps/llm/fe.ts';
+import { llmStepNode } from '#extensions/steps/llm/build.ts';
 import { validate } from '#extensions/steps/llm/build.ts';
 import { availableModels } from '@abuddy/sdk/models';
 
@@ -65,7 +65,7 @@ describe('llm step', () => {
 
     expect(options[0].temperature).toBeUndefined();
     expect(sent).toEqual([expect.objectContaining({ type: 'COMPLETE', result: expect.not.objectContaining({ warnings: expect.anything() }) })]);
-    expect(llmStepFE.defaults).not.toHaveProperty('temperature');
+    expect(llmStepNode.defaults).not.toHaveProperty('temperature');
   });
 
   it("fails the step, naming the node, when its model isn't provider:model", async () => {
@@ -96,7 +96,7 @@ describe('llm default model', () => {
   it('is a model the editor offers, for nodes that name none and for new nodes', () => {
     const catalogIds = availableModels.map((entry) => entry.id);
     expect(catalogIds).toContain(DEFAULT_MODEL);
-    expect(catalogIds).toContain((llmStepFE.defaults as { model?: string } | undefined)?.model);
+    expect(catalogIds).toContain((llmStepNode.defaults as { model?: string } | undefined)?.model);
   });
 });
 

@@ -6,8 +6,6 @@ export const transformStepFE: StepFEFacet = {
   loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
   colorKey: 'emerald',
   nodeConfig: {
-    label: 'Transform',
-    defaultLabel: 'Transform output',
     icon: Shuffle,
     color: 'text-emerald-400',
     bgColor: 'bg-emerald-500/10',
@@ -16,5 +14,4 @@ export const transformStepFE: StepFEFacet = {
     category: 'data',
     isImplemented: true,
   },
-  defaults: { outputType: 'json' },
 };

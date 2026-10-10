@@ -6,8 +6,6 @@ export const updateStepFE: StepFEFacet = {
   loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
   colorKey: 'purple',
   nodeConfig: {
-    label: 'Update',
-    defaultLabel: 'Update entity',
     icon: RefreshCw,
     color: 'text-purple-400',
     bgColor: 'bg-purple-500/10',
@@ -16,5 +14,4 @@ export const updateStepFE: StepFEFacet = {
     category: 'data',
     isImplemented: true,
   },
-  defaults: { onMissing: 'fail' },
 };

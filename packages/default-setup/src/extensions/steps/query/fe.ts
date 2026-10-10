@@ -6,8 +6,6 @@ export const queryStepFE: StepFEFacet = {
   loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
   colorKey: 'cyan',
   nodeConfig: {
-    label: 'Query',
-    defaultLabel: 'Query',
     icon: Search,
     color: 'text-cyan-400',
     bgColor: 'bg-cyan-500/10',

@@ -1,14 +1,11 @@
 import type { StepFEFacet } from '@abuddy/sdk/steps';
 import { defineAsyncComponent } from 'vue';
 import { Sparkle } from 'lucide-vue-next';
-import { DEFAULT_MODEL } from './model.ts';
 
 export const llmStepFE: StepFEFacet = {
   loadComponents: () => ({ form: defineAsyncComponent(() => import('./form.vue')) }),
   colorKey: 'indigo',
   nodeConfig: {
-    label: 'LLM',
-    defaultLabel: 'Generate text',
     icon: Sparkle,
     color: 'text-indigo-400',
     bgColor: 'bg-indigo-500/10',
@@ -19,5 +16,4 @@ export const llmStepFE: StepFEFacet = {
     isDisabled: true,
   },
   // No temperature: the model's own applies, and reasoning models (the default among them) don't take one
-  defaults: { model: DEFAULT_MODEL, maxTokens: 1000 },
 };

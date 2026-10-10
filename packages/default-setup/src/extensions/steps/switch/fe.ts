@@ -11,8 +11,6 @@ export const switchStepFE: StepFEFacet = {
   }),
   colorKey: 'yellow',
   nodeConfig: {
-    label: 'Switch',
-    defaultLabel: 'Choose path',
     icon: Split,
     color: 'text-yellow-400',
     bgColor: 'bg-yellow-500/10',
@@ -21,7 +19,6 @@ export const switchStepFE: StepFEFacet = {
     category: 'logic',
     isImplemented: true,
   },
-  defaults: { conditions: [{ predicate: undefined, label: 'Else' }] },
   handlePrefix: 'branch',
   layout: {
     getHeight: (node) => {
