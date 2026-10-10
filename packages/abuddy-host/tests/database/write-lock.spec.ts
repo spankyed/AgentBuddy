@@ -1,12 +1,13 @@
 // The lock a tool holds while it changes a data dir's database, which an app checks before it opens the same one
 //
-// @slow: it holds the repo's slowest single test at 4.1s, and that is elapsed time rather than work
-// It spawns real processes and waits on real lock timeouts, so no amount of cores shortens it — shortening
-// the waits would remove what it checks.
+// Nine of its processes are real ones, each compiling this package's source through tsx, so what the cases
+// below wait for is a file appearing or going. Every wait is driven by that file and bounded by the suite's
+// own `testTimeout` — see `waitFor`, which is where the bound being the suite's is load-bearing.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess, type StdioOptions } from 'node:child_process';
+import { once } from 'node:events';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -23,7 +24,15 @@ import { removeTempDirs, tempDir } from './fixtures.ts';
 import { _appDirOf } from '@abuddy/sdk/env';
 
 const locks: Array<{ release(): void }> = [];
-afterEach(() => {
+/** Every child a case spawned, so reaping one is not something a case has to remember */
+const children: ChildProcess[] = [];
+afterEach(async () => {
+  // Before the temp dirs go: a live holder has a lock file open inside one of them
+  for (const child of children.splice(0)) {
+    if (child.exitCode !== null || child.signalCode !== null) continue;
+    child.kill('SIGKILL');
+    await once(child, 'exit');
+  }
   for (const lock of locks.splice(0)) lock.release();
   removeTempDirs();
 });
@@ -40,12 +49,62 @@ const lockFile = (dir: string) => path.join(_appDirOf(dir), 'db-write.lock');
 const SRC = path.resolve(import.meta.dirname, '../../src/database/write-lock.ts');
 /** The child is plain node, so it needs the TypeScript loader this suite already runs under */
 const TSX = createRequire(import.meta.url).resolve('tsx/esm');
-// `node -e` has no script slot, so the arguments start at argv[1]
-const HOLD_UNTIL_SIGNALLED =
-  "const [, dir, src] = process.argv;" +
-  "import(src).then(({ holdDatabaseWriteLock }) => { holdDatabaseWriteLock(dir, 'abuddy db import'); setInterval(() => {}, 1000); });";
 
-/** Polls until `done`, or fails naming what it was waiting for rather than leaving that to the assertion */
+/**
+ * What every child below checks, and why it has to check anything.
+ *
+ * `afterEach` is not reached when the worker running a case is torn down, which is what happens to a case
+ * vitest fails for taking too long: the continuation holding the kill stays pending and the child goes on
+ * running. A holder's whole job is to sit there, so it sat there for eight days — one per interrupt over
+ * three runs. `process.ppid` moving is the exact signal, since a child is reparented only once the process
+ * that spawned it has gone.
+ */
+const EXITS_WHEN_ORPHANED =
+  "const parent = Number(process.env.SPEC_PARENT_PID);" +
+  "const orphaned = () => process.ppid !== parent;";
+
+// `node -e` has no script slot, so the arguments start at argv[1]
+const HOLD_UNTIL_SIGNALLED = EXITS_WHEN_ORPHANED +
+  "const [, dir, src] = process.argv;" +
+  "import(src).then(({ holdDatabaseWriteLock }) => { holdDatabaseWriteLock(dir, 'abuddy db import');" +
+  "  setInterval(() => { if (orphaned()) process.exit(0); }, 250); });";
+
+/**
+ * Takes the lock as soon as `<dir>/GO` appears, and says whether it got it. Spinning on the file is what
+ * puts the racers at the same instant: spawning them is seconds apart, and the race is microseconds. It says
+ * `READY` on stderr first, so the parent writes `GO` only once every racer is already spinning for it.
+ *
+ * The orphan check goes inside the loop rather than on a timer, because the spin blocks the event loop.
+ */
+const RACE_FOR_LOCK = EXITS_WHEN_ORPHANED +
+  "const [, dir, start, src] = process.argv;" +
+  "const fs = require('node:fs');" +
+  "import(src).then(({ holdDatabaseWriteLock }) => {" +
+  "  process.stderr.write('READY');" +
+  "  while (!fs.existsSync(start)) { if (orphaned()) process.exit(0); }" +
+  "  try { holdDatabaseWriteLock(dir, 'a racer'); process.stdout.write('ACQUIRED'); }" +
+  "  catch { process.stdout.write('refused'); }" +
+  "  setTimeout(() => {}, 500);" +
+  "});";
+
+/** A child that cannot outlive this run: reaped in `afterEach`, and self-reaping if that is never reached */
+function spawnChild(body: string, args: readonly string[], stdio: StdioOptions): ChildProcess {
+  const child = spawn(process.execPath, ['--import', pathToFileURL(TSX).href, '-e', body, ...args], {
+    stdio,
+    env: { ...process.env, SPEC_PARENT_PID: String(process.pid) },
+  });
+  children.push(child);
+  return child;
+}
+
+/**
+ * Polls until `done`, or fails naming what it was waiting for rather than leaving that to the assertion.
+ *
+ * **Every budget passed here has to fit inside the suite's `testTimeout`**, which is the deadline that
+ * actually fires. One past it can only ever end as vitest's generic timeout, with this case's cleanup
+ * unreached — a boot budgeted at 60s in a suite that gives a test 15s is what left the holders above
+ * running.
+ */
 async function waitFor(what: string, done: () => boolean, timeoutMs = 5_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (!done()) {
@@ -55,20 +114,6 @@ async function waitFor(what: string, done: () => boolean, timeoutMs = 5_000): Pr
 }
 /** A pid no process has any more */
 const exitedPid = () => spawnSync(process.execPath, ['-e', '']).pid!;
-
-/**
- * Takes the lock as soon as `<dir>/GO` appears, and says whether it got it. Spinning on the file is what
- * puts the racers at the same instant: spawning them is seconds apart, and the race is microseconds.
- */
-const RACE_FOR_LOCK =
-  "const [, dir, start, src] = process.argv;" +
-  "const fs = require('node:fs');" +
-  "import(src).then(({ holdDatabaseWriteLock }) => {" +
-  "  while (!fs.existsSync(start)) {}" +
-  "  try { holdDatabaseWriteLock(dir, 'a racer'); process.stdout.write('ACQUIRED'); }" +
-  "  catch { process.stdout.write('refused'); }" +
-  "  setTimeout(() => {}, 500);" +
-  "});";
 
 describe('the database write lock', () => {
   it('stops listening for the process exiting once it is released', () => {
@@ -146,29 +191,23 @@ describe('the database write lock', () => {
   // can still do that, and nothing can catch it.
   it.each(DELIVERABLE_INTERRUPTS)('releases the lock when the tool is interrupted with %s', async (signal) => {
     const dir = tempDir('write-lock-');
-    const holder = spawn(process.execPath, ['--import', pathToFileURL(TSX).href, '-e', HOLD_UNTIL_SIGNALLED, dir, SRC], {
-      stdio: ['ignore', 'ignore', 'pipe'],
-    });
+    const holder = spawnChild(HOLD_UNTIL_SIGNALLED, [dir, SRC], ['ignore', 'ignore', 'pipe']);
     // A holder that dies on boot would otherwise be indistinguishable from a slow one until the timeout,
     // and its reason — an import this checkout's dist can't resolve, say — would be thrown away with it
     let stderr = '';
-    holder.stderr.setEncoding('utf-8');
-    holder.stderr.on('data', (chunk: string) => { stderr += chunk; });
+    holder.stderr!.setEncoding('utf-8');
+    holder.stderr!.on('data', (chunk: string) => { stderr += chunk; });
     let died: string | null = null;
     holder.on('exit', (code) => { died = `the holder exited with code ${code}${stderr && `:\n${stderr}`}`; });
-    try {
-      // The holder compiles this package's source through tsx, which takes seconds when the whole unit
-      // suite is running beside it. The release it is asked for afterwards is immediate, and is the
-      // thing under test, so only the boot gets the long budget.
-      await waitFor('the holder to take the lock', () => {
-        if (died) throw new Error(died);
-        return fs.existsSync(lockFile(dir));
-      }, 60_000);
-      process.kill(holder.pid!, signal);
-      await waitFor(`the ${signal} handler to release the lock`, () => !fs.existsSync(lockFile(dir)));
-    } finally {
-      holder.kill('SIGKILL');
-    }
+    // The holder compiles this package's source through tsx, which takes seconds when the whole unit suite
+    // is running beside it. The release it is asked for afterwards is immediate, and is the thing under
+    // test, so only the boot gets the long budget.
+    await waitFor('the holder to take the lock', () => {
+      if (died) throw new Error(died);
+      return fs.existsSync(lockFile(dir));
+    }, 9_000);
+    process.kill(holder.pid!, signal);
+    await waitFor(`the ${signal} handler to release the lock`, () => !fs.existsSync(lockFile(dir)), 3_000);
     expect(fs.existsSync(lockFile(dir))).toBe(false);
   });
 
@@ -177,19 +216,31 @@ describe('the database write lock', () => {
   it('is taken by one of several tools that ask for it at the same moment', async () => {
     const dir = tempDir('write-lock-');
     const start = path.join(dir, 'GO');
-    const racers = [...Array(6)].map(() =>
-      spawn(process.execPath, ['--import', pathToFileURL(TSX).href, '-e', RACE_FOR_LOCK, dir, start, SRC], { stdio: ['ignore', 'pipe', 'ignore'] }));
+    const racers = [...Array(6)].map(() => spawnChild(RACE_FOR_LOCK, [dir, start, SRC], ['ignore', 'pipe', 'pipe']));
     const said: string[] = [];
-    for (const racer of racers) racer.stdout.on('data', (d: Buffer) => said.push(String(d)));
+    const spinning = new Set<number>();
+    let died: string | null = null;
+    racers.forEach((racer, index) => {
+      racer.stdout!.on('data', (d: Buffer) => said.push(String(d)));
+      // A racer that dies on boot, as the holder above, plus the one thing that says it is in the loop
+      racer.stderr!.setEncoding('utf-8');
+      racer.stderr!.on('data', (chunk: string) => {
+        if (chunk.includes('READY')) spinning.add(index);
+        else died = `a racer wrote to stderr:\n${chunk}`;
+      });
+      racer.on('exit', (code) => { if (!said.length) died ??= `a racer exited with code ${code} before answering`; });
+    });
 
-    try {
-      // They boot through tsx at their own pace; the file is what lets them start together
-      await waitFor('the racers to boot', () => true, 100).then(() => new Promise((r) => setTimeout(r, 4_000)));
-      fs.writeFileSync(start, 'go');
-      await waitFor('every racer to answer', () => said.length === racers.length, 30_000);
-    } finally {
-      for (const racer of racers) racer.kill('SIGKILL');
-    }
+    const booted = (): boolean => {
+      if (died) throw new Error(died);
+      return spinning.size === racers.length;
+    };
+    // They boot through tsx at their own pace, so the start file is what lets them act together — and every
+    // racer says it is spinning for that file before any of them can see it. Waiting a fixed few seconds
+    // instead was a guess at six tsx boots, and the guess outgrew the budget the suite gives a test.
+    await waitFor('every racer to be spinning on the start file', booted, 9_000);
+    fs.writeFileSync(start, 'go');
+    await waitFor('every racer to answer', () => said.length === racers.length, 3_000);
 
     expect(said.filter((s) => s === 'ACQUIRED')).toHaveLength(1);
   });
