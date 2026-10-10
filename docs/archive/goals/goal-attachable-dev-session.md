@@ -1,9 +1,12 @@
 > **Written in session** `75ab9455-5ee8-4b50-8043-6d5f22284a4a` (Claude Code, 2026-10-09). Resume it with `claude -r 75ab9455-5ee8-4b50-8043-6d5f22284a4a`.
 >
-> **Done** (branch `AS/attachable-dev-session`). All seven phases implemented and committed; the Outcome
-> at the foot of this doc has what each one settled, the measurements, and the three things deferred with
-> their reasons. The text below is the goal as written, corrected in place where the work found a decision
-> wrong.
+> **Done and closed** (branch `AS/attachable-dev-session`). All seven phases implemented and committed, and
+> the three claims Phase 5's Done-when left standing on nothing are closed — the idle reap is built, the
+> `abuddy test` claim has a gated case, and the install hint has a firing one (*Closing the three Done-when
+> gaps*, at the foot). The Outcome has what each phase settled and the measurements. Two corrections the
+> work found and fixed: `ABUDDY_ENV` must not collapse into `ABUDDY_BUILD`, and `--fresh` on the one-shot
+> path resolved the wrong data dir, because "which data dir" had two answers and nothing made them meet.
+> The text below is the goal as written, corrected in place where the work found a decision wrong.
 
 ```
 # Goal: dev holds the app, drive attaches to it — and the two words stop colliding
@@ -469,9 +472,16 @@ Two things worth keeping:
   `playwright` joins `playwright-core` as an optional peer that names it — found by `published-imports`,
   which is the check that exists for exactly this.
 
-Not done here, deliberately: **the missing-`playwright-core` install hint has no firing case yet.** The
-throw is written, but nothing takes that path until `drive` does, so the case belongs to Phase 5 rather than
-being manufactured against a module that is present.
+**The missing-`playwright-core` install hint has a firing case, and getting one took a parameter.** The
+throw was written in this phase and could not be reached: `playwright-core` resolves in any checkout or
+install that can attach at all, so no test could make the import fail. `_chromium` takes its loader as a
+parameter for that one reason, and three cases run it — a loader that rejects, a module that resolves
+without a `chromium` (which read `connectOverCDP` off `undefined` before, and said neither the package nor
+the fix), and the ordinary one. Both failure cases fail on the mutation that drops the hint.
+
+That is the shape to copy for an unreachable remedy: a seam the caller never uses, rather than no case. It
+is *not* the shape for an unreachable **assertion** about the program's own construction — that one wants a
+comment naming the edit that would make it fire, per the root guide.
 
 ### Phase 4 — the session file (`fe963e92b`)
 
@@ -544,11 +554,6 @@ as the profiles, since the development dir is where a spawn lands by default.
 
 Deferred from this phase, with the reason:
 
-- **The idle reap is not built.** Decision 12 scoped it to a profile a spawn used, and Decision 16 then
-  removed most of what it was for — nothing is left running that nobody asked for, and a run that *was*
-  asked says so and is findable in the listing. A timer that ends an app somebody may be looking at is the
-  one thing Decision 12 argued against, and building it for the narrow remaining case would mean a new
-  record (when it was last attached to) and a watcher in `dev` for a problem that is now opt-in.
 - **`--spawn` in a pack repo installing the pack has no case of its own**, beyond `dev` doing the installing
   (which `dev-install.spec.ts` covers) and `--spawn` spawning `dev` rather than copying its environment
   (which is one line and a type). The end-to-end case would launch an app per run in a fixture pack; the
@@ -632,3 +637,75 @@ of one question.
 
 `npm test -- smoke` is what says the app still resolves its own identity and data dir after the rename — the
 one claim no unit can make, since every path in a context is joined onto a dir the resolver chose.
+
+### Closing the three Done-when gaps
+
+The seven phases left three claims in Phase 5's Done-when standing on nothing, and the stop condition was
+right to refuse them. What closed each, and what each turned up:
+
+**The idle reap, built** (`reapsWhenIdle`, `idleVerdict`, `IDLE_REAP_MS` in `commands/dev.ts`;
+`touchSession`/`lastAttachedAt` in `@abuddy/host/dev-session`). Deferred on the argument that Decision 16
+had removed most of what it was for — true of the `development` dir, where `mayReclaim` answers, and false
+of the case that remains. A `--spawn` on a **profile** is reclaimed by nothing, because
+`abuddy dev --profile <name>` is not a command a developer happens to run, so before this it held a data
+dir until the machine was rebooted. So the rule is two clauses and they fail to opposite mutations:
+`startedBy: 'drive'` alone closes the app a developer is working in, the profile alone closes the app they
+opened themselves.
+
+Two things it needed that the deferral priced as new machinery, and neither was:
+
+- **The record of when something last attached is the session file's mtime.** That is already what says a
+  session is live (`recordIsStale` bounds the pid by it), so a driver bumping it forward says the one thing
+  it has to, a supervisor reads it with one `stat`, and no field was added. A field would mean rewriting the
+  file — an atomic rename, a new inode, a race with the supervisor's own unpublish — to carry what the
+  filesystem carries. `askAttached` touches it twice, on attaching and on the way out, so a verb that waits
+  a minute for a state does not expire underneath itself.
+- **The watcher is a deadline re-derived, not a poll.** Each wakeup is the earliest moment the answer could
+  have changed: the window has passed, or something attached since and the next wakeup is *its* deadline. An
+  idle app wakes it once; one asked a question a minute wakes it once a minute. `againInMs` being `idleMs` —
+  a fixed interval — is the mutation that case fails on.
+
+Proven live rather than only in specs, with the window lowered to 20s for the run and restored: a
+`--spawn --profile reap-probe` answered `{"state":"spawned","startedBy":"drive",...}`, the listing showed
+the row as *running, started by a question*, and the supervisor closed itself and its app with
+`Closing the app this question started: nothing has attached for …` in its log. The `development` half is
+held by the spec, not a run: proving it live is a ten-minute wait for an app not to close, and the reclaim
+it defers to was already proven live in Phase 5.
+
+**`abuddy test` publishes no session file, with evidence** (`tests/e2e/smoke/smoke.spec.ts`). It was an
+argument from the launcher list, and the look at the dir turned up the fact that makes it worth a gate:
+**a test app is running with a debug port wide open.** Playwright drives Electron over CDP, so it launches
+every app in the suite with `--remote-debugging-port` and Chromium writes the number into the data dir's
+`DevToolsActivePort` — so a tool that *inferred* attachability would find a test run's app and drive it
+mid-suite. The case asserts the port is present and the session is not, which is one claim rather than two:
+the port is what there would be to infer from, and asserting it is also what stops the absence being read
+off an empty or wrong directory. It earned that immediately — the first draft asserted `host.json` beside
+the absence and failed, because the app's own files are a level down under `abuddy/`.
+
+**`--fresh` on the one-shot path resolved the wrong data dir, and the cause was two answers to one
+question.** `attachPlace` answered `{ build: 'development' }` for `mode.kind === 'fresh'` while
+`profileArgsFor` passed `--fresh` to the spawned `dev`, which mints a profile of its own — so
+`drive --eval … --fresh` either attached to whatever was on the development dir, ignoring the flag, or waited
+out the 120s deadline for a session at a path nothing would write. `--with-secrets` was dropped there too.
+Nothing could catch it, because "which data dir" had two places to answer it and no case made them meet.
+
+`askTarget` is the one answer: the dir to wait on and the flags that make `dev` open it, built together, so
+`dir` is by construction the dir `spawnArgs` opens. The case that holds it is a **round trip** rather than
+two assertions — `spawnArgs` go back through the parser `dev` uses, through its `profileFor`, to the dir it
+would resolve — and reinstating the old split fails four of its cases.
+
+`--fresh` resolves to a **name** here rather than to a minted dir, because a question has to know the dir
+before the app exists and a name is the only thing both sides can agree on in advance. That also settles the
+`--rm` question the deferral had left open: the dir is a *named* profile, so it is listed and reachable while
+the app lives, which an app outliving its command needs — and `--rm` on a name is now an ordinary spelling
+(`--profile <name> --rm`), honoured for a dir the run creates and **refused** for one already there, since
+that holds data somebody kept. The hidden `.ephemeral/<pid>-<name>` form stays what `--fresh --rm` mints on
+the script path, where the run does own the app for its lifetime.
+
+**One bug in that fix was found by running it, after its specs passed**: `spawnDevApp` opens its log inside
+the data dir before `dev` starts, so by the time `dev` opened the profile the *directory* was there and
+`created` read false — refusing `--rm` for a dir the run was in the middle of creating. `created` is about
+the **record**, not the directory: a dir with no `.abuddy-profile.json` is not a profile yet, which is the
+rule `listProfiles` and `notAProfile` already read. Proven live afterwards: `--fresh` named a profile,
+spawned into it and answered; the printed name attached on the next question (`state: "attached"`); and
+`--fresh --rm`'s dir was gone once its supervisor exited.

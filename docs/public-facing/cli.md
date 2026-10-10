@@ -134,11 +134,12 @@ Deriving the checkout is the right pairing rather than a convenience: a pack who
 
 The environment follows the app: a checkout runs as `development`, and a packaged Beta runs as `beta`, because a packaged build stamps its own channel. Neither touches production data.
 
-**Profiles.** By default `run` uses the shared development data dir, so every run inherits what the last one left. A profile is a data dir of its own, created on demand:
+**Profiles.** By default `dev` uses the shared development data dir, so every run inherits what the last one left. A profile is a data dir of its own, created on demand:
 
 - `--profile <name>` — that one, created the first time you name it, and kept
 - `--fresh` — a new one, whose name is printed so you can come back to it with `--profile`
-- `--fresh --rm` — the same, removed when `run` exits
+- `--fresh --rm` — the same, removed when the command exits
+- `--profile <name> --rm` — the same for a name you choose. It removes only a profile **this run creates**: one that is already there holds data you kept, so the flag is refused rather than quietly ignored, and `abuddy profiles rm <name>` is what removes that one
 - `--with-secrets` — copy the secrets this environment already holds into the **new** profile, so a throwaway run can use them without you entering anything again. The values are encrypted in the profile's own data dir, and the data key that decrypts them goes in a file beside them rather than the OS credential store, so `rm -rf` removes both; that also means they are protected by file permissions alone, which is the trade every profile makes and which Settings states
 
 A profile is self-contained — its data, packs, logs and secrets are all inside it, and the data key that encrypts its secrets goes in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `abuddy profiles rm <name>` does it for you. The path is printed, and `abuddy db --profile <name>` opens its database — by the same name `run` and `profiles` show, throwaway ones included.
@@ -315,7 +316,7 @@ It takes the same app and profile flags as `abuddy dev`, with one difference in 
 |---|---|---|
 | `abuddy dev`, `npm start` | starts its own | when you stop the command |
 | `abuddy drive --eval` (and the other one-shots) | a live one; **fails if there is none** | it was not yours to close |
-| the same, with `--spawn` | a live one, else it starts one | **it doesn't** — it stays for the next question |
+| the same, with `--spawn` | a live one, else it starts one | **it stays for the next question** — and, on a profile, closes itself after 10 minutes with nothing attached |
 | `abuddy drive <script>` | always its own | when the script finishes |
 | `abuddy test` | always its own, isolated | when the run finishes |
 
@@ -341,6 +342,20 @@ never receives half an answer.
 A run that **started** an app says so on stderr and names the two ways to end it: `abuddy dev`, which takes
 the directory back, or the `supervisorPid` above. An attach that changed nothing says nothing, because the
 fields already said it.
+
+**And nothing is left running forever.** Which of the two applies depends on where the app is, because the
+two cases have different answers:
+
+- **On your development data dir** — a `--spawn` with no profile flags — the app stays until you take the
+  directory back, which `abuddy dev` and `npm start` do for you: they close the one a question started,
+  say so, and start yours. So there is nothing to remember, and no timer closes an app you may be watching.
+- **On a profile** — `--profile <name>` — nothing reclaims it that way, so the app closes itself after **10
+  minutes** with no question attached. Each question resets that, so a session you are working in keeps
+  its app; one you walked away from gives the data dir back. It tells you at launch, and says why in its
+  log when it goes.
+
+`abuddy profiles` lists every data dir with a live app, who started it, and the pid that ends it — which is
+the answer when a terminal has been scrolled away and you want to know what is still up.
 
 ### Validation
 

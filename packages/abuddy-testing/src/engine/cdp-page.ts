@@ -39,22 +39,47 @@ export interface AttachedApp {
   readonly detach: () => Promise<void>;
 }
 
+/** What this needs of `playwright-core`: the one call that attaches. */
+interface ChromiumConnect {
+  connectOverCDP: (endpoint: string) => Promise<Browser>;
+}
+
+/**
+ * What a reader is told when the optional peer is absent — the install, rather than a module-not-found
+ * from inside a bundle, which is what a missing optional peer otherwise looks like to whoever hits it.
+ * `@abuddy/sdk` uses this pattern for `typescript` and `esbuild`.
+ */
+export const INSTALL_PLAYWRIGHT_CORE = 'Attaching to a running app needs `playwright-core`, which is an'
+  + ' optional peer of @abuddy/testing.\n  Install it: npm i -D playwright-core';
+
 /**
  * Chromium's connect, loaded only when something attaches.
  *
- * It throws with the install rather than failing as a module-not-found from inside a bundle, which is what
- * a missing optional peer otherwise looks like to whoever hits it. `@abuddy/sdk` uses this pattern for
- * `typescript` and `esbuild`.
+ * **The loader is a parameter because nothing else can make this path run.** In any checkout or install
+ * that can attach at all, `playwright-core` resolves — so the absent-peer branch is unreachable from a
+ * test that does not hand it a loader, and an unreachable remedy is one nobody finds out has stopped
+ * being the right one. `_chromium` is host-side only (`@abuddy/testing`'s own spec); the default is the
+ * import every caller gets.
+ *
+ * @internal
  */
-async function chromium() {
+export async function _chromium(load: () => Promise<unknown> = () => import('playwright-core')): Promise<ChromiumConnect> {
+  let loaded: unknown;
   try {
-    return (await import('playwright-core')).chromium;
+    loaded = await load();
   } catch {
-    throw new Error(
-      'Attaching to a running app needs `playwright-core`, which is an optional peer of @abuddy/testing.\n'
-      + '  Install it: npm i -D playwright-core',
-    );
+    throw new Error(INSTALL_PLAYWRIGHT_CORE);
   }
+  const connect = (loaded as { chromium?: ChromiumConnect } | null)?.chromium;
+  // A module that loaded without one is the same failure as one that did not load: it cannot attach, and
+  // the fix is the same install. Reading `connectOverCDP` off `undefined` would say neither
+  if (connect === undefined) throw new Error(INSTALL_PLAYWRIGHT_CORE);
+  return connect;
+}
+
+/** What finding a window needs of a connection: the pages it exposes, and `applicationState` on one. */
+export interface AttachTargets {
+  contexts: () => readonly { pages: () => readonly { evaluate: (fn: () => unknown) => Promise<unknown>; url: () => string }[] }[];
 }
 
 /**
@@ -67,11 +92,6 @@ async function chromium() {
  * It waits rather than asking once, because a window that is still loading has no `applicationState` yet
  * and a page can appear after the connection does.
  */
-/** What finding a window needs of a connection: the pages it exposes, and `applicationState` on one. */
-export interface AttachTargets {
-  contexts: () => readonly { pages: () => readonly { evaluate: (fn: () => unknown) => Promise<unknown>; url: () => string }[] }[];
-}
-
 export async function findWindow<T extends AttachTargets>(browser: T, timeoutMs: number): Promise<Page> {
   const deadline = Date.now() + timeoutMs;
   const seen = new Set<unknown>();
@@ -102,7 +122,7 @@ export async function findWindow<T extends AttachTargets>(browser: T, timeoutMs:
  * wrote it — so it is reported as what it is, with the port, for a caller to treat as a miss.
  */
 export async function attachToApp({ debugPort, timeoutMs = 15_000 }: AttachOptions): Promise<AttachedApp> {
-  const connect = await chromium();
+  const connect = await _chromium();
   let browser: Browser;
   try {
     browser = await connect.connectOverCDP(`http://127.0.0.1:${debugPort}`);

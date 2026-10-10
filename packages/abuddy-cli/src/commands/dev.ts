@@ -5,7 +5,9 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { build } from './build';
 import { findPackRootOrNone, readManifest } from '../utils';
-import { publishSession, readDevToolsPort, readSession, startedByFromEnv, type DevSession } from '@abuddy/host/dev-session';
+import {
+  lastAttachedAt, publishSession, readDevToolsPort, readSession, startedByFromEnv, type DevSession,
+} from '@abuddy/host/dev-session';
 import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
 import { reloadPack, type AppPlace, type DevReload } from '../build/dev-reload.ts';
 import { cliDirs, parseAppFlags, resolveLaunchApp, type AppTarget } from '../app/app-target';
@@ -138,6 +140,53 @@ function launchApp(app: AppTarget, place: AppPlace): ChildProcess {
  */
 export function mayReclaim(session: DevSession | undefined): boolean {
   return session?.startedBy === 'drive';
+}
+
+/**
+ * How long a drive-profile app waits with nothing attached before it closes itself.
+ *
+ * Long enough that a person reading an answer, thinking, and asking the next thing keeps the app — the
+ * second question is the one that costs 0.9s instead of 3.3s, and losing it is the whole point of keeping
+ * one up. Short enough that an agent loop that was interrupted between two questions costs minutes of a
+ * held data dir rather than the rest of the session.
+ */
+export const IDLE_REAP_MS = 10 * 60_000;
+
+/**
+ * Whether this supervisor closes its app when nothing attaches, and the profile is the half that decides it.
+ *
+ * **A person's app is never reaped, and neither is the development dir.** `startedBy: 'drive'` alone is not
+ * the rule, because a `--spawn` with no profile flags lands in the *development* data dir — and that one is
+ * already answered, by `mayReclaim`: the developer runs `abuddy dev` or `npm start`, which takes the
+ * directory back and says so. A timer there would close an app somebody may be watching, which is the thing
+ * the design argued against from the start.
+ *
+ * What is left is a drive app in a profile — `--fresh`, or `--profile <name>` — and nothing reclaims one of
+ * those, because `abuddy dev --profile <name>` is not a command a developer happens to run. Before this it
+ * stayed up until the machine was rebooted, holding a data dir and, for `--fresh --rm`, a directory whose
+ * removal is its supervisor's exit.
+ */
+export function reapsWhenIdle(session: Pick<DevSession, 'startedBy'>, place: AppPlace): boolean {
+  return session.startedBy === 'drive' && place.profile !== undefined;
+}
+
+/** Close the app now, or ask again in this many milliseconds. */
+export interface IdleVerdict {
+  readonly reap: boolean;
+  readonly againInMs: number;
+}
+
+/**
+ * Whether an app whose session was last attached at `lastAttachedMs` has idled out.
+ *
+ * **The wait is a deadline, re-derived, rather than an interval.** Each wakeup is the earliest moment the
+ * answer could have changed: either the window has passed, or something attached since and the next wakeup
+ * is its deadline. So nothing polls — a session that is asked a question every minute wakes this once per
+ * question, and an idle one wakes it exactly once.
+ */
+export function idleVerdict(lastAttachedMs: number, nowMs: number, idleMs: number): IdleVerdict {
+  const remaining = idleMs - (nowMs - lastAttachedMs);
+  return remaining > 0 ? { reap: false, againInMs: remaining } : { reap: true, againInMs: 0 };
 }
 
 /**
@@ -283,7 +332,9 @@ async function session(args: string[], hooks: SessionHooks) {
         supervisorPid: process.pid,
         startedBy: startedByFromEnv(),
       });
-      console.log(`  attachable on debug port ${debugPort} — \`abuddy drive\` can reach it\n`);
+      console.log(`  attachable on debug port ${debugPort} — \`abuddy drive\` can reach it`);
+      armIdleReap({ startedBy: startedByFromEnv() });
+      console.log('');
     } catch (error) {
       // A port that never appeared leaves the app perfectly usable and only un-drivable, so this is a
       // warning rather than a failed launch: whoever wanted to watch the app still has it
@@ -329,6 +380,36 @@ async function session(args: string[], hooks: SessionHooks) {
       removeProfile(cliDirs(), profile.dir);
       console.log(`\nRemoved the ephemeral profile ${profile.name}.`);
     }
+  }
+
+  /**
+   * Closes the app when nothing has attached for `IDLE_REAP_MS` — for the apps `reapsWhenIdle` names, and
+   * no others.
+   *
+   * The timer is the only thing keeping this process honest about an app nobody is minding, so it says so
+   * on the way up: a supervisor that closes itself silently is one whose user reports the app vanishing.
+   */
+  function armIdleReap(session: Pick<DevSession, 'startedBy'>): void {
+    if (!reapsWhenIdle(session, place)) return;
+    const minutes = Math.round(IDLE_REAP_MS / 60_000);
+    console.log(`  it closes itself after ${minutes}m with nothing attached — each question resets that`);
+    const tick = () => {
+      const last = lastAttachedAt(userDataDir);
+      // The session this process published has gone, so there is no record left to mind and nothing that
+      // could attach through it either
+      if (last === undefined) return void reap('its session file has gone');
+      const { reap: now, againInMs } = idleVerdict(last, Date.now(), IDLE_REAP_MS);
+      if (now) return void reap(`nothing has attached for ${minutes}m`);
+      setTimeout(tick, againInMs);
+    };
+    setTimeout(tick, IDLE_REAP_MS);
+  }
+
+  /** Teardown, then exit, so the profile goes with the app as it does for any other way this ends. */
+  async function reap(why: string): Promise<void> {
+    console.log(`\nClosing the app this question started: ${why}.`);
+    await teardown();
+    process.exit(0);
   }
 
   hooks.teardown = teardown;

@@ -266,7 +266,9 @@ Three modules, and the split is what each one is allowed to know:
 - **`cdp-page.ts`** — the attach. `_electron` has no `connect`, which is where *"whoever launches owns the
   page"* came from; an Electron renderer is Chromium, so `chromium.connectOverCDP` attaches to one started
   with `--remote-debugging-port` and hands back a real `Page`. `playwright-core` is a lazily imported
-  optional peer that throws with the install when absent. `findWindow` takes the target with
+  optional peer that throws with the install when absent — and `_chromium` takes its loader as a
+  **parameter**, because that is the only way the hint has a case: the package resolves in any install that
+  can attach at all, so nothing else can make the import fail. `findWindow` takes the target with
   `window.applicationState` and **never `pages()[0]`** — a connected app has more than one, and
   `tests/engine/cdp-page.spec.ts` holds that against a fake presenting several, because the end-to-end
   assertion passes with the predicate replaced by "take the first".

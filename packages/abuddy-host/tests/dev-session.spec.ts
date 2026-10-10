@@ -3,7 +3,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  publishSession, readSession, sessionFile, startedByFromEnv, STARTED_BY_ENV, type DevSession,
+  lastAttachedAt, publishSession, readSession, sessionFile, startedByFromEnv, touchSession,
+  STARTED_BY_ENV, type DevSession,
 } from '../src/dev-session.ts';
 
 let dataDir: string;
@@ -101,5 +102,46 @@ describe('who a launcher says started it', () => {
   // through: it reads as the person, which is the answer that refuses rather than the one that reclaims
   it('is dev for a value nothing declares', () => {
     expect(startedByFromEnv({ [STARTED_BY_ENV]: 'whatever' })).toBe('dev');
+  });
+});
+
+/**
+ * **The mtime is the record of when something last attached**, which is what a supervisor minding an
+ * unattended app reads to decide it has idled out (`reapsWhenIdle`, `abuddy-cli/src/commands/dev.ts`).
+ */
+describe('saying a driver was here', () => {
+  it('starts at the moment the session was published', () => {
+    const before = Date.now();
+    publishSession(session());
+    const published = lastAttachedAt(dataDir);
+    // An app nobody has asked anything has been idle since it came up, which is the honest start
+    expect(published).toBeGreaterThanOrEqual(before - 1_000);
+    expect(published).toBeLessThanOrEqual(Date.now() + 1_000);
+  });
+
+  it('moves the mtime forward', () => {
+    publishSession(session());
+    const past = new Date(Date.now() - 60_000);
+    fs.utimesSync(sessionFile(dataDir), past, past);
+    expect(lastAttachedAt(dataDir)).toBeLessThan(Date.now() - 30_000);
+
+    touchSession(dataDir);
+    expect(lastAttachedAt(dataDir)).toBeGreaterThan(Date.now() - 5_000);
+  });
+
+  /**
+   * It must not rewrite the file, and this is the case that says so: everything a driver reads to attach is
+   * still there afterwards. A rewrite is an atomic rename — a new inode, and a race with the supervisor's
+   * own unpublish — to carry what the mtime already carries.
+   */
+  it('leaves the record itself alone', () => {
+    publishSession(session());
+    touchSession(dataDir);
+    expect(readSession(dataDir)).toEqual(session());
+  });
+
+  it('is nothing to say when there is no session, and no error either', () => {
+    expect(() => touchSession(dataDir)).not.toThrow();
+    expect(lastAttachedAt(dataDir)).toBeUndefined();
   });
 });

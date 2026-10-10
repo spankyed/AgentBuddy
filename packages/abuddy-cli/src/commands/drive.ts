@@ -26,8 +26,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { findPackRootOrNone, readManifest } from '../utils';
-import { cliDirs, parseAppFlags, resolveLaunchApp } from '../app/app-target';
-import { profileDir, profileFor, profileInUse, parseProfileFlags, removeProfile, PROFILE_USAGE, type ProfileMode } from '../app/profiles';
+import { cliDirs, parseAppFlags, resolveLaunchApp, type CliDirs } from '../app/app-target';
+import {
+  freshProfileName, profileDir, profileFor, profileInUse, parseProfileFlags, removeProfile, PROFILE_USAGE,
+  type ProfileMode,
+} from '../app/profiles';
 import { askAttached, attachableApp, spawnDevApp, type AttachableApp } from '../app/drive-attach.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
@@ -79,6 +82,11 @@ no app is running, 1 when the verb failed.
 With no app running it says so and exits 3 rather than starting one: a question should not acquire a
 process nobody asked for. --spawn is how you ask, and the app it starts stays up, so a cold checkout
 costs one flag on the first question and an attach on every one after.
+
+An app a question started on your development data dir stays until abuddy dev or npm start takes the
+directory back, which they do for you and say so. One on a --profile closes itself after 10 minutes with
+nothing attached, since nothing else would: each question resets that, and abuddy profiles lists what is
+still up.
 
 --eval takes a function *body*, not an expression, exactly as the /eval verb does — so "return" is
 required, and a body without one answers no value at all.
@@ -303,22 +311,47 @@ function driveTarget(cwd: string): DriveTarget {
 }
 
 /**
- * Which data dir a question is asked of: the profile named, or the development one.
+ * Where a question is asked, and the flags that say so — **one answer, because they have to agree.**
  *
- * It resolves the *dir* without creating it, which is the difference that matters on this path. A miss here
- * falls through to the launch below, and a command that then launched would have minted a profile on the way
- * to deciding it could not use one — a directory left behind by a question that did nothing.
+ * They were two functions, and they disagreed about `--fresh`: one answered the development data dir while
+ * the other passed `--fresh` to the spawned `dev`, which mints a dir of its own. So `--fresh` either
+ * attached to whatever was on the development dir, ignoring the flag, or waited two minutes for a session at
+ * a path nothing would ever write. Nothing could catch that, because the question "which dir" had two
+ * places to answer it. It has one now, and `dir` is by construction the dir `spawnArgs` opens.
+ *
+ * **`--fresh` is resolved to a name here rather than in the spawned `dev`.** A question has to know the dir
+ * it will wait on before the app exists, and a name is the only thing both sides can agree on in advance —
+ * so this picks one and `dev`'s `openProfile` creates it. That is also what keeps `--with-secrets` working,
+ * since it acts only on a profile the run created, and what keeps `--rm`'s dir out of `.ephemeral/<pid>-…`,
+ * where the pid would be this process's and the app outlives it.
+ *
+ * **It creates nothing.** A question that finds a live app never spawns, and a dir minted on the way to
+ * finding that out would be a directory left behind by a question that did nothing.
  */
-/** The profile flags to hand the `dev` this spawns, so it opens the dir this question asked for. */
-function profileArgsFor(mode: ProfileMode): readonly string[] {
-  if (mode.kind === 'named') return ['--profile', mode.name];
-  if (mode.kind === 'fresh') return mode.rm ? ['--fresh', '--rm'] : ['--fresh'];
-  return [];
+interface AskTarget {
+  /** The data dir the question is asked of, created by nothing here */
+  readonly dir: string;
+  /** What to hand the `dev` this spawns, so it opens exactly `dir` */
+  readonly spawnArgs: readonly string[];
+  /** What a person should know about a dir this question named, on stderr */
+  readonly note?: string;
 }
 
-function attachPlace(mode: ProfileMode): { build: 'development'; profile?: string } {
-  if (mode.kind !== 'named') return { build: 'development' };
-  return { build: 'development', profile: profileDir(cliDirs(), mode.name) };
+export function askTarget(mode: ProfileMode, withSecrets: boolean, dirs: CliDirs = cliDirs()): AskTarget {
+  const secrets = withSecrets ? ['--with-secrets'] : [];
+  if (mode.kind === 'shared') {
+    return { dir: resolveAppContext({ build: 'development' }).userDataDir, spawnArgs: [...secrets] };
+  }
+  const name = mode.kind === 'named' ? mode.name : freshProfileName();
+  const rm = mode.rm ? ['--rm'] : [];
+  return {
+    dir: resolveAppContext({ build: 'development', profile: profileDir(dirs, name) }).userDataDir,
+    spawnArgs: ['--profile', name, ...rm, ...secrets],
+    ...(mode.kind === 'fresh' ? {
+      note: `Fresh profile ${name}${mode.rm ? ' — removed when the app closes' : ''}.`
+        + ` \`abuddy drive --profile ${name}\` asks the next question of it.`,
+    } : {}),
+  };
 }
 
 /**
@@ -419,16 +452,17 @@ export async function drive(args: string[]) {
    * `--spawn`, rather than acquiring a process nobody asked for.
    */
   if (ask !== undefined) {
-    const dataDir = resolveAppContext(attachPlace(mode)).userDataDir;
-    const live = attachableApp(dataDir);
+    const target = askTarget(mode, withSecrets);
+    const live = attachableApp(target.dir);
     if (live) return report(await answerAttached(live, root, ask, argument, 'attached'));
-    // `--fresh` mints a dir by definition, so there is never anything to attach to: the flag would
+    // `--fresh` names a dir nothing has used, so there is never anything to attach to: the flag would
     // otherwise ask for a directory and then refuse to use it
     if (spawnFlag || mode.kind === 'fresh') {
-      const started = await spawnDevApp(root, dataDir, profileArgsFor(mode));
+      if (target.note !== undefined) console.error(target.note);
+      const started = await spawnDevApp(root, target.dir, target.spawnArgs);
       return report(await answerAttached(started, root, ask, argument, 'spawned'));
     }
-    return report(noAppHere(dataDir));
+    return report(noAppHere(target.dir));
   }
 
   // Before the app is resolved, which can download a Beta: a first run has nothing to drive, and used to

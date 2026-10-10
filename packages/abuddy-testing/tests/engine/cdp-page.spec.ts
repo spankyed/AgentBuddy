@@ -5,7 +5,7 @@
 // the first" — measured, by doing exactly that. The thing under test is a choice among several targets, and
 // only a fake can present several on purpose.
 import { describe, expect, it } from 'vitest';
-import { findWindow, type AttachTargets } from '../../src/engine/cdp-page.ts';
+import { INSTALL_PLAYWRIGHT_CORE, _chromium, findWindow, type AttachTargets } from '../../src/engine/cdp-page.ts';
 
 /** A page that answers the predicate however the test says, and remembers being asked. */
 const fakePage = (hasState: boolean | 'throws', url = 'pack://x') => ({
@@ -59,5 +59,33 @@ describe("finding the window among a connection's targets", () => {
     setTimeout(() => { pages = [main]; }, 150);
     const late: AttachTargets = { contexts: () => [{ pages: () => pages }] };
     expect(await findWindow(late, 2_000)).toBe(main);
+  });
+});
+
+/**
+ * The absent optional peer.
+ *
+ * **This is the only way these two cases can exist.** `playwright-core` resolves in this checkout, so the
+ * install hint is unreachable from any test that does not hand `_chromium` a loader — which is why the
+ * loader is a parameter. Written against a hint that had no firing case and so had never been run.
+ */
+describe('a missing playwright-core', () => {
+  it('is reported as the install to run, not as a module-not-found', async () => {
+    await expect(_chromium(() => Promise.reject(new Error("Cannot find package 'playwright-core'"))))
+      .rejects.toThrow(/npm i -D playwright-core/);
+  });
+
+  /**
+   * A module that resolved without a `chromium` is the same failure: it cannot attach. Without this the
+   * next line reads `connectOverCDP` off `undefined` and the caller gets a TypeError naming neither the
+   * package nor the fix.
+   */
+  it('is reported the same way when the module has no chromium', async () => {
+    await expect(_chromium(() => Promise.resolve({}))).rejects.toThrow(INSTALL_PLAYWRIGHT_CORE);
+  });
+
+  it('hands back the connect when the module has one', async () => {
+    const connectOverCDP = async () => ({}) as never;
+    expect(await _chromium(() => Promise.resolve({ chromium: { connectOverCDP } }))).toEqual({ connectOverCDP });
   });
 });

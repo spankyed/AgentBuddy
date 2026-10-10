@@ -15,6 +15,7 @@ import {
 } from '../../src/app/profiles';
 import type { CliDirs } from '../../src/app/app-target';
 import { resolveAppContext } from '@abuddy/sdk/env';
+import { askTarget } from '../../src/commands/drive';
 
 let tmp: string;
 let dirs: CliDirs;
@@ -189,8 +190,8 @@ describe('renaming a profile', () => {
 describe('the flags', () => {
   it('take the profile ones out and leave the rest for the app parser', () => {
     expect(parseProfileFlags(['--profile', 'probe', '--app-root', '/repo']))
-      .toEqual({ mode: { kind: 'named', name: 'probe' }, withSecrets: false, rest: ['--app-root', '/repo'] });
-    expect(parseProfileFlags(['--profile=probe']).mode).toEqual({ kind: 'named', name: 'probe' });
+      .toEqual({ mode: { kind: 'named', name: 'probe', rm: false }, withSecrets: false, rest: ['--app-root', '/repo'] });
+    expect(parseProfileFlags(['--profile=probe']).mode).toEqual({ kind: 'named', name: 'probe', rm: false });
     expect(parseProfileFlags(['--fresh']).mode).toEqual({ kind: 'fresh', rm: false });
     expect(parseProfileFlags([]).mode).toEqual({ kind: 'shared' });
   });
@@ -204,12 +205,21 @@ describe('the flags', () => {
     expect(parseProfileFlags(['--rm', '--fresh']).mode).toEqual({ kind: 'fresh', rm: true });
   });
 
-  // Without `--fresh` there is no directory this command made, so the flag has nothing to remove. The two
-  // things it could otherwise be read as are `abuddy profiles rm <name>` and something nothing should spell
-  it('refuse --rm on its own, naming what does remove a named profile', () => {
-    expect(() => parseProfileFlags(['--rm'])).toThrow(/goes with --fresh/);
+  // With no profile at all there is no directory this command made, so the flag has nothing to remove, and
+  // the two things it could otherwise be read as are `abuddy profiles rm <name>` and the shared data dir
+  it('refuse --rm with no profile to create, naming what does remove one', () => {
+    expect(() => parseProfileFlags(['--rm'])).toThrow(/removes the profile this command creates/);
     expect(() => parseProfileFlags(['--rm'])).toThrow(/abuddy profiles rm/);
-    expect(() => parseProfileFlags(['--profile', 'probe', '--rm'])).toThrow(/goes with --fresh/);
+  });
+
+  /**
+   * **`--rm` takes a name**, which `drive`'s one-shot path needs: an app that outlives the command has to
+   * have a findable dir while it lives, so it cannot be the hidden `.ephemeral` one `--fresh --rm` mints.
+   * `profileFor` holds the half that keeps it safe — only a dir this run creates.
+   */
+  it('read --rm on a name as the same request', () => {
+    expect(parseProfileFlags(['--profile', 'probe', '--rm']).mode).toEqual({ kind: 'named', name: 'probe', rm: true });
+    expect(parseProfileFlags(['--rm', '--profile=probe']).mode).toEqual({ kind: 'named', name: 'probe', rm: true });
   });
 
   it('refuse two at once, which would silently pick one', () => {
@@ -285,5 +295,93 @@ describe('a profile an app still has open', () => {
     publishApi(live.dir, process.pid);
     expect(() => removeProfile(dirs, live.dir)).toThrow(/An app is running on/);
     expect(fs.existsSync(live.dir)).toBe(true);
+  });
+});
+
+/**
+ * **The dir a question waits on is the dir the spawn it starts opens.**
+ *
+ * This is the case the defect it was written for had no home for. `drive`'s one-shot path answered "which
+ * data dir" in two places — one resolving a *place*, one building the *flags* for the spawned `dev` — and
+ * they disagreed about `--fresh`: the first said the development dir, the second passed `--fresh`, and
+ * `dev` minted a dir of its own. So the question either attached to whatever was on the development dir,
+ * ignoring the flag, or waited two minutes for a session at a path nothing would write.
+ *
+ * It is a round trip rather than two assertions, which is what makes it hold: `spawnArgs` go back through
+ * the parser the spawned `dev` uses, through the `profileFor` it calls, to the dir it would resolve. Any
+ * answer that is not `dir` fails, whichever side moved.
+ */
+describe("a question's dir and the spawn that opens it", () => {
+  const devWouldOpen = (spawnArgs: readonly string[]): string => {
+    const { mode } = parseProfileFlags([...spawnArgs]);
+    const profile = profileFor(mode, dirs);
+    return resolveAppContext({ build: 'development', ...(profile ? { profile: profile.dir } : {}) }).userDataDir;
+  };
+
+  it.each([
+    [[], 'the development dir'],
+    [['--spawn'], 'the development dir, with the flag that permits one'],
+    [['--profile', 'probe'], 'a named profile'],
+    [['--profile', 'probe', '--rm'], 'a named profile it removes after'],
+    [['--fresh'], 'a profile nobody has used'],
+    [['--fresh', '--rm'], 'a profile nobody has used, removed after'],
+  ])('agree for %s — %s', (argv) => {
+    const { mode, withSecrets } = parseProfileFlags(argv.filter((arg) => arg !== '--spawn'));
+    const target = askTarget(mode, withSecrets, dirs);
+    expect(devWouldOpen(target.spawnArgs)).toBe(target.dir);
+  });
+
+  /**
+   * `--fresh` resolves to a name here, so the two sides have something to agree on before the dir exists —
+   * and it must still be a *new* name, which is the half a reused one would break silently.
+   */
+  it('names a fresh profile without creating it, and a different one each time', () => {
+    const one = askTarget({ kind: 'fresh', rm: false }, false, dirs);
+    const two = askTarget({ kind: 'fresh', rm: false }, false, dirs);
+    expect(one.dir).not.toBe(two.dir);
+    expect(fs.existsSync(one.dir)).toBe(false);
+    expect(fs.existsSync(root())).toBe(false);
+    expect(one.note).toMatch(/Fresh profile/);
+  });
+
+  /** `--with-secrets` has to reach the spawn, or it is a flag that silently did nothing. */
+  it('carries --with-secrets to the spawn', () => {
+    expect(askTarget({ kind: 'fresh', rm: false }, true, dirs).spawnArgs).toContain('--with-secrets');
+    expect(askTarget({ kind: 'named', name: 'probe', rm: false }, true, dirs).spawnArgs).toContain('--with-secrets');
+    expect(askTarget({ kind: 'shared' }, false, dirs).spawnArgs).toEqual([]);
+  });
+});
+
+describe('--rm on a name', () => {
+  it('is honoured for a profile this run creates', () => {
+    const opened = profileFor({ kind: 'named', name: 'probe', rm: true }, dirs);
+    expect(opened).toMatchObject({ name: 'probe', ephemeral: true, created: true });
+  });
+
+  /**
+   * A profile that was already there holds data somebody kept, and a run that removed it on the way out
+   * would be deleting it on the strength of a flag meaning "clean up after me". Refused, not ignored.
+   */
+  it('is refused for one that was already there, naming what does remove it', () => {
+    openProfile(dirs, 'probe');
+    expect(() => profileFor({ kind: 'named', name: 'probe', rm: true }, dirs)).toThrow(/already there/);
+    expect(() => profileFor({ kind: 'named', name: 'probe', rm: true }, dirs)).toThrow(/abuddy profiles rm probe/);
+    expect(fs.existsSync(profileDir(dirs, 'probe'))).toBe(true);
+  });
+
+  it('leaves a named profile alone without it', () => {
+    expect(profileFor({ kind: 'named', name: 'probe', rm: false }, dirs)).toMatchObject({ ephemeral: false });
+  });
+
+  /**
+   * **The dir existing is not the same question as the profile existing**, and `--rm` turns on the answer.
+   * `drive`'s spawn opens its log inside the data dir before `dev` starts, so by the time `dev` opens the
+   * profile the directory is there — and an existing-dir test refused `--rm` for a dir the run was in the
+   * middle of creating. Found by running it, after the specs passed.
+   */
+  it('is honoured for a dir a caller made but never recorded', () => {
+    fs.mkdirSync(profileDir(dirs, 'probe'), { recursive: true });
+    fs.writeFileSync(path.join(profileDir(dirs, 'probe'), 'dev-spawn.log'), 'starting\n');
+    expect(profileFor({ kind: 'named', name: 'probe', rm: true }, dirs)).toMatchObject({ created: true, ephemeral: true });
   });
 });

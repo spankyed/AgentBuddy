@@ -121,6 +121,39 @@ export function publishSession(session: DevSession): () => void {
 }
 
 /**
+ * Says a driver was here, by bumping the record's mtime.
+ *
+ * **The mtime is the record of when, and there is no field for it.** It is already what says the session is
+ * live (`recordIsStale` bounds the pid by it), so a driver bumping it forward is saying the one thing it has
+ * to say, and a supervisor deciding whether anything has attached reads it with one `stat`. A field would
+ * mean rewriting the file — which is an atomic rename, a new inode, and a race with the supervisor's own
+ * unpublish — to carry what the filesystem already carries.
+ *
+ * A session that has gone is not an error: the app it described was closed while this was being written,
+ * and there is nothing left to keep alive.
+ */
+export function touchSession(dataDir: string): void {
+  const now = new Date();
+  try {
+    fs.utimesSync(sessionFile(dataDir), now, now);
+  } catch {}
+}
+
+/**
+ * When something last attached to the session on a data dir, or `undefined` for no session.
+ *
+ * It is the publish time until a driver bumps it, which is the right start: an app nobody has ever asked
+ * anything has been idle since it came up.
+ */
+export function lastAttachedAt(dataDir: string): number | undefined {
+  try {
+    return fs.statSync(sessionFile(dataDir)).mtimeMs;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * The live session on a data dir, or nothing.
  *
  * A file whose supervisor has gone is a miss rather than an error: a session file outlives the process that

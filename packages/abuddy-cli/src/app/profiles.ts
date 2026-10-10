@@ -106,9 +106,14 @@ export interface OpenedProfile {
 /** A profile by name, created if it isn't there yet. */
 export function openProfile(dirs: CliDirs, name: string): OpenedProfile {
   const dir = profileDir(dirs, name);
-  const existed = fs.existsSync(dir);
+  // **`created` is about the record, not the directory**, because the two are not the same question and
+  // `--rm` turns on the answer: a caller may have made the dir for its own reasons before `dev` opens it —
+  // `drive`'s spawn puts its log in there before the app starts — and an existing-*dir* test then reports
+  // somebody else's profile, refusing `--rm` for a dir this run is in the middle of creating. A dir with no
+  // record is not a profile yet, which is the same rule `listProfiles` and `notAProfile` read.
+  const existed = readRecord(dir) !== undefined;
   fs.mkdirSync(dir, { recursive: true });
-  if (!readRecord(dir)) writeRecord(dir, { created: new Date().toISOString() });
+  if (!existed) writeRecord(dir, { created: new Date().toISOString() });
   return { name, dir, ephemeral: false, created: !existed };
 }
 
@@ -265,13 +270,14 @@ export function removeProfile(dirs: CliDirs, dir: string): void {
  */
 export type ProfileMode =
   | { kind: 'shared' }
-  | { kind: 'named'; name: string }
+  | { kind: 'named'; name: string; rm: boolean }
   | { kind: 'fresh'; rm: boolean };
 
 export const PROFILE_USAGE = [
   '  --profile <name>    a data dir of its own, created the first time you name it',
   '  --fresh             a new profile, whose name is printed so you can come back to it',
   '  --fresh --rm        the same, removed when this command exits',
+  '  --profile <name> --rm  the same for a name you choose, and only if this run creates it',
   '  --with-secrets      copy the secrets this environment already holds into the new profile, so a',
   '                      throwaway run can use them without you entering anything again',
 ].join('\n');
@@ -307,15 +313,17 @@ export function parseProfileFlags(argv: string[]): { mode: ProfileMode; withSecr
   // The flags are collected and the mode computed from them, rather than assigned as each is read: the
   // combinations are a property of the whole argv, and a `--rm` before its `--fresh` is the same request
   if (named !== undefined && fresh) throw new Error("--fresh can't be combined with --profile.");
-  // `--rm` is a modifier on `--fresh` and means nothing without it: there is no dir this command made to
-  // throw away, and the two things it could otherwise be read as — remove the named profile, remove the
-  // shared data dir — are `abuddy profiles rm` and something nothing should spell this way
-  if (rm && !fresh) {
-    throw new Error('--rm goes with --fresh: it removes the profile this command creates, and `abuddy profiles rm <name>` removes a named one.');
+  // `--rm` removes the dir **this run creates**, so it needs one to create: with no profile at all there is
+  // nothing but the shared data dir, which is not something any flag should spell. With a name it is the
+  // same request as `--fresh --rm` for a name you chose — which is what `drive`'s one-shot path needs, since
+  // an app that outlives the command has to have a findable dir while it lives. `profileFor` holds the other
+  // half: a profile that was already there is somebody's data, and `--rm` is refused rather than honoured.
+  if (rm && !fresh && named === undefined) {
+    throw new Error('--rm removes the profile this command creates: add --fresh, or --profile <name> for a name you choose. `abuddy profiles rm <name>` removes one that is already there.');
   }
   const mode: ProfileMode = fresh
     ? { kind: 'fresh', rm }
-    : named !== undefined ? { kind: 'named', name: named } : { kind: 'shared' };
+    : named !== undefined ? { kind: 'named', name: named, rm } : { kind: 'shared' };
   // Nothing to copy into: the shared data dir already has the keys, so this would be a no-op that reads
   // as if it did something
   if (withSecrets && mode.kind === 'shared') {
@@ -324,9 +332,36 @@ export function parseProfileFlags(argv: string[]): { mode: ProfileMode; withSecr
   return { mode, withSecrets, rest };
 }
 
-/** The profile a mode asks for, or nothing for the shared data dir. */
+/**
+ * The profile a mode asks for, or nothing for the shared data dir.
+ *
+ * **`--rm` on a name is honoured only for a dir this call creates.** A profile that was already there holds
+ * data somebody kept deliberately, and a run that removed it on the way out would be deleting it on the
+ * strength of a flag meaning "clean up after me". So the refusal names what to run instead rather than
+ * silently keeping the dir, which would read as having been obeyed.
+ */
 export function profileFor(mode: ProfileMode, dirs: CliDirs): OpenedProfile | undefined {
   if (mode.kind === 'shared') return undefined;
-  if (mode.kind === 'named') return openProfile(dirs, mode.name);
-  return mintProfile(dirs, mode.rm);
+  if (mode.kind === 'fresh') return mintProfile(dirs, mode.rm);
+  const opened = openProfile(dirs, mode.name);
+  if (!mode.rm) return opened;
+  if (!opened.created) {
+    throw new Error(
+      `The profile ${mode.name} is already there, so --rm won't remove it: it removes a profile this run creates.`
+      + `\n  Use --fresh --rm for a throwaway one, or \`abuddy profiles rm ${mode.name}\` to remove this one.`,
+    );
+  }
+  return { ...opened, ephemeral: true };
+}
+
+/**
+ * A name for a profile nobody has used, for a caller that must know the name *before* the dir exists.
+ *
+ * `drive`'s one-shot path is the one: it spawns `dev` to open the profile and then waits for a session in
+ * it, so it has to name the dir it will wait on. Minting the dir here instead would make `--with-secrets`
+ * a no-op — that acts only on a profile the run created — and, for `--rm`, would put this process's pid in
+ * an ephemeral dir's name while the app outlives it.
+ */
+export function freshProfileName(): string {
+  return randomId({ length: 10 });
 }

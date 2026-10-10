@@ -18,7 +18,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import type { AttachedSession, AttachedSessionOptions } from '@abuddy/testing';
-import { readSession, waitForSession, STARTED_BY_ENV, type DevSession } from '@abuddy/host/dev-session';
+import { readSession, touchSession, waitForSession, STARTED_BY_ENV, type DevSession } from '@abuddy/host/dev-session';
 
 /** Just the part of `@abuddy/testing` this needs, so a wrong resolve fails on the name rather than later. */
 interface TestingModule {
@@ -121,6 +121,11 @@ export interface AttachAnswer {
  *
  * `detach` runs whatever the ask did, which is what makes this safe to use against a developer's app: the
  * connection is this command's, the app is not, and the only thing ending here is the connection.
+ *
+ * **It says it was here, twice.** A supervisor minding a drive-profile app closes it when nothing has
+ * attached for a while (`reapsWhenIdle`, `commands/dev.ts`), and `touchSession` is the whole of what tells
+ * it otherwise. Once on attaching, so a question that then fails still counts as someone being here; once
+ * on the way out, so a verb that waits a minute for a state does not expire underneath itself.
  */
 export async function askAttached<T>(
   app: AttachableApp,
@@ -135,6 +140,7 @@ export async function askAttached<T>(
     screenshotDir,
     ...(app.logPath !== undefined ? { logPath: app.logPath } : {}),
   });
+  touchSession(app.session.dataDir);
   try {
     return {
       value: await ask(attached.session),
@@ -142,6 +148,7 @@ export async function askAttached<T>(
       supervisorPid: app.session.supervisorPid,
     };
   } finally {
+    touchSession(app.session.dataDir);
     await attached.detach();
   }
 }

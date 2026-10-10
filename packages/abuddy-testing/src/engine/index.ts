@@ -1,10 +1,10 @@
 /**
  * The whole of a live drive session, for a shim that has a page and wants to be driven.
  *
- * `abuddy drive --serve` writes a two-line script that calls this; a pack author can write the same by
- * hand. Everything it needs it already has from the fixture — the app is launched, onboarding bypassed,
- * the viewport pinned and the output captured — so this adds the channel and the waiting, and nothing
- * about launching an app.
+ * Everything it needs it already has from the fixture — the app is launched, onboarding bypassed, the
+ * viewport pinned and the output captured — so this adds the channel and the waiting, and nothing about
+ * launching an app. `attachedSession` below assembles the same four pieces over a page nobody here
+ * launched, which is what lets `createSession` not know which it was given.
  *
  * **It returns when the session ends**, which is the one structural requirement. The fixture's teardown
  * is the code after `await use(...)`: a body that never returns skips `app.close()`, the listener
