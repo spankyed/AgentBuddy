@@ -50,7 +50,7 @@ const noteStep: StepDefinition = {
   type: 'note',
   kind: 'step',
   build: build('Note'),
-  fe: { nodeConfig: { label: 'Note' }, defaults: { text: '' } } as unknown as StepDefinition['fe'],
+  node: { label: 'Note', defaults: { text: '' } },
 };
 const tickTrigger: StepDefinition = {
   type: 'tick',
