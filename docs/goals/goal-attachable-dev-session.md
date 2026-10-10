@@ -548,3 +548,27 @@ Deferred from this phase, with the reason:
   (which `dev-install.spec.ts` covers) and `--spawn` spawning `dev` rather than copying its environment
   (which is one line and a type). The end-to-end case would launch an app per run in a fixture pack; the
   cheaper proof is that there is one launcher.
+
+#### The measurement Phase 6 turns on
+
+`npm run measure --runs 7`, 2026-10-10, 67-72% idle — an **end-to-end one-shot**, CLI start included, which
+is what a question actually costs rather than the 74ms the spike measured for the connect alone:
+
+| Asking one question of a live app | |
+|---|---|
+| `drive --attach` against a `--serve` session (what Phase 6 deletes) | **0.7s** median of 7 (0.7-0.7s) |
+| `drive --eval` attached over CDP to an `abuddy dev` app | **1.0s** median of 7 (1.0-1.0s) |
+| `drive --eval --spawn` against nothing, cold | 3.3s |
+
+**So the deletion costs 0.3s per question, and the verdict is to take it.** The engine's own attach is
+quicker — it is an HTTP request to a process that has already connected, where this starts Node, resolves
+the harness, imports `playwright-core` and connects. What the 0.3s buys is the removal of 851 lines, an
+HTTP server, a token, a marker in Playwright's `outputDir`, a ready-line protocol, a `/close` verb and two
+generated `.mts` files — and, more to the point, of **a second long-lived app beside one that already
+exists**, which is the sentence the whole plan rests on. The old README's "~0.35s instead of ~3.5s" made the
+gap sound like 3x; measured against each other on the same box it is 1.4x.
+
+The one thing the engine still does better is hold a *warm connection*, and nothing here recovers that for
+a per-question process. If an agent asking fifty questions in a row ever makes 15s matter, the answer is a
+session that keeps the CDP connection — which is this design with a server in front of it again, and worth
+building only when something has paid that cost and said so.
