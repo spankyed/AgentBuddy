@@ -78,23 +78,42 @@ export async function waitForSession(
 }
 
 /**
- * The port Chromium chose, from the file it writes in the data dir.
+ * How much older than `after` a `DevToolsActivePort` may be and still count as this launch's.
+ *
+ * Only for the clock: the caller takes `after` immediately before spawning, and the file is written after
+ * that, so any slack is for a filesystem whose mtime is coarser than a millisecond. A stale file is the
+ * previous run's and is minutes or days old, so nothing this small can admit one.
+ */
+const PORT_FILE_SLACK_MS = 2_000;
+
+/**
+ * The port Chromium chose for *this* launch, from the file it writes in the data dir.
  *
  * `--remote-debugging-port=0` means "pick a free one", which is the only safe way to ask: a fixed port is
  * a collision with whatever else is on it and with a second app. Chromium then writes `DevToolsActivePort`
  * — the port on the first line, a browser-target path on the second — so the number is read rather than
- * agreed. It appears a moment after launch, so this waits for it; a file left by a previous run of the
- * same data dir is why a launcher waits for a *new* one rather than trusting what is there.
+ * agreed. It appears a moment after launch, so this waits for it.
+ *
+ * **`after` is what makes it this launch's**, and it is not optional for a reason that was found by
+ * running it: Chromium does **not** remove the file when it exits, so a data dir that has ever had a
+ * development app in it has a port on disk for a browser that is gone. Reading whatever is there published
+ * a session naming a dead port, and `drive` then refused to attach to an app that was running perfectly
+ * well — which looks like a bug in the attach rather than in the publish. A file not newer than `after` is
+ * "not yet", exactly as an absent one is.
  */
-export async function readDevToolsPort(dataDir: string, timeoutMs = 15_000): Promise<number> {
+export async function readDevToolsPort(
+  dataDir: string, { after, timeoutMs = 15_000 }: { after: number; timeoutMs?: number },
+): Promise<number> {
   const file = path.join(dataDir, 'DevToolsActivePort');
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     // Absent is the ordinary case for the first few polls, and a half-written first line reads as NaN —
     // both are "not yet" rather than failures, so neither ends the wait
     try {
-      const port = Number(fs.readFileSync(file, 'utf-8').split('\n')[0]);
-      if (Number.isInteger(port) && port > 0) return port;
+      if (fs.statSync(file).mtimeMs >= after - PORT_FILE_SLACK_MS) {
+        const port = Number(fs.readFileSync(file, 'utf-8').split('\n')[0]);
+        if (Number.isInteger(port) && port > 0) return port;
+      }
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 50));
   }

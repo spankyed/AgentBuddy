@@ -89,7 +89,7 @@ function appLaunchEnv(place: AppPlace): NodeJS.ProcessEnv {
   out.ABUDDY_ENV = place.build;
   if (place.profile !== undefined) {
     // Set only for a profile, and deliberately: it is also what tells Electron the run was pointed at
-    // its own dir, which moves the logs inside it (`main/src/app-context.ts`). A plain `abuddy run` should
+    // its own dir, which moves the logs inside it (`main/src/app-context.ts`). A plain `abuddy dev` should
     // keep writing to the platform log dir, and should keep honouring an ABUDDY_USER_DATA_DIR the caller
     // exported, which naming one here would override.
     out.ABUDDY_USER_DATA_DIR = place.profile;
@@ -237,7 +237,7 @@ async function waitForApi(apiPortFile: string, child: ChildProcess, timeoutMs = 
   throw new Error(`The app did not publish ${apiPortFile} within ${timeoutMs / 1000}s`);
 }
 
-/** What a session hands back so `run` can tear it down on the way out of a throw. */
+/** What a session hands back so `dev` can tear it down on the way out of a throw. */
 interface SessionHooks {
   teardown?: () => Promise<void>;
 }
@@ -285,7 +285,7 @@ async function session(args: string[], hooks: SessionHooks) {
 
   const { mode, withSecrets, rest } = parseProfileFlags(args);
   const flags = parseAppFlags(rest);
-  // `run` forwards nothing, so a leftover flag is a typo rather than an argument for something else —
+  // `dev` forwards nothing, so a leftover flag is a typo rather than an argument for something else —
   // where `drive` hands its own leftovers to Playwright and must not refuse them. Ignoring one silently
   // is how a removed or misspelled flag reads as having been obeyed.
   const unknown = flags.args.filter(arg => arg.startsWith('-'));
@@ -321,10 +321,10 @@ async function session(args: string[], hooks: SessionHooks) {
    * hole in it: the file means "attachable", and a `test` or packaged context is not.
    */
   let unpublish: (() => void) | undefined;
-  async function publish(spawned: ChildProcess): Promise<void> {
+  async function publish(spawned: ChildProcess, launchedAt: number): Promise<void> {
     if (debugPortArgs(place).length === 0) return;
     try {
-      const debugPort = await readDevToolsPort(userDataDir);
+      const debugPort = await readDevToolsPort(userDataDir, { after: launchedAt });
       unpublish = publishSession({
         debugPort,
         apiPort: readApiEndpoint(apiPortFile)?.port,
@@ -458,13 +458,16 @@ async function session(args: string[], hooks: SessionHooks) {
     console.log(`Using the ${env} app already running.\n`);
   } else {
     console.log(`Starting ${app.kind === 'source' ? app.root : `AgentBuddy Beta ${app.version}`}...`);
+    // Before the launch, so the port file this waits for is the one this app writes rather than whatever a
+    // previous app on this data dir left behind
+    const launchedAt = Date.now();
     child = launchApp(app, place);
     await waitForApi(apiPortFile, child);
     console.log(`  up on ${env} data in ${userDataDir}\n`);
     // Published only for an app this command started, and after its API is up so the session carries the
     // port a driver needs. An app that was already here has a session of its own or is not attachable, and
     // either way is not this command's to describe.
-    await publish(child);
+    await publish(child, launchedAt);
   }
 
   if (!pack) {

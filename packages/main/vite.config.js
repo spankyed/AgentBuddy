@@ -113,6 +113,9 @@ function handleHotReload() {
       // collides with whatever holds it and with a second app
       electronArgs.push('--remote-debugging-port=0');
 
+      // Before the spawn, so the port file below is this app's rather than one a previous run left in the
+      // data dir — Chromium's `DevToolsActivePort` outlives the browser that wrote it
+      const launchedAt = Date.now();
       electronApp = spawn(String(electronPath), electronArgs, {
         stdio: 'inherit',
       });
@@ -136,8 +139,12 @@ function handleHotReload() {
         try {
           const { publishSession, readDevToolsPort } = await import('@abuddy/host/dev-session');
           const { resolveAppContext } = await import('@abuddy/sdk/env');
-          const { userDataDir } = resolveAppContext();
-          const debugPort = await readDevToolsPort(userDataDir);
+          // `development` outright: this is the watcher, not a process the app spawned, so there is no
+          // `ABUDDY_ENV` in its environment to infer a build from — and it is the same "by definition"
+          // the debug-port push above rests on. Asking with no build threw here, which published nothing
+          // and reported `not attachable` on a run that was otherwise perfectly fine
+          const { userDataDir } = resolveAppContext({ build: 'development' });
+          const debugPort = await readDevToolsPort(userDataDir, { after: launchedAt });
           if (spawned !== electronApp) return;  // a rebuild replaced it while the port was being waited for
           const unpublish = publishSession({
             debugPort, dataDir: userDataDir, supervisorPid: spawned.pid ?? process.pid, startedBy: 'dev',

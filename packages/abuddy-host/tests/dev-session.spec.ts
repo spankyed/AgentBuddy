@@ -3,7 +3,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  lastAttachedAt, publishSession, readSession, sessionFile, startedByFromEnv, touchSession,
+  lastAttachedAt, publishSession, readDevToolsPort, readSession, sessionFile, startedByFromEnv,
+  touchSession,
   STARTED_BY_ENV, type DevSession,
 } from '../src/dev-session.ts';
 
@@ -143,5 +144,48 @@ describe('saying a driver was here', () => {
   it('is nothing to say when there is no session, and no error either', () => {
     expect(() => touchSession(dataDir)).not.toThrow();
     expect(lastAttachedAt(dataDir)).toBeUndefined();
+  });
+});
+
+/**
+ * **The debug port has to be *this* launch's, and the file does not say so by itself.**
+ *
+ * Found by running `npm start`: Chromium's `DevToolsActivePort` outlived the browser that wrote it, so a
+ * data dir that has ever held a development app has a port on disk for one that is gone. Reading whatever
+ * was there published a session naming a port nothing answered, and `drive` then refused an app that was
+ * running perfectly well — a failure that reads as a bug in the attach rather than in the publish.
+ */
+describe('the debug port for a launch', () => {
+  const portFile = () => path.join(dataDir, 'DevToolsActivePort');
+  const writePort = (port: number, ageMs = 0) => {
+    fs.writeFileSync(portFile(), `${port}\n/devtools/browser/abc\n`);
+    if (ageMs > 0) {
+      const when = new Date(Date.now() - ageMs);
+      fs.utimesSync(portFile(), when, when);
+    }
+  };
+
+  it('is the one written since the launch', async () => {
+    writePort(51873);
+    expect(await readDevToolsPort(dataDir, { after: Date.now() - 1_000, timeoutMs: 500 })).toBe(51873);
+  });
+
+  /** The firing case: a file from a previous run of the same data dir is not an answer. */
+  it('is not one a previous run left behind', async () => {
+    writePort(58009, 10 * 60_000);
+    await expect(readDevToolsPort(dataDir, { after: Date.now(), timeoutMs: 300 }))
+      .rejects.toThrow(/No debug port appeared/);
+  });
+
+  it('waits for one that is not there yet, rather than giving up', async () => {
+    setTimeout(() => writePort(44444), 120);
+    expect(await readDevToolsPort(dataDir, { after: Date.now(), timeoutMs: 3_000 })).toBe(44444);
+  });
+
+  /** A first line still being written reads as NaN, which is "not yet" and not a failure. */
+  it('does not read a half-written file as a port', async () => {
+    fs.writeFileSync(portFile(), '');
+    setTimeout(() => writePort(45455), 120);
+    expect(await readDevToolsPort(dataDir, { after: Date.now() - 1_000, timeoutMs: 3_000 })).toBe(45455);
   });
 });
