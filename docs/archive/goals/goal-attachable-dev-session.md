@@ -803,3 +803,42 @@ of the evidence for it:
 **And the lock question's three places do say the same thing** (`packages/main/CLAUDE.md` twice,
 `SingleInstanceApp.ts`'s comment with its observation, and `drive.ts`'s header): the lock is scoped by the
 **data dir**, which is why four builds coexist and two apps on one dir cannot.
+
+## Final summary
+
+The goal asked for this as its last item, and it belongs here rather than in a terminal: a summary that
+exists only in a session's output is not a record. The sections above have the detail; this is the state.
+
+| Phase | Status | Commits | What says so |
+|---|---|---|---|
+| 1 profile replaces instance | done | `e1992b632`, `c6b2da9cc` | The four retired flags grep-clean across the tree; `profiles.spec.ts` holds the name rule, including that a build cannot be a profile name — which Phase 1 recorded and had not enforced. No directory migration, by instruction |
+| 2 the lock question | done | `b06ea92c8` | A two-process Electron probe: same name, different dirs → both hold it; different names, one dir → the second is refused. All four places say *scoped by the data dir* |
+| 3 the port | done | `2cbb84479`, `e45c40aff` | `debug-port-gate.spec.ts`, 6 cases, 4 firing on an ungated mutation; `cdp-page.spec.ts` holds the window predicate (5 of 6 fire on `pages()[0]`) and the absent-peer hint |
+| 4 the session file | done | `fe963e92b`, `2233ecb40` | `abuddy dev` live in Phase 4; `npm start` only at the end, which is where its two defects were |
+| 5 `--spawn`, the answer's shape | done | `5176a75a2`, `1a2ce7938`, `e45c40aff` | Exit 3 for a miss; 3.3s cold, 0.9s attached; reclaim and the idle reap both proven live |
+| 6 the deletion | **ran** | `fd621dddf` | Its condition was the measurement — 0.7s against 1.0s, median of 7 — and 851 lines went |
+| 7 `--build`, one flag | done | `8f5a0ded5`, `5014dad03`, `eca8156c0`, `a495544c5` | `target-build.spec.ts` mutation-checked five ways, reaching all seven cases; `env.api.md` regenerated |
+| Docs | done | `d37bf30dc`, `7f8bbc918`, `5c854c470`, `b372c6d58` | Four docs under `docs/archive/`, each with a `**Done and closed**` blockquote; `doc-links.spec.ts` green |
+
+**Nothing is deferred.** Phase 5's three open Done-when claims were closed in `e45c40aff`, and every
+property the Outcome had asserted rather than checked has since been checked — four of them were wrong.
+
+**Conventional choices made**, each where a detail was unspecified:
+
+- The idle window is a constant, 10 minutes, with no flag or variable: long enough to keep the app between
+  two questions, short enough that an interrupted loop costs minutes.
+- The reap wakes on a deadline re-derived, never a fixed interval.
+- `--rm` takes a name (`--profile <name> --rm`), honoured only for a dir the run creates.
+- `created` means the profile record, not the directory.
+- `_chromium` and `readDevToolsPort` take a parameter each — a loader, and the launch instant — because
+  that is the only way their failing path has a case. `after` is required rather than optional.
+- A profile name is refused for a whole build name only; `beta-work` stays an ordinary name.
+
+**Verification at `b372c6d58`**: `npm run typecheck` (19 jobs), `npm run chain` 153.2s, `npm test -- smoke`
+5 passed, and every workspace suite with one — `@abuddy/cli` 566 + 209 integration, `@abuddy/host` 895,
+`@abuddy/sdk` 730, `@app/repo-checks` 906, `@app/default-setup` 843, `@abuddy/ears` 119, `@app/api` 110,
+`@abuddy/testing` 98, `@app/main` 32, `@app/publish-checks` 8. Three workspaces have no suite to run —
+`@app/preload`, `@app/electron-versions`, `@app/typescript-floor` — and this work touched none of them.
+
+**What this goal cost to get right, in one line**: the implementation was seven phases and the evidence was
+four more rounds, because a record that asserts a property reads exactly like one that checked it.
