@@ -14,9 +14,8 @@
     }
   },
   "relKinds": {},
-  "features": [
-    {
-      "id": "memos",
+  "features": {
+    "memos": {
       "settings": "src/features/memos/settings.ts",
       "system": {
         "entry": "src/features/memos/be/system.ts",
@@ -32,21 +31,54 @@
         "memoCommands": "src/features/memos/be/repository.ts#memoCommands"
       }
     },
-    {
-      "id": "notes",
+    "notes": {
       "settings": "src/features/notes/settings.ts",
       "plugin": {
         "entry": "src/features/notes/fe/plugin.ts"
       },
       "services": {}
     }
-  ],
-  "commands": [
-    {
-      "name": "memo-note",
-      "placeholder": "Memo text"
-    }
-  ],
+  },
+  "extensions": {
+    "steps": {
+      "stamp": {
+        "node": "src/extensions/steps/stamp/build.ts#stampStepNode",
+        "build": "src/extensions/steps/stamp/build.ts#stampStepBuild",
+        "fe": "src/extensions/steps/stamp/fe.ts#stampStepFE",
+        "runtime": {
+          "handler": "src/extensions/steps/stamp/runtime.ts#handler"
+        },
+        "dsl": {
+          "primaryField": "note"
+        }
+      },
+      "pulse": {
+        "kind": "trigger",
+        "node": "src/extensions/steps/pulse/trigger.ts#pulseTriggerNode",
+        "trigger": {
+          "facet": "src/extensions/steps/pulse/trigger.ts#pulseTriggerBuild"
+        },
+        "fe": "src/extensions/steps/pulse/fe.ts#pulseTriggerFE"
+      }
+    },
+    "artifacts": {
+      "stamp": {
+        "icon": "Stamp",
+        "fe": "src/extensions/artifacts/viewers/stamp-artifact.vue"
+      }
+    },
+    "blocks": {
+      "stamp": {
+        "fe": "src/extensions/blocks/display/StampBlock.vue"
+      }
+    },
+    "commands": [
+      {
+        "name": "memo-note",
+        "placeholder": "Memo text"
+      }
+    ]
+  },
   "dependencies": {
     "default-setup": "*"
   },

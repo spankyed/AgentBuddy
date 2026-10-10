@@ -83,11 +83,11 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     expect(output).not.toMatch(/createExtensions|ProseMirror|clearTimeout/);
   });
 
-  it('bundles @abuddy/ui with fe.bundleUi and still leaves the shared SDK modules it imports to the host', async () => {
+  it('bundles @abuddy/ui with build.bundleUi and still leaves the shared SDK modules it imports to the host', async () => {
     const { packDir, entry } = makePack(layout,
       `import { createEditorClickHandler } from '@abuddy/ui/components/tiptap/composables/createEditorClickHandler';\n` +
       `export const handler = createEditorClickHandler({ noteLinkClick() {}, imageClick() {} });\n`,
-      { fe: { bundleUi: true } },
+      { build: { bundleUi: true } },
     );
 
     const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
@@ -102,7 +102,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
   it("uses the host's ProseMirror and tiptap menus when a pack bundles @abuddy/ui", async () => {
     const { packDir, entry } = makePack(layout,
       "import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';\nexport default TiptapEditor;\n",
-      { fe: { bundleUi: true } },
+      { build: { bundleUi: true } },
     );
 
     const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
@@ -122,7 +122,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
   ])('generates the Tailwind classes @abuddy/ui components use (bundleUi: $bundleUi, own tailwind config: $packConfig)', async ({ bundleUi, packConfig, generated }) => {
     const { packDir, entry } = makePack(layout,
       "import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';\nexport default TiptapEditor;\n",
-      { fe: { bundleUi } },
+      { build: { bundleUi } },
     );
     if (packConfig) {
       fs.writeFileSync(path.join(packDir, 'tailwind.config.js'), `export default { content: ['${packDir}/src/**/*.ts'] };\n`);
@@ -140,7 +140,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
   it('compiles no @abuddy/ui SFC when a pack bundles @abuddy/ui', async () => {
     const { packDir, entry } = makePack(layout,
       "import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';\nexport default TiptapEditor;\n",
-      { fe: { bundleUi: true } },
+      { build: { bundleUi: true } },
     );
 
     const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });

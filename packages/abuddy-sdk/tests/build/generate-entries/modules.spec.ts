@@ -273,7 +273,8 @@ describe('generated flow helpers', () => {
 
   it("types a step helper's options with the step's DSL node fields", () => {
     write('src/steps/pour/types.ts', "export interface DSLPourNode { type: 'pour'; cup: string; size?: 'small' | 'large'; [key: string]: unknown }\n");
-    const files = generate({ steps: { register: 'src/steps/register.ts', definitions: [{ type: 'pour', path: 'src/steps/pour', dsl: { primaryField: 'cup' } }] } });
+    write('src/steps/pour/build.ts', 'export const pourStepBuild = {};\n');
+    const files = generate({ steps: { pour: { build: 'src/steps/pour/build.ts#pourStepBuild', dsl: { primaryField: 'cup' } } } });
 
     expect(files['src/__generated__/flow-helpers.ts']).toContain(
       "export function pour(cup: string, opts?: { [K in keyof DSLPourNode as K extends 'type' | 'cup' ? never : K]: DSLPourNode[K] }): DSLStepNode {",
@@ -282,13 +283,14 @@ describe('generated flow helpers', () => {
 
   it('names helpers in camelCase, splitting step types and track fields on - and _', () => {
     write('src/steps/pour-cup/types.ts', "export interface DSLPourCupNode { type: 'pour-cup'; cup: string; [key: string]: unknown }\n");
-    write('src/steps/every-day/build.ts', "export const everyDay = { trigger: { trackField: 'every_day' } };\n");
-    const files = generate({ steps: { register: 'src/steps/register.ts', definitions: [
-      { type: 'pour-cup', path: 'src/steps/pour-cup', dsl: { primaryField: 'cup' } },
-      { type: 'keep_alive', path: 'src/steps/keep-alive', dsl: {} },
-      { type: 'stop-now', path: 'src/steps/stop-now', dsl: { defaultLabel: 'Stop' } },
-      { type: 'every-day', path: 'src/steps/every-day', kind: 'trigger' },
-    ] } });
+    for (const dir of ['pour-cup', 'keep-alive', 'stop-now']) write(`src/steps/${dir}/build.ts`, 'export const stepBuild = {};\n');
+    write('src/steps/every-day/build.ts', "export const everyDay = { trackField: 'every_day' };\n");
+    const files = generate({ steps: {
+      'pour-cup': { build: 'src/steps/pour-cup/build.ts#stepBuild', dsl: { primaryField: 'cup' } },
+      keep_alive: { build: 'src/steps/keep-alive/build.ts#stepBuild', dsl: {} },
+      'stop-now': { build: 'src/steps/stop-now/build.ts#stepBuild', dsl: { defaultLabel: 'Stop' } },
+      'every-day': { kind: 'trigger', trigger: { facet: 'src/steps/every-day/build.ts#everyDay' } },
+    } });
     const flowHelpers = files['src/__generated__/flow-helpers.ts'];
 
     expect(flowHelpers).toContain('export function pourCup(cup: string, opts?:');
@@ -302,8 +304,9 @@ describe('generated flow helpers', () => {
 
   it("re-exports each dependency's flow helpers from the module its snapshot carries, except names already exported", () => {
     write('src/steps/pour/types.ts', "export interface DSLPourNode { type: 'pour'; cup: string }\n");
+    write('src/steps/pour/build.ts', 'export const pourStepBuild = {};\n');
     const files = generate(
-      { steps: { register: 'src/steps/register.ts', definitions: [{ type: 'pour', path: 'src/steps/pour', dsl: { primaryField: 'cup' } }] } },
+      { steps: { pour: { build: 'src/steps/pour/build.ts#pourStepBuild', dsl: { primaryField: 'cup' } } } },
       {
         'base-pack': { ...dependency({}), flowHelpers: helpers(['branch', 'entry', 'on', 'pour', 'schedule'], 'base-pack') },
         'other-pack': { ...dependency({ id: 'other-pack' }), flowHelpers: helpers(['branch', 'every'], 'other-pack') },
@@ -335,13 +338,18 @@ describe('the snapshot format', () => {
   };
   /** The snapshot's manifest, which a dependent's codegen reads (features, services, content formats, version…) */
   const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
-    $manifestVersion: true, $schema: true, artifacts: true, blocks: true, boot: true, build: true, builtIn: true, commands: true,
-    dependencies: true, description: true, dsl: true, entities: true, entityShapes: true, help: true, fe: true, features: true,
-    hostVersion: true, id: true, license: true, migrations: true, name: true, packServices: true,
-    permissions: true, relKinds: true, content: true, settingsSections: true, steps: true, version: true,
+    $manifestVersion: true, $schema: true, boot: true, build: true, builtIn: true,
+    dependencies: true, description: true, entities: true, entityShapes: true, extensions: true, help: true, features: true,
+    hostVersion: true, id: true, license: true, migrations: true, name: true,
+    permissions: true, relKinds: true, content: true, settingsSections: true, version: true,
   };
+  /** What the pack contributes, which a dependent reads to know what it may send to and build with */
+  const MANIFEST_EXTENSION_FIELDS: Record<keyof NonNullable<PackManifest['extensions']>, true> = {
+    artifacts: true, blocks: true, commands: true, dsl: true, fe: true, services: true, steps: true,
+  };
+  // No `id`: a feature's id is the key its entry sits under, which is what makes a duplicate unrepresentable
   const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
-    designation: true, id: true, plugin: true, references: true, repositories: true, services: true,
+    designation: true, plugin: true, references: true, repositories: true, services: true,
     settings: true, system: true, typesEntry: true,
   };
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { contract: true, entry: true, events: true };
@@ -378,6 +386,7 @@ describe('the snapshot format', () => {
       fields: Object.keys(SNAPSHOT_FIELDS).sort(),
       manifest: {
         fields: Object.keys(MANIFEST_FIELDS).sort(),
+        extensions: Object.keys(MANIFEST_EXTENSION_FIELDS).sort(),
         feature: Object.keys(MANIFEST_FEATURE_FIELDS).sort(),
         system: Object.keys(MANIFEST_SYSTEM_FIELDS).sort(),
         systemEvents: Object.keys(MANIFEST_SYSTEM_EVENTS_FIELDS).sort(),
@@ -399,11 +408,12 @@ describe('the snapshot format', () => {
       fields: ['defs', 'flowHelpers', 'format', 'manifest', 'provenance', 'sdkVersion', 'types'],
       manifest: {
         fields: [
-          '$manifestVersion', '$schema', 'artifacts', 'blocks', 'boot', 'build', 'builtIn', 'commands', 'content', 'dependencies', 'description', 'dsl',
-          'entities', 'entityShapes', 'fe', 'features', 'help', 'hostVersion', 'id', 'license', 'migrations', 'name', 'packServices',
-          'permissions', 'relKinds', 'settingsSections', 'steps', 'version',
+          '$manifestVersion', '$schema', 'boot', 'build', 'builtIn', 'content', 'dependencies', 'description',
+          'entities', 'entityShapes', 'extensions', 'features', 'help', 'hostVersion', 'id', 'license', 'migrations', 'name',
+          'permissions', 'relKinds', 'settingsSections', 'version',
         ],
-        feature: ['designation', 'id', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
+        extensions: ['artifacts', 'blocks', 'commands', 'dsl', 'fe', 'services', 'steps'],
+        feature: ['designation', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
         system: ['contract', 'entry', 'events'],
         systemEvents: ['incoming'],
         plugin: ['contract', 'default', 'entry'],

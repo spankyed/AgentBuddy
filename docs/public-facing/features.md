@@ -46,7 +46,7 @@ Every system is an XState state machine that communicates via a central event bu
 ### Defining a system
 
 ```typescript
-// src/features/bookmarks/be/contract.ts — the contract, which abuddy.json names at features[].system.contract
+// src/features/bookmarks/be/contract.ts — the contract, which abuddy.json names at features.<id>.system.contract
 import type { IncomingBookmarksEvents, OutgoingBookmarksEvents } from './types.ts';
 
 export type Contract = {
@@ -111,7 +111,7 @@ export default bookmarksEntry;
 
 `defineSystem<Contract>()` returns the spec. It takes no id: the system is its feature's, which the manifest names it under, and runs at the feature's ref, `<packId>/<featureId>`; code names it by the feature id (see below).
 
-The contract is a **declared type**, not a value, and it lives in a leaf module of its own. `abuddy.json` names it at `features[].system.contract` (`"src/features/bookmarks/be/contract.ts#Contract"`), and the build reads the type from there without running or resolving the machine. Its fields:
+The contract is a **declared type**, not a value, and it lives in a leaf module of its own. `abuddy.json` names it at `features.<id>.system.contract` (`"src/features/bookmarks/be/contract.ts#Contract"`), and the build reads the type from there without running or resolving the machine. Its fields:
 
 | Field | What it is |
 |---|---|
@@ -147,7 +147,7 @@ Your code names features: your own by id (`'bookmarks'`), and every other as `<p
 | send to whichever system plays a role | `sendToSystem({ role }, event)`: `sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType })` fires a flow event |
 | reach your plugin's actor from its components | `usePlugin<MyActor>()` (`@abuddy/sdk/fe`): the app renders a plugin's canvas, panel, chat and settings as part of it. Name your machine's actor type — which plugin a component belongs to is where it is rendered, so nothing at the call site can infer it, and an unnamed one would read a context field your machine dropped and still compile |
 | read another plugin's state | `usePluginState(name, selector)` from `#generated/fe` in a component's setup or an effect scope, and `readPluginState(name, selector)` once, outside one (a machine's action). The selector takes that plugin's published state, not an XState snapshot. Your own pack's plugins are always running, so the value is never `undefined`; a dependency's frontend may still be loading, so reading one of its plugins gives `undefined` until it arrives, and fills in when it does. For a ref that arrives as data, `useUntypedPluginState`/`readUntypedPluginState` (`@abuddy/sdk/fe`) are the untyped escape hatch |
-| declare what other plugins may send yours | the `inbox` half of your plugin's `Contract`, a declared type in a leaf module `abuddy.json` names at `features[].plugin.contract`: `export type Contract = { state: MyContext; inbox: PluginInbox<{ public: MyInbox }> }`. Your own feature's system needs no declaration — its outgoing events are already your plugin's. The `public` half is what a pack that depends on yours may send, and what types `sendToPlugin` and `openPlugin`. The leaf imports no machine, so codegen can read the contract without resolving one |
+| declare what other plugins may send yours | the `inbox` half of your plugin's `Contract`, a declared type in a leaf module `abuddy.json` names at `features.<id>.plugin.contract`: `export type Contract = { state: MyContext; inbox: PluginInbox<{ public: MyInbox }> }`. Your own feature's system needs no declaration — its outgoing events are already your plugin's. The `public` half is what a pack that depends on yours may send, and what types `sendToPlugin` and `openPlugin`. The leaf imports no machine, so codegen can read the contract without resolving one |
 | offer another of your features your plugin's state or events | put them in your plugin's `Contract` — `state` is read through the generated readers, `inbox` types the sends. A feature imports nothing of another feature's frontend (`check:specifiers`), so the contract is the whole of what crosses |
 | open a plugin, optionally handing it events | `openPlugin(name, event?)` (`#generated/fe`), which takes only the names your pack can write: its own features' and its dependencies'. The events are that plugin's inbox, the same `sendToPlugin` takes — this hands them to its actor too |
 | open a plugin a piece of data names (a link's target) | `untypedOpenPlugin(ref, event?)` (`@abuddy/sdk/fe`). It throws for a string that isn't a `<packId>/<featureId>`; otherwise the app opens the plugin, waiting while the pack that provides it is still loading, and tells the user if no installed pack provides it |

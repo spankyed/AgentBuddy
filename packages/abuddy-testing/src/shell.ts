@@ -57,12 +57,27 @@ function backendFirst(frontend: FePackRegistryView, backend: PackExtensionsView)
     dslTypes: () => frontend.dslTypes(),
     designation: (role) => backend.designation(role) ?? frontend.designation(role),
     step: (type) => backend.step(type) ?? frontend.step(type),
-    steps: () => backend.steps(),
+    steps: () => byType(backend.steps(), frontend.steps()),
     artifact: (type) => backend.artifact(type) ?? frontend.artifact(type),
-    artifacts: () => backend.artifacts(),
+    artifacts: () => byType(backend.artifacts(), frontend.artifacts()),
     block: (type) => backend.block(type) ?? frontend.block(type),
-    blocks: () => backend.blocks(),
+    blocks: () => byType(backend.blocks(), frontend.blocks()),
   };
+}
+
+/**
+ * The backend's definitions, with any the frontend has and it does not — the plural counterpart of the
+ * `backend.x(type) ?? frontend.x(type)` above, which the three list lookups did without, so a definition
+ * only the frontend had was missing from a listing while being found by name.
+ *
+ * `startShell` registers no step, artifact or block of its own (its frontend registration is built from
+ * `options.plugins`), so the frontend half is empty in every test today. It is here because the asymmetry
+ * is the kind that is invisible until something relies on it.
+ */
+function byType<T extends { type: string }>(backend: readonly T[], frontend: readonly T[]): T[] {
+  const merged = new Map(frontend.map((item) => [item.type, item]));
+  for (const item of backend) merged.set(item.type, item);
+  return [...merged.values()];
 }
 
 /** Stops every shell a test started; the harness calls it after each test */

@@ -35,7 +35,7 @@ function write(rel: string, content: string): void {
 }
 
 function manifest(entry: Record<string, unknown>): PackManifest {
-  return { id: 'defs-pack', name: 'Defs Pack', version: '1.0.0', dsl: { console: { entry: 'src/defs/console.ts', targets: ['monaco'], ...entry } } } as PackManifest;
+  return { id: 'defs-pack', name: 'Defs Pack', version: '1.0.0', extensions: { dsl: { console: { entry: 'src/defs/console.ts', targets: ['monaco'], ...entry } } } } as PackManifest;
 }
 
 const defs = () => fs.readFileSync(path.join(dir, monacoDefsFile('console')), 'utf-8');
@@ -79,7 +79,7 @@ describe('bundleDslDefs', () => {
 
   it('writes nothing for an entry no editor targets', async () => {
     write('src/defs/console.ts', 'export interface Row { id: string }\n');
-    const result = await bundleDslDefs(dir, { ...manifest({}), dsl: { console: { entry: 'src/defs/console.ts', targets: [] } } } as PackManifest);
+    const result = await bundleDslDefs(dir, { ...manifest({}), extensions: { dsl: { console: { entry: 'src/defs/console.ts', targets: [] } } } } as PackManifest);
     expect(result).toEqual({ success: true, files: [] });
     expect(fs.existsSync(path.join(dir, monacoDefsFile('console')))).toBe(false);
   });

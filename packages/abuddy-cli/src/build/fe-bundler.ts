@@ -53,7 +53,7 @@ function opaqueVendorPlugin(deps: readonly string[]): VitePlugin {
 }
 
 /**
- * Whether the pack's abuddy.json opts into bundling its own copy of @abuddy/ui (`fe.bundleUi`).
+ * Whether the pack's abuddy.json opts into bundling its own copy of @abuddy/ui (`build.bundleUi`).
  * No manifest is fine — `bundleUi` is opt-in, and only a pack directory has one. A manifest that is
  * there but unreadable is not: it may be the one that opts in, and reading it as "no" would quietly
  * proxy @abuddy/ui to the host and skip its Tailwind classes.
@@ -62,15 +62,15 @@ function bundlesUi(packDir: string): boolean {
   const manifestPath = path.join(packDir, 'abuddy.json');
   if (!fs.existsSync(manifestPath)) return false;
   try {
-    return JSON.parse(fs.readFileSync(manifestPath, 'utf-8')).fe?.bundleUi === true;
+    return JSON.parse(fs.readFileSync(manifestPath, 'utf-8')).build?.bundleUi === true;
   } catch (err) {
-    throw new Error(`Couldn't read ${manifestPath}, so the FE build can't tell whether this pack bundles @abuddy/ui (fe.bundleUi): ${errorMessage(err)}`);
+    throw new Error(`Couldn't read ${manifestPath}, so the FE build can't tell whether this pack bundles @abuddy/ui (build.bundleUi): ${errorMessage(err)}`);
   }
 }
 
 /**
  * Tailwind content globs for the @abuddy/ui a pack bundles: its build, which is what a pack resolves.
- * Only reached for a pack that set `fe.bundleUi`, so anything that leaves Tailwind nothing to read is a
+ * Only reached for a pack that set `build.bundleUi`, so anything that leaves Tailwind nothing to read is a
  * build failure — its components are nothing but Tailwind classes, and empty globs would bundle every
  * one of them unstyled, with no error. An unresolvable package and a package whose build is missing are
  * the same fault to the pack author: what they get is an unstyled app.
@@ -88,7 +88,7 @@ function uiTailwindContent(packDir: string): string[] {
     uiDir = path.dirname(fs.realpathSync(createRequire(path.join(packDir, 'package.json')).resolve('@abuddy/ui/package.json')));
   } catch (err) {
     throw new Error(
-      `This pack sets fe.bundleUi, but @abuddy/ui can't be resolved from ${packDir}, so Tailwind would generate none of its components' classes: ${errorMessage(err)}`,
+      `This pack sets build.bundleUi, but @abuddy/ui can't be resolved from ${packDir}, so Tailwind would generate none of its components' classes: ${errorMessage(err)}`,
     );
   }
   const built = path.join(uiDir, 'dist');
@@ -97,7 +97,7 @@ function uiTailwindContent(packDir: string): string[] {
   // file to read — so check for what the glob actually matches, not merely that the directory is non-empty
   if (!fs.existsSync(built) || !hasFile(built, '.js')) {
     throw new Error(
-      `This pack sets fe.bundleUi, but @abuddy/ui has no built modules at ${content}, so Tailwind would generate none of its components' classes. Build the packages first: npm run packages:ensure`,
+      `This pack sets build.bundleUi, but @abuddy/ui has no built modules at ${content}, so Tailwind would generate none of its components' classes. Build the packages first: npm run packages:ensure`,
     );
   }
   return [content];
@@ -142,7 +142,7 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
     const unresolved = unresolvedSubpathPackages(...resolveFrom);
     if (unresolved.length > 0) {
       throw new Error(
-        `This pack sets fe.bundleUi, but ${unresolved.join(' and ')} cannot be resolved from ${packDir}, so the pack would bundle its own ProseMirror instead of sharing the app's. Install ${unresolved.length > 1 ? 'them' : 'it'} in the pack.`,
+        `This pack sets build.bundleUi, but ${unresolved.join(' and ')} cannot be resolved from ${packDir}, so the pack would bundle its own ProseMirror instead of sharing the app's. Install ${unresolved.length > 1 ? 'them' : 'it'} in the pack.`,
       );
     }
   }
@@ -252,10 +252,10 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
       }
       // A pack without @abuddy/ui installed gets an empty proxy list, which is right until it imports
       // one: the import would be bundled instead of taken from the host, and every component in it
-      // would fail at load with no sign of why. A pack that means to carry its own sets fe.bundleUi.
+      // would fail at load with no sign of why. A pack that means to carry its own sets build.bundleUi.
       if (!bundlesUi(packDir) && /^@abuddy\/ui(\/|$)/.test(source)) {
         throw new Error(
-          `This pack imports ${source}, but @abuddy/ui can't be resolved from ${packDir}, so there is nothing to take from the host. Install @abuddy/ui in the pack, or set fe.bundleUi to carry your own copy.`,
+          `This pack imports ${source}, but @abuddy/ui can't be resolved from ${packDir}, so there is nothing to take from the host. Install @abuddy/ui in the pack, or set build.bundleUi to carry your own copy.`,
         );
       }
       // Reached only by what the host does *not* share: `@abuddy/ears`, which a pack frontend inlines
@@ -417,7 +417,7 @@ export function findFEEntry(packDir: string): string | null {
  * cause is invisible at runtime. So:
  *
  * - **Hard failure** when the pack demonstrably relies on Tailwind: it ships a `tailwind.config`, or
- *   it sets `fe.bundleUi` (every @abuddy/ui component is Tailwind classes, so without Tailwind that
+ *   it sets `build.bundleUi` (every @abuddy/ui component is Tailwind classes, so without Tailwind that
  *   bundle is *guaranteed* unstyled). A broken or unexpected config is always a hard failure — the
  *   pack wrote it, and reverting to the generated default would silently drop its theme.
  * - **Warning** when the pack gives no such signal and Tailwind can't load: it may use no Tailwind
@@ -453,7 +453,7 @@ async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
   const needsTailwind = packTwConfig
     ? `This pack has ${path.basename(packTwConfig)}`
     : bundleUi
-      ? 'This pack sets fe.bundleUi, so it bundles @abuddy/ui, whose components are Tailwind classes'
+      ? 'This pack sets build.bundleUi, so it bundles @abuddy/ui, whose components are Tailwind classes'
       : undefined;
 
   let tailwindcss: (config: unknown) => unknown;
@@ -489,12 +489,12 @@ async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
       try {
         config = loadConfig(packTwConfig) as { content?: unknown };
       } catch (err) {
-        throw new Error(`${path.basename(packTwConfig)} couldn't be loaded, and fe.bundleUi needs @abuddy/ui's files added to its \`content\`: ${errorMessage(err)}`);
+        throw new Error(`${path.basename(packTwConfig)} couldn't be loaded, and build.bundleUi needs @abuddy/ui's files added to its \`content\`: ${errorMessage(err)}`);
       }
       const content = Array.isArray(config.content) ? { files: config.content } : config.content as { files?: unknown } | undefined;
       if (!content || !Array.isArray(content.files)) {
         throw new Error(
-          `${path.basename(packTwConfig)} must set \`content\` to an array of globs or to { files: [...] }, so that fe.bundleUi can add @abuddy/ui's files to it; got ${JSON.stringify(config.content)}`,
+          `${path.basename(packTwConfig)} must set \`content\` to an array of globs or to { files: [...] }, so that build.bundleUi can add @abuddy/ui's files to it; got ${JSON.stringify(config.content)}`,
         );
       }
       // The pack's own presets stay first, so it can still override the theme it inherits

@@ -36,8 +36,9 @@ describe('generated entity shapes', () => {
 
   it("reads Node rows as the step node types of the pack and its dependencies, NodeBase when none define any", () => {
     write('src/steps/ping/types.ts', "import type { NodeBase } from '@abuddy/sdk';\nexport interface PingNode extends NodeBase { nodeType: 'ping' }\n");
+    write('src/steps/ping/build.ts', 'export const pingStepBuild = {};\n');
     const withSteps = generate(
-      { steps: { register: 'src/steps/register.ts', definitions: [{ type: 'ping', path: 'src/steps/ping' }] } },
+      { steps: { ping: { build: 'src/steps/ping/build.ts#pingStepBuild' } } },
       { 'base-pack': dependency({}) },
     )['src/__generated__/ears.ts'];
     expect(withSteps).toContain("import type { NodeEntity } from './types.ts';");
@@ -153,7 +154,7 @@ describe('service name collisions', () => {
 
   it('covers pack-level services, not only a feature\'s', () => {
     expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': dependency({ id: 'base-pack', packServices: { db: 'src/x.ts#svc' } }),
+      'base-pack': dependency({ id: 'base-pack', services: { db: 'src/x.ts#svc' } }),
       'other-pack': dependency({ id: 'other-pack', features: [withService('b', 'db')] }),
     })).toThrow('Service "db" is declared by both');
   });
@@ -179,7 +180,7 @@ describe('generated services', () => {
 
   it('imports pack-level services the same way', () => {
     write('src/cache/index.ts', 'export const cacheService = { get: (key: string) => key };\n');
-    const services = generate({ packServices: { cache: 'src/cache#cacheService' } })['src/__generated__/services.ts'];
+    const services = generate({ services: { cache: 'src/cache#cacheService' } })['src/__generated__/services.ts'];
     expect(services).toContain("import { cacheService as __service_cache } from '../cache/index.ts';");
     expect(services).toContain('  cache: __service_cache,');
   });

@@ -171,9 +171,9 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
   _packManifest = {
     id: manifest.id,
     // The ids the plugins run under: a plugin runs at `<packId>/<featureId>`, as a system does
-    pluginIds: (manifest.features ?? [])
-      .filter((f: any) => f.plugin)
-      .map((f: any) => resolveName(f.id, manifest.id)),
+    pluginIds: Object.entries(manifest.features ?? {})
+      .filter(([, f]: [string, any]) => f.plugin)
+      .map(([id]) => resolveName(id, manifest.id)),
   };
   return _packManifest;
 }

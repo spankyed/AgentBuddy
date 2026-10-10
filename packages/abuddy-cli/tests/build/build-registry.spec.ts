@@ -36,10 +36,17 @@ function pack(stepInFlow: string): string {
   write('package.json', JSON.stringify({ name: 'registry-pack', type: 'module' }));
   write('abuddy.json', JSON.stringify({
     id: 'registry-pack', name: 'Registry pack', version: '1.0.0', builtIn: true,
-    steps: { register: 'src/steps.mjs', build: 'src/steps.mjs', definitions: [] },
+    // Declared here, which is what makes the generated module below the pack's own steps
+    extensions: {
+      steps: {
+        listener: { kind: 'trigger', node: 'src/steps/listener/build.ts#listenerNode', trigger: { facet: 'src/steps/listener/build.ts#listenerTrigger' } },
+        note: { node: 'src/steps/note/build.ts#noteNode', build: 'src/steps/note/build.ts#noteBuild' },
+      },
+    },
     content: { sources: { flows: 'src/content/flows' } },
   }));
-  write('src/steps.mjs', `export const steps = [
+  // The build loads its own step facets from the module codegen writes, which this fixture plants directly
+  write('src/__generated__/steps-build.ts', `export const steps = [
     { type: 'listener', kind: 'trigger', trigger: { trackField: 'event', compile: () => ({}), decompile: () => ({}) } },
     { type: 'note', kind: 'step', build: { compile: () => ({ entity: {}, relations: [] }), validate: () => [], getLabel: () => 'Note' } },
   ];\n`);

@@ -35,7 +35,9 @@ function remove(packId: string): Plugin[] {
 }
 
 const plugin = (label: string) => ({ label }) as unknown as PluginDefinition;
-const noteStepFE = { type: 'note', fe: { nodeConfig: { label: 'Note' }, loadComponents: () => ({ node: 'NoteNode', form: 'NoteForm' }) } } as unknown as StepDefinition;
+// A frontend registration carries `node` beside `fe`: the label and the field defaults are what both
+// halves read, so codegen emits that facet into this registration and the backend's alike
+const noteStepFE = { type: 'note', node: { label: 'Note' }, fe: { nodeConfig: {}, loadComponents: () => ({ node: 'NoteNode', form: 'NoteForm' }) } } as unknown as StepDefinition;
 const cardView = { type: 'card-view', fe: { icon: 'card', component: 'CardView' } };
 const choice = { type: 'choice', fe: { component: 'Choice' } };
 const mentions: TiptapPlugin = { extensions: [] };
@@ -57,7 +59,8 @@ describe("a pack's frontend", () => {
     // Registered at the feature's address, which also answers the role
     expect(plugins()).toEqual([{ label: 'Notebook', id: 'notebook-pack/notebookMain' }]);
     expect(getDesignated('notebook')).toBe('notebook-pack/notebookMain');
-    expect(stepRegistry.getFE('note')?.nodeConfig.label).toBe('Note');
+    expect(stepRegistry.getNode('note')?.label).toBe('Note');
+    expect(stepRegistry.getFE('note')).toBeDefined();
     expect(stepRegistry.all().map((s) => s.type)).toEqual(['note']);
     expect(artifactRegistry.all()).toEqual([cardView]);
     expect(blockRegistry.all()).toEqual([choice]);
@@ -87,7 +90,8 @@ describe("a pack's frontend", () => {
     const build = { type: 'note', kind: 'step' } as StepDefinition;
     add('build-pack', { steps: [build] });
     add('notebook-pack', { steps: [noteStepFE] });
-    expect(stepRegistry.get('note')).toMatchObject({ type: 'note', kind: 'step', fe: { nodeConfig: { label: 'Note' } } });
+    expect(stepRegistry.get('note')).toMatchObject({ type: 'note', kind: 'step', node: { label: 'Note' } });
+    expect(stepRegistry.getFE('note')).toBeDefined();
   });
 
   // Its counterpart: the merged type, the slot and the DSL name are each held by two packs, and the one

@@ -6,9 +6,8 @@ export interface NodeConfig {
   label: string
   defaultLabel?: string
   icon: Component
+  /** Resolved from the step's `colorKey`, not declared beside it */
   color: string
-  bgColor: string
-  hoverBgColor: string
   connectionRules: {
     inputs: number    // -1 means unlimited
     outputs: number   // -1 means unlimited
@@ -73,6 +72,21 @@ const NODE_STYLE_CLASSES = {
     neutral: 'ring-neutral-600/30',
     red: 'ring-red-500/20',
     yellow: 'ring-yellow-500/20'
+  },
+  // A node's icon colour, which each step used to spell out beside the token it is a function of. Written
+  // out rather than built from the token at runtime: Tailwind finds class names by reading the source, so
+  // a `text-${key}-400` would generate no CSS at all.
+  iconText: {
+    purple: 'text-purple-400',
+    blue: 'text-blue-400',
+    amber: 'text-amber-400',
+    cyan: 'text-cyan-400',
+    orange: 'text-orange-400',
+    emerald: 'text-emerald-400',
+    indigo: 'text-indigo-400',
+    neutral: 'text-neutral-400',
+    red: 'text-red-400',
+    yellow: 'text-yellow-400'
   }
 } as const
 
@@ -114,15 +128,26 @@ const STATIC_COLOR_MAP: Record<string, ColorKey> = {
   event: 'blue',
 }
 
+/**
+ * One config per step the canvas can draw, from the two facets that describe it: `node` says how it is
+ * labelled (both processes read that one) and `fe` how it is drawn. A step needs both to be drawable — one
+ * with no `fe` has no icon, and one with no `node` has no label.
+ */
 function buildNodeConfigs(): Record<string, NodeConfig> {
   const configs: Record<string, NodeConfig> = {}
 
   for (const step of stepRegistry.all()) {
-    if (!step.fe) continue
+    if (!step.fe || !step.node) continue
     configs[step.type] = {
       ...step.fe.nodeConfig,
+      label: step.node.label,
+      ...(step.node.defaultLabel !== undefined && { defaultLabel: step.node.defaultLabel }),
       type: step.type,
       icon: step.fe.nodeConfig.icon as Component,
+      // The one colour anything reads, resolved from the token rather than declared beside it. A step
+      // naming a token this palette does not hold gets the neutral one, as `getNodeIconTextColor` always
+      // did for a step with no config at all
+      color: NODE_STYLE_CLASSES.iconText[(step.fe.colorKey ?? 'neutral') as ColorKey] ?? NODE_STYLE_CLASSES.iconText.neutral,
       ...(step.kind === 'trigger' && {
         connectionRules: { inputs: 0, outputs: -1 },
       }),

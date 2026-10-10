@@ -1,4 +1,4 @@
-import type { StepDefinition } from '@abuddy/sdk/steps';
+import type { StepBuildFacet, StepNodeFacet } from '@abuddy/sdk/steps';
 import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
 import { expandRecord, collapseRecord, mapProblems } from '@abuddy/sdk/steps';
@@ -89,7 +89,10 @@ export function decompile(node: Record<string, unknown>, ctx: StepDecompileConte
 }
 
 /** Build-time facets only (no runtime or FE imports); loaded by `abuddy build` in dependent packs. */
-export const actionStepBuild: StepDefinition = {
-  type: 'action',
-  build: { compile, validate, getLabel, decompile, relation: { field: 'actionId', targetEntity: 'Action' } },
+export const actionStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile, relation: { field: 'actionId', targetEntity: 'Action' } };
+
+/** What a node of this type starts with; the backend writes it and the canvas draws it */
+export const actionStepNode: StepNodeFacet = {
+  label: 'Action',
+  defaultLabel: 'Do action',
 };

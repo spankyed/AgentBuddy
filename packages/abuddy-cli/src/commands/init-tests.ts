@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { packFeatures } from '@abuddy/sdk/build';
 import { renderTemplate } from '../templates.ts';
 import { cliVersion } from '../utils';
 import { scaffoldUnitTestSetup } from './init';
@@ -29,8 +30,8 @@ export async function initTests(_args: string[]): Promise<void> {
   }
 
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-  const feat = (manifest.features ?? []).find((f: any) => f.plugin);
-  const pluginId: string | undefined = feat?.plugin?.id ?? feat?.id;
+  const feat = packFeatures(manifest).find((f) => f.plugin);
+  const pluginId: string | undefined = feat?.id;
 
   const configPath = path.join(cwd, 'playwright.config.ts');
   if (fs.existsSync(configPath)) {

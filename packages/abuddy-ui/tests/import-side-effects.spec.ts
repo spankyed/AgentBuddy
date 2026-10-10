@@ -46,7 +46,7 @@ function importTimeStatements(file: string): string[] {
 
 /**
  * A stylesheet from another package is global: its selectors are written for whoever installs it,
- * not namespaced to a component. @abuddy/ui ships inside every pack that sets `fe.bundleUi`, so such
+ * not namespaced to a component. @abuddy/ui ships inside every pack that sets `build.bundleUi`, so such
  * an import would inject a second copy of those rules into the running app and restyle it. The app
  * imports those stylesheets itself (`packages/renderer/src/main.ts`), which keeps one copy, owned by
  * the host. A component's own `./x.css` is fine: it is namespaced by the component's root class.

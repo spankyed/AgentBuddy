@@ -1,4 +1,4 @@
-import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
+import type { StepBuildFacet, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepNodeFacet } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
 import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
 import type { FieldMapping, MapEntry } from '@abuddy/sdk/steps';
@@ -59,7 +59,11 @@ function decompile(node: Record<string, unknown>, _ctx: StepDecompileContext): R
 }
 
 /** Build-time facets only (no runtime or FE imports); loaded by `abuddy build` in dependent packs. */
-export const updateStepBuild: StepDefinition = {
-  type: 'update',
-  build: { compile, validate, getLabel, decompile },
+export const updateStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile };
+
+/** What a node of this type starts with; the backend writes it and the canvas draws it */
+export const updateStepNode: StepNodeFacet = {
+  label: 'Update',
+  defaultLabel: 'Update entity',
+  defaults: { onMissing: 'fail' },
 };

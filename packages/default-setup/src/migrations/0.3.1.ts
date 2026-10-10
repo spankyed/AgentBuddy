@@ -2,7 +2,7 @@ import { findAll, qx } from '#generated/ears.ts';
 import { EARS } from '../__generated__/ears.ts';
 import { untypedTx } from '@abuddy/ears';
 import type { ThreadEntity } from '../features/threads/be/types.ts';
-import type { PackMigration } from '@abuddy/sdk/framework';
+import type { DeclaredMigration } from '@abuddy/sdk/framework';
 import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('migrations');
@@ -11,8 +11,7 @@ const logger = createLogger('migrations');
  * Convert imported Codex session markers that were accidentally stored as
  * `claude-session` artifacts before Codex had a first-class artifact type.
  */
-export const migration: PackMigration = {
-  target: '0.3.1',
+export const migration: DeclaredMigration = {
   description: 'Backfill Codex session artifact markers',
   up: () => {
     const threads = findAll<ThreadEntity>(EARS.Entity.Thread);

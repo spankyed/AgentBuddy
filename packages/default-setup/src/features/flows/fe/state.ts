@@ -75,11 +75,15 @@ function reindexEdges(
 
 const HANDLE_OCCUPIED_ERROR = 'This step already has an outbound connection'
 
+/**
+ * The fields a new node starts with, onto the node drawn before the backend answers. It reads the same
+ * `node` facet the backend's `createNodeDefaults` does, which is what keeps the node on screen and the one
+ * that gets stored the same — they read different facets once, and the drawn node carried defaults the
+ * stored one did not.
+ */
 function applyNodeTypeDefaults(nodeData: Record<string, any>): void {
-  const step = stepRegistry.get(nodeData.nodeType);
-  if (step?.fe?.defaults) {
-    Object.assign(nodeData, structuredClone(step.fe.defaults));
-  }
+  const defaults = stepRegistry.getNode(nodeData.nodeType)?.defaults;
+  if (defaults) Object.assign(nodeData, structuredClone(defaults));
 }
 
 /* ─────────────────────────────────────────────────────────── */

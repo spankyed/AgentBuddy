@@ -1,6 +1,7 @@
-// Writing a scaffold's files: create-if-absent, the report of what was created, and the two edits that add a
-// line to a file that is already there. The templates themselves are files under `templates/`, read through
-// `src/templates.ts` — this module was called `templates.ts` while it held them.
+// Writing a scaffold's files: create-if-absent, the report of what was created, and the name casings a
+// template is rendered with. The templates themselves are files under `templates/`, read through
+// `src/templates.ts`. Nothing here edits a file that is already there — every scaffold declares what it
+// adds in `abuddy.json` (`add/manifest.ts`), which is a structured write rather than a splice.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -50,51 +51,3 @@ export function hasFlag(args: string[], flag: string): boolean {
   return args.includes(flag);
 }
 
-/** Insert `line` after the file's last top-level import (or at the top when it has none). */
-function insertAfterLastImport(content: string, line: string): string {
-  const imports = [...content.matchAll(/^import [^\n]*\n/gm)];
-  const last = imports[imports.length - 1];
-  const at = last ? last.index! + last[0].length : 0;
-  return content.slice(0, at) + line + '\n' + content.slice(at);
-}
-
-export function updateRegisterArray(
-  filePath: string,
-  importLine: string,
-  arrayEntry: string,
-): boolean {
-  if (!fs.existsSync(filePath)) return false;
-  let content = fs.readFileSync(filePath, 'utf-8');
-
-  if (content.includes(arrayEntry.trim().split('\n')[0])) return false;
-
-  if (importLine) content = insertAfterLastImport(content, importLine);
-
-  const arrayCloseIdx = content.lastIndexOf('];');
-  if (arrayCloseIdx === -1) return false;
-  content = content.slice(0, arrayCloseIdx) + arrayEntry + content.slice(arrayCloseIdx);
-
-  fs.writeFileSync(filePath, content);
-  return true;
-}
-
-export function updateComponentMap(
-  filePath: string,
-  importLine: string,
-  mapKey: string,
-  mapValue: string,
-): boolean {
-  if (!fs.existsSync(filePath)) return false;
-  let content = fs.readFileSync(filePath, 'utf-8');
-
-  if (content.includes(`'${mapKey}'`) || content.includes(`"${mapKey}"`)) return false;
-
-  content = insertAfterLastImport(content, importLine);
-
-  const mapCloseIdx = content.lastIndexOf('};');
-  if (mapCloseIdx === -1) return false;
-  content = content.slice(0, mapCloseIdx) + `  '${mapKey}': ${mapValue},\n` + content.slice(mapCloseIdx);
-
-  fs.writeFileSync(filePath, content);
-  return true;
-}

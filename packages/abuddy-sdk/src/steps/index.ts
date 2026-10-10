@@ -9,6 +9,7 @@ export type {
   StepBranch,
   StepBuildFacet,
   StepRuntimeFacet,
+  StepNodeFacet,
   StepFEFacet,
   StepNodeConfig,
   StepLayoutDescriptor,

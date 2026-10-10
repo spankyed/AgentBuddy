@@ -1,8 +1,8 @@
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { renderTemplate } from '../../templates.ts';
-import { validateName, toPascalCase, writeIfNotExists, logCreated, parseFlag, hasFlag, updateRegisterArray, updateComponentMap } from './write';
-import { readManifest } from './manifest';
+import { regenerateAfterScaffold } from '../generate-entries';
+import { validateName, writeIfNotExists, logCreated, parseFlag, hasFlag } from './write';
+import { readManifest, writeManifest, addArtifact as addArtifactToManifest } from './manifest';
 
 const HELP = `
 Usage: abuddy add artifact <type> [options]
@@ -26,39 +26,26 @@ export async function addArtifact(args: string[], root: string) {
   validateName(type, 'Artifact');
 
   const icon = parseFlag(args, '--icon') || 'FileText';
-  const pascal = toPascalCase(type);
-  const viewerPath = path.join(root, 'src', 'extensions', 'artifacts', 'viewers', `${type}-artifact.vue`);
+  const viewerPath = `src/extensions/artifacts/viewers/${type}-artifact.vue`;
+
+  // The manifest entry first: it is the declaration, and a viewer no manifest names is dead weight
+  const manifest = readManifest(root);
+  addArtifactToManifest(manifest, type, { icon, component: viewerPath });
+  writeManifest(root, manifest);
 
   const created: string[] = [];
-  if (writeIfNotExists(viewerPath, renderTemplate('pack/src/extensions/artifacts/viewers/artifact.vue', { ICON: icon }))) {
-    created.push(viewerPath);
+  const filePath = path.join(root, viewerPath);
+  if (writeIfNotExists(filePath, renderTemplate('pack/src/extensions/artifacts/viewers/artifact.vue', { ICON: icon }))) {
+    created.push(filePath);
   }
 
-  const manifest = readManifest(root);
-  const registerPath = manifest.artifacts;
-
-  if (registerPath) {
-    // The host renders fe.component, which register-fe.ts sets from its componentMap
-    const registerFile = path.join(root, registerPath);
-    const importsIcon = fs.existsSync(registerFile)
-      && new RegExp(`import\\s*\\{[^}]*\\b${icon}\\b[^}]*\\}\\s*from\\s*['"]lucide-vue-next['"]`).test(fs.readFileSync(registerFile, 'utf-8'));
-    updateRegisterArray(
-      registerFile,
-      importsIcon ? '' : `import { ${icon} } from 'lucide-vue-next';`,
-      `  { type: '${type}', fe: { icon: ${icon} } },\n`,
-    );
-
-    const feRegisterPath = registerPath.replace(/\.ts$/, '-fe.ts');
-    const importName = `${pascal}Artifact`;
-    updateComponentMap(
-      path.join(root, feRegisterPath),
-      `import ${importName} from './viewers/${type}-artifact.vue';`,
-      type,
-      importName,
-    );
-  }
+  // The manifest entry is the whole declaration, and codegen is what carries it into the pack's entries —
+  // there is no barrel to edit any more, so without this the artifact reaches nothing until something else
+  // regenerates
+  const regenerated = await regenerateAfterScaffold(root);
 
   console.log(`\nCreated artifact viewer "${type}":`);
   logCreated(root, created);
-  if (registerPath) console.log(`\n  register files updated`);
+  console.log(`  ~ abuddy.json (artifacts.${type})`);
+  if (regenerated) console.log(`\n  __generated__/ regenerated`);
 }

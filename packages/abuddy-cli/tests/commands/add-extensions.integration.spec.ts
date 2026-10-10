@@ -75,9 +75,8 @@ describe('abuddy add step', () => {
   it('generates flow helpers for the kebab-case step that typecheck with tsc', async () => {
     await addStep(['my-other-step'], pack);
     const manifest = readManifest();
-    const definition = (type: string) => manifest.steps.definitions.find((d: { type: string }) => d.type === type);
-    definition('my-step').dsl = { primaryField: 'label' };
-    definition('my-other-step').dsl = {};
+    manifest.extensions.steps['my-step'].dsl = { primaryField: 'label' };
+    manifest.extensions.steps['my-other-step'].dsl = {};
     writeManifest(manifest);
     await generateEntries([], pack);
 
@@ -100,7 +99,7 @@ describe('abuddy add step', () => {
 });
 
 describe('abuddy add step in a pack without steps', () => {
-  it('creates the step list the manifest names, so the pack builds', async () => {
+  it('declares the first step, in a manifest that names none', async () => {
     const bare = path.join(tmp, 'bare-pack');
     // A manifest with no features is the subject here, so it is written verbatim rather than varied
     packFixture({ at: bare, rawManifest: { id: 'bare-pack', name: 'Bare', version: '1.0.0' } });
@@ -110,70 +109,77 @@ describe('abuddy add step in a pack without steps', () => {
     await addStep(['ping'], bare);
 
     const manifest = JSON.parse(fs.readFileSync(path.join(bare, 'abuddy.json'), 'utf-8'));
-    expect(manifest.steps.register).toBe('src/extensions/steps/register.ts');
-    const register = fs.readFileSync(path.join(bare, manifest.steps.register), 'utf-8');
-    expect(register).toContain("import { pingStep } from './ping/index.ts';");
-    expect(register).toMatch(/export const steps: StepDefinition\[\] = \[[\s\S]*pingStep,/);
+    expect(manifest.extensions.steps).toEqual({
+      ping: {
+        kind: 'step',
+        node: 'src/extensions/steps/ping/build.ts#pingStepNode',
+        build: 'src/extensions/steps/ping/build.ts#pingStepBuild',
+        fe: 'src/extensions/steps/ping/fe.ts#pingStepFE',
+      },
+    });
+    expect(fs.existsSync(path.join(bare, 'src/extensions/steps/ping/build.ts'))).toBe(true);
+  });
+
+  // A trigger is not a step with a flag: its facet is a TriggerFacet, from its own template. While both
+  // kinds pointed at the step template's StepBuildFacet, `--trigger` scaffolded a pack that did not compile
+  // and no test here asked it to.
+  it('declares a trigger against its own facet, and the pack typechecks', async () => {
+    // Its own scaffolded pack rather than the shared one: `init` is what writes the tsconfig `typecheckPack`
+    // needs, and a trigger added to the shared pack would join the `NodeEntity` union another case pins
+    const cwd = process.cwd();
+    process.chdir(tmp);
+    try {
+      await init(['trigger-pack']);
+    } finally {
+      process.chdir(cwd);
+    }
+    const triggerPack = path.join(tmp, 'trigger-pack');
+    fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(triggerPack, 'node_modules'), 'dir');
+
+    await addStep(['heartbeat', '--trigger'], triggerPack);
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(triggerPack, 'abuddy.json'), 'utf-8'));
+    expect(manifest.extensions.steps.heartbeat).toEqual({
+      kind: 'trigger',
+      node: 'src/extensions/steps/heartbeat/trigger.ts#heartbeatTriggerNode',
+      trigger: { facet: 'src/extensions/steps/heartbeat/trigger.ts#heartbeatTriggerBuild' },
+      fe: 'src/extensions/steps/heartbeat/fe.ts#heartbeatTriggerFE',
+    });
+    // Its own template, so no StepBuildFacet is written for it
+    expect(fs.existsSync(path.join(triggerPack, 'src/extensions/steps/heartbeat/trigger.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(triggerPack, 'src/extensions/steps/heartbeat/build.ts'))).toBe(false);
+
+    const tsc = await typecheckPack(triggerPack);
+    expect(tsc.code, tsc.output).toBe(0);
+  });
+
+  it('refuses a step type the manifest already declares, leaving the manifest as it was', async () => {
+    const bare = path.join(tmp, 'bare-pack');
+    const before = fs.readFileSync(path.join(bare, 'abuddy.json'), 'utf-8');
+    await expect(addStep(['ping'], bare)).rejects.toThrow('Step "ping" already exists in manifest');
+    expect(fs.readFileSync(path.join(bare, 'abuddy.json'), 'utf-8')).toBe(before);
   });
 });
 
 describe('abuddy add artifact and block', () => {
-  beforeAll(() => {
-    write('src/extensions/artifacts/register.ts', [
-      "import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';",
-      '',
-      'export const artifacts: ArtifactDefinition[] = [',
-      '];',
-      '',
-    ].join('\n'));
-    write('src/extensions/artifacts/register-fe.ts', [
-      "import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';",
-      "import { artifacts } from './register.ts';",
-      '',
-      'const componentMap: Record<string, unknown> = {',
-      '};',
-      '',
-      'export const artifactsFE: ArtifactDefinition[] = artifacts.map(def => ({',
-      '  ...def,',
-      '  fe: def.fe ? { ...def.fe, component: componentMap[def.type] } : undefined,',
-      '}));',
-      '',
-    ].join('\n'));
-    write('src/extensions/blocks/register.ts', [
-      "import type { BlockDefinition } from '@abuddy/sdk/blocks';",
-      '',
-      'export const blocks: BlockDefinition[] = [',
-      '];',
-      '',
-    ].join('\n'));
-    write('src/extensions/blocks/register-fe.ts', [
-      "import type { BlockDefinition } from '@abuddy/sdk/blocks';",
-      "import { blocks } from './register.ts';",
-      '',
-      'const componentMap: Record<string, unknown> = {',
-      '};',
-      '',
-      'export const blocksFE: BlockDefinition[] = blocks.map(def => ({',
-      '  ...def,',
-      '  fe: componentMap[def.type] ? { component: componentMap[def.type] } : undefined,',
-      '}));',
-      '',
-    ].join('\n'));
-    writeManifest({ ...readManifest(), artifacts: 'src/extensions/artifacts/register.ts', blocks: 'src/extensions/blocks/register.ts' });
-  });
-
-  it('scaffolds an artifact viewer taking artifact, registered by component', async () => {
+  it('scaffolds an artifact viewer taking artifact, declared with its icon and viewer', async () => {
     await addArtifact(['chart'], pack);
-    await addArtifact(['table'], pack);
+    await addArtifact(['table', '--icon', 'Table2'], pack);
 
     const viewer = read('src/extensions/artifacts/viewers/chart-artifact.vue');
     expect(viewer).toContain("import type { ArtifactItem } from '@abuddy/sdk/artifacts';");
     expect(viewer).toContain('defineProps<{ artifact: ArtifactItem }>();');
 
-    const register = read('src/extensions/artifacts/register.ts');
-    expect(register).toContain("  { type: 'chart', fe: { icon: FileText } },\n  { type: 'table', fe: { icon: FileText } },\n];");
-    expect(register.match(/import \{ FileText \} from 'lucide-vue-next';/g)).toHaveLength(1);
-    expect(read('src/extensions/artifacts/register-fe.ts')).toContain("  'chart': ChartArtifact,\n  'table': TableArtifact,\n};");
+    expect(readManifest().extensions.artifacts).toEqual({
+      chart: { icon: 'FileText', fe: 'src/extensions/artifacts/viewers/chart-artifact.vue' },
+      table: { icon: 'Table2', fe: 'src/extensions/artifacts/viewers/table-artifact.vue' },
+    });
+  });
+
+  it('refuses an artifact type the manifest already declares, leaving the manifest as it was', async () => {
+    const before = readManifest();
+    await expect(addArtifact(['chart'], pack)).rejects.toThrow('Artifact "chart" already exists in manifest');
+    expect(readManifest()).toEqual(before);
   });
 
   it('scaffolds display blocks taking their props and input blocks taking disabled/response, emitting submit/cancel', async () => {
@@ -188,8 +194,16 @@ describe('abuddy add artifact and block', () => {
     expect(input).toMatch(/defineProps<\{[\s\S]*label\?: string;/);
     expect(input).toMatch(/defineEmits<\{[\s\S]*submit: \[response: unknown\];/);
 
-    expect(read('src/extensions/blocks/register.ts')).toContain("  { type: 'rating' },\n  { type: 'color-picker', kind: 'input' },\n];");
-    expect(read('src/extensions/blocks/register-fe.ts')).toContain("  'rating': RatingBlock,\n  'color-picker': ColorPickerInput,\n};");
+    expect(readManifest().extensions.blocks).toEqual({
+      'rating': { fe: 'src/extensions/blocks/display/RatingBlock.vue' },
+      'color-picker': { kind: 'input', fe: 'src/extensions/blocks/input/ColorPickerInput.vue' },
+    });
+  });
+
+  it('refuses a block type the manifest already declares, leaving the manifest as it was', async () => {
+    const before = readManifest();
+    await expect(addBlock(['rating'], pack)).rejects.toThrow('Block "rating" already exists in manifest');
+    expect(readManifest()).toEqual(before);
   });
 
   it('scaffolds single-file components and register files that typecheck with vue-tsc', () => {
@@ -200,38 +214,35 @@ describe('abuddy add artifact and block', () => {
 });
 
 describe('abuddy add migration', () => {
-  it('scaffolds PackMigrations listed in the migrations index, which the pack entry registers and tsc accepts', async () => {
+  it('declares each migration under the version it targets, which the pack entry registers and tsc accepts', async () => {
     await addMigration(['0.2.0'], pack);
     await addMigration(['--version', '0.10.1'], pack);
+    // A migration targets a release: the runners read a prerelease as its release, so this files under 0.11.0
     await addMigration(['0.11.0-beta.1'], pack);
 
     const migration = read('src/migrations/0.2.0.ts');
-    expect(migration).toContain("import type { PackMigration } from '@abuddy/sdk/framework';");
-    expect(migration).toMatch(/export const migration: PackMigration = \{[\s\S]*target: '0\.2\.0'/);
-    const index = read('src/migrations/index.ts');
-    expect(index).toContain("import { migration as v0_2_0 } from './0.2.0.ts';\nimport { migration as v0_10_1 } from './0.10.1.ts';\nimport { migration as v0_11_0_beta_1 } from './0.11.0-beta.1.ts';");
-    expect(index).toContain('export const migrations: PackMigration[] = [\n  v0_2_0,\n  v0_10_1,\n  v0_11_0_beta_1,\n];');
-    expect(readManifest().migrations).toBe('src/migrations/index.ts');
+    expect(migration).toContain("import type { DeclaredMigration } from '@abuddy/sdk/framework';");
+    // The version is the manifest key, so the module does not restate it
+    expect(migration).not.toContain('target:');
+    expect(readManifest().migrations).toEqual({
+      '0.2.0': 'src/migrations/0.2.0.ts#migration',
+      '0.10.1': 'src/migrations/0.10.1.ts#migration',
+      '0.11.0': 'src/migrations/0.11.0.ts#migration',
+    });
+    expect(fs.existsSync(path.join(pack, 'src/migrations/index.ts'))).toBe(false);
 
     await generateEntries([], pack);
-    expect(read('src/__generated__/pack-entry.ts')).toMatch(/import \{ migrations \} from '\.\.\/migrations\/index\.ts';[\s\S]*\n {2}migrations,/);
+    const entry = read('src/__generated__/pack-entry.ts');
+    // In version order, each with the target its key names
+    expect(entry).toContain("    { target: '0.2.0', ...__migration_0_2_0 },\n    { target: '0.10.1', ...__migration_0_10_1 },\n    { target: '0.11.0', ...__migration_0_11_0 },");
     const tsc = await typecheckPack(pack);
     expect(tsc.code, tsc.output).toBe(0);
   });
 
-  it('adds the import after an index whose only import is its first line', async () => {
-    write('src/migrations/index.ts', "import type { PackMigration } from '@abuddy/sdk/framework';\n\nexport const migrations: PackMigration[] = [\n];\n");
-    await addMigration(['0.12.0'], pack);
-
-    expect(read('src/migrations/index.ts')).toBe([
-      "import type { PackMigration } from '@abuddy/sdk/framework';",
-      "import { migration as v0_12_0 } from './0.12.0.ts';",
-      '',
-      'export const migrations: PackMigration[] = [',
-      '  v0_12_0,',
-      '];',
-      '',
-    ].join('\n'));
+  it('refuses a version it already declares, leaving the manifest as it was', async () => {
+    const before = read('abuddy.json');
+    await expect(addMigration(['0.2.0'], pack)).rejects.toThrow('Migration "0.2.0" already exists in manifest');
+    expect(read('abuddy.json')).toBe(before);
   });
 });
 

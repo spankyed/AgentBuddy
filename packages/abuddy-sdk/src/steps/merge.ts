@@ -8,7 +8,7 @@ import type { StepDefinition } from './types.ts';
  * them makes that a value the later definition didn't set rather than one it cleared, and the check below
  * fails to compile when a part is added to `StepDefinition` and not to this list.
  */
-const FACETS = ['kind', 'build', 'runtime', 'fe', 'trigger', 'dsl'] as const satisfies readonly (keyof StepDefinition)[];
+const FACETS = ['kind', 'node', 'build', 'runtime', 'fe', 'trigger', 'dsl'] as const satisfies readonly (keyof StepDefinition)[];
 
 type UnmergedFacet = Exclude<keyof StepDefinition, 'type' | (typeof FACETS)[number]>;
 const _everyFacetMerges: [UnmergedFacet] extends [never] ? true : UnmergedFacet = true;

@@ -8,7 +8,7 @@ import { getSchemaStats, READ_HELPER_NAMES, WRITE_HELPER_NAMES } from '@abuddy/s
 import * as defs from '../../src/defs/database.ts';
 
 const manifest = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '..', '..', 'abuddy.json'), 'utf-8'));
-const globals: Record<string, string> = manifest.dsl.database.globals;
+const globals: Record<string, string> = manifest.extensions.dsl.database.globals;
 const provided = ['EARS', ...READ_HELPER_NAMES, ...WRITE_HELPER_NAMES].sort();
 
 describe('the Database console globals', () => {

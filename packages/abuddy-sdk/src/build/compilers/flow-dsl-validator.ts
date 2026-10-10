@@ -319,7 +319,7 @@ function getTrackLabel(track: Record<string, unknown>, index: number, resolved: 
   for (const def of resolved.triggers) {
     const field = def.trigger?.trackField;
     if (field && typeof track[field] === 'string') {
-      const prefix = def.fe?.nodeConfig?.label || def.type || 'Trigger';
+      const prefix = def.node?.label || def.type || 'Trigger';
       return `${prefix} ${index}`;
     }
   }

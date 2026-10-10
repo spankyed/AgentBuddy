@@ -45,10 +45,12 @@ describe('featuresWithSettings', () => {
   });
 
   it("adds an installed pack's features from its manifest while it isn't registered, and reads a malformed one as none", () => {
-    install('memo-pack', manifest('memo-pack', [{ id: 'memos', settings: 'src/memos/settings.ts' }, { id: 'board', plugin: { entry: 'src/board/fe.ts' } }, { id: 'systemOnly', system: { entry: 'x' } }]));
-    install('idle-pack', manifest('idle-pack', [{ id: 'idle', settings: 'src/settings.ts' }]));
-    install('broken-pack', manifest('broken-pack', { idle: {} }));
-    install('odd-pack', manifest('odd-pack', [{ id: 'Not An Id', settings: 'x' }]));
+    // `features` is a map keyed by feature id; the key is the id, and no entry restates it
+    install('memo-pack', manifest('memo-pack', { memos: { settings: 'src/memos/settings.ts' }, board: { plugin: { entry: 'src/board/fe.ts' } }, systemOnly: { system: { entry: 'x' } } }));
+    install('idle-pack', manifest('idle-pack', { idle: { settings: 'src/settings.ts' } }));
+    // An array is the shape nothing writes, so it reads as none rather than throwing
+    install('broken-pack', manifest('broken-pack', [{ id: 'idle', settings: 'src/settings.ts' }]));
+    install('odd-pack', manifest('odd-pack', { 'Not An Id': { settings: 'x' } }));
     install('garbled-pack', '{ not json');
     const registry = createPackRegistry({ installedPacksDir: () => packsDir });
 
@@ -62,15 +64,15 @@ describe('featuresWithSettings', () => {
   });
 
   it("keeps its answer until the dir's entries change, and sees a pack installed or removed then", () => {
-    install('idle-pack', manifest('idle-pack', [{ id: 'idle', settings: 'src/settings.ts' }]));
+    install('idle-pack', manifest('idle-pack', { idle: { settings: 'src/settings.ts' } }));
     const registry = createPackRegistry({ installedPacksDir: () => packsDir });
     expect(registry.featuresWithSettings()).toEqual(['idle-pack/idle']);
 
     // A manifest changed in place, which no install does, isn't read again: the dir's entries are the same
-    fs.writeFileSync(path.join(packsDir, 'idle-pack', 'abuddy.json'), JSON.stringify(manifest('idle-pack', [])));
+    fs.writeFileSync(path.join(packsDir, 'idle-pack', 'abuddy.json'), JSON.stringify(manifest('idle-pack', {})));
     expect(registry.featuresWithSettings()).toEqual(['idle-pack/idle']);
 
-    install('memo-pack', manifest('memo-pack', [{ id: 'memos', settings: 'src/settings.ts' }]));
+    install('memo-pack', manifest('memo-pack', { memos: { settings: 'src/settings.ts' } }));
     expect(registry.featuresWithSettings()).toEqual(['memo-pack/memos']);
 
     fs.rmSync(path.join(packsDir, 'memo-pack'), { recursive: true });

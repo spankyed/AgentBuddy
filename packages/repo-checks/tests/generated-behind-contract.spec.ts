@@ -15,14 +15,14 @@ import { GENERATED_BEHIND_A_CONTRACT } from '../../../scripts/check-import-speci
 
 /**
  * Every module codegen can emit under `src/__generated__/`, which is the population the rule classifies. Recorded
- * rather than derived, and it is the *other* half of the check: a nineteenth module fails this by name until
+ * rather than derived, and it is the *other* half of the check: a twenty-first module fails this by name until
  * someone decides whether a contract is behind it. Deriving it from the same call it is compared against would
  * assert nothing.
  */
 const GENERATED_MODULES = [
   'appliers', 'content-runtime', 'dsl-types-fe', 'ears', 'events', 'fe', 'flow-helpers', 'pack-entry', 'pack-entry-fe', 'pack-types',
   'paths', 'ref', 'references', 'repositories', 'repository', 'services',
-  'step-types', 'system-specs', 'types',
+  'step-types', 'steps-build', 'system-specs', 'types',
 ];
 
 let root: string;
@@ -43,9 +43,9 @@ const ENTRIES = ['src/features/memos/be/system.ts', 'src/features/memos/fe/plugi
 
 /**
  * A pack that makes codegen emit **all** of `GENERATED_MODULES`. A minimal one-feature manifest emits fifteen, and
- * a module the fixture does not emit is a module this check never looks at — so the three conditional ones are
+ * a module the fixture does not emit is a module this check never looks at — so the four conditional ones are
  * bought deliberately: `repositories` by a declared repository, `step-types` by a step whose folder has a
- * `types.ts`, `dsl-types-fe` by a `monaco` DSL target with globals.
+ * `types.ts`, `steps-build` by any declared step, `dsl-types-fe` by a `monaco` DSL target with globals.
  *
  * The contracts are plain declared types with no imports, which is all codegen reads them as — the temp dir has no
  * `node_modules` for an import to resolve against.
@@ -57,21 +57,22 @@ function fixture(): PackManifest {
   write(ENTRIES[1]!, 'declare const plugin: { label: string };\nexport default plugin;\n');
   write('src/features/memos/be/repository/index.ts', 'export const memoQueries = { all: () => [] };\n');
   write('src/extensions/steps/tick/types.ts', "export type TickNode = { every: string };\n");
+  write('src/extensions/steps/tick/build.ts', "export const tickTrigger = { trackField: 'every' };\n");
   return {
     id: 'demo-pack',
     name: 'Demo',
     version: '1.0.0',
-    features: [{
-      id: 'memos',
-      system: { entry: ENTRIES[0], contract: `${CONTRACTS[0]}#Contract` },
-      plugin: { entry: ENTRIES[1], contract: `${CONTRACTS[1]}#Contract` },
-      repositories: { memoQueries: 'src/features/memos/be/repository/index.ts#memoQueries' },
-    }],
-    steps: {
-      register: 'src/extensions/steps/register.ts',
-      definitions: [{ type: 'tick', path: 'src/extensions/steps/tick', kind: 'trigger' }],
+    features: {
+      memos: {
+        system: { entry: ENTRIES[0], contract: `${CONTRACTS[0]}#Contract` },
+        plugin: { entry: ENTRIES[1], contract: `${CONTRACTS[1]}#Contract` },
+        repositories: { memoQueries: 'src/features/memos/be/repository/index.ts#memoQueries' },
+      },
     },
-    dsl: { action: { prefix: '@', targets: ['monaco'], globals: { memos: 'NoteDTO' } } },
+    extensions: {
+      steps: { tick: { kind: 'trigger', trigger: { facet: 'src/extensions/steps/tick/build.ts#tickTrigger' } } },
+      dsl: { action: { prefix: '@', targets: ['monaco'], globals: { memos: 'NoteDTO' } } },
+    },
   } as unknown as PackManifest;
 }
 

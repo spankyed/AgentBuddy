@@ -21,8 +21,10 @@
 // - `GITIGNORE_TEMPLATE` would be a `templates/pack/.gitignore`, which npm reads as ignore rules for that
 //   subtree when packing — silently dropping template files.
 //
-// The register-array entries and import lines `add/{block,artifact,migration}.ts` build are not templates
-// either: they edit a file that is already there, through `updateRegisterArray`/`updateComponentMap`.
+// Nothing here edits a file that is already there, and nothing needs to: every scaffold declares what it
+// adds in `abuddy.json` (`add/manifest.ts`), which is a structured write that cannot half-succeed, and
+// codegen carries the declaration into the pack's entries. The splicer that used to find a barrel's last
+// `];` is gone with the barrels.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 

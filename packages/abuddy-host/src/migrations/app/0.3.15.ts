@@ -248,9 +248,9 @@ function ownersIn(registry: MigrationRegistry, installed: ReturnType<InstalledMa
  * one broken pack on disk mustn't do that to the app. Its keys stay as they are.
  */
 function declaredFeatureRefs(manifest: { id?: unknown; features?: unknown }): string[] {
-  if (typeof manifest.id !== 'string' || !Array.isArray(manifest.features)) return [];
-  return manifest.features.flatMap((feature: { id?: unknown } | null) =>
-    typeof feature?.id === 'string' ? [`${manifest.id}/${feature.id}`] : []);
+  const features = manifest.features;
+  if (typeof manifest.id !== 'string' || typeof features !== 'object' || features === null || Array.isArray(features)) return [];
+  return Object.keys(features).map((id) => `${manifest.id}/${id}`);
 }
 
 /** Each bare feature id to its owner's ref, or null when no single one owns it (two external packs share it) */

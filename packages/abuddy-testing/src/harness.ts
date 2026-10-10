@@ -84,9 +84,9 @@ const declaredRefs = { systems: new Set<string>(), plugins: new Set<string>() };
 
 /** Records the refs of the features `manifest` declares */
 function declareFeatures(manifest: Pick<PackManifest, 'id' | 'features'>): void {
-  for (const feature of manifest.features ?? []) {
-    if (feature.system) declaredRefs.systems.add(`${manifest.id}/${feature.id}`);
-    if (feature.plugin) declaredRefs.plugins.add(`${manifest.id}/${feature.id}`);
+  for (const [id, feature] of Object.entries(manifest.features ?? {})) {
+    if (feature.system) declaredRefs.systems.add(`${manifest.id}/${id}`);
+    if (feature.plugin) declaredRefs.plugins.add(`${manifest.id}/${id}`);
   }
 }
 

@@ -97,10 +97,10 @@ describe('the 0.3.15 app migration, for plugins', () => {
     untypedTx(SETTINGS_ID).put('data', { plugins: { calendar: { week: 'mon' }, board: { cols: 3 }, drafts: { wrap: true } } });
 
     move(() => [
-      { id: 'draft-pack', features: [{ id: 'drafts' }] },
-      { id: 'a-pack', features: [{ id: 'board' }] },
-      { id: 'b-pack', features: [{ id: 'board' }] },
-    ]);
+      { id: 'draft-pack', features: { drafts: {} } },
+      { id: 'a-pack', features: { board: {} } },
+      { id: 'b-pack', features: { board: {} } },
+    ] as ReturnType<InstalledManifests>);
 
     expect(settings()).toEqual({ plugins: { 'draft-pack/drafts': { wrap: true } } });
   });
@@ -115,7 +115,7 @@ describe('the 0.3.15 app migration, for plugins', () => {
   it("moves an installed pack's keys when the pack isn't registered, from its manifest", () => {
     untypedTx(SETTINGS_ID).put('data', { plugins: { drafts: { wrap: true }, _meta: { visibility: { drafts: false } } } });
 
-    move(() => [{ id: 'draft-pack', features: [{ id: 'drafts' }] }]);
+    move(() => [{ id: 'draft-pack', features: { drafts: {} } }]);
 
     expect(settings()).toEqual({ plugins: { 'draft-pack/drafts': { wrap: true } } });
     expect(appState.get().pluginVisibility).toEqual({ 'draft-pack/drafts': false });
@@ -125,10 +125,12 @@ describe('the 0.3.15 app migration, for plugins', () => {
   it("moves every other key when an installed pack's manifest is malformed", () => {
     untypedTx(SETTINGS_ID).put('data', { plugins: { drafts: { wrap: true }, memos: { sort: 'oldest' } } });
 
+    // Neither of the first two lists a feature: `features` is a map, and these are a list and a string. The
+    // first names `drafts` as well, so reading it would make the key ambiguous and leave it where it was
     move(() => [
-      { id: 'broken-pack', features: { drafts: {} } } as never,
-      { id: 'odd-pack', features: [null, { id: 7 }, { name: 'no id' }] } as never,
-      { id: 'draft-pack', features: [{ id: 'drafts' }] },
+      { id: 'broken-pack', features: [{ id: 'drafts' }] } as never,
+      { id: 'odd-pack', features: 'none' } as never,
+      { id: 'draft-pack', features: { drafts: {} } },
     ]);
 
     expect(settings()).toEqual({ plugins: { 'draft-pack/drafts': { wrap: true }, 'memo-pack/memos': { sort: 'oldest' } } });
@@ -139,7 +141,7 @@ describe('the 0.3.15 app migration, for plugins', () => {
   it("gives a bare id the host shares to the host, and none to the bus", () => {
     untypedTx(SETTINGS_ID).put('data', { plugins: { packs: { sort: 'name' }, bus: { mode: 'x' } } });
 
-    move(() => [{ id: 'ext-pack', features: [{ id: 'packs' }, { id: 'bus' }] }]);
+    move(() => [{ id: 'ext-pack', features: { packs: {}, bus: {} } }]);
 
     expect(settings()).toEqual({ plugins: { 'host/packs': { sort: 'name' }, 'ext-pack/bus': { mode: 'x' } } });
   });
@@ -228,10 +230,10 @@ describe('the 0.3.15 app migration, over the packs installed on disk', () => {
   });
 
   it("moves the keys of an enabled and a disabled pack's features, and drops a malformed manifest's", () => {
-    install('draft-pack', JSON.stringify({ id: 'draft-pack', name: 'Drafts', version: '1.0.0', features: [{ id: 'drafts' }] }));
-    install('idle-pack', JSON.stringify({ id: 'idle-pack', name: 'Idle', version: '1.0.0', features: [{ id: 'idle' }] }));
+    install('draft-pack', JSON.stringify({ id: 'draft-pack', name: 'Drafts', version: '1.0.0', features: { drafts: {} } }));
+    install('idle-pack', JSON.stringify({ id: 'idle-pack', name: 'Idle', version: '1.0.0', features: { idle: {} } }));
     writeInstalledPacks([{ id: 'idle-pack', enabled: false }]);
-    install('broken-pack', JSON.stringify({ id: 'broken-pack', name: 'Broken', version: '1.0.0', features: { broken: {} } }));
+    install('broken-pack', JSON.stringify({ id: 'broken-pack', name: 'Broken', version: '1.0.0', features: [{ id: 'broken' }] }));
     install('garbled-pack', '{ not json');
     untypedTx(SETTINGS_ID).put('data', {
       plugins: { drafts: { wrap: true }, idle: { quiet: true }, broken: { on: true }, _meta: { visibility: { drafts: false, idle: true, broken: true } } },

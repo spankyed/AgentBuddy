@@ -244,15 +244,15 @@ export function contractLeafFindings(packDir: string): PackWideFinding[] {
   const manifestPath = path.join(packDir, 'abuddy.json');
   const manifest = fs.existsSync(manifestPath)
     ? JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as {
-      features?: Array<{ plugin?: { contract?: string; entry?: string }; system?: { contract?: string; entry?: string } }>;
+      features?: Record<string, { plugin?: { contract?: string; entry?: string }; system?: { contract?: string; entry?: string } }>;
     }
     : undefined;
   /** A `"path"` or `"path#Export"` the manifest names, as a file in the pack */
   const named = (target: string | undefined): string | undefined =>
     target ? sourceFile(path.join(packDir, target.split('#')[0]!)) : undefined;
-  type Feature = NonNullable<NonNullable<typeof manifest>['features']>[number];
+  type Feature = NonNullable<NonNullable<typeof manifest>['features']>[string];
   const files = (pick: (f: Feature) => Array<string | undefined>) =>
-    (manifest?.features ?? []).flatMap((feature) => pick(feature).flatMap((t) => { const f = named(t); return f ? [f] : []; }));
+    Object.values(manifest?.features ?? {}).flatMap((feature) => pick(feature).flatMap((t) => { const f = named(t); return f ? [f] : []; }));
 
   const leaves = manifest ? files((f) => [f.plugin?.contract, f.system?.contract]) : byLayout(src);
   /**

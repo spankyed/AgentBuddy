@@ -36,7 +36,7 @@ rename.
 
 | Sense | Where | Verdict |
 |---|---|---|
-| A pack's **DSL type definitions**, as source | `src/defs/{action,database,prompt}.ts`, `abuddy.json` `dsl[].entry` | keep |
+| A pack's **DSL type definitions**, as source | `src/defs/{action,database,prompt}.ts`, `abuddy.json` `extensions.dsl[].entry` | keep |
 | The same, built for the editor | `DEFS_DIR`, `bundleDslDefs`, `dist/defs/monaco/<name>-defs.d.ts` | keep |
 | The **facade bundle** a pack publishes for its dependents | `PackSnapshot.defs`, `PACK_TYPES_DEF`, `.abuddy/deps/<id>/defs/pack-types.d.ts` | **rename** |
 

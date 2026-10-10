@@ -14,11 +14,12 @@ import * as path from 'node:path';
  */
 const DEFAULT_MANIFEST = {
   id: 'demo-pack', name: 'Demo', version: '1.0.0',
-  features: [{
-    id: 'memos',
-    plugin: { entry: 'src/features/memos/fe/plugin.ts', contract: 'src/features/memos/fe/contract.ts#Contract' },
-    system: { entry: 'src/features/memos/be/system.ts', contract: 'src/features/memos/be/contract.ts#Contract' },
-  }],
+  features: {
+    memos: {
+      plugin: { entry: 'src/features/memos/fe/plugin.ts', contract: 'src/features/memos/fe/contract.ts#Contract' },
+      system: { entry: 'src/features/memos/be/system.ts', contract: 'src/features/memos/be/contract.ts#Contract' },
+    },
+  },
 };
 
 export interface PackFixtureOptions {

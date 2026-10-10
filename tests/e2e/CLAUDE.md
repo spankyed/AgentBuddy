@@ -295,7 +295,7 @@ The in-repo fixture pack at `tests/packs/external-pack` exercises this whole pat
 
 ### Finding plugin IDs
 
-Plugin IDs are the `features[].id` of the pack's `abuddy.json` features that declare a `plugin` (the manifest's `plugin` object has no `id` of its own).
+Plugin IDs are the keys of the pack's `abuddy.json` `features` entries that declare a `plugin` (the manifest's `plugin` object has no `id` of its own).
 
 ## Renderer globals
 

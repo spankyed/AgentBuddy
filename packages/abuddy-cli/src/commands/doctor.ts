@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { packFeatures } from '@abuddy/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
 
 type Status = 'pass' | 'warn' | 'fail';
@@ -48,9 +49,8 @@ export async function doctor(_args: string[]) {
   });
 
   check('Feature files present', () => {
-    const features = manifest.features || [];
     const missing: string[] = [];
-    for (const f of features) {
+    for (const f of packFeatures(manifest)) {
       if (f.system?.entry && !fs.existsSync(path.join(root, f.system.entry))) {
         missing.push(`${f.id}/system`);
       }
@@ -62,14 +62,22 @@ export async function doctor(_args: string[]) {
     return 'pass';
   });
 
-  check('Step definitions present', () => {
-    const defs = manifest.steps?.definitions || [];
+  check('Step files present', () => {
     const missing: string[] = [];
-    for (const d of defs) {
-      if (d.path && !fs.existsSync(path.join(root, d.path))) {
-        missing.push(d.type);
+    for (const [type, entry] of Object.entries(manifest.extensions?.steps ?? {})) {
+      const targets = [entry.node, entry.build, entry.trigger?.facet, entry.trigger?.register, entry.runtime?.handler, entry.fe];
+      for (const target of targets) {
+        if (target && !fs.existsSync(path.join(root, target.split('#')[0]!))) missing.push(`${type} (${target})`);
       }
     }
+    if (missing.length) return `missing: ${missing.join(', ')}`;
+    return 'pass';
+  });
+
+  check('Migration files present', () => {
+    const missing = Object.entries(manifest.migrations ?? {})
+      .filter(([, target]) => !fs.existsSync(path.join(root, target.split('#')[0]!)))
+      .map(([version, target]) => `${version} (${target})`);
     if (missing.length) return `missing: ${missing.join(', ')}`;
     return 'pass';
   });

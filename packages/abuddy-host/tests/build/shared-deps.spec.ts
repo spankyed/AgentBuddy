@@ -50,7 +50,7 @@ describe('getSharedBeDeps', () => {
 
 describe('the shared tiptap and ProseMirror subpaths', () => {
   // They used to resolve from this module's own location, which is inside the CLI bundle: under a
-  // global CLI, npx or pnpm that found nothing, returned no subpaths, and a fe.bundleUi pack inlined
+  // global CLI, npx or pnpm that found nothing, returned no subpaths, and a build.bundleUi pack inlined
   // its own ProseMirror — the duplicate instance the sharing exists to prevent, with no error.
   it('resolves from the directory it is given, not from this module', () => {
     expect(Object.keys(getSharedFeDeps(REPO_ROOT))).toEqual(expect.arrayContaining(['@tiptap/pm/state', 'prosemirror-state']));

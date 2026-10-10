@@ -1,34 +1,42 @@
 # Declarative contributions: what a pack could say about itself without running
 
-Why this is a reference and not a plan: nothing here has been decided, and the measurement that would decide
-it has not been taken. What is here is the shape of the question — today's three layers, where each one
-fails, what a declarative contract would look like against this pack's real manifest, and the footguns the
-industry has already found. Read it before proposing lazy pack activation, install-time collision checks, or
-any tooling that wants to describe a pack without loading it.
+Why this is a reference and not a plan: what remains open here has not been decided, and the measurement
+that would decide it has not been taken. What is here is the shape of the question — today's three layers,
+where each one fails, what a declarative contract would look like against this pack's real manifest, and the
+footguns the industry has already found. Read it before proposing lazy pack activation, install-time
+collision checks, or any tooling that wants to describe a pack without loading it.
+
+**The item inventories are answered; what a pack cannot say without running is still its events.** Every
+extension point is a keyed map of individual declarations, each naming its own facets by `"path#export"`,
+so the host learns which steps, blocks and artifacts a pack has from the manifest alone. What it still
+cannot learn is the one thing the section below is really about: which events a plugin accepts.
 
 The sibling reference is [`recorded-artifacts.md`](recorded-artifacts.md), because every field this document
 proposes lifting becomes a member of the derivation family it describes. That is the whole cost.
 
 ## Today's three layers
 
-**1. `abuddy.json` — 28 root keys, and two shapes among them.** Most contribution keys declare *where the
-code is*. One declares *what the items are*:
+**1. `abuddy.json` — one shape for every contribution key, and one section holding them.** Each is a keyed
+map whose entries declare *what the items are* and name *where each facet's code is*; `extensions` is where
+the pack's contributions sit, as against what it is made of (`features`) or what data it ships (`content`):
 
 | key | what it declares |
 |---|---|
-| `steps` | `{ register: path, build: path, definitions: [{ type, path, kind?, dsl? }] }` |
-| `blocks` | a path |
-| `artifacts` | a path |
-| `dsl` | `{ entry: path, targets, prefix, globals }` |
+| `features` | `{ <id>: { designation?, settings?, system?, plugin?, services?, repositories? } }` |
+| `extensions.steps` | `{ <type>: { kind?, build \| trigger, fe?, runtime?, dsl? } }` |
+| `extensions.blocks` | `{ <type>: { kind?, fe?, be? } }` |
+| `extensions.artifacts` | `{ <type>: { icon, fe? } }` |
+| `extensions.dsl` | `{ <name>: { entry, targets, prefix?, globals? } }` |
+| `extensions.commands`, `extensions.services`, `extensions.fe` | the rest of what the pack gives the app |
 
-`steps.definitions` is the precedent for everything below, and the schema says why it exists: *"Step
-definitions for codegen."* It was lifted because a consumer — flow-helper generation — needed the item list
-without running the pack.
+See [`extensions.md`](../public-facing/extensions.md) for each. The key is the item's identity, which is
+what makes a duplicate unrepresentable: JSON cannot hold one key twice, so nothing has to check for one and
+nothing can forget to.
 
 **2. `generate-entries` — the compiler.** It reads the manifest and each feature's declared *leaf* modules
 (`be/contract.ts`, `fe/contract.ts`), then emits `src/__generated__/pack-entry.ts`: a static import graph
-over every system machine, settings module, step/artifact/block barrel, migration list, applier and content
-writer, assembling one `PackRegistration` literal.
+over every system machine, settings module, declared facet, migration list, applier and content writer,
+assembling one `PackRegistration` literal.
 
 **3. `PackRegistration` — the runtime object.** `registerPack` (`abuddy-host/src/packs/registry.ts`) checks
 collisions against it, then walks a `contributions` table (`packs/extensions.ts`) where each entry hands back
@@ -64,7 +72,7 @@ plugin accepts by `require`-ing a bundle that statically imports eleven XState m
 
 ## The example, against this pack's real manifest
 
-### Before — authored today
+### Authored today
 
 ```jsonc
 {
@@ -74,7 +82,6 @@ plugin accepts by `require`-ing a bundle that statically imports eleven XState m
 
   "features": {
     "notes": {
-      "id": "notes",
       "settings": "src/features/notes/settings.ts",
       "system": {
         "entry": "src/features/notes/be/system.ts",
@@ -93,56 +100,27 @@ plugin accepts by `require`-ing a bundle that statically imports eleven XState m
     }
   },
 
-  // per-item metadata already — the precedent
-  "steps": {
-    "register": "src/extensions/steps/register.ts",
-    "build":    "src/extensions/steps/build.ts",
-    "definitions": [
-      { "type": "action", "path": "src/extensions/steps/action", "dsl": { "custom": true } },
-      { "type": "llm",    "path": "src/extensions/steps/llm",    "dsl": { "primaryField": "prompt" } }
-    ]
-  },
-
-  // …and the ones that are a path and nothing more
-  "blocks":    "src/extensions/blocks/register.ts",
-  "artifacts": "src/extensions/artifacts/register.ts"
-}
-```
-
-What the host cannot learn from this: which block types exist (9 display, 9 input), which artifact types exist
-(16), or which events the notes plugin accepts.
-
-### After — authored
-
-Two keys change, and both generalise `steps.definitions` to its siblings. `BlockDefinition` is
-`{ type, kind?, fe?, be? }` and `ArtifactDefinition` is `{ type, fe? }`, so in both cases the identity is
-already separable from the facets:
-
-```jsonc
-{
-  // … entities, relKinds, features unchanged …
-
-  "blocks": {
-    "register": "src/extensions/blocks/register.ts",
-    "definitions": [
-      { "type": "markdown", "kind": "display", "path": "src/extensions/blocks/markdown" },
-      { "type": "approval", "kind": "input",   "path": "src/extensions/blocks/approval" }
-    ]
-  },
-  "artifacts": {
-    "register": "src/extensions/artifacts/register.ts",
-    "definitions": [
-      { "type": "todo", "path": "src/extensions/artifacts/viewers/todo" },
-      { "type": "diff", "path": "src/extensions/artifacts/viewers/diff" }
-    ]
+  "extensions": {
+    "steps": {
+      "llm": {
+        "build":   "src/extensions/steps/llm/build.ts#llmStepBuild",
+        "fe":      "src/extensions/steps/llm/fe.ts#llmStepFE",
+        "runtime": { "handler": "src/extensions/steps/llm/runtime.ts#handler", "isAsync": true },
+        "dsl":     { "primaryField": "prompt" }
+      }
+    }
   }
 }
 ```
 
-Note what is **absent**: there is no `activationEvents` key. Activation is derived from the contributions —
-see the footgun below.
+What the host cannot learn from this: which events the notes plugin accepts. Every *inventory* is here —
+the features, the step, block and artifact types, each naming its own facets — so what is left is the one
+thing below that is derived from a type rather than written.
 
-### After — generated, and this is the half that matters
+Note what is **absent**, and should stay absent: there is no `activationEvents` key. Activation is derived
+from the contributions — see the footgun below.
+
+### What a build could generate from it, and this is the half that matters
 
 `plugin.receives` must never be hand-written: it is derived from the plugin's `Contract` and a hand copy would
 drift on the first edit. So the build resolves the authored manifest into an artifact the host reads, beside

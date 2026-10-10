@@ -3,12 +3,12 @@
  *
  * Its components are Tailwind class names, and some of them name colours that only exist where a
  * Tailwind config defines them. The app defines those in `packages/renderer/tailwind.config.ts`, so
- * inside the app they resolve — but a pack that sets `fe.bundleUi` runs its own Tailwind build over
+ * inside the app they resolve — but a pack that sets `build.bundleUi` runs its own Tailwind build over
  * its own config, and nothing put the app's theme in it. The class names were scanned, no colour
  * matched, and Tailwind emitted nothing: the component rendered with its accent silently missing.
  *
  * So the theme travels with the components instead of living only in the app. The app applies this
- * preset and the FE bundler applies it to a `fe.bundleUi` pack's config, which makes one definition
+ * preset and the FE bundler applies it to a `build.bundleUi` pack's config, which makes one definition
  * serve both and keeps them from drifting.
  *
  * Keep this to what this package's own templates use — it is a floor for @abuddy/ui, not the app's

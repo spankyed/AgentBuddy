@@ -29,7 +29,7 @@ function installDeclaringPack(received: string[]) {
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({
     id: PACK_ID, name: 'Declaring Pack', version: '1.0.0',
-    features: [{ id: 'memos', plugin: { entry: 'fe/plugin.ts' } }],
+    features: { memos: { plugin: { entry: 'fe/plugin.ts' } } },
   }));
   fs.writeFileSync(path.join(packDir, PACK_LAYOUT.integrity), JSON.stringify({ formatVersion: PACK_LAYOUT_VERSION, id: PACK_ID, version: '1.0.0', files: {} }));
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });

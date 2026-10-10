@@ -212,15 +212,21 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(offenders, 'these name a script or command the scaffold does not provide').toEqual([]);
   });
 
-  it('adds a step (registered, shipped in build/steps.build.mjs) and a service that build', async () => {
-    // produces: the step whose generated register/build files are asserted below
+  it('adds a step (declared, shipped in build/steps.build.mjs) and a service that build', async () => {
+    // produces: the step whose manifest entry and bundled build facet are asserted below
     expect((await callCli(pack, 'add', ['step', 'ping'])).code).toBe(0);
     // produces: the service whose manifest and generated files are asserted below
     expect((await callCli(pack, 'add', ['service', 'cache'])).code).toBe(0);
-    expect(JSON.parse(fs.readFileSync(path.join(pack, 'abuddy.json'), 'utf-8')).packServices).toEqual({ cache: 'src/extensions/services/cache.ts#cacheService' });
-    const stepsDir = path.join(pack, 'src', 'extensions', 'steps');
-    expect(fs.readFileSync(path.join(stepsDir, 'register.ts'), 'utf-8')).toMatch(/import \{ pingStep \} from '\.\/ping\/index\.ts';[\s\S]*\[[\s\S]*pingStep,/);
-    expect(fs.readFileSync(path.join(stepsDir, 'build.ts'), 'utf-8')).toMatch(/import \{ pingStepBuild \} from '\.\/ping\/build\.ts';[\s\S]*\[[\s\S]*pingStepBuild,/);
+    const manifest = JSON.parse(fs.readFileSync(path.join(pack, 'abuddy.json'), 'utf-8'));
+    expect(manifest.extensions.services).toEqual({ cache: 'src/extensions/services/cache.ts#cacheService' });
+    expect(manifest.extensions.steps).toEqual({
+      ping: {
+        kind: 'step',
+        node: 'src/extensions/steps/ping/build.ts#pingStepNode',
+        build: 'src/extensions/steps/ping/build.ts#pingStepBuild',
+        fe: 'src/extensions/steps/ping/fe.ts#pingStepFE',
+      },
+    });
 
     // produces: the build whose steps.build.mjs is imported below
     const build = await callCli(pack, 'build');
@@ -267,7 +273,8 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const manifestPath = path.join(pack, 'abuddy.json');
     const original = fs.readFileSync(manifestPath, 'utf-8');
     const manifest = JSON.parse(original);
-    manifest.features[0].id = 'notes_v2';
+    // A feature id becomes a name in generated code, so an underscore is one the installer rejects
+    manifest.features = { notes_v2: Object.values(manifest.features)[0] };
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
     try {
       for (const args of [['build'], ['pack', '--out', path.join(tmp, 'invalid-out')], ['generate-entries', '--force']]) {

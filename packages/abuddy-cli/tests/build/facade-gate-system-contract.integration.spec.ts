@@ -20,7 +20,7 @@ const MANIFEST: PackManifest = {
   id: 'entry-pack',
   name: 'Entry',
   version: '1.0.0',
-  features: [{ id: 'tags', system: { entry: 'src/system.ts', contract: 'src/contract.ts#Contract' } }],
+  features: { tags: { system: { entry: 'src/system.ts', contract: 'src/contract.ts#Contract' } } },
 } as PackManifest;
 
 const CONTRACT = [

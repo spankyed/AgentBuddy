@@ -7,10 +7,22 @@
 
 import type { AnyStateMachine } from 'xstate';
 
-export interface PackMigration {
-  target: string;
+/**
+ * A migration a pack's module exports. **It does not name the version it targets** — the manifest key does
+ * (`"migrations": { "0.3.15": "src/migrations/0.3.15.ts#migration" }`), and codegen supplies it from there.
+ *
+ * Two sources for one fact is what that avoids: a `target` in the file and a version in the filename could
+ * disagree, and nothing read the filename, so the one that counted was invisible. The key is now the only
+ * place the version is written, and a key that is not a version is refused by the schema.
+ */
+export interface DeclaredMigration {
   description: string;
   up: () => void;
+}
+
+/** A migration as the runners take it: a `DeclaredMigration` with the version it targets */
+export interface PackMigration extends DeclaredMigration {
+  target: string;
 }
 
 /**

@@ -19,7 +19,7 @@ Whichever `abuddy` you run, inside a pack it hands off to the `@abuddy/cli` vers
 |---|---|
 | `@abuddy/sdk` | Pack-facing API and types (`@abuddy/sdk/fe`, `/steps`, `/events`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod) and the AI SDK (`ai` 7, whose types `services.inference` uses) are peer dependencies, and so is TypeScript (5.7 or later). |
 | `@abuddy/ears` | The EARS data engine: what the generated `#generated/ears` and `#generated/repository` build on, and the untyped API packs import directly (`untypedQx`, `tx`, `findRelations`, graph and blueprint helpers, `RepositoryError`; `createEarsEngine` for tests and tooling). The app shares one instance with every pack, as it does `@abuddy/sdk`. A dependency of every pack. |
-| `@abuddy/ui` | Vue components, tiptap and Monaco editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`). Add it when your pack's UI uses them; it brings the editor libraries, so backend-only packs leave it out. Packs use the app's copy at runtime (see `fe.bundleUi` in the manifest docs). |
+| `@abuddy/ui` | Vue components, tiptap and Monaco editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`). Add it when your pack's UI uses them; it brings the editor libraries, so backend-only packs leave it out. Packs use the app's copy at runtime (see `build.bundleUi` in the manifest docs). |
 | `@abuddy/cli` | The `abuddy` command and build toolchain. A devDependency of every pack. |
 | `@abuddy/testing` | Pack tests: `@abuddy/testing/harness` runs a pack's content, systems, services and flows in unit tests without the app, `@abuddy/testing/vitest` configures Vitest for it (`isolatedDataDir`), and `@abuddy/testing` is the Playwright fixture for E2E tests in the app (`@playwright/test` is a peer). |
 
@@ -50,10 +50,8 @@ my-pack/
     env.d.ts
     features/
       notes/                # added by `abuddy add feature notes`: settings.ts, be/, fe/
-    extensions/
-      steps/
-        register.ts         # Step registration barrel
-        build.ts            # Build-only step facets, shipped to packs that depend on yours
+    extensions/             # added by `abuddy add step|artifact|block`: one directory each,
+                            # declared in abuddy.json's `extensions` — there is no barrel
     content/
       actions/
       flows/
@@ -165,7 +163,7 @@ abuddy clean      # Remove dist/, .abuddy/, __generated__/
 
 ## Constraints
 
-- Some manifest fields are for built-in packs only: validation rejects `content.sources.settings` in an external pack, and the app ignores an external pack's `features[].references`.
+- Some manifest fields are for built-in packs only: validation rejects `content.sources.settings` in an external pack, and the app ignores an external pack's `features.<id>.references`.
 - Entity types, relation kinds and service keys must be unique across all installed packs, or the pack fails to load. Service keys also can't be the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`).
 - The app must be restarted after installing or uninstalling a pack.
 

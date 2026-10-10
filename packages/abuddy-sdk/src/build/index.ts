@@ -41,10 +41,10 @@ export type {
   PackManifest, PackTypeManifest, PackSnapshot, PackFlowHelpers, PackPermission,
   PackProvenance, ProvenanceKind, ProvenanceManifest, ProvenanceSource,
   PackSystemEntry, PackPluginEntry,
-  PackFeatureEntry, PackBootConfig, ContentSourceConfig, ContentFormatConfig,
+  PackFeatureEntry, PackFeature, PackBootConfig, ContentSourceConfig, ContentFormatConfig,
   StepEntry, StepDSLMeta,
 } from './manifest.ts';
-export { contentFile, contentPath, CONTENT_COMPILERS_FILE, PROVENANCE_KINDS, PACK_SNAPSHOT_FORMAT, _snapshotFormatMismatch, _cliFormatMismatchMessage, type SnapshotFormatMismatch, _mergeProvenance, _buildProvenance, _provenanceRecord } from './manifest.ts';
+export { packFeatures, contentFile, contentPath, CONTENT_COMPILERS_FILE, PROVENANCE_KINDS, PACK_SNAPSHOT_FORMAT, _snapshotFormatMismatch, _cliFormatMismatchMessage, type SnapshotFormatMismatch, _mergeProvenance, _buildProvenance, _provenanceRecord } from './manifest.ts';
 
 // Flow DSL helpers (track builders)
 export { entry, on } from './flow-helpers.ts';
@@ -54,7 +54,7 @@ export type { ActionMeta, PromptMeta } from './content-types.ts';
 
 // Entry codegen
 export {
-  generatePackFiles, emitEARS, mergeRegistries, entitiesWithoutShapes, PACK_TYPES_DEF,
+  generatePackFiles, emitEARS, mergeRegistries, entitiesWithoutShapes, PACK_TYPES_DEF, STEPS_BUILD_MODULE,
   _depTypesFile, _depTypesVersion,
 } from './generate-entries.ts';
 export type { GenerateEntriesOptions } from './generate-entries.ts';

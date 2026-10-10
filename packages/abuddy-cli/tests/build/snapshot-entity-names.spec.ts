@@ -63,8 +63,8 @@ describe('a built pack\'s snapshot', () => {
     const dependency = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages/default-setup/abuddy.json'), 'utf-8'));
     // Recorded under the id each plugin runs under, so a pack that reuses one of its dependency's
     // feature ids has both recorded, each to its owner
-    const owned = (dependency.features ?? []).filter((f: { plugin?: unknown }) => f.plugin)
-      .map((f: { id: string }) => `default-setup/${f.id}`);
+    const owned = Object.entries(dependency.features ?? {}).filter(([, f]: [string, any]) => f.plugin)
+      .map(([id]) => `default-setup/${id}`);
     const recorded = JSON.parse(fs.readFileSync(snapshotFile(fixture)!, 'utf-8')).provenance?.plugins ?? {};
     expect(owned.length).toBeGreaterThan(0);
     for (const id of owned) {

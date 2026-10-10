@@ -116,7 +116,7 @@ const displayEvents = computed(() =>
         : event.eventType,
       kindLabel: triggerType === 'listener'
         ? event.scope
-        : (stepRegistry.getFE(triggerType)?.nodeConfig?.label || triggerType),
+        : (stepRegistry.getNode(triggerType)?.label || triggerType),
       iconClass: active ? theme.activeIconClass : theme.idleIconClass,
       iconBgClass: active ? theme.activeBgClass : theme.idleBgClass,
     };

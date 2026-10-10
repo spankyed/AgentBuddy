@@ -77,10 +77,10 @@ it('leaves bare only specifiers the host publishes a module for', async () => {
   }
 });
 
-// fe.bundleUi is the opt-out, and it opts out of @abuddy/ui alone: a pack carrying its own UI kit still has
+// build.bundleUi is the opt-out, and it opts out of @abuddy/ui alone: a pack carrying its own UI kit still has
 // to share ProseMirror and tiptap's Vue menus, which is where "two ProseMirror instances" actually comes from.
-it('inlines @abuddy/ui with fe.bundleUi, and still shares what @abuddy/ui depends on', async () => {
-  const externals = await buildFE({ fe: { bundleUi: true } }, [
+it('inlines @abuddy/ui with build.bundleUi, and still shares what @abuddy/ui depends on', async () => {
+  const externals = await buildFE({ build: { bundleUi: true } }, [
     "export { useDebounce } from '@abuddy/ui/composables/useDebounce';",
     "export { EditorState } from '@tiptap/pm/state';",
   ].join('\n'));

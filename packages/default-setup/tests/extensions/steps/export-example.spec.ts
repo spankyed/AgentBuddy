@@ -21,7 +21,7 @@ import { ROOT_FLOW_ROLE } from '@abuddy/sdk'
 import { importFlows } from '@abuddy/testing/harness'
 import { population } from '@abuddy/sdk/testing'
 import { startTestRuntime } from '@abuddy/sdk/testing'
-import { steps as registeredSteps } from '#extensions/steps/register.ts'
+import { steps as registeredSteps } from '#generated/steps-build.ts'
 import { EVERY_STEP_FLOW } from '../../_support/every-step-flow.ts'
 
 startTestRuntime()

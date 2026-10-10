@@ -33,7 +33,7 @@ function pack(id: string, entities: Record<string, string>, dependencies: Record
 
 /** A feature with a system and a plugin, so dependents have something to send to */
 const NOTIFIER = {
-  features: [{ id: 'notifier', system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { entry: 'src/plugin.ts' } }],
+  features: { notifier: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { entry: 'src/plugin.ts' } } },
 };
 const NOTIFIER_SOURCES = {
   'src/system.contract.ts': [

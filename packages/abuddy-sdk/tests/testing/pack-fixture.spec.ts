@@ -18,8 +18,9 @@ describe('packFixture', () => {
   it('declares a feature whose every entry and contract is a file that is there', () => {
     const dir = packFixture();
 
-    const declared = (read(dir, 'abuddy.json').features as Record<string, { entry: string; contract: string }>[])
-      .flatMap((feature) => [feature.plugin, feature.system])
+    const features = read(dir, 'abuddy.json').features as Record<string, Record<string, { entry: string; contract: string }>>;
+    const declared = Object.values(features)
+      .flatMap((feature) => [feature.plugin!, feature.system!])
       .flatMap((half) => [half.entry, half.contract.split('#')[0]!]);
 
     population('the paths the fixture manifest declares', declared, { atLeast: 4 });
@@ -48,8 +49,8 @@ describe('packFixture', () => {
   it('varies the default manifest, keeping what the case is not about', () => {
     const written = read(packFixture({ manifest: { id: 'other' } }), 'abuddy.json');
     expect(written.id).toBe('other');
-    expect(written.features, 'the feature the default declares is what makes a contract rule able to fire')
-      .toHaveLength(1);
+    expect(Object.keys(written.features), 'the feature the default declares is what makes a contract rule able to fire')
+      .toEqual(['memos']);
   });
 
   it('writes a manifest verbatim when the manifest is the subject', () => {

@@ -6,6 +6,7 @@ import type { PackManifest } from './manifest.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import { _mergeStepDefinitions } from '../steps/merge.ts';
 import { resolveContentSources, type ContentDependency } from './content/resolve.ts';
+import { STEPS_BUILD_MODULE } from './generate-entries.ts';
 
 function findExportedArray(mod: Record<string, unknown>): unknown[] | null {
   for (const value of Object.values(mod)) {
@@ -48,7 +49,7 @@ function mergeStep(steps: Map<string, StepDefinition>, def: StepDefinition): voi
 
 /**
  * The definitions a pack compiles with: its dependencies' steps (their build/steps.build.mjs), then its own
- * steps, artifacts and blocks. A pack step whose type a dependency defines throws.
+ * steps, plus the artifacts and blocks its manifest declares. A pack step whose type a dependency defines throws.
  */
 async function loadPackDefinitions(manifest: PackManifest, packDir: string, dependencyStepModules: readonly string[]): Promise<PackBuildDefinitions> {
   const steps = new Map<string, StepDefinition>();
@@ -65,28 +66,33 @@ async function loadPackDefinitions(manifest: PackManifest, packDir: string, depe
     }
   }
 
-  const loadArray = async (relPath: string | undefined, label: string): Promise<unknown[]> => {
-    if (!relPath) return [];
-    const fullPath = path.resolve(packDir, relPath);
-    if (!fs.existsSync(fullPath)) {
-      console.warn(`Warning: ${label} file not found at ${relPath}`);
-      return [];
+  // Build-only facets, so the CLI loads no runtime or FE code (Vue components) to validate a flow. Codegen
+  // writes this module from the manifest's `steps` and writes none for a pack that declares no step — so
+  // a pack with none has nothing to load, while a module missing beside a declared step means codegen has
+  // not run, which is a build that would otherwise validate its flows against no step definitions at all.
+  const declaredSteps = Object.keys(manifest.extensions?.steps ?? {});
+  if (declaredSteps.length) {
+    const generated = path.resolve(packDir, STEPS_BUILD_MODULE);
+    if (!fs.existsSync(generated)) {
+      throw new Error(
+        `${STEPS_BUILD_MODULE} is missing and the manifest declares ${declaredSteps.length} step(s) `
+        + `(${declaredSteps.join(', ')}). Run "abuddy generate-entries".`,
+      );
     }
-    return findExportedArray(await import(pathToFileURL(fullPath).href)) ?? [];
-  };
-
-  // Build-only definitions avoid loading runtime and FE code (Vue components) in the CLI
-  for (const step of await loadArray(manifest.steps?.build ?? manifest.steps?.register, 'steps') as StepDefinition[]) {
-    const dependency = dependencyStepTypes.get(step.type);
-    if (dependency) {
-      throw new Error(`Step type "${step.type}" is defined by this pack and by a dependency (${dependency}); rename this pack's step`);
+    for (const step of (findExportedArray(await import(pathToFileURL(generated).href)) ?? []) as StepDefinition[]) {
+      const dependency = dependencyStepTypes.get(step.type);
+      if (dependency) {
+        throw new Error(`Step type "${step.type}" is defined by this pack and by a dependency (${dependency}); rename this pack's step`);
+      }
+      mergeStep(steps, step);
     }
-    mergeStep(steps, step);
   }
 
   return {
     steps: [...steps.values()],
-    artifacts: await loadArray(manifest.artifacts, 'artifacts') as PackBuildDefinitions['artifacts'],
-    blocks: await loadArray(manifest.blocks, 'blocks') as PackBuildDefinitions['blocks'],
+    // Both are declared outright in the manifest, so nothing is loaded for either: what a build needs of an
+    // artifact or a block is its type and, for a block, its kind. The facets are code only a running app reaches
+    artifacts: Object.keys(manifest.extensions?.artifacts ?? {}).map((type) => ({ type })),
+    blocks: Object.entries(manifest.extensions?.blocks ?? {}).map(([type, entry]) => ({ type, kind: entry.kind })),
   };
 }

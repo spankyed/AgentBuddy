@@ -2,7 +2,7 @@ import type { LogsSettings } from '#generated/types.ts';
 import { services } from '#generated/services.ts';
 import { untypedTx, untypedQx } from '@abuddy/ears';
 import { EARS } from '#generated/ears.ts';
-import type { PackMigration } from '@abuddy/sdk/framework';
+import type { DeclaredMigration } from '@abuddy/sdk/framework';
 import { createLogger } from '@abuddy/sdk/logger';
 import { ref, type FeatureName } from '#generated/ref.ts';
 import { addressLinkBlocks, refOf0314Feature } from './bare-feature-ids.ts';
@@ -15,8 +15,7 @@ const logger = createLogger('migrations');
 /** This pack's id: what a feature's plugin and system ids are prefixed with */
 const PACK_ID = 'default-setup';
 
-export const migration: PackMigration = {
-  target: '0.3.15',
+export const migration: DeclaredMigration = {
   description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, unwrap general.projects, point stored link blocks at plugins' refs, and give library rows the short codes and display orders the library used to backfill on every connection",
   up: () => {
     // ── The app's state (onboarding, versions, content revisions) is the host's AppState now ──

@@ -119,13 +119,13 @@ export const registration: PackRegistration = {
   ears?: PackEARS;                 // entities, relKinds
   boot?: PackBootHooks;            // onInit/onShutdown (boot.hooks)
   migrations?: PackMigration[];    // { target, description, up }
-  repositories?: Record<string, unknown>;  // features[].repositories, registered with the app's engine
+  repositories?: Record<string, unknown>;  // features.<id>.repositories, registered with the app's engine
   steps?: StepDefinition[];
   artifacts?: ArtifactDefinition[];
   blocks?: BlockDefinition[];
   content.writers?: Record<string, ContentWriter>;  // abuddy.json `content.writers`, keyed by entity type
   appliers?: ContentApplier[];              // one per content.sources key, which applying the pack's compiled content runs
-  commands?: PackCommand[];        // abuddy.json `commands`
+  commands?: PackCommand[];        // abuddy.json `extensions.commands`
 };
 ```
 
@@ -147,7 +147,7 @@ export default {
   appExtensions?: Record<string, Component>;
   artifacts?: ArtifactDefinition[];
   blocks?: BlockDefinition[];
-  dslTypes?: Record<string, DslTypeConfig>;  // abuddy.json `dsl` entries with a `monaco` target
+  dslTypes?: Record<string, DslTypeConfig>;  // abuddy.json `extensions.dsl` entries with a `monaco` target
 } satisfies PackFERegistration;
 ```
 
@@ -230,7 +230,7 @@ Components, editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/
 
 At runtime your pack uses the app's copy: `abuddy build` turns `@abuddy/ui` imports into references to the modules the app exposes, the same way it handles the shared SDK modules. Your `fe.js` stays small, and stateful modules (the Monaco configuration, editor extensions) have one instance across the app. `@abuddy/ui` changes follow semver, and your pack's `hostVersion` states which apps it runs in.
 
-To ship your own copy instead, set `fe.bundleUi` in `abuddy.json`. All of `@abuddy/ui` is then bundled into `fe.js`, so the pack never mixes its copy with the app's.
+To ship your own copy instead, set `build.bundleUi` in `abuddy.json`. All of `@abuddy/ui` is then bundled into `fe.js`, so the pack never mixes its copy with the app's.
 
 ### Backend: the module bridge
 
@@ -295,7 +295,7 @@ The policy is `appPartitionPolicy()` (`@abuddy/host/database`), a constant over 
 | `events.ts` | `SendablePluginEvents` (plugin ID -> the events it receives: its own feature's system's, plus the inbox that plugin's `Contract` declares), `PackSystemEvents`, and the typed `broadcastToPlugin` (backend, every window), `sendToPlugin` (renderer, this window) and `sendToSystem` |
 | `types.ts` | Type barrel: each feature's `typesEntry` and step node types |
 | `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the typed `services` proxy (with dependencies' services). `Services` types `services.emitter` as `PackEmitter`, with this pack's plugin and system events |
-| `repository.ts` | `repository`, typed with the repositories declared in `features[].repositories` and dependencies' |
+| `repository.ts` | `repository`, typed with the repositories declared in `features.<id>.repositories` and dependencies' |
 | `repositories.ts` | This pack's repositories by name, which `pack-entry.ts` puts in the registration (the host registers them with the app's engine) |
 | `pack-types.ts` | The facade types `abuddy build` bundles into `dist/types/pack-types.d.ts` for dependents |
 | `deps/<id>.d.ts` | Each dependency's facade types, from its snapshot. Its header names the version (`// <id>@<version> facade types`); `abuddy build` warns when the dependency it builds with is another version |
@@ -331,7 +331,7 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 | Services | Yes | Stateless modules |
 | EARS entities/relations | Yes | With collision detection |
 | Migrations | Yes | Targeted at the pack's own version, run at boot |
-| `content.sources.settings` | No | Feature defaults go in `features[].settings` |
+| `content.sources.settings` | No | Feature defaults go in `features.<id>.settings` |
 | `builtIn` | No | Reserved for the default pack |
 
 ## Build-time dependency resolution

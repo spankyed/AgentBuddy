@@ -1,7 +1,17 @@
 import { stepRegistry, type StepDefinition } from '@abuddy/sdk/steps';
 import { testPacks } from '@abuddy/sdk/testing';
-import { listenerTrigger } from '#extensions/steps/listener/index.ts';
-import { scheduleTrigger } from '#extensions/steps/schedule/index.ts';
+import { steps as buildSteps } from '#generated/steps-build.ts';
+import { listenerTriggerFE } from '#extensions/steps/listener/fe.ts';
+import { scheduleTriggerFE } from '#extensions/steps/schedule/fe.ts';
+import { listenerTriggerNode } from '#extensions/steps/listener/build.ts';
+import { scheduleTriggerNode } from '#extensions/steps/schedule/build.ts';
+
+// Each facet is read from the module that declares it. No definition is composed here: a step's facets go
+// to different registrations — `build` and `node` to the backend's, `fe` and `node` to the frontend's — and
+// a literal assembling all of them is a shape no process ever holds, which is what this spec used to assert
+// against. The registry block below reads what the pack really registered instead.
+const listenerTrigger = buildSteps.find(s => s.type === 'listener')!;
+const scheduleTrigger = buildSteps.find(s => s.type === 'schedule')!;
 
 // Steps a test registers go in the test runtime's stand-in, over the pack's registered ones
 const register = (step: StepDefinition) => testPacks.steps.set(step.type, step);
@@ -102,16 +112,18 @@ describe('listener trigger definition', () => {
 
   describe('fe facet', () => {
     it('has trigger category and correct color', () => {
-      expect(listenerTrigger.fe!.nodeConfig.category).toBe('trigger');
-      expect(listenerTrigger.fe!.colorKey).toBe('blue');
+      expect(listenerTriggerFE.nodeConfig.category).toBe('trigger');
+      expect(listenerTriggerFE.colorKey).toBe('blue');
     });
 
     it('has no-input connection rules', () => {
-      expect(listenerTrigger.fe!.nodeConfig.connectionRules).toEqual({ inputs: 0, outputs: -1 });
+      expect(listenerTriggerFE.nodeConfig.connectionRules).toEqual({ inputs: 0, outputs: -1 });
     });
+  });
 
-    it('provides defaults', () => {
-      expect(listenerTrigger.fe!.defaults).toEqual({ scope: 'global', eventType: '' });
+  describe('node facet', () => {
+    it('provides the fields a new listener node starts with', () => {
+      expect(listenerTriggerNode.defaults).toEqual({ scope: 'global', eventType: '' });
     });
   });
 });
@@ -202,12 +214,14 @@ describe('schedule trigger definition', () => {
 
   describe('fe facet', () => {
     it('has trigger category and cyan color', () => {
-      expect(scheduleTrigger.fe!.nodeConfig.category).toBe('trigger');
-      expect(scheduleTrigger.fe!.colorKey).toBe('cyan');
+      expect(scheduleTriggerFE.nodeConfig.category).toBe('trigger');
+      expect(scheduleTriggerFE.colorKey).toBe('cyan');
     });
+  });
 
-    it('provides cronExpression default', () => {
-      expect(scheduleTrigger.fe!.defaults).toEqual({ cronExpression: '0 * * * *' });
+  describe('node facet', () => {
+    it('provides the cronExpression a new schedule node starts with', () => {
+      expect(scheduleTriggerNode.defaults).toEqual({ cronExpression: '0 * * * *' });
     });
   });
 });
@@ -246,9 +260,14 @@ describe('step registry integration', () => {
     expect(stepRegistry.getTrigger('action')).toBeUndefined();
   });
 
-  it('getFE returns FE facet for triggers', () => {
-    expect(stepRegistry.getFE('listener')?.colorKey).toBe('blue');
-    expect(stepRegistry.getFE('schedule')?.colorKey).toBe('cyan');
+  // What the *pack* registered, not what this file put in the stand-in: the backend registration carries
+  // `node`, which is what `createNodeDefaults` reads, and carries no `fe` — that one is the renderer's.
+  it('the registered triggers carry their node facet and no frontend facet', () => {
+    testPacks.steps.clear();
+
+    expect(stepRegistry.getNode('listener')?.label).toBe('Listener');
+    expect(stepRegistry.getNode('schedule')?.defaults).toEqual({ cronExpression: '0 * * * *' });
+    expect(stepRegistry.getFE('schedule')).toBeUndefined();
   });
 
   it('compile/decompile roundtrip for listener', () => {

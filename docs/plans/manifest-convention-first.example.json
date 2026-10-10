@@ -1,0 +1,310 @@
+{
+  "$schema": "../abuddy-sdk/abuddy.schema.json",
+  "id": "default-setup",
+  "name": "Default Setup",
+  "version": "0.1.0",
+  "description": "The official AgentBuddy starter pack. Provides core entity types, backend systems, services, frontend plugins, artifacts, content data, message blocks, and default settings.",
+  "license": "MIT",
+  "builtIn": true,
+  "hostVersion": ">=0.3.0",
+  "data": {
+    "relations": [
+      "parent_of",
+      "has",
+      "relates_to"
+    ]
+  },
+  "features": {
+    "threads": {
+      "about": "Chat threads, their messages and the artifacts a conversation produces",
+      "role": "threads",
+      "entities": {
+        "Thread": "ThreadEntity",
+        "Message": "MessageEntity",
+        "Artifact": "ArtifactEntity"
+      },
+      "opens": true
+    },
+    "code": {
+      "about": "Terminals, the Claude Code and Codex CLIs, and the editor around them",
+      "entities": {
+        "Terminal": "be/repository/index.ts#TerminalEntity"
+      }
+    },
+    "notes": {
+      "about": "The user’s notes, as a tree",
+      "entities": {
+        "Note": "NoteEntity"
+      }
+    },
+    "browser": {
+      "about": "The in-app browser: tabs and bookmarks",
+      "role": "browser",
+      "entities": {
+        "BrowserTab": "BrowserTabEntity",
+        "BrowserBookmark": "BrowserBookmarkEntity"
+      }
+    },
+    "library": {
+      "about": "Documents and collections, with the search index over them",
+      "entities": {
+        "Document": "DocumentEntity",
+        "Collection": "CollectionEntity",
+        "SearchIndex": null,
+        "IndexedDoc": null
+      }
+    },
+    "flows": {
+      "about": "Authoring and running flows"
+    },
+    "actions": {
+      "about": "Authoring the actions a flow step runs"
+    },
+    "prompts": {
+      "about": "Authoring the prompts an LLM step sends"
+    },
+    "brain": {
+      "about": "Runs flows: spawns their steps, tracks them and schedules their triggers",
+      "role": "brain"
+    },
+    "database": {
+      "about": "Reading and writing the app’s database directly"
+    },
+    "logs": {
+      "about": "The app’s log stream",
+      "role": "logs"
+    }
+  },
+  "extensions": {
+    "steps": {
+      "action": {
+        "runs": "async"
+      },
+      "llm": {
+        "arg": "prompt",
+        "runs": "async"
+      },
+      "fire": {
+        "arg": "event",
+        "runs": "handler"
+      },
+      "subflow": {
+        "arg": "flow",
+        "runs": "subflow"
+      },
+      "query": {
+        "arg": "prompt",
+        "runs": "async"
+      },
+      "create": {
+        "arg": "entity",
+        "runs": "async"
+      },
+      "update": {
+        "arg": "target",
+        "runs": "async"
+      },
+      "transform": {
+        "arg": "script",
+        "runs": "async"
+      },
+      "keep_alive": {
+        "runs": "waits"
+      },
+      "kill": {
+        "label": "Kill Flow",
+        "runs": "sync"
+      },
+      "switch": {
+        "runs": "handler"
+      },
+      "schedule": {
+        "kind": "trigger"
+      },
+      "listener": {
+        "kind": "trigger"
+      }
+    },
+    "artifacts": {
+      "text": "FileText",
+      "code": "Code",
+      "review": "CheckSquare",
+      "image": "Image",
+      "slack": "MessageSquare",
+      "todo": "ListTodo",
+      "project": "Layers",
+      "json": "FileText",
+      "graph": "Network",
+      "table": "Table",
+      "markdown": "BookText",
+      "claude-session": "Wrench",
+      "codex-session": "Bot",
+      "diff": "GitBranch",
+      "plan": "ClipboardList",
+      "note": "StickyNote"
+    },
+    "blocks": {
+      "prompt": "display",
+      "note": "display",
+      "markdown": "display",
+      "link": "display",
+      "tool-activity": "display",
+      "thinking": "display",
+      "tool-input": "display",
+      "context-usage": "display",
+      "session-list": "display",
+      "actions": "input",
+      "toggles": "input",
+      "file-picker": "input",
+      "choice": "input",
+      "text": "input",
+      "approval": "input",
+      "button-group": "input",
+      "question": "input",
+      "project-select": "input"
+    },
+    "commands": {
+      "pr2md": "PR number or GitHub URL (optional)",
+      "instructions": "Thread instructions text"
+    },
+    "dsl": {
+      "action": {
+        "prefix": "action:",
+        "inline": [
+          "ai",
+          "@ai-sdk/provider",
+          "@ai-sdk/provider-utils",
+          "@ai-sdk/gateway",
+          "@standard-schema/spec"
+        ],
+        "globals": {
+          "services": "typeof _dsl.services",
+          "z": "typeof _dsl.z",
+          "flowId": "string"
+        }
+      },
+      "prompt": {
+        "prefix": "prompt:",
+        "globals": {
+          "usePrompt": "typeof _dsl.usePrompt"
+        }
+      },
+      "database": {
+        "prefix": "database:",
+        "globals": {
+          "EARS": "typeof _dsl.EARS",
+          "qx": "typeof _dsl.qx",
+          "getAllEntities": "typeof _dsl.getAllEntities",
+          "getAll": "typeof _dsl.getAll",
+          "queryEntitiesByRelationTo": "typeof _dsl.queryEntitiesByRelationTo",
+          "getAttr": "typeof _dsl.getAttr",
+          "getAttrs": "typeof _dsl.getAttrs",
+          "getRoles": "typeof _dsl.getRoles",
+          "getEntitiesOfType": "typeof _dsl.getEntitiesOfType",
+          "queryEntitiesByAttribute": "typeof _dsl.queryEntitiesByAttribute",
+          "queryEntitiesInRelationTo": "typeof _dsl.queryEntitiesInRelationTo",
+          "findRelations": "typeof _dsl.findRelations",
+          "getRelationStats": "typeof _dsl.getRelationStats",
+          "getSchemaStats": "typeof _dsl.getSchemaStats",
+          "tx": "typeof _dsl.tx",
+          "destroyEntity": "typeof _dsl.destroyEntity",
+          "prepareEntity": "typeof _dsl.prepareEntity",
+          "createEntityWithDefaults": "typeof _dsl.createEntityWithDefaults",
+          "updateEntity": "typeof _dsl.updateEntity",
+          "createRelation": "typeof _dsl.createRelation",
+          "removeRelation": "typeof _dsl.removeRelation",
+          "removeRelationById": "typeof _dsl.removeRelationById",
+          "grantRole": "typeof _dsl.grantRole",
+          "revokeRole": "typeof _dsl.revokeRole"
+        }
+      }
+    },
+    "app": [
+      "welcome"
+    ]
+  },
+  "content": {
+    "sources": {
+      "actions": {
+        "onUserEdit": "offer"
+      },
+      "prompts": {
+        "onUserEdit": "offer"
+      },
+      "flows": {
+        "onUserEdit": "offer"
+      },
+      "library": {
+        "format": "library"
+      },
+      "notes": {
+        "format": "notes"
+      }
+    },
+    "compiled": {
+      "faqs": {
+        "format": "faqs"
+      }
+    },
+    "formats": {
+      "notes": {
+        "format": "markdown-tree",
+        "entity": "Note",
+        "identity": [
+          "title",
+          "parent"
+        ],
+        "tree": {
+          "branch": "index.md",
+          "relKind": "contains"
+        },
+        "fields": {
+          "title": {
+            "from": "frontmatter.title",
+            "default": "filename",
+            "type": "string"
+          },
+          "noteType": {
+            "from": "frontmatter.type"
+          },
+          "icon": {
+            "from": "frontmatter.icon",
+            "default": null,
+            "type": "string"
+          },
+          "favorite": {
+            "from": "frontmatter.favorite"
+          },
+          "hideCompletedChildren": {
+            "from": "frontmatter.hideCompletedChildren"
+          },
+          "completed": {
+            "from": "frontmatter.completed"
+          },
+          "content": {
+            "from": "body"
+          }
+        }
+      },
+      "library": {
+        "compiler": "src/content/_compilers/library.ts",
+        "entity": [
+          "Collection",
+          "Document"
+        ],
+        "identity": [
+          "name"
+        ],
+        "media": "media"
+      },
+      "faqs": {
+        "compiler": "src/content/_compilers/faqs.ts"
+      }
+    }
+  },
+  "build": {
+    "opaqueDeps": [
+      "elkjs"
+    ]
+  }
+}
