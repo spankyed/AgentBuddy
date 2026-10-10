@@ -31,7 +31,8 @@ Commands:
   db <command>        Query, export, import or reset the app's database (AgentBuddy closed)
   info                Show pack summary
   doctor              Run health checks
-  profiles           List every AgentBuddy data dir; create, rename or remove a profile
+  profiles            List every AgentBuddy data dir; create, rename or remove a profile,
+                      trim the caches Chromium rebuilds, or stop the app running on one
   clean [--apps]      Remove this pack's build output, or the downloaded Beta builds
 
 Options:

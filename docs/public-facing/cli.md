@@ -644,12 +644,31 @@ abuddy profiles new [name]       create one; a name is minted if you don't give 
 abuddy profiles rename <a> <b>   rename one
 abuddy profiles rm <name>...     remove the ones you name
 abuddy profiles rm --leaked      remove the ones a killed run left behind
+abuddy profiles trim [<name>...] reclaim the caches Chromium rebuilds, in any data dir
+abuddy profiles stop <name>      close the app running on one (or --all)
 ```
 
 Two kinds of directory, listed apart. An **environment** is where an app of that channel keeps its data —
 production, beta, development, test — and nothing here removes one; a row says whether an app has it open,
 what version last wrote to it, and `(no app data)` when the directory holds only a Chromium profile. A
 **profile** is a data dir you can throw away.
+
+**`trim` is how you get the disk back, including from an environment nothing removes.** Nearly all of a data
+dir is Chromium's cache: measured on the author's machine, `trim` freed **1.3GB of a 1.6GB development dir**,
+where the app's own data was 5MB. It removes seven directories by name — `Cache`, `Code Cache`, `GPUCache`,
+`DawnGraphiteCache`, `DawnWebGPUCache`, `Shared Dictionary`, `blob_storage` — and nothing else, so it needs
+no confirmation: your notes, settings, installed packs and the in-app browser's logins are all untouched. It
+skips a dir an app is running on, since those files are open. With no names it does every dir there is.
+
+It is deliberately not a sweep by size, and production is why: the same run freed only **13MB of its 1.4GB**,
+because 666MB of that is the in-app browser's logged-in sessions and the rest is your media and database.
+Those are yours to decide about, so no command here deletes them — `abuddy db export` first, then
+`abuddy db reset --force` if you mean it.
+
+**`stop` closes the app on a data dir**, by name or `--all`. The pid comes from what the app published about
+itself, never from a search for a matching process, and it prefers the record naming the process that closes
+the app *and* cleans up after it. The listing already tells you which pid holds a dir; this is the verb that
+ends it.
 
 Sizes are behind a flag because taking them means walking every directory: measured, 674ms for a 1.4GB
 production dir and 1255ms for a 1.5GB development one. Names and paths come back immediately.

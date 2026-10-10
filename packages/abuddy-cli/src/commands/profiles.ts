@@ -19,14 +19,15 @@
  * is the one thing that is safe to do to an environment nothing may remove.
  */
 import * as fs from 'node:fs';
-import { _appDirOf, APP_ENVS, appDataDirFor, type AppEnv } from '@abuddy/sdk/env';
+import { _appDirOf, APP_ENVS, appDataDirFor, resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
 import { readHostInfo } from '@abuddy/host/packs';
 import { readSession } from '@abuddy/host/dev-session';
+import { findRunningApp } from '@abuddy/host/database';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 import { cliDirs, type CliDirs } from '../app/app-target';
 import {
   dirBytes, profileInUse, profileNameProblem, listProfiles, mintProfile, openProfile,
-  removeProfile, renameProfile, size, trimDataDir, type ListedProfile,
+  endAppHolding, removeProfile, renameProfile, size, trimDataDir, type ListedProfile,
 } from '../app/profiles';
 
 const HELP = `
@@ -35,6 +36,7 @@ Usage: abuddy profiles [--sizes] [--all]
        abuddy profiles rename <from> <to>
        abuddy profiles rm <name>... | --leaked
        abuddy profiles trim [<build> | <name>]...
+       abuddy profiles stop <build> | <name> | --all
 
 List every AgentBuddy data dir on this machine: the environments an app of each channel uses, and the
 profiles you created. Works outside a pack — a data dir belongs to you rather than to any pack.
@@ -43,6 +45,9 @@ profiles you created. Works outside a pack — a data dir belongs to you rather 
 1.3GB of a 1.6GB development dir against 5MB of app data — from the dirs you name, or from every one of
 them. It never touches your data, your settings or the in-app browser's logins, so it takes no --force; it
 skips a dir an app is running on, because those files are open.
+
+\`stop\` closes the app running on a data dir. The listing names the process that ends one; this is the verb
+that ends it, so finding a pid in the listing and reaching for \`kill\` is not the last step.
 
 Options:
   --sizes        Add a size column. Off by default because it walks every directory: measured, 674ms for
@@ -259,6 +264,59 @@ export function trim(
   console.log(`\n  reclaimed ${size(freed)}${freed === 0 ? '' : ' — the app rebuilds what it needs'}\n`);
 }
 
+/**
+ * Closes the app running on a data dir, and waits for the dir to come free.
+ *
+ * **The pid comes from a record, never from a search**, which is the rule that makes this safe to ship: a
+ * session file's `supervisorPid` first, because that is the process whose teardown closes the app *and*
+ * cleans up after it — ending the Electron instead would free the data dir and leave a watcher and a dev
+ * server running with nothing to serve. Failing that, the app lock's pid, which is what a packaged app the
+ * user launched themselves publishes. Nothing here matches on a process name.
+ *
+ * **It exists because the listing already names the pid.** A command that tells you which process to signal
+ * and then leaves you to `kill` it has stopped one step short — and the step it leaves out is the one where
+ * a mistyped pid reaches something else entirely.
+ */
+export async function stop(
+  dirs: CliDirs, names: string[], all: boolean,
+  { resolve = appDataDirFor }: { resolve?: (env: AppEnv) => string } = {},
+): Promise<void> {
+  const targets = all ? dataDirsNamed(dirs, [], resolve) : dataDirsNamed(dirs, names, resolve);
+  const held = targets
+    .map(({ label, dir }) => ({ label, dir, pid: pidHolding(dir) }))
+    .filter((target): target is { label: string; dir: string; pid: number } => target.pid !== undefined);
+
+  if (held.length === 0) {
+    // Named rather than silent, because "it was already closed" and "I misspelled it" read the same from
+    // an empty answer, and only one of them is fine
+    console.log(`\n  no app is running on ${all ? 'any data dir' : targets.map((target) => target.label).join(', ')}\n`);
+    return;
+  }
+  console.log('');
+  for (const { label, dir, pid } of held) {
+    console.log(`  closing the app on ${label} (pid ${pid})...`);
+    await endAppHolding(dir, pid);
+    console.log(`    it has gone — ${dir}`);
+  }
+  console.log('');
+}
+
+/**
+ * The one process to signal to end whatever holds a data dir, or nothing.
+ *
+ * A session is preferred over the app lock for the reason `@abuddy/host/dev-session` records: its pid is
+ * the *holder*, which closes the app as part of going, where the lock's is the app alone.
+ */
+export function pidHolding(dir: string): number | undefined {
+  const session = readSession(dir);
+  if (session !== undefined) return session.supervisorPid;
+  // Through the resolver rather than a join of its own, for `profileInUse`'s reason: the API writes that
+  // file and a second opinion about where it is becomes a refusal that never fires. The build is immaterial
+  // — every path in the context is joined onto the dir it is given
+  const { apiPortFile } = resolveAppContext({ build: 'development', profile: dir });
+  return findRunningApp({ userDataDir: dir, apiPortFile })?.pid;
+}
+
 export async function profiles(args: string[]): Promise<void> {
   if (args.includes('--help') || args.includes('-h')) {
     console.log(HELP);
@@ -303,6 +361,14 @@ export async function profiles(args: string[]): Promise<void> {
     case 'trim':
       trim(dirs, rest);
       return;
+    case 'stop': {
+      const all = flags.includes('--all');
+      if (!all && rest.length === 0) {
+        throw new Error('abuddy profiles stop takes a build or a profile name, or --all for every app running.');
+      }
+      await stop(dirs, rest, all);
+      return;
+    }
     default:
       throw new Error(`Unknown subcommand "${subcommand}". See abuddy profiles --help.`);
   }

@@ -9,9 +9,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { _appDirOf, type AppEnv } from '@abuddy/sdk/env';
-import { create, environmentRows, list, remove, trim } from '../../src/commands/profiles';
+import { create, environmentRows, list, pidHolding, remove, stop, trim } from '../../src/commands/profiles';
 import { listProfiles, openProfile, REGENERABLE_DIRS } from '../../src/app/profiles';
 import { publishSession } from '@abuddy/host/dev-session';
+import { appLockFile } from '@abuddy/host/database';
 import type { CliDirs } from '../../src/app/app-target';
 
 let tmp: string;
@@ -332,5 +333,74 @@ describe('trim', () => {
 
     // Seven caches at the stubbed size
     expect(printed()).toMatch(/reclaimed 14kB/);
+  });
+});
+
+/**
+ * **`stop` exists because the listing already names the pid.** A command that tells you which process to
+ * signal and leaves you to `kill` it has stopped one step short, and the step it leaves out is where a
+ * mistyped pid reaches something else.
+ *
+ * What these cases hold is the pid's **source**, not the signalling: a record names it or nothing does.
+ * The process this spec signals is itself — `process.pid` with a signal it survives — so the subject is
+ * which record was read, which is the half that could be wrong.
+ */
+describe('stop', () => {
+  const occupy = (env: AppEnv, { session, lock }: { session?: number; lock?: number }) => {
+    const dir = resolve(env);
+    fs.mkdirSync(_appDirOf(dir), { recursive: true });
+    if (session !== undefined) publishSession({ debugPort: 1, dataDir: dir, supervisorPid: session, startedBy: 'dev' });
+    // Through `appLockFile` rather than a join: it is under the app dir, and a spec that joined its own
+    // path would be the second opinion `profileInUse`'s header records the cost of
+    if (lock !== undefined) fs.writeFileSync(appLockFile(dir), JSON.stringify({ pid: lock, machine: os.hostname() }));
+    return dir;
+  };
+
+  /**
+   * The session's pid wins, and the reason is in `@abuddy/host/dev-session`: it names the *holder*, whose
+   * teardown closes the app and cleans up after it, where the lock names the Electron alone. Ending the app
+   * would free the dir and leave a watcher and a dev server running with nothing to serve.
+   *
+   * **Two live pids, because both records have to be readable for the preference to mean anything** — a
+   * record naming a dead process is read as absent by design, so a dead pid in either slot would make this
+   * pass for the wrong reason. `process.kill` is deliberately **not** mocked: `lockIsHeld` signals 0 through
+   * it to ask whether a process exists, so a mock makes every pid look alive and the waiter spin for 20s.
+   */
+  it('takes the session holder rather than the app, when a session names one', () => {
+    const dir = occupy('development', { session: process.pid, lock: process.ppid });
+
+    expect(pidHolding(dir)).toBe(process.pid);
+  });
+
+  it('falls back to the app lock for an app that published no session', () => {
+    const dir = occupy('beta', { lock: process.ppid });
+
+    expect(pidHolding(dir)).toBe(process.ppid);
+  });
+
+  it('takes nothing from a record naming a process that has gone', () => {
+    expect(pidHolding(occupy('test', { lock: 999_999 }))).toBeUndefined();
+  });
+
+  /**
+   * Nothing to stop is said rather than shown as silence: "it was already closed" and "I misspelled it"
+   * read the same from an empty answer, and only one of them is fine.
+   */
+  it('says so when nothing is running, naming what it looked at', async () => {
+    await stop(dirs, ['development'], false, { resolve });
+
+    expect(printed()).toMatch(/no app is running on development/);
+  });
+
+  it('reports a dir whose record names a dead process as having no app', async () => {
+    occupy('development', { lock: 999_999 });
+
+    await stop(dirs, ['development'], false, { resolve });
+
+    expect(printed()).toMatch(/no app is running/);
+  });
+
+  it('refuses a name that is neither a build nor a profile', async () => {
+    await expect(stop(dirs, ['nope'], false, { resolve })).rejects.toThrow(/neither a build nor a profile/);
   });
 });

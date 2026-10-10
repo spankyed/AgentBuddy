@@ -12,12 +12,12 @@ import {
 import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
 import { reloadPack, type AppPlace, type DevReload } from '../build/dev-reload.ts';
 import { cliDirs, parseAppFlags, resolveLaunchApp, type AppTarget } from '../app/app-target';
-import { profileFor, parseProfileFlags, removeProfile, PROFILE_USAGE } from '../app/profiles';
+import { endAppHolding, profileFor, parseProfileFlags, removeProfile, PROFILE_USAGE } from '../app/profiles';
 import { copySecretsInto } from '../app/profile-secrets.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 import type { AppEnv } from '@abuddy/sdk/env';
-import { readApiEndpoint, lockIsHeld } from '@abuddy/host/process-liveness';
+import { readApiEndpoint } from '@abuddy/host/process-liveness';
 import { withoutSourceCondition } from '@abuddy/host/build/source-resolution';
 import { installPackFromLocal, readHostInfo } from '@abuddy/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
@@ -188,28 +188,6 @@ export interface IdleVerdict {
 export function idleVerdict(lastAttachedMs: number, nowMs: number, idleMs: number): IdleVerdict {
   const remaining = idleMs - (nowMs - lastAttachedMs);
   return remaining > 0 ? { reap: false, againInMs: remaining } : { reap: true, againInMs: 0 };
-}
-
-/**
- * Ends a supervisor whose pid came out of a session file, and waits for the data dir to be free.
- *
- * SIGTERM rather than SIGKILL: the supervisor's own handler closes the app it holds and lets LMDB shut down,
- * where a kill would leave the store to recover. What is waited for is the **app** going, not the signal
- * being delivered — the API's port file is what says the data dir is still held, and starting a second
- * Electron before it clears is the whole failure this exists to prevent.
- */
-async function endSupervisor(pid: number, timeoutMs = 20_000): Promise<void> {
-  try {
-    process.kill(pid, 'SIGTERM');
-  } catch {
-    // Already gone between reading the file and signalling it, which is a miss rather than a problem
-  }
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (!lockIsHeld(pid)) return;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  throw new Error(`The app a question started (pid ${pid}) did not exit within ${Math.round(timeoutMs / 1000)}s. Close it and try again.`);
 }
 
 /** Resolves once the child is gone, killing it outright if it will not go. */
@@ -449,7 +427,7 @@ async function session(args: string[], hooks: SessionHooks) {
   const reclaimable = readSession(userDataDir);
   if (mayReclaim(reclaimable)) {
     console.log(`Reclaiming the app a question started (pid ${reclaimable!.supervisorPid})...`);
-    await endSupervisor(reclaimable!.supervisorPid);
+    await endAppHolding(userDataDir, reclaimable!.supervisorPid);
     console.log('  it has gone; starting yours\n');
   }
 

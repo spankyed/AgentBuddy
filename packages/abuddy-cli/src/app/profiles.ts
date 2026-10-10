@@ -129,6 +129,32 @@ export interface OpenedProfile {
 }
 
 /**
+ * Ends the process holding a data dir and waits for the dir to come free.
+ *
+ * **SIGTERM, never SIGKILL**: the holder's own handler closes the app it has and lets LMDB shut down, where
+ * a kill leaves the store to recover on next boot. And **what is waited for is the data dir**, not the
+ * signal being delivered or even the process going — a second Electron started before the dir clears is
+ * the failure this exists to prevent, and `profileInUse` reads the API's port file, which is what says the
+ * dir is still held.
+ *
+ * The pid belongs to whatever record named it — a session file's `supervisorPid`, or the app lock's — and
+ * both mean the same thing by it: the one process to signal. Nothing here reads a pid for itself.
+ */
+export async function endAppHolding(dir: string, pid: number, timeoutMs = 20_000): Promise<void> {
+  try {
+    process.kill(pid, 'SIGTERM');
+  } catch {
+    // Already gone between reading the record and signalling it, which is a miss rather than a problem
+  }
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!lockIsHeld(pid) && !profileInUse(dir)) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`The app on ${dir} (pid ${pid}) did not exit within ${Math.round(timeoutMs / 1000)}s. Close it and try again.`);
+}
+
+/**
  * Chromium's own caches inside a data dir: everything it will make again, and nothing anybody would miss.
  *
  * **This is where a development data dir's size is.** Measured 2026-10-10: 1.6GB in all, of which `Cache`
