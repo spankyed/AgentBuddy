@@ -24,15 +24,13 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { findPackRootOrNone, readManifest } from '../utils';
 import { cliDirs, parseAppFlags, resolveLaunchApp } from '../app/app-target';
 import { profileDir, profileFor, profileInUse, parseProfileFlags, removeProfile, PROFILE_USAGE, type ProfileMode } from '../app/profiles';
 import { askAttached, attachableApp, spawnDevApp, type AttachableApp } from '../app/drive-attach.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
-import { ONE_SHOT_ASKS, type AskName, type EngineAsk } from '../app/drive-engine.ts';
-import { oneShot } from '../app/drive-one-shot.ts';
 import { fixtureEnv } from './test';
 import { appEnv } from './dev';
 import { copySecretsInto } from '../app/profile-secrets.ts';
@@ -51,17 +49,13 @@ const DRIVE_DIR = 'drive';
  * precedent: exported for exactly this, and asserted in `tests/commands/test-contract.spec.ts`.
  */
 export const DRIVE_USAGE = `
-Usage: abuddy drive [script | --serve | --eval <body>] [--app-root <path> | --app beta] [profile]
+Usage: abuddy drive [script | --eval <body>] [--app-root <path> | --app beta] [profile flags]
 
 Launch AgentBuddy and drive it from a script: navigate, send events, read state, screenshot.
 Mainly for an agent debugging or developing against the app; a person can watch, the windows are shown.
 Scripts live in ${DRIVE_DIR}/ and are not tests — no runner collects them, and nothing gates on them.
 
 With no script, every file in ${DRIVE_DIR}/ runs. The app's windows are shown, so you can watch.
-
---serve holds the app open and answers requests instead of running a script, so an agent can drive one
-session many times rather than editing and re-launching for each question. It prints the address and a
-curl line; ${DRIVE_DIR}/results/engine.json has the address and the token, and POST /close ends it.
 
 A script drives a built app of its own: abuddy dev serves your pack's frontend with HMR, and a script
 launches its own app, so a question about one is not answerable with the other.
@@ -70,7 +64,7 @@ By default the app gets a fresh data dir that is thrown away afterwards, so each
 Name a profile to keep its state between sessions.
 
 **One question, without writing a script.** --eval, --query and --state ask the live app one thing, print
-the answer and exit — the same verbs --serve answers, asked once. One JSON object goes to stdout and
+the answer and exit. One JSON object goes to stdout and
 nothing else there, so a program can read it; everything else goes to stderr. Headless, because nothing is
 watching one question.
 
@@ -90,12 +84,10 @@ costs one flag on the first question and an attach on every one after.
 required, and a body without one answers no value at all.
 
 Options:
-  --serve             hold the app open and answer HTTP requests (see above)
   --eval <body>       evaluate one function body in the page, print the answer, exit
   --query <code>      the same, for one EARS read over the bus
   --state             the same, for the app shell's state
   --spawn             with none of those running, start an app and keep it, rather than refusing
-  --attach            ask a running --serve session rather than launching an app
   --app-root <path>   a local AgentBuddy checkout (installed and built)
   --app beta          the newest AgentBuddy Beta build that satisfies the pack's hostVersion
 ${PROFILE_USAGE}
@@ -149,54 +141,7 @@ const GITIGNORE = `*
 `;
 
 /**
- * The engine's config and session, written on `--serve`.
- *
- * **`.mts` is a second line of defence, no longer the only one.** A driving run must not collect the
- * session — it would start the engine and hang, waiting for a request nobody has a reason to send — and
- * until `defineDriveConfig` existed the only thing preventing it was that the scaffolded config collects
- * `**\/*.ts`, which — measured — picks up a dot-directory but not a `.mts` file. That was an accident of
- * two defaults, and a pack widening its own `testMatch` would have undone it silently. The helper now
- * ignores the session whatever `testMatch` says, which is the fix the extension was standing in for: a
- * `testIgnore` could not be added to the template before, because `scaffold` only writes absent files, so
- * it would have reached new packs and left every existing one collecting the engine.
- *
- * In a pack both files are gitignored by the `*` the scaffolded layer carries, so they are neither tracked
- * nor linted there — which is right for generated files, and the reason the engine's own code lives in
- * `@abuddy/testing`. **This repo's own copies are the exception**: `drive/.gitignore` negates both, so here
- * they are tracked, typechecked and chain inputs (`EVERY_SOURCE`, `scripts/lib/chain-steps.ts`).
- */
-const ENGINE_SESSION_FILE = 'engine-session.mts';
-const ENGINE_CONFIG_FILE = 'engine.config.mts';
-
-const ENGINE_CONFIG = (): string => renderTemplate('drive/engine.config.mts');
-
-const ENGINE_SESSION = `import { drive, driveEngineBody, optionalText, verb } from '@abuddy/testing';
-
-// Scaffolded once by \`abuddy drive --serve\`, then yours: this file is never rewritten.
-//
-// The core verbs are @abuddy/testing's and are true of any AgentBuddy app. Add your own below, in your
-// pack's own nouns — they are merged over the core table, so you can replace one too. A verb here saves
-// an agent spelling out the same several calls every time it wants one thing.
-//
-// A verb declares the fields it reads, and \`run\` receives those and nothing else: \`required\`,
-// \`optionalText\`, \`optionalMs\`, \`present\`, \`object\`, \`pixels\` and \`safeName\` are the readers, and a
-// field nobody declared is a compile error rather than an undefined at runtime.
-drive('drive engine', driveEngineBody({
-  // The size to open at. Without it the window keeps its own, which is what you want while watching it.
-  // viewport: { width: 1400, height: 900 },
-  verbs: (session) => ({
-    // 'POST /note': one call instead of a \`/tx\` whose code you have to get right each time
-    // '/note': verb({
-    //   method: 'POST',
-    //   fields: { title: optionalText },
-    //   run: ({ title }) => session.tx(\`return createEntityWithDefaults(EARS.Entity.Note, { title: \${JSON.stringify(title)} }).id\`),
-    // }),
-  }),
-}));
-`;
-
-/**
- * Takes `--serve` out of the arguments before anything else sees them.
+ * Takes the question out of the arguments before anything else sees them.
  *
  * Every unconsumed flag ends up in `flags.args`, which is forwarded to the Playwright CLI verbatim — so
  * a flag this command means for itself has to be removed here or Playwright is asked about it.
@@ -211,18 +156,27 @@ drive('drive engine', driveEngineBody({
  * and what makes it prefix-safe: `--evaluate` and `--state-dump` fall through to `rest` rather than being
  * eaten, as `--serve-forever` does.
  */
-export function takeOneShotFlags(argv: string[]): { ask?: AskName; argument?: string; attach: boolean; spawn: boolean; rest: string[] } {
+/**
+ * The three questions a one-shot asks, which are the verbs an agent reaches for most.
+ *
+ * They were a table of HTTP methods and paths while a question went to a server. Now a question is a call
+ * on the session, so what is left is the name and whether it takes a value — and the two that do take one
+ * are the two that carry code.
+ */
+export const ASK_NAMES = ['eval', 'query', 'state'] as const;
+export type AskName = (typeof ASK_NAMES)[number];
+const ASKS_TAKING_A_VALUE = new Set<AskName>(['eval', 'query']);
+
+export function takeOneShotFlags(argv: string[]): { ask?: AskName; argument?: string; spawn: boolean; rest: string[] } {
   const rest: string[] = [];
   let ask: AskName | undefined;
   let argument: string | undefined;
-  let attach = false;
   let spawn = false;
 
   for (let i = 0; i < argv.length; i++) {
     const [name, inline] = argv[i]!.split(/=(.*)/s, 2) as [string, string | undefined];
-    if (name === '--attach') { attach = true; continue; }
     if (name === '--spawn') { spawn = true; continue; }
-    const asked = (['eval', 'query', 'state'] as const).find((verb) => name === `--${verb}`);
+    const asked = ASK_NAMES.find((verb) => name === `--${verb}`);
     if (asked === undefined) { rest.push(argv[i]!); continue; }
     if (ask !== undefined) {
       throw new Error(ask === asked
@@ -230,8 +184,7 @@ export function takeOneShotFlags(argv: string[]): { ask?: AskName; argument?: st
         : `--${asked} can't be combined with --${ask}; a one-shot asks one question.`);
     }
     ask = asked;
-    const spec: EngineAsk = ONE_SHOT_ASKS[asked];
-    if (spec.field === undefined) {
+    if (!ASKS_TAKING_A_VALUE.has(asked)) {
       // Silently ignoring it is the trap `parseProfileFlags`' `--fresh` still has; not worth copying
       if (inline !== undefined) throw new Error(`--${asked} does not take a value.`);
       continue;
@@ -242,12 +195,7 @@ export function takeOneShotFlags(argv: string[]): { ask?: AskName; argument?: st
         + ' `return` is required: --eval "return document.title"');
     }
   }
-  return { ...(ask === undefined ? {} : { ask }), ...(argument === undefined ? {} : { argument }), attach, spawn, rest };
-}
-
-export function takeServeFlag(args: string[]): { serve: boolean; rest: string[] } {
-  const rest = args.filter(arg => arg !== '--serve');
-  return { serve: rest.length !== args.length, rest };
+  return { ...(ask === undefined ? {} : { ask }), ...(argument === undefined ? {} : { argument }), spawn, rest };
 }
 
 /**
@@ -265,10 +213,9 @@ export interface DriveScaffold {
   keptStale: string[];
 }
 
-/** The helpers a scaffolded drive config may delegate to — one per kind of run */
+/** The helper a scaffolded drive config delegates to. One kind of run is left, and so one entry */
 const CONFIG_HELPERS: Record<string, readonly string[]> = {
   'playwright.config.ts': ['defineDriveConfig'],
-  [ENGINE_CONFIG_FILE]: ['defineEngineConfig'],
 };
 
 /** Whether a config that is already there still delegates, which is what decides if it has gone stale */
@@ -278,29 +225,6 @@ function keptStale(dir: string, name: string): boolean {
   const file = path.join(dir, name);
   if (!fs.existsSync(file)) return false;
   return !configCallsHelper(fs.readFileSync(file, 'utf-8'), helpers);
-}
-
-/**
- * Writes the engine's pair the first time, and never again.
- *
- * The session file is where a verb of this app's own goes (`driveEngineBody({ verbs })`), so it is a file
- * its owner keeps rather than output this command owns. It used to be rewritten on every `--serve`, which
- * meant the one file worth extending was the one that could not be.
- */
-export function writeEngineFiles(root: string): DriveScaffold {
-  const dir = path.join(root, DRIVE_DIR);
-  fs.mkdirSync(dir, { recursive: true });
-  const scaffold: DriveScaffold = { created: [], keptStale: [] };
-  for (const [name, body] of [[ENGINE_CONFIG_FILE, ENGINE_CONFIG()], [ENGINE_SESSION_FILE, ENGINE_SESSION]] as const) {
-    const file = path.join(dir, name);
-    if (fs.existsSync(file)) {
-      if (keptStale(dir, name)) scaffold.keptStale.push(path.join(DRIVE_DIR, name));
-      continue;
-    }
-    fs.writeFileSync(file, body);
-    scaffold.created.push(path.join(DRIVE_DIR, name));
-  }
-  return scaffold;
 }
 
 /** The driving scripts in a pack, which is what decides whether there is anything to run. */
@@ -484,68 +408,37 @@ export async function drive(args: string[]) {
 
   const target = driveTarget(process.cwd());
   const root = target.root;
-  const { ask, argument, attach, spawn: spawnFlag, rest: unasked } = takeOneShotFlags(args);
-  const { serve, rest: unserved } = takeServeFlag(unasked);
-  const { mode, withSecrets, rest } = parseProfileFlags(unserved);
-  const flags = parseAppFlags(rest);
-  const asking = ask === undefined ? undefined : ONE_SHOT_ASKS[ask];
-
-  if (asking !== undefined && serve) {
-    throw new Error(`--${ask} can't be combined with --serve: --serve holds the app open, --${ask} asks one question and closes it.`);
-  }
-  if (attach && asking === undefined) throw new Error('--attach needs a question: add --eval, --query or --state.');
-
-  const resultsDir = path.join(root, DRIVE_DIR, 'results');
+  const { ask, argument, spawn: spawnFlag, rest } = takeOneShotFlags(args);
+  const { mode, withSecrets, rest: scriptArgs } = parseProfileFlags(rest);
+  const flags = parseAppFlags(scriptArgs);
 
   /**
-   * **The fast path: an app that published a session file is asked over a connection.**
+   * **A question is asked of the app something else is holding, and never by launching one.**
    *
-   * Above every one of the steps below, because none of them applies: nothing is built, no app is resolved
-   * and nothing is launched — and what answers is not this command's to close. It falls through to the rest
-   * when there is no live session, which keeps today's behaviour for a cold checkout rather than replacing
-   * it before there is something to replace it with.
+   * Above every step below, because none applies: nothing is built, no app is resolved and nothing is
+   * launched — and what answers is not this command's to close. With no live app it refuses, naming
+   * `--spawn`, rather than acquiring a process nobody asked for.
    */
-  if (asking !== undefined && !serve && !attach) {
+  if (ask !== undefined) {
     const dataDir = resolveAppContext(attachPlace(mode)).userDataDir;
     const live = attachableApp(dataDir);
-    if (live) {
-      report(await answerAttached(live, root, ask as AskName, argument, 'attached'));
-      return;
-    }
+    if (live) return report(await answerAttached(live, root, ask, argument, 'attached'));
     // `--fresh` mints a dir by definition, so there is never anything to attach to: the flag would
     // otherwise ask for a directory and then refuse to use it
     if (spawnFlag || mode.kind === 'fresh') {
       const started = await spawnDevApp(root, dataDir, profileArgsFor(mode));
-      report(await answerAttached(started, root, ask as AskName, argument, 'spawned'));
-      return;
+      return report(await answerAttached(started, root, ask, argument, 'spawned'));
     }
-    report(noAppHere(dataDir));
-    return;
+    return report(noAppHere(dataDir));
   }
-
-  /**
-   * `--attach` asks a session someone else is running, so it builds nothing, resolves no app and launches
-   * nothing — and it must not close what it did not start. Short-circuited here, above every one of those.
-   */
-  if (attach && asking !== undefined) {
-    const outcome = await oneShot({ ask: asking, argument, resultsDir, startHint: 'abuddy drive --serve' });
-    console.log(outcome.line);
-    process.exitCode = outcome.code;
-    return;
-  }
-
-  // A one-shot *is* a serving session, asked once: same config, same generated session file
-  const serving = serve || asking !== undefined;
 
   // Before the app is resolved, which can download a Beta: a first run has nothing to drive, and used to
   // find that out only after paying for a build and a launch and then failing with Playwright's
   // "No tests found"
   const layer = scaffold(root);
   if (layer.created.length > 0) console.error(`Created ${DRIVE_DIR}/ — a README and a config are in there.\n`);
-  const engine = serving ? writeEngineFiles(root) : { created: [], keptStale: [] };
-  reportStaleConfigs([...layer.keptStale, ...engine.keptStale]);
-  // A serving session is the thing being run, so a pack with no scripts of its own is not empty-handed
-  if (!serving && driveScripts(root).length === 0) {
+  reportStaleConfigs(layer.keptStale);
+  if (driveScripts(root).length === 0) {
     console.error(`No driving scripts yet. Write one in ${DRIVE_DIR}/ and run this again:\n`);
     console.error(`  // ${DRIVE_DIR}/look.ts`);
     console.error("  import { drive } from '@abuddy/testing';\n");
@@ -613,8 +506,7 @@ export async function drive(args: string[]) {
 
     // No build here: the fixture builds the pack itself when PACK_DIR is set, which `fixtureEnv` does
     // below. `abuddy test` leaves it to the fixture for the same reason
-    // A one-shot's stdout carries one JSON envelope, so npm's banner goes to stderr with everything else
-    ensureCheckoutPackages(root, asking === undefined ? 'inherit' : ['ignore', 2, 2]);
+    ensureCheckoutPackages(root);
 
     if (profile) {
       console.error(`Profile ${profile.name}${profile.ephemeral ? ' (removed when this exits)' : ''}`);
@@ -623,11 +515,9 @@ export async function drive(args: string[]) {
 
     // With no pack there is nothing resolving `dist`, and the subject is this checkout's own source
     const env = fixtureEnv(app, target.packDir, process.env, { keepSourceCondition: target.packDir === undefined });
-    // Shown, because the whole point is to watch it. Under Playwright the app hides its windows unless
-    // this says otherwise (the guards in packages/main). **A one-shot is the exception**: no window flashes
-    // up per question, and it then takes the other branch of `pinsViewport`, so the page gets the emulated
-    // viewport a suite gets and a one-shot's answer matches what `npm test` sees.
-    if (asking === undefined) env.PLAYWRIGHT_VISIBLE = '1';
+    // Shown, because the whole point of a script is to watch it. Under Playwright the app hides its
+    // windows unless this says otherwise (the guards in packages/main)
+    env.PLAYWRIGHT_VISIBLE = '1';
     // The fixture makes a throwaway dir unless it is given one; a profile is the caller's to keep
     if (profile) env.E2E_DATA_DIR = profile.dir;
     // Beside the scripts that take them, not under `tests/` — driving output is not test output
@@ -641,33 +531,11 @@ export async function drive(args: string[]) {
     // ephemeral profile was left on disk — measured, not reasoned about.
     const playwright = [
       resolvePlaywrightCli(root), 'test',
-      '--config', path.join(DRIVE_DIR, serving ? ENGINE_CONFIG_FILE : 'playwright.config.ts'),
+      '--config', path.join(DRIVE_DIR, 'playwright.config.ts'),
       ...flags.args,
     ];
-    // **A one-shot pipes stdout and mirrors it to stderr.** The readiness line is read off that pipe, and
-    // stdout has to carry the envelope alone — Playwright's reporter writes there, so inheriting it would
-    // put the reporter's lines in front of the answer.
-    const stdio: StdioOptions = asking === undefined ? 'inherit' : ['ignore', 'pipe', 'inherit'];
 
-    if (asking !== undefined) {
-      const outcome = await oneShot({
-        ask: asking, argument, resultsDir, startHint: 'abuddy drive --serve',
-        launch: () => {
-          const spawned = spawn(process.execPath, playwright, { cwd: root, env, stdio });
-          // Also assigned to the outer `child`, which is what the signal handlers above forward to
-          child = spawned;
-          return {
-            child: spawned,
-            exited: new Promise((resolve) => spawned.on('exit', (code) => resolve({ code }))),
-          };
-        },
-      });
-      console.log(outcome.line);
-      process.exitCode = outcome.code;
-      return;
-    }
-
-    child = spawn(process.execPath, playwright, { cwd: root, env, stdio });
+    child = spawn(process.execPath, playwright, { cwd: root, env, stdio: 'inherit' });
     const [code, killedBy] = await new Promise<[number | null, NodeJS.Signals | null]>(resolve => {
       child!.on('exit', (exitCode, signal) => resolve([exitCode, signal]));
     });

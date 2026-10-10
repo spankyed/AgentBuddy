@@ -34,37 +34,24 @@ gives for vitest, for the same reason. There were six copies (the repo's own E2E
 already drifted to a `use` block giving it screenshots and traces the three packs' lacked. Nobody decided
 that; it is what six copies do. `@app/repo-checks`' `playwright-config.spec.ts` is the gate.
 
-One helper per kind of run, because a setting means something different to each:
+One helper per kind of run, and there are two kinds:
 
 | Helper | For | Overrides |
 |---|---|---|
 | `definePackE2EConfig` | a pack's suite, run by `abuddy test` | anything Playwright takes; the pack's word is last |
-| `defineDriveConfig` | driving scripts, run by `abuddy drive` | the same, **except** that the engine's session is always ignored |
-| `defineEngineConfig` | the serving session, `abuddy drive --serve` | everything but the four its handshake depends on |
+| `defineDriveConfig` | driving scripts, run by `abuddy drive <script>` | the same |
+
+A third stood beside them while a session was an HTTP server with a handshake to protect. A session is a
+connection now and a question needs no runner at all, so there is no setting left that a pack changing it
+would break.
 
 - **`timeout` in `definePackE2EConfig` has to stay a literal.** `suite-timeouts.spec.ts` reads a config's
   timeouts as text rather than importing one (importing creates a temp data dir), follows the delegation to
-  this module and holds the value to the large size budget. It reads **one helper's body**, not the file:
-  two of the three declare `timeout: 0`, and reading the file whole reported the root suite's budget as 0ms.
-- **`defineDriveConfig` ignores the session whatever `testMatch` says**, and that is the one thing a pack
-  cannot undo. A driving run that collected the engine would start it and hang on a request nobody watching
-  has reason to send. Before this helper the only guard was the session's `.mts` extension falling outside
-  the `**/*.ts` glob — an accident of two defaults that a pack widening its own `testMatch` would have
-  undone silently, and unfixable while a `testIgnore` could reach only newly scaffolded packs.
-- **`EngineConfigOptions` omits `testDir`, `testMatch`, `workers`, `timeout` and `outputDir`**, so setting
-  one is a compile error rather than a value quietly discarded; the handshake is also spread last, so a cast
-  cannot break a session either. What each one breaks is on the type. The rule for which settings are
-  locked: **the ones the tool or its own docs read back.**
-- **Four strings are declared twice**, here and in `@abuddy/cli`: the session's filename (here for
-  `testMatch`, there for the file `drive.ts` writes), and the token header, the marker's filename and
-  `ENGINE_READY` — which `abuddy drive --eval` needs to talk to a session from Node. Making any of them one
-  declaration would mean the CLI importing this package at runtime: it is a *devDependency*, so
-  `bundle-package.ts` would refuse the bundle outright, and a real dependency would put this harness in
-  every pack that installs the CLI. So the gate compares them instead —
-  `@app/repo-checks`' `playwright-config.spec.ts`, one case per pair, as a loop over a declared list.
-  `ENGINE_READY` is the one with a silent failure: it is read off a child's stdout, so a reword of the
-  recipe's first line is a one-shot that hangs to its deadline, which is why `marker.spec.ts` holds the
-  recipe to it.
+  this module and holds the value to the large size budget. It reads **one helper's body**, not the file,
+  because a neighbour declaring `timeout: 0` made reading the file whole report the root suite's as 0ms.
+- **Both take the pack's word last**, because nothing reads their settings back. The rule for which
+  settings a helper may lock: **the ones the tool or its own docs read back** — and with the server gone,
+  neither has any.
 
 ## Vitest: isolated data dirs (`@abuddy/testing/vitest`)
 
@@ -257,123 +244,81 @@ two to a leaf module would let the rest load only where a test compiles content.
 as a standalone import in a fresh process; what it costs *marginally* inside a worker that has already loaded
 the SDK was not measured, and is probably well under that. Measure before moving anything.
 
-## A session something can talk to (`src/engine/`)
+## A session over the app something else is holding (`src/engine/`)
 
-`abuddy drive --serve` (and `npm run drive:serve`, this repo's own) runs `runDriveEngine`, which holds the page the fixture opened and answers loopback
-HTTP until something asks it to stop. It is for an agent: a driving script is a closed program, so every
-question costs an edit, a process start and an app launch, where a session answers many.
+`abuddy drive --eval` asks one question of the app `abuddy dev` is holding, and `attachedSession`
+(`engine/index.ts`) is what it asks through. **It is assembled from the same four pieces a launched session
+is** — the page, the app helper over it, the session's own connection to the API, and the log — so
+`createSession` cannot tell which it was given, which is the property the whole design rests on.
 
-Four modules, and the split is what each one is allowed to know:
+Three modules, and the split is what each one is allowed to know:
 
-- **`session.ts`** — the verbs, over two narrow ports: a `SessionPage` six methods wide for what needs the
-  window, and a `SessionApi` three wide for what goes over the bus. Neither touches Playwright's or tRPC's
-  types, so every verb is exercised in process against a fake rather than by launching Electron. The two
-  evaluation forms are separate methods on purpose: Playwright reads a string as an expression and a
-  function as something to serialise, and a string *with* an argument silently drops the argument.
-- **`api-client.ts`** — the session's own connection to the app's API, and the reason the bus verbs no
-  longer travel through the page. Zero dependencies: Node has had a global `WebSocket` since 22, and
-  `tests/e2e/app-integration/api-access.spec.ts` already proves this handshake. tRPC's frames are written
-  by hand, so the version they were read at is recorded in the header and
+- **`session.ts`** — the verbs, over two narrow ports: a `SessionPage` for what needs the window and a
+  `SessionApi` for what goes over the bus. Neither touches Playwright's or tRPC's types, so every verb is
+  exercised in process against a fake rather than by launching Electron. The two evaluation forms are
+  separate methods on purpose: Playwright reads a string as an expression and a function as something to
+  serialise, and a string *with* an argument silently drops the argument.
+- **`api-client.ts`** — the session's own connection to the app's API, and the reason the bus verbs do not
+  travel through the page. Zero dependencies: Node has had a global `WebSocket` since 22. tRPC's frames are
+  written by hand, so the version they were read at is recorded in the header and
   `tests/engine/api-client.spec.ts` pins each shape against a real `applyWSSHandler` — the three that are
-  one mistake from a hang rather than an error each have a case: success is the presence of `result` and
-  never of `result.data`, `PING`/`PONG` are bare text and not JSON, and an error is *followed* by
-  `stopped`. No reconnection, deliberately: a session's socket lives as long as the session, and a claim
-  dies with it, so a silent reconnect would quietly lose the name.
-- **`server.ts`** — the channel. A verb that fails answers `200` with `ok: false`, because the request was
-  fine and the operation was not; a bad token, an unknown path or a malformed body answers `4xx`, because
-  nothing ran. `/close` answers and the **caller** ends the session once that reply has been written —
-  ending it inside the verb closed the socket first and the agent saw a reset for a request that worked.
-- **`marker.ts`** — `drive/results/engine.json`, the address and the token. It needs no staleness check:
-  Playwright wipes `outputDir` at the start of every run, so a marker from a dead session cannot be found.
+  one mistake from a hang rather than an error each have a case.
+- **`cdp-page.ts`** — the attach. `_electron` has no `connect`, which is where *"whoever launches owns the
+  page"* came from; an Electron renderer is Chromium, so `chromium.connectOverCDP` attaches to one started
+  with `--remote-debugging-port` and hands back a real `Page`. `playwright-core` is a lazily imported
+  optional peer that throws with the install when absent. `findWindow` takes the target with
+  `window.applicationState` and **never `pages()[0]`** — a connected app has more than one, and
+  `tests/engine/cdp-page.spec.ts` holds that against a fake presenting several, because the end-to-end
+  assertion passes with the predicate replaced by "take the first".
 
 Things worth knowing before changing it:
 
-- **`/query` and `/transact` go over the bus**, to default-setup's `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`, which
-  already run against the live engine with every installed pack's entity types. So a write is visible to
-  the next read in the same session — which `abuddy db exec` cannot do, since it refuses while the app
-  holds the write lock.
+- **Two capabilities an attached session does not have, and neither is faked.** There is **no window**, so
+  `setViewport` sets the emulated viewport rather than moving one somebody is looking at — the right answer
+  for a connection that did not open it. And there are **no historical renderer errors**: a listener wired
+  on connect sees everything from then on, where the fixture's array goes back to the launch.
+- **`/query` and `/transact` go over the bus**, to default-setup's `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`,
+  which run against the live engine with every installed pack's entity types. So a write is visible to the
+  next read — which `abuddy db exec` cannot do, since it refuses while the app holds the write lock.
 - **A write is visible to the next read and not to the UI, and `/reload` is the difference.** A plugin's
-    state is what its system sent it, so a write that goes round every system reaches no view. Navigating
-    between plugins does not refresh one — the actor survives — while a new connection does, because the
-    bus asks every system to publish (`SEND_STATE`) and each answers with its startup data. `/reload` is that
-    connection. It must not be `window.location.reload()`: the app blocks renderer-initiated navigation
-    (`BlockNotAllowdOrigins`, `packages/main`), so that call returns having done nothing.
-- **An answer arrives addressed, and is still matched by the call its ask was sent under.** Those are two
-  different jobs and both are needed. The session claims `host/drive` and stamps `sender` on every bus
-  send, so a system's `reply` comes back on this connection rather than to every window — which is what
-  stops a person querying in the Database plugin from being mistaken for the session. But addressing
-  answers *which connection*, never *which ask*: three concurrent `/query` calls produce three answers
-  with the same `to` and `sender`, so the call is what tells them apart. It rides on the envelope
-  (`Message.call` out, `Message.answering` back) and never in the event, so this matches the way the app's
-  own features do. Two cases cover the pair: an answer for an ask the engine did not make, and an
-  abandoned ask's late answer.
-- **Waiters hear both the connection and the page bridge, and the two carry the call differently.** The
-  connection carries the envelope, so `Message.answering` is read off it; the bridge reads the renderer's
-  xstate inspector, which sees a *delivered event*, so the call comes off the reserved key a window's
-  delivery door wrote. `SeenEvent.answering` is where both land, so `nextReply` compares one field
-  whichever channel woke it, and a double delivery is harmless because the first match removes the waiter.
-  **What the bridge cannot carry is an uncorrelated answer.** A broadcast answers no call, so an app that
-  answers by broadcasting rather than replying cannot be matched here however it is delivered — the
-  round-trip timeout says so in its message rather than leaving it to be discovered. Measured: cutting the
-  connection's wake fails the six round-trip cases and leaves the bridge case passing, which is what says
-  the bridge path is real rather than dead weight.
-- **`/wait` is the fixture's own wait**, so a state is awaited rather than re-requested. Without it the
-  only way to wait is to ask `/state` repeatedly, which is the polling this repo avoids where something
-  event-driven exists.
-- **`/set-viewport` resizes the window where one is shown and the emulated viewport where none is**, and
-  that split is the whole reason `SessionPage` has a method for it rather than the adapter calling
-  `page.setViewportSize`. Playwright's viewport is an emulation *inside* the real window, so in a visible
-  run it draws the app into the top-left and leaves the desktop showing through the rest — the defect
-  `pinsViewport` (`src/launch-env.ts`) was written for. `driveEngineBody` reads that same predicate to
-  decide which port the session gets; the real window arrives as `EngineWindow`, one method wide, so
-  `engine/` never sees Electron's types. `/viewport` needs no port at all: `window.innerWidth` is true
-  whichever of the two happened, where `page.viewportSize()` reports the emulation and never moves when
-  the window does.
-  A session can also open at a size: `driveEngineBody({ viewport })`, applied before the server listens.
-  Its value is checked (`checkedViewport`, against the wire's own `isPixels`) rather than trusted, because
-  `drive/` is outside every tsconfig here — `typecheck:scripts` is `scripts/`, `tests/`, repo-checks and
-  publish-checks — so a session file's option is checked by an editor and by no chain step.
-- **`/set-setting` is a round trip, not a send.** It resolved as soon as the API accepted the send, so a write
-  the store refused answered `ok: true` and wrote nothing — and the refusal went to the Settings plugin, where
-  the session could not see it. The settings system answers its sender now (`@abuddy/host`'s
-  `features/settings/be/answer.ts`), so the verb waits for `SETTINGS_SAVED`/`SETTINGS_REFUSED` by the id it
-  minted, exactly as `/query` waits for `QUERY_RESULT`. A refusal carries `problems` rather than one `error`,
-  because a document can be wrong in several places at once, which is why `refusalText` reads either shape.
-- **A verb declares the fields it reads, and `run` receives those and nothing else** (`verb()`, `server.ts`).
-  That is what makes the wire's vocabulary derivable: `vocabulary.spec.ts` reads `verb.fields` off the table
-  rather than looking for field names in its source. Two scans came before it and each was blind in its own
-  way — asking a verb with an empty body sees one field, because `required` throws on the first one missing,
-  and matching `(body, '<field>')` in the source is blind to any verb whose parameter is not named `body`,
-  which `Verb` does not require. The drift those scans were watching for is a compile error now: a field
-  dropped from `fields` while `run` still reads it does not typecheck. The readers are exported, so a
-  caller's own verb gets the same checking; a rule *between* fields stays in `run`, which is where `/wait`'s
-  "exactly one of" and `/send`'s optional `to` live.
+  state is what its system sent it, so a write that goes round every system reaches no view. Navigating
+  between plugins does not refresh one — the actor survives — while a new connection does, because the bus
+  asks every system to publish (`SEND_STATE`). `/reload` is that connection. It must not be
+  `window.location.reload()`: the app blocks renderer-initiated navigation (`BlockNotAllowdOrigins`,
+  `packages/main`), so that call returns having done nothing.
+- **An answer arrives addressed, and is still matched by the call its ask was sent under.** The session
+  claims `host/drive` and stamps `sender` on every bus send, so a system's `reply` comes back on this
+  connection rather than to every window — which is what stops a person querying in the Database plugin
+  from being mistaken for the session. But addressing answers *which connection*, never *which ask*: the
+  call is what tells concurrent asks apart. It rides on the envelope (`Message.call` out,
+  `Message.answering` back) and never in the event.
+- **What the page bridge cannot carry is an uncorrelated answer.** A broadcast answers no call, so an app
+  that answers by broadcasting rather than replying cannot be matched however it is delivered — the
+  round-trip timeout says so rather than leaving it to be discovered. An app built before `host/drive`
+  existed does exactly that, which is what a stale build looks like from here.
+- **`/wait` is the fixture's own wait**, so a state is awaited rather than re-requested. Without it the only
+  way to wait is to ask `/state` repeatedly, which is the polling this repo avoids.
+- **`/set-setting` is a round trip, not a send.** It resolved as soon as the API accepted the send, so a
+  write the store refused answered `ok: true` and wrote nothing — and the refusal went to the Settings
+  plugin, where the session could not see it. The settings system answers its sender now
+  (`@abuddy/host`'s `features/settings/be/answer.ts`), so the verb waits for
+  `SETTINGS_SAVED`/`SETTINGS_REFUSED` by the id it minted.
 - **`/screenshot` refuses a name that is not a name.** It is the one verb whose input becomes a path, and
   `app.screenshot` joins it onto the screenshots directory, so `../../escaped` wrote outside it.
-- **The body cap answers rather than hanging up.** It used to `destroy()` the request, which took the
-  socket down before the `400` could be written and left the caller with `fetch failed`.
-- **`/eval` is total.** `page.evaluate` returns only structured-cloneable values, so the clone is
-  attempted in the page and a result that cannot survive it — a state machine, say — comes back described,
-  with its keys and the instruction to return `JSON.stringify(...)` instead.
-- **The body returns when the session ends**, and it has to. The fixture's teardown is the code after
-  `await use(...)`, so a body that never returns skips `app.close()`, the listener removal and the
-  data-dir policy. `/close` resolves it.
-- **Ctrl-C is safe, and not because of the engine's signal handlers.** Measured 2026-10-04: `SIGINT` to
-  `abuddy drive --serve` left the app's API process gone, the data-dir policy run and the ephemeral
-  profile removed — with Playwright reporting the session *interrupted*, which is the evidence that
-  Playwright's own interrupt handling did the teardown rather than a body the handlers had resolved.
+- **`/eval` is total.** `page.evaluate` returns only structured-cloneable values, so the clone is attempted
+  in the page and a result that cannot survive it — a state machine, say — comes back described, with its
+  keys and the instruction to return `JSON.stringify(...)` instead. The body is a function *body*, so one
+  without a `return` answers no value.
 - **`/drops` and `/errors` read *and clear*.** The fixture throws on any dropped send left after the body,
-  which suits a test; a session running for an hour would collect every drop and fail at the end over ones
-  the agent had already read.
-- **`/events` is capped** (`MAX_SEEN_EVENTS`) and reports what it dropped. The in-page inspector sees all
-  of the app's traffic, not just replies, so a buffer nobody drains grows for as long as the session is up.
-- **An event that came in on the connection carries its `sender`; one seen only in the page does not.** The
-  inspector reads an event rather than an envelope, so there is no sender to keep. It matters for the one
-  case the page cannot see at all: a message addressed to `host/drive` is delivered to this connection and
-  nowhere else, so `/events` is the only way an agent notices one — and without the sender it learns that
-  something arrived for it but not who asked, which is enough to notice a question and not to answer it.
-- Renderer errors are collected by the engine's own listeners rather than drained from the fixture's
-  array, so `describeFailure` keeps quoting everything it would have.
+  which suits a test; a long session would collect every drop and fail at the end over ones already read.
+- **`/events` is capped** (`MAX_SEEN_EVENTS`) and reports what it dropped. The in-page inspector sees all of
+  the app's traffic, so a buffer nobody drains grows for as long as the session is up.
+
+**What was here before: an HTTP server.** `drive --serve` held the page and answered loopback requests —
+a server, a token, a marker in Playwright's `outputDir`, a ready-line protocol and a `/close` verb, 851
+lines, all so one app survived between questions. With a session file to read and a connect to attach with,
+none of it is needed: measured 2026-10-10, its attach answered in 0.7s against this one's 1.0s, and what the
+0.3s bought was the removal of a second long-lived app beside the one `dev` already holds.
 
 ## Setup for external packs
 

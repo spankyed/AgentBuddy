@@ -703,86 +703,11 @@ export const test = _default.test;
 export const drive = _default.test;
 
 /**
- * A driving session something outside the process can talk to, for `abuddy drive --serve`.
+ * A session over the app something else is holding, which is how a question is asked of it.
  *
  * Re-exported here rather than from an entry of its own: a driving script already imports `drive` from
- * this module, and the engine is the same job done interactively, so a second entry would be a second
- * name for one thing. `src/engine/` has what it does and why.
+ * this module, and a session is the same job done one question at a time. `src/engine/` has the detail.
  */
-import { runDriveEngine, type EngineWindow, type ExtraVerbs } from './engine/index.ts';
-
-export {
-  ENGINE_TOKEN_HEADER, MARKER_FILE, object, optionalMs, optionalText, pixels, present, required,
-  runDriveEngine, safeName, verb,
-  type DriveEngineOptions, type EngineMarker, type EngineWindow, type ExtraVerbs, type Reader, type Verb,
-} from './engine/index.ts';
-
-/**
- * Attaching to an app something else launched, which is the other way a session gets its page.
- *
- * Beside the engine's exports because it is the same job from the other end: `asSessionPage` takes the
- * `Page` either of them produced and cannot tell which, so there is one set of verbs rather than two.
- */
+export { type EngineWindow } from './engine/index.ts';
 export { attachToApp, findWindow, type AttachedApp, type AttachOptions, type AttachTargets } from './engine/cdp-page.ts';
 export { attachedSession, type AttachedSession, type AttachedSessionOptions } from './engine/index.ts';
-
-/**
- * The app's own window, so `/set-viewport` resizes it rather than drawing into a corner of it.
- *
- * `browserWindow(page)` hands back a handle to the `BrowserWindow` in the main process, and `evaluate` runs
- * there — which is the only way to reach it: the renderer cannot resize itself, and the app blocks the
- * navigation that would be the other way to try.
- *
- * **It reads the size back in that same evaluate**, because a window does not have to take what it is given:
- * the main window has a 900x600 minimum (`packages/main`'s `WINDOW_CONFIG`), so asking for 400x300 leaves it
- * at 900x600 while the request looks like it worked. Both calls are synchronous in the main process, so the
- * clamp is known at once and there is nothing to wait for and no frame to race.
- */
-type MainWindow = {
-  setContentSize: (width: number, height: number) => void;
-  getContentSize: () => number[];
-};
-
-const electronWindow = (electronApp: ElectronApplication, page: Page): EngineWindow => ({
-  setContentSize: async (width, height) => {
-    const browserWindow = await electronApp.browserWindow(page);
-    return browserWindow.evaluate((window: MainWindow, size: { width: number; height: number }) => {
-      window.setContentSize(size.width, size.height);
-      const [took, andTook] = window.getContentSize();
-      return { width: took, height: andTook };
-    }, { width, height });
-  },
-});
-
-/**
- * The body of a serving session: everything `abuddy drive --serve`'s generated script does.
- *
- * **The body rather than the registration, so two things hold at once.** The wiring is typechecked here
- * — the generated script is a string, so an option it had to pass was a chance to drift, and did, once:
- * adding `/wait` added two options the template did not pass, which showed up as
- * `page.waitForState is not a function` against a running app rather than as a compile error. And
- * `drive(...)` is still called from the script, so Playwright reports the session at the caller's file
- * instead of at a line inside this bundle, which is what a reader needs when a run is interrupted.
- *
- * **It takes options and returns the body**, rather than being the body, so the one thing a session file
- * is for — adding verbs of its own — is a typechecked argument at that file. A new option is then a
- * compile error there instead of the failure above.
- */
-export const driveEngineBody = (options: { verbs?: ExtraVerbs; viewport?: { width: number; height: number } } = {}) =>
-  async (
-    { app, appPage, electronApp }: { app: AppHelper; appPage: Page; electronApp: ElectronApplication },
-    testInfo: { project: { outputDir: string }; workerIndex: number },
-  ): Promise<void> => {
-    await runDriveEngine({
-      page: appPage,
-      app,
-      outputDir: testInfo.project.outputDir,
-      // The same file the fixture writes the app's output to, so `/logs` answers from the run's own log
-      logPath: appLogPath(testInfo),
-      verbs: options.verbs,
-      viewport: options.viewport,
-      // The same question the fixture asked when it decided whether to pin: a window someone can see is
-      // resized for real, and one nobody can gets the emulated viewport a suite needs
-      window: pinsViewport(process.env) ? undefined : electronWindow(electronApp, appPage),
-    });
-  };

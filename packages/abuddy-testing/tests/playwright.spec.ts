@@ -1,17 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   defineDriveConfig,
-  defineEngineConfig,
   definePackE2EConfig,
-  type EngineConfigOptions,
 } from '../src/playwright.ts';
 
 /**
- * The three config helpers, and the one asymmetry between them worth a test.
+ * The two config helpers, one per kind of run, and what each takes a pack's word on.
  *
- * `definePackE2EConfig` and `defineDriveConfig` take a pack's word last, because nothing reads their
- * settings back. `defineEngineConfig` does not: four of its settings are the session's HTTP handshake, and
- * a pack that changed one would get a session that fails confusingly rather than one configured its way.
+ * Both take it last, because nothing reads their settings back. A third helper stood beside them while a
+ * session was an HTTP server with a handshake to protect; a session is a connection now, and there is no
+ * setting left that a pack changing it would break.
  */
 
 describe("a pack's E2E config", () => {
@@ -74,47 +72,3 @@ describe('a driving config', () => {
   });
 });
 
-describe("the engine's serving config", () => {
-  it('names the session exactly, so no driving script joins a serving run', () => {
-    expect(defineEngineConfig()).toMatchObject({
-      testDir: '.',
-      testMatch: 'engine-session.mts',
-      workers: 1,
-      timeout: 0,
-      outputDir: 'results',
-    });
-  });
-
-  it('takes what the handshake does not depend on', () => {
-    expect(defineEngineConfig({ reporter: 'dot' }).reporter).toBe('dot');
-  });
-
-  /**
-   * The compile error is the real guard — `EngineConfigOptions` omits these four, so a pack setting one
-   * does not build. This covers the other half: a caller that reached past the type, through a cast or
-   * from JavaScript, still cannot break a session.
-   *
-   * Mutation check: move the handshake above `...options` in `defineEngineConfig` and this fails on all
-   * four, which is what says the spread order is load-bearing rather than incidental.
-   */
-  it('wins over a caller that reached past the type', () => {
-    const past = { testMatch: '**/*.mts', workers: 4, timeout: 30_000, outputDir: 'elsewhere' };
-    const config = defineEngineConfig(past as EngineConfigOptions);
-
-    expect(config.testMatch).toBe('engine-session.mts');
-    expect(config.workers).toBe(1);
-    expect(config.timeout).toBe(0);
-    expect(config.outputDir).toBe('results');
-  });
-
-  it('does not let the four be set through the type at all', () => {
-    // @ts-expect-error a session that times out is a session that dies mid-request
-    expect(defineEngineConfig({ timeout: 30_000 }).timeout).toBe(0);
-    // @ts-expect-error two workers means two apps on one data dir, which Electron refuses
-    expect(defineEngineConfig({ workers: 4 }).workers).toBe(1);
-    // @ts-expect-error the marker and the log are read from this directory
-    expect(defineEngineConfig({ outputDir: 'elsewhere' }).outputDir).toBe('results');
-    // @ts-expect-error nothing else selects the session
-    expect(defineEngineConfig({ testMatch: '**/*.mts' }).testMatch).toBe('engine-session.mts');
-  });
-});

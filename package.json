@@ -38,7 +38,6 @@
     "test": "npm run packages:ensure && node scripts/with-source.mjs playwright test",
     "drive": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/abuddy-cli/bin/abuddy.mjs drive",
     "dev": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/abuddy-cli/bin/abuddy.mjs dev",
-    "drive:serve": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/abuddy-cli/bin/abuddy.mjs drive --serve",
     "drive:eval": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/abuddy-cli/bin/abuddy.mjs drive --eval",
     "drive:query": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/abuddy-cli/bin/abuddy.mjs drive --query",
     "drive:state": "tsx scripts/drive-preflight.ts && node scripts/with-source.mjs node packages/abuddy-cli/bin/abuddy.mjs drive --state",

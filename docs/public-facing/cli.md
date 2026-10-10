@@ -153,7 +153,7 @@ An app already running on that data dir is used as it is; otherwise `run` starts
 
 Without an FE entry it rebuilds, reinstalls and reloads on any change instead.
 
-#### `abuddy drive [script | --serve | --eval <body>] [--app-root <path> | --app beta] [profile flags]`
+#### `abuddy drive [script | --eval <body>] [--app-root <path> | --app beta] [profile flags]`
 
 Launch AgentBuddy and drive it from a script: navigate, send events, read state, take screenshots.
 
@@ -174,28 +174,25 @@ drive('open notes and look at it', async ({ app, appPage }) => {
 
 The import is `drive`, not `test`: the same runner under a name that says what the file is. With no script argument every file in `drive/` runs; name one to run just it.
 
-##### `--serve`: one session, many questions
+##### One question, many times
 
 A driving script is a closed program. It runs, it ends, and the next question costs another edit and
-another app launch. `--serve` holds the app open and answers HTTP requests instead, so an agent asks one
-thing at a time against a session that is already warm.
+another app launch. So a question is asked of the app `abuddy dev` is already holding, over the debug port
+that app published — one process per question, no session to stand up and nothing to tear down.
 
 ```bash
-abuddy drive --serve --profile probe
+abuddy dev                                   # one terminal: holds the app
+abuddy drive --state                         # another: 0.9s
+abuddy drive --eval 'return window.appVersion'
+abuddy drive --query 'return qx(EARS.Entity.Note).count()'
 ```
 
-It prints the address and a `curl` line, and writes `drive/results/engine.json` with the address and a
-token. Loopback only, and the token is required on every request.
+With no app running it exits 3 and says so. `--spawn` starts one and keeps it, so a cold checkout costs
+one flag on the first question and an attach on every one after.
 
-```bash
-E=$(node -p "const m=require('./drive/results/engine.json');m.host+':'+m.port")
-H="x-abuddy-drive-token: $(node -p "require('./drive/results/engine.json').token")"
-
-curl -s http://$E/state -H "$H"
-curl -s http://$E/eval  -H "$H" -d '{"code":"return window.appVersion"}'
-curl -s http://$E/query -H "$H" -d '{"code":"return qx(EARS.Entity.Note).count()"}'
-curl -s -X POST http://$E/close -H "$H"
-```
+**This replaced a session that answered HTTP** — an address, a token, a marker file and a `/close` verb.
+Its attach was quicker, 0.7s against 0.9s measured on one box, and what the 0.3s bought was the removal of
+a second long-lived app beside the one `dev` already holds.
 
 **Three rules, so a verb is guessable.** A POST is a verb and a GET is a noun; one concept has one field
 name, in requests and in responses (`code` is any source the session runs, `plugin` names a plugin
@@ -251,24 +248,12 @@ emulation inside the window: the app would draw into one corner and leave the de
 rest. A session nobody is watching gets that emulation, which is what makes a suite's layout the same
 everywhere. Either way `/viewport` answers with what the layout has, read from the window.
 
-**A session can open at a size rather than being told one.** `driveEngineBody({ viewport })` in the
-session file `--serve` scaffolds takes `{ width, height }` and applies it before the first request is
-served, so a session that always wants one size says so once instead of posting `/set-viewport` as its
-opening call. It goes through the same path that verb does, so it moves the window where one is shown.
-
 **`/plugin` over `/eval`.** A plugin's state is what its view is showing, so reading it is the commonest
 question there is; doing it through `/eval` means writing the same expression, with the same ref and the
 same optional chain, every time.
 
 The three drains are POSTs because each one *clears* what it returns: draining is right for a session open
 for an hour, but a GET that answers differently on a retry is a trap.
-
-**Verbs of your own** go in the session file `--serve` scaffolds, which is written once and then yours:
-`driveEngineBody({ verbs })` takes a function over the session, merged over this table. A verb built out
-of your pack's nouns belongs there rather than here. Build one with `verb({ method, fields, run })`: it
-declares the fields it reads and `run` receives those, checked, and nothing else — `required`,
-`optionalText`, `optionalMs`, `present`, `object`, `pixels` and `safeName` are the readers, all exported
-from `@abuddy/testing`.
 
 **A write does not update the UI; `/reload` is how you see it.** A plugin's state is what its system
 sent it, so a write made outside that system — `/transact`, the database console, `abuddy db exec` — changes
@@ -310,14 +295,10 @@ abuddy drive --eval 'return document.title'
 
 The answer is the same `{ ok, value }` envelope the HTTP verbs return, as **one JSON line on stdout and
 nothing else there**, so `$(abuddy drive --eval …)` is directly parseable; the app's output goes to stderr
-and the exit code follows `ok`. It runs headless, since nothing is watching a single question.
+and the exit code is the status. It runs headless, since nothing is watching a single question.
 
-`--eval` takes a function **body**, not an expression — the same input `/eval` takes — so `return` is
-required and a body without one answers `{"ok":true}`.
-
-`--attach` asks a session `--serve` already has up instead of launching an app, which answers in
-milliseconds and leaves that session running. Without a session it says so and names the command to start
-one. The curl recipe above is still the way to ask *many* things; this is the way to ask one.
+`--eval` takes a function **body**, not an expression, so `return` is required and a body without one
+answers no value at all.
 
 **With no `abuddy.json` above it, it drives the app of the AgentBuddy checkout it is in** rather than a
 pack: nothing is built or installed, and the app is that checkout's — which is the same rule as for a

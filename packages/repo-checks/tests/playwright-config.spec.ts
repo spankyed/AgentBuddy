@@ -19,7 +19,7 @@ import { repoFiles } from './_support/repo-files.ts';
  * watching it, and a serving session has four settings its HTTP handshake depends on.
  */
 
-const HELPERS = ['definePackE2EConfig', 'defineDriveConfig', 'defineEngineConfig'] as const;
+const HELPERS = ['definePackE2EConfig', 'defineDriveConfig'] as const;
 
 /** The settings a helper owns, which a config restating one has stopped delegating */
 const OWNED_KEYS = ['testDir', 'testMatch', 'workers', 'timeout', 'outputDir'] as const;
@@ -42,7 +42,6 @@ const read = (file: string): string => fs.readFileSync(path.join(REPO_ROOT, file
  */
 const playwrightConfigs = (): string[] => [
   ...repoFiles('*playwright.config.ts'),
-  ...repoFiles('*engine.config.mts'),
 ].sort();
 
 const delegates = (file: string): boolean => HELPERS.some((helper) => callsHelper(read(file), helper));
@@ -92,7 +91,6 @@ describe('a Playwright config calls its helper', () => {
   it.each([
     ['pack/playwright.config.ts', 'definePackE2EConfig'],
     ['drive/playwright.config.ts', 'defineDriveConfig'],
-    ['drive/engine.config.mts', 'defineEngineConfig'],
   ])('is what the %s scaffold writes', (template, helper) => {
     const source = read(path.join('packages', 'abuddy-cli', 'templates', template));
 
@@ -101,63 +99,4 @@ describe('a Playwright config calls its helper', () => {
       expect(declaresKey(source, key), `the ${template} template restates ${key}`).toBe(false);
     }
   });
-
-  /**
-   * The engine's session filename is declared twice, and this is what keeps the two together.
-   *
-   * `@abuddy/testing`'s helper needs it for `testMatch` and `@abuddy/cli`'s `drive.ts` needs it to know
-   * which file to write. Making them one declaration would mean the CLI importing `@abuddy/testing` at
-   * runtime — a dependency on the published CLI for one string — so they are two, and this compares them.
-   * Drift here scaffolds a session the serving config does not collect, which Playwright reports as
-   * finding no tests.
-   */
-  /**
-   * The same bind, for the wire vocabulary a one-shot needs.
-   *
-   * `abuddy drive --eval` talks to a session over HTTP from Node, which means knowing the token header,
-   * the marker's filename and the line a listening session prints. `@abuddy/cli` cannot import
-   * `@abuddy/testing` to get them — it is a devDependency, and `bundle-package.ts` refuses an external it
-   * cannot find in `dependencies` — so they are declared twice and compared here, as the session filename
-   * above is. Drift is a one-shot that hangs to its deadline (the ready line) or is refused (the header).
-   *
-   * A loop over a declared list, so the next string added is covered without editing the case.
-   */
-  it('names one wire vocabulary across the two packages that spell it', () => {
-    const engine = [
-      ['ENGINE_TOKEN_HEADER', path.join('packages', 'abuddy-testing', 'src', 'engine', 'server.ts')],
-      ['MARKER_FILE', path.join('packages', 'abuddy-testing', 'src', 'engine', 'marker.ts')],
-      ['ENGINE_READY', path.join('packages', 'abuddy-testing', 'src', 'engine', 'marker.ts')],
-    ] as const;
-    const cli = read(path.join('packages', 'abuddy-cli', 'src', 'app', 'drive-engine.ts'));
-    const named = (source: string, declaration: string): string | undefined =>
-      new RegExp(`${declaration}\\s*=\\s*'([^']+)'`).exec(codeOrEmpty(source))?.[1];
-
-    for (const [declaration, file] of engine) {
-      const inEngine = named(read(file), declaration);
-      const inCli = named(cli, declaration);
-      expect(inEngine, `${file} no longer declares ${declaration} under that name`).toBeDefined();
-      expect(inCli, `drive-engine.ts no longer declares ${declaration} under that name`).toBeDefined();
-      expect(inCli, `${declaration} has drifted between the engine and the CLI that talks to it`).toBe(inEngine);
-    }
-  });
-
-  it('names one engine session file across the two packages that spell it', () => {
-    const helper = read(path.join('packages', 'abuddy-testing', 'src', 'playwright.ts'));
-    const cli = read(path.join('packages', 'abuddy-cli', 'src', 'commands', 'drive.ts'));
-    const named = (source: string, declaration: string): string | undefined =>
-      new RegExp(`${declaration}\\s*=\\s*'([^']+)'`).exec(codeOrEmpty(source))?.[1];
-
-    const inHelper = named(helper, 'ENGINE_SESSION_FILE');
-    const inCli = named(cli, 'ENGINE_SESSION_FILE');
-
-    expect(inHelper, 'the helper no longer declares ENGINE_SESSION_FILE under that name').toBeDefined();
-    expect(inCli, 'drive.ts no longer declares ENGINE_SESSION_FILE under that name').toBeDefined();
-    expect(inCli, 'the file the CLI writes and the file the serving config collects have drifted apart')
-      .toBe(inHelper);
-  });
 });
-
-/** Both sources are read for a declaration, so a commented-out one must not answer */
-function codeOrEmpty(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter((line) => !line.trim().startsWith('//')).join('\n');
-}

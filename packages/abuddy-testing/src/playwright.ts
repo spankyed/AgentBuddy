@@ -75,46 +75,6 @@ export function defineDriveConfig(options: DriveConfigOptions = {}): PlaywrightT
   });
 }
 
-/**
- * What a serving config may set — everything the engine's HTTP handshake does not depend on.
- *
- * The four it omits are not preferences, and the rule is that they are what the tool or its own docs read
- * back. Setting one is a compile error here rather than a value quietly discarded at the call site:
- *
- * - `testMatch` selects the session, and nothing else does. A glob instead would drag a pack's own `.mts`
- *   driving scripts into a serving run.
- * - `workers` must be 1. Four things a session owns have no worker key: the app's data dir (Electron locks
- *   one per directory, so a second worker dies waiting for a window), the marker file (the later write wins
- *   and the earlier session's exit deletes the survivor's), the `host/drive` bus claim (the API refuses a
- *   second), and the screenshot directory.
- * - `timeout` must be 0. A session ends when `/close` is answered or a signal arrives, and nothing else
- *   resolves it; a deadline kills a live one mid-request with its teardown never reached, leaving the
- *   marker advertising a dead address and the bus claim held.
- * - `outputDir` must stay the one Playwright wipes at the start of a run, because that is the whole of the
- *   marker's staleness story — it carries no pid check. Its value is also written into the CLI's usage, two
- *   documents and a spec.
- */
-export type EngineConfigOptions = Omit<PlaywrightTestConfig, 'testDir' | 'testMatch' | 'workers' | 'timeout' | 'outputDir'>;
-
-/**
- * The engine's serving session, run by `abuddy drive --serve`: one app held open, answering HTTP.
- *
- * The handshake is spread after the caller's options, so a cast that reached past the type above still
- * cannot break a session.
- */
-export function defineEngineConfig(options: EngineConfigOptions = {}): PlaywrightTestConfig {
-  return defineConfig({
-    reporter: 'list',
-    ...options,
-    testDir: '.',
-    // Named exactly rather than by a glob, so no driving script joins a serving run
-    testMatch: ENGINE_SESSION_FILE,
-    workers: 1,
-    timeout: 0,
-    outputDir: 'results',
-  });
-}
-
 /** A `testIgnore` as a list, whatever shape it was given: Playwright takes one or many, and a RegExp too */
 function ignored(testIgnore: PlaywrightTestConfig['testIgnore']): (string | RegExp)[] {
   if (testIgnore === undefined) return [];
