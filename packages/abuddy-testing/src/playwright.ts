@@ -9,16 +9,6 @@
 // not — which is how a `testIgnore` became unaddable and the engine's session got an extension instead.
 import { defineConfig, type PlaywrightTestConfig } from '@playwright/test';
 
-/**
- * The engine's session: the file `abuddy drive --serve` scaffolds, and the only file a serving run collects.
- *
- * `@abuddy/cli`'s `drive.ts` names it too, because it is the file that command writes. The two are not one
- * declaration on purpose — importing this module there would make `@abuddy/testing` a runtime dependency of
- * the published CLI for the sake of one string — so `@app/repo-checks`' `playwright-config.spec.ts` holds
- * them to each other instead.
- */
-const ENGINE_SESSION_FILE = 'engine-session.mts';
-
 /** A pack's driving config, which collects the scripts beside it */
 const DRIVE_CONFIG_FILE = 'playwright.config.ts';
 
@@ -71,7 +61,7 @@ export function defineDriveConfig(options: DriveConfigOptions = {}): PlaywrightT
     outputDir: 'results',
     ...options,
     testDir: '.',
-    testIgnore: [ENGINE_SESSION_FILE, DRIVE_CONFIG_FILE, ...ignored(options.testIgnore)],
+    testIgnore: [DRIVE_CONFIG_FILE, ...ignored(options.testIgnore)],
   });
 }
 

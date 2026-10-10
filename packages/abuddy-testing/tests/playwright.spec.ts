@@ -48,27 +48,27 @@ describe('a driving config', () => {
   });
 
   /**
-   * The one thing a pack cannot undo. A driving run that collected the engine's session would start it and
-   * hang, waiting for a request nobody watching has a reason to send — and before this helper the only
-   * thing preventing it was the session's `.mts` extension falling outside the default `**\/*.ts` glob.
+   * The one entry a pack cannot undo, and the reason `testIgnore` is appended to rather than taken whole:
+   * `testMatch` is `**\/*.ts` so a driving run collects every script beside it, and the config is one of
+   * those files. Collected, it would be run as a script — a widened `testMatch` must not change that.
    */
-  it('ignores the engine session however testMatch is widened', () => {
+  it('ignores its own config however testMatch is widened', () => {
     const config = defineDriveConfig({ testMatch: '**/*.{ts,mts}' });
 
     expect(config.testMatch).toBe('**/*.{ts,mts}');
-    expect(config.testIgnore).toContain('engine-session.mts');
+    expect(config.testIgnore).toContain('playwright.config.ts');
   });
 
-  it("keeps a pack's own testIgnore beside the session, rather than replacing it", () => {
+  it("keeps a pack's own testIgnore beside the config, rather than replacing it", () => {
     expect(defineDriveConfig({ testIgnore: 'scratch.ts' }).testIgnore)
-      .toEqual(['engine-session.mts', 'playwright.config.ts', 'scratch.ts']);
+      .toEqual(['playwright.config.ts', 'scratch.ts']);
   });
 
   it('takes a testIgnore in any of the shapes Playwright accepts', () => {
     expect(defineDriveConfig({ testIgnore: ['a.ts', 'b.ts'] }).testIgnore)
-      .toEqual(['engine-session.mts', 'playwright.config.ts', 'a.ts', 'b.ts']);
+      .toEqual(['playwright.config.ts', 'a.ts', 'b.ts']);
     expect(defineDriveConfig({ testIgnore: /scratch/ }).testIgnore)
-      .toEqual(['engine-session.mts', 'playwright.config.ts', /scratch/]);
+      .toEqual(['playwright.config.ts', /scratch/]);
   });
 });
 

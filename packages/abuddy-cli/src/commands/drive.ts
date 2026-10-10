@@ -155,14 +155,13 @@ const GITIGNORE = `*
  * a flag this command means for itself has to be removed here or Playwright is asked about it.
  */
 /**
- * The one-shot flags, taken before anything else parses.
- *
- * **Before `takeServeFlag`**, so `--eval --serve` is reported by name here rather than surviving every
- * parser and failing inside the Playwright CLI, which is where `parseAppFlags` sends what nobody claimed.
+ * The one-shot flags, taken before anything else parses — so a flag this command means for itself is
+ * reported by name here rather than surviving every parser and failing inside the Playwright CLI, which is
+ * where `parseAppFlags` sends what nobody claimed.
  *
  * The name half is matched **exactly**, after splitting an inline value off — `parseProfileFlags`' shape,
  * and what makes it prefix-safe: `--evaluate` and `--state-dump` fall through to `rest` rather than being
- * eaten, as `--serve-forever` does.
+ * eaten.
  */
 /**
  * The three questions a one-shot asks, which are the verbs an agent reaches for most.
