@@ -31,7 +31,7 @@ npm run drive -- drive/notes.ts  # just one
 **It drives the *built* app**, loaded from `file://` — `npm run build:app` and `npm run compile` are what
 put the thing you are looking at on disk, and the run warns when either has gone stale rather than
 quietly showing you the previous build. So this is not the tool for a question about a dev server: nothing
-here stands one up, and `npm start`'s renderer and `abuddy run`'s pack server are not in the picture.
+here stands one up, and `npm start`'s renderer and `abuddy dev`'s pack server are not in the picture.
 
 **Every script here is `abuddy drive`**, which is also what a pack author runs — the npm scripts are thin
 calls to it, so `npm run drive -- --help` is the reference and a flag works the same from either side. With
@@ -40,8 +40,8 @@ makes that possible — the checkout behind "no pack here" is the one you are st
 same rule `abuddy drive` applies inside a pack.
 
 **Each run gets a fresh data dir under `$TMPDIR` and throws it away**, so a script cannot touch your
-development or production data, and every session starts clean. `--instance <name>` keeps a data dir
-between sessions: `npm run drive -- --instance probe`.
+development or production data, and every session starts clean. `--profile <name>` keeps a data dir
+between sessions: `npm run drive -- --profile probe`.
 
 **For an answer you want to read rather than watch**, `app.report(name, value)` writes
 `drive/results/<name>.json` and prints one `[drive:report] <name> <json>` line — so a program reading the
@@ -56,60 +56,55 @@ drive('how long the renderer takes', async ({ app, appPage }) => {
 
 ## One question
 
-No script needed — the answer comes back on stdout as the engine's own envelope, so a program can read it:
+No script needed, and no session to stand up: a question is asked of the app `npm run dev` is holding, over
+the debug port that app published.
 
 ```bash
-npm run drive:eval -- 'return document.title'     # {"ok":true,"value":"Agent X"}
-npm run drive:state                               # {"ok":true,"value":{"running":"connected"}}
+npm run dev                                       # one terminal: holds the app
+npm run drive:state                               # another: 0.9s
+npm run drive:eval -- 'return document.title'     # {"value":"Agent X","state":"attached",…}
 npm run drive:query -- 'return qx(EARS.Entity.Note).count()'
 ```
 
-**It is a function body, not an expression**, exactly as the session's `/eval` verb is — so `return` is
-required, and a body without one answers `{"ok":true}` rather than failing. One JSON line on stdout and
-nothing else there; the app's output and any staleness warning go to stderr, and the exit code follows the
-envelope's `ok`. Headless, so no window appears for a question.
+**It is a function body, not an expression** — so `return` is required, and a body without one answers no
+value rather than failing. One JSON object on stdout and nothing else there: `value` is the answer, `state`
+is `attached` or `spawned`, `startedBy` says whose app answered and `supervisorPid` is what ends it. The
+app's output and any staleness warning go to stderr, and the exit code is the status — 0 with a value, 3
+when no app is running, 1 when the verb failed. Headless, so no window appears for a question.
 
-Add `--attach` to ask a session `npm run drive:serve` already has up: ~0.35s instead of ~3.5s, and it
-leaves that session running.
-
-## One session, many questions
-
-A script here runs and ends. To ask many things of one warm app instead, serve it:
+**With no app running it exits 3 and says so**, rather than starting one: a question should not acquire a
+process nobody asked for. `--spawn` is how you ask, and the app it starts stays up, so a cold checkout
+costs one flag on the first question and an attach on every one after.
 
 ```bash
-npm run drive:serve                       # this repo
-abuddy drive --serve --instance probe     # from inside a pack
+npm run drive:state -- --spawn                    # 3.3s: starts the app, answers, leaves it running
+npm run drive:state                               # 0.9s from then on
 ```
 
-It prints the address and a `curl` line and writes `results/engine.json` with the address and a token.
-`POST /close` ends the session and shuts the app down. `docs/public-facing/cli.md` has the verbs; the
-short version is `/eval` `/send` `/query` `/transact` `/wait` `/navigate` `/plugin` `/click` `/fill`
-`/press` `/logs` `/set-setting` `/set-viewport` `/screenshot` `/reload` `/events` `/drops` `/errors`
-`/close`, and `GET /state`, `GET /snapshot`, `GET /settings` and `GET /viewport`.
+`abuddy profiles` says which data dirs have a live app and who started it, which is where a forgotten one
+is found. `abuddy dev` takes the directory back from an app a question started.
 
-`/query` and `/transact` reach the **live** database, so a write shows up in the next read of the same session —
+## The verbs
+
+`docs/public-facing/cli.md` has them all; the short version is `/eval` `/send` `/query` `/transact`
+`/wait` `/navigate` `/plugin` `/click` `/fill` `/press` `/logs` `/set-setting` `/set-viewport`
+`/screenshot` `/reload` `/events` `/drops` `/errors`, and `state`, `snapshot`, `settings` and `viewport`.
+The three the npm scripts expose are the three an agent reaches for most.
+
+`/query` and `/transact` reach the **live** database, so a write shows up in the next read —
 `abuddy db exec` cannot, because it refuses while the app holds the write lock.
-
-`driveEngineBody({ viewport: { width, height } })` in `engine-session.mts` opens the session at a size,
-applied before the first request is served; `/set-viewport` changes it afterwards.
-
-`npm run drive` shows the window, so `/set-viewport` resizes the window itself; a session nobody is
-watching gets Playwright's emulated viewport instead, which is what keeps a suite's layout deterministic.
-Asking for a viewport in a shown window the other way would letterbox the app against the desktop.
 
 A write does **not** show up in the UI. A plugin holds what its system sent it, and a console write goes
 round every system, so nothing tells the view. `/reload` is what makes every plugin ask again; navigating
 between plugins does not, because the plugin's actor survives.
 
-`npm run drive:serve` is the same session under a config of its own (`engine.config.mts`), because the
-CLI's `--serve` wants a pack directory and this repo is not one. The session file is `.mts` so that a plain
-`npm run drive`, which collects `**/*.ts`, never picks it up and hangs on it.
+An attached session has no window of its own, so a viewport it sets is Playwright's emulated one. A script
+run, which shows the window, resizes the window itself — asking for a viewport there the other way would
+letterbox the app against the desktop.
 
-A pack author gets the same thing from `abuddy drive`, which also takes `--instance <name>` to keep the
+A pack author gets the same thing from `abuddy drive`, which also takes `--profile <name>` to keep the
 app's data between sessions. In a pack everything here but this file and `playwright.config.ts` is
-gitignored; this directory also tracks the serving pair, which `drive/.gitignore` negates, so the
-repo's own copies are typechecked and are chain inputs.
+gitignored.
 
-Both configs are calls to `@abuddy/testing/playwright` — `defineDriveConfig` and `defineEngineConfig` —
-so a setting lives in the package rather than going stale in a copy here. The engine's four handshake
-settings cannot be overridden at all; the rest take an argument.
+`playwright.config.ts` is a call to `@abuddy/testing/playwright`'s `defineDriveConfig`, so a setting lives
+in the package rather than going stale in a copy here.

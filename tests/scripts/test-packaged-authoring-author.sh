@@ -24,12 +24,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 . "$ROOT/tests/scripts/lib/authoring.sh"
 # This run's work dir survives it: the chain caches a step on its declared `outputs` existing, and the app
-# half reads the archive out of here. What gets cleaned is the *previous* run's, named by the handoff it left.
-if [ -f "$HANDOFF/work.json" ]; then
-  rm -rf "$(node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).work)' "$HANDOFF/work.json")"
-  rm -rf "$HANDOFF"
-fi
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/abuddy-authoring-XXXXXX")"
+# half reads the archive out of here. Earlier runs' dirs are swept by `newWorkDir`, which can see every one
+# of them rather than only the one a surviving handoff happens to name.
+rm -rf "$HANDOFF"
+WORK="$(newWorkDir)"
 echo "Work dir: $WORK"
 useWorkDir "$WORK"
 
@@ -91,17 +89,17 @@ step "Name the checkout the build resolves a shipped pack through"
 # `abuddy build` reads a dependency on a shipped pack out of an app's `packages/` (fetch-deps'
 # `configuredAppPackagesDir`), so something has to name an app before step 2 adds that dependency.
 #
-# **ABUDDY_ROOT, and only for the commands that build.** That function derives the AgentBuddy checkout
+# **ABUDDY_BUILD, and only for the commands that build.** That function derives the AgentBuddy checkout
 # *behind the pack* when nothing names an app — and this pack is deliberately outside any checkout,
 # installing the packages from packed tarballs, which is the population this script exists to represent.
 # So the derivation correctly finds nothing here and the checkout has to be named. It used to be named by
 # writing the first-run prompt's config file by hand; there is no prompt and no config file now.
 #
-# Per-command rather than exported, so step 8 still means something: `abuddy test` reads ABUDDY_ROOT like
-# any other caller, and exporting it would hand that step an app without its asking. Left unset, step 8 has
-# no app at all but the one it names on the command line — which is what makes it a check of hermeticity
+# Per-command rather than exported, so step 8 still means something: `abuddy test` reads ABUDDY_BUILD like
+# any other caller, and exporting it would hand that step a build without its asking. Left unset, step 8 has
+# no build at all but the one it names on the command line — which is what makes it a check of hermeticity
 # rather than a restatement of it.
-BUILD_ENV=(env "ABUDDY_ROOT=$ROOT")
+BUILD_ENV=(env "ABUDDY_BUILD=$ROOT")
 
 step "2. A flow using keepAlive from default-setup"
 node -e '

@@ -16,6 +16,15 @@ export interface RunningApp {
   /** For the message: what is running, and how we know */
   why: string;
   /**
+   * The process to signal to end it, where the answer came from a record that names one.
+   *
+   * Absent for a holder this machine cannot signal — a record naming another machine, or one that cannot be
+   * read at all — so a caller that wants to stop an app asks for a pid and gets nothing rather than a
+   * number it would signal locally. The pid is already parsed to decide `why`; exposing it is what keeps a
+   * caller from re-reading the lock and forming a second opinion about its format.
+   */
+  pid?: number;
+  /**
    * The file the answer came from, when it is one a user can delete if no app is really running. The app
    * marker survives a crash, and its pid can be one the OS has since given to something else, so a refusal
    * that named no way out would leave a data dir no tool could ever write to again. The API's port file
@@ -57,7 +66,7 @@ export function publishRunningApp(userDataDir: string): () => void {
 /** The API this data dir's port file names, while its process is running */
 function liveApi(apiPortFile: string): RunningApp | null {
   const endpoint = readApiEndpoint(apiPortFile);
-  return endpoint && { why: `its API is running on port ${endpoint.port} (pid ${endpoint.pid})` };
+  return endpoint && { why: `its API is running on port ${endpoint.port} (pid ${endpoint.pid})`, pid: endpoint.pid };
 }
 
 /**
@@ -81,7 +90,7 @@ function liveApp(userDataDir: string): RunningApp | null {
   }
   if (typeof held.pid !== 'number' || typeof held.machine !== 'string') return unresolved;
   if (held.machine !== os.hostname()) return { why: `its process is running on ${held.machine}`, marker: file };
-  return lockIsHeld(held.pid) ? { why: `its process is running (pid ${held.pid})`, marker: file } : null;
+  return lockIsHeld(held.pid) ? { why: `its process is running (pid ${held.pid})`, marker: file, pid: held.pid } : null;
 }
 
 /**

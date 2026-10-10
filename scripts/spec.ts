@@ -109,6 +109,26 @@ if (ambiguous.length > 0) {
   process.exit(2);
 }
 
+/**
+ * A named target the plan reaches no run for — a package with no suite, or a source directory whose specs
+ * live elsewhere.
+ *
+ * **This is the documented exit 3, and it was silent.** The per-run `uncovered` report at the foot can only
+ * speak for runs that happened, so a plan with *no* runs in it reported nothing and exited 0: `npm run spec
+ * -- packages/preload` printed not one line and passed. That is the shape this command exists to refuse —
+ * "a check that reports nothing may have looked at nothing, and a green run cannot tell you which" — in the
+ * command that every other claim of coverage is made with. Found by running it against a package with no
+ * vitest config, to answer whether a goal's "spec over each touched package" was met.
+ *
+ * `--dry` reports a plan rather than a result, so an empty one is still a report: it says the sentence and
+ * exits 0.
+ */
+if (runs.length === 0) {
+  console.error(`\nNo spec covers ${targets.map((t) => `"${t}"`).join(', ')} — nothing ran, so nothing passed.`);
+  // Through `exitCodeFor`, so the code is not written twice: the targets are the uncovered things
+  process.exit(dry ? 0 : exitCodeFor({ failed: 0, uncovered: targets.length, noCount: 0 }));
+}
+
 const reports = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-count-'));
 const COUNT_REPORTER = path.join(import.meta.dirname, 'lib', 'spec-count-reporter.ts');
 

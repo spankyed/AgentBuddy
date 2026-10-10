@@ -84,7 +84,7 @@ describe('readApiEndpoint', () => {
   });
 
   // Pids are recycled, so after a reboot a crashed run's file names an unrelated live process. Without the
-  // boot bound `abuddy run` and the pack watcher believe an API is there and talk to a port nobody holds.
+  // boot bound `abuddy dev` and the pack watcher believe an API is there and talk to a port nobody holds.
   it('reads nothing from a file written before this boot, whatever pid it names', () => {
     write({ port: 3001, pid: process.pid });
     expect(readApiEndpoint(file())).toEqual({ port: 3001, pid: process.pid });

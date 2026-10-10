@@ -17,13 +17,13 @@ let placeholderIdCounter = -1
  * What a diff was asked for, as a key: GitHub's own `base...head` compare spelling, with the head absent
  * for a branch that has no PR.
  *
- * **This replaced a staleness guard, which is the point.** A diff is a view fetching data, and the rule
- * for that job is a slot keyed by what was asked (`packages/default-setup/CLAUDE.md`): a late or another
- * window's answer writes its own key, the view reads the key it is showing, and correlation is structural
- * rather than checked. What was here before compared the answer's refs against the selected PR and
- * returned "stale", and it had the hole a guard can have and a key cannot — it skipped the head check
- * when the answer carried no head, which is exactly what the branch-only asker's answers carry. Two PRs
- * onto one base (the common case) then let a branch diff land as a PR's files.
+ * **A key, not a staleness check, and the difference is load-bearing.** A diff is a view fetching data, and
+ * the rule for that job is a slot keyed by what was asked (`packages/default-setup/CLAUDE.md`): a late or
+ * another window's answer writes its own key, the view reads the key it is showing, and correlation is
+ * structural rather than checked. A check cannot do it here — the branch-only asker's answers carry no head,
+ * since a branch with no PR compares against none, so any comparison of the answer's refs has to admit one
+ * with the head missing. Two PRs onto one base, the ordinary case, then let a branch diff land as a PR's
+ * files. A key either matches or it does not, and there is no permissive branch to leave open.
  */
 export const refKey = (base: string, head?: string): string => `${base}...${head ?? ''}`
 

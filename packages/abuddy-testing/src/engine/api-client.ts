@@ -91,9 +91,18 @@ type Frame = {
 
 const SUBSCRIPTION_ID = 0;
 
-/** What a refusal reads as, with the machine-readable code when there is one */
-const refusal = (what: string, frame: Frame): Error =>
-  new Error(`${what}: ${frame.error?.message ?? 'the API refused it'}${frame.error?.data?.code ? ` (${frame.error.data.code})` : ''}`);
+/**
+ * What a refusal reads as, with the machine-readable code when there is one — **on the error as well as in
+ * the text**, because a caller that wants to act on one kind of refusal should not have to match prose.
+ * `claim` refusing with `CONFLICT` is the one that has a caller today.
+ */
+const refusal = (what: string, frame: Frame): Error => Object.assign(
+  new Error(`${what}: ${frame.error?.message ?? 'the API refused it'}${frame.error?.data?.code ? ` (${frame.error.data.code})` : ''}`),
+  { code: frame.error?.data?.code },
+);
+
+/** The code the API refuses a name another live connection holds with */
+export const CLAIM_CONFLICT = 'CONFLICT';
 
 /**
  * Opens the connection and sends its subscribe frame, resolving once the socket is open and that frame is away

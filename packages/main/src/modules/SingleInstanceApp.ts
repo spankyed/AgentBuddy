@@ -5,10 +5,15 @@ import {getAppContext} from '../app-context.ts';
 
 class SingleInstanceApp implements AppModule {
   enable({app}: {app: Electron.App}): void {
-    // App name and userData are set by initAppContext(); the lock is scoped to them
+    // **The lock is scoped by the data dir, not by the app name.** Chromium's ProcessSingleton puts it
+    // there — a `SingletonLock` symlink naming `<hostname>-<pid>`, beside `SingletonCookie` and
+    // `SingletonSocket` — so what decides it is `app.setPath('userData')` and nothing else.
+    // Observed 2026-10-09: two apps of one name on different data dirs both take it; two of different
+    // names on one data dir, and the second is refused. So four environments run side by side because
+    // their dirs differ, and a profile is what lets two of one environment coexist.
     const isSingleInstance = app.requestSingleInstanceLock();
     if (!isSingleInstance) {
-      console.log(`[MAIN] Another ${getAppContext().env} instance is already running. Exiting.`);
+      console.log(`[MAIN] Another ${getAppContext().build} instance is already running. Exiting.`);
       app.quit();
       process.exit(0);
     }

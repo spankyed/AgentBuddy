@@ -178,7 +178,7 @@ npm run drive -- drive/notes.ts  # one script
 
 The import is `drive`, not `test`, and that is the point: the same runner under a name that says what the
 file is. A pack author gets the same thing from `abuddy drive`, which scaffolds the directory on first use
-and takes `--instance <name>` to keep the app's data between sessions.
+and takes `--profile <name>` to keep the app's data between sessions.
 
 ## Debugging the running app
 
@@ -265,8 +265,8 @@ Pack developers can write and run E2E tests without the AgentBuddy repo. The fix
 cd /path/to/my-pack
 abuddy init-tests          # scaffold config + sample test, add @abuddy/testing + @playwright/test
 npm install
-abuddy test                # a Beta matching the pack's hostVersion; --app-root <path> for a checkout
-abuddy test --app beta     # CI: never prompts, use --app beta or --app-root <path>
+abuddy test                # a Beta matching the pack's hostVersion; --build <path> for a checkout
+abuddy test --build beta   # CI: never prompts; --build <path> for a checkout
 ```
 
 ### 2. From this repo (quick iteration)
@@ -314,9 +314,9 @@ The renderer exposes on `window`:
 | `PACK_DIR=/path/to/pack` | Builds the pack, installs it into the worker's isolated data dir, waits for plugins before tests run |
 | `E2E_KEEP_DATA=1` | Keep each worker's temp data dir (path is logged) |
 | `ABUDDY_ROOT=/path/to/AgentBuddy` | A built AgentBuddy checkout to launch (auto-detected inside the monorepo) |
-| `ABUDDY_APP_EXECUTABLE=/path/to/exe` | A packaged AgentBuddy executable to launch (set by `abuddy test --app beta`); wins over `ABUDDY_ROOT` |
+| `ABUDDY_APP_EXECUTABLE=/path/to/exe` | A packaged AgentBuddy executable to launch (set by `abuddy test --build beta`); wins over `ABUDDY_ROOT` |
 | `ABUDDY_CLI=/path/to/abuddy.mjs` | The abuddy bin that builds `PACK_DIR` (set by `abuddy test`) |
-| `ABUDDY_APP=beta` | Read by `abuddy test` (and `abuddy build`), not the fixture: use the newest matching AgentBuddy Beta without prompting (CI) |
+| `ABUDDY_BUILD=beta` | Read by `abuddy test` (and `abuddy build`), not the fixture: use the newest matching AgentBuddy Beta without prompting (CI) |
 
 ## Key events for sendEvent()
 

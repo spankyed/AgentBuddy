@@ -116,7 +116,7 @@ jobs:
           if [ "${{ steps.channel.outputs.is_beta }}" = "true" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
-          # `abuddy test --app beta` verifies downloads against these
+          # `abuddy test --build beta` verifies downloads against these
           # electron-builder.mjs artifactName: the product name without spaces
           PREFIX="${{ steps.channel.outputs.artifact_prefix }}"
           for file in dist/"${PREFIX}"-*.dmg dist/"${PREFIX}"-*.zip; do

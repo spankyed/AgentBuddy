@@ -1,12 +1,12 @@
 /**
- * `abuddy run` state: which packs have a Vite dev server the app's `pack://` handler proxies their
+ * `abuddy dev` state: which packs have a Vite dev server the app's `pack://` handler proxies their
  * frontend requests to. It lives in the data dir beside the packs, never inside an installed pack
  * directory, which holds exactly the verified pack files and is replaced on every install.
  *
  *   <userDataDir>/abuddy/pack-dev-servers/<packId>.json   { port, pid }
  *
  * A marker means a dev server is running, never that anything on disk is current, so nothing may read
- * it to skip a build or a sync. `abuddy run` writes only to the development data dir, so a test run
+ * it to skip a build or a sync. `abuddy dev` writes only to the development data dir, so a test run
  * reads its own and never sees one. (N4 in
  * `docs/archive/issues/postmortem-external-pack-calendar-extraction.md`: a run that skipped both and tested a
  * stale copy.)
@@ -18,7 +18,7 @@ import { recordIsStale } from '../process-liveness.ts';
 
 export interface DevServerMarker {
   port: number;
-  /** The `abuddy run` process serving the pack */
+  /** The `abuddy dev` process serving the pack */
   pid: number;
 }
 
@@ -70,7 +70,7 @@ export function devServerUrl(userDataDir: string, packId: string, filePath: stri
   if (!Number.isInteger(pid) || pid < 1) {
     throw new Error(`Invalid dev server marker for ${packId}: pid ${marker.pid}`);
   }
-  // `abuddy run` removes this on the way out, so one still here after it crashed names a port nothing is
+  // `abuddy dev` removes this on the way out, so one still here after it crashed names a port nothing is
   // listening on — and from here that looks exactly like a live one. The pack's frontend would fail to
   // load with a connection error and nothing pointing at this file. Its pid is what tells them apart.
   if (recordIsStale(markerPath, pid)) return null;

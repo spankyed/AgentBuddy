@@ -22,6 +22,14 @@ export const APP_ENVS = ['production', 'beta', 'development', 'test'] as const;
 
 export type AppEnv = (typeof APP_ENVS)[number];
 
+/**
+ * What `resolveAppContext` takes, under the word the CLI uses for it.
+ *
+ * The same four names as `AppEnv`, which is what they are: each of the four *is* a build — a release, a
+ * prerelease, a checkout and the one tests run in — and "channel" would cover only the first two.
+ */
+export type AppBuild = AppEnv;
+
 /** Channels a packaged build can be stamped with (build/build.sh → __ABUDDY_CHANNEL__). */
 export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta'>;
 
@@ -36,7 +44,8 @@ const APP_NAMES: Record<AppEnv, string> = {
 };
 
 export interface AppContext {
-  env: AppEnv;
+  /** Which build this app is: its identity, where `userDataDir` is its storage */
+  build: AppBuild;
   /** Electron app name; also the default data dir name. */
   appName: string;
   /**
@@ -103,19 +112,37 @@ export function appDataDirFor(env: AppEnv): string {
  */
 export const _appDirOf = (userDataDir: string): string => path.join(userDataDir, APP_DIR);
 
-export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } = {}): AppContext {
-  const env = input.env ?? parseAppEnv(process.env.ABUDDY_ENV);
+/**
+ * The app's identity and its storage, from one resolver — **a build, and the profile it keeps its data in**.
+ *
+ * Those are two axes and the word "environment" was doing both jobs: `APP_NAMES[build]` decides the app
+ * name, the URL scheme and so Electron's own storage, while the same value decided *where* the data went,
+ * as a default a profile overrides. So the word meant identity in one sentence and location in the next,
+ * and a reader could not tell which without checking.
+ *
+ * Named apart now: `build` is the identity, `profile` is the storage. A build keeps its own default
+ * storage, which is the fusion kept where it is harmless — a default, stated once, rather than a second
+ * meaning the word carries everywhere.
+ *
+ * **`ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR` stay as they are, and they are a different thing from
+ * `--build`.** They are the *handoff*: how a parent process tells a child what it is and where its data is,
+ * set by the CLI and by Electron main. `--build`/`ABUDDY_BUILD` is a *selector* a person types, and
+ * collapsing the two would put the choice and the answer under one name — which is the confusion this
+ * resolver exists to end.
+ */
+export function resolveAppContext(input: { build?: AppBuild; profile?: string } = {}): AppContext {
+  const env = input.build ?? parseAppEnv(process.env.ABUDDY_ENV);
   if (!env) {
     throw new Error(
-      'App environment unknown: pass { env } or set ABUDDY_ENV (production | beta | development | test). ' +
+      'App build unknown: pass { build } or set ABUDDY_ENV (production | beta | development | test). ' +
       'Processes spawned by the app receive it automatically.',
     );
   }
   const appName = APP_NAMES[env];
-  const userDataDir = input.userDataDir ?? (process.env.ABUDDY_USER_DATA_DIR || platformDataDir(appName));
+  const userDataDir = input.profile ?? (process.env.ABUDDY_USER_DATA_DIR || platformDataDir(appName));
   const appDir = _appDirOf(userDataDir);
   return {
-    env,
+    build: env,
     appName,
     userDataDir,
     appDir,

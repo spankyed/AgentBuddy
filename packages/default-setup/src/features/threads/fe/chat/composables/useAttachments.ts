@@ -117,7 +117,7 @@ export function useAttachments() {
   const handleFileDrop = async (e: DragEvent) => {
     const files = e.dataTransfer?.files
     if (!files?.length) return
-    const getPath = (window as any).electronAPI?.fileUtils?.getPathForFile
+    const getPath = window.electronAPI?.fileUtils?.getPathForFile
     if (!getPath) return
     const newFiles = await Promise.all(Array.from(files).map(async (file) => {
       const p = getPath(file) as string

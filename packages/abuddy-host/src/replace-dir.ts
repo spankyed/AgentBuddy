@@ -36,7 +36,7 @@ export function stagingDirName(id: string, kind: StagingKind): string {
  *
  * **It never renames onto an existing directory**, because that is not a portable operation: `fs.renameSync`
  * onto a directory "either throws or replaces depending on the platform and whether it is empty, and neither
- * is an answer to 'rename this'" (`abuddy-cli/src/app/instances.ts`). So the old tree is moved aside first,
+ * is an answer to 'rename this'" (`abuddy-cli/src/app/profiles.ts`). So the old tree is moved aside first,
  * and the window this leaves — `dest` absent between two renames — is the one `recoverStagingDirs` repairs
  * for a pack, and the one a build simply redoes.
  *

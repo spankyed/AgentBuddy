@@ -34,37 +34,23 @@ gives for vitest, for the same reason. There were six copies (the repo's own E2E
 already drifted to a `use` block giving it screenshots and traces the three packs' lacked. Nobody decided
 that; it is what six copies do. `@app/repo-checks`' `playwright-config.spec.ts` is the gate.
 
-One helper per kind of run, because a setting means something different to each:
+One helper per kind of run, and there are two kinds:
 
 | Helper | For | Overrides |
 |---|---|---|
 | `definePackE2EConfig` | a pack's suite, run by `abuddy test` | anything Playwright takes; the pack's word is last |
-| `defineDriveConfig` | driving scripts, run by `abuddy drive` | the same, **except** that the engine's session is always ignored |
-| `defineEngineConfig` | the serving session, `abuddy drive --serve` | everything but the four its handshake depends on |
+| `defineDriveConfig` | driving scripts, run by `abuddy drive <script>` | the same |
+
+Two, and no more: a question needs no runner at all — it attaches to an app something else is holding —
+so there is no third kind of run for a helper to own.
 
 - **`timeout` in `definePackE2EConfig` has to stay a literal.** `suite-timeouts.spec.ts` reads a config's
   timeouts as text rather than importing one (importing creates a temp data dir), follows the delegation to
-  this module and holds the value to the large size budget. It reads **one helper's body**, not the file:
-  two of the three declare `timeout: 0`, and reading the file whole reported the root suite's budget as 0ms.
-- **`defineDriveConfig` ignores the session whatever `testMatch` says**, and that is the one thing a pack
-  cannot undo. A driving run that collected the engine would start it and hang on a request nobody watching
-  has reason to send. Before this helper the only guard was the session's `.mts` extension falling outside
-  the `**/*.ts` glob — an accident of two defaults that a pack widening its own `testMatch` would have
-  undone silently, and unfixable while a `testIgnore` could reach only newly scaffolded packs.
-- **`EngineConfigOptions` omits `testDir`, `testMatch`, `workers`, `timeout` and `outputDir`**, so setting
-  one is a compile error rather than a value quietly discarded; the handshake is also spread last, so a cast
-  cannot break a session either. What each one breaks is on the type. The rule for which settings are
-  locked: **the ones the tool or its own docs read back.**
-- **Four strings are declared twice**, here and in `@abuddy/cli`: the session's filename (here for
-  `testMatch`, there for the file `drive.ts` writes), and the token header, the marker's filename and
-  `ENGINE_READY` — which `abuddy drive --eval` needs to talk to a session from Node. Making any of them one
-  declaration would mean the CLI importing this package at runtime: it is a *devDependency*, so
-  `bundle-package.ts` would refuse the bundle outright, and a real dependency would put this harness in
-  every pack that installs the CLI. So the gate compares them instead —
-  `@app/repo-checks`' `playwright-config.spec.ts`, one case per pair, as a loop over a declared list.
-  `ENGINE_READY` is the one with a silent failure: it is read off a child's stdout, so a reword of the
-  recipe's first line is a one-shot that hangs to its deadline, which is why `marker.spec.ts` holds the
-  recipe to it.
+  this module and holds the value to the large size budget. It reads **one helper's body**, not the file,
+  because a neighbour declaring `timeout: 0` made reading the file whole report the root suite's as 0ms.
+- **Both take the pack's word last**, because nothing reads their settings back. The rule for which
+  settings a helper may lock is **the ones the tool or its own docs read back**, and neither helper has
+  any such setting.
 
 ## Vitest: isolated data dirs (`@abuddy/testing/vitest`)
 
@@ -102,7 +88,7 @@ carries no comments.
 |---|---|---|---|
 | 1 | `npm run packages:ensure &&` in a root script | a repo command: `test`, `test:headed`, `test:explorer`, `test:external-pack`, `typecheck`, `typecheck:pack`, `compile`, `prebuild`, `api:update` | root `package.json` |
 | 2 | that workspace's `pretest` | `npm test -w @abuddy/cli`, `-w @app/default-setup` and `-w @app/repo-checks` run directly, which no root script wraps | each package's `package.json` |
-| 3 | `ensureCheckoutPackages(packRoot)` | `abuddy build`, `abuddy test`, `abuddy run` — from any directory, for a pack whose packages are a checkout's | `abuddy-cli/src/build/checkout-packages.ts`, called from `commands/{build,test,run}.ts` |
+| 3 | `ensureCheckoutPackages(packRoot)` | `abuddy build`, `abuddy test`, `abuddy dev` — from any directory, for a pack whose packages are a checkout's | `abuddy-cli/src/build/checkout-packages.ts`, called from `commands/{build,test,run}.ts` |
 | 4 | the `Build publishable packages` step | CI, whose typecheck step already built them through `typecheck:pack` | `.github/workflows/ci.yml` |
 
 **Checkers** run inside a process that has already started, where the modules are loaded and rebuilding
@@ -119,7 +105,7 @@ Three things follow.
 
 - **A new entry point needs a fixer in front of it, not another copy of the rule.** Every door above calls
   the same check; what differs is only when it runs and whether it can repair what it finds.
-- **A fixer belongs to the command a user runs, not to a function a watch loop calls.** `abuddy run`
+- **A fixer belongs to the command a user runs, not to a function a watch loop calls.** `abuddy dev`
   rebuilds the pack through `build()` on every file change, and the check reads every source of all five
   packages, so `abuddy build` refreshes in `buildCommand` while `build()` stays clean. Both placements
   are pinned by `abuddy-cli/tests/build/checkout-packages.spec.ts`.
@@ -257,123 +243,86 @@ two to a leaf module would let the rest load only where a test compiles content.
 as a standalone import in a fresh process; what it costs *marginally* inside a worker that has already loaded
 the SDK was not measured, and is probably well under that. Measure before moving anything.
 
-## A session something can talk to (`src/engine/`)
+## A session over the app something else is holding (`src/engine/`)
 
-`abuddy drive --serve` (and `npm run drive:serve`, this repo's own) runs `runDriveEngine`, which holds the page the fixture opened and answers loopback
-HTTP until something asks it to stop. It is for an agent: a driving script is a closed program, so every
-question costs an edit, a process start and an app launch, where a session answers many.
+`abuddy drive --eval` asks one question of the app `abuddy dev` is holding, and `attachedSession`
+(`engine/index.ts`) is what it asks through. **It is assembled from the same four pieces a launched session
+is** — the page, the app helper over it, the session's own connection to the API, and the log — so
+`createSession` cannot tell which it was given, which is the property the whole design rests on.
 
-Four modules, and the split is what each one is allowed to know:
+Three modules, and the split is what each one is allowed to know:
 
-- **`session.ts`** — the verbs, over two narrow ports: a `SessionPage` six methods wide for what needs the
-  window, and a `SessionApi` three wide for what goes over the bus. Neither touches Playwright's or tRPC's
-  types, so every verb is exercised in process against a fake rather than by launching Electron. The two
-  evaluation forms are separate methods on purpose: Playwright reads a string as an expression and a
-  function as something to serialise, and a string *with* an argument silently drops the argument.
-- **`api-client.ts`** — the session's own connection to the app's API, and the reason the bus verbs no
-  longer travel through the page. Zero dependencies: Node has had a global `WebSocket` since 22, and
-  `tests/e2e/app-integration/api-access.spec.ts` already proves this handshake. tRPC's frames are written
-  by hand, so the version they were read at is recorded in the header and
+- **`session.ts`** — the verbs, over two narrow ports: a `SessionPage` for what needs the window and a
+  `SessionApi` for what goes over the bus. Neither touches Playwright's or tRPC's types, so every verb is
+  exercised in process against a fake rather than by launching Electron. The two evaluation forms are
+  separate methods on purpose: Playwright reads a string as an expression and a function as something to
+  serialise, and a string *with* an argument silently drops the argument.
+- **`api-client.ts`** — the session's own connection to the app's API, and the reason the bus verbs do not
+  travel through the page. Zero dependencies: Node has had a global `WebSocket` since 22. tRPC's frames are
+  written by hand, so the version they were read at is recorded in the header and
   `tests/engine/api-client.spec.ts` pins each shape against a real `applyWSSHandler` — the three that are
-  one mistake from a hang rather than an error each have a case: success is the presence of `result` and
-  never of `result.data`, `PING`/`PONG` are bare text and not JSON, and an error is *followed* by
-  `stopped`. No reconnection, deliberately: a session's socket lives as long as the session, and a claim
-  dies with it, so a silent reconnect would quietly lose the name.
-- **`server.ts`** — the channel. A verb that fails answers `200` with `ok: false`, because the request was
-  fine and the operation was not; a bad token, an unknown path or a malformed body answers `4xx`, because
-  nothing ran. `/close` answers and the **caller** ends the session once that reply has been written —
-  ending it inside the verb closed the socket first and the agent saw a reset for a request that worked.
-- **`marker.ts`** — `drive/results/engine.json`, the address and the token. It needs no staleness check:
-  Playwright wipes `outputDir` at the start of every run, so a marker from a dead session cannot be found.
+  one mistake from a hang rather than an error each have a case.
+- **`cdp-page.ts`** — the attach. `_electron` has no `connect`, which is where *"whoever launches owns the
+  page"* came from; an Electron renderer is Chromium, so `chromium.connectOverCDP` attaches to one started
+  with `--remote-debugging-port` and hands back a real `Page`. `playwright-core` is a lazily imported
+  optional peer that throws with the install when absent — and `_chromium` takes its loader as a
+  **parameter**, because that is the only way the hint has a case: the package resolves in any install that
+  can attach at all, so nothing else can make the import fail. `findWindow` takes the target with
+  `window.applicationState` and **never `pages()[0]`** — a connected app has more than one, and
+  `tests/engine/cdp-page.spec.ts` holds that against a fake presenting several, because the end-to-end
+  assertion passes with the predicate replaced by "take the first".
 
 Things worth knowing before changing it:
 
-- **`/query` and `/transact` go over the bus**, to default-setup's `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`, which
-  already run against the live engine with every installed pack's entity types. So a write is visible to
-  the next read in the same session — which `abuddy db exec` cannot do, since it refuses while the app
-  holds the write lock.
+- **Two capabilities an attached session does not have, and neither is faked.** There is **no window**, so
+  `setViewport` sets the emulated viewport rather than moving one somebody is looking at — the right answer
+  for a connection that did not open it. And there are **no historical renderer errors**: a listener wired
+  on connect sees everything from then on, where the fixture's array goes back to the launch.
+- **`/query` and `/transact` go over the bus**, to default-setup's `EXECUTE_QUERY`/`EXECUTE_TRANSACTION`,
+  which run against the live engine with every installed pack's entity types. So a write is visible to the
+  next read — which `abuddy db exec` cannot do, since it refuses while the app holds the write lock.
 - **A write is visible to the next read and not to the UI, and `/reload` is the difference.** A plugin's
-    state is what its system sent it, so a write that goes round every system reaches no view. Navigating
-    between plugins does not refresh one — the actor survives — while a new connection does, because the
-    bus asks every system to publish (`SEND_STATE`) and each answers with its startup data. `/reload` is that
-    connection. It must not be `window.location.reload()`: the app blocks renderer-initiated navigation
-    (`BlockNotAllowdOrigins`, `packages/main`), so that call returns having done nothing.
-- **An answer arrives addressed, and is still matched by the call its ask was sent under.** Those are two
-  different jobs and both are needed. The session claims `host/drive` and stamps `sender` on every bus
-  send, so a system's `reply` comes back on this connection rather than to every window — which is what
-  stops a person querying in the Database plugin from being mistaken for the session. But addressing
-  answers *which connection*, never *which ask*: three concurrent `/query` calls produce three answers
-  with the same `to` and `sender`, so the call is what tells them apart. It rides on the envelope
-  (`Message.call` out, `Message.answering` back) and never in the event, so this matches the way the app's
-  own features do. Two cases cover the pair: an answer for an ask the engine did not make, and an
-  abandoned ask's late answer.
-- **Waiters hear both the connection and the page bridge, and the two carry the call differently.** The
-  connection carries the envelope, so `Message.answering` is read off it; the bridge reads the renderer's
-  xstate inspector, which sees a *delivered event*, so the call comes off the reserved key a window's
-  delivery door wrote. `SeenEvent.answering` is where both land, so `nextReply` compares one field
-  whichever channel woke it, and a double delivery is harmless because the first match removes the waiter.
-  **What the bridge cannot carry is an uncorrelated answer.** A broadcast answers no call, so an app that
-  answers by broadcasting rather than replying cannot be matched here however it is delivered — the
-  round-trip timeout says so in its message rather than leaving it to be discovered. Measured: cutting the
-  connection's wake fails the six round-trip cases and leaves the bridge case passing, which is what says
-  the bridge path is real rather than dead weight.
-- **`/wait` is the fixture's own wait**, so a state is awaited rather than re-requested. Without it the
-  only way to wait is to ask `/state` repeatedly, which is the polling this repo avoids where something
-  event-driven exists.
-- **`/set-viewport` resizes the window where one is shown and the emulated viewport where none is**, and
-  that split is the whole reason `SessionPage` has a method for it rather than the adapter calling
-  `page.setViewportSize`. Playwright's viewport is an emulation *inside* the real window, so in a visible
-  run it draws the app into the top-left and leaves the desktop showing through the rest — the defect
-  `pinsViewport` (`src/launch-env.ts`) was written for. `driveEngineBody` reads that same predicate to
-  decide which port the session gets; the real window arrives as `EngineWindow`, one method wide, so
-  `engine/` never sees Electron's types. `/viewport` needs no port at all: `window.innerWidth` is true
-  whichever of the two happened, where `page.viewportSize()` reports the emulation and never moves when
-  the window does.
-  A session can also open at a size: `driveEngineBody({ viewport })`, applied before the server listens.
-  Its value is checked (`checkedViewport`, against the wire's own `isPixels`) rather than trusted, because
-  `drive/` is outside every tsconfig here — `typecheck:scripts` is `scripts/`, `tests/`, repo-checks and
-  publish-checks — so a session file's option is checked by an editor and by no chain step.
-- **`/set-setting` is a round trip, not a send.** It resolved as soon as the API accepted the send, so a write
-  the store refused answered `ok: true` and wrote nothing — and the refusal went to the Settings plugin, where
-  the session could not see it. The settings system answers its sender now (`@abuddy/host`'s
-  `features/settings/be/answer.ts`), so the verb waits for `SETTINGS_SAVED`/`SETTINGS_REFUSED` by the id it
-  minted, exactly as `/query` waits for `QUERY_RESULT`. A refusal carries `problems` rather than one `error`,
-  because a document can be wrong in several places at once, which is why `refusalText` reads either shape.
-- **A verb declares the fields it reads, and `run` receives those and nothing else** (`verb()`, `server.ts`).
-  That is what makes the wire's vocabulary derivable: `vocabulary.spec.ts` reads `verb.fields` off the table
-  rather than looking for field names in its source. Two scans came before it and each was blind in its own
-  way — asking a verb with an empty body sees one field, because `required` throws on the first one missing,
-  and matching `(body, '<field>')` in the source is blind to any verb whose parameter is not named `body`,
-  which `Verb` does not require. The drift those scans were watching for is a compile error now: a field
-  dropped from `fields` while `run` still reads it does not typecheck. The readers are exported, so a
-  caller's own verb gets the same checking; a rule *between* fields stays in `run`, which is where `/wait`'s
-  "exactly one of" and `/send`'s optional `to` live.
+  state is what its system sent it, so a write that goes round every system reaches no view. Navigating
+  between plugins does not refresh one — the actor survives — while a new connection does, because the bus
+  asks every system to publish (`SEND_STATE`). `/reload` is that connection. It must not be
+  `window.location.reload()`: the app blocks renderer-initiated navigation (`BlockNotAllowdOrigins`,
+  `packages/main`), so that call returns having done nothing.
+- **An answer arrives addressed, and is still matched by the call its ask was sent under.** The session
+  claims `host/drive` and stamps `sender` on every bus send, so a system's `reply` comes back on this
+  connection rather than to every window — which is what stops a person querying in the Database plugin
+  from being mistaken for the session. But addressing answers *which connection*, never *which ask*: the
+  call is what tells concurrent asks apart. It rides on the envelope (`Message.call` out,
+  `Message.answering` back) and never in the event.
+- **What the page bridge cannot carry is an uncorrelated answer.** A broadcast answers no call, so an app
+  that answers by broadcasting rather than replying cannot be matched however it is delivered — the
+  round-trip timeout says so rather than leaving it to be discovered. An app built before `host/drive`
+  existed does exactly that, which is what a stale build looks like from here.
+- **`/wait` is the fixture's own wait**, so a state is awaited rather than re-requested. Without it the only
+  way to wait is to ask `/state` repeatedly, which is the polling this repo avoids.
+- **`/set-setting` is a round trip, not a send.** It resolved as soon as the API accepted the send, so a
+  write the store refused answered `ok: true` and wrote nothing — and the refusal went to the Settings
+  plugin, where the session could not see it. The settings system answers its sender now
+  (`@abuddy/host`'s `features/settings/be/answer.ts`), so the verb waits for
+  `SETTINGS_SAVED`/`SETTINGS_REFUSED` by the id it minted.
 - **`/screenshot` refuses a name that is not a name.** It is the one verb whose input becomes a path, and
   `app.screenshot` joins it onto the screenshots directory, so `../../escaped` wrote outside it.
-- **The body cap answers rather than hanging up.** It used to `destroy()` the request, which took the
-  socket down before the `400` could be written and left the caller with `fetch failed`.
-- **`/eval` is total.** `page.evaluate` returns only structured-cloneable values, so the clone is
-  attempted in the page and a result that cannot survive it — a state machine, say — comes back described,
-  with its keys and the instruction to return `JSON.stringify(...)` instead.
-- **The body returns when the session ends**, and it has to. The fixture's teardown is the code after
-  `await use(...)`, so a body that never returns skips `app.close()`, the listener removal and the
-  data-dir policy. `/close` resolves it.
-- **Ctrl-C is safe, and not because of the engine's signal handlers.** Measured 2026-10-04: `SIGINT` to
-  `abuddy drive --serve` left the app's API process gone, the data-dir policy run and the ephemeral
-  instance removed — with Playwright reporting the session *interrupted*, which is the evidence that
-  Playwright's own interrupt handling did the teardown rather than a body the handlers had resolved.
+- **`/eval` is total.** `page.evaluate` returns only structured-cloneable values, so the clone is attempted
+  in the page and a result that cannot survive it — a state machine, say — comes back described, with its
+  keys and the instruction to return `JSON.stringify(...)` instead. The body is a function *body*, so one
+  without a `return` answers no value.
+- **Two questions at once are ordinary, and the claim is what makes that work.** `host/drive` is claimed
+  per connection and a second live claim is *refused*, which is right — two drivers must not receive each
+  other's answers. But every claim is now a question's, held about a second, so `_claimDrive` waits out a
+  holder for 10s before giving up. Waiting never takes a live claim; it waits for one to end, and a claim
+  still held after the window is a driver genuinely running, which the refusal says.
+- **A step that fails after the attach closes what is already open** (`_closingOnFailure`). A handle left
+  open does not fail, it *hangs*: Node keeps running while one is, so a refused claim printed its reason to
+  stderr and the process sat there for ever — measured still running 25s later, which reads as the verb
+  hanging rather than as a refusal that was reported.
 - **`/drops` and `/errors` read *and clear*.** The fixture throws on any dropped send left after the body,
-  which suits a test; a session running for an hour would collect every drop and fail at the end over ones
-  the agent had already read.
-- **`/events` is capped** (`MAX_SEEN_EVENTS`) and reports what it dropped. The in-page inspector sees all
-  of the app's traffic, not just replies, so a buffer nobody drains grows for as long as the session is up.
-- **An event that came in on the connection carries its `sender`; one seen only in the page does not.** The
-  inspector reads an event rather than an envelope, so there is no sender to keep. It matters for the one
-  case the page cannot see at all: a message addressed to `host/drive` is delivered to this connection and
-  nowhere else, so `/events` is the only way an agent notices one — and without the sender it learns that
-  something arrived for it but not who asked, which is enough to notice a question and not to answer it.
-- Renderer errors are collected by the engine's own listeners rather than drained from the fixture's
-  array, so `describeFailure` keeps quoting everything it would have.
+  which suits a test; a long session would collect every drop and fail at the end over ones already read.
+- **`/events` is capped** (`MAX_SEEN_EVENTS`) and reports what it dropped. The in-page inspector sees all of
+  the app's traffic, so a buffer nobody drains grows for as long as the session is up.
 
 ## Setup for external packs
 
@@ -381,7 +330,7 @@ Things worth knowing before changing it:
 cd /path/to/my-pack
 abuddy init-tests    # playwright.config.ts + tests/e2e/smoke.spec.ts; adds @abuddy/testing + @playwright/test
 npm install
-abuddy test          # a Beta matching your hostVersion, or --app-root <path>
+abuddy test          # a Beta matching your hostVersion, or --build <path>
 ```
 
 No monorepo checkout, `ABUDDY_ROOT`, symlinks or PATH changes are needed.
@@ -390,14 +339,14 @@ No monorepo checkout, `ABUDDY_ROOT`, symlinks or PATH changes are needed.
 
 `abuddy test` (source: `packages/abuddy-cli/src/commands/test.ts`, `src/app/`) resolves the app, in order:
 
-1. `--app-root <path>` — a local AgentBuddy checkout (installed and built)
-2. `--app beta` — the newest AgentBuddy Beta release (from `spankyed/AgentBuddy` releases) whose version satisfies the pack's `hostVersion`. The zip is verified against its published `.sha256` and cached per version in the CLI cache dir (`~/Library/Caches/abuddy-cli/apps/beta/<version>` on macOS). macOS arm64 only.
-3. `ABUDDY_APP=beta` (the env form of `--app beta`, for CI), then `ABUDDY_ROOT` — a local checkout
-4. The newest Beta the pack's `hostVersion` accepts, as `--app beta` would
+1. `--build <path>` — a local AgentBuddy checkout (installed and built)
+2. `--build beta` — the newest AgentBuddy Beta release (from `spankyed/AgentBuddy` releases) whose version satisfies the pack's `hostVersion`. The zip is verified against its published `.sha256` and cached per version in the CLI cache dir (`~/Library/Caches/abuddy-cli/apps/beta/<version>` on macOS). macOS arm64 only.
+3. `ABUDDY_BUILD=beta` (the env form of `--build beta`, for CI), then `ABUDDY_BUILD` — a local checkout
+4. The newest Beta the pack's `hostVersion` accepts, as `--build beta` would
 
 **It reads no machine state and never asks**, which is what makes a test run mean the same thing on a
 fresh machine as on one you have been developing on. It also derives nothing from where the pack sits,
-where `abuddy run` and `abuddy drive` do (the checkout behind the pack) — holding that is their job.
+where `abuddy dev` and `abuddy drive` do (the checkout behind the pack) — holding that is their job.
 
 It then runs the Playwright CLI that the pack's `@abuddy/testing` resolves (never `npx playwright`), so the runner and the fixture share one `@playwright/test`. It passes the fixture:
 
@@ -420,7 +369,7 @@ The fixture launches, in priority order: `createTest({ appExecutable })`, `creat
 
 1. **Pack build/install** (if `PACK_DIR` is set):
    - Parse `abuddy.json` from `PACK_DIR` → extract pack `id` and `pluginIds`
-   - Always rebuild the pack with `abuddy build` (a stale `dist/` would otherwise be tested silently), including while `abuddy run` runs for that pack: its marker means a dev server is up, not that `dist/` is current (N4 in `docs/archive/issues/postmortem-external-pack-calendar-extraction.md`). `PACK_ARCHIVE` skips the build and installs that packed `.tgz` as it is, so a run can exercise the artifact a release ships (`tests/scripts/test-packaged-authoring.sh` step 8), and is refused when it is older than the pack's `dist/`; everything else still comes from `PACK_DIR`
+   - Always rebuild the pack with `abuddy build` (a stale `dist/` would otherwise be tested silently), including while `abuddy dev` runs for that pack: its marker means a dev server is up, not that `dist/` is current (N4 in `docs/archive/issues/postmortem-external-pack-calendar-extraction.md`). `PACK_ARCHIVE` skips the build and installs that packed `.tgz` as it is, so a run can exercise the artifact a release ships (`tests/scripts/test-packaged-authoring.sh` step 8), and is refused when it is older than the pack's `dist/`; everything else still comes from `PACK_DIR`
    - Install it into the worker's data dir with `installPackFromLocal()` — the same stage → verify → place bundle path users get — passing `hostVersion`: the launched app's version (`src/app-version.ts`: the checkout's `package.json`, or the packaged app's `Resources/app/package.json` / `resources/app/package.json`), so a pack whose manifest `hostVersion` excludes it fails to install
    - It passes no `packFormat`. Whether the app can read a pack's build is the app's to decide, and it decides at boot, naming which side is older; the fixture reports that verdict (step 6) instead of forming its own. It has no way to form one: the app's `host.json` is written at its first boot, after this install, the CLI running the fixture needn't be the app's, and inferring the app's format from an artifact it ships (a built-in pack's snapshot) refuses good packs whenever that artifact is the stale one. `packs/runtime/load-messages.spec.ts` pins that a refusal reaches the fixture as a line it matches
    - Build uses `ABUDDY_CLI` (set by `abuddy test`), else the `@abuddy/cli` the pack resolves, else the checkout's; it runs as `node <bin> build`
@@ -505,13 +454,13 @@ Screenshot output location depends on context:
 | Variable | Description |
 |----------|-------------|
 | `ABUDDY_ROOT` | A built AgentBuddy checkout to launch. Set by `abuddy test` for checkouts; auto-detected inside the monorepo. |
-| `ABUDDY_APP_EXECUTABLE` | A packaged AgentBuddy executable to launch. Set by `abuddy test --app beta`. |
+| `ABUDDY_APP_EXECUTABLE` | A packaged AgentBuddy executable to launch. Set by `abuddy test --build beta`. |
 | `ABUDDY_CLI` | The abuddy bin that builds the pack. Set by `abuddy test`. |
-| `ABUDDY_APP` | `beta`: `abuddy test` and `abuddy build` use the newest matching AgentBuddy Beta (CI; the scaffolded release workflow sets it). |
+| `ABUDDY_BUILD` | `beta`: `abuddy test` and `abuddy build` use the newest matching AgentBuddy Beta (CI; the scaffolded release workflow sets it). |
 | `PACK_DIR` | Path to an external pack directory. Triggers build/install and plugin waiting. |
 | `PACK_ARCHIVE` | A packed `<id>-<version>.tgz` to install instead of building `PACK_DIR`, so the run tests what a release ships. Refused when it is older than the pack's `dist/`: skipping the rebuild is for testing the shipped artifact, not for testing a stale one. |
 | `E2E_KEEP_DATA` | Set to `1` to keep each worker's temp data dir for debugging. |
-| `E2E_DATA_DIR` | A data dir the caller owns and keeps, used instead of the per-worker temp one and never cleaned up. Set by `abuddy drive` for an instance. **`abuddy test` strips it** (`fixtureEnv`), so a pinned run cannot be aimed at a directory by the shell it was started from. |
+| `E2E_DATA_DIR` | A data dir the caller owns and keeps, used instead of the per-worker temp one and never cleaned up. Set by `abuddy drive` for a profile. **`abuddy test` strips it** (`fixtureEnv`), so a pinned run cannot be aimed at a directory by the shell it was started from. |
 | `E2E_SCREENSHOT_DIR` | Where `app.screenshot()` writes, ahead of the `PACK_DIR` and cwd fallbacks. Set by `abuddy drive` to `drive/screenshots/`, and stripped by `abuddy test` for the same reason. |
 | `E2E_REPORT_DIR` | Where `app.report()` writes, ahead of the same two fallbacks (`drive/results/`). Set by this repo's `drive` scripts and stripped by `abuddy test`, for the reason the two above are: the run decides where its output lands, not the shell that started it. |
 | `PLAYWRIGHT_TEST` | Set automatically to `'true'` by the fixture. The app resolves the `test` environment (`abuddy-test` name, lock and data dir), crashes on uncaught errors, and runs headless (suppresses window display and splash screen). |
@@ -522,8 +471,8 @@ Screenshot output location depends on context:
 
 ```bash
 abuddy test                          # a Beta matching the pack's hostVersion
-abuddy test --app-root ~/AgentBuddy  # a local checkout
-abuddy test --app beta               # the newest matching AgentBuddy Beta
+abuddy test --build ~/AgentBuddy  # a local checkout
+abuddy test --build beta               # the newest matching AgentBuddy Beta
 abuddy test -g "renders"             # Playwright args are forwarded
 ```
 
@@ -538,8 +487,8 @@ PACK_DIR=/path/to/my-pack npm test -- tests/e2e/scratch
 
 - **Electron binary resolution**: for a checkout the fixture uses `createRequire(appRoot + '/package.json')` to resolve `electron` from its `node_modules`; a packaged app is its own executable. Packs don't need `electron` installed.
 - **App root validation**: `validateAppRoot()` checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, and `packages/renderer/dist` before attempting to launch. Missing files produce a clear error listing exactly what's needed, rather than an opaque Electron crash.
-- **Data dir alignment**: The fixture installs into `resolveAppContext({ env: 'test', userDataDir }).packsDir` for the worker's temp dir and passes that dir as `ABUDDY_USER_DATA_DIR`. The Electron app launched with `PLAYWRIGHT_TEST=true` infers the `test` environment in `packages/main/src/app-context.ts`, which sets the app name and `userData` from the same resolver (`@abuddy/sdk/env`) and passes `ABUDDY_ENV` / `ABUDDY_USER_DATA_DIR` to the API process, so both sides always agree.
+- **Data dir alignment**: The fixture installs into `resolveAppContext({ build: 'test', profile: userDataDir }).packsDir` for the worker's temp dir and passes that dir as `ABUDDY_USER_DATA_DIR`. The Electron app launched with `PLAYWRIGHT_TEST=true` infers the `test` environment in `packages/main/src/app-context.ts`, which sets the app name and `userData` from the same resolver (`@abuddy/sdk/env`) and passes `ABUDDY_ENV` / `ABUDDY_USER_DATA_DIR` to the API process, so both sides always agree.
 - **Pinned viewport**: the fixture sets the main window viewport to 1400×900. The window's default size depends on whether main was built in dev or production mode, so without this, layout and `toHaveScreenshot` baselines differ between `npm start` builds and `npm run build`/CI.
 - **Pack manifest caching**: `getPackManifest()` reads and parses `abuddy.json` once per process, cached at module scope. Plugin IDs are the `features[].id` of features with a `plugin` (the manifest's `plugin` has no `id`).
-- **Dev server marker**: `abuddy run` writes `{devUserDataDir}/pack-dev-servers/{packId}.json` containing `{ port, pid }` for the dev app's HMR. The E2E fixture ignores it: tests always run a fresh build in an isolated data dir.
+- **Dev server marker**: `abuddy dev` writes `{devUserDataDir}/pack-dev-servers/{packId}.json` containing `{ port, pid }` for the dev app's HMR. The E2E fixture ignores it: tests always run a fresh build in an isolated data dir.
 - **`pack://` protocol**: Custom Electron protocol (`packages/main/src/modules/pack-protocol/PackProtocol.ts`) that reads the marker through `devServerUrl` (`@abuddy/host/packs/dev-server`) and proxies to the Vite dev server if present, otherwise serves files from disk.

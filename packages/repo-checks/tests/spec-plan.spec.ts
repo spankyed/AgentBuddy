@@ -490,6 +490,34 @@ describe('what a run\'s outcome is worth', () => {
  * `uncovered` from this decision gives exit 0 for a file nothing covers — the defect exit 3 exists to prevent,
  * restored with no symptom and nothing failing.
  */
+/**
+ * **A target the plan reaches no run for**, which is the half the exit code below cannot see.
+ *
+ * `exitCodeFor` is driven by the *per-run* reports, so a plan with no runs in it had nothing to report and
+ * exited 0: `npm run spec -- packages/preload` printed not one line and passed. The command says the
+ * sentence and exits 3 now, and this is the fact it rests on — a workspace with no vitest config plans
+ * nothing, and is not an unmatched name or a wide one, which have their own codes.
+ *
+ * Asserted against the real repo rather than a fixture because that is the claim: *this* tree has
+ * workspaces with no suite, and the one named here is the one that found it.
+ */
+describe('a target with no runs at all', () => {
+  it('plans nothing for a workspace with no suite, and is neither unmatched nor ambiguous', () => {
+    const planned = planTargets(['packages/typescript-floor'], [], REPO_ROOT);
+
+    expect(planned.runs).toEqual([]);
+    expect(planned.unmatched).toEqual([]);
+    expect(planned.ambiguous).toEqual([]);
+    // What the command turns that into. Dropping it is the silent green this case exists for
+    expect(exitCodeFor({ failed: 0, uncovered: planned.runs.length === 0 ? 1 : 0, noCount: 0 })).toBe(3);
+  });
+
+  /** A source directory whose specs live under `tests/` is the same shape, and the commoner one. */
+  it('plans nothing for a source directory whose specs are elsewhere', () => {
+    expect(planTargets(['packages/abuddy-ears/src/lmdb'], [], REPO_ROOT).runs).toEqual([]);
+  });
+});
+
 describe('what the plan exits with', () => {
   const counts = (over: Partial<{ failed: number; uncovered: number; noCount: number }>) =>
     exitCodeFor({ failed: 0, uncovered: 0, noCount: 0, ...over });

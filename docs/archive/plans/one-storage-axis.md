@@ -1,5 +1,11 @@
 # One storage axis: a build, and the profile it keeps its data in
 
+> **Done and closed** (branch `AS/attachable-dev-session`, `8f5a0ded5`/`5014dad03`/`eca8156c0`). The one
+> finding this text did not anticipate: **`ABUDDY_ENV` does not collapse into `ABUDDY_BUILD`, and must
+> not.** `ABUDDY_ENV` is the *handoff* — how a parent process tells a child what it is — where `--build` is
+> a *selector* a person types, so one name for both would put the question and the answer under one word,
+> which is the fusion this plan exists to end. The selector collapsed and the handoff stayed. For the
+> vocabulary as it is now, see `docs/public-facing/cli.md` and `@abuddy/sdk/env`.
 Compiled 2026-10-09. **Lands last of the three**, after
 [`profiles-not-instances.md`](profiles-not-instances.md) and
 [`attachable-dev-session.md`](attachable-dev-session.md) — see "Where it goes in the order" below, which

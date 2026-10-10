@@ -62,7 +62,6 @@ const BARE_WAIT_BY_DESIGN: Record<string, string> = {
 const NOT_CONVERTED_YET: readonly string[] = [
   'packages/default-setup/tests/harness-app-stop.spec.ts > wait',
   'packages/abuddy-cli/tests/commands/db.integration.spec.ts > writerDuring',
-  'packages/abuddy-host/tests/database/write-lock.spec.ts > is taken by one of several tools that ask for it at the same moment',
   'packages/repo-checks/tests/bounded-spawn.integration.spec.ts > kills the whole group, not the process it started',
   'packages/repo-checks/tests/chain-schedule.spec.ts > done',
   "packages/abuddy-ears/tests/lmdb/store.spec.ts > updates a relation it didn't see written in place when its partition doesn't change",
@@ -108,7 +107,7 @@ describe('a spec waits for the thing it waits for', () => {
    * Asserted as an exact number for the same reason `spec-cost`'s records are: a count that drifts upward
    * without anyone noticing is how a list of deliberate exceptions becomes a list of everything.
    */
-  it('has six waits left to examine', () => {
-    expect(NOT_CONVERTED_YET).toHaveLength(6);
+  it('has five waits left to examine', () => {
+    expect(NOT_CONVERTED_YET).toHaveLength(5);
   });
 });

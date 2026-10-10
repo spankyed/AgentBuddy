@@ -72,7 +72,7 @@ Resolve every dependency and cache its snapshot, build code and backend runtime 
 
 1. `file:` path: read directly, never cached, no fallback
 2. The workspace: in each directory above the pack, nearest first, `packages/<id>` then `<id>`. A pack anywhere inside an AgentBuddy checkout builds against that checkout's packages
-3. The app this pack is built against (`ABUDDY_APP=beta`, `ABUDDY_ROOT`, or the AgentBuddy checkout behind the pack)
+3. The app this pack is built against (`ABUDDY_BUILD=beta`, `ABUDDY_ROOT`, or the AgentBuddy checkout behind the pack)
 4. Installed AgentBuddy apps' built-in packs (production, beta, development, test data dirs)
 5. GitHub releases, for `github:owner/repo` values (the `<id>-<version>.tgz` asset and its `.sha256`)
 
@@ -116,44 +116,45 @@ Bundle and gate failures are all reported, and the command exits with code 1. `-
 
 A build also writes `.abuddy/reads.json`: the files each bundling phase read, as esbuild, Rollup and Vite report them, keyed by phase and relative to the pack. It is the build's own record of its inputs — what a build system calls a dep file — for a cache or a CI check that wants to know whether what it declared covers what the build touched; the build never reads it back, and a phase that didn't run is absent rather than empty. `ABUDDY_NO_BUILD_READS=1` turns it off, for a read-only tree.
 
-A build resolves the pack's `@abuddy` packages to the `dist` each published package ships — the one layout a pack ever has, whether the packages came from the registry or from a link to an AgentBuddy checkout. There is nothing to configure, and a pack's own configs set no resolution conditions. `abuddy test` and `abuddy run` resolve the same way, so a pack's tests run against what its build compiled; against a checkout they first bring that `dist` up to date with the checkout's sources.
+A build resolves the pack's `@abuddy` packages to the `dist` each published package ships — the one layout a pack ever has, whether the packages came from the registry or from a link to an AgentBuddy checkout. There is nothing to configure, and a pack's own configs set no resolution conditions. `abuddy test` and `abuddy dev` resolve the same way, so a pack's tests run against what its build compiled; against a checkout they first bring that `dist` up to date with the checkout's sources.
 
 #### `abuddy pack [--out <dir>]`
 
 Stage the built `dist/` into a verified pack (`integrity.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `abuddy build` first (`--release` for publishable output). Refuses built-in packs and invalid manifests.
 
-#### `abuddy run`
+#### `abuddy dev`
 
 Launch AgentBuddy with your pack installed and keep it in step with your edits.
 
-It picks an app the way you tell it to — `--app-root <path>` for a local AgentBuddy checkout, `--app beta` for a Beta that satisfies your `hostVersion` (a downloaded one if you have it, the newest otherwise) — and **with neither it works one out rather than asking**: the AgentBuddy checkout your pack is built against, if there is one, else that newest Beta. Nothing is remembered, nothing is asked, and it prints which app it chose and which rule chose it.
+It picks an app the way you tell it to — `--build <path>` for a local AgentBuddy checkout, `--build beta` for a Beta that satisfies your `hostVersion` (a downloaded one if you have it, the newest otherwise) — and **with neither it works one out rather than asking**: the AgentBuddy checkout your pack is built against, if there is one, else that newest Beta. Nothing is remembered, nothing is asked, and it prints which app it chose and which rule chose it.
 
-Deriving the checkout is the right pairing rather than a convenience: a pack whose `@abuddy/*` resolve into a checkout is *compiled against that checkout's packages*, so running it inside a released Beta would pair source-built pack code with a released host. If that checkout is not built, `run` says so and names `npm run build` instead of quietly using a Beta you were not built against.
+Deriving the checkout is the right pairing rather than a convenience: a pack whose `@abuddy/*` resolve into a checkout is *compiled against that checkout's packages*, so running it inside a released Beta would pair source-built pack code with a released host. If that checkout is not built, `dev` says so and names `npm run build` instead of quietly using a Beta you were not built against.
 
 `abuddy test` deliberately derives nothing — it pins from your `hostVersion` — so a test run means the same thing on a fresh machine as on one you have been developing on.
 
 The environment follows the app: a checkout runs as `development`, and a packaged Beta runs as `beta`, because a packaged build stamps its own channel. Neither touches production data.
 
-**Instances.** By default `run` uses the shared development data dir, so every run inherits what the last one left. An instance is a data dir of its own, created on demand:
+**Profiles.** By default `dev` uses the shared development data dir, so every run inherits what the last one left. A profile is a data dir of its own, created on demand:
 
-- `--instance <name>` — that one, created the first time you name it, and kept
-- `--fresh` — a new one, whose name is printed so you can come back to it with `--instance`
-- `--ephemeral` — a new one, removed when `run` exits
-- `--with-secrets` — copy the secrets this environment already holds into the **new** instance, so a throwaway run can use them without you entering anything again. The values are encrypted in the instance's own data dir, and the data key that decrypts them goes in a file beside them rather than the OS credential store, so `rm -rf` removes both; that also means they are protected by file permissions alone, which is the trade every instance makes and which Settings states
+- `--profile <name>` — that one, created the first time you name it, and kept
+- `--fresh` — a new one, whose name is printed so you can come back to it with `--profile`
+- `--fresh --rm` — the same, removed when the command exits
+- `--profile <name> --rm` — the same for a name you choose. It removes only a profile **this run creates**: one that is already there holds data you kept, so the flag is refused rather than quietly ignored, and `abuddy profiles rm <name>` is what removes that one
+- `--with-secrets` — copy the secrets this environment already holds into the **new** profile, so a throwaway run can use them without you entering anything again. The values are encrypted in the profile's own data dir, and the data key that decrypts them goes in a file beside them rather than the OS credential store, so `rm -rf` removes both; that also means they are protected by file permissions alone, which is the trade every profile makes and which Settings states
 
-An instance is self-contained — its data, packs, logs and secrets are all inside it, and the data key that encrypts its secrets goes in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `abuddy instances rm <name>` does it for you. The path is printed, and `abuddy db --instance <name>` opens its database — by the same name `run` and `instances` show, ephemeral instances included.
+A profile is self-contained — its data, packs, logs and secrets are all inside it, and the data key that encrypts its secrets goes in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `abuddy profiles rm <name>` does it for you. The path is printed, and `abuddy db --profile <name>` opens its database — by the same name `dev` and `profiles` show, throwaway ones included.
 
-An instance is a data dir and nothing else: the environment, the app's identity and the URL scheme are untouched, so `--app beta` and a local checkout can both run the same instance.
+A profile is a data dir and nothing else: the environment, the app's identity and the URL scheme are untouched, so `--build beta` and a local checkout can both run the same profile. **The word is `profile` rather than `instance` because an instance of an app is a running process** — which is what Electron's single-instance lock is about — where this is storage, and a named, disposable data dir that leaves the app's identity alone is what a browser calls a profile.
 
-An app already running on that data dir is used as it is; otherwise `run` starts one, and closing `run` closes the app it started. It then builds, installs the pack into that app's data dir, and:
+An app already running on that data dir is used as it is; otherwise `dev` starts one, and closing `dev` closes the app it started. It then builds, installs the pack into that app's data dir, and:
 
-- serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, recording its port in `pack-dev-servers/<id>.json` in the app's data dir so the app's `pack://` requests go to it. The marker sits outside the installed pack, which stays exactly the verified files, and is removed when `abuddy run` exits
+- serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, recording its port in `pack-dev-servers/<id>.json` in the app's data dir so the app's `pack://` requests go to it. The marker sits outside the installed pack, which stays exactly the verified files, and is removed when `abuddy dev` exits
 - on `abuddy.json` changes, regenerates `src/__generated__/`
 - on `.ts` changes under `src/`, rebuilds, reinstalls and asks the running app to reload the pack's backend
 
 Without an FE entry it rebuilds, reinstalls and reloads on any change instead.
 
-#### `abuddy drive [script | --serve | --eval <body>] [--app-root <path> | --app beta] [instance flags]`
+#### `abuddy drive [script | --eval <body>] [--build <name|path>] [profile flags]`
 
 Launch AgentBuddy and drive it from a script: navigate, send events, read state, take screenshots.
 
@@ -174,28 +175,21 @@ drive('open notes and look at it', async ({ app, appPage }) => {
 
 The import is `drive`, not `test`: the same runner under a name that says what the file is. With no script argument every file in `drive/` runs; name one to run just it.
 
-##### `--serve`: one session, many questions
+##### One question, many times
 
 A driving script is a closed program. It runs, it ends, and the next question costs another edit and
-another app launch. `--serve` holds the app open and answers HTTP requests instead, so an agent asks one
-thing at a time against a session that is already warm.
+another app launch. So a question is asked of the app `abuddy dev` is already holding, over the debug port
+that app published — one process per question, no session to stand up and nothing to tear down.
 
 ```bash
-abuddy drive --serve --instance probe
+abuddy dev                                   # one terminal: holds the app
+abuddy drive --state                         # another: 0.9s
+abuddy drive --eval 'return window.appVersion'
+abuddy drive --query 'return qx(EARS.Entity.Note).count()'
 ```
 
-It prints the address and a `curl` line, and writes `drive/results/engine.json` with the address and a
-token. Loopback only, and the token is required on every request.
-
-```bash
-E=$(node -p "const m=require('./drive/results/engine.json');m.host+':'+m.port")
-H="x-abuddy-drive-token: $(node -p "require('./drive/results/engine.json').token")"
-
-curl -s http://$E/state -H "$H"
-curl -s http://$E/eval  -H "$H" -d '{"code":"return window.appVersion"}'
-curl -s http://$E/query -H "$H" -d '{"code":"return qx(EARS.Entity.Note).count()"}'
-curl -s -X POST http://$E/close -H "$H"
-```
+With no app running it exits 3 and says so. `--spawn` starts one and keeps it, so a cold checkout costs
+one flag on the first question and an attach on every one after.
 
 **Three rules, so a verb is guessable.** A POST is a verb and a GET is a noun; one concept has one field
 name, in requests and in responses (`code` is any source the session runs, `plugin` names a plugin
@@ -251,24 +245,12 @@ emulation inside the window: the app would draw into one corner and leave the de
 rest. A session nobody is watching gets that emulation, which is what makes a suite's layout the same
 everywhere. Either way `/viewport` answers with what the layout has, read from the window.
 
-**A session can open at a size rather than being told one.** `driveEngineBody({ viewport })` in the
-session file `--serve` scaffolds takes `{ width, height }` and applies it before the first request is
-served, so a session that always wants one size says so once instead of posting `/set-viewport` as its
-opening call. It goes through the same path that verb does, so it moves the window where one is shown.
-
 **`/plugin` over `/eval`.** A plugin's state is what its view is showing, so reading it is the commonest
 question there is; doing it through `/eval` means writing the same expression, with the same ref and the
 same optional chain, every time.
 
 The three drains are POSTs because each one *clears* what it returns: draining is right for a session open
 for an hour, but a GET that answers differently on a retry is a trap.
-
-**Verbs of your own** go in the session file `--serve` scaffolds, which is written once and then yours:
-`driveEngineBody({ verbs })` takes a function over the session, merged over this table. A verb built out
-of your pack's nouns belongs there rather than here. Build one with `verb({ method, fields, run })`: it
-declares the fields it reads and `run` receives those, checked, and nothing else — `required`,
-`optionalText`, `optionalMs`, `present`, `object`, `pixels` and `safeName` are the readers, all exported
-from `@abuddy/testing`.
 
 **A write does not update the UI; `/reload` is how you see it.** A plugin's state is what its system
 sent it, so a write made outside that system — `/transact`, the database console, `abuddy db exec` — changes
@@ -310,23 +292,71 @@ abuddy drive --eval 'return document.title'
 
 The answer is the same `{ ok, value }` envelope the HTTP verbs return, as **one JSON line on stdout and
 nothing else there**, so `$(abuddy drive --eval …)` is directly parseable; the app's output goes to stderr
-and the exit code follows `ok`. It runs headless, since nothing is watching a single question.
+and the exit code is the status. It runs headless, since nothing is watching a single question.
 
-`--eval` takes a function **body**, not an expression — the same input `/eval` takes — so `return` is
-required and a body without one answers `{"ok":true}`.
-
-`--attach` asks a session `--serve` already has up instead of launching an app, which answers in
-milliseconds and leaves that session running. Without a session it says so and names the command to start
-one. The curl recipe above is still the way to ask *many* things; this is the way to ask one.
+`--eval` takes a function **body**, not an expression, so `return` is required and a body without one
+answers no value at all.
 
 **With no `abuddy.json` above it, it drives the app of the AgentBuddy checkout it is in** rather than a
 pack: nothing is built or installed, and the app is that checkout's — which is the same rule as for a
-pack, since the checkout behind "no pack here" is the one you are standing in. Naming `--app-root` or
-`--app beta` still overrides it. That is the mode the
+pack, since the checkout behind "no pack here" is the one you are standing in. Naming `--build` or
+`--build beta` still overrides it. That is the mode the
 AgentBuddy repo's own `npm run drive` scripts use, so they are calls to this command rather than a second
 implementation of it.
 
-It takes the same app and instance flags as `abuddy run`, with one difference in the default: where `abuddy run` uses the shared development data dir, `abuddy drive` gives each session a fresh one and throws it away afterwards, so a driving session starts clean and leaves nothing. `--instance <name>` is how a session keeps its state for the next one. It launches its own app rather than joining one `abuddy run` already has, because Electron allows one app per data dir — so if a person wants to watch what a driver is doing, they watch the driver's window rather than starting a second app.
+It takes the same app and profile flags as `abuddy dev`, and **the two halves meet an app differently**, which the table below sets out in full:
+
+- **A question** joins the app `abuddy dev` or `npm start` is holding, over the debug port in that app's session file. It asks of the development data dir unless `--profile <name>` names another, because that is where the app you are working in is.
+- **A script** launches its own app and shows its windows, in a fresh data dir thrown away afterwards, so a driving session starts clean and leaves nothing and a script's result does not depend on whatever plugin the last one left open. `--profile <name>` is how a session keeps its state for the next one.
+
+Electron allows one app per data dir, which is what makes a question *join* rather than compete — and why a script, which wants an app of its own, gets a dir of its own with it. If a person wants to watch what a script is doing they watch its window; a question is headless, since nothing is watching one question.
+
+### Which app, and how long it lives
+
+| What you run | The app it uses | When it closes |
+|---|---|---|
+| `abuddy dev`, `npm start` | starts its own | when you stop the command |
+| `abuddy drive --eval` (and the other one-shots) | a live one; **fails if there is none** | it was not yours to close |
+| the same, with `--spawn` | a live one, else it starts one | **it stays for the next question** — and, on a profile, closes itself after 10 minutes with nothing attached |
+| `abuddy drive <script>` | always its own | when the script finishes |
+| `abuddy test` | always its own, isolated | when the run finishes |
+
+**A question keeps the app so the next question is cheap; a script closes it so its result does not depend
+on what the last one left behind; and a question never starts one unless you asked.** That is the whole
+rule. Measured on a checkout: `--spawn` and the first answer together, 3.3s; every question after it, 0.9s.
+
+Only one app can run per data dir, which is why `drive` joins yours rather than competing with it, and why
+`--profile <name>` is how you get a second one.
+
+**A one-shot's stdout is one JSON object and nothing else**, so it pipes:
+
+```
+{"value":"0.3.14","state":"attached","startedBy":"dev","supervisorPid":75415}
+```
+
+`value` is the answer, `state` is `attached` or `spawned`, `startedBy` says whose app answered, and
+`supervisorPid` is what ends it. The exit code is the status, and there are three: **0** with a value,
+**3** when no app is running, **1** when the verb failed. Those last two are different answers — a miss is
+worth retrying with `--spawn` and a failed verb is not — and neither puts anything on stdout, so a pipe
+never receives half an answer.
+
+A run that **started** an app says so on stderr and names the two ways to end it: `abuddy dev`, which takes
+the directory back, or the `supervisorPid` above. An attach that changed nothing says nothing, because the
+fields already said it.
+
+**And nothing is left running forever.** Which of the two applies depends on where the app is, because the
+two cases have different answers:
+
+- **On your development data dir** — a `--spawn` with no profile flags — the app stays until you take the
+  directory back, which `abuddy dev` and `npm start` do for you: they close the one a question started,
+  say so, and start yours. So there is nothing to remember, and no timer closes an app you may be watching.
+- **On a profile** — `--profile <name>` — nothing reclaims it that way, so the app closes itself after **10
+  minutes** with no question attached. Each question resets that, so a session you are working in keeps
+  its app; one you walked away from gives the data dir back. It tells you at launch, and says why in its
+  log when it goes.
+
+`abuddy profiles` lists every data dir with a live app, who started it, and the pid that ends it — which is
+the answer when a terminal has been scrolled away and you want to know what is still up.
 
 ### Validation
 
@@ -405,21 +435,21 @@ Print a summary of the current pack: id, version, host version, feature count, s
 
 Scaffold Playwright E2E tests in the pack root: `playwright.config.ts` (tests in `tests/e2e`), `tests/e2e/smoke.spec.ts` (using the first feature with a plugin), `.gitignore` entries for `tests/screenshots/` and `tests/results/`, and `@abuddy/testing` and `@playwright/test` devDependencies. Existing files are kept.
 
-#### `abuddy test [--app-root <path> | --app beta] [--prebuilt] [playwright args...]`
+#### `abuddy test [--build <name|path>] [--prebuilt] [playwright args...]`
 
 Run the pack's Playwright tests in AgentBuddy. Other arguments go to `playwright test`. The app is, in order:
 
-1. `--app-root <path>`: a local AgentBuddy checkout (installed and built)
-2. `--app beta` or `ABUDDY_APP=beta`: an AgentBuddy Beta build satisfying the pack's `hostVersion`
+1. `--build <path>`: a local AgentBuddy checkout (installed and built)
+2. `--build beta` or `ABUDDY_BUILD=beta`: an AgentBuddy Beta build satisfying the pack's `hostVersion`
 3. `ABUDDY_ROOT`
-4. A Beta build satisfying the pack's `hostVersion`, as `--app beta` would
+4. A Beta build satisfying the pack's `hostVersion`, as `--build beta` would
 
 A Beta build is **downloaded once and then reused**: whenever one you already have satisfies the pack's
 `hostVersion`, that one runs — so this works offline and asks GitHub nothing. The newest is fetched only when
 none of them fits. `abuddy clean --apps` lists what has been downloaded, with sizes, and removes all but the
 newest; `--all` removes that one too, which is how you move to a newer Beta.
 
-**`abuddy test` never reads the app you saved and never asks**, so a test run means the same thing on a fresh machine as on one you have been developing on. Holding that preference is `abuddy run`'s job. The fixture builds the pack with the same CLI and installs it into a fresh data dir for each worker, so a run leaves nothing behind either.
+**`abuddy test` never reads the app you saved and never asks**, so a test run means the same thing on a fresh machine as on one you have been developing on. Holding that preference is `abuddy dev`'s job. The fixture builds the pack with the same CLI and installs it into a fresh data dir for each worker, so a run leaves nothing behind either.
 
 `--prebuilt` installs the build already in `dist/` instead of making a new one, for a pipeline that built the
 pack in an earlier step. The build is still held to being no older than the pack's sources and `abuddy.json`,
@@ -472,7 +502,7 @@ Remove an installed pack by ID. Restart the app after uninstalling.
 
 Show installed packs.
 
-`install`, `uninstall` and `list` target the production app's data by default; `-d` targets the development data dir and `-b` AgentBuddy Beta's.
+`install`, `uninstall` and `list` read the production build's data by default. `--build <name>` says which — `production`, `beta`, `development` or `test` — and `-d`, `-b` and `--production` are shorthands for the first three. They name a **build**, never a profile: a build keeps its own default storage, and `--profile` is the one override.
 
 ### App
 
@@ -511,15 +541,15 @@ abuddy db import ./agentbuddy-backup-2026-09-17 --production --force
 abuddy db reset --production        # lists what it would delete
 ```
 
-**Which data.** `-d` targets the development app's data dir, `-b` AgentBuddy Beta's, `--production` the production app's, `--data-dir <path>` any data dir, such as a copy of the user's, and `--instance <name>` an instance `abuddy run` made, by the name it printed. Name one of them, not two. `--schema-from <path>` names a pack snapshot for a data dir that publishes none of its own. Without it such a dir still opens to **read**, and the command says which entity types it could not name; a command that **changes** it is refused, because an incomplete schema makes a write land on the wrong rows. A command that only reads takes the production app's data without being told, and a dry run of `import`, `reset` or `clear-settings` counts as reading; **a change (`exec`, `repl --write`, and those three with `--force`) names its data dir**, so the user's own data is never what a forgotten flag hits. Each command prints the data dir it opens (on stderr, so results on stdout stay clean). A flag means that app's own data dir, whatever `ABUDDY_USER_DATA_DIR` is set to in the shell; the variable applies only when nothing names a data dir.
+**Which data.** `--build <name>` says which build's data dir — `-d`, `-b` and `--production` are its shorthands — `--data-dir <path>` any data dir, such as a copy of the user's, and `--profile <name>` a profile `abuddy dev` made, by the name it printed. Name one of them, not two. `--schema-from <path>` names a pack snapshot for a data dir that publishes none of its own. Without it such a dir still opens to **read**, and the command says which entity types it could not name; a command that **changes** it is refused, because an incomplete schema makes a write land on the wrong rows. A command that only reads takes the production app's data without being told, and a dry run of `import`, `reset` or `clear-settings` counts as reading; **a change (`exec`, `repl --write`, and those three with `--force`) names its data dir**, so the user's own data is never what a forgotten flag hits. Each command prints the data dir it opens (on stderr, so results on stdout stay clean). A flag means that app's own data dir, whatever `ABUDDY_USER_DATA_DIR` is set to in the shell; the variable applies only when nothing names a data dir.
 
-**While the app runs.** The commands open the database files themselves (offline); the app keeps the whole database in memory and is its only writer. So a change (`exec`, `repl --write`, and `import`, `reset` or `clear-settings` with `--force`) refuses while an AgentBuddy app runs on the data dir: the API it published is running, or (on macOS and Linux) its instance lock is held by a live process. Files left behind by a crash name processes that have exited, so they don't stand in the way. Quit the app first. Reading commands work, with a warning that they miss what the app hasn't written yet, and so do the dry runs: they open the database without writing to it, so they also work against a copy you have no permission to change.
+**While the app runs.** The commands open the database files themselves (offline); the app keeps the whole database in memory and is its only writer. So a change (`exec`, `repl --write`, and `import`, `reset` or `clear-settings` with `--force`) refuses while an AgentBuddy app runs on the data dir: the API it published is running, or (on macOS and Linux) its single-instance lock is held by a live process. Files left behind by a crash name processes that have exited, so they don't stand in the way. Quit the app first. Reading commands work, with a warning that they miss what the app hasn't written yet, and so do the dry runs: they open the database without writing to it, so they also work against a copy you have no permission to change.
 
 While a command changes the database it holds a lock on the data dir (`db-write.lock`), so a second `abuddy db` is refused and an AgentBuddy started meanwhile refuses to open that database instead of overwriting the change. A lock left behind by a command that was killed is ignored once its process is gone.
 
 **The run history.** The database has two partitions: the app's data, and the run history (`TNode` rows, what each flow step did). Commands read the data only, as the app does, so a query for `TNode` comes back empty until you pass `--volatile`, which reads both. `reset` deletes both either way; its listing counts the run history only with `--volatile`.
 
-**Writing.** There is no apply command: AgentBuddy content each pack's data when it starts (and `abuddy run` re-applies a pack it rebuilds), so start the app rather than content a data dir by hand.
+**Writing.** There is no apply command: AgentBuddy content each pack's data when it starts (and `abuddy dev` re-applies a pack it rebuilds), so start the app rather than content a data dir by hand.
 
 **Installed packs.** Entity types, relation kinds and where each type is stored come from the packs installed in the data dir — every enabled pack in `packs/`, the ones the app ships included, read from its own `abuddy.json`; no pack code runs. A data dir with no packs installed knows only the names the app itself declares, which is the truth about it rather than a degraded reading of it.
 
@@ -597,38 +627,55 @@ In the AgentBuddy repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, 
 
 ### Cleanup
 
-#### `abuddy instances`
+#### `abuddy profiles`
 
 Every AgentBuddy data dir on this machine, and the verbs for the ones you made. Works outside a pack — a
 data dir belongs to you rather than to any pack.
 
 ```
-abuddy instances                  what exists
-abuddy instances --sizes          with a size column
-abuddy instances --ephemeral      include the throwaway dirs `run --ephemeral` makes
-abuddy instances new [name]       create one; a name is minted if you don't give one
-abuddy instances rename <a> <b>   rename one
-abuddy instances rm <name>...     remove the ones you name
-abuddy instances rm --leaked      remove the ones a killed run left behind
+abuddy profiles                  what exists
+abuddy profiles --sizes          with a size column
+abuddy profiles --all            include the throwaway dirs `run --fresh --rm` makes
+abuddy profiles new [name]       create one; a name is minted if you don't give one
+abuddy profiles rename <a> <b>   rename one
+abuddy profiles rm <name>...     remove the ones you name
+abuddy profiles rm --leaked      remove the ones a killed run left behind
+abuddy profiles trim [<name>...] reclaim the caches Chromium rebuilds, in any data dir
+abuddy profiles stop <name>      close the app running on one (or --all)
 ```
 
 Two kinds of directory, listed apart. An **environment** is where an app of that channel keeps its data —
 production, beta, development, test — and nothing here removes one; a row says whether an app has it open,
-what version last wrote to it, and `(no app data)` when the directory holds only a browser profile. An
-**instance** is a data dir you can throw away.
+what version last wrote to it, and `(no app data)` when the directory holds only a Chromium profile. A
+**profile** is a data dir you can throw away.
+
+**`trim` is how you get the disk back, including from an environment nothing removes.** It deletes seven
+directories — `Cache`, `Code Cache`, `GPUCache`, `DawnGraphiteCache`, `DawnWebGPUCache`, `Shared Dictionary`,
+`blob_storage` — and nothing else. Your notes, settings, installed packs and the in-app browser's logins are
+untouched, so it asks for no confirmation. A dir with an app running on it is skipped, those files being
+open. With no names it does every dir there is.
+
+**How much it frees depends on which dir**, which is worth knowing before you run it: a development dir is
+mostly cache and a production one mostly is not. Measured 2026-10-10, 1.3GB came back from a 1.6GB
+development dir and 13MB from a 1.4GB production one — the difference being the in-app browser's logged-in
+sessions and your own media and database, which no command here deletes. For those, `abuddy db export`
+first, then `abuddy db reset --force` if you mean it.
+
+**`stop` closes the app on a data dir**, by name or `--all`, and waits for the dir to come free. The pid
+comes from what the app published about itself rather than from a search for a matching process.
 
 Sizes are behind a flag because taking them means walking every directory: measured, 674ms for a 1.4GB
 production dir and 1255ms for a 1.5GB development one. Names and paths come back immediately.
 
-An instance an app is currently running on is never renamed or removed: taking a data dir away from a
+A profile an app is currently running on is never renamed or removed: taking a data dir away from a
 running app does not stop it, it makes the app write the directory back.
 
 #### `abuddy clean`
 
 Remove build output: `dist/`, `.abuddy/`, `src/__generated__/`.
 
-`--apps` lists the AgentBuddy Beta builds `--app beta` downloaded — a few hundred megabytes each, one per
+`--apps` lists the AgentBuddy Beta builds `--build beta` downloaded — a few hundred megabytes each, one per
 release tested against — and removes all but the newest, which is the one a later run would reuse; `--all`
 removes every build. It works outside a pack.
 
-Data dirs are `abuddy instances`, below: what exists, and removing the ones you own.
+Data dirs are `abuddy profiles`, below: what exists, and removing the ones you own.

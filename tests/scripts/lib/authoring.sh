@@ -30,7 +30,7 @@ _step_report() {
 }
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-unset ABUDDY_ROOT ABUDDY_APP ABUDDY_APP_EXECUTABLE ABUDDY_CLI
+unset ABUDDY_ROOT ABUDDY_BUILD ABUDDY_APP_EXECUTABLE ABUDDY_CLI
 # The CLI caches its Beta downloads under the user's home; use a fresh one.
 #
 # THE ONE NON-HERMETIC INPUT. Everything else this script reads is in the checkout or in $WORK: HOME is a
@@ -45,5 +45,31 @@ useWorkDir() {
   export npm_config_cache="$(npm config get cache)"
   export HOME="$1/home"
   mkdir -p "$HOME"
+}
+
+# A work dir for this run, after sweeping the ones earlier runs left behind.
+#
+# **The dir is named after the process that made it, which is what lets a sweep tell a leftover from a live
+# run** — `isolatedDataDir` (`@abuddy/testing/vitest`) names its data dirs the same way for the same reason.
+# The rule before this was to delete the one the *handoff* named, which cleaned nothing whenever the handoff
+# did not survive to name it: a run interrupted before writing one, or one whose handoff another path had
+# already replaced. Each dir is around 566MB, so measured 2026-10-10 that left 26 of them and 13GB, exactly
+# one of which any run would ever have removed.
+#
+# A dir with no pid in its name is from before that naming and so is always a leftover, which is why those
+# go unconditionally: nothing creates one any more.
+newWorkDir() {
+  node -e '
+    const fs = require("node:fs"), os = require("node:os"), path = require("node:path");
+    const live = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === "EPERM"; } };
+    for (const name of fs.readdirSync(os.tmpdir())) {
+      if (!name.startsWith("abuddy-authoring-")) continue;
+      const pid = /^abuddy-authoring-(\d+)-[A-Za-z0-9]{6}$/.exec(name)?.[1];
+      if (pid !== undefined && live(Number(pid))) continue;
+      // Another run cleaning up beside us, or a dir we may not touch: not this run'"'"'s concern
+      try { fs.rmSync(path.join(os.tmpdir(), name), { recursive: true, force: true }); } catch {}
+    }
+  '
+  mktemp -d "${TMPDIR:-/tmp}/abuddy-authoring-$$-XXXXXX"
 }
 

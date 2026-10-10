@@ -1,3 +1,5 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { test, expect } from '@abuddy/testing';
 
 test('app launches without crashing', async ({ electronApp, appPage }) => {
@@ -33,4 +35,28 @@ test('runs in an isolated per-worker test data dir', async ({ electronApp, appPa
   expect(name).toBe('abuddy-test');
   // A fresh temp dir per worker, never the shared ~/…/abuddy-test data dir
   expect(userData).toMatch(/[\\/]abuddy-e2e-[^\\/]+$/);
+});
+
+/**
+ * **An attachable app is one that published a session, and a test app publishes none** — though it is
+ * running with a debug port wide open, which is the fact that makes this worth a case.
+ *
+ * Playwright drives Electron over CDP, so it launches every app here with `--remote-debugging-port`, and
+ * Chromium writes the number it chose to `DevToolsActivePort` in the data dir. So a tool that *inferred*
+ * attachability — from the file, from a reachable port — would find this app and drive a test run's app
+ * mid-suite. `@abuddy/host/dev-session`'s rule is that the file is declared instead: `abuddy dev` and the
+ * `npm start` loop publish one because they mean their app to be driven, and nothing treats the absence of
+ * one as "try anyway".
+ *
+ * That was an argument until this case. The port being asserted *present* is what stops the absence below
+ * from being read off an empty or wrong directory — and is the same half of the claim, since it is what
+ * there would be to infer from.
+ */
+test('publishes no session, though a test app has a debug port open', async ({ electronApp, appPage: _ready }) => {
+  const userData = await electronApp.evaluate(({ app }) => app.getPath('userData'));
+
+  // What inference would have to go on, and it is there
+  expect(fs.readFileSync(path.join(userData, 'DevToolsActivePort'), 'utf-8').split('\n')[0]).toMatch(/^\d+$/);
+  // What a driver actually reads, and it is not
+  expect(fs.existsSync(path.join(userData, 'session.json'))).toBe(false);
 });

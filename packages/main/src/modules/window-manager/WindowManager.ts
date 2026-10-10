@@ -10,7 +10,6 @@ import {WINDOW_CONFIG} from './constants.ts';
 import {getWindowIcon} from './helpers.ts';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
-import os from 'node:os';
 import {getMediaBasePath} from '../media-protocol/paths.ts';
 import {logRenderer, logRendererFatal} from '../api-server/logger.ts';
 import {splitRef} from '@abuddy/sdk/ids';
@@ -253,37 +252,6 @@ class WindowManager implements AppModule {
 
     // Handle opening files with the OS default application
     ipcMain.handle('shell:openPath', (_event, filePath: string) => openFilePath(filePath));
-
-    // Handle opening an image in the default image app
-    ipcMain.handle('shell:openImageExternal', async (_event, url: string) => {
-      const mimeToExt: Record<string, string> = {
-        'image/png': '.png',
-        'image/jpeg': '.jpg',
-        'image/gif': '.gif',
-        'image/webp': '.webp',
-        'image/svg+xml': '.svg',
-        'image/bmp': '.bmp',
-      };
-
-      let buffer: Buffer;
-      let ext = '.png';
-
-      if (url.startsWith('data:')) {
-        const match = url.match(/^data:(image\/[^;]+);base64,(.+)$/);
-        if (!match) throw new Error('Invalid data URL');
-        ext = mimeToExt[match[1]] || '.png';
-        buffer = Buffer.from(match[2], 'base64');
-      } else {
-        const response = await fetch(url);
-        const contentType = response.headers.get('content-type') || '';
-        ext = mimeToExt[contentType] || '.png';
-        buffer = Buffer.from(await response.arrayBuffer());
-      }
-
-      const tmpPath = join(os.tmpdir(), `agentbuddy-${crypto.randomUUID()}${ext}`);
-      await fs.writeFile(tmpPath, buffer);
-      await openFilePath(tmpPath);
-    });
 
     // Media upload handler
     ipcMain.handle('media:upload', async (_event, entityId: string, base64Data: string, mimeType: string) => {

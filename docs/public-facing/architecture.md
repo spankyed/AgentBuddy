@@ -101,7 +101,7 @@ The `packs` system handles install, uninstall, enable/disable and update from th
 
 - **Activate** (after install or update, or on enable): reads the pack's manifest, loads and registers it, registers `onShutdown`, runs `onInit`, then the pack's pending migrations and its content (skipped when its compiled content are unchanged), sends the bus `PACK_CHANGED` so running systems refresh what they read from packs, then `ACTIVATE_PACK` to spawn its systems. The renderer hears `PACK_ACTIVATED` and asks the application actor to load the frontends it hasn't, the new pack's included. The bus asks a pack's systems to publish right away only for a pack without frontend code; otherwise it waits for `packClientReady`. An install or update that activated but failed to apply reports the content error.
 - **Teardown** (before uninstall or update, or on disable): runs the pack's shutdown hooks, unregisters it (registration keeps the event types `bus.send` accepts current), clears its modules from the require cache, and sends the bus `TEARDOWN_PACK` to stop its systems. The renderer hears `PACK_DEACTIVATED`, unregisters the pack's FE extensions, removes its stylesheets and unloads its plugins.
-- **Reload** (development, `POST /dev/reload` on the API from `abuddy run` or a built-in pack's watch build; a development or test app takes it only with the API token, handled by `reloadPackById` in `@abuddy/host/packs/runtime`, which asks the registry which directory the pack came from): loads and registers the rebuilt runtime before shutting the running one down. If the fresh runtime fails to load or register, the running pack is re-registered and stays as it was. Otherwise the old shutdown hooks run, the new `onShutdown` registers, `onInit` runs, external packs run their pending migrations and re-apply, and the bus `RELOAD_PACK` stops the old and new system ids and starts those still registered, then sends them `CLIENT_CONNECTED` and asks them to publish; `PACK_CHANGED` and its ask follow for every running system. Teardown (disable, uninstall) sends it too, after stopping the pack's systems.
+- **Reload** (development, `POST /dev/reload` on the API from `abuddy dev` or a built-in pack's watch build; a development or test app takes it only with the API token, handled by `reloadPackById` in `@abuddy/host/packs/runtime`, which asks the registry which directory the pack came from): loads and registers the rebuilt runtime before shutting the running one down. If the fresh runtime fails to load or register, the running pack is re-registered and stays as it was. Otherwise the old shutdown hooks run, the new `onShutdown` registers, `onInit` runs, external packs run their pending migrations and re-apply, and the bus `RELOAD_PACK` stops the old and new system ids and starts those still registered, then sends them `CLIENT_CONNECTED` and asks them to publish; `PACK_CHANGED` and its ask follow for every running system. Teardown (disable, uninstall) sends it too, after stopping the pack's systems.
 
 An external pack's migrations run at boot, on activation and on reload, each against the pack's own version; the app's run at boot and after a reset or backup import.
 
@@ -180,7 +180,7 @@ pack://<packId>/<filePath>
 
 - Resolves to `<userDataDir>/packs/<packId>/<filePath>`
 - Path traversal protection: the resolved path must be inside the pack's directory
-- While `abuddy run` runs, `<userDataDir>/pack-dev-servers/<packId>.json` names the pack's Vite dev server port, and requests are proxied there (an invalid port answers 502; a failed or non-OK fetch falls back to the file). The marker lives outside the pack directory, so the installed pack still verifies and the marker survives reinstalls
+- While `abuddy dev` runs, `<userDataDir>/pack-dev-servers/<packId>.json` names the pack's Vite dev server port, and requests are proxied there (an invalid port answers 502; a failed or non-OK fetch falls back to the file). The marker lives outside the pack directory, so the installed pack still verifies and the marker survives reinstalls
 - Used by the renderer to load `runtime/fe.js`, `runtime/fe.css`, and other pack assets
 
 ## Host dependency sharing
@@ -340,7 +340,7 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 
 1. **`file:` path** — the given directory (relative to the pack root or absolute), in any layout. Not cached. A missing snapshot is an error.
 2. **Workspace** — `../<id>`, `../../packages/<id>`, `../../<id>`.
-3. **The app the pack is built against** — the built-in packs of a named app (`ABUDDY_APP`, `ABUDDY_ROOT`) or of the AgentBuddy checkout behind the pack.
+3. **The app the pack is built against** — the built-in packs of a named app (`ABUDDY_BUILD`, `ABUDDY_ROOT`) or of the AgentBuddy checkout behind the pack.
 4. **Installed apps** — `packs/<id>` in each environment's data dir (production, beta, development, test), which is where every pack that app has is installed, the ones it ships included.
 5. **Cache** — `.abuddy/deps/<id>/`, used only when no source on this machine matches and the cached version satisfies the range. `fetch-deps` skips it.
 6. **GitHub releases** — for `github:owner/repo [range]` values: the newest release matching the range, whose `<id>-<version>.tgz` is downloaded with its `.sha256`, checksum-checked, extracted and verified.

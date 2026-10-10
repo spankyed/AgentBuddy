@@ -15,8 +15,8 @@ vi.mock('../../src/secrets/redaction.ts', async (importOriginal) => {
 
 // Writes fail while `failWrites.value` is true (a full disk, a file another process holds)
 const failWrites = vi.hoisted(() => ({ value: false }));
-vi.mock('../../src/secrets/private-file.ts', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/secrets/private-file.ts')>();
+vi.mock('../../src/private-file.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/private-file.ts')>();
   return {
     writePrivateFile: (filePath: string, contents: string) => {
       if (failWrites.value) throw new Error('ENOSPC: no space left on device');

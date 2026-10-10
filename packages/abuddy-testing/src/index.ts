@@ -93,7 +93,7 @@ function resolveApp(options: CreateTestOptions): AppLaunch {
 
   throw new Error(
     'Could not find an AgentBuddy app to test against. Run the tests with `abuddy test`, which ' +
-    'resolves one (--app-root <path>, --app beta, or the AgentBuddy checkout behind your pack), or set\n' +
+    'resolves one (--build <path>, --build beta, or the AgentBuddy checkout behind your pack), or set\n' +
     'ABUDDY_ROOT to a built AgentBuddy checkout.',
   );
 }
@@ -183,7 +183,7 @@ const E2E_VIEWPORT = { width: 1400, height: 900 };
 /** The pack's recorded install or apply error in the test app's installed packs, if any. */
 function readPackLastError(packId: string, userDataDir: string): string | undefined {
   try {
-    const registry = JSON.parse(fs.readFileSync(resolveAppContext({ env: 'test', userDataDir }).installedPacksFile, 'utf-8'));
+    const registry = JSON.parse(fs.readFileSync(resolveAppContext({ build: 'test', profile: userDataDir }).installedPacksFile, 'utf-8'));
     return registry.packs?.find((p: { id: string }) => p.id === packId)?.lastError;
   } catch {
     return undefined;
@@ -330,6 +330,145 @@ async function findMainWindow(electronApp: ElectronApplication): Promise<Page> {
   throw describeFailure('Main window with applicationState did not appear within timeout', electronApp);
 }
 
+/** The state a ready app is in, as the dot-path `waitForState` takes. */
+export const APP_READY_STATE = 'running.connected';
+
+/**
+ * Waits until the app is ready to be driven, dismissing onboarding on the way.
+ *
+ * **The dismissal is inside the predicate, not a step before it.** Onboarding can arrive at any point
+ * during the boot, so a check-then-dismiss-then-wait has a window in which it appears after the check and
+ * the second wait hangs to its deadline. `engine/index.ts`' `reloadWindow` already learned that for a
+ * reloaded window; this is the same shape, used by every caller.
+ *
+ * `window.__disableOnboardingUI` is defined unconditionally (`renderer/src/main.ts`), so a page that
+ * arrived over CDP reaches it exactly as a launched one does. It sends `ONBOARDING_COMPLETE`, which is a
+ * write to the data dir — the one thing this does that outlives the call, and what a caller reports.
+ *
+ * `state` is a parameter with a default because the caller this leaves room for wants onboarding **left
+ * up**: driving the onboarding screens themselves, which nothing can do today. A hard-coded terminal state
+ * would make that a rewrite rather than an argument.
+ */
+export function waitForAppReady(page: Page, { state = APP_READY_STATE, timeout = 45_000 } = {}): Promise<unknown> {
+  return page.waitForFunction(({ path: want, dismiss }) => {
+    const win = window as unknown as {
+      applicationState?: { getSnapshot(): { value?: unknown } };
+      __disableOnboardingUI?: () => void;
+    };
+    const value = win.applicationState?.getSnapshot().value;
+    if (typeof value !== 'object' || value === null) return value === want;
+    // Dismissed from inside the poll because it can arrive at any point during the boot
+    if (dismiss && 'onboarding' in value) win.__disableOnboardingUI?.();
+    let current: unknown = value;
+    for (const part of want.split('.')) {
+      if (typeof current === 'object' && current !== null && part in current) current = (current as Record<string, unknown>)[part];
+      else return current === part;
+    }
+    return true;
+  }, { path: state, dismiss: state === 'running.connected' }, { timeout });
+}
+
+/**
+ * The `AppHelper` over a page, as a free function.
+ *
+ * **It was only ever a function of a `Page`** — every method is `page.evaluate`, `page.waitForFunction` or
+ * `page.screenshot` — and looked fixture-bound because the fixture is where it was constructed. A page that
+ * arrived over CDP rather than from a launch gets the same verbs from the same code, which is what makes
+ * one implementation serve both and is the reason this is extracted rather than copied.
+ *
+ * `screenshotDir` is the one thing it closes over; the report directory is resolved per call, since a run
+ * that reports nothing should leave no directory behind.
+ */
+export function appHelper(page: Page, screenshotDir: string): AppHelper {
+  const app: AppHelper = {
+    sendEvent: async (event) => {
+      await page.evaluate((e) => {
+        (window as any).applicationState.send(e);
+      }, event);
+    },
+  
+    getState: async () => {
+      return page.evaluate(() => {
+        return (window as any).applicationState?.getSnapshot()?.value;
+      });
+    },
+  
+    getContext: async () => {
+      return page.evaluate(() => {
+        const snap = (window as any).applicationState?.getSnapshot();
+        return {
+          activePluginId: snap?.context?.activePlugin?.id ?? '',
+          pluginIds: (snap?.context?.plugins ?? []).map((p: any) => p.id),
+        };
+      });
+    },
+  
+    screenshot: async (name) => {
+      // Made on first use, not at fixture setup: every run of every spec used to leave an empty
+      // `tests/screenshots/` behind, including suites that screenshot nothing
+      fs.mkdirSync(screenshotDir, { recursive: true });
+      const filePath = path.join(screenshotDir, `${name}.png`);
+      return page.screenshot({ path: filePath });
+    },
+  
+    report: async (name, value) => {
+      // Made on first use, as the screenshot dir is: a run that reports nothing leaves nothing behind
+      const reportDir = resolveReportDir();
+      fs.mkdirSync(reportDir, { recursive: true });
+      const filePath = path.join(reportDir, `${name}.json`);
+      fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+      console.log(`[drive:report] ${name} ${JSON.stringify(value)}`);
+      return filePath;
+    },
+  
+    navigate: async (pluginId) => {
+      const id0 = resolvePlugin(pluginId);
+      await page.evaluate((id) => {
+        (window as any).applicationState.send({ type: 'SELECT_PLUGIN', plugin: id });
+      }, id0);
+      await page.waitForFunction((id) => {
+        const snap = (window as any).applicationState?.getSnapshot();
+        if (snap?.context?.activePlugin?.id !== id) return false;
+        // The state switching is not the canvas being on screen: Vue renders on the next flush, and a
+        // test that clicks or screenshots straight after a navigate needs that flush to have happened.
+        // data-active-plugin (WebApp.vue) is written in the flush that swaps the canvas.
+        return document.querySelector(`[data-active-plugin="${id}"]`) !== null;
+      }, id0, { timeout: 10_000 });
+    },
+  
+    waitForPlugin: async (pluginId, timeout = 30_000) => {
+      // A host plugin is known once the app has any; a pack's registers later, at its ref
+      await page.waitForFunction(() => ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).length > 0, null, { timeout });
+      const id = resolvePlugin(pluginId);
+      await page.waitForFunction((target) =>
+        ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).some((p: { id: string }) => p.id === target), id, { timeout });
+    },
+  
+    waitForState: async (check, timeout = 10_000) => {
+      await page.waitForFunction((c) => {
+        const snap = (window as any).applicationState?.getSnapshot();
+        const val = snap?.value;
+        if (typeof val === 'object' && val !== null) {
+          const parts = c.split('.');
+          let current: any = val;
+          for (const part of parts) {
+            if (typeof current === 'object' && current !== null && part in current) {
+              current = current[part];
+            } else if (current === part) {
+              return true;
+            } else {
+              return false;
+            }
+          }
+          return true;
+        }
+        return val === c;
+      }, check, { timeout });
+    },
+  };
+  return app;
+}
+
 export function createTest(options: CreateTestOptions = {}) {
   const appLaunch = resolveApp(options);
   const screenshotDir = resolveScreenshotDir(options.screenshotDir);
@@ -347,7 +486,7 @@ export function createTest(options: CreateTestOptions = {}) {
       // Every worker gets a fresh data dir: no data, installed packs or onboarding state leak
       // between runs or from other packs, and nothing touches the developer's abuddy-test dir
       // E2E_DATA_DIR overrides that with one the caller owns and keeps, which is how `abuddy drive`
-      // runs against an instance whose state survives the session. An environment variable rather than a
+      // runs against a profile whose state survives the session. An environment variable rather than a
       // `createTest` option because the `test` every spec imports is built at module scope with no
       // options, so an option could never reach it.
       const givenDataDir = process.env.E2E_DATA_DIR;
@@ -390,7 +529,7 @@ export function createTest(options: CreateTestOptions = {}) {
             }
           }
           // Install through the same bundle path users get (stage → verify → place)
-          const { packsDir } = resolveAppContext({ env: 'test', userDataDir });
+          const { packsDir } = resolveAppContext({ build: 'test', profile: userDataDir });
           console.log(`[pack] Installing ${manifest.id} from ${archive ?? packDir} into an isolated test data dir...`);
           // `hostVersion` is the launched app's own (its package.json), so this is that app's answer rather than a
           // second opinion. No `packFormat`: whether this app can read the pack's build is the app's to decide, and
@@ -477,33 +616,12 @@ export function createTest(options: CreateTestOptions = {}) {
         }
       };
 
-      await waitOrDescribe('App did not reach connected state', page.waitForFunction(() => {
-        const snap = (window as any).applicationState?.getSnapshot();
-        if (!snap) return false;
-        const val = snap.value;
-        if (typeof val === 'object' && val !== null) {
-          if ('running' in val) return val.running === 'connected';
-          if ('onboarding' in val) return true;
-        }
-        return false;
-      }, null, { timeout: 45_000 }));
+      await waitOrDescribe('App did not reach connected state', waitForAppReady(page));
 
       const startedAt = launchStartedAt.get(electronApp);
       if (startedAt !== undefined) {
         launchStartedAt.delete(electronApp);
         console.log(`[e2e] app connected ${Date.now() - startedAt}ms after launch`);
-      }
-
-      const inOnboarding = await page.evaluate(() => {
-        const snap = (window as any).applicationState?.getSnapshot();
-        return snap && typeof snap.value === 'object' && 'onboarding' in snap.value;
-      });
-      if (inOnboarding) {
-        await page.evaluate(() => (window as any).__disableOnboardingUI?.());
-        await page.waitForFunction(() => {
-          const snap = (window as any).applicationState?.getSnapshot();
-          return snap?.value?.running === 'connected';
-        }, null, { timeout: 10_000 });
       }
 
       /**
@@ -565,95 +683,7 @@ export function createTest(options: CreateTestOptions = {}) {
     },
 
     app: async ({ appPage: page }, use) => {
-
-      const app: AppHelper = {
-        sendEvent: async (event) => {
-          await page.evaluate((e) => {
-            (window as any).applicationState.send(e);
-          }, event);
-        },
-
-        getState: async () => {
-          return page.evaluate(() => {
-            return (window as any).applicationState?.getSnapshot()?.value;
-          });
-        },
-
-        getContext: async () => {
-          return page.evaluate(() => {
-            const snap = (window as any).applicationState?.getSnapshot();
-            return {
-              activePluginId: snap?.context?.activePlugin?.id ?? '',
-              pluginIds: (snap?.context?.plugins ?? []).map((p: any) => p.id),
-            };
-          });
-        },
-
-        screenshot: async (name) => {
-          // Made on first use, not at fixture setup: every run of every spec used to leave an empty
-          // `tests/screenshots/` behind, including suites that screenshot nothing
-          fs.mkdirSync(screenshotDir, { recursive: true });
-          const filePath = path.join(screenshotDir, `${name}.png`);
-          return page.screenshot({ path: filePath });
-        },
-
-        report: async (name, value) => {
-          // Made on first use, as the screenshot dir is: a run that reports nothing leaves nothing behind
-          const reportDir = resolveReportDir();
-          fs.mkdirSync(reportDir, { recursive: true });
-          const filePath = path.join(reportDir, `${name}.json`);
-          fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
-          console.log(`[drive:report] ${name} ${JSON.stringify(value)}`);
-          return filePath;
-        },
-
-        navigate: async (pluginId) => {
-          const id0 = resolvePlugin(pluginId);
-          await page.evaluate((id) => {
-            (window as any).applicationState.send({ type: 'SELECT_PLUGIN', plugin: id });
-          }, id0);
-          await page.waitForFunction((id) => {
-            const snap = (window as any).applicationState?.getSnapshot();
-            if (snap?.context?.activePlugin?.id !== id) return false;
-            // The state switching is not the canvas being on screen: Vue renders on the next flush, and a
-            // test that clicks or screenshots straight after a navigate needs that flush to have happened.
-            // data-active-plugin (WebApp.vue) is written in the flush that swaps the canvas.
-            return document.querySelector(`[data-active-plugin="${id}"]`) !== null;
-          }, id0, { timeout: 10_000 });
-        },
-
-        waitForPlugin: async (pluginId, timeout = 30_000) => {
-          // A host plugin is known once the app has any; a pack's registers later, at its ref
-          await page.waitForFunction(() => ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).length > 0, null, { timeout });
-          const id = resolvePlugin(pluginId);
-          await page.waitForFunction((target) =>
-            ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).some((p: { id: string }) => p.id === target), id, { timeout });
-        },
-
-        waitForState: async (check, timeout = 10_000) => {
-          await page.waitForFunction((c) => {
-            const snap = (window as any).applicationState?.getSnapshot();
-            const val = snap?.value;
-            if (typeof val === 'object' && val !== null) {
-              const parts = c.split('.');
-              let current: any = val;
-              for (const part of parts) {
-                if (typeof current === 'object' && current !== null && part in current) {
-                  current = current[part];
-                } else if (current === part) {
-                  return true;
-                } else {
-                  return false;
-                }
-              }
-              return true;
-            }
-            return val === c;
-          }, check, { timeout });
-        },
-      };
-
-      await use(app);
+      await use(appHelper(page, screenshotDir));
     },
   });
 
@@ -673,77 +703,11 @@ export const test = _default.test;
 export const drive = _default.test;
 
 /**
- * A driving session something outside the process can talk to, for `abuddy drive --serve`.
+ * A session over the app something else is holding, which is how a question is asked of it.
  *
  * Re-exported here rather than from an entry of its own: a driving script already imports `drive` from
- * this module, and the engine is the same job done interactively, so a second entry would be a second
- * name for one thing. `src/engine/` has what it does and why.
+ * this module, and a session is the same job done one question at a time. `src/engine/` has the detail.
  */
-import { runDriveEngine, type EngineWindow, type ExtraVerbs } from './engine/index.ts';
-
-export {
-  ENGINE_TOKEN_HEADER, MARKER_FILE, object, optionalMs, optionalText, pixels, present, required,
-  runDriveEngine, safeName, verb,
-  type DriveEngineOptions, type EngineMarker, type EngineWindow, type ExtraVerbs, type Reader, type Verb,
-} from './engine/index.ts';
-
-/**
- * The app's own window, so `/set-viewport` resizes it rather than drawing into a corner of it.
- *
- * `browserWindow(page)` hands back a handle to the `BrowserWindow` in the main process, and `evaluate` runs
- * there — which is the only way to reach it: the renderer cannot resize itself, and the app blocks the
- * navigation that would be the other way to try.
- *
- * **It reads the size back in that same evaluate**, because a window does not have to take what it is given:
- * the main window has a 900x600 minimum (`packages/main`'s `WINDOW_CONFIG`), so asking for 400x300 leaves it
- * at 900x600 while the request looks like it worked. Both calls are synchronous in the main process, so the
- * clamp is known at once and there is nothing to wait for and no frame to race.
- */
-type MainWindow = {
-  setContentSize: (width: number, height: number) => void;
-  getContentSize: () => number[];
-};
-
-const electronWindow = (electronApp: ElectronApplication, page: Page): EngineWindow => ({
-  setContentSize: async (width, height) => {
-    const browserWindow = await electronApp.browserWindow(page);
-    return browserWindow.evaluate((window: MainWindow, size: { width: number; height: number }) => {
-      window.setContentSize(size.width, size.height);
-      const [took, andTook] = window.getContentSize();
-      return { width: took, height: andTook };
-    }, { width, height });
-  },
-});
-
-/**
- * The body of a serving session: everything `abuddy drive --serve`'s generated script does.
- *
- * **The body rather than the registration, so two things hold at once.** The wiring is typechecked here
- * — the generated script is a string, so an option it had to pass was a chance to drift, and did, once:
- * adding `/wait` added two options the template did not pass, which showed up as
- * `page.waitForState is not a function` against a running app rather than as a compile error. And
- * `drive(...)` is still called from the script, so Playwright reports the session at the caller's file
- * instead of at a line inside this bundle, which is what a reader needs when a run is interrupted.
- *
- * **It takes options and returns the body**, rather than being the body, so the one thing a session file
- * is for — adding verbs of its own — is a typechecked argument at that file. A new option is then a
- * compile error there instead of the failure above.
- */
-export const driveEngineBody = (options: { verbs?: ExtraVerbs; viewport?: { width: number; height: number } } = {}) =>
-  async (
-    { app, appPage, electronApp }: { app: AppHelper; appPage: Page; electronApp: ElectronApplication },
-    testInfo: { project: { outputDir: string }; workerIndex: number },
-  ): Promise<void> => {
-    await runDriveEngine({
-      page: appPage,
-      app,
-      outputDir: testInfo.project.outputDir,
-      // The same file the fixture writes the app's output to, so `/logs` answers from the run's own log
-      logPath: appLogPath(testInfo),
-      verbs: options.verbs,
-      viewport: options.viewport,
-      // The same question the fixture asked when it decided whether to pin: a window someone can see is
-      // resized for real, and one nobody can gets the emulated viewport a suite needs
-      window: pinsViewport(process.env) ? undefined : electronWindow(electronApp, appPage),
-    });
-  };
+export { type EngineWindow } from './engine/index.ts';
+export { attachToApp, findWindow, type AttachedApp, type AttachOptions, type AttachTargets } from './engine/cdp-page.ts';
+export { attachedSession, type AttachedSession, type AttachedSessionOptions } from './engine/index.ts';

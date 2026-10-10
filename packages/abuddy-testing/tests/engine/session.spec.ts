@@ -14,7 +14,7 @@ import {
 } from '../../src/engine/session.ts';
 import type { BusMessage } from '../../src/engine/api-client.ts';
 import type { EngineSession, SettingsTarget } from '../../src/engine/session.ts';
-import { asSessionPage, checkedViewport } from '../../src/engine/index.ts';
+import { asSessionPage } from '../../src/engine/index.ts';
 import type { Page } from '@playwright/test';
 import { answerTo } from '@abuddy/sdk/testing';
 
@@ -518,19 +518,6 @@ describe('the viewport', () => {
     expect(acted).toEqual(['emulated 1000x700', 'window 400x300']);
   });
 
-  /**
-   * The `viewport` option's own gate, which exists because nothing else watches that value: `drive/` is
-   * outside every tsconfig here, so a session file's option is checked by an editor and by no chain step.
-   * Both halves, because the likeliest mistake is checking one and forgetting the other.
-   */
-  it('refuses a size the /set-viewport verb would refuse, rather than opening at it', () => {
-    expect(checkedViewport({ width: 1400, height: 900 })).toEqual({ width: 1400, height: 900 });
-
-    for (const size of [{ width: 0, height: 900 }, { width: 1400, height: 0 }, { width: 1400.5, height: 900 },
-      { width: 1400, height: -900 }, { width: '1400' as unknown as number, height: 900 }]) {
-      expect(() => checkedViewport(size), JSON.stringify(size)).toThrow(/whole numbers of pixels above zero/);
-    }
-  });
 });
 
 describe('the app log', () => {
@@ -622,7 +609,7 @@ describe('a bus round-trip', () => {
    * The bridge is still a reply path, and this is the only case that says so.
    *
    * An app built before `host/drive` existed answers with a broadcast, which never reaches this session's
-   * connection — the in-page inspector is the only way to see it. `abuddy drive --app beta` can be exactly that
+   * connection — the in-page inspector is the only way to see it. `abuddy drive --build beta` can be exactly that
    * app, so waiters hear both channels and this case is what stops the page path being deleted as redundant.
    */
   it('still resolves a round-trip from a reply seen only in the page', async () => {

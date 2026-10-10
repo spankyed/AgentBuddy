@@ -19,9 +19,12 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # 0.9s. It runs api:check and packages:check, both of which regenerate what they
                          # compare: neither has a cheaper proxy, and api:check's stopped being cheaper than
                          # the thing it stood for.
-                         # **Never pipe a backgrounded run.** It buffers output and prints only a failing
-                         # step's, so `| tail` discards the one thing a failure leaves behind, and that
-                         # does not come back on a re-run that passes.
+                         # **A run keeps every step's output** (scripts/lib/chain-evidence.ts), which is
+                         # what makes the printing a convenience rather than the only copy — this is where
+                         # the instruction never to pipe a backgrounded run used to be, a procedure
+                         # standing in for the mechanism. The classification retry was the sharper half: it
+                         # re-runs the failed step, so its output had no reader at all and the step script's
+                         # own log file was truncated by the attempt being diagnosed.
                          # Afterwards it names the steps a run contradicted, wherever it ran — what the
                          # measured schedule gates is the figure it offers to write, never the rows: one
                          # past double its declared

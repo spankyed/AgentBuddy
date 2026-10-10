@@ -41,7 +41,7 @@ Options:
     return;
   }
 
-  const { packsDir, userDataDir } = resolveAppContext({ env });
+  const { packsDir, userDataDir } = resolveAppContext({ build: env });
   // Recorded by the app when it starts with this data dir
   const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
   const kind = detectSource(source);

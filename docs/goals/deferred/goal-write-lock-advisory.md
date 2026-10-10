@@ -89,7 +89,7 @@ advisory lock can replace exactly one:
 | `db-write.lock` (`write-lock.ts:57`) | our tools | **Yes.** A mutual-exclusion lock held for a duration is what `flock` is |
 | `app.lock` (`running.ts`) | the Electron main process | **No.** Not a mutual-exclusion lock: `requestSingleInstanceLock()` is what keeps one app per data dir, and this only publishes that it is using one. Since 2026-09-20; this row read Chromium's `SingletonLock`, which we did not write |
 | staging dirs (`staging.ts:30`) | our installer | No. A record of an install that was in progress, read once at boot, not a lock |
-| dev-server marker (`dev-server.ts:75`) | `abuddy run` | Not by a lock — but the question has a better answer (Decision 2) |
+| dev-server marker (`dev-server.ts:75`) | `abuddy dev` | Not by a lock — but the question has a better answer (Decision 2) |
 
 **Acquisition was not atomic, and that is the bug that mattered.** `holdDatabaseWriteLock` called
 `findDatabaseWriter` and then wrote the file with `writeFileSync` + `renameSync`, which overwrites. Check,
@@ -269,7 +269,7 @@ It connects to the port it read rather than checking the publisher's pid. A file
 answers on reports no API, as it does today; a file naming a port something *else* now holds stops being
 reported as ours, which the pid check could not tell.
 
-**Done when:** `findRunningApp` and `abuddy run` still report a running app, `process-liveness.spec.ts`
+**Done when:** `findRunningApp` and `abuddy dev` still report a running app, `process-liveness.spec.ts`
 covers a port nothing listens on and one a different process holds, and no caller passes a pid to decide
 this. `running-app.spec.ts` keeps its case for a wedged API, which `app.lock` answers and the port alone
 would not. **Mutation:** removing the connect check makes the "port nothing answers on" case report an API.
@@ -352,7 +352,7 @@ build — that last one would remove the only objection that isn't about size.
 
   **`app.lock` has since softened this.** `findRunningApp` asks the app's own marker first, and the main
   process publishes that for as long as it runs, so a wedged API no longer takes the answer to "no app"
-  on its own. The direction still matters for `abuddy run`, which reads the endpoint alone.
+  on its own. The direction still matters for `abuddy dev`, which reads the endpoint alone.
 
 ## Deferred
 

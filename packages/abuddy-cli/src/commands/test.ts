@@ -9,13 +9,13 @@ import { withoutSourceCondition } from '@abuddy/host/build/source-resolution';
 import { cliBin, readManifest, resolveVitestCli } from '../utils';
 import { VITEST_CONFIG_FILES } from './init.ts';
 
-export const TEST_USAGE = `Usage: abuddy test [--app-root <path> | --app beta] [--release] [--prebuilt] [playwright args...]
+export const TEST_USAGE = `Usage: abuddy test [--build <name|path>] [--release] [--prebuilt] [playwright args...]
        abuddy test --contract [vitest args...]
 
-Runs the pack's Playwright tests in AgentBuddy. The app is, in order: --app-root (a local
-AgentBuddy checkout), --app beta (the newest AgentBuddy Beta build satisfying the pack's
-hostVersion, downloaded and cached), ABUDDY_ROOT, or that newest Beta. It reads no machine state and
-derives nothing from where the pack sits, so a run means the same thing on any machine.
+Runs the pack's Playwright tests in AgentBuddy. The build is, in order: --build (a name, or a
+local AgentBuddy checkout by path), ABUDDY_BUILD, or the newest AgentBuddy Beta satisfying the
+pack's hostVersion, downloaded and cached. It reads no machine state and derives nothing from where
+the pack sits, so a run means the same thing on any machine.
 
 --prebuilt installs the build already in dist/ instead of making a new one, for a caller that built the
 pack in an earlier step. The build is still held to being no older than the sources, so a stale one fails
@@ -51,10 +51,10 @@ export function fixtureEnv(
   // ELECTRON_RUN_AS_NODE (app-bundled launcher) stays: the runner and its workers run on
   // process.execPath. The fixture drops it for the app it launches (appLaunchEnv).
   delete env.ABUDDY_APP_EXECUTABLE;
-  // ABUDDY_APP as well as the executable: the fixture builds the pack, and resolving its dependencies
-  // on built-in packs reads the app choice, not the launch target. Without it a `--app beta` run
+  // ABUDDY_BUILD as well as the executable: the fixture builds the pack, and resolving its dependencies
+  // on built-in packs reads the app choice, not the launch target. Without it a `--build beta` run
   // resolves against the checkout behind the pack, or finds nothing at all in CI.
-  delete env.ABUDDY_APP;
+  delete env.ABUDDY_BUILD;
   // Where the app's data goes, and where its screenshots and reports land, is this run's to decide and
   // never the shell's. All three are read straight from the environment by the fixture, because the `test`
   // a spec imports is built at module scope and no option can reach it — so an exported E2E_DATA_DIR would
@@ -66,7 +66,7 @@ export function fixtureEnv(
   if (app.kind === 'source') env.ABUDDY_ROOT = app.root;
   else {
     env.ABUDDY_APP_EXECUTABLE = app.executable;
-    env.ABUDDY_APP = 'beta';
+    env.ABUDDY_BUILD = 'beta';
   }
   // Cleared when there is none, as ABUDDY_PACK_RELEASE below is: `abuddy test` runs the pack it is in,
   // so an exported PACK_DIR in a directory that holds no manifest would have it build and install a

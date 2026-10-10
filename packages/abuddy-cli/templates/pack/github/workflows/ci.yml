@@ -9,7 +9,7 @@ jobs:
   checks:
     # ubuntu is enough while this pack declares no dependencies in abuddy.json: nothing has to resolve
     # another pack, so no AgentBuddy install is needed. Add one and this needs what the release workflow
-    # uses — `runs-on: macos-14` with `ABUDDY_APP: beta`, so the build can read it from an installed app.
+    # uses — `runs-on: macos-14` with `ABUDDY_BUILD: beta`, so the build can read it from an installed app.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

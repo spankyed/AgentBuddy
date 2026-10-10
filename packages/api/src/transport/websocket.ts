@@ -10,6 +10,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { SERVER_CONFIG, apiToken, apiTokenIsOwn, isApiToken } from '@/boot/config';
 import { appPacks, appStore, backendActor } from '@/runtime';
 import { reloadPackById } from '@abuddy/host/packs/runtime';
+import { writePrivateFile } from '@abuddy/host/private-file';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { ApiEndpoint } from '@abuddy/host/process-liveness';
 import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
@@ -34,10 +35,10 @@ export function acceptsConnection(offeredProtocols: string | undefined, token = 
 
 /**
  * Why a pack reload request is refused, or null to take it. Only a development or test app reloads packs, and only
- * for a caller with the API token: `abuddy run` and the built-in pack's watcher read it from the development app's
+ * for a caller with the API token: `abuddy dev` and the built-in pack's watcher read it from the development app's
  * token file, the E2E tests from the app's window. A web page has no way to learn it.
  */
-export function devReloadRefusal(headers: http.IncomingHttpHeaders, env = resolveAppContext().env, token = apiToken()): string | null {
+export function devReloadRefusal(headers: http.IncomingHttpHeaders, env = resolveAppContext().build, token = apiToken()): string | null {
   if (env !== 'development' && env !== 'test') return `pack reloads are for development builds (this one is ${env})`;
   const given = headers[API_TOKEN_HEADER];
   if (!isApiToken(Array.isArray(given) ? given[0] : given, token)) return 'the API token is missing or wrong';
@@ -89,21 +90,10 @@ function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) 
 }
 
 /**
- * Writes a file only this user can read: a new file created with those permissions, then moved over any file already
- * there, so neither an existing file's permissions nor a half-written one is ever what a reader finds.
- */
-function writePrivateFile(file: string, content: string): void {
-  const temp = `${file}.${process.pid}.tmp`;
-  fs.rmSync(temp, { force: true });
-  fs.writeFileSync(temp, content, { mode: 0o600, flag: 'wx' });
-  fs.renameSync(temp, file);
-}
-
-/**
  * Tells local tools where this API is. Every run publishes its port, so a tool finds it and can tell that an app is
  * running on the data dir, whatever the platform (`abuddy db` refuses to change a database an app holds); the port
  * alone opens nothing, since a call needs the token. The token itself goes to a file only where a local tool may use
- * it: a development app (`abuddy run`, the built-in pack's watcher), and an API started by hand, which made up its
+ * it: a development app (`abuddy dev`, the built-in pack's watcher), and an API started by hand, which made up its
  * own. That file is readable only by the user. Both are removed when the process exits.
  */
 export function publishApiFiles(port: number, token: string): void {

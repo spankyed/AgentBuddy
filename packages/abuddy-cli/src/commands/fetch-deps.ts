@@ -161,7 +161,7 @@ function unusable(depId: string, rejected: Rejected): Error {
 /** A pack installed in an AgentBuddy's data dir (any channel) — the ones it ships among them. */
 function resolveFromInstalledApp(depId: string, range: string, rejected: Rejected): (DepFiles & { env: AppEnv }) | null {
   for (const env of ['production', 'beta', 'development', 'test'] as const) {
-    const found = findDepFiles(path.join(resolveAppContext({ env }).packsDir, depId));
+    const found = findDepFiles(path.join(resolveAppContext({ build: env }).packsDir, depId));
     if (usable(found, range, `installed app (${env})`, rejected)) return { ...found, env };
   }
   return null;
@@ -371,7 +371,7 @@ function copyContent(from: string, to: string): void {
 // ── Resolution chain ──
 
 /**
- * Sources on this machine, in order: the workspace, the app this pack is built against (ABUDDY_APP,
+ * Sources on this machine, in order: the workspace, the app this pack is built against (ABUDDY_BUILD,
  * ABUDDY_ROOT, or the AgentBuddy checkout behind the pack), then installed apps. Each must satisfy the
  * declared range. They're cheap, so they're re-read on every build instead of trusting the cache.
  */

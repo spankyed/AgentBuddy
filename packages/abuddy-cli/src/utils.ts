@@ -2,16 +2,42 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import { parseManifest, type PackManifest } from '@abuddy/sdk/build';
-import type { AppEnv } from '@abuddy/sdk/env';
+import { APP_ENVS, type AppEnv } from '@abuddy/sdk/env';
 
-const ENV_FLAGS = ['-d', '--dev', '-b', '--beta'] as const;
+const ENV_FLAGS = ['-d', '--dev', '-b', '--beta', '--production'] as const;
 
+/**
+ * Which build's data a command is pointed at.
+ *
+ * **`-d`, `-b` and `--production` are `--build` shorthands**, which is Decision 4 of the vocabulary
+ * change: they keep working and change what they *mean*, a build rather than an environment. `--build
+ * <name>` says the same thing in the one word the whole CLI now uses, so a reader who learned the flag on
+ * `abuddy dev` does not have to learn a second spelling here.
+ *
+ * It names a **build**, never a profile: a build keeps its own default storage, and `--profile` is the one
+ * override. That is the fusion kept where it is harmless — a default, stated once, rather than a second
+ * meaning the word carries everywhere.
+ */
 export function parseTargetEnv(args: string[]): { env: AppEnv; args: string[] } {
-  const hasDev = args.includes('-d') || args.includes('--dev');
-  const hasBeta = args.includes('-b') || args.includes('--beta');
-  const filtered = args.filter(a => !(ENV_FLAGS as readonly string[]).includes(a));
-  const env: AppEnv = hasBeta ? 'beta' : hasDev ? 'development' : 'production';
-  return { env, args: filtered };
+  const filtered: string[] = [];
+  let named: AppEnv | undefined;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!;
+    const [name, inline] = arg.startsWith('--') ? arg.split(/=(.*)/s, 2) as [string, string | undefined] : [arg, undefined];
+    if (name === '--build') {
+      const value = inline ?? args[++i];
+      if (!value) throw new Error('--build needs a build name: ' + APP_ENVS.join(', '));
+      if (!(APP_ENVS as readonly string[]).includes(value)) {
+        throw new Error(`Unknown build "${value}". This command reads a build's data, so it takes one of: ${APP_ENVS.join(', ')}.`);
+      }
+      named = value as AppEnv;
+    } else if ((ENV_FLAGS as readonly string[]).includes(arg)) {
+      named = arg === '-b' || arg === '--beta' ? 'beta' : arg === '--production' ? 'production' : 'development';
+    } else {
+      filtered.push(arg);
+    }
+  }
+  return { env: named ?? 'production', args: filtered };
 }
 
 export function envLabel(env: AppEnv): string {
@@ -19,7 +45,8 @@ export function envLabel(env: AppEnv): string {
   return ` (${env})`;
 }
 
-export const TARGET_ENV_USAGE = '-d, --dev    Target the dev environment\n  -b, --beta   Target the beta environment';
+export const TARGET_ENV_USAGE = '--build <name>  Which build\'s data: ' + APP_ENVS.join(', ')
+  + '\n  -d, -b, --production  shorthands for development, beta and production';
 
 /**
  * The pack at or above `from`, or undefined.

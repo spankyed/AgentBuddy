@@ -87,7 +87,7 @@ export function recoverStagingDirs(dir: string): StagingRecovery {
 
 /**
  * Boot-time data dir upkeep, before packs are discovered: records the AgentBuddy version and the pack format it
- * reads for `abuddy install` and `abuddy run`, and recovers staging in each packs dir. Failures are logged; boot continues.
+ * reads for `abuddy install` and `abuddy dev`, and recovers staging in each packs dir. Failures are logged; boot continues.
  */
 export function prepareHostDataDirs(
   options: { userDataDir: string; packsDir: string; version: string },

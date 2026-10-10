@@ -7,7 +7,7 @@ import { _useFileVault } from '../../src/secrets/index.ts';
  * keys they already have: the key is either in the OS credential store under the app's name, or in a file
  * beside `secrets.json` in the data dir, and looking in the wrong one reads as "the app lost my keys".
  *
- * `abuddy run --instance` needs the file, because the keychain is keyed by app name and every instance of
+ * `abuddy dev --profile` needs the file, because the keychain is keyed by app name and every profile of
  * one channel would otherwise share a service. So the rule is gated on a variable the CLI sets, never on
  * the environment alone.
  */

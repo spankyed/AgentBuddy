@@ -13,7 +13,7 @@ const appId = isBeta ? 'com.agentbuddy.beta' : 'com.agentbuddy.app';
 const productName = isBeta ? 'AgentBuddy Beta' : 'AgentBuddy';
 const urlScheme = isBeta ? 'abuddy-beta' : 'abuddy';
 // File names without spaces: GitHub rewrites spaces in release asset names, and
-// `abuddy test --app beta` looks for AgentBuddy-Beta-<version>-mac-arm64.zip
+// `abuddy test --build beta` looks for AgentBuddy-Beta-<version>-mac-arm64.zip
 export const artifactPrefix = productName.replace(/ /g, '-');
 
 // Exclude prebuilds for platforms we're not targeting

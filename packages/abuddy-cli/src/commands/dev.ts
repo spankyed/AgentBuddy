@@ -1,0 +1,547 @@
+import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { build } from './build';
+import { findPackRootOrNone, readManifest } from '../utils';
+import {
+  debugPortArgsFor, lastAttachedAt, publishSession, readDevToolsPort, readSession, startedByFromEnv,
+  type DevSession,
+} from '@abuddy/host/dev-session';
+import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
+import { reloadPack, type AppPlace, type DevReload } from '../build/dev-reload.ts';
+import { cliDirs, parseAppFlags, resolveLaunchApp, type AppTarget } from '../app/app-target';
+import { endAppHolding, profileFor, parseProfileFlags, removeProfile, PROFILE_USAGE } from '../app/profiles';
+import { copySecretsInto } from '../app/profile-secrets.ts';
+import { createDevHold } from '../app/dev-hold.ts';
+import { resolveAppContext } from '@abuddy/sdk/env';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
+import type { AppEnv } from '@abuddy/sdk/env';
+import { readApiEndpoint } from '@abuddy/host/process-liveness';
+import { withoutSourceCondition } from '@abuddy/host/build/source-resolution';
+import { installPackFromLocal, readHostInfo } from '@abuddy/host/packs';
+import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
+
+const HELP = `
+Usage: abuddy dev [--build <name|path>]
+
+Launch AgentBuddy and hold it. With a pack in hand it is installed and kept in step with your
+edits: FE changes reload the window through Vite, BE changes rebuild, reinstall and reload in
+place. Run from a checkout with no pack above it, it launches the app and holds it, and that
+is all — no build, no install, no watcher and no dev server.
+
+A development app is launched with a debug port and publishes <dataDir>/session.json, which is
+what lets \`abuddy drive\` ask it questions instead of launching one of its own.
+
+An app already running on the same data dir is used as it is; otherwise one is launched, and
+closing this command closes the app it started.
+
+Options:
+  --build <name|path> a build by name (beta) or a local AgentBuddy checkout by path
+${PROFILE_USAGE}
+  --help, -h          Show this help
+
+With no app named: the AgentBuddy checkout this pack is built against, if there is one, else the newest
+Beta build its hostVersion accepts. Nothing is remembered and nothing is asked.
+With no profile named, the shared development data dir is used.
+
+Note that --build beta reloads by restarting rather than in place: a packaged build refuses a
+pack reload, and publishes no API token for one.
+`.trim();
+
+/**
+ * Which environment an app target runs as. A packaged build stamps its own channel at build time
+ * (`_inferElectronAppEnv`), so this reports what the app will decide rather than deciding it: passing
+ * ABUDDY_ENV to a beta binary would change nothing.
+ */
+export function appEnv(app: AppTarget): AppEnv {
+  return app.kind === 'source' ? 'development' : 'beta';
+}
+
+/** Prints what a reload came to; `what` names the changes (`BE changes`, `changes`) */
+function reportReload(result: DevReload, what: string): void {
+  if (result.status === 'reloaded') console.log('BE reloaded successfully.\n');
+  else if (result.status === 'not-running') console.warn(`The app is not running (${result.detail}). Restart to apply ${what}.\n`);
+  else if (result.status === 'failed') console.warn(`The app refused the reload (${result.detail}). Restart the app to apply ${what}.\n`);
+  else console.warn(`Could not reach the app (${result.detail}). Restart to apply ${what}.\n`);
+}
+
+/** Installs into the app's data dir, checking hostVersion and the build format against the app that last used it. */
+export function installToApp(root: string, place: AppPlace = { build: 'development' }) {
+  const { packsDir, userDataDir } = resolveAppContext(place);
+  const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
+  return installPackFromLocal(root, packsDir, { hostVersion, packFormat });
+}
+
+/**
+ * The app's environment, minus this process's own. Two things have to go: ELECTRON_RUN_AS_NODE, which the
+ * app-bundled `abuddy` sets and which would start Electron as plain Node, and the `@abuddy/source`
+ * condition, since a checkout's app declares its own and a packaged one must not resolve source at all.
+ */
+function appLaunchEnv(place: AppPlace): NodeJS.ProcessEnv {
+  const out: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined && key !== 'ELECTRON_RUN_AS_NODE') out[key] = value;
+  }
+  const nodeOptions = withoutSourceCondition(out.NODE_OPTIONS);
+  if (nodeOptions) out.NODE_OPTIONS = nodeOptions;
+  else delete out.NODE_OPTIONS;
+  // Only a source run reads this; a packaged build stamps its channel (see `appEnv`)
+  out.ABUDDY_ENV = place.build;
+  if (place.profile !== undefined) {
+    // Set only for a profile, and deliberately: it is also what tells Electron the run was pointed at
+    // its own dir, which moves the logs inside it (`main/src/app-context.ts`). A plain `abuddy dev` should
+    // keep writing to the platform log dir, and should keep honouring an ABUDDY_USER_DATA_DIR the caller
+    // exported, which naming one here would override.
+    out.ABUDDY_USER_DATA_DIR = place.profile;
+    // A profile holds its own keys, so the data key goes beside them rather than into the OS keychain,
+    // where every profile of one channel would share a service name. The app reads this in any
+    // environment but production.
+    out.ABUDDY_SECRETS_VAULT = 'file';
+  }
+  return out;
+}
+
+/**
+ * The debug port, or nothing — the one gate between this design and an open port on a user's app.
+ *
+ * **It is computed from the resolved environment and from nothing else.** Not an argv flag anyone can pass,
+ * not a session file's contents, not a variable: `development` only, so a `test` context (every `abuddy
+ * test` run) and a packaged build a user installed never get one. `--remote-debugging-port` is
+ * unauthenticated control of the renderer, and the renderer holds the app's API token, so the gate is the
+ * load-bearing part rather than a precaution. Chromium binds it to loopback by default and nothing here
+ * widens that.
+ *
+ * `0` means Chromium picks a free port, which is the only safe way to ask: a fixed one collides with
+ * whatever else holds it and with a second app. It then writes the number it picked into the data dir,
+ * which `readDevToolsPort` reads.
+ */
+export function debugPortArgs(place: AppPlace): string[] {
+  return debugPortArgsFor(resolveAppContext(place).build);
+}
+
+/** Starts the app. A checkout runs its own sources with its own electron, so a pack needs none installed. */
+function launchApp(app: AppTarget, place: AppPlace): ChildProcess {
+  const options = { env: appLaunchEnv(place), stdio: 'ignore' as const, detached: false };
+  const debug = debugPortArgs(place);
+  if (app.kind === 'source') {
+    const electron = createRequire(path.join(app.root, 'package.json'))('electron') as string;
+    return spawn(electron, [app.root, ...debug], { ...options, cwd: app.root });
+  }
+  return spawn(app.executable, debug, options);
+}
+
+/**
+ * Whether this command may take the data dir from the app that holds it.
+ *
+ * **Only what a tool started for itself.** `startedBy` is the whole of the rule: a person's app is not a
+ * tool's to take, and an absent or unreadable session is not an app at all (`readSession` already treats a
+ * record whose supervisor has gone as absent). It is a function so the rule has a firing case on both
+ * sides — reclaiming unconditionally takes an app somebody opened, which is the mutation that must fail.
+ */
+export function mayReclaim(session: DevSession | undefined): boolean {
+  return session?.startedBy === 'drive';
+}
+
+/**
+ * How long a drive-profile app waits with nothing attached before it closes itself.
+ *
+ * Long enough to keep the app across a person reading an answer and asking the next thing, which is the
+ * 0.9s question rather than the 3.3s one. Short enough that an interrupted loop costs minutes of a held
+ * data dir rather than a session.
+ */
+export const IDLE_REAP_MS = 10 * 60_000;
+
+/**
+ * Whether this supervisor closes its app when nothing attaches, and the profile is the half that decides it.
+ *
+ * **Both clauses matter.** `startedBy: 'drive'` alone would reap the development dir, where a `--spawn`
+ * with no profile flags lands — and that one is `mayReclaim`'s: the developer's own `abuddy dev` takes the
+ * directory back and says so, where a timer would close an app somebody may be watching. A profile is the
+ * case nothing else reclaims, `abuddy dev --profile <name>` not being a command anyone happens to run, so
+ * without this it holds a data dir until the machine is rebooted.
+ */
+export function reapsWhenIdle(session: Pick<DevSession, 'startedBy'>, place: AppPlace): boolean {
+  return session.startedBy === 'drive' && place.profile !== undefined;
+}
+
+/** Close the app now, or ask again in this many milliseconds. */
+export interface IdleVerdict {
+  readonly reap: boolean;
+  readonly againInMs: number;
+}
+
+/**
+ * Whether an app whose session was last attached at `lastAttachedMs` has idled out.
+ *
+ * **The wait is a deadline, re-derived, rather than an interval.** Each wakeup is the earliest moment the
+ * answer could have changed: either the window has passed, or something attached since and the next wakeup
+ * is its deadline. So nothing polls — a session that is asked a question every minute wakes this once per
+ * question, and an idle one wakes it exactly once.
+ */
+export function idleVerdict(lastAttachedMs: number, nowMs: number, idleMs: number): IdleVerdict {
+  const remaining = idleMs - (nowMs - lastAttachedMs);
+  return remaining > 0 ? { reap: false, againInMs: remaining } : { reap: true, againInMs: 0 };
+}
+
+/**
+ * Waits for the app to publish its port file, which is what says the API is up and so what says the pack
+ * can be installed and reloaded. One waiter, bounded: a crashed launch must report that rather than hang.
+ */
+/**
+ * Waits for an API on the data dir, and says **whose** — which is the half that matters.
+ *
+ * The child is checked first, and that order is the point: a port file appearing says an API is up, not
+ * that it is ours. Another app can take the data dir between the check above and this launch, and Electron's
+ * single-instance lock — scoped to the data dir — then refuses ours and exits. Reading the port file first
+ * made that look like a successful start, and what followed published a session carrying this process's pid
+ * and the other app's port.
+ *
+ * `other` is not a failure: one app per data dir, so the app that got there first is the one to use. Only
+ * both — no child and no API — is.
+ */
+async function waitForApi(apiPortFile: string, child: ChildProcess, timeoutMs = 60_000): Promise<'ours' | 'other'> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (child.exitCode !== null || child.signalCode !== null) {
+      if (readApiEndpoint(apiPortFile)) return 'other';
+      throw new Error(`The app exited (${child.exitCode ?? child.signalCode}) before its API came up`);
+    }
+    if (readApiEndpoint(apiPortFile)) return 'ours';
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  throw new Error(`The app did not publish ${apiPortFile} within ${timeoutMs / 1000}s`);
+}
+
+/** What a session hands back so `dev` can tear it down on the way out of a throw. */
+interface SessionHooks {
+  teardown?: () => Promise<void>;
+}
+
+export async function dev(args: string[]) {
+  const hooks: SessionHooks = {};
+  try {
+    await session(args, hooks);
+  } catch (error) {
+    // The signals have their own handlers; this is every other way a session ends, and it is the one
+    // that happens while developing — a pack that fails to build used to exit through the CLI's error
+    // handler and leave an ephemeral profile behind
+    await hooks.teardown?.();
+    throw error;
+  }
+}
+
+async function session(args: string[], hooks: SessionHooks) {
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(HELP);
+    return;
+  }
+
+  /**
+   * **The pack is optional, and that is the whole of what `dev` does without one.**
+   *
+   * A checkout with no `abuddy.json` above it is a first-class case rather than an error: it is how this
+   * repo drives its own app, and refusing it would leave the app most often looked at the one command that
+   * cannot hold it. With no pack there is nothing to build, install, watch or serve, so what is left is the
+   * launch, the session file and the hold — and every pack-shaped step below hangs off `pack` being there.
+   *
+   * `src/` is required only when there is something to watch: a pack without it cannot be developed, where
+   * a checkout without one is not a pack at all.
+   */
+  const root = findPackRootOrNone(process.cwd());
+  const pack = root === undefined ? undefined : {
+    root,
+    srcDir: path.join(root, 'src'),
+    manifest: readManifest(root),
+    feEntry: findFEEntry(root),
+  };
+  if (pack && !fs.existsSync(pack.srcDir)) {
+    throw new Error('No src/ directory to watch');
+  }
+
+  const { mode, withSecrets, rest } = parseProfileFlags(args);
+  const flags = parseAppFlags(rest);
+  // `dev` forwards nothing, so a leftover flag is a typo rather than an argument for something else —
+  // where `drive` hands its own leftovers to Playwright and must not refuse them. Ignoring one silently
+  // is how a removed or misspelled flag reads as having been obeyed.
+  const unknown = flags.args.filter(arg => arg.startsWith('-'));
+  if (unknown.length > 0) {
+    throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See abuddy dev --help.`);
+  }
+  const app = await resolveLaunchApp({ flags, hostVersion: pack?.manifest.hostVersion ?? '*', from: pack?.root ?? process.cwd() });
+  const env = appEnv(app);
+  const profile = profileFor(mode, cliDirs());
+  if (profile?.created && withSecrets) {
+    const { count, from } = copySecretsInto(profile, env);
+    console.log(`Copied ${count} secret${count === 1 ? '' : 's'} from ${from}`);
+  }
+  const place: AppPlace = { build: env, ...(profile ? { profile: profile.dir } : {}) };
+  const { userDataDir, apiPortFile } = resolveAppContext(place);
+
+  /**
+   * What this session holds, and what letting go of it means (`app/dev-hold.ts` owns the order).
+   *
+   * Taken here rather than once the dev server is up, because the ten seconds before that — the build, the
+   * launch, the install — are exactly when someone presses Ctrl-C, and an ephemeral profile interrupted
+   * there used to be left on disk. Each resource is handed over as it arrives.
+   */
+  const hold = createDevHold({
+    removeMarker: packId => removeDevServerMarker(userDataDir, packId),
+    ...(profile?.ephemeral ? {
+      removeProfile: () => {
+        removeProfile(cliDirs(), profile.dir);
+        console.log(`\nRemoved the ephemeral profile ${profile.name}.`);
+      },
+    } : {}),
+  });
+
+  /**
+   * Publishes `<dataDir>/session.json`, so something can attach to the app this command holds.
+   *
+   * **The pid is this process's**, not the app's: this is the supervisor, and signalling it runs the
+   * teardown below, which closes the app it holds — one signal ends both. Nothing goes the other way, so a
+   * record naming the app would free the data dir and leave this process, its watcher and its dev server
+   * running with nothing to serve.
+   *
+   * A launch with no debug port publishes nothing. That is the honest answer rather than a record with a
+   * hole in it: the file means "attachable", and a `test` or packaged context is not.
+   */
+  async function publish(launchedAt: number): Promise<void> {
+    if (debugPortArgs(place).length === 0) return;
+    try {
+      const debugPort = await readDevToolsPort(userDataDir, { after: launchedAt });
+      hold.holdsSession(publishSession({
+        debugPort,
+        apiPort: readApiEndpoint(apiPortFile)?.port,
+        dataDir: userDataDir,
+        supervisorPid: process.pid,
+        startedBy: startedByFromEnv(),
+      }));
+      console.log(`  attachable on debug port ${debugPort} — \`abuddy drive\` can reach it`);
+      armIdleReap({ startedBy: startedByFromEnv() });
+      console.log('');
+    } catch (error) {
+      // A port that never appeared leaves the app perfectly usable and only un-drivable, so this is a
+      // warning rather than a failed launch: whoever wanted to watch the app still has it
+      console.warn(`  not attachable: ${errorMessage(error)}\n`);
+    }
+  }
+
+  /**
+   * Closes the app when nothing has attached for `IDLE_REAP_MS` — for the apps `reapsWhenIdle` names, and
+   * no others.
+   *
+   * The timer is the only thing keeping this process honest about an app nobody is minding, so it says so
+   * on the way up: a supervisor that closes itself silently is one whose user reports the app vanishing.
+   */
+  function armIdleReap(session: Pick<DevSession, 'startedBy'>): void {
+    if (!reapsWhenIdle(session, place)) return;
+    const minutes = Math.round(IDLE_REAP_MS / 60_000);
+    console.log(`  it closes itself after ${minutes}m with nothing attached — each question resets that`);
+    const tick = () => {
+      const last = lastAttachedAt(userDataDir);
+      // The session this process published has gone, so there is no record left to mind and nothing that
+      // could attach through it either
+      if (last === undefined) return void reap('its session file has gone');
+      const { reap: now, againInMs } = idleVerdict(last, Date.now(), IDLE_REAP_MS);
+      if (now) return void reap(`nothing has attached for ${minutes}m`);
+      setTimeout(tick, againInMs);
+    };
+    setTimeout(tick, IDLE_REAP_MS);
+  }
+
+  /** Release, then exit, so the profile goes with the app as it does for any other way this ends. */
+  async function reap(why: string): Promise<void> {
+    console.log(`\nClosing the app this question started: ${why}.`);
+    await hold.release();
+    process.exit(0);
+  }
+
+  hooks.teardown = hold.release;
+  process.on('exit', hold.releaseNow);
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    process.on(signal, () => void hold.release().then(() => process.exit(0)));
+  }
+
+  if (profile) {
+    console.log(`Profile ${profile.name}${profile.ephemeral ? ' (removed on exit)' : ''}`);
+    console.log(`  ${profile.dir}`);
+    console.log(`  abuddy db --data-dir "${profile.dir}" to read it\n`);
+  }
+
+  if (pack) {
+    // The build and the app both read the @abuddy packages' dist; from a checkout that dist is built on demand
+    ensureCheckoutPackages(pack.root);
+
+    console.log('Running initial build...\n');
+    await build([]);
+  }
+
+  /**
+   * **Reclaiming an app a tool started, which is what makes `--spawn` safe to point at this data dir.**
+   *
+   * One app per data dir, and `SingleInstanceApp` exits on the second — so without this a spawned one-shot
+   * would hold the development dir and the developer's own `abuddy dev` or `npm start` would refuse, with the
+   * blame landing on the command they just ran. The rule is narrow by construction: it takes what a tool
+   * started *for itself* (`startedBy: 'drive'`) and nothing else, because a person's app is not a tool's to
+   * take. The pid comes from a file the process wrote about itself, which is the only kind of kill allowed
+   * here, and it is the supervisor's — its own teardown closes the app it holds, so one signal ends both.
+   *
+   * After it, the two commands converge rather than compete: the next question attaches to the app the
+   * developer now has.
+   */
+  const reclaimable = readSession(userDataDir);
+  if (mayReclaim(reclaimable)) {
+    console.log(`Reclaiming the app a question started (pid ${reclaimable!.supervisorPid})...`);
+    await endAppHolding(userDataDir, reclaimable!.supervisorPid);
+    console.log('  it has gone; starting yours\n');
+  }
+
+  // An app already on this data dir is the one to use: a second Electron over the same LMDB store is not a
+  // choice anyone wants. Only an app this command started is one it may close.
+  if (readApiEndpoint(apiPortFile)) {
+    console.log(`Using the ${env} app already running.\n`);
+  } else {
+    console.log(`Starting ${app.kind === 'source' ? app.root : `AgentBuddy Beta ${app.version}`}...`);
+    // Before the launch, so the port file this waits for is the one this app writes rather than whatever a
+    // previous app on this data dir left behind
+    const launchedAt = Date.now();
+    const spawned = launchApp(app, place);
+    hold.holdsApp(spawned);
+    const whose = await waitForApi(apiPortFile, spawned);
+    if (whose === 'other') {
+      // Ours was refused the data dir and another app has it. Forgetting it is what keeps the release
+      // honest: it closes an app this command started, and this one started none that lived
+      hold.forgetApp();
+      console.log(`Using the ${env} app that took the directory first.\n`);
+    } else {
+      console.log(`  up on ${env} data in ${userDataDir}\n`);
+      // Published only for an app this command holds, and after its API is up so the session carries the
+      // port a driver needs. An app that was already here has a session of its own or is not attachable,
+      // and either way is not this command's to describe.
+      await publish(launchedAt);
+    }
+  }
+
+  if (!pack) {
+    // The launch and the hold, which is all there is without a pack. Returning here is what makes every
+    // step below — install, dev server, watchers, reload — a pack's rather than the command's.
+    console.log('No pack here: holding the app. Ctrl-C to close it.\n');
+    await new Promise(() => {});
+    return;
+  }
+
+  // After the app has started, so `readHostInfo` reads what this app records rather than a previous one's
+  console.log(`Installing pack to the ${env} app...`);
+  const result = await installToApp(pack.root, place);
+  console.log(`  ${result.dir}\n`);
+
+  if (!pack.feEntry) {
+    console.log('No FE entry found. Falling back to watch + rebuild + reload mode.\n');
+    await watchRebuildFallback(pack.root, pack.srcDir, pack.manifest.id, place);
+    return;
+  }
+
+  const vite = await import('vite');
+  const devServer = await vite.createServer(await packDevServerConfig(pack.root, pack.feEntry));
+  hold.holdsServer(devServer);
+  await devServer.listen();
+  const address = devServer.httpServer?.address();
+  const port = typeof address === 'object' && address ? address.port : 0;
+
+  if (!port) {
+    throw new Error('Vite dev server failed to bind a port');
+  }
+
+  // Outside the installed pack: its directory is the verified pack, replaced by every install below
+  writeDevServerMarker(userDataDir, pack.manifest.id, { port, pid: process.pid });
+  hold.holdsMarker(pack.manifest.id);
+
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  fs.watch(path.join(pack.root, 'abuddy.json'), () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      console.log('\nabuddy.json changed — regenerating entries...');
+      try {
+        const { generateEntries } = await import('./generate-entries');
+        await generateEntries(['--force'], pack.root);
+      } catch (err) {
+        console.error(`Regeneration failed: ${err instanceof Error ? err.message : err}`);
+      }
+    }, 300);
+  });
+
+  // BE file watcher: rebuild → install → hot-reload backend
+  let beDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let beReloading = false;
+  fs.watch(pack.srcDir, { recursive: true }, (_eventType, filename) => {
+    if (!filename || filename.endsWith('.vue') || filename.endsWith('.css')) return;
+    if (!filename.endsWith('.ts') && !filename.endsWith('.tsx')) return;
+    if (filename.endsWith('.d.ts')) return;
+    if (beDebounceTimer) clearTimeout(beDebounceTimer);
+    beDebounceTimer = setTimeout(async () => {
+      if (beReloading) return;
+      beReloading = true;
+      try {
+        console.log(`\nBE change detected: ${filename}`);
+        console.log('Rebuilding...');
+        await build([]);
+        console.log('Installing...');
+        await installToApp(pack.root, place);
+        console.log('Triggering BE reload...');
+        reportReload(await reloadPack(pack.manifest.id, place), 'BE changes');
+      } catch {
+        console.warn('Rebuild failed. Fix the error to apply BE changes.\n');
+      } finally {
+        beReloading = false;
+      }
+    }, 300);
+  });
+
+  console.log(`\nDev server running at http://localhost:${port}`);
+  // Measured 2026-10-07: a `.vue` edit reloads the window, it does not patch the component. Vite decides that
+  // because the pack's entry is imported by the app through `pack://`, outside Vite's module graph, so there is
+  // no accepting importer for the update to stop at. Saying "HMR" promised the component-level thing.
+  console.log(`FE changes reload the app's window (Vite watches this pack).`);
+  console.log(`BE changes auto-rebuild and hot-reload via API.`);
+  console.log('Press Ctrl+C to stop.\n');
+
+  await new Promise(() => {});
+}
+
+async function watchRebuildFallback(root: string, srcDir: string, packId: string, place: AppPlace) {
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let reloading = false;
+
+  function scheduleBuild(label: string) {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      if (reloading) return;
+      reloading = true;
+      try {
+        console.log(`\nChange detected: ${label}`);
+        await build([]);
+        await installToApp(root, place);
+        reportReload(await reloadPack(packId, place), 'changes');
+      } catch {
+        console.warn('Rebuild failed. Fix the error to apply changes.\n');
+      } finally {
+        reloading = false;
+      }
+    }, 300);
+  }
+
+  fs.watch(srcDir, { recursive: true }, (_eventType, filename) => {
+    if (!filename || filename.endsWith('.d.ts')) return;
+    if (!filename.endsWith('.ts') && !filename.endsWith('.tsx') && !filename.endsWith('.vue') && !filename.endsWith('.css') && !filename.endsWith('.md')) return;
+    scheduleBuild(filename);
+  });
+
+  fs.watch(path.join(root, 'abuddy.json'), () => {
+    scheduleBuild('abuddy.json');
+  });
+
+  console.log('Watching src/ and abuddy.json... (Ctrl+C to stop)');
+  await new Promise(() => {});
+}

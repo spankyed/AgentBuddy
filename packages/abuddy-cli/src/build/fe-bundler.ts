@@ -277,7 +277,7 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
  * request comes back to *this* server, which left the specifier external and has nothing to serve for it. The
  * pack's frontend then fails to load, where leaving the name alone resolves it through the document's import
  * map to the host's module. A build has no such rewrite and emits the bare name already, so this is what
- * makes `abuddy run` agree with `abuddy build`.
+ * makes `abuddy dev` agree with `abuddy build`.
  *
  * **It has to be a middleware, not a `transform`.** Vite appends `importAnalysisPlugin` after the user's
  * `post` plugins, so no hook runs after the rewrite; the only place left is the response. That is also the
@@ -327,7 +327,7 @@ function keepExternalsBarePlugin(packDir: string): VitePlugin {
 }
 
 /**
- * The dev server `abuddy run` serves a pack's frontend from.
+ * The dev server `abuddy dev` serves a pack's frontend from.
  *
  * Here rather than inline in the command, so a spec can drive the same server the command does. It is one
  * declaration with two readers for a reason: the first spec to stand a dev server up wrote its own config, left

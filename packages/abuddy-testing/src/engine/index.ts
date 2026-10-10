@@ -1,10 +1,10 @@
 /**
  * The whole of a live drive session, for a shim that has a page and wants to be driven.
  *
- * `abuddy drive --serve` writes a two-line script that calls this; a pack author can write the same by
- * hand. Everything it needs it already has from the fixture — the app is launched, onboarding bypassed,
- * the viewport pinned and the output captured — so this adds the channel and the waiting, and nothing
- * about launching an app.
+ * Everything it needs it already has from the fixture — the app is launched, onboarding bypassed, the
+ * viewport pinned and the output captured — so this adds the channel and the waiting, and nothing about
+ * launching an app. `attachedSession` below assembles the same four pieces over a page nobody here
+ * launched, which is what lets `createSession` not know which it was given.
  *
  * **It returns when the session ends**, which is the one structural requirement. The fixture's teardown
  * is the code after `await use(...)`: a body that never returns skips `app.close()`, the listener
@@ -13,10 +13,9 @@
  */
 import * as fs from 'node:fs';
 import type { Page } from '@playwright/test';
-import { DRIVE_REF, createSession, type SessionPage } from './session.ts';
-import { ENGINE_TOKEN_HEADER, isPixels, startEngineServer, type ExtraVerbs } from './server.ts';
-import { engineRecipe, publishEngineMarker, removeEngineMarker } from './marker.ts';
-import { connectApiClient } from './api-client.ts';
+import { DRIVE_REF, createSession, type EngineSession, type SessionPage } from './session.ts';
+import { appHelper, waitForAppReady } from '../index.ts';
+import { CLAIM_CONFLICT, connectApiClient, type ApiClient } from './api-client.ts';
 
 /** The `AppHelper` members the engine serves, taken whole rather than one callback at a time */
 export type EngineAppHelper = {
@@ -32,62 +31,13 @@ export type EngineAppHelper = {
  * a shown run it letterboxes the app against the desktop. Given this port, `/set-viewport` moves the
  * window itself and what the agent sees is what a user would; given none, it sets the emulated viewport,
  * which is what keeps a suite's layout deterministic. `src/launch-env.ts`'s `pinsViewport` is the one
- * decision of which run is which, and `driveEngineBody` is where it is read.
+ * decision of which run is which. An attached session has no window at all, and takes the emulated one.
  */
 export type EngineWindow = {
   /** Resizes the window and answers with the size it actually took, which need not be the one asked for */
   readonly setContentSize: (width: number, height: number) => Promise<{ width: number; height: number }>;
 };
 
-export interface DriveEngineOptions {
-  /** The page the fixture opened */
-  readonly page: Page;
-  /** The app's own log file, which `/logs` reads */
-  readonly logPath: string;
-  /**
-   * The fixture's `app`, passed whole.
-   *
-   * It was three separate callbacks, and that was a trap: the session script is written as a **string**
-   * by `abuddy drive --serve`, so nothing typechecks it, and adding `/wait` added two options the
-   * template did not pass — `page.waitForState is not a function` at runtime, found by driving. Taking
-   * `app` means a new verb reaches a live session without the template changing at all.
-   */
-  readonly app: EngineAppHelper;
-  /** Playwright's `outputDir` for this project: where the marker goes, beside the app's log */
-  readonly outputDir: string;
-  /** Where the recipe is printed; the runner's stdout by default */
-  readonly log?: (line: string) => void;
-  /**
-   * Verbs of this app's own, merged over the core table.
-   *
-   * The core table is what is true of any AgentBuddy app. A verb built out of one app's nouns is the
-   * caller's, which is why the scaffolded session file is the place to write one — it is a file its owner
-   * keeps, where this package's is not.
-   */
-  readonly verbs?: ExtraVerbs;
-  /** The real window, where one is shown; absent for a run nobody is watching — see `EngineWindow` */
-  readonly window?: EngineWindow;
-  /**
-   * The size to open at, so a session that always wants one says so once instead of posting
-   * `/set-viewport` as its first call. Applied through the same port that verb uses, so it moves the
-   * window where one is shown and sets the emulated viewport where none is.
-   */
-  readonly viewport?: { readonly width: number; readonly height: number };
-}
-
-/**
- * Reloads the window and returns when the app is usable again.
- *
- * **Playwright's own reload, never `location.reload()` from inside the page.** The app blocks
- * renderer-initiated navigation (`BlockNotAllowdOrigins`, `packages/main`), so that call returns having
- * done nothing — which reads exactly like a reload that changed nothing.
- *
- * **Then onboarding, which is the part that is easy to miss.** The fixture dismisses it once, while the app
- * launches, so a reloaded window comes back sitting in `onboarding` and never reaches `running.connected`.
- * Waiting for that state alone hangs until its deadline and reports a reload that in fact worked.
- *
- * The deadlines only run when the app does not come back; a reload that works answers as soon as it has.
- */
 /** The app's state value as the window exposes it, which is all these waits read */
 type AppWindow = {
   applicationState?: { getSnapshot(): { value?: Record<string, unknown> | string } };
@@ -107,10 +57,7 @@ async function reloadWindow(page: Page): Promise<void> {
   }, null, { timeout: 60_000 });
 }
 
-/**
- * Adapts a Playwright page to `SessionPage`. The two evaluation forms stay separate here because they are
- * separate in the port, for the reason `session.ts` gives there.
- */
+
 export const asSessionPage = (page: Page, app: EngineAppHelper, window?: EngineWindow): SessionPage => ({
   evaluateExpression: (source) => page.evaluate(source),
   // Playwright's argument type is `Unboxed<A>`, which unwraps a `JSHandle` into what it points at. The
@@ -143,7 +90,7 @@ export const asSessionPage = (page: Page, app: EngineAppHelper, window?: EngineW
  *
  * The port file would do, but the **token file is not always written**: `publishApiFiles` skips it unless
  * `NODE_ENV` is development or the API invented its own token, and a packaged app satisfies neither. So reading
- * from disk would work in a checkout and fail against `abuddy drive --app beta`, which is the worst split to
+ * from disk would work in a checkout and fail against `abuddy drive --build beta`, which is the worst split to
  * ship. The window has both from the preload, which is also how `tests/e2e/app-integration/api-access.spec.ts`
  * gets them.
  */
@@ -162,101 +109,108 @@ async function apiAddressFromWindow(page: SessionPage): Promise<{ port: number; 
 }
 
 /**
- * The size a session was told to open at, refused rather than passed on.
+ * Runs `work`, and closes what is already open if it throws.
  *
- * Checked at all because `drive/` is outside every tsconfig in this repo — `typecheck:scripts` covers
- * `scripts/`, `tests/`, repo-checks and publish-checks — so a session file's option is checked by whatever
- * editor is open on it and by nothing in the chain. `isPixels` is the wire's own rule, shared so a size the
- * `/set-viewport` verb would refuse is not one the session may be started with.
+ * **A handle left open does not fail, it hangs.** Node keeps running while one is, so a refused claim left
+ * both the CDP connection and the socket open and `abuddy drive --eval` printed its refusal and then sat
+ * there for ever — which reads as the verb hanging rather than as a refusal that was reported. Every step
+ * after the attach is wrapped, so the failure is rethrown unchanged and only the cleanup is added.
+ *
+ * **A failure in the cleanup must not replace the one being cleaned up after.** `close` here is a socket
+ * and a CDP connection, either of which can throw on a connection that has already gone — and letting that
+ * through would hand the caller an error about tidying up in place of the refusal or timeout it needs,
+ * which is the one thing this function exists to deliver. So the close is attempted and its own failure
+ * dropped; the work's error is always what is rethrown.
+ *
+ * @internal
  */
-export const checkedViewport = (viewport: { width: number; height: number }): { width: number; height: number } => {
-  if (!isPixels(viewport.width) || !isPixels(viewport.height)) {
-    throw new Error("The drive session's viewport must be whole numbers of pixels above zero, not "
-      + `${JSON.stringify(viewport)}.`);
+export async function _closingOnFailure<T>(close: () => Promise<void> | void, work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    // Dropped, never rethrown: see above — a close that fails must not become the reason the caller is given
+    try {
+      await close();
+    } catch { /* the handle is gone, which is what closing wanted */ }
+    throw error;
   }
-  return viewport;
-};
+}
 
 /**
- * Runs the engine until something ends the session, then cleans up and returns.
+ * Takes `host/drive`, waiting out a holder that is about to let go.
  *
- * Renderer errors are collected here rather than drained from the fixture's own array, deliberately:
- * the fixture's copy is what `describeFailure` quotes if the session fails, and draining it would take
- * those errors out of that report. Two listeners cost nothing and leave the fixture untouched.
+ * **The claim is refused rather than taken over**, which is right — two drivers running at once must not
+ * receive each other's answers — but every claim is now a *question's*, held for about a second, so two
+ * agents asking at once is ordinary rather than a conflict to report. Waiting is compatible with that
+ * design: it never takes a live claim, it waits for one to end.
+ *
+ * The window is short because the thing being waited for is short. A claim still held after it is a driver
+ * that is genuinely running, and the refusal says so.
  */
-export async function runDriveEngine(options: DriveEngineOptions): Promise<void> {
-  const { page, app, outputDir, logPath, log = (line: string) => console.log(line) } = options;
+const CLAIM_WAIT_MS = 10_000;
+
+export async function _claimDrive(api: Pick<ApiClient, 'claim'>, windowMs = CLAIM_WAIT_MS): Promise<void> {
+  const deadline = Date.now() + windowMs;
+  for (;;) {
+    try {
+      await api.claim(DRIVE_REF);
+      return;
+    } catch (error) {
+      const conflict = (error as { code?: string }).code === CLAIM_CONFLICT;
+      if (!conflict || Date.now() >= deadline) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+}
+
+export async function attachedSession(options: AttachedSessionOptions): Promise<AttachedSession> {
+  const { attachToApp } = await import('./cdp-page.ts');
+  const { page, detach } = await attachToApp({ debugPort: options.debugPort });
+  await waitForAppReady(page);
 
   const errors: string[] = [];
-  const onPageError = (error: Error): void => { errors.push(`pageerror: ${error.message}`); };
-  const onConsole = (message: { type: () => string; text: () => string }): void => {
-    if (message.type() === 'error') errors.push(`console.error: ${message.text()}`);
-  };
-  page.on('pageerror', onPageError);
-  page.on('console', onConsole);
+  page.on('pageerror', (error) => errors.push(`[page error] ${error.stack ?? error.message}`));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(`[console.error] ${message.text()}`);
+  });
 
-  let end = (): void => {};
-  const ended = new Promise<void>((resolve) => { end = resolve; });
+  const sessionPage = asSessionPage(page, appHelper(page, options.screenshotDir));
 
-  const sessionPage = asSessionPage(page, app, options.window);
-  // Before the address is read and before anything is served, so the first verb to arrive already sees
-  // the size the session asked for and nothing has to be re-measured after a resize
-  if (options.viewport !== undefined) {
-    const { width, height } = checkedViewport(options.viewport);
-    await sessionPage.setViewport(width, height);
-  }
-
-  /**
-   * The session's own connection, opened before the server listens so a verb can never arrive without one.
-   *
-   * It subscribes inside `connectApiClient` and then claims, in that order: a reply addressed here before
-   * anything is listening would be delivered and dropped. The claim's *lifetime* needs no such care — the API
-   * releases it when this connection ends, whatever ends it.
-   */
-  const api = await connectApiClient(await apiAddressFromWindow(sessionPage));
-  await api.claim(DRIVE_REF);
+  // Everything opened after the attach is closed again if a later step throws — see `_closingOnFailure`
+  const api = await _closingOnFailure(detach, async () => connectApiClient(await apiAddressFromWindow(sessionPage)));
+  await _closingOnFailure(async () => { api.close(); await detach(); }, () => _claimDrive(api));
 
   const session = createSession({
     page: sessionPage,
     api,
     takeErrors: () => errors.splice(0, errors.length),
-    // Read per call, not held: the app writes to it for as long as the session is up
-    readLog: () => (fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf-8') : ''),
+    // Read per call, as the launched session does: the app writes to it for as long as it is up
+    readLog: () => (options.logPath !== undefined && fs.existsSync(options.logPath) ? fs.readFileSync(options.logPath, 'utf-8') : ''),
   });
 
-  // The server ends the session, after `/close` has been answered — see its `CLOSE_PATH`
-  const engine = await startEngineServer(session, () => end(), options.verbs);
-  const marker = { ...engine.address, pid: process.pid, host: '127.0.0.1' };
-  const file = publishEngineMarker(outputDir, marker);
-  log(engineRecipe(file, marker, ENGINE_TOKEN_HEADER, engine.verbs));
-
-  /**
-   * A signal also ends the session, though it is **not** what makes Ctrl-C safe: Playwright's own interrupt
-   * handling tears a session down and already runs fixture teardown, so nothing is orphaned without these.
-   * They stay because resolving the body first costs four lines and ends the run as a pass rather than an
-   * interruption when they win the race; nothing depends on their winning it.
-   */
-  const onSignal = (): void => end();
-  process.once('SIGINT', onSignal);
-  process.once('SIGTERM', onSignal);
-
-  try {
-    await ended;
-  } finally {
-    process.removeListener('SIGINT', onSignal);
-    process.removeListener('SIGTERM', onSignal);
-    page.removeListener('pageerror', onPageError);
-    page.removeListener('console', onConsole);
-    removeEngineMarker(outputDir);
-    await engine.close();
-    session.stop();
-    await api.close();
-  }
+  return {
+    session,
+    // Lets go without closing: the app was not this connection's to open and is not its to end
+    detach: async () => {
+      api.close();
+      await detach();
+    },
+  };
 }
 
-export { ENGINE_TOKEN_HEADER } from './server.ts';
-export { object, optionalMs, optionalText, pixels, present, required, safeName, verb } from './server.ts';
-export type { ExtraVerbs, Reader, Verb } from './server.ts';
+export interface AttachedSessionOptions {
+  /** From the app's session file — the port it published */
+  readonly debugPort: number;
+  /** Where `/screenshot` writes */
+  readonly screenshotDir: string;
+  /** The app's log, which `/logs` reads. Absent means `/logs` answers empty rather than guessing */
+  readonly logPath?: string;
+}
+
+export interface AttachedSession {
+  readonly session: EngineSession;
+  readonly detach: () => Promise<void>;
+}
+
 export { connectApiClient, type ApiAddress, type ApiClient, type BusMessage } from './api-client.ts';
-export { ENGINE_READY, MARKER_FILE, type EngineMarker } from './marker.ts';
 export type { EngineResult, EngineSession, SessionApi, SessionPage } from './session.ts';

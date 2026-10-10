@@ -23,7 +23,7 @@ Modules, in order (`src/modules/`):
 
 | Factory | File | Does |
 |---|---|---|
-| `disallowMultipleAppInstance` | `SingleInstanceApp.ts` | `requestSingleInstanceLock()`, scoped by the app name `initAppContext` set, so dev, beta, test and production run side by side; exits if the lock is taken |
+| `disallowMultipleAppInstance` | `SingleInstanceApp.ts` | `requestSingleInstanceLock()`, **scoped by the data dir**, so dev, beta, test and production run side by side — they have different ones — and two apps on one dir cannot; exits if the lock is taken |
 | `createProtocolHandler` | `ProtocolHandler.ts` | Registers the app as handler for `urlScheme` (`abuddy`, or `abuddy-beta`); `open-url` / `second-instance` URLs go to the first window as `protocol-action` `{ action: hostname, params }` |
 | `hardwareAccelerationMode` | `HardwareAccelerationModule.ts` | Currently `{ enable: true }`, so a no-op |
 | `createMediaProtocol` | `media-protocol/` | `media://` and `local-file://` (see Protocols) |
@@ -66,7 +66,7 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 `initAppContext()` runs first and is the only place the environment is decided:
 
 - `_inferElectronAppEnv` (`@abuddy/sdk/env`) gets `PLAYWRIGHT_TEST === 'true'`, `app.isPackaged`, the build-time `__ABUDDY_CHANNEL__` and `process.env.ABUDDY_ENV`. `__ABUDDY_CHANNEL__` is `ABUDDY_ENV` at build time (`vite.config.js` `define`), which `build/build.sh` exports as `production` or `beta`; a packaged build without a valid stamp throws.
-- `resolveAppContext({ env })` gives the app name, data dir, `packsDir`, `urlScheme`, …. It then calls `app.setName` and `app.setPath('userData')` (so the single-instance lock and Electron's own storage follow it), and writes `ABUDDY_ENV` / `ABUDDY_USER_DATA_DIR` to `process.env`, which the API child inherits.
+- `resolveAppContext({ build })` gives the app name, data dir, `packsDir`, `urlScheme`, …. It then calls `app.setName` and `app.setPath('userData')` (so Electron's own storage and the single-instance lock follow the **data dir**), and writes `ABUDDY_ENV` / `ABUDDY_USER_DATA_DIR` to `process.env`, which the API child inherits.
 - Everything else reads it with `getAppContext()`, which throws if called first. Don't read `app.getPath('userData')`, `NODE_ENV` or `PLAYWRIGHT_TEST` to choose paths.
 
 ## API server (`src/modules/api-server/`)
@@ -100,7 +100,7 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 
 - **`pack://<packId>/<path>`** (`pack-protocol/PackProtocol.ts`), privileged `secure` + `supportFetchAPI`:
   - Refuses a host that isn't a pack id (`/^[a-z][a-z0-9-]*$/`, so `pack://../x` can't reach the data dir), and any resolved path outside `packsDir/<packId>/` (403).
-  - While `abuddy run` runs, `devServerUrl(userDataDir, packId, path)` (`@abuddy/host/packs/dev-server`) names the pack's Vite server: a marker with an invalid port answers 502; a failed or non-OK fetch falls through to disk.
+  - While `abuddy dev` runs, `devServerUrl(userDataDir, packId, path)` (`@abuddy/host/packs/dev-server`) names the pack's Vite server: a marker with an invalid port answers 502; a failed or non-OK fetch falls through to disk.
   - Serves from disk with a small MIME table.
 - **`media://<entityId>/<file>`** (`media-protocol/`) serves `getMediaBasePath()/<entityId>/<file>`, which `media:upload` writes to (PNG/JPEG/GIF/WebP, 10 MB max). That is the folder the SDK's `_getMediaPath()` gives the API (`media-protocol/paths.ts`): `<data dir>/abuddy/media`. Branching on `app.isPackaged` here would put the layout rule in both main and the API, where a mismatch serves every image a 404.
 - **`local-file://?path=<abs>`** serves any existing local file for video playback. It uses the deprecated `registerFileProtocol` and no `stream` privilege on purpose: `stream: true` breaks seeking (Electron #38749).

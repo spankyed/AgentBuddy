@@ -9,16 +9,16 @@ import { _appDirOf } from '@abuddy/sdk/env';
 import { PACK_LAYOUT } from '@abuddy/host/packs';
 
 let tmp: string;
-const saved = { env: process.env.ABUDDY_ENV, dir: process.env.ABUDDY_USER_DATA_DIR, root: process.env.ABUDDY_ROOT };
+const saved = { env: process.env.ABUDDY_ENV, dir: process.env.ABUDDY_USER_DATA_DIR, build: process.env.ABUDDY_BUILD };
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'installed-app-deps-'));
   process.env.ABUDDY_USER_DATA_DIR = path.join(tmp, 'userdata');
-  delete process.env.ABUDDY_ROOT;
+  delete process.env.ABUDDY_BUILD;
 });
 
 afterEach(() => {
-  for (const [key, value] of [['ABUDDY_ENV', saved.env], ['ABUDDY_USER_DATA_DIR', saved.dir], ['ABUDDY_ROOT', saved.root]] as const) {
+  for (const [key, value] of [['ABUDDY_ENV', saved.env], ['ABUDDY_USER_DATA_DIR', saved.dir], ['ABUDDY_BUILD', saved.build]] as const) {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
@@ -106,7 +106,7 @@ describe('dependency resolution from an installed app', () => {
     const checkout = path.join(tmp, 'AgentBuddy');
     fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
     fs.renameSync(builtInPack(), path.join(checkout, 'packages', 'base-pack'));
-    process.env.ABUDDY_ROOT = checkout;
+    process.env.ABUDDY_BUILD = checkout;
 
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot, { recursive: true });
@@ -165,7 +165,7 @@ describe('dependency resolution from an installed app', () => {
       builtInPack(snapshotOf('3.0.0')),
       path.join(checkout, 'packages', 'base-pack'),
     );
-    process.env.ABUDDY_ROOT = checkout;
+    process.env.ABUDDY_BUILD = checkout;
 
     expect((await resolveDepFiles(authorPack(), 'base-pack', '*'))?.snapshot.manifest.version).toBe('3.0.0');
   });
@@ -195,7 +195,7 @@ describe('dependency resolution from an installed app', () => {
       const checkout = path.join(tmp, 'AgentBuddy');
       fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
       fs.renameSync(builtInPack(snapshotOf('3.0.0', { format: undefined })), path.join(checkout, 'packages', 'base-pack'));
-      process.env.ABUDDY_ROOT = checkout;
+      process.env.ABUDDY_BUILD = checkout;
 
       expect((await resolveDepFiles(authorPack(), 'base-pack', '*'))?.snapshot.manifest.version).toBe('1.0.0');
     });

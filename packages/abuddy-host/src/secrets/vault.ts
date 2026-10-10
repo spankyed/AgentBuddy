@@ -2,7 +2,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
-import { writePrivateFile } from './private-file.ts';
+import { writePrivateFile } from '../private-file.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /** Holds data keys by account name */
@@ -18,11 +18,11 @@ export interface KeyVault {
 /**
  * The account a store's data key is under, and the file an unprotected one keeps it in. Both are facts about
  * a store on disk rather than about either vault, so anything reading a store that this process did not
- * create — `abuddy run --with-secrets`, copying an environment's secrets into an instance — addresses it
+ * create — `abuddy dev --with-secrets`, copying an environment's secrets into an instance — addresses it
  * through these rather than spelling the convention again.
  *
  * The third such fact is the credential store's service name, which is the app name: a caller for another
- * environment takes it from `resolveAppContext({ env }).appName`, the same accessor `appStore` reads.
+ * environment takes it from `resolveAppContext({ build: env }).appName`, the same accessor `appStore` reads.
  */
 export const dataKeyAccount = (keyId: string): string => `secrets:${keyId}`;
 

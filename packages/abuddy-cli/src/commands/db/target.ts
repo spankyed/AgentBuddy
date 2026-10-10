@@ -6,7 +6,7 @@ import { findRunningApp, holdDatabaseWriteLock, openAppDatabase, type AppDatabas
 import { consoleEars, type ConsoleScope } from '@abuddy/sdk/database-console';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 import { cliDirs } from '../../app/app-target';
-import { listInstances } from '../../app/instances';
+import { listProfiles } from '../../app/profiles';
 
 /** Where a command's lines go: results on stdout, what it targets and warnings on stderr */
 export interface DbIo {
@@ -24,7 +24,7 @@ const TARGET_OPTIONS = {
   beta: { type: 'boolean', short: 'b', default: false },
   production: { type: 'boolean', default: false },
   'data-dir': { type: 'string' },
-  instance: { type: 'string' },
+  profile: { type: 'string' },
   'schema-from': { type: 'string' },
   volatile: { type: 'boolean', default: false },
 } satisfies ParseArgsConfig['options'];
@@ -34,13 +34,13 @@ export const TARGET_USAGE = [
   '  -b, --beta             The beta app\'s data',
   '  --production           The production app\'s data (what a command that only reads takes by default)',
   '  --data-dir <path>      A data dir, a copy of the user\'s for example',
-  '  --instance <name>      An `abuddy run` instance, by the name run and clean print',
+  '  --profile <name>      An `abuddy dev` profile, by the name run and clean print',
   '  --schema-from <path>   A pack snapshot to read entity types from, for a data dir that publishes none',
   '  --volatile             Read the run history too (TNode rows), which the app keeps in its own partition',
 ].join('\n');
 
-export type DbTarget = Pick<AppContext, 'env' | 'userDataDir' | 'apiPortFile'> & {
-  /** The command named this data dir (`-d`, `-b`, `--production`, `--data-dir` or `--instance`) rather than taking the default */
+export type DbTarget = Pick<AppContext, 'build' | 'userDataDir' | 'apiPortFile'> & {
+  /** The command named this data dir (`-d`, `-b`, `--production`, `--data-dir` or `--profile`) rather than taking the default */
   named: boolean;
   /** `--volatile`: the run history is read with the rest of the data */
   volatile: boolean;
@@ -53,23 +53,23 @@ export type DbTarget = Pick<AppContext, 'env' | 'userDataDir' | 'apiPortFile'> &
  * usage.
  */
 /**
- * An instance's data dir, by the name `abuddy run` and `abuddy clean` print.
+ * A profile's data dir, by the name `abuddy dev` and `abuddy clean` print.
  *
- * Looked up through `listInstances` rather than built from the name, so an ephemeral instance is reachable
+ * Looked up through `listProfiles` rather than built from the name, so an ephemeral profile is reachable
  * by the same name those commands show: it lives a level down, under `.ephemeral/`, and a name joined to the
- * instances root would miss it and report a directory that is right there.
+ * profiles root would miss it and report a directory that is right there.
  *
  * A name that matches nothing lists what there is. The alternative — resolving to a path and letting the
  * open fail — reports a directory the user never typed, for a name they did.
  */
-function instanceDataDir(name: string, usage: string): string {
-  const instances = listInstances(cliDirs());
-  const found = instances.find((candidate) => candidate.name === name);
+function profileDataDir(name: string, usage: string): string {
+  const profiles = listProfiles(cliDirs());
+  const found = profiles.find((candidate) => candidate.name === name);
   if (found) return found.dir;
-  const known = instances.length === 0
-    ? 'There are none: `abuddy run --fresh` makes one.'
-    : `There is: ${instances.map((candidate) => candidate.name).sort().join(', ')}.`;
-  throw new Error(`No instance named "${name}". ${known}\n\n${usage}`);
+  const known = profiles.length === 0
+    ? 'There are none: `abuddy dev --fresh` makes one.'
+    : `There is: ${profiles.map((candidate) => candidate.name).sort().join(', ')}.`;
+  throw new Error(`No profile named "${name}". ${known}\n\n${usage}`);
 }
 
 export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(args: string[], options: O, usage: string) {
@@ -79,29 +79,29 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
   } catch (error) {
     throw new Error(`${(error as Error).message}\n\n${usage}`);
   }
-  const { dev, beta, production, 'data-dir': dataDir, instance, 'schema-from': schemaFrom, volatile } = parsed.values as
-    { dev: boolean; beta: boolean; production: boolean; 'data-dir'?: string; instance?: string; 'schema-from'?: string; volatile: boolean };
+  const { dev, beta, production, 'data-dir': dataDir, profile, 'schema-from': schemaFrom, volatile } = parsed.values as
+    { dev: boolean; beta: boolean; production: boolean; 'data-dir'?: string; profile?: string; 'schema-from'?: string; volatile: boolean };
   // An empty value would otherwise read as "not given" and target the default data dir
   if (dataDir !== undefined && dataDir.trim() === '') throw new Error(`--data-dir needs a path\n\n${usage}`);
-  if (instance !== undefined && instance.trim() === '') throw new Error(`--instance needs a name\n\n${usage}`);
+  if (profile !== undefined && profile.trim() === '') throw new Error(`--profile needs a name\n\n${usage}`);
   if (schemaFrom !== undefined && schemaFrom.trim() === '') throw new Error(`--schema-from needs a path\n\n${usage}`);
   const named = [dev && '-d', beta && '-b', production && '--production', dataDir !== undefined && '--data-dir',
-    instance !== undefined && '--instance'].filter(Boolean) as string[];
+    profile !== undefined && '--profile'].filter(Boolean) as string[];
   if (named.length > 1) throw new Error(`Name one data dir, not ${named.length}: ${named.join(', ')}\n\n${usage}`);
   const env: AppEnv = beta ? 'beta' : dev ? 'development' : 'production';
   // A named app is that app's data dir, not the one ABUDDY_USER_DATA_DIR points at: the flag says which app, and a
   // command that changes data must name one. With no flag the variable still applies, which is how the repo's
   // db:* scripts and tests read a temp data dir.
-  // `--instance` and `--data-dir` carry no environment, and need none: once a data dir is named, `env` reaches
+  // `--profile` and `--data-dir` carry no environment, and need none: once a data dir is named, `env` reaches
   // only `resolveAppContext`, whose every path here is joined onto that dir. That is why they are exclusive with
   // the app flags rather than combining with them — there would be nothing for the combination to mean.
   const userDataDir = dataDir !== undefined ? path.resolve(dataDir)
-    : instance !== undefined ? instanceDataDir(instance, usage)
+    : profile !== undefined ? profileDataDir(profile, usage)
     : (dev || beta || production) ? appDataDirFor(env)
     : undefined;
-  const context = resolveAppContext({ env, ...(userDataDir !== undefined && { userDataDir }) });
+  const context = resolveAppContext({ build: env, ...(userDataDir !== undefined && { profile: userDataDir }) });
   const target: DbTarget = {
-    env, userDataDir: context.userDataDir, apiPortFile: context.apiPortFile, named: named.length === 1, volatile,
+    build: env, userDataDir: context.userDataDir, apiPortFile: context.apiPortFile, named: named.length === 1, volatile,
     ...(schemaFrom !== undefined && { schemaFrom: path.resolve(schemaFrom) }),
   };
   return { values: parsed.values as typeof parsed.values & Record<keyof O, unknown>, positionals: parsed.positionals, target };
@@ -122,7 +122,7 @@ export interface OpenOptions {
  */
 export async function openTarget(target: DbTarget, { write, command }: OpenOptions, io: DbIo): Promise<AppDatabase> {
   if (write && !target.named) {
-    throw new Error('Name the data dir to change: --production, -d, -b, --data-dir <path>, or --instance <name>');
+    throw new Error('Name the data dir to change: --production, -d, -b, --data-dir <path>, or --profile <name>');
   }
   io.err(`Database: ${target.userDataDir} (offline)`);
   // Taken before the check, so an app that starts from here on finds it and refuses to open the database
@@ -137,7 +137,7 @@ export async function openTarget(target: DbTarget, { write, command }: OpenOptio
     }
     if (running) io.err(`Warning: AgentBuddy is running on it (${running.why}); what it hasn't written yet isn't here`);
     const db = await openAppDatabase({
-      env: target.env,
+      env: target.build,
       userDataDir: target.userDataDir,
       readOnly: !write,
       includeVolatile: target.volatile,

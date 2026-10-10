@@ -95,7 +95,7 @@ export function installedVersion(appPath: string): string | null {
  * the thing being avoided, so doing it anyway would defeat the wait.
  */
 async function quitApp(product: string, channel: Channel, log: (message: string) => void): Promise<void> {
-  const context = resolveAppContext({ env: channel });
+  const context = resolveAppContext({ build: channel });
   const running = () => findRunningApp({ userDataDir: context.userDataDir, apiPortFile: context.apiPortFile });
   if (!running()) return;
 
@@ -171,7 +171,7 @@ export async function upgrade(args: string[]) {
      * the destination, which is what makes the pid in it safe — a recycled pid matching a leftover from a
      * crashed upgrade had this renaming the app onto a directory that already existed, and a rename onto an
      * existing directory "either throws or replaces depending on the platform and whether it is empty, and
-     * neither is an answer to 'rename this'" (`src/app/instances.ts`).
+     * neither is an answer to 'rename this'" (`src/app/profiles.ts`).
      */
     const staged = path.join(path.dirname(appPath), stagingDirName(path.basename(appPath), 'installing'));
     await execFileAsync('ditto', [incoming, staged]);

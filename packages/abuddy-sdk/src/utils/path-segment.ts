@@ -1,7 +1,7 @@
 /**
  * Whether a name the app was handed is usable as **one directory**.
  *
- * Two places take such a name from outside: an `abuddy run` instance (`--instance <name>`) and a pack's own
+ * Two places take such a name from outside: an `abuddy dev` profile (`--profile <name>`) and a pack's own
  * data directory (`getDataDirPath(name)`). Both join it onto a path, and one of them also removes what it
  * returns, so the rule has to be the same in both — it was written twice, and the copy that governed pack
  * data was missing the filesystem's reserved names.

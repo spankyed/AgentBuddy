@@ -208,7 +208,7 @@ const { isDragging: isDraggingOver, onDragEnter: handleDragEnter, onDragLeave: h
     if (!files?.length) return
 
     // Collect valid file paths using Electron's webUtils API (File.path was removed in Electron 32)
-    const getPath = (window as any).electronAPI?.fileUtils?.getPathForFile
+    const getPath = window.electronAPI?.fileUtils?.getPathForFile
     if (!getPath) return
 
     const filePaths: string[] = []

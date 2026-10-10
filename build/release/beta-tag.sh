@@ -1,7 +1,7 @@
 #!/bin/bash
 # Beta-before-production rule, sourced by release.sh.
 #
-# Every production version must also exist as a beta, so `abuddy test --app beta` always
+# Every production version must also exist as a beta, so `abuddy test --build beta` always
 # has a build at least as new as production. If no beta was tagged for the version being
 # released, the release also tags v<version>-beta.0 on the same commit; CI builds that tag
 # as AgentBuddy Beta and publishes it as the current beta.

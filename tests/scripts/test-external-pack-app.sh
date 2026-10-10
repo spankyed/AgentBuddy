@@ -13,7 +13,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 ABUDDY="$ROOT/node_modules/.bin/abuddy"
-export ABUDDY_ROOT="$ROOT"
+export ABUDDY_BUILD="$ROOT"
 source "$ROOT/tests/scripts/lib/fixture-packs.sh"
 
 for PACK in "${FIXTURE_PACKS[@]}"; do
@@ -22,5 +22,5 @@ for PACK in "${FIXTURE_PACKS[@]}"; do
     echo "$PACK is not built. Run npm run test:external-pack:contract first." >&2
     exit 1
   fi
-  "$ABUDDY" test --app-root "$ROOT" --prebuilt "$@"
+  "$ABUDDY" test --build "$ROOT" --prebuilt "$@"
 done

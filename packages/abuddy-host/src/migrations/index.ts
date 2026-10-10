@@ -17,7 +17,7 @@ const releaseOf = (version: string): string => version.replace(/[-+].*$/, '');
  * migrations are written for the release it's building towards
  */
 function targetCap(appVersion: string): string | undefined {
-  return resolveAppContext().env === 'development' ? undefined : releaseOf(appVersion);
+  return resolveAppContext().build === 'development' ? undefined : releaseOf(appVersion);
 }
 
 /**

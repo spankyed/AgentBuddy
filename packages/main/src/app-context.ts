@@ -34,7 +34,7 @@ function initialise(): MainAppContext {
   });
   // Read before the assignment below, so this is the caller's choice and not the one made here
   const isolated = Boolean(process.env.ABUDDY_USER_DATA_DIR);
-  const resolved = resolveAppContext({env});
+  const resolved = resolveAppContext({ build: env });
 
   // Electron derives its userData dir and single-instance lock from these
   app.setName(resolved.appName);
@@ -46,7 +46,7 @@ function initialise(): MainAppContext {
   const logsDir = isolated ? path.join(resolved.appDir, 'logs') : app.getPath('logs');
   app.setPath('logs', logsDir);
 
-  process.env.ABUDDY_ENV = resolved.env;
+  process.env.ABUDDY_ENV = resolved.build;
   process.env.ABUDDY_USER_DATA_DIR = resolved.userDataDir;
   return {...resolved, logsDir};
 }

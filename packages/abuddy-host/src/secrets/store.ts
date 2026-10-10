@@ -7,7 +7,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import { _secretRules, _secretProviderLabel, _toSecretInfo, type ProviderName, type SecretInfo, type SecretProvider, type SecretsStatus } from '@abuddy/sdk/services';
 import { registerSecretValue } from './redaction.ts';
-import { writePrivateFile } from './private-file.ts';
+import { writePrivateFile } from '../private-file.ts';
 import { dataKeyAccount, KeyVaultUnavailableError, type KeyVault } from './vault.ts';
 
 const FORMAT = 1;

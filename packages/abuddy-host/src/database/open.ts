@@ -87,7 +87,7 @@ export interface OpenAppDatabaseOptions {
  * is left out, as in the app, unless `includeVolatile` asks for it.
  */
 export async function openAppDatabase({ env, userDataDir, readOnly = false, includeVolatile = false, log, schemaFrom }: OpenAppDatabaseOptions): Promise<AppDatabase> {
-  const context = resolveAppContext({ env, userDataDir });
+  const context = resolveAppContext({ build: env, profile: userDataDir });
   const paths = findAppDataPaths(userDataDir);
   const schema = readInstalledSchema(context, { schemaFrom });
   // A write needs a schema, not most of one. The engine asks it whether a name is an entity type, and for

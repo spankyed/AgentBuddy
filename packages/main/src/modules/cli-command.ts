@@ -9,7 +9,7 @@ const BIN_DIR = '/usr/local/bin';
 
 /** Beta installs alongside production, so its command gets its own name. */
 export function cliCommandName(): string {
-  return getAppContext().env === 'beta' ? 'abuddy-beta' : 'abuddy';
+  return getAppContext().build === 'beta' ? 'abuddy-beta' : 'abuddy';
 }
 
 /** Packaged from packages/abuddy-cli/bin/app-launcher.sh (see electron-builder.mjs). */

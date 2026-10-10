@@ -9,7 +9,12 @@ import { population } from '@abuddy/sdk/testing';
 /**
  * The stamp store holds a record for each cached step and for nothing else.
  *
- * Two ways that can go wrong, and only one of them is cosmetic.
+ * "Nothing else" is about the records, which is what every case here and `pruneStamps` itself read — both
+ * filter the directory to `.json`. Two other things live beside them under names chosen so that filter
+ * passes over: the chain's lock, and a directory per run of what its steps said (`chain-evidence.ts`,
+ * whose spec holds that naming).
+ *
+ * Two ways the records can go wrong, and only one of them is cosmetic.
  *
  * **A stamp for an uncached step is a bug.** A step declaring `neverCachedBecause` must run every time,
  * and `runAndStamp` returns before `stampedRun` for one. If a stamp appears for such a step, that branch

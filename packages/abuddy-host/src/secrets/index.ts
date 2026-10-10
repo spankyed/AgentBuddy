@@ -12,7 +12,7 @@ import type { PackRegistry } from '../packs/registry.ts';
  * Whether the data key goes in a file beside the secrets rather than in the OS credential store.
  *
  * Tests never touch the credential store. Beyond that it is the caller's choice, and the choice is what
- * makes an `abuddy run` instance self-contained: the keychain is keyed by the app name, so every instance
+ * makes an `abuddy dev` instance self-contained: the keychain is keyed by the app name, so every instance
  * of one channel would otherwise share a service, and clearing one instance's keys could take another's.
  *
  * **Gated on the variable, never on the environment alone.** A Beta a user launches normally carries no
@@ -39,7 +39,7 @@ function appStore(): SecretsStore {
     filePath,
     osVault: () => osKeyVault(context.appName),
     fileVault: () => fileKeyVault(dataKeyFile(filePath)),
-    useFileVault: _useFileVault(context.env, process.env.ABUDDY_SECRETS_VAULT),
+    useFileVault: _useFileVault(context.build, process.env.ABUDDY_SECRETS_VAULT),
   });
   return store;
 }
