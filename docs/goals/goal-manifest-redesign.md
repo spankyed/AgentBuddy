@@ -119,6 +119,12 @@ name it moved to (`_MOVED_ROOT_KEYS`, `manifest-schema.ts`).
 shape; [`extensions.md`](../public-facing/extensions.md) and
 [`manifest.md`](../public-facing/manifest.md) document each key.
 
+**A second plan proposes a different answer to part of this**, and the two should not be implemented
+blind to each other: [`manifest-convention-first.md`](../plans/manifest-convention-first.md) replaces
+Decision 7 — `provides` plus feature-relative paths become no paths at all — and adds a resolved manifest
+the build writes. It keeps Decisions 1, 2, 3, 4, 8, 10, 11, 13, 16 and 17, and its own table says which.
+Read it before Phase 4 or 5.
+
 **One thing is out of scope rather than open: the format constants.** `PACK_LAYOUT_VERSION` and
 `PACK_SNAPSHOT_FORMAT` are not to be renamed or bumped, by the owner's decision, so Decision 14 is the
 deletion of `$manifestVersion` and nothing else.
