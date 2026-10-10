@@ -107,13 +107,13 @@ export function betaDownloadLeftovers(cacheDir: string): string[] {
 export async function ensureBetaApp(options: BetaAppOptions): Promise<PackagedApp> {
   const { hostVersion, cacheDir, log = console.log } = options;
   if (process.platform !== 'darwin' || process.arch !== 'arm64') {
-    throw new Error('AgentBuddy Beta builds are published for macOS on Apple Silicon only. Point `abuddy test` at a local AgentBuddy checkout with --app-root <path>.');
+    throw new Error('AgentBuddy Beta builds are published for macOS on Apple Silicon only. Point `abuddy test` at a local AgentBuddy checkout with --build <path>.');
   }
 
   const releases = await (options.listReleases ?? listAppReleases)();
   const release = pickBetaRelease(releases, hostVersion);
   if (!release) {
-    throw new Error(`No AgentBuddy Beta release satisfies this pack's hostVersion (${hostVersion}). Use --app-root <path> to test against a local checkout.`);
+    throw new Error(`No AgentBuddy Beta release satisfies this pack's hostVersion (${hostVersion}). Use --build <path> to test against a local checkout.`);
   }
 
   const appDir = path.join(betaCacheDir(cacheDir), release.version);

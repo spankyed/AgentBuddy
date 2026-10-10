@@ -51,7 +51,7 @@ export interface InstallOptions {
   beforePlace?: (manifest: PackManifest) => void;
   /**
    * The pack snapshot format the app that will load the pack reads, so a build in any other is refused: the app
-   * passes its own (`PACK_SNAPSHOT_FORMAT`), `abuddy install` and `abuddy run` the one the app recorded in the data
+   * passes its own (`PACK_SNAPSHOT_FORMAT`), `abuddy install` and `abuddy dev` the one the app recorded in the data
    * dir (`readHostInfo`). Without it — no AgentBuddy that records it has started with the data dir — a build this
    * process can't read is only warned about, and the app's loader decides at its next start.
    */

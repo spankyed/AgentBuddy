@@ -34,7 +34,7 @@ export const TARGET_USAGE = [
   '  -b, --beta             The beta app\'s data',
   '  --production           The production app\'s data (what a command that only reads takes by default)',
   '  --data-dir <path>      A data dir, a copy of the user\'s for example',
-  '  --profile <name>      An `abuddy run` profile, by the name run and clean print',
+  '  --profile <name>      An `abuddy dev` profile, by the name run and clean print',
   '  --schema-from <path>   A pack snapshot to read entity types from, for a data dir that publishes none',
   '  --volatile             Read the run history too (TNode rows), which the app keeps in its own partition',
 ].join('\n');
@@ -53,7 +53,7 @@ export type DbTarget = Pick<AppContext, 'build' | 'userDataDir' | 'apiPortFile'>
  * usage.
  */
 /**
- * A profile's data dir, by the name `abuddy run` and `abuddy clean` print.
+ * A profile's data dir, by the name `abuddy dev` and `abuddy clean` print.
  *
  * Looked up through `listProfiles` rather than built from the name, so an ephemeral profile is reachable
  * by the same name those commands show: it lives a level down, under `.ephemeral/`, and a name joined to the
@@ -67,7 +67,7 @@ function profileDataDir(name: string, usage: string): string {
   const found = profiles.find((candidate) => candidate.name === name);
   if (found) return found.dir;
   const known = profiles.length === 0
-    ? 'There are none: `abuddy run --fresh` makes one.'
+    ? 'There are none: `abuddy dev --fresh` makes one.'
     : `There is: ${profiles.map((candidate) => candidate.name).sort().join(', ')}.`;
   throw new Error(`No profile named "${name}". ${known}\n\n${usage}`);
 }

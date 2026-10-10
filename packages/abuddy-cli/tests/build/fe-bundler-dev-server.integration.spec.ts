@@ -1,12 +1,12 @@
 /**
  * **The dev server is a second context for this plugin, and it can disagree with a build.**
  *
- * `abuddy run` serves a pack's frontend from `vite.createServer`, where every other spec here builds with
+ * `abuddy dev` serves a pack's frontend from `vite.createServer`, where every other spec here builds with
  * `vite.build`. The two give a plugin different `PluginContext`s, and the half that matters now is what Vite
  * does with a specifier the plugin refuses to resolve: a build emits the bare name into the chunk, while a
  * dev server runs `vite:import-analysis` over the served module and rewrites, or rejects, what it can reach.
  * An external that survived the build and not the dev server would be a pack whose frontend loads from
- * `dist` and 500s under `abuddy run`.
+ * `dist` and 500s under `abuddy dev`.
  *
  * The ceiling of this path, worth knowing before reading a result here: the app imports the pack's entry
  * through `pack://`, outside Vite's module graph, so an edit is a `page reload` and never a component
@@ -40,7 +40,7 @@ beforeAll(async () => {
   fs.writeFileSync(entry, `export { ${EXPORTED} } from '${SHARED}';\n`);
 
   const vite = await import('vite');
-  // The config `abuddy run` serves with, not a copy of it: the first draft of this spec wrote its own and left
+  // The config `abuddy dev` serves with, not a copy of it: the first draft of this spec wrote its own and left
   // out `optimizeDeps.exclude`, which put the dep optimizer in the way of evidence about something else.
   // **Listening on a real port, not middlewareMode**, because one of the two answers below is a response
   // body: what the `pack://` handler proxies is an HTTP request, and a middleware is the only hook that runs
@@ -54,7 +54,7 @@ beforeAll(async () => {
 
 afterAll(async () => { await server?.close(); });
 
-// Through the dev environment's own plugin container, which is the context `abuddy run` puts the plugin in —
+// Through the dev environment's own plugin container, which is the context `abuddy dev` puts the plugin in —
 // rather than a `/@id/` URL, whose encoding is Vite's business and not what this is about
 it('claims a host-shared module and leaves it external', async () => {
   const { pluginContainer } = server.environments.client;

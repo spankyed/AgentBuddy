@@ -10,7 +10,7 @@
  * update at. `virtual:dev-pack-frontends` is the mechanism — it statically names each local pack's generated
  * frontend entry, and the entry imports the pack's components. A pack fetched over `pack://` is outside that
  * graph entirely, which is why a component edit there reloads the window instead (measured 2026-10-07, and
- * recorded where `abuddy run` prints it).
+ * recorded where `abuddy dev` prints it).
  *
  * The graph is walked from the real entry rather than by requesting the pack's file directly, because what
  * is being checked is that *the page reaches it*: a module transformed on its own is in the graph with no

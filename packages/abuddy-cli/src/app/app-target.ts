@@ -16,7 +16,7 @@ export type AppChoice = { source: string } | { beta: true };
 
 export interface CliDirs {
   cache: string;
-  /** Machine state the CLI owns and the app does not: today, the profiles `abuddy run` creates */
+  /** Machine state the CLI owns and the app does not: today, the profiles `abuddy dev` creates */
   data: string;
 }
 
@@ -73,9 +73,9 @@ function packagedAppVersion(executable: string): string | undefined {
 /**
  * `ABUDDY_BUILD`, the environment's form of `--build`, holding either shape.
  *
- * **One variable, because `ABUDDY_APP` and `ABUDDY_ROOT` were one axis asked two ways**: one took a name
- * and the other a path, which is the same split the two flags they mirrored had. Read before anything can
- * outrank it, so a value that names nothing is refused wherever it sits rather than only where it won.
+ * **One variable for one axis**, holding either shape — a build's name or a checkout's path — because
+ * which of the two you hand it is not a different question. Read before anything can outrank it, so a
+ * value that names nothing is refused wherever it sits rather than only where it won.
  *
  * **It is the *selector*, and `ABUDDY_ROOT`/`ABUDDY_APP_EXECUTABLE` are not.** Those two are how this CLI
  * hands a *resolved* answer to a child process — the fixture takes a checkout at a path or a packaged
@@ -306,7 +306,7 @@ async function packagedTarget(options: ResolveAppOptions): Promise<AppTarget> {
  * `env: 'test'`, which is why this hid for so long — the isolation people check for is real, one layer
  * below where the leak was.
  *
- * Removing the config read leaves no hole, because the pinned answer already existed: `--app beta`
+ * Removing the config read leaves no hole, because the pinned answer already existed: `--build beta`
  * computes it from the manifest. The stored choice was shadowing a correct default, not supplying a
  * missing one — and it is gone now, so what this still refuses is the *derivation*: a pinned run must not
  * depend on which directory the pack happens to sit in either.

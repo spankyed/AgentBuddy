@@ -4,7 +4,7 @@
  * Two kinds of directory, listed apart because the difference is the whole point. An **environment** is
  * where an app of that channel keeps its data whatever anyone does — `production`, `beta`, `development`,
  * `test`, one per `APP_ENVS` — and nothing here removes one. An **profile** is a data dir you can throw
- * away (`app/profiles.ts`), created on demand by `abuddy run --profile x` or by `new` below. The word is
+ * away (`app/profiles.ts`), created on demand by `abuddy dev --profile x` or by `new` below. The word is
  * `profile` and not `instance` because an instance of an app is a running process, which is what Electron's
  * single-instance lock is about; a named, disposable data dir that leaves the app's identity alone is a
  * browser profile.
@@ -156,14 +156,14 @@ export function list(dirs: CliDirs, { sizes, all, resolve, bytes = dirBytes }: L
 export function create(dirs: CliDirs, name: string | undefined): void {
   if (name === undefined) {
     const minted = mintProfile(dirs, false);
-    console.log(`  created ${minted.name}\n  ${minted.dir}\n\n  abuddy run --profile ${minted.name}`);
+    console.log(`  created ${minted.name}\n  ${minted.dir}\n\n  abuddy dev --profile ${minted.name}`);
     return;
   }
   const problem = profileNameProblem(name);
   if (problem) throw new Error(problem);
   const opened = openProfile(dirs, name);
   if (!opened.created) throw new Error(`A profile named "${name}" already exists (${opened.dir}).`);
-  console.log(`  created ${opened.name}\n  ${opened.dir}\n\n  abuddy run --profile ${opened.name}`);
+  console.log(`  created ${opened.name}\n  ${opened.dir}\n\n  abuddy dev --profile ${opened.name}`);
 }
 
 export function remove(dirs: CliDirs, names: string[], leaked: boolean): void {

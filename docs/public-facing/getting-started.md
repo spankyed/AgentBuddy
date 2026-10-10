@@ -69,17 +69,17 @@ my-pack/
       notes-system.spec.ts  # added with the feature: its system under the app's bus
 ```
 
-The scaffold has no dependencies, so it builds as generated. To use another pack's entity types or flow steps (for example `keepAlive` from the built-in `default-setup` pack), add it to `dependencies` in `abuddy.json`. `abuddy build` resolves each dependency from a `file:` path, the workspace, the app you configured for `abuddy test` (a checkout or the downloaded beta; `ABUDDY_APP=beta` in CI), an installed AgentBuddy app, the `.abuddy/deps` cache, or a GitHub release, in that order. The resolved version must satisfy the range you declare, and your flows are validated with the dependency's real step code. The scaffolded release workflow runs on macOS with `ABUDDY_APP=beta`, so built-in dependencies resolve in CI.
+The scaffold has no dependencies, so it builds as generated. To use another pack's entity types or flow steps (for example `keepAlive` from the built-in `default-setup` pack), add it to `dependencies` in `abuddy.json`. `abuddy build` resolves each dependency from a `file:` path, the workspace, the app you configured for `abuddy test` (a checkout or the downloaded beta; `ABUDDY_BUILD=beta` in CI), an installed AgentBuddy app, the `.abuddy/deps` cache, or a GitHub release, in that order. The resolved version must satisfy the range you declare, and your flows are validated with the dependency's real step code. The scaffolded release workflow runs on macOS with `ABUDDY_BUILD=beta`, so built-in dependencies resolve in CI.
 
 ## The dev loop
 
 ```bash
-abuddy run
+abuddy dev
 ```
 
 This launches AgentBuddy with your pack installed and keeps it in step with your edits: frontend changes hot-reload through Vite HMR, `abuddy.json` changes regenerate `src/__generated__/`, and backend `.ts` changes rebuild, reinstall and reload the pack's backend in the running app.
 
-It works out which app to use rather than asking: the AgentBuddy checkout your pack is built against if there is one, else the newest Beta build your `hostVersion` accepts. `--app-root <path>` and `--app beta` name one outright, and it always says which it chose and why. If an app is already running on that data dir, `run` uses it rather than starting a second.
+It works out which app to use rather than asking: the AgentBuddy checkout your pack is built against if there is one, else the newest Beta build your `hostVersion` accepts. `--build <path>` and `--build beta` name one outright, and it always says which it chose and why. If an app is already running on that data dir, `dev` uses it rather than starting a second.
 
 The build pipeline (`abuddy build`):
 
@@ -137,10 +137,10 @@ Unit tests run your pack without the app, through `@abuddy/testing/harness`: con
 ```bash
 abuddy init-tests
 npm install
-abuddy test --app beta      # or --app-root ../AgentBuddy for a local checkout
+abuddy test --build beta      # or --build ../AgentBuddy for a local checkout
 ```
 
-`abuddy init-tests` adds `playwright.config.ts` and a smoke test in `tests/e2e/`. `abuddy test` builds the pack, installs it into a throwaway data dir and runs the tests in the app: a checkout (`--app-root`, or `ABUDDY_ROOT`), or the newest AgentBuddy Beta satisfying your `hostVersion` (`--app beta`, or `ABUDDY_APP=beta` in CI). With neither, it uses that newest Beta: `abuddy test` never reads the app you saved and never asks, so a test run means the same thing on any machine. See [Testing](testing.md).
+`abuddy init-tests` adds `playwright.config.ts` and a smoke test in `tests/e2e/`. `abuddy test` builds the pack, installs it into a throwaway data dir and runs the tests in the app: a checkout (`--build`, or `ABUDDY_ROOT`), or the newest AgentBuddy Beta satisfying your `hostVersion` (`--build beta`, or `ABUDDY_BUILD=beta` in CI). With neither, it uses that newest Beta: `abuddy test` never reads the app you saved and never asks, so a test run means the same thing on any machine. See [Testing](testing.md).
 
 ## Verify it works
 

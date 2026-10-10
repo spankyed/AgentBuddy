@@ -128,7 +128,7 @@ Launch AgentBuddy with your pack installed and keep it in step with your edits.
 
 It picks an app the way you tell it to — `--build <path>` for a local AgentBuddy checkout, `--build beta` for a Beta that satisfies your `hostVersion` (a downloaded one if you have it, the newest otherwise) — and **with neither it works one out rather than asking**: the AgentBuddy checkout your pack is built against, if there is one, else that newest Beta. Nothing is remembered, nothing is asked, and it prints which app it chose and which rule chose it.
 
-Deriving the checkout is the right pairing rather than a convenience: a pack whose `@abuddy/*` resolve into a checkout is *compiled against that checkout's packages*, so running it inside a released Beta would pair source-built pack code with a released host. If that checkout is not built, `run` says so and names `npm run build` instead of quietly using a Beta you were not built against.
+Deriving the checkout is the right pairing rather than a convenience: a pack whose `@abuddy/*` resolve into a checkout is *compiled against that checkout's packages*, so running it inside a released Beta would pair source-built pack code with a released host. If that checkout is not built, `dev` says so and names `npm run build` instead of quietly using a Beta you were not built against.
 
 `abuddy test` deliberately derives nothing — it pins from your `hostVersion` — so a test run means the same thing on a fresh machine as on one you have been developing on.
 
@@ -142,11 +142,11 @@ The environment follows the app: a checkout runs as `development`, and a package
 - `--profile <name> --rm` — the same for a name you choose. It removes only a profile **this run creates**: one that is already there holds data you kept, so the flag is refused rather than quietly ignored, and `abuddy profiles rm <name>` is what removes that one
 - `--with-secrets` — copy the secrets this environment already holds into the **new** profile, so a throwaway run can use them without you entering anything again. The values are encrypted in the profile's own data dir, and the data key that decrypts them goes in a file beside them rather than the OS credential store, so `rm -rf` removes both; that also means they are protected by file permissions alone, which is the trade every profile makes and which Settings states
 
-A profile is self-contained — its data, packs, logs and secrets are all inside it, and the data key that encrypts its secrets goes in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `abuddy profiles rm <name>` does it for you. The path is printed, and `abuddy db --profile <name>` opens its database — by the same name `run` and `profiles` show, throwaway ones included.
+A profile is self-contained — its data, packs, logs and secrets are all inside it, and the data key that encrypts its secrets goes in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `abuddy profiles rm <name>` does it for you. The path is printed, and `abuddy db --profile <name>` opens its database — by the same name `dev` and `profiles` show, throwaway ones included.
 
 A profile is a data dir and nothing else: the environment, the app's identity and the URL scheme are untouched, so `--build beta` and a local checkout can both run the same profile. **The word is `profile` rather than `instance` because an instance of an app is a running process** — which is what Electron's single-instance lock is about — where this is storage, and a named, disposable data dir that leaves the app's identity alone is what a browser calls a profile.
 
-An app already running on that data dir is used as it is; otherwise `run` starts one, and closing `run` closes the app it started. It then builds, installs the pack into that app's data dir, and:
+An app already running on that data dir is used as it is; otherwise `dev` starts one, and closing `dev` closes the app it started. It then builds, installs the pack into that app's data dir, and:
 
 - serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, recording its port in `pack-dev-servers/<id>.json` in the app's data dir so the app's `pack://` requests go to it. The marker sits outside the installed pack, which stays exactly the verified files, and is removed when `abuddy dev` exits
 - on `abuddy.json` changes, regenerates `src/__generated__/`

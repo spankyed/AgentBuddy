@@ -90,7 +90,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/host/database', "the app's database opened by the host and abuddy db"],
   // Backups: packs reach export and import through services.appData
   ['@abuddy/host/backup', 'host backups, reached by packs through services.appData'],
-  // The abuddy run server marker: the CLI writes it and Electron main's pack:// handler reads it; packs never require it
+  // The abuddy dev server marker: the CLI writes it and Electron main's pack:// handler reads it; packs never require it
   ['@abuddy/host/packs/dev-server', 'dev server marker for the CLI and the pack:// handler'],
   // One writer at a time for a file the app and its tooling share: the CLI's codegen and `abuddy db` take it, and
   // the API's boot checks it. Pack code has nothing of the app's to serialise, so it never requires this.

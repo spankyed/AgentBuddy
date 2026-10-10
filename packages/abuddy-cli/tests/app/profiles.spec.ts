@@ -189,16 +189,17 @@ describe('renaming a profile', () => {
 
 describe('the flags', () => {
   it('take the profile ones out and leave the rest for the app parser', () => {
-    expect(parseProfileFlags(['--profile', 'probe', '--app-root', '/repo']))
-      .toEqual({ mode: { kind: 'named', name: 'probe', rm: false }, withSecrets: false, rest: ['--app-root', '/repo'] });
+    expect(parseProfileFlags(['--profile', 'probe', '--build', '/repo']))
+      .toEqual({ mode: { kind: 'named', name: 'probe', rm: false }, withSecrets: false, rest: ['--build', '/repo'] });
     expect(parseProfileFlags(['--profile=probe']).mode).toEqual({ kind: 'named', name: 'probe', rm: false });
     expect(parseProfileFlags(['--fresh']).mode).toEqual({ kind: 'fresh', rm: false });
     expect(parseProfileFlags([]).mode).toEqual({ kind: 'shared' });
   });
 
   /**
-   * `--rm` is a modifier on `--fresh` rather than a mode of its own, which is the whole of the change from
-   * `--ephemeral`: one flag mints the dir and the second decides whether it survives.
+   * `--rm` is a modifier rather than a mode of its own: one flag says which dir, and this one says whether
+   * it survives the command. Either order is the same request, since the combination is a property of the
+   * whole argv rather than of the order the flags arrived in.
    */
   it('read --rm as a modifier on --fresh, in either order', () => {
     expect(parseProfileFlags(['--fresh', '--rm']).mode).toEqual({ kind: 'fresh', rm: true });
@@ -243,7 +244,7 @@ describe('the flags', () => {
     expect(() => parseProfileFlags(['--profile'])).toThrow(/needs a name/);
   });
 
-  // The default has to stay the shared dev dir: `run` with no flag must behave exactly as it did
+  // The default has to stay the shared dev dir: `dev` with no flag must behave exactly as it did
   it('resolve nothing for the shared default', () => {
     expect(profileFor({ kind: 'shared' }, dirs)).toBeUndefined();
   });
@@ -268,7 +269,7 @@ describe('the flags', () => {
 });
 
 /**
- * The app outlives the `abuddy run` that started it, so the run's pid is not enough to call a directory
+ * The app outlives the `abuddy dev` that started it, so the run's pid is not enough to call a directory
  * abandoned. Found by killing a run, reclaiming what looked like its leak, and watching the app that was
  * still going rebuild the directory underneath — the removal had only corrupted what was in it.
  */

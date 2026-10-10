@@ -13,7 +13,7 @@ Usage: abuddy clean [--apps [--all]]
 Remove this pack's build output: ${CLEAN_DIRS.join(', ')}.
 
 Options:
-  --apps        List the AgentBuddy Beta builds \`--app beta\` downloaded, and remove all but
+  --apps        List the AgentBuddy Beta builds \`--build beta\` downloaded, and remove all but
                 the newest. Works outside a pack.
   --all         With --apps, remove every build, so the next run downloads one
   --help, -h    Show this help

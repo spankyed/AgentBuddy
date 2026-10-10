@@ -94,7 +94,7 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
     prepare: 'abuddy generate-entries',
     build: 'abuddy build',
     validate: 'abuddy validate',
-    dev: 'abuddy run',
+    dev: 'abuddy dev',
     test: 'vitest run',
     typecheck: 'tsc --noEmit',
     // The facade dependents compile against, recorded for review. Either half bundles the facade itself, so

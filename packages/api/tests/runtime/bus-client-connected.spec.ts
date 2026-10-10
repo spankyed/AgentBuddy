@@ -293,7 +293,7 @@ describe('PACK_CHANGED on the bus', () => {
   });
 });
 
-// A pack can be installed, uninstalled or rebuilt before a client ever connects: `abuddy run` against a
+// A pack can be installed, uninstalled or rebuilt before a client ever connects: `abuddy dev` against a
 // running backend, or a headless boot. The bus has to act on those either way.
 describe('pack lifecycle before a client connects', () => {
   const systemIds = ['second-pack/feature'];

@@ -70,10 +70,10 @@ afterEach(() => {
 /**
  * The one line of disambiguation the collapse rests on, and the case that makes it falsifiable.
  *
- * `--app` and `--app-root` split on the *shape of the value*, so one flag needs a rule for which shape it
- * was handed: a value in the known-name set is a build, anything else is a path. With one reserved name it
- * cannot be ambiguous today — and `./beta` is the escape hatch for the day a checkout is named after a
- * channel, which is how every other tool spells "the directory".
+ * `--build` takes two shapes of value — a build's name or a checkout's path — so it needs a rule for
+ * which it was handed: a value in the known-name set is a build, anything else is a path. With one
+ * reserved name it cannot be ambiguous today, and `./beta` is the escape hatch for the day a checkout is
+ * named after a channel, which is how every other tool spells "the directory".
  *
  * Mutation: make the rule `endsWith('/')` or drop the set lookup, and the pair below disagrees.
  */

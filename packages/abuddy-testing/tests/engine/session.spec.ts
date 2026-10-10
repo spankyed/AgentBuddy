@@ -609,7 +609,7 @@ describe('a bus round-trip', () => {
    * The bridge is still a reply path, and this is the only case that says so.
    *
    * An app built before `host/drive` existed answers with a broadcast, which never reaches this session's
-   * connection — the in-page inspector is the only way to see it. `abuddy drive --app beta` can be exactly that
+   * connection — the in-page inspector is the only way to see it. `abuddy drive --build beta` can be exactly that
    * app, so waiters hear both channels and this case is what stops the page path being deleted as redundant.
    */
   it('still resolves a round-trip from a reply seen only in the page', async () => {

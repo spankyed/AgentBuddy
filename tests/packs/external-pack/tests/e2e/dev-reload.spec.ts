@@ -1,5 +1,5 @@
-// `abuddy run` rebuilds a pack and asks the running app to reload it, over POST /dev/reload. For an
-// external pack that reload can be the app's first sight of it — `abuddy run` installs into a running
+// `abuddy dev` rebuilds a pack and asks the running app to reload it, over POST /dev/reload. For an
+// external pack that reload can be the app's first sight of it — `abuddy dev` installs into a running
 // app — so it has to leave the pack running. The repo's own dev-reload spec covers the built-in path;
 // this is the external one, against the real endpoint.
 import { API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';

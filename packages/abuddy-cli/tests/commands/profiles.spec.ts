@@ -76,7 +76,7 @@ describe('new', () => {
     const [made] = listProfiles(dirs);
     expect(made).toBeDefined();
     expect(printed()).toContain(made!.name);
-    expect(printed()).toContain(`abuddy run --profile ${made!.name}`);
+    expect(printed()).toContain(`abuddy dev --profile ${made!.name}`);
   });
 
   /**

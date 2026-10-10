@@ -22,7 +22,7 @@ const logger = createLogger('pack-content');
  * **File times are deliberately not in here, and used to be.** `placePack` copies into a fresh directory and
  * renames it over the old one, so every install leaves new files whatever they contain; hashing their mtimes
  * made a reinstall of the identical pack look like changed data, which was the point — reinstalling was how
- * you got a pack's data put back. It also made a `touch` re-apply, and made every `abuddy run` backend rebuild
+ * you got a pack's data put back. It also made a `touch` re-apply, and made every `abuddy dev` backend rebuild
  * re-import every item, since that loop reinstalls. Content is what "changed" means here, as it does
  * everywhere else in this repo that compares a tree against a record.
  *

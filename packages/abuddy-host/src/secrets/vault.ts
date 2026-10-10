@@ -18,7 +18,7 @@ export interface KeyVault {
 /**
  * The account a store's data key is under, and the file an unprotected one keeps it in. Both are facts about
  * a store on disk rather than about either vault, so anything reading a store that this process did not
- * create — `abuddy run --with-secrets`, copying an environment's secrets into an instance — addresses it
+ * create — `abuddy dev --with-secrets`, copying an environment's secrets into an instance — addresses it
  * through these rather than spelling the convention again.
  *
  * The third such fact is the credential store's service name, which is the app name: a caller for another

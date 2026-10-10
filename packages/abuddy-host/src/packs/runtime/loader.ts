@@ -73,7 +73,7 @@ export function loadSingleExternalPack(
 
   const runtimeEntry = path.join(dir, PACK_LAYOUT.runtimeEntry);
   if (!isPackLayout(dir) || !fs.existsSync(runtimeEntry)) {
-    return skipped(manifest, `${dir} isn't an installed pack (no ${PACK_LAYOUT.integrity} or ${PACK_LAYOUT.runtimeEntry}). Install it with abuddy install or abuddy run`);
+    return skipped(manifest, `${dir} isn't an installed pack (no ${PACK_LAYOUT.integrity} or ${PACK_LAYOUT.runtimeEntry}). Install it with abuddy install or abuddy dev`);
   }
   try {
     const integrity = readPackIntegrity(dir);

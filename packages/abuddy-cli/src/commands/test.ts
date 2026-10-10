@@ -52,7 +52,7 @@ export function fixtureEnv(
   // process.execPath. The fixture drops it for the app it launches (appLaunchEnv).
   delete env.ABUDDY_APP_EXECUTABLE;
   // ABUDDY_BUILD as well as the executable: the fixture builds the pack, and resolving its dependencies
-  // on built-in packs reads the app choice, not the launch target. Without it a `--app beta` run
+  // on built-in packs reads the app choice, not the launch target. Without it a `--build beta` run
   // resolves against the checkout behind the pack, or finds nothing at all in CI.
   delete env.ABUDDY_BUILD;
   // Where the app's data goes, and where its screenshots and reports land, is this run's to decide and

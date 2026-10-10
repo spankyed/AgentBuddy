@@ -16,11 +16,12 @@
  * **It is not `abuddy test`.** `test` is pinned, ephemeral and assertive on purpose. This is your app,
  * your profile, and state that is still there next session.
  *
- * **It is not `abuddy run`.** `run` spawns the app as a plain child and hands back no handle; driving
- * needs a page, which only the Playwright fixture produces. So `drive` launches its own app and shows its
- * windows. Electron's single-instance lock is scoped to the data dir, so it cannot join an app `run`
- * already has on that profile — which is why a person who wants to watch what a driver is doing should
- * watch the driver's window rather than start their own.
+ * **It is not `abuddy dev`.** `dev` *holds* an app — it builds, installs, serves a frontend and stays up —
+ * where this drives one and exits. The two halves meet it differently: a **question** attaches over the
+ * debug port in `dev`'s session file, so it joins the app `dev` has rather than competing with it (one app
+ * per data dir, which Electron's single-instance lock scopes), while a **script** launches its own app and
+ * shows its windows, because a program whose result depends on whatever plugin was left open has
+ * undeclared inputs.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';

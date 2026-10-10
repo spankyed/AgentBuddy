@@ -268,7 +268,7 @@ describe('naming the data dir', () => {
     }
   });
 
-  // A profile is a data dir `abuddy run` made, so `abuddy db` reaches one the same way the user names it
+  // A profile is a data dir `abuddy dev` made, so `abuddy db` reaches one the same way the user names it
   // everywhere else. Resolved through listProfiles rather than by joining the name to the profiles root,
   // which is what makes an ephemeral one — a level down, under .ephemeral/ — reachable by its printed name.
   it('resolves --profile to that profile\'s data dir, ephemeral ones included', () => {

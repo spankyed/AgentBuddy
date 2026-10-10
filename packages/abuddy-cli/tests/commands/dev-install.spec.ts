@@ -27,7 +27,7 @@ afterEach(() => {
   fs.rmSync(userDataDir, { recursive: true, force: true });
 });
 
-describe('abuddy run', () => {
+describe('abuddy dev', () => {
   it("installs with the version and pack format of the dev app that last used the data dir, so both are checked", async () => {
     const { recordHostInfo } = await import('@abuddy/host/packs');
     recordHostInfo(userDataDir, { version: '0.9.1', packFormat: 3 });
@@ -52,7 +52,7 @@ describe('abuddy run', () => {
   });
 });
 
-describe('abuddy run reloads', () => {
+describe('abuddy dev reloads', () => {
   /** A stand-in for the dev app's API, recording each reload request */
   async function fakeApi(status: number): Promise<{ port: number; requests: Array<{ url?: string; token?: string | string[]; body: string }>; close: () => void }> {
     const requests: Array<{ url?: string; token?: string | string[]; body: string }> = [];
@@ -108,11 +108,11 @@ describe('abuddy run reloads', () => {
 });
 
 /**
- * `run` does not decide the environment, the app does — which is what keeps production out of reach. A
+ * `dev` does not decide the environment, the app does — which is what keeps production out of reach. A
  * packaged build stamps its own channel at build time, so the only two answers are a checkout's
  * `development` and a Beta's `beta`, and no flag or variable this command reads adds a third.
  */
-describe('the environment abuddy run targets', () => {
+describe('the environment abuddy dev targets', () => {
   it('follows the app it resolved', async () => {
     const { appEnv } = await import('../../src/commands/dev');
     expect(appEnv({ kind: 'source', root: '/repo' })).toBe('development');

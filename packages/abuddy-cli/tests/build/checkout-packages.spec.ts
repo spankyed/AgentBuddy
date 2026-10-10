@@ -1,5 +1,5 @@
 // A pack compiles and runs against the @abuddy packages' dist. When that dist belongs to a checkout it is
-// built on demand, so the commands that load it (abuddy test, abuddy run) ask the checkout to refresh it.
+// built on demand, so the commands that load it (abuddy test, abuddy dev) ask the checkout to refresh it.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -45,7 +45,7 @@ describe('the checkout a pack\'s @abuddy packages come from', () => {
 });
 
 /**
- * Which entry points bring a checkout's packages up to date. `abuddy run` rebuilds the pack on every
+ * Which entry points bring a checkout's packages up to date. `abuddy dev` rebuilds the pack on every
  * file change through `build()`, and the freshness check reads every source of all five packages — so
  * the check belongs to the command a user runs, not to the function the watch loop calls.
  */
@@ -56,7 +56,7 @@ describe('the commands that refresh a checkout before loading its packages', () 
     expect(source(file)).toContain('ensureCheckoutPackages(');
   });
 
-  it('asks once per abuddy build, not once per rebuild in abuddy run', () => {
+  it('asks once per abuddy build, not once per rebuild in abuddy dev', () => {
     const build = source('commands/build.ts');
     // buildCommand is what the CLI dispatches; build() is what dev's watch loop calls
     const command = build.indexOf('export async function buildCommand');
