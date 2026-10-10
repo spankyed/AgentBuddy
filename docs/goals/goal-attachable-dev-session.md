@@ -511,3 +511,40 @@ nudge on `npm run dev` exists to warn about, arriving unprompted as evidence tha
 Left for Phase 5, where Decision 17 defines it: the one-shot's **output shape**. The fast path currently
 prints the engine's own result, so `--eval` without a `return` prints `{"ok":true}` rather than saying the
 body returned nothing. `{value, state, startedBy, supervisorPid}` and the three exit codes replace it.
+
+### Phase 5 — `--spawn`, the answer's shape, the reclaim (`5176a75a2`, `1a2ce7938`)
+
+Done, and the bargain Decision 16 promised is measured rather than argued:
+
+| | |
+|---|---|
+| no app, no `--spawn` | exit **3**, stdout **empty**, both ways forward named |
+| `--spawn`, cold | **3.3s** — launch, attach, answer; `state: "spawned"`, and one stderr line |
+| every question after | **0.9s** — `state: "attached"`, and **no stderr at all** |
+
+`startedBy: "drive"` came back in the answer, which is the silent failure closed: `ABUDDY_SESSION_STARTED_BY`
+reached the spawned `dev`, so the app is reclaimable. Had it not, nothing would ever have been, and the
+developer's `npm start` would have refused while blaming them.
+
+**The reclaim, proven live in both directions.** `abuddy dev` on a dir a question was holding printed
+*"Reclaiming the app a question started (pid 74945)… it has gone; starting yours"*, and the session then read
+`startedBy: "dev"`. A second `dev` on the same dir answered *"Using the development app already running"* —
+a person's app is not a tool's to take. And the convergence held: the next question attached to the
+developer's app and said so. The decision is a function (`mayReclaim`) so both halves have a case, and
+reclaiming unconditionally fails exactly the one that protects a person's app.
+
+**The listing is the other half of the hygiene answer**, and the one that survives a scrolled terminal:
+each row with a live session names who started it and the pid that ends it, on the environment rows as well
+as the profiles, since the development dir is where a spawn lands by default.
+
+Deferred from this phase, with the reason:
+
+- **The idle reap is not built.** Decision 12 scoped it to a profile a spawn used, and Decision 16 then
+  removed most of what it was for — nothing is left running that nobody asked for, and a run that *was*
+  asked says so and is findable in the listing. A timer that ends an app somebody may be looking at is the
+  one thing Decision 12 argued against, and building it for the narrow remaining case would mean a new
+  record (when it was last attached to) and a watcher in `dev` for a problem that is now opt-in.
+- **`--spawn` in a pack repo installing the pack has no case of its own**, beyond `dev` doing the installing
+  (which `dev-install.spec.ts` covers) and `--spawn` spawning `dev` rather than copying its environment
+  (which is one line and a type). The end-to-end case would launch an app per run in a fixture pack; the
+  cheaper proof is that there is one launcher.
