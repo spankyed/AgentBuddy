@@ -876,6 +876,24 @@ a mutation that was applied to the **subject**, run, and reverted in the same co
 | the build-name refusal | the refusal removed | 8 |
 | | a hand-written list missing a build | 4 |
 | | a substring match instead of the whole name | 1 |
+| the profile name rule (Phase 1) | `_pathSegmentProblem` removed | 3 |
+| `removeProfile`'s root guard | `notAProfile` removed | 5 |
+| `removeProfile`'s in-use guard | the refusal removed | 2 |
+| `profileDir`'s containment | the check removed | **0 — see below** |
+
+**Four Phase 1 directory guards were mutated too, and the fourth could not fire.** The name rule removed
+fails 3 cases; `removeProfile`'s "not a profile" guard, 5; its in-use guard, 2. `profileDir`'s containment
+check failed nothing — and the reason was not that it is unreachable behind the name rule, which it is, but
+that **it could not fire at all**: it compared `path.resolve(root, name)` with `path.join(root, name)`, and
+both normalise `..` identically, so the two sides agreed on every input. With the name rule weakened,
+`../../abuddy` resolved to the real production data dir and was *returned*. It is `path.dirname(dir) !==
+root` now — the claim its comment was always making — which throws under that same edit, and the comment
+names the edit, since an assertion's firing case is an edit rather than an input.
+
+That is the root guide's *"two clauses keeping it equal to the inputs cannot fail"* in a place where the
+consequence is `fs.rm` on a directory nobody named. It had been read, reviewed and recorded as the belt to
+the name rule's braces. **A guard whose mutation changes nothing is the finding**, not a gap in the test —
+which is the one thing this table is for.
 
 One mutation in the first attempt at `freshProfileName` was **malformed** — it added a parameter no caller
 passes, so nothing fired, and nothing *should* have. It was replaced with the real failure mode (`askTarget`

@@ -65,15 +65,27 @@ export const profileNameProblem = (name: string): string | undefined => {
 };
 
 /**
- * The directory for a name, checked to be inside the profiles root. The regex above already refuses a
- * separator, so this is the belt to its braces: nothing removes a directory that this did not return.
+ * The directory for a name, which is an immediate child of the profiles root or an error.
+ *
+ * **The containment check is an assertion, not a gate**: `profileNameProblem` above has already refused
+ * every separator, so nothing can reach the second throw while that rule holds. It is here because the
+ * consequence of that rule weakening is `fs.rm` on a directory nobody named — the header on
+ * `profileNameProblem` has the worked example — and nothing removes a directory this did not return.
+ *
+ * **The edit that makes it fire is a weakening of the name rule**, which is what to mutate to watch it:
+ * drop the `_pathSegmentProblem` call, and `../../abuddy` arrives here. That is also how the check was
+ * found to be unable to fire *at all*: it compared `path.resolve(root, name)` with
+ * `path.join(root, name)`, and both normalise `..` the same way, so the two sides agreed on every input —
+ * `../../abuddy` resolved to the real production data dir and was returned. Two expressions that cannot
+ * disagree are what redundancy looks like rather than what protection looks like. `path.dirname` is the
+ * claim the comment was always making: one level under the root, and nowhere else.
  */
 export function profileDir(dirs: CliDirs, name: string): string {
   const problem = profileNameProblem(name);
   if (problem) throw new Error(problem);
   const root = profilesRoot(dirs);
   const dir = path.resolve(root, name);
-  if (dir !== path.join(root, name)) throw new Error(`"${name}" doesn't resolve inside ${root}.`);
+  if (path.dirname(dir) !== root) throw new Error(`"${name}" doesn't resolve inside ${root}.`);
   return dir;
 }
 
