@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { findPackRoot } from '../utils';
 import { cliDirs, type CliDirs } from '../app/app-target';
-import { dirBytes, size } from '../app/instances';
+import { dirBytes, size } from '../app/profiles';
 import { betaDownloadLeftovers, cachedBetaBuilds } from '../app/beta-app';
 
 const CLEAN_DIRS = ['dist', '.abuddy', 'src/__generated__'];
@@ -18,7 +18,7 @@ Options:
   --all         With --apps, remove every build, so the next run downloads one
   --help, -h    Show this help
 
-Data dirs are \`abuddy instances\`: what exists, and removing the ones you own.
+Data dirs are \`abuddy profiles\`: what exists, and removing the ones you own.
 `.trim();
 
 /**
@@ -33,7 +33,7 @@ Data dirs are \`abuddy instances\`: what exists, and removing the ones you own.
  * Staging directories go whatever the flag says: a download that was killed leaves one, nothing reads it
  * again, and `cachedBetaBuilds` already refuses to see it.
  *
- * `dirs` is a parameter where `cleanInstances` reads `cliDirs()` for itself, and the difference is the test:
+ * `dirs` is a parameter rather than a `cliDirs()` this reads for itself, and the difference is the test:
  * this deletes from a cache a person owns, so the policy — which build survives — is checked against a
  * temporary one rather than trusted. `clean` passes nothing.
  */
@@ -79,8 +79,8 @@ export async function clean(args: string[]) {
   // dropped silently and take the pack's build output with it
   const unknown = args.filter(arg => !['--apps', '--all'].includes(arg));
   if (unknown.length > 0) {
-    const instances = unknown.includes('--instances') ? ' Data dirs are `abuddy instances` now.' : '';
-    throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See abuddy clean --help.${instances}`);
+    const profiles = unknown.includes('--profiles') ? ' Data dirs are `abuddy profiles` now.' : '';
+    throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See abuddy clean --help.${profiles}`);
   }
   if (args.includes('--all') && !args.includes('--apps')) throw new Error('--all only means something with --apps.');
 

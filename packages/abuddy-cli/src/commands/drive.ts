@@ -14,12 +14,12 @@
  * runner should never collect it.
  *
  * **It is not `abuddy test`.** `test` is pinned, ephemeral and assertive on purpose. This is your app,
- * your instance, and state that is still there next session.
+ * your profile, and state that is still there next session.
  *
  * **It is not `abuddy run`.** `run` spawns the app as a plain child and hands back no handle; driving
  * needs a page, which only the Playwright fixture produces. So `drive` launches its own app and shows its
  * windows. Electron's single-instance lock is scoped to the data dir, so it cannot join an app `run`
- * already has on that instance — which is why a person who wants to watch what a driver is doing should
+ * already has on that profile — which is why a person who wants to watch what a driver is doing should
  * watch the driver's window rather than start their own.
  */
 import * as fs from 'node:fs';
@@ -27,12 +27,12 @@ import * as path from 'node:path';
 import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process';
 import { findPackRootOrNone, readManifest } from '../utils';
 import { cliDirs, parseAppFlags, resolveLaunchApp } from '../app/app-target';
-import { instanceFor, instanceInUse, parseInstanceFlags, removeInstance, INSTANCE_USAGE } from '../app/instances';
+import { profileFor, profileInUse, parseProfileFlags, removeProfile, PROFILE_USAGE } from '../app/profiles';
 import { ONE_SHOT_ASKS, type AskName, type EngineAsk } from '../app/drive-engine.ts';
 import { oneShot } from '../app/drive-one-shot.ts';
 import { fixtureEnv } from './test';
 import { appEnv } from './run';
-import { copySecretsInto } from '../app/instance-secrets.ts';
+import { copySecretsInto } from '../app/profile-secrets.ts';
 import { resolvePlaywrightCli } from '../app/playwright';
 import { renderTemplate } from '../templates.ts';
 import { configCallsHelper } from '../build/config-text.ts';
@@ -48,7 +48,7 @@ const DRIVE_DIR = 'drive';
  * precedent: exported for exactly this, and asserted in `tests/commands/test-contract.spec.ts`.
  */
 export const DRIVE_USAGE = `
-Usage: abuddy drive [script | --serve | --eval <body>] [--app-root <path> | --app beta] [instance]
+Usage: abuddy drive [script | --serve | --eval <body>] [--app-root <path> | --app beta] [profile]
 
 Launch AgentBuddy and drive it from a script: navigate, send events, read state, screenshot.
 Mainly for an agent debugging or developing against the app; a person can watch, the windows are shown.
@@ -64,7 +64,7 @@ It drives a built app, not a dev server: \`abuddy run\` serves your pack's front
 launches an app of its own, so a question about one is not answerable with the other.
 
 By default the app gets a fresh data dir that is thrown away afterwards, so each session starts clean.
-Name an instance to keep its state between sessions.
+Name a profile to keep its state between sessions.
 
 **One question, without writing a script.** --eval, --query and --state launch the app, ask the session one
 thing, print the answer and exit — the same verbs --serve answers, asked once. The answer is the engine's
@@ -87,7 +87,7 @@ Options:
   --attach            ask a running --serve session rather than launching an app
   --app-root <path>   a local AgentBuddy checkout (installed and built)
   --app beta          the newest AgentBuddy Beta build that satisfies the pack's hostVersion
-${INSTANCE_USAGE}
+${PROFILE_USAGE}
   --help, -h          Show this help
 `.trim();
 
@@ -126,7 +126,7 @@ This drives a built app, not a dev server — \`abuddy run\` is the one that ser
 \`app.report(name, value)\` is for an answer you want to read rather than watch: it writes
 \`drive/results/<name>.json\` and prints one \`[drive:report] <name> <json>\` line.
 
-Add \`--instance <name>\` to keep the app's data between sessions, or \`--ephemeral\` to start clean and
+Add \`--profile <name>\` to keep the app's data between sessions, or \`--fresh --rm\` to start clean and
 leave nothing behind. With neither, the app gets a fresh data dir that is thrown away afterwards, so a
 script cannot reach your real data. Everything but this file and \`playwright.config.ts\` is gitignored.
 `;
@@ -196,7 +196,7 @@ drive('drive engine', driveEngineBody({
  * **Before `takeServeFlag`**, so `--eval --serve` is reported by name here rather than surviving every
  * parser and failing inside the Playwright CLI, which is where `parseAppFlags` sends what nobody claimed.
  *
- * The name half is matched **exactly**, after splitting an inline value off — `parseInstanceFlags`' shape,
+ * The name half is matched **exactly**, after splitting an inline value off — `parseProfileFlags`' shape,
  * and what makes it prefix-safe: `--evaluate` and `--state-dump` fall through to `rest` rather than being
  * eaten, as `--serve-forever` does.
  */
@@ -219,7 +219,7 @@ export function takeOneShotFlags(argv: string[]): { ask?: AskName; argument?: st
     ask = asked;
     const spec: EngineAsk = ONE_SHOT_ASKS[asked];
     if (spec.field === undefined) {
-      // Silently ignoring it is the trap `parseInstanceFlags`' `--fresh` still has; not worth copying
+      // Silently ignoring it is the trap `parseProfileFlags`' `--fresh` still has; not worth copying
       if (inline !== undefined) throw new Error(`--${asked} does not take a value.`);
       continue;
     }
@@ -376,7 +376,7 @@ export async function drive(args: string[]) {
   const root = target.root;
   const { ask, argument, attach, rest: unasked } = takeOneShotFlags(args);
   const { serve, rest: unserved } = takeServeFlag(unasked);
-  const { mode, withSecrets, rest } = parseInstanceFlags(unserved);
+  const { mode, withSecrets, rest } = parseProfileFlags(unserved);
   const flags = parseAppFlags(rest);
   const asking = ask === undefined ? undefined : ONE_SHOT_ASKS[ask];
 
@@ -422,14 +422,14 @@ export async function drive(args: string[]) {
   // `from`, which is the pack when there is one and this directory when there is not — and in the second
   // case that *is* the checkout. It states what it resolved and why; the reasoning is in `app-target.ts`.
   const app = await resolveLaunchApp({ flags, hostVersion: target.hostVersion, from: target.packDir ?? target.root });
-  const instance = instanceFor(mode, cliDirs());
-  if (instance?.created && withSecrets) {
-    const { count, from } = copySecretsInto(instance, appEnv(app));
+  const profile = profileFor(mode, cliDirs());
+  if (profile?.created && withSecrets) {
+    const { count, from } = copySecretsInto(profile, appEnv(app));
     console.error(`Copied ${count} secret${count === 1 ? '' : 's'} from ${from}\n`);
   }
 
   /**
-   * Reachable from every way this ends, and set up the moment the instance exists — a signal or a throw
+   * Reachable from every way this ends, and set up the moment the profile exists — a signal or a throw
    * in between used to leak it, and `ensureCheckoutPackages` below is a package rebuild that takes
    * seconds and throws on failure, so "in between" is where an interrupt actually lands.
    *
@@ -438,14 +438,14 @@ export async function drive(args: string[]) {
    */
   let tornDown = false;
   function teardown(): void {
-    if (tornDown || !instance?.ephemeral) return;
+    if (tornDown || !profile?.ephemeral) return;
     tornDown = true;
-    if (instanceInUse(instance.dir)) {
-      console.warn(`\nLeft the ephemeral instance ${instance.name}: an app is still running on it.`);
+    if (profileInUse(profile.dir)) {
+      console.warn(`\nLeft the ephemeral profile ${profile.name}: an app is still running on it.`);
       return;
     }
-    removeInstance(cliDirs(), instance.dir);
-    console.error(`\nRemoved the ephemeral instance ${instance.name}.`);
+    removeProfile(cliDirs(), profile.dir);
+    console.error(`\nRemoved the ephemeral profile ${profile.name}.`);
   }
 
   let child: ChildProcess | undefined;
@@ -469,9 +469,9 @@ export async function drive(args: string[]) {
 
   async function session(): Promise<void> {
     // Electron allows one app per data dir, so a second one here would die inside Playwright's 45s window
-    // for a main window and report that it never saw one, which names neither the instance nor the cause
-    if (instance && instanceInUse(instance.dir)) {
-      throw new Error(`An app is already running on instance ${instance.name}. Close it, or drive a different instance.`);
+    // for a main window and report that it never saw one, which names neither the profile nor the cause
+    if (profile && profileInUse(profile.dir)) {
+      throw new Error(`An app is already running on profile ${profile.name}. Close it, or drive a different profile.`);
     }
 
     // No build here: the fixture builds the pack itself when PACK_DIR is set, which `fixtureEnv` does
@@ -479,9 +479,9 @@ export async function drive(args: string[]) {
     // A one-shot's stdout carries one JSON envelope, so npm's banner goes to stderr with everything else
     ensureCheckoutPackages(root, asking === undefined ? 'inherit' : ['ignore', 2, 2]);
 
-    if (instance) {
-      console.error(`Instance ${instance.name}${instance.ephemeral ? ' (removed when this exits)' : ''}`);
-      console.error(`  ${instance.dir}\n`);
+    if (profile) {
+      console.error(`Profile ${profile.name}${profile.ephemeral ? ' (removed when this exits)' : ''}`);
+      console.error(`  ${profile.dir}\n`);
     }
 
     // With no pack there is nothing resolving `dist`, and the subject is this checkout's own source
@@ -491,8 +491,8 @@ export async function drive(args: string[]) {
     // up per question, and it then takes the other branch of `pinsViewport`, so the page gets the emulated
     // viewport a suite gets and a one-shot's answer matches what `npm test` sees.
     if (asking === undefined) env.PLAYWRIGHT_VISIBLE = '1';
-    // The fixture makes a throwaway dir unless it is given one; an instance is the caller's to keep
-    if (instance) env.E2E_DATA_DIR = instance.dir;
+    // The fixture makes a throwaway dir unless it is given one; a profile is the caller's to keep
+    if (profile) env.E2E_DATA_DIR = profile.dir;
     // Beside the scripts that take them, not under `tests/` — driving output is not test output
     env.E2E_SCREENSHOT_DIR = path.join(root, DRIVE_DIR, 'screenshots');
     // Beside the screenshots, for the same reason. The CLI did not set this before, so `app.report` in a
@@ -501,7 +501,7 @@ export async function drive(args: string[]) {
 
     // Spawned rather than spawnSync'd so this process keeps an event loop. With spawnSync a Ctrl-C took
     // the default action and killed this process where it stood, so the teardown below never ran and an
-    // ephemeral instance was left on disk — measured, not reasoned about.
+    // ephemeral profile was left on disk — measured, not reasoned about.
     const playwright = [
       resolvePlaywrightCli(root), 'test',
       '--config', path.join(DRIVE_DIR, serving ? ENGINE_CONFIG_FILE : 'playwright.config.ts'),

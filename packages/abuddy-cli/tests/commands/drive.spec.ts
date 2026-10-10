@@ -99,18 +99,18 @@ describe('the engine files the serve flag scaffolds', () => {
 
 describe('the serve flag', () => {
   it('is off by default, and takes nothing with it', () => {
-    expect(takeServeFlag(['look.ts', '--instance', 'x'])).toEqual({
-      serve: false, rest: ['look.ts', '--instance', 'x'],
+    expect(takeServeFlag(['look.ts', '--profile', 'x'])).toEqual({
+      serve: false, rest: ['look.ts', '--profile', 'x'],
     });
   });
 
   it('is taken out of the arguments when present', () => {
-    expect(takeServeFlag(['--serve', '--instance', 'x'])).toEqual({ serve: true, rest: ['--instance', 'x'] });
+    expect(takeServeFlag(['--serve', '--profile', 'x'])).toEqual({ serve: true, rest: ['--profile', 'x'] });
   });
 
   it('leaves every other argument in place and in order', () => {
-    const { rest } = takeServeFlag(['--app-root', '/a', '--serve', '--instance', 'probe', '-g', 'x']);
-    expect(rest).toEqual(['--app-root', '/a', '--instance', 'probe', '-g', 'x']);
+    const { rest } = takeServeFlag(['--app-root', '/a', '--serve', '--profile', 'probe', '-g', 'x']);
+    expect(rest).toEqual(['--app-root', '/a', '--profile', 'probe', '-g', 'x']);
   });
 
   it('does not match a flag that merely starts the same way', () => {
@@ -236,9 +236,9 @@ describe('asking one question', () => {
     });
 
     it('leaves every other argument in place and in order', () => {
-      const { rest } = takeOneShotFlags(['--eval', 'return 1', '--instance', 'probe', '--grep', 'n']);
+      const { rest } = takeOneShotFlags(['--eval', 'return 1', '--profile', 'probe', '--grep', 'n']);
 
-      expect(rest).toEqual(['--instance', 'probe', '--grep', 'n']);
+      expect(rest).toEqual(['--profile', 'probe', '--grep', 'n']);
     });
 
     it('refuses a second question, a value --state cannot take, and a missing value', () => {

@@ -1,4 +1,4 @@
-// What `abuddy instances` tells you, and what it does on the way.
+// What `abuddy profiles` tells you, and what it does on the way.
 //
 // The environment rows come from an injected `resolve`, and the sizes from an injected `bytes`, because both
 // questions are about the machine: asserting the real four dirs would make these cases say whatever this
@@ -9,8 +9,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { _appDirOf, type AppEnv } from '@abuddy/sdk/env';
-import { create, environmentRows, list, remove } from '../../src/commands/instances';
-import { listInstances, openInstance } from '../../src/app/instances';
+import { create, environmentRows, list, remove } from '../../src/commands/profiles';
+import { listProfiles, openProfile } from '../../src/app/profiles';
 import type { CliDirs } from '../../src/app/app-target';
 
 let tmp: string;
@@ -23,7 +23,7 @@ const bytes = vi.fn((_dir: string) => 1_500_000_000);
 const printed = (): string => vi.mocked(console.log).mock.calls.map((call) => String(call[0])).join('\n');
 
 beforeEach(() => {
-  tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-instances-cmd-'));
+  tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-profiles-cmd-'));
   dirs = { cache: path.join(tmp, 'cache'), data: path.join(tmp, 'data') };
   bytes.mockClear();
   vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -73,19 +73,19 @@ describe('new', () => {
   it('mints a name and says what to do with it', () => {
     create(dirs, undefined);
 
-    const [made] = listInstances(dirs);
+    const [made] = listProfiles(dirs);
     expect(made).toBeDefined();
     expect(printed()).toContain(made!.name);
-    expect(printed()).toContain(`abuddy run --instance ${made!.name}`);
+    expect(printed()).toContain(`abuddy run --profile ${made!.name}`);
   });
 
   /**
-   * Refused rather than opened. `openInstance` exists for `run --instance x`, where reusing the dir you
+   * Refused rather than opened. `openProfile` exists for `run --profile x`, where reusing the dir you
    * named last time is the whole point; here it would hand you someone else's data under the impression you
    * had made something.
    */
   it('refuses a name that is taken, and leaves it alone', () => {
-    const existing = openInstance(dirs, 'memo-work');
+    const existing = openProfile(dirs, 'memo-work');
     fs.writeFileSync(path.join(existing.dir, 'proof'), 'x');
 
     expect(() => create(dirs, 'memo-work')).toThrow(/already exists/);
@@ -93,45 +93,45 @@ describe('new', () => {
   });
 
   it('refuses a name a filesystem would mangle', () => {
-    expect(() => create(dirs, '../escape')).toThrow(/instance name/);
+    expect(() => create(dirs, '../escape')).toThrow(/profile name/);
   });
 });
 
 describe('rm', () => {
-  /** What `clean --instances` did by default, which is the only thing anyone does to an ephemeral one */
+  /** What `clean --profiles` did by default, which is the only thing anyone does to an ephemeral one */
   it('--leaked takes the ones a dead run left and nothing else', () => {
-    openInstance(dirs, 'keep-me');
-    const dead = path.join(dirs.data, 'instances', '.ephemeral', '999999-gone');
+    openProfile(dirs, 'keep-me');
+    const dead = path.join(dirs.data, 'profiles', '.ephemeral', '999999-gone');
     fs.mkdirSync(dead, { recursive: true });
-    fs.writeFileSync(path.join(dead, '.abuddy-instance.json'), JSON.stringify({ created: '', pid: 999999 }));
+    fs.writeFileSync(path.join(dead, '.abuddy-profile.json'), JSON.stringify({ created: '', pid: 999999 }));
 
     remove(dirs, [], true);
 
-    expect(listInstances(dirs).map((instance) => instance.name)).toEqual(['keep-me']);
+    expect(listProfiles(dirs).map((profile) => profile.name)).toEqual(['keep-me']);
   });
 
   it('says so when a name is not there, rather than removing nothing quietly', () => {
-    expect(() => remove(dirs, ['absent'], false)).toThrow(/No instance named "absent"/);
+    expect(() => remove(dirs, ['absent'], false)).toThrow(/No profile named "absent"/);
   });
 
   it('removes a named one and reports what it reclaimed', () => {
-    openInstance(dirs, 'memo-work');
+    openProfile(dirs, 'memo-work');
 
     remove(dirs, ['memo-work'], false);
 
-    expect(listInstances(dirs)).toEqual([]);
+    expect(listProfiles(dirs)).toEqual([]);
     expect(printed()).toContain('reclaimed');
   });
 });
 
 describe('the listing', () => {
-  it('puts the environments first and the instances after', () => {
-    openInstance(dirs, 'memo-work');
+  it('puts the environments first and the profiles after', () => {
+    openProfile(dirs, 'memo-work');
 
-    list(dirs, { sizes: false, ephemeral: false, resolve, bytes });
+    list(dirs, { sizes: false, all: false, resolve, bytes });
 
     const output = printed();
-    expect(output.indexOf('ENVIRONMENT')).toBeLessThan(output.indexOf('INSTANCE'));
+    expect(output.indexOf('ENVIRONMENT')).toBeLessThan(output.indexOf('PROFILE'));
     expect(output).toContain('memo-work');
   });
 
@@ -142,31 +142,31 @@ describe('the listing', () => {
    */
   it('walks nothing unless asked for sizes', () => {
     fs.mkdirSync(resolve('production'), { recursive: true });
-    openInstance(dirs, 'memo-work');
+    openProfile(dirs, 'memo-work');
 
-    list(dirs, { sizes: false, ephemeral: false, resolve, bytes });
+    list(dirs, { sizes: false, all: false, resolve, bytes });
     expect(bytes, 'the default listing measured something').not.toHaveBeenCalled();
     expect(printed()).not.toContain('SIZE');
 
-    list(dirs, { sizes: true, ephemeral: false, resolve, bytes });
+    list(dirs, { sizes: true, all: false, resolve, bytes });
     expect(bytes).toHaveBeenCalled();
     expect(printed()).toContain('1.5GB');
   });
 
-  // Ephemeral instances are the run's business, not a reader's: they are noise in a listing whose subject is
+  // Ephemeral profiles are the run's business, not a reader's: they are noise in a listing whose subject is
   // what persists, and `rm --leaked` is the only thing anyone does to them from outside
   it('leaves the ephemeral ones out until asked', () => {
-    const ephemeralDir = path.join(dirs.data, 'instances', '.ephemeral', '4242-throwaway');
+    const ephemeralDir = path.join(dirs.data, 'profiles', '.ephemeral', '4242-throwaway');
     fs.mkdirSync(ephemeralDir, { recursive: true });
-    fs.writeFileSync(path.join(ephemeralDir, '.abuddy-instance.json'), JSON.stringify({ created: '', pid: 4242 }));
+    fs.writeFileSync(path.join(ephemeralDir, '.abuddy-profile.json'), JSON.stringify({ created: '', pid: 4242 }));
 
-    list(dirs, { sizes: false, ephemeral: false, resolve, bytes });
+    list(dirs, { sizes: false, all: false, resolve, bytes });
     // The full name: the command's own hint says "the throwaway ones", and the first version of this case
-    // matched that instead of the instance
+    // matched that instead of the profile
     expect(printed()).not.toContain('4242-throwaway');
 
     vi.mocked(console.log).mockClear();
-    list(dirs, { sizes: false, ephemeral: true, resolve, bytes });
+    list(dirs, { sizes: false, all: true, resolve, bytes });
     expect(printed()).toContain('4242-throwaway');
   });
 });

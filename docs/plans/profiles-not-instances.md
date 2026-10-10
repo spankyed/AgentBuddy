@@ -16,7 +16,10 @@ vocabulary it will keep.
 
 It is also the cheapest it will ever be: a mechanical rename the typecheck proves you finished, with no
 API surface outside this repo to keep (root `CLAUDE.md`, "Backward compatibility"). The one thing that
-*does* exist on disk is the directory itself, which the same rule says to migrate rather than shim.
+*does* exist on disk is the directory itself, and it is **not** migrated: a one-shot rename reading the old
+name is the kind of code nobody finds to delete afterwards, and what it would carry is disposable by
+definition — a profile is "a data dir you can throw away". The old dirs stop being listed, which is a
+sentence in the release note rather than a function in the tree.
 
 ## Three terms, which the rename is for keeping apart
 
@@ -85,11 +88,9 @@ after a build is exactly what that plan rejects, so none is introduced here.
 
 A rename is held by the typecheck, so what needs a case is only what a rename cannot prove:
 
-- **the directory moves with the name.** `<cli data>/instances/` is renamed to `profiles/` once, when the
-  old root exists and the new one does not — three lines, and it is what the repo's rule asks for: a
-  renamed thing that exists on disk migrates, where a renamed *type* does not. The alternative, reporting
-  a stale directory and leaving it, is a shim that never stops being needed. Two cases: the move happens,
-  and a second run with both present does nothing rather than merging them.
+- **nothing reads the old directory.** `<cli data>/profiles/` is the only root, and no constant, branch or
+  one-shot rename names `instances/` — which is the half worth checking, since a migration is easy to add
+  and hard to find again later.
 - **`--fresh --rm` removes what `--fresh` keeps.** Two cases, since the second flag is the whole difference.
 - **no `instance` left in a user-facing string**, which is a scan and therefore the safe direction: a false
   finding is a word in a comment, where a missed one is a flag nobody can find. The scan needs the sense

@@ -40,8 +40,8 @@ makes that possible — the checkout behind "no pack here" is the one you are st
 same rule `abuddy drive` applies inside a pack.
 
 **Each run gets a fresh data dir under `$TMPDIR` and throws it away**, so a script cannot touch your
-development or production data, and every session starts clean. `--instance <name>` keeps a data dir
-between sessions: `npm run drive -- --instance probe`.
+development or production data, and every session starts clean. `--profile <name>` keeps a data dir
+between sessions: `npm run drive -- --profile probe`.
 
 **For an answer you want to read rather than watch**, `app.report(name, value)` writes
 `drive/results/<name>.json` and prints one `[drive:report] <name> <json>` line — so a program reading the
@@ -78,7 +78,7 @@ A script here runs and ends. To ask many things of one warm app instead, serve i
 
 ```bash
 npm run drive:serve                       # this repo
-abuddy drive --serve --instance probe     # from inside a pack
+abuddy drive --serve --profile probe     # from inside a pack
 ```
 
 It prints the address and a `curl` line and writes `results/engine.json` with the address and a token.
@@ -105,7 +105,7 @@ between plugins does not, because the plugin's actor survives.
 CLI's `--serve` wants a pack directory and this repo is not one. The session file is `.mts` so that a plain
 `npm run drive`, which collects `**/*.ts`, never picks it up and hangs on it.
 
-A pack author gets the same thing from `abuddy drive`, which also takes `--instance <name>` to keep the
+A pack author gets the same thing from `abuddy drive`, which also takes `--profile <name>` to keep the
 app's data between sessions. In a pack everything here but this file and `playwright.config.ts` is
 gitignored; this directory also tracks the serving pair, which `drive/.gitignore` negates, so the
 repo's own copies are typechecked and are chain inputs.

@@ -16,12 +16,12 @@ import { _appDirOf, appDataDirFor, resolveAppContext } from '@abuddy/sdk/env';
 import { db } from '../../src/commands/db';
 import { parseDbArgs } from '../../src/commands/db/target';
 import { dbRepl } from '../../src/commands/db/repl';
-import { mintInstance, openInstance } from '../../src/app/instances';
+import { mintProfile, openProfile } from '../../src/app/profiles';
 import type { CliDirs } from '../../src/app/app-target';
 import { PACK_LAYOUT } from '@abuddy/host/packs';
 
-// `--instance` resolves a name through the CLI's own data dir, which is the real one on this machine.
-// Pointing it at a temp tree is the only way to test the lookup without reading whatever instances the
+// `--profile` resolves a name through the CLI's own data dir, which is the real one on this machine.
+// Pointing it at a temp tree is the only way to test the lookup without reading whatever profiles the
 // author happens to have.
 let cliTree: CliDirs;
 vi.mock('../../src/app/app-target', async (importOriginal) => ({
@@ -268,29 +268,29 @@ describe('naming the data dir', () => {
     }
   });
 
-  // An instance is a data dir `abuddy run` made, so `abuddy db` reaches one the same way the user names it
-  // everywhere else. Resolved through listInstances rather than by joining the name to the instances root,
+  // A profile is a data dir `abuddy run` made, so `abuddy db` reaches one the same way the user names it
+  // everywhere else. Resolved through listProfiles rather than by joining the name to the profiles root,
   // which is what makes an ephemeral one — a level down, under .ephemeral/ — reachable by its printed name.
-  it('resolves --instance to that instance\'s data dir, ephemeral ones included', () => {
+  it('resolves --profile to that profile\'s data dir, ephemeral ones included', () => {
     cliTree = { cache: tempDir('abuddy-db-cache-'), data: tempDir('abuddy-db-data-') };
-    const named = openInstance(cliTree, 'probe');
-    const ephemeral = mintInstance(cliTree, true);
+    const named = openProfile(cliTree, 'probe');
+    const ephemeral = mintProfile(cliTree, true);
 
     const targetOf = (args: string[]) => parseDbArgs(args, {}, 'usage').target;
-    expect(targetOf(['--instance', 'probe'])).toMatchObject({ userDataDir: named.dir, named: true });
-    expect(targetOf(['--instance', ephemeral.name]).userDataDir, 'the name run prints').toBe(ephemeral.dir);
+    expect(targetOf(['--profile', 'probe'])).toMatchObject({ userDataDir: named.dir, named: true });
+    expect(targetOf(['--profile', ephemeral.name]).userDataDir, 'the name run prints').toBe(ephemeral.dir);
   });
 
   // A name that matches nothing lists what there is: resolving it to a path and letting the open fail would
   // report a directory the user never typed
-  it('names the instances there are when --instance matches none', () => {
+  it('names the profiles there are when --profile matches none', () => {
     cliTree = { cache: tempDir('abuddy-db-cache-'), data: tempDir('abuddy-db-data-') };
-    openInstance(cliTree, 'probe');
-    expect(() => parseDbArgs(['--instance', 'nope'], {}, 'usage')).toThrow(/No instance named "nope"\. There is: probe\./);
+    openProfile(cliTree, 'probe');
+    expect(() => parseDbArgs(['--profile', 'nope'], {}, 'usage')).toThrow(/No profile named "nope"\. There is: probe\./);
 
     cliTree = { ...cliTree, data: tempDir('abuddy-db-empty-') };
-    expect(() => parseDbArgs(['--instance', 'nope'], {}, 'usage')).toThrow(/There are none/);
-    expect(() => parseDbArgs(['--instance', ''], {}, 'usage')).toThrow(/--instance needs a name/);
+    expect(() => parseDbArgs(['--profile', 'nope'], {}, 'usage')).toThrow(/There are none/);
+    expect(() => parseDbArgs(['--profile', ''], {}, 'usage')).toThrow(/--profile needs a name/);
   });
 
   it('refuses two data dirs', async () => {
@@ -298,7 +298,7 @@ describe('naming the data dir', () => {
     expect((await run(['query', 'return 1', '-d', '--data-dir', dir])).error?.message).toMatch(/^Name one data dir, not 2: -d, --data-dir/);
     expect((await run(['query', 'return 1', '--production', '--data-dir', dir])).error?.message).toMatch(/^Name one data dir, not 2: --production, --data-dir/);
     expect((await run(['reset', '-b', '--production'])).error?.message).toMatch(/^Name one data dir, not 2: -b, --production/);
-    expect((await run(['query', 'return 1', '-d', '--instance', 'probe'])).error?.message).toMatch(/^Name one data dir, not 2: -d, --instance/);
+    expect((await run(['query', 'return 1', '-d', '--profile', 'probe'])).error?.message).toMatch(/^Name one data dir, not 2: -d, --profile/);
   });
 
   it('makes a command that changes the database name its data dir, and opens none until it does', async () => {
@@ -306,7 +306,7 @@ describe('naming the data dir', () => {
     const changes = [['exec', 'return 1'], ['reset', '--force'], ['clear-settings', '--force'], ['import', dir, '--force'], ['repl', '--write']];
     for (const args of changes) {
       const { error, err, out } = await run(args);
-      expect(error?.message, args.join(' ')).toMatch(/--production, -d, -b, --data-dir <path>, or --instance <name>/);
+      expect(error?.message, args.join(' ')).toMatch(/--production, -d, -b, --data-dir <path>, or --profile <name>/);
       expect(`${err}${out}`).toBe('');
     }
   });

@@ -178,7 +178,7 @@ npm run drive -- drive/notes.ts  # one script
 
 The import is `drive`, not `test`, and that is the point: the same runner under a name that says what the
 file is. A pack author gets the same thing from `abuddy drive`, which scaffolds the directory on first use
-and takes `--instance <name>` to keep the app's data between sessions.
+and takes `--profile <name>` to keep the app's data between sessions.
 
 ## Debugging the running app
 

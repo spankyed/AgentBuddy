@@ -134,16 +134,16 @@ Deriving the checkout is the right pairing rather than a convenience: a pack who
 
 The environment follows the app: a checkout runs as `development`, and a packaged Beta runs as `beta`, because a packaged build stamps its own channel. Neither touches production data.
 
-**Instances.** By default `run` uses the shared development data dir, so every run inherits what the last one left. An instance is a data dir of its own, created on demand:
+**Profiles.** By default `run` uses the shared development data dir, so every run inherits what the last one left. A profile is a data dir of its own, created on demand:
 
-- `--instance <name>` — that one, created the first time you name it, and kept
-- `--fresh` — a new one, whose name is printed so you can come back to it with `--instance`
-- `--ephemeral` — a new one, removed when `run` exits
-- `--with-secrets` — copy the secrets this environment already holds into the **new** instance, so a throwaway run can use them without you entering anything again. The values are encrypted in the instance's own data dir, and the data key that decrypts them goes in a file beside them rather than the OS credential store, so `rm -rf` removes both; that also means they are protected by file permissions alone, which is the trade every instance makes and which Settings states
+- `--profile <name>` — that one, created the first time you name it, and kept
+- `--fresh` — a new one, whose name is printed so you can come back to it with `--profile`
+- `--fresh --rm` — the same, removed when `run` exits
+- `--with-secrets` — copy the secrets this environment already holds into the **new** profile, so a throwaway run can use them without you entering anything again. The values are encrypted in the profile's own data dir, and the data key that decrypts them goes in a file beside them rather than the OS credential store, so `rm -rf` removes both; that also means they are protected by file permissions alone, which is the trade every profile makes and which Settings states
 
-An instance is self-contained — its data, packs, logs and secrets are all inside it, and the data key that encrypts its secrets goes in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `abuddy instances rm <name>` does it for you. The path is printed, and `abuddy db --instance <name>` opens its database — by the same name `run` and `instances` show, ephemeral instances included.
+A profile is self-contained — its data, packs, logs and secrets are all inside it, and the data key that encrypts its secrets goes in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `abuddy profiles rm <name>` does it for you. The path is printed, and `abuddy db --profile <name>` opens its database — by the same name `run` and `profiles` show, throwaway ones included.
 
-An instance is a data dir and nothing else: the environment, the app's identity and the URL scheme are untouched, so `--app beta` and a local checkout can both run the same instance.
+A profile is a data dir and nothing else: the environment, the app's identity and the URL scheme are untouched, so `--app beta` and a local checkout can both run the same profile. **The word is `profile` rather than `instance` because an instance of an app is a running process** — which is what Electron's single-instance lock is about — where this is storage, and a named, disposable data dir that leaves the app's identity alone is what a browser calls a profile.
 
 An app already running on that data dir is used as it is; otherwise `run` starts one, and closing `run` closes the app it started. It then builds, installs the pack into that app's data dir, and:
 
@@ -153,7 +153,7 @@ An app already running on that data dir is used as it is; otherwise `run` starts
 
 Without an FE entry it rebuilds, reinstalls and reloads on any change instead.
 
-#### `abuddy drive [script | --serve | --eval <body>] [--app-root <path> | --app beta] [instance flags]`
+#### `abuddy drive [script | --serve | --eval <body>] [--app-root <path> | --app beta] [profile flags]`
 
 Launch AgentBuddy and drive it from a script: navigate, send events, read state, take screenshots.
 
@@ -181,7 +181,7 @@ another app launch. `--serve` holds the app open and answers HTTP requests inste
 thing at a time against a session that is already warm.
 
 ```bash
-abuddy drive --serve --instance probe
+abuddy drive --serve --profile probe
 ```
 
 It prints the address and a `curl` line, and writes `drive/results/engine.json` with the address and a
@@ -326,7 +326,7 @@ pack, since the checkout behind "no pack here" is the one you are standing in. N
 AgentBuddy repo's own `npm run drive` scripts use, so they are calls to this command rather than a second
 implementation of it.
 
-It takes the same app and instance flags as `abuddy run`, with one difference in the default: where `abuddy run` uses the shared development data dir, `abuddy drive` gives each session a fresh one and throws it away afterwards, so a driving session starts clean and leaves nothing. `--instance <name>` is how a session keeps its state for the next one. It launches its own app rather than joining one `abuddy run` already has, because Electron allows one app per data dir — so if a person wants to watch what a driver is doing, they watch the driver's window rather than starting a second app.
+It takes the same app and profile flags as `abuddy run`, with one difference in the default: where `abuddy run` uses the shared development data dir, `abuddy drive` gives each session a fresh one and throws it away afterwards, so a driving session starts clean and leaves nothing. `--profile <name>` is how a session keeps its state for the next one. It launches its own app rather than joining one `abuddy run` already has, because Electron allows one app per data dir — so if a person wants to watch what a driver is doing, they watch the driver's window rather than starting a second app.
 
 ### Validation
 
@@ -511,9 +511,9 @@ abuddy db import ./agentbuddy-backup-2026-09-17 --production --force
 abuddy db reset --production        # lists what it would delete
 ```
 
-**Which data.** `-d` targets the development app's data dir, `-b` AgentBuddy Beta's, `--production` the production app's, `--data-dir <path>` any data dir, such as a copy of the user's, and `--instance <name>` an instance `abuddy run` made, by the name it printed. Name one of them, not two. `--schema-from <path>` names a pack snapshot for a data dir that publishes none of its own. Without it such a dir still opens to **read**, and the command says which entity types it could not name; a command that **changes** it is refused, because an incomplete schema makes a write land on the wrong rows. A command that only reads takes the production app's data without being told, and a dry run of `import`, `reset` or `clear-settings` counts as reading; **a change (`exec`, `repl --write`, and those three with `--force`) names its data dir**, so the user's own data is never what a forgotten flag hits. Each command prints the data dir it opens (on stderr, so results on stdout stay clean). A flag means that app's own data dir, whatever `ABUDDY_USER_DATA_DIR` is set to in the shell; the variable applies only when nothing names a data dir.
+**Which data.** `-d` targets the development app's data dir, `-b` AgentBuddy Beta's, `--production` the production app's, `--data-dir <path>` any data dir, such as a copy of the user's, and `--profile <name>` a profile `abuddy run` made, by the name it printed. Name one of them, not two. `--schema-from <path>` names a pack snapshot for a data dir that publishes none of its own. Without it such a dir still opens to **read**, and the command says which entity types it could not name; a command that **changes** it is refused, because an incomplete schema makes a write land on the wrong rows. A command that only reads takes the production app's data without being told, and a dry run of `import`, `reset` or `clear-settings` counts as reading; **a change (`exec`, `repl --write`, and those three with `--force`) names its data dir**, so the user's own data is never what a forgotten flag hits. Each command prints the data dir it opens (on stderr, so results on stdout stay clean). A flag means that app's own data dir, whatever `ABUDDY_USER_DATA_DIR` is set to in the shell; the variable applies only when nothing names a data dir.
 
-**While the app runs.** The commands open the database files themselves (offline); the app keeps the whole database in memory and is its only writer. So a change (`exec`, `repl --write`, and `import`, `reset` or `clear-settings` with `--force`) refuses while an AgentBuddy app runs on the data dir: the API it published is running, or (on macOS and Linux) its instance lock is held by a live process. Files left behind by a crash name processes that have exited, so they don't stand in the way. Quit the app first. Reading commands work, with a warning that they miss what the app hasn't written yet, and so do the dry runs: they open the database without writing to it, so they also work against a copy you have no permission to change.
+**While the app runs.** The commands open the database files themselves (offline); the app keeps the whole database in memory and is its only writer. So a change (`exec`, `repl --write`, and `import`, `reset` or `clear-settings` with `--force`) refuses while an AgentBuddy app runs on the data dir: the API it published is running, or (on macOS and Linux) its single-instance lock is held by a live process. Files left behind by a crash name processes that have exited, so they don't stand in the way. Quit the app first. Reading commands work, with a warning that they miss what the app hasn't written yet, and so do the dry runs: they open the database without writing to it, so they also work against a copy you have no permission to change.
 
 While a command changes the database it holds a lock on the data dir (`db-write.lock`), so a second `abuddy db` is refused and an AgentBuddy started meanwhile refuses to open that database instead of overwriting the change. A lock left behind by a command that was killed is ignored once its process is gone.
 
@@ -597,30 +597,30 @@ In the AgentBuddy repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, 
 
 ### Cleanup
 
-#### `abuddy instances`
+#### `abuddy profiles`
 
 Every AgentBuddy data dir on this machine, and the verbs for the ones you made. Works outside a pack — a
 data dir belongs to you rather than to any pack.
 
 ```
-abuddy instances                  what exists
-abuddy instances --sizes          with a size column
-abuddy instances --ephemeral      include the throwaway dirs `run --ephemeral` makes
-abuddy instances new [name]       create one; a name is minted if you don't give one
-abuddy instances rename <a> <b>   rename one
-abuddy instances rm <name>...     remove the ones you name
-abuddy instances rm --leaked      remove the ones a killed run left behind
+abuddy profiles                  what exists
+abuddy profiles --sizes          with a size column
+abuddy profiles --all            include the throwaway dirs `run --fresh --rm` makes
+abuddy profiles new [name]       create one; a name is minted if you don't give one
+abuddy profiles rename <a> <b>   rename one
+abuddy profiles rm <name>...     remove the ones you name
+abuddy profiles rm --leaked      remove the ones a killed run left behind
 ```
 
 Two kinds of directory, listed apart. An **environment** is where an app of that channel keeps its data —
 production, beta, development, test — and nothing here removes one; a row says whether an app has it open,
-what version last wrote to it, and `(no app data)` when the directory holds only a browser profile. An
-**instance** is a data dir you can throw away.
+what version last wrote to it, and `(no app data)` when the directory holds only a Chromium profile. A
+**profile** is a data dir you can throw away.
 
 Sizes are behind a flag because taking them means walking every directory: measured, 674ms for a 1.4GB
 production dir and 1255ms for a 1.5GB development one. Names and paths come back immediately.
 
-An instance an app is currently running on is never renamed or removed: taking a data dir away from a
+A profile an app is currently running on is never renamed or removed: taking a data dir away from a
 running app does not stop it, it makes the app write the directory back.
 
 #### `abuddy clean`
@@ -631,4 +631,4 @@ Remove build output: `dist/`, `.abuddy/`, `src/__generated__/`.
 release tested against — and removes all but the newest, which is the one a later run would reuse; `--all`
 removes every build. It works outside a pack.
 
-Data dirs are `abuddy instances`, below: what exists, and removing the ones you own.
+Data dirs are `abuddy profiles`, below: what exists, and removing the ones you own.

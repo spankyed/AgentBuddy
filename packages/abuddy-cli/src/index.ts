@@ -20,7 +20,7 @@ Commands:
   install <source> [-d] [-b]  Install a pack (path, URL, GitHub, or registry name)
   uninstall <id> [-d] [-b]   Remove an installed pack
   list [-d] [-b]             Show installed packs
-  run [--app-root <path> | --app beta] [--instance <name> | --fresh | --ephemeral]
+  run [--app-root <path> | --app beta] [--profile <name> | --fresh [--rm]]
                       Launch the app with this pack, and reload it as you edit
   init-tests            Scaffold Playwright E2E test setup
   drive [script]        Launch the app and drive it: a script in drive/, a --serve session, or one
@@ -31,7 +31,7 @@ Commands:
   db <command>        Query, export, import or reset the app's database (AgentBuddy closed)
   info                Show pack summary
   doctor              Run health checks
-  instances           List every AgentBuddy data dir; create, rename or remove an instance
+  profiles           List every AgentBuddy data dir; create, rename or remove a profile
   clean [--apps]      Remove this pack's build output, or the downloaded Beta builds
 
 Options:
@@ -61,16 +61,16 @@ const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>>
   'db':         async () => (await import('./commands/db')).db,
   'info':       async () => (await import('./commands/info')).info,
   'doctor':     async () => (await import('./commands/doctor')).doctor,
-  'instances':  async () => (await import('./commands/instances')).instances,
+  'profiles':  async () => (await import('./commands/profiles')).profiles,
   'clean':      async () => (await import('./commands/clean')).clean,
 };
 
 /**
  * Exit quietly when whatever is reading our stdout goes away.
  *
- * `abuddy instances | head` closes the pipe under the writer, and an unhandled EPIPE crashes with a stack
+ * `abuddy profiles | head` closes the pipe under the writer, and an unhandled EPIPE crashes with a stack
  * trace that reads like a failure of the command. Every command could always hit this; none did, because
- * none printed more than fits the pipe buffer before the reader exits — `abuddy instances` is the first
+ * none printed more than fits the pipe buffer before the reader exits — `abuddy profiles` is the first
  * with a table long enough, which is how it was found.
  *
  * Only EPIPE: attaching a listener at all stops Node throwing on any stdout error, so anything else would

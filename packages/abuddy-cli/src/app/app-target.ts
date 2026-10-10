@@ -16,7 +16,7 @@ export type AppChoice = { source: string } | { beta: true };
 
 export interface CliDirs {
   cache: string;
-  /** Machine state the CLI owns and the app does not: today, the instances `abuddy run` creates */
+  /** Machine state the CLI owns and the app does not: today, the profiles `abuddy run` creates */
   data: string;
 }
 

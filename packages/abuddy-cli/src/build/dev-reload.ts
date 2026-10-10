@@ -13,9 +13,9 @@ import { API_HOST, API_TOKEN_HEADER, errorMessage } from '@abuddy/sdk/utils/pure
  */
 
 /**
- * Where an app runs: its environment, and its data dir when an instance overrides the default. Leaving
+ * Where an app runs: its environment, and its data dir when a profile overrides the default. Leaving
  * `userDataDir` out is not the same as naming the default one — it lets `ABUDDY_USER_DATA_DIR` from the
- * caller's shell still apply, which is an escape hatch that predates instances.
+ * caller's shell still apply, which is an escape hatch that predates profiles.
  */
 export interface AppPlace {
   env: AppEnv;

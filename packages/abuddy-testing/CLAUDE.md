@@ -360,7 +360,7 @@ Things worth knowing before changing it:
   data-dir policy. `/close` resolves it.
 - **Ctrl-C is safe, and not because of the engine's signal handlers.** Measured 2026-10-04: `SIGINT` to
   `abuddy drive --serve` left the app's API process gone, the data-dir policy run and the ephemeral
-  instance removed — with Playwright reporting the session *interrupted*, which is the evidence that
+  profile removed — with Playwright reporting the session *interrupted*, which is the evidence that
   Playwright's own interrupt handling did the teardown rather than a body the handlers had resolved.
 - **`/drops` and `/errors` read *and clear*.** The fixture throws on any dropped send left after the body,
   which suits a test; a session running for an hour would collect every drop and fail at the end over ones
@@ -511,7 +511,7 @@ Screenshot output location depends on context:
 | `PACK_DIR` | Path to an external pack directory. Triggers build/install and plugin waiting. |
 | `PACK_ARCHIVE` | A packed `<id>-<version>.tgz` to install instead of building `PACK_DIR`, so the run tests what a release ships. Refused when it is older than the pack's `dist/`: skipping the rebuild is for testing the shipped artifact, not for testing a stale one. |
 | `E2E_KEEP_DATA` | Set to `1` to keep each worker's temp data dir for debugging. |
-| `E2E_DATA_DIR` | A data dir the caller owns and keeps, used instead of the per-worker temp one and never cleaned up. Set by `abuddy drive` for an instance. **`abuddy test` strips it** (`fixtureEnv`), so a pinned run cannot be aimed at a directory by the shell it was started from. |
+| `E2E_DATA_DIR` | A data dir the caller owns and keeps, used instead of the per-worker temp one and never cleaned up. Set by `abuddy drive` for a profile. **`abuddy test` strips it** (`fixtureEnv`), so a pinned run cannot be aimed at a directory by the shell it was started from. |
 | `E2E_SCREENSHOT_DIR` | Where `app.screenshot()` writes, ahead of the `PACK_DIR` and cwd fallbacks. Set by `abuddy drive` to `drive/screenshots/`, and stripped by `abuddy test` for the same reason. |
 | `E2E_REPORT_DIR` | Where `app.report()` writes, ahead of the same two fallbacks (`drive/results/`). Set by this repo's `drive` scripts and stripped by `abuddy test`, for the reason the two above are: the run decides where its output lands, not the shell that started it. |
 | `PLAYWRIGHT_TEST` | Set automatically to `'true'` by the fixture. The app resolves the `test` environment (`abuddy-test` name, lock and data dir), crashes on uncaught errors, and runs headless (suppresses window display and splash screen). |

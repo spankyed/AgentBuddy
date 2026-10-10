@@ -8,8 +8,8 @@ import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
 import { reloadPack, type AppPlace, type DevReload } from '../build/dev-reload.ts';
 import { cliDirs, parseAppFlags, resolveLaunchApp, type AppTarget } from '../app/app-target';
-import { instanceFor, parseInstanceFlags, removeInstance, INSTANCE_USAGE } from '../app/instances';
-import { copySecretsInto } from '../app/instance-secrets.ts';
+import { profileFor, parseProfileFlags, removeProfile, PROFILE_USAGE } from '../app/profiles';
+import { copySecretsInto } from '../app/profile-secrets.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { AppEnv } from '@abuddy/sdk/env';
 import { readApiEndpoint } from '@abuddy/host/process-liveness';
@@ -29,12 +29,12 @@ closing this command closes the app it started.
 Options:
   --app-root <path>   a local AgentBuddy checkout (installed and built)
   --app beta          the newest AgentBuddy Beta build that satisfies the pack's hostVersion
-${INSTANCE_USAGE}
+${PROFILE_USAGE}
   --help, -h          Show this help
 
 With no app named: the AgentBuddy checkout this pack is built against, if there is one, else the newest
 Beta build its hostVersion accepts. Nothing is remembered and nothing is asked.
-With no instance named, the shared development data dir is used, as before.
+With no profile named, the shared development data dir is used, as before.
 
 Note that --app beta reloads by restarting rather than in place: a packaged build refuses a
 pack reload, and publishes no API token for one.
@@ -80,13 +80,13 @@ function appLaunchEnv(place: AppPlace): NodeJS.ProcessEnv {
   // Only a source run reads this; a packaged build stamps its channel (see `appEnv`)
   out.ABUDDY_ENV = place.env;
   if (place.userDataDir !== undefined) {
-    // Set only for an instance, and deliberately: it is also what tells Electron the run was pointed at
+    // Set only for a profile, and deliberately: it is also what tells Electron the run was pointed at
     // its own dir, which moves the logs inside it (`main/src/app-context.ts`). A plain `abuddy run` should
     // keep writing to the platform log dir, and should keep honouring an ABUDDY_USER_DATA_DIR the caller
     // exported, which naming one here would override.
     out.ABUDDY_USER_DATA_DIR = place.userDataDir;
-    // An instance holds its own keys, so the data key goes beside them rather than into the OS keychain,
-    // where every instance of one channel would share a service name. The app reads this in any
+    // A profile holds its own keys, so the data key goes beside them rather than into the OS keychain,
+    // where every profile of one channel would share a service name. The app reads this in any
     // environment but production.
     out.ABUDDY_SECRETS_VAULT = 'file';
   }
@@ -141,7 +141,7 @@ export async function run(args: string[]) {
   } catch (error) {
     // The signals have their own handlers; this is every other way a session ends, and it is the one
     // that happens while developing — a pack that fails to build used to exit through the CLI's error
-    // handler and leave an ephemeral instance behind
+    // handler and leave an ephemeral profile behind
     await hooks.teardown?.();
     throw error;
   }
@@ -163,7 +163,7 @@ async function session(args: string[], hooks: SessionHooks) {
   const manifest = readManifest(root);
   const feEntry = findFEEntry(root);
 
-  const { mode, withSecrets, rest } = parseInstanceFlags(args);
+  const { mode, withSecrets, rest } = parseProfileFlags(args);
   const flags = parseAppFlags(rest);
   // `run` forwards nothing, so a leftover flag is a typo rather than an argument for something else —
   // where `drive` hands its own leftovers to Playwright and must not refuse them. Ignoring one silently
@@ -174,16 +174,16 @@ async function session(args: string[], hooks: SessionHooks) {
   }
   const app = await resolveLaunchApp({ flags, hostVersion: manifest.hostVersion ?? '*', from: root });
   const env = appEnv(app);
-  const instance = instanceFor(mode, cliDirs());
-  if (instance?.created && withSecrets) {
-    const { count, from } = copySecretsInto(instance, env);
+  const profile = profileFor(mode, cliDirs());
+  if (profile?.created && withSecrets) {
+    const { count, from } = copySecretsInto(profile, env);
     console.log(`Copied ${count} secret${count === 1 ? '' : 's'} from ${from}`);
   }
-  const place: AppPlace = { env, userDataDir: instance?.dir };
+  const place: AppPlace = { env, userDataDir: profile?.dir };
   const { userDataDir, apiPortFile } = resolveAppContext(place);
 
   // Registered here rather than once the dev server is up, because the ten seconds before that — the
-  // build, the launch, the install — are exactly when someone presses Ctrl-C, and an ephemeral instance
+  // build, the launch, the install — are exactly when someone presses Ctrl-C, and an ephemeral profile
   // interrupted there used to be left on disk. `child` and `server` are filled in as they come.
   let child: ChildProcess | undefined;
   let server: { close: () => unknown } | undefined;
@@ -203,7 +203,7 @@ async function session(args: string[], hooks: SessionHooks) {
 
   /**
    * Everything the `exit` handler cannot do, because that one has to be synchronous: removing an
-   * ephemeral instance while the app is still closing pulls LMDB's files and the app's own log dir out
+   * ephemeral profile while the app is still closing pulls LMDB's files and the app's own log dir out
    * from under it — noisy on macOS, and on Windows an EBUSY that leaves the directory half removed. So
    * let the app go first.
    *
@@ -211,7 +211,7 @@ async function session(args: string[], hooks: SessionHooks) {
    * to the signals alone left the case that actually happens while developing — a pack that fails to
    * build — exiting through the CLI's own error handler and leaking the directory. A SIGKILL still
    * leaks one, which is why an ephemeral dir carries the pid that made it and
-   * `abuddy instances rm --leaked` can reclaim it.
+   * `abuddy profiles rm --leaked` can reclaim it.
    */
   let tornDown = false;
   async function teardown(): Promise<void> {
@@ -219,9 +219,9 @@ async function session(args: string[], hooks: SessionHooks) {
     tornDown = true;
     cleanup();
     if (child) await exited(child, 10_000);
-    if (instance?.ephemeral) {
-      removeInstance(cliDirs(), instance.dir);
-      console.log(`\nRemoved the ephemeral instance ${instance.name}.`);
+    if (profile?.ephemeral) {
+      removeProfile(cliDirs(), profile.dir);
+      console.log(`\nRemoved the ephemeral profile ${profile.name}.`);
     }
   }
 
@@ -231,10 +231,10 @@ async function session(args: string[], hooks: SessionHooks) {
     process.on(signal, () => void teardown().then(() => process.exit(0)));
   }
 
-  if (instance) {
-    console.log(`Instance ${instance.name}${instance.ephemeral ? ' (removed on exit)' : ''}`);
-    console.log(`  ${instance.dir}`);
-    console.log(`  abuddy db --data-dir "${instance.dir}" to read it\n`);
+  if (profile) {
+    console.log(`Profile ${profile.name}${profile.ephemeral ? ' (removed on exit)' : ''}`);
+    console.log(`  ${profile.dir}`);
+    console.log(`  abuddy db --data-dir "${profile.dir}" to read it\n`);
   }
 
   // The build and the app both read the @abuddy packages' dist; from a checkout that dist is built on demand

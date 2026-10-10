@@ -347,7 +347,7 @@ export function createTest(options: CreateTestOptions = {}) {
       // Every worker gets a fresh data dir: no data, installed packs or onboarding state leak
       // between runs or from other packs, and nothing touches the developer's abuddy-test dir
       // E2E_DATA_DIR overrides that with one the caller owns and keeps, which is how `abuddy drive`
-      // runs against an instance whose state survives the session. An environment variable rather than a
+      // runs against a profile whose state survives the session. An environment variable rather than a
       // `createTest` option because the `test` every spec imports is built at module scope with no
       // options, so an option could never reach it.
       const givenDataDir = process.env.E2E_DATA_DIR;

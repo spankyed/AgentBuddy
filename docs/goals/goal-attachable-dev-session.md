@@ -17,8 +17,9 @@ them, don't reopen them or stop to ask.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
 going. No backward compatibility in code (root `CLAUDE.md`, "Backward compatibility" — a standing rule,
 not this goal's choice): change signatures, move modules, migrate every in-repo caller, test, fixture,
-template and doc in the same change, and fix forward. Stored user data is the exception and moves with a
-migration — which here means the profiles directory (Phase 1), nothing else.
+template and doc in the same change, and fix forward. Stored user data would be the exception, and there is
+none here: the one on-disk thing this renames is the profiles directory, which carries disposable dev data
+and is **not** migrated (Decision 2).
 
 Finished when:
 - Phases 1-7 are implemented and each meets its "Done when"; every new guard is mutation-checked.
@@ -102,8 +103,10 @@ Final.
    once more against the new one — **one call site, one line**, which the attach plan's Security section
    already commits to ("one call site, one gate"). Accepted.
 2. **`instance` becomes `profile`** throughout — flag, command, module, directory — and `--ephemeral`
-   becomes `--fresh --rm`. The profiles directory is renamed on disk, once, when the old root exists and
-   the new one does not.
+   becomes `--fresh --rm`. **No migration of the old directory**, on the user's instruction: a one-shot
+   rename is the kind of code nobody finds to delete later, and a profile is a disposable data dir by
+   definition (`profiles.ts`' own first line). The cost is stated rather than handled — dirs under
+   `<cli data>/instances/` are not listed or opened any more, and a developer who wants one moves it.
 3. **`--build` replaces `--app` and `--app-root`, as one flag.** A value in the known-name set is a
    build, anything else is a path. "Channel" is rejected: `development` and `test` are not releases.
    `ABUDDY_APP` and `ABUDDY_ROOT` collapse the same way, into one variable holding either shape.
@@ -250,8 +253,7 @@ Final.
 
 **Done when:** `npm run spec packages/abuddy-cli` passes; no `instance` remains in a flag, a command
 name, a printed string or a directory path; `--fresh --rm` removes what `--fresh` keeps; the old
-profiles root is renamed once, and a second run with both present does nothing rather than merging them.
-Mutation: skipping the rename leaves a profile unreachable and the spec fails.
+profiles root is `<cli data>/profiles/` with no code that reads the old one.
 
 ### Phase 2 — the lock question
 
