@@ -142,13 +142,16 @@ describe('the help text', () => {
 
   // One per claim a reader acts on, which is this file's existing bar for the usage text
   it('says what a one-shot asks, what it prints and what the input is', () => {
-    for (const flag of ['--eval', '--query', '--state', '--attach']) expect(DRIVE_USAGE).toContain(flag);
-    // The trap: a body without `return` answers ok:true with no value rather than failing
+    for (const flag of ['--eval', '--query', '--state', '--attach', '--spawn']) expect(DRIVE_USAGE).toContain(flag);
+    // The trap: a body without `return` answers no value rather than failing
     expect(DRIVE_USAGE).toContain('body');
     expect(DRIVE_USAGE).toContain('return');
-    // The output contract a caller parses against
+    // The output contract a caller parses against: the fields, and that stdout carries nothing else
     expect(DRIVE_USAGE).toContain('stdout');
-    expect(DRIVE_USAGE).toContain('{"ok":true,"value":"Agent X"}');
+    for (const field of ['value', 'state', 'startedBy', 'supervisorPid']) expect(DRIVE_USAGE).toContain(field);
+    // The three exit codes, since a caller that cannot tell a miss from a failure retries the wrong one
+    expect(DRIVE_USAGE).toMatch(/3 when\s+no app is running/);
+    expect(DRIVE_USAGE).toContain('1 when the verb failed');
   });
 });
 
@@ -219,12 +222,12 @@ describe('asking one question', () => {
     it('consumes nothing when no question is asked, and keeps the order', () => {
       const argv = ['look.ts', '--grep', 'x'];
 
-      expect(takeOneShotFlags(argv)).toEqual({ attach: false, rest: ['look.ts', '--grep', 'x'] });
+      expect(takeOneShotFlags(argv)).toEqual({ attach: false, spawn: false, rest: ['look.ts', '--grep', 'x'] });
     });
 
     it('takes a value as the next argument or inline, to the same answer', () => {
-      expect(takeOneShotFlags(['--eval', 'return 1'])).toEqual({ ask: 'eval', argument: 'return 1', attach: false, rest: [] });
-      expect(takeOneShotFlags(['--eval=return 1'])).toEqual({ ask: 'eval', argument: 'return 1', attach: false, rest: [] });
+      expect(takeOneShotFlags(['--eval', 'return 1'])).toEqual({ ask: 'eval', argument: 'return 1', attach: false, spawn: false, rest: [] });
+      expect(takeOneShotFlags(['--eval=return 1'])).toEqual({ ask: 'eval', argument: 'return 1', attach: false, spawn: false, rest: [] });
     });
 
     // The firing case. An implementation matching on a prefix passes every other case here and fails only
@@ -232,7 +235,7 @@ describe('asking one question', () => {
     it('leaves a flag that merely starts with one of its own', () => {
       const argv = ['--evaluate', '--state-dump'];
 
-      expect(takeOneShotFlags(argv)).toEqual({ attach: false, rest: ['--evaluate', '--state-dump'] });
+      expect(takeOneShotFlags(argv)).toEqual({ attach: false, spawn: false, rest: ['--evaluate', '--state-dump'] });
     });
 
     it('leaves every other argument in place and in order', () => {
@@ -250,7 +253,20 @@ describe('asking one question', () => {
     });
 
     it('takes --attach without taking the question with it', () => {
-      expect(takeOneShotFlags(['--attach', '--state'])).toEqual({ ask: 'state', attach: true, rest: [] });
+      expect(takeOneShotFlags(['--attach', '--state'])).toEqual({ ask: 'state', attach: true, spawn: false, rest: [] });
+    });
+
+    /**
+     * `--spawn` is the opt-in that turns a miss from a refusal into a launch, so it is taken here with the
+     * question rather than left among the arguments the runner is handed.
+     */
+    it('takes --spawn, in either order, and defaults to not asked for', () => {
+      expect(takeOneShotFlags(['--state', '--spawn'])).toEqual({ ask: 'state', attach: false, spawn: true, rest: [] });
+      expect(takeOneShotFlags(['--spawn', '--eval', 'return 1']))
+        .toEqual({ ask: 'eval', argument: 'return 1', attach: false, spawn: true, rest: [] });
+      // The default is the whole point: a question that acquires a process without being told to is what
+      // the flag exists to prevent
+      expect(takeOneShotFlags(['--state']).spawn).toBe(false);
     });
   });
 

@@ -14,10 +14,11 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { spawn } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import type { AttachedSession, AttachedSessionOptions } from '@abuddy/testing';
-import { readSession, type DevSession } from '@abuddy/host/dev-session';
+import { readSession, waitForSession, STARTED_BY_ENV, type DevSession } from '@abuddy/host/dev-session';
 
 /** Just the part of `@abuddy/testing` this needs, so a wrong resolve fails on the name rather than later. */
 interface TestingModule {
@@ -64,6 +65,49 @@ export function attachableApp(dataDir: string): AttachableApp | undefined {
   const session = readSession(dataDir);
   if (session === undefined) return undefined;
   return { session, logPath: session.logPath };
+}
+
+/**
+ * Starts an app and waits for it to be attachable, by running `abuddy dev` detached.
+ *
+ * **`dev` itself, and detached, are both load-bearing.** The fixture sets `PLAYWRIGHT_TEST`, which makes the
+ * app resolve the `test` environment and so refuse the debug port — and the fixture is also the only thing
+ * that installs the pack under test, which `dev` does too. So a launcher shaped *like* `dev` would pass every
+ * check about the port and still hand a pack author an app without their pack. Detached because `dev` never
+ * returns: it is a supervisor holding the app for as long as its terminal lives, and a one-shot has to answer
+ * and exit while the app stays up.
+ *
+ * **Its output goes to a file, not to `/dev/null`.** A build that fails would otherwise reach the caller as
+ * "no session appeared" with no cause, and the timeout message names this path.
+ */
+export async function spawnDevApp(
+  from: string, dataDir: string, profileArgs: readonly string[],
+): Promise<AttachableApp> {
+  const logPath = path.join(dataDir, 'dev-spawn.log');
+  fs.mkdirSync(dataDir, { recursive: true });
+  const log = fs.openSync(logPath, 'a');
+  const child = spawn(process.execPath, [cliBin(), 'dev', ...profileArgs], {
+    cwd: from,
+    detached: true,
+    stdio: ['ignore', log, log],
+    // The one thing `dev` cannot work out for itself: it writes the session file and cannot know who asked
+    env: { ...process.env, [STARTED_BY_ENV]: 'drive' },
+  });
+  child.unref();
+  let exited = false;
+  child.once('exit', () => { exited = true; });
+  try {
+    const session = await waitForSession(dataDir, { isAlive: () => !exited });
+    return { session, logPath: session.logPath ?? logPath };
+  } catch (error) {
+    const tail = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf-8').trimEnd().split('\n').slice(-6).join('\n') : '';
+    throw new Error(`${error instanceof Error ? error.message : String(error)}${tail ? `\n${tail}` : ''}`);
+  }
+}
+
+/** This CLI's own entry, so the spawned `dev` is this version rather than whatever is on PATH. */
+function cliBin(): string {
+  return fileURLToPath(new URL('../../bin/abuddy.mjs', import.meta.url));
 }
 
 export interface AttachAnswer {

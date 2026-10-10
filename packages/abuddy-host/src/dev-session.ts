@@ -56,6 +56,28 @@ export interface DevSession {
 export const sessionFile = (dataDir: string): string => path.join(dataDir, 'session.json');
 
 /**
+ * Waits for a session to be published on a data dir, or says why none was.
+ *
+ * **The deadline is a pack build, not a window.** A cold spawn runs the packages' freshness check and
+ * `abuddy build` before Electron starts, which is tens of seconds — a deadline sized for a launch reports a
+ * timeout on a build that was working. `isAlive` is how the caller says the launcher has gone: a child that
+ * exited is an error with a body rather than a wait to the deadline, and the two read quite differently to
+ * whoever is waiting.
+ */
+export async function waitForSession(
+  dataDir: string, { timeoutMs = 120_000, isAlive = () => true }: { timeoutMs?: number; isAlive?: () => boolean } = {},
+): Promise<DevSession> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const session = readSession(dataDir);
+    if (session !== undefined) return session;
+    if (!isAlive()) throw new Error(`The app exited before it published ${sessionFile(dataDir)}.`);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`No session appeared at ${sessionFile(dataDir)} within ${Math.round(timeoutMs / 1000)}s.`);
+}
+
+/**
  * The port Chromium chose, from the file it writes in the data dir.
  *
  * `--remote-debugging-port=0` means "pick a free one", which is the only safe way to ask: a fixed port is

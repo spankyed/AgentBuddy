@@ -28,8 +28,9 @@ import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process'
 import { findPackRootOrNone, readManifest } from '../utils';
 import { cliDirs, parseAppFlags, resolveLaunchApp } from '../app/app-target';
 import { profileDir, profileFor, profileInUse, parseProfileFlags, removeProfile, PROFILE_USAGE, type ProfileMode } from '../app/profiles';
-import { askAttached, attachableApp, type AttachableApp } from '../app/drive-attach.ts';
+import { askAttached, attachableApp, spawnDevApp, type AttachableApp } from '../app/drive-attach.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 import { ONE_SHOT_ASKS, type AskName, type EngineAsk } from '../app/drive-engine.ts';
 import { oneShot } from '../app/drive-one-shot.ts';
 import { fixtureEnv } from './test';
@@ -62,30 +63,38 @@ With no script, every file in ${DRIVE_DIR}/ runs. The app's windows are shown, s
 session many times rather than editing and re-launching for each question. It prints the address and a
 curl line; ${DRIVE_DIR}/results/engine.json has the address and the token, and POST /close ends it.
 
-It drives a built app, not a dev server: \`abuddy run\` serves your pack's frontend with HMR, and this
-launches an app of its own, so a question about one is not answerable with the other.
+A script drives a built app of its own: abuddy dev serves your pack's frontend with HMR, and a script
+launches its own app, so a question about one is not answerable with the other.
 
 By default the app gets a fresh data dir that is thrown away afterwards, so each session starts clean.
 Name a profile to keep its state between sessions.
 
-**One question, without writing a script.** --eval, --query and --state launch the app, ask the session one
-thing, print the answer and exit — the same verbs --serve answers, asked once. The answer is the engine's
-own envelope, one JSON line on stdout and nothing else there, so it can be read by a program; everything
-else goes to stderr, and the exit code follows the envelope's "ok". Headless, because nothing is watching
-one question.
+**One question, without writing a script.** --eval, --query and --state ask the live app one thing, print
+the answer and exit — the same verbs --serve answers, asked once. One JSON object goes to stdout and
+nothing else there, so a program can read it; everything else goes to stderr. Headless, because nothing is
+watching one question.
 
-  abuddy drive --eval 'return document.title'      ->  {"ok":true,"value":"Agent X"}
-  abuddy drive --state                             ->  {"ok":true,"value":{...}}
+  abuddy drive --eval 'return document.title'  ->  {"value":"Agent X","state":"attached",...}
+  abuddy drive --state                         ->  {"value":{...},"state":"attached",...}
+
+A question is asked of the app abuddy dev (or npm start) is holding. One JSON object goes to stdout and
+nothing else, so it pipes: "value" is the answer, "state" is attached or spawned, "startedBy" says whose
+app answered, and "supervisorPid" is what ends it. The exit code is the status — 0 with a value, 3 when
+no app is running, 1 when the verb failed.
+
+With no app running it says so and exits 3 rather than starting one: a question should not acquire a
+process nobody asked for. --spawn is how you ask, and the app it starts stays up, so a cold checkout
+costs one flag on the first question and an attach on every one after.
 
 --eval takes a function *body*, not an expression, exactly as the /eval verb does — so "return" is
-required, and a body without one answers {"ok":true}. --attach asks a --serve session that is already
-running instead of launching an app: milliseconds instead of a launch, and it leaves that session up.
+required, and a body without one answers no value at all.
 
 Options:
   --serve             hold the app open and answer HTTP requests (see above)
-  --eval <body>       launch, evaluate one function body in the page, print the envelope, exit
+  --eval <body>       evaluate one function body in the page, print the answer, exit
   --query <code>      the same, for one EARS read over the bus
   --state             the same, for the app shell's state
+  --spawn             with none of those running, start an app and keep it, rather than refusing
   --attach            ask a running --serve session rather than launching an app
   --app-root <path>   a local AgentBuddy checkout (installed and built)
   --app beta          the newest AgentBuddy Beta build that satisfies the pack's hostVersion
@@ -118,12 +127,12 @@ drive('open notes and look at it', async ({ app, appPage }) => {
 
 Run everything with \`abuddy drive\`, or one script with \`abuddy drive drive/notes.ts\`.
 
-For one question, no script is needed — \`abuddy drive --eval 'return document.title'\` launches the app,
-answers with the engine's \`{ ok, value }\` envelope on stdout and exits. It is a function *body*, so
-\`return\` is required. \`--query\` and \`--state\` ask the same way, and \`--attach\` asks a
-\`--serve\` session that is already up.
+For one question, no script is needed — \`abuddy drive --eval 'return document.title'\` asks the app
+\`abuddy dev\` is holding and prints one JSON object (\`value\`, \`state\`, \`startedBy\`,
+\`supervisorPid\`). It is a function *body*, so \`return\` is required. \`--query\` and \`--state\` ask the
+same way. With no app running it exits 3 and says so; \`--spawn\` starts one and keeps it.
 
-This drives a built app, not a dev server — \`abuddy run\` is the one that serves your frontend with HMR.
+A script drives a built app of its own — \`abuddy dev\` is the one that serves your frontend with HMR.
 
 \`app.report(name, value)\` is for an answer you want to read rather than watch: it writes
 \`drive/results/<name>.json\` and prints one \`[drive:report] <name> <json>\` line.
@@ -202,15 +211,17 @@ drive('drive engine', driveEngineBody({
  * and what makes it prefix-safe: `--evaluate` and `--state-dump` fall through to `rest` rather than being
  * eaten, as `--serve-forever` does.
  */
-export function takeOneShotFlags(argv: string[]): { ask?: AskName; argument?: string; attach: boolean; rest: string[] } {
+export function takeOneShotFlags(argv: string[]): { ask?: AskName; argument?: string; attach: boolean; spawn: boolean; rest: string[] } {
   const rest: string[] = [];
   let ask: AskName | undefined;
   let argument: string | undefined;
   let attach = false;
+  let spawn = false;
 
   for (let i = 0; i < argv.length; i++) {
     const [name, inline] = argv[i]!.split(/=(.*)/s, 2) as [string, string | undefined];
     if (name === '--attach') { attach = true; continue; }
+    if (name === '--spawn') { spawn = true; continue; }
     const asked = (['eval', 'query', 'state'] as const).find((verb) => name === `--${verb}`);
     if (asked === undefined) { rest.push(argv[i]!); continue; }
     if (ask !== undefined) {
@@ -231,7 +242,7 @@ export function takeOneShotFlags(argv: string[]): { ask?: AskName; argument?: st
         + ' `return` is required: --eval "return document.title"');
     }
   }
-  return { ...(ask === undefined ? {} : { ask }), ...(argument === undefined ? {} : { argument }), attach, rest };
+  return { ...(ask === undefined ? {} : { ask }), ...(argument === undefined ? {} : { argument }), attach, spawn, rest };
 }
 
 export function takeServeFlag(args: string[]): { serve: boolean; rest: string[] } {
@@ -375,27 +386,94 @@ function driveTarget(cwd: string): DriveTarget {
  * falls through to the launch below, and a command that then launched would have minted a profile on the way
  * to deciding it could not use one — a directory left behind by a question that did nothing.
  */
+/** The profile flags to hand the `dev` this spawns, so it opens the dir this question asked for. */
+function profileArgsFor(mode: ProfileMode): readonly string[] {
+  if (mode.kind === 'named') return ['--profile', mode.name];
+  if (mode.kind === 'fresh') return mode.rm ? ['--fresh', '--rm'] : ['--fresh'];
+  return [];
+}
+
 function attachPlace(mode: ProfileMode): { env: 'development'; userDataDir?: string } {
   if (mode.kind !== 'named') return { env: 'development' };
   return { env: 'development', userDataDir: profileDir(cliDirs(), mode.name) };
 }
 
+/**
+ * **A one-shot's stdout is one JSON object and nothing else**, so it pipes.
+ *
+ * ```
+ * {"value":{"running":"connected"},"state":"attached","startedBy":"dev","supervisorPid":48213}
+ * ```
+ *
+ * No `ok` field: the exit code is the status, and there are three — `0` with a value, `3` for *no app is
+ * running*, `1` for *the verb failed*. Those last two are different answers and must not share a code: a
+ * miss is retryable with `--spawn` and a failed verb is not, so a caller that cannot tell them apart either
+ * retries what it should report or reports what it should retry. `3` is the code `npm run spec` already uses
+ * for "nothing covered this", so a reader meets one convention rather than two.
+ *
+ * `state` says whether this question acquired a process; `startedBy` says whose app answered — and
+ * `attached` with `startedBy: "drive"` is the case worth distinguishing, an app a previous question left
+ * that nobody is minding. Both are fields rather than sentences because a caller needs to act on them.
+ *
+ * A failure puts **nothing** on stdout, so a pipe never receives half an answer.
+ */
+export const MISS_EXIT_CODE = 3;
+
+interface OneShotOutput {
+  /** The object for stdout, or nothing when the run failed */
+  readonly line?: string;
+  /** What a person watching should know, on stderr */
+  readonly notes: readonly string[];
+  readonly code: number;
+}
+
 /** What a one-shot asks of a session, by the flag that was passed. */
 async function answerAttached(
-  live: AttachableApp, root: string, ask: AskName, argument: string | undefined,
-): Promise<{ line: string; code: number }> {
+  live: AttachableApp, root: string, ask: AskName, argument: string | undefined, state: 'attached' | 'spawned',
+): Promise<OneShotOutput> {
   const screenshotDir = path.join(root, DRIVE_DIR, 'screenshots');
-  const answer = await askAttached(live, root, screenshotDir, async (session) => {
-    if (ask === 'state') return session.state();
-    if (argument === undefined) throw new Error(`--${ask} needs something to run`);
-    return ask === 'eval' ? session.evaluate(argument) : session.qx(argument);
-  });
-  const result = answer.value as { ok?: boolean; value?: unknown; error?: string };
-  // The app it answered from, and who started it — the case worth distinguishing is an app a previous
-  // question left running, which nobody is minding
-  console.error(`Attached to the ${live.session.startedBy === 'drive' ? 'app a previous question started' : 'development app'} (pid ${answer.supervisorPid}).`);
-  if (result?.ok === false) return { line: JSON.stringify(result), code: 1 };
-  return { line: JSON.stringify(result?.value ?? result), code: 0 };
+  const notes: string[] = [];
+  // Prose only where something was left behind — a process still running, or a write to the user's data.
+  // An attach that changed nothing says nothing, because the fields already said it
+  if (state === 'spawned') {
+    notes.push(`Started the development app (pid ${live.session.supervisorPid}) and left it running — \`abuddy dev\` takes the directory back.`);
+  }
+  try {
+    const answer = await askAttached(live, root, screenshotDir, async (session) => {
+      if (ask === 'state') return session.state();
+      if (argument === undefined) throw new Error(`--${ask} needs something to run`);
+      return ask === 'eval' ? session.evaluate(argument) : session.qx(argument);
+    });
+    const result = answer.value as { ok?: boolean; value?: unknown; error?: string };
+    if (result?.ok === false) {
+      return { notes: [...notes, `--${ask} failed: ${result.error ?? 'no reason given'}`], code: 1 };
+    }
+    return {
+      line: JSON.stringify({ value: result?.value, state, startedBy: answer.startedBy, supervisorPid: answer.supervisorPid }),
+      notes,
+      code: 0,
+    };
+  } catch (error) {
+    return { notes: [...notes, errorMessage(error)], code: 1 };
+  }
+}
+
+/** Says there is no app, and what the two ways forward are. Exit 3, and nothing on stdout. */
+function noAppHere(dataDir: string): OneShotOutput {
+  return {
+    notes: [
+      `No app is running on ${dataDir}.`,
+      '  Start one with `abuddy dev`, or add --spawn to have this start one and keep it.',
+    ],
+    code: MISS_EXIT_CODE,
+  };
+}
+
+/** Writes an answer: the object to stdout, the prose to stderr, the status as the exit code. */
+function report(output: OneShotOutput): void {
+  for (const note of output.notes) console.error(note);
+  if (output.line !== undefined) console.log(output.line);
+  process.exitCode = output.code;
 }
 
 export async function drive(args: string[]) {
@@ -406,7 +484,7 @@ export async function drive(args: string[]) {
 
   const target = driveTarget(process.cwd());
   const root = target.root;
-  const { ask, argument, attach, rest: unasked } = takeOneShotFlags(args);
+  const { ask, argument, attach, spawn: spawnFlag, rest: unasked } = takeOneShotFlags(args);
   const { serve, rest: unserved } = takeServeFlag(unasked);
   const { mode, withSecrets, rest } = parseProfileFlags(unserved);
   const flags = parseAppFlags(rest);
@@ -431,11 +509,18 @@ export async function drive(args: string[]) {
     const dataDir = resolveAppContext(attachPlace(mode)).userDataDir;
     const live = attachableApp(dataDir);
     if (live) {
-      const outcome = await answerAttached(live, root, ask as AskName, argument);
-      console.log(outcome.line);
-      process.exitCode = outcome.code;
+      report(await answerAttached(live, root, ask as AskName, argument, 'attached'));
       return;
     }
+    // `--fresh` mints a dir by definition, so there is never anything to attach to: the flag would
+    // otherwise ask for a directory and then refuse to use it
+    if (spawnFlag || mode.kind === 'fresh') {
+      const started = await spawnDevApp(root, dataDir, profileArgsFor(mode));
+      report(await answerAttached(started, root, ask as AskName, argument, 'spawned'));
+      return;
+    }
+    report(noAppHere(dataDir));
+    return;
   }
 
   /**

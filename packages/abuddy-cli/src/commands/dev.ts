@@ -5,7 +5,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { build } from './build';
 import { findPackRootOrNone, readManifest } from '../utils';
-import { publishSession, readDevToolsPort, startedByFromEnv } from '@abuddy/host/dev-session';
+import { publishSession, readDevToolsPort, readSession, startedByFromEnv, type DevSession } from '@abuddy/host/dev-session';
 import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
 import { reloadPack, type AppPlace, type DevReload } from '../build/dev-reload.ts';
 import { cliDirs, parseAppFlags, resolveLaunchApp, type AppTarget } from '../app/app-target';
@@ -14,7 +14,7 @@ import { copySecretsInto } from '../app/profile-secrets.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 import type { AppEnv } from '@abuddy/sdk/env';
-import { readApiEndpoint } from '@abuddy/host/process-liveness';
+import { readApiEndpoint, lockIsHeld } from '@abuddy/host/process-liveness';
 import { withoutSourceCondition } from '@abuddy/host/build/source-resolution';
 import { installPackFromLocal, readHostInfo } from '@abuddy/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
@@ -127,6 +127,40 @@ function launchApp(app: AppTarget, place: AppPlace): ChildProcess {
     return spawn(electron, [app.root, ...debug], { ...options, cwd: app.root });
   }
   return spawn(app.executable, debug, options);
+}
+
+/**
+ * Whether this command may take the data dir from the app that holds it.
+ *
+ * **Only what a tool started for itself.** `startedBy` is the whole of the rule: a person's app is not a
+ * tool's to take, and an absent or unreadable session is not an app at all (`readSession` already treats a
+ * record whose supervisor has gone as absent). It is a function so the rule has a firing case on both
+ * sides — reclaiming unconditionally takes an app somebody opened, which is the mutation that must fail.
+ */
+export function mayReclaim(session: DevSession | undefined): boolean {
+  return session?.startedBy === 'drive';
+}
+
+/**
+ * Ends a supervisor whose pid came out of a session file, and waits for the data dir to be free.
+ *
+ * SIGTERM rather than SIGKILL: the supervisor's own handler closes the app it holds and lets LMDB shut down,
+ * where a kill would leave the store to recover. What is waited for is the **app** going, not the signal
+ * being delivered — the API's port file is what says the data dir is still held, and starting a second
+ * Electron before it clears is the whole failure this exists to prevent.
+ */
+async function endSupervisor(pid: number, timeoutMs = 20_000): Promise<void> {
+  try {
+    process.kill(pid, 'SIGTERM');
+  } catch {
+    // Already gone between reading the file and signalling it, which is a miss rather than a problem
+  }
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!lockIsHeld(pid)) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`The app a question started (pid ${pid}) did not exit within ${Math.round(timeoutMs / 1000)}s. Close it and try again.`);
 }
 
 /** Resolves once the child is gone, killing it outright if it will not go. */
@@ -316,6 +350,26 @@ async function session(args: string[], hooks: SessionHooks) {
 
     console.log('Running initial build...\n');
     await build([]);
+  }
+
+  /**
+   * **Reclaiming an app a tool started, which is what makes `--spawn` safe to point at this data dir.**
+   *
+   * One app per data dir, and `SingleInstanceApp` exits on the second — so without this a spawned one-shot
+   * would hold the development dir and the developer's own `abuddy dev` or `npm start` would refuse, with the
+   * blame landing on the command they just ran. The rule is narrow by construction: it takes what a tool
+   * started *for itself* (`startedBy: 'drive'`) and nothing else, because a person's app is not a tool's to
+   * take. The pid comes from a file the process wrote about itself, which is the only kind of kill allowed
+   * here, and it is the supervisor's — its own teardown closes the app it holds, so one signal ends both.
+   *
+   * After it, the two commands converge rather than compete: the next question attaches to the app the
+   * developer now has.
+   */
+  const reclaimable = readSession(userDataDir);
+  if (mayReclaim(reclaimable)) {
+    console.log(`Reclaiming the app a question started (pid ${reclaimable!.supervisorPid})...`);
+    await endSupervisor(reclaimable!.supervisorPid);
+    console.log('  it has gone; starting yours\n');
   }
 
   // An app already on this data dir is the one to use: a second Electron over the same LMDB store is not a

@@ -328,6 +328,39 @@ implementation of it.
 
 It takes the same app and profile flags as `abuddy dev`, with one difference in the default: where `abuddy dev` uses the shared development data dir, `abuddy drive` gives each session a fresh one and throws it away afterwards, so a driving session starts clean and leaves nothing. `--profile <name>` is how a session keeps its state for the next one. It launches its own app rather than joining one `abuddy dev` already has, because Electron allows one app per data dir — so if a person wants to watch what a driver is doing, they watch the driver's window rather than starting a second app.
 
+### Which app, and how long it lives
+
+| What you run | The app it uses | When it closes |
+|---|---|---|
+| `abuddy dev`, `npm start` | starts its own | when you stop the command |
+| `abuddy drive --eval` (and the other one-shots) | a live one; **fails if there is none** | it was not yours to close |
+| the same, with `--spawn` | a live one, else it starts one | **it doesn't** — it stays for the next question |
+| `abuddy drive <script>` | always its own | when the script finishes |
+| `abuddy test` | always its own, isolated | when the run finishes |
+
+**A question keeps the app so the next question is cheap; a script closes it so its result does not depend
+on what the last one left behind; and a question never starts one unless you asked.** That is the whole
+rule. Measured on a checkout: `--spawn` and the first answer together, 3.3s; every question after it, 0.9s.
+
+Only one app can run per data dir, which is why `drive` joins yours rather than competing with it, and why
+`--profile <name>` is how you get a second one.
+
+**A one-shot's stdout is one JSON object and nothing else**, so it pipes:
+
+```
+{"value":"0.3.14","state":"attached","startedBy":"dev","supervisorPid":75415}
+```
+
+`value` is the answer, `state` is `attached` or `spawned`, `startedBy` says whose app answered, and
+`supervisorPid` is what ends it. The exit code is the status, and there are three: **0** with a value,
+**3** when no app is running, **1** when the verb failed. Those last two are different answers — a miss is
+worth retrying with `--spawn` and a failed verb is not — and neither puts anything on stdout, so a pipe
+never receives half an answer.
+
+A run that **started** an app says so on stderr and names the two ways to end it: `abuddy dev`, which takes
+the directory back, or the `supervisorPid` above. An attach that changed nothing says nothing, because the
+fields already said it.
+
 ### Validation
 
 #### `abuddy validate`
