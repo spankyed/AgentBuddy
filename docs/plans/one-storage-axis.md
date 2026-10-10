@@ -107,7 +107,7 @@ The source commits to neither — `SingleInstanceApp.ts`: *"App name and userDat
 `initAppContext()`; the lock is scoped to **them**."* Those are the same claim only while the name and the
 directory are fused, and they come apart whenever `ABUDDY_USER_DATA_DIR` is set: every profile, every
 drive session, every E2E worker. **Settling which is true is part of this work**, because "can two apps
-coexist here" is the question an attach, an autostart and a profile refusal all turn on.
+coexist here" is the question an attach, a spawn and a profile refusal all turn on.
 
 ## What to read first
 

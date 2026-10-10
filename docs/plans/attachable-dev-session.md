@@ -103,11 +103,12 @@ drive <script>   @playwright/test + _electron.launch, in whichever profile it wa
 test   @playwright/test + _electron.launch. Unchanged, owns its app, publishes nothing.
 ```
 
-**Autostart is `dev`, not something shaped like it.** The same function, watcher included — because the
-Playwright fixture is also the only thing that builds and installs the pack under test
+**What `--spawn` starts is `dev`, not something shaped like it.** The same function, watcher included —
+because the Playwright fixture is also the only thing that builds and installs the pack under test
 (`abuddy-testing/src/index.ts:357`, which is why `drive.ts:477` says *"No build here"*), and `dev` is the
 only other thing that does. A spawn that merely copied dev's environment would hand a pack author an
-app without their pack. One launcher, one session-file writer, and no `dev --no-watch`.
+app without their pack. So there is one way to start an app and no third session-file writer beside `dev`
+and `npm start`, and no `dev --no-watch`.
 
 ### What a caller types
 
@@ -576,7 +577,8 @@ the lifetime model is the thing a user gets wrong, and nothing states it today:
 with the one sentence that explains the halves — **a question keeps the app so the next question is cheap;
 a script closes it so its result does not depend on what the last one left behind; and a question never
 starts one unless you asked** — the one-app-per-data-dir rule that makes `--profile` the way to get a
-second, the one-shot's output contract (`value`, `state`, `supervisorPid`, exit code), and the two ways to end an
+second, the one-shot's output contract (`value`, `state`, `startedBy`, `supervisorPid`, and the three exit
+codes), and the two ways to end an
 app `--spawn` started.
 
 ## Phases
@@ -614,9 +616,11 @@ below exists.
 - **nothing attachable, with `--spawn` → starts its own**, and that app answers the same verb *identically*
   to an attached one. This is the case that proves one `SessionPage` serves both, so it must assert
   equality of the two answers, not merely that each works.
-- **the answer's shape, both states.** `{value, state, supervisorPid}` and nothing else, `state` reading `attached`
-  against a live app and `spawned` against none, with the exit code carrying success. Mutation: an `ok`
-  field reintroduced alongside a non-zero exit is the trap this replaced, and the case should fail on it.
+- **the answer's shape, all three cases.** `{value, state, startedBy, supervisorPid}` and nothing else:
+  `state` reading `attached` against a live app and `spawned` against none, and `startedBy` distinguishing
+  an app `dev` holds from one a previous question left — the case Decision 13 calls the one that must not
+  be silent, and the one a shape without that field cannot express. Mutation: an `ok` field reintroduced
+  alongside a non-zero exit is the trap this replaced, and the case should fail on it.
 - **`test` publishes no session file**, so a `drive` run during a suite does not attach to the test's app.
 - **`dev` at a checkout root publishes one**, which is the firing case for dropping the pack precondition:
   today that path throws *"No abuddy.json found"* before anything is published. Both halves, since the
