@@ -7,6 +7,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { spawn } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { _appDirOf, type AppEnv } from '@abuddy/sdk/env';
 import { create, environmentRows, list, pidHolding, remove, stop, trim } from '../../src/commands/profiles';
@@ -398,6 +399,50 @@ describe('stop', () => {
     await stop(dirs, ['development'], false, { resolve });
 
     expect(printed()).toMatch(/no app is running/);
+  });
+
+  /**
+   * A dir held by another machine's Chromium is the one case where something is running and this is not the
+   * machine that can end it, so "no app is running" would be false. It is reported whether or not anything
+   * else was closed — a run that signalled one dir and could not reach another has given a partial answer,
+   * and one naming only the half it managed reads as a whole one.
+   *
+   */
+  it('reports a dir held by another machine rather than calling it free', async () => {
+    const dir = resolve('development');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.symlinkSync(`some-other-machine-${process.pid}`, path.join(dir, 'SingletonLock'));
+
+    await stop(dirs, ['development'], false, { resolve });
+
+    expect(printed()).toMatch(/held by an app on another machine/);
+    expect(printed(), 'and not the opposite').not.toMatch(/no app is running/);
+  });
+
+  /**
+   * The mixed case, which is the one a partial answer hides: one dir closed and one unreachable.
+   *
+   * It signals **a child of its own** rather than a pid to hand, because the only others here are this
+   * process's and its parent's — `write-lock.spec.ts` spawns one for the same reason. The child dies on
+   * the SIGTERM `endAppHolding` sends, which is also what lets that call's wait return rather than spend
+   * its 20s.
+   */
+  it('closes what it can and still names what it cannot', async () => {
+    const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+    try {
+      occupy('development', { lock: child.pid });
+      const foreign = resolve('beta');
+      fs.mkdirSync(foreign, { recursive: true });
+      fs.symlinkSync(`some-other-machine-${process.pid}`, path.join(foreign, 'SingletonLock'));
+
+      await stop(dirs, ['development', 'beta'], false, { resolve });
+
+      expect(printed()).toMatch(/closing the app on development/);
+      expect(printed(), 'the half it could not reach is named too')
+        .toMatch(/held by an app on another machine/);
+    } finally {
+      child.kill('SIGKILL');
+    }
   });
 
   it('refuses a name that is neither a build nor a profile', async () => {

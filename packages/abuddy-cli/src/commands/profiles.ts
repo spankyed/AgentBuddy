@@ -282,17 +282,17 @@ export async function stop(
     .map(({ label, dir }) => ({ label, dir, pid: pidHolding(dir) }))
     .filter((target): target is { label: string; dir: string; pid: number } => target.pid !== undefined);
 
-  if (held.length === 0) {
-    // A dir whose Chromium lock was written by another machine is held and has no pid here to signal, so
-    // "no app is running" would be a lie: it is the one case where there is something to close and this
-    // is not the machine that can
-    const elsewhere = targets.filter(({ dir }) => chromiumLockHeld(dir));
-    if (elsewhere.length > 0) {
-      console.log(`\n  held by an app on another machine — nothing here to signal:`);
-      for (const { label, dir } of elsewhere) console.log(`    ${label}  ${dir}`);
-      console.log('');
-      return;
-    }
+  // A dir whose Chromium lock was written by another machine is held and has no pid here to signal, so
+  // "no app is running" would be a lie: it is the one case where there is something to close and this is
+  // not the machine that can. **Reported whether or not anything else was closed**, because a run that
+  // signalled one dir and could not reach another has given a partial answer, and a partial answer that
+  // names only the half it managed reads as a whole one. Dirs already in `held` are left out of it: a
+  // foreign Chromium lock does not stop a session or app lock here naming a pid, and one dir reported
+  // twice says two things are holding it.
+  const signalled = new Set(held.map(({ dir }) => dir));
+  const elsewhere = targets.filter(({ dir }) => !signalled.has(dir) && chromiumLockHeld(dir));
+
+  if (held.length === 0 && elsewhere.length === 0) {
     // Named rather than silent, because "it was already closed" and "I misspelled it" read the same from
     // an empty answer, and only one of them is fine
     console.log(`\n  no app is running on ${all ? 'any data dir' : targets.map((target) => target.label).join(', ')}\n`);
@@ -303,6 +303,10 @@ export async function stop(
     console.log(`  closing the app on ${label} (pid ${pid})...`);
     await endAppHolding(dir, pid);
     console.log(`    it has gone — ${dir}`);
+  }
+  if (elsewhere.length > 0) {
+    console.log(`  held by an app on another machine — nothing here to signal:`);
+    for (const { label, dir } of elsewhere) console.log(`    ${label}  ${dir}`);
   }
   console.log('');
 }
