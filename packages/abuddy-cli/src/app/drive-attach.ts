@@ -19,6 +19,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import type { AttachedSession, AttachedSessionOptions } from '@abuddy/testing';
 import { readSession, touchSession, waitForSession, STARTED_BY_ENV, type DevSession } from '@abuddy/host/dev-session';
+import { holdExclusiveLock, type ExclusiveLock } from '@abuddy/host/exclusive-lock';
 
 /** Just the part of `@abuddy/testing` this needs, so a wrong resolve fails on the name rather than later. */
 interface TestingModule {
@@ -102,6 +103,51 @@ export async function spawnDevApp(
   } catch (error) {
     const tail = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf-8').trimEnd().split('\n').slice(-6).join('\n') : '';
     throw new Error(`${error instanceof Error ? error.message : String(error)}${tail ? `\n${tail}` : ''}`);
+  }
+}
+
+/** The lock one data dir's spawn is taken under. Not `.json`, which `pruneStamps` deletes elsewhere. */
+const spawnLockFile = (dataDir: string): string => path.join(dataDir, 'spawn.lock');
+
+/** Thrown by the lock's own refusal and caught here; nothing outside sees it. */
+const HELD = new Error('another spawn holds this data dir');
+
+/**
+ * **One app per data dir, however many questions arrive at once.**
+ *
+ * Two concurrent `--spawn`s both see no session and both spawn `dev`. The second `dev`'s Electron is
+ * refused by the single-instance lock — which is scoped to the data dir — and exits, but by then its own
+ * `waitForApi` can have seen the *first* app's port file appear and published a session carrying its own
+ * pid and the other app's port. A later reclaim then signals a supervisor holding nothing while the real
+ * app survives with its session deleted. The mtime bound on the debug port cannot separate two launches
+ * that started together; only a lock can, which is why the plan asked for one here.
+ *
+ * So the spawn is serialised per data dir, and **the session is re-read after acquiring**: by the time the
+ * loser has the lock the winner has usually published one, and attaching to it is what the caller wanted.
+ * A loser that arrives before the winner has published waits for it (`waitForSession`, whose deadline is
+ * sized for a pack build) rather than queueing to spawn a second app.
+ *
+ * The loser answers `attached`, because it is: it did not start what it is talking to.
+ */
+export async function spawnOrAttach(
+  from: string, dataDir: string, profileArgs: readonly string[],
+  spawn: (from: string, dataDir: string, profileArgs: readonly string[]) => Promise<AttachableApp> = spawnDevApp,
+): Promise<{ app: AttachableApp; state: 'spawned' | 'attached' }> {
+  let lock: ExclusiveLock;
+  try {
+    lock = holdExclusiveLock({ file: spawnLockFile(dataDir), what: 'abuddy drive --spawn', refuse: () => HELD });
+  } catch (error) {
+    if (error !== HELD) throw error;
+    // Another question is already starting an app here. What this one wants is an app, not a spawn
+    const session = await waitForSession(dataDir);
+    return { app: { session, ...(session.logPath !== undefined && { logPath: session.logPath }) }, state: 'attached' };
+  }
+  try {
+    const live = attachableApp(dataDir);
+    if (live) return { app: live, state: 'attached' };
+    return { app: await spawn(from, dataDir, profileArgs), state: 'spawned' };
+  } finally {
+    lock.release();
   }
 }
 

@@ -206,11 +206,26 @@ function exited(child: ChildProcess, timeoutMs: number): Promise<void> {
  * Waits for the app to publish its port file, which is what says the API is up and so what says the pack
  * can be installed and reloaded. One waiter, bounded: a crashed launch must report that rather than hang.
  */
-async function waitForApi(apiPortFile: string, child: ChildProcess, timeoutMs = 60_000): Promise<void> {
+/**
+ * Waits for an API on the data dir, and says **whose** — which is the half that matters.
+ *
+ * The child is checked first, and that order is the point: a port file appearing says an API is up, not
+ * that it is ours. Another app can take the data dir between the check above and this launch, and Electron's
+ * single-instance lock — scoped to the data dir — then refuses ours and exits. Reading the port file first
+ * made that look like a successful start, and what followed published a session carrying this process's pid
+ * and the other app's port.
+ *
+ * `other` is not a failure: one app per data dir, so the app that got there first is the one to use. Only
+ * both — no child and no API — is.
+ */
+async function waitForApi(apiPortFile: string, child: ChildProcess, timeoutMs = 60_000): Promise<'ours' | 'other'> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (readApiEndpoint(apiPortFile)) return;
-    if (child.exitCode !== null) throw new Error(`The app exited (${child.exitCode}) before its API came up`);
+    if (child.exitCode !== null || child.signalCode !== null) {
+      if (readApiEndpoint(apiPortFile)) return 'other';
+      throw new Error(`The app exited (${child.exitCode ?? child.signalCode}) before its API came up`);
+    }
+    if (readApiEndpoint(apiPortFile)) return 'ours';
     await new Promise(resolve => setTimeout(resolve, 200));
   }
   throw new Error(`The app did not publish ${apiPortFile} within ${timeoutMs / 1000}s`);
@@ -441,12 +456,19 @@ async function session(args: string[], hooks: SessionHooks) {
     // previous app on this data dir left behind
     const launchedAt = Date.now();
     child = launchApp(app, place);
-    await waitForApi(apiPortFile, child);
-    console.log(`  up on ${env} data in ${userDataDir}\n`);
-    // Published only for an app this command started, and after its API is up so the session carries the
-    // port a driver needs. An app that was already here has a session of its own or is not attachable, and
-    // either way is not this command's to describe.
-    await publish(child, launchedAt);
+    const whose = await waitForApi(apiPortFile, child);
+    if (whose === 'other') {
+      // Ours was refused the data dir and another app has it. Forgetting the child is what keeps teardown
+      // honest: it closes an app this command started, and this one started none that lived
+      child = undefined;
+      console.log(`Using the ${env} app that took the directory first.\n`);
+    } else {
+      console.log(`  up on ${env} data in ${userDataDir}\n`);
+      // Published only for an app this command holds, and after its API is up so the session carries the
+      // port a driver needs. An app that was already here has a session of its own or is not attachable,
+      // and either way is not this command's to describe.
+      await publish(child, launchedAt);
+    }
   }
 
   if (!pack) {

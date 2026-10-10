@@ -15,7 +15,7 @@ import * as fs from 'node:fs';
 import type { Page } from '@playwright/test';
 import { DRIVE_REF, createSession, type EngineSession, type SessionPage } from './session.ts';
 import { appHelper, waitForAppReady } from '../index.ts';
-import { connectApiClient } from './api-client.ts';
+import { CLAIM_CONFLICT, connectApiClient, type ApiClient } from './api-client.ts';
 
 /** The `AppHelper` members the engine serves, taken whole rather than one callback at a time */
 export type EngineAppHelper = {
@@ -108,6 +108,55 @@ async function apiAddressFromWindow(page: SessionPage): Promise<{ port: number; 
   return { port: found.port, token: found.token };
 }
 
+/**
+ * Runs `work`, and closes what is already open if it throws.
+ *
+ * **A handle left open does not fail, it hangs.** Node keeps running while one is, so a refused claim left
+ * both the CDP connection and the socket open and `abuddy drive --eval` printed its refusal and then sat
+ * there for ever — which reads as the verb hanging rather than as a refusal that was reported. Every step
+ * after the attach is wrapped, so the failure is rethrown unchanged and only the cleanup is added.
+ *
+ * A failure *in the cleanup* is deliberately not caught: it would replace the reason the caller needs with
+ * one about tidying up.
+ *
+ * @internal
+ */
+export async function _closingOnFailure<T>(close: () => Promise<void> | void, work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    await close();
+    throw error;
+  }
+}
+
+/**
+ * Takes `host/drive`, waiting out a holder that is about to let go.
+ *
+ * **The claim is refused rather than taken over**, which is right — two drivers running at once must not
+ * receive each other's answers — but every claim is now a *question's*, held for about a second, so two
+ * agents asking at once is ordinary rather than a conflict to report. Waiting is compatible with that
+ * design: it never takes a live claim, it waits for one to end.
+ *
+ * The window is short because the thing being waited for is short. A claim still held after it is a driver
+ * that is genuinely running, and the refusal says so.
+ */
+const CLAIM_WAIT_MS = 10_000;
+
+export async function _claimDrive(api: Pick<ApiClient, 'claim'>, windowMs = CLAIM_WAIT_MS): Promise<void> {
+  const deadline = Date.now() + windowMs;
+  for (;;) {
+    try {
+      await api.claim(DRIVE_REF);
+      return;
+    } catch (error) {
+      const conflict = (error as { code?: string }).code === CLAIM_CONFLICT;
+      if (!conflict || Date.now() >= deadline) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+}
+
 export async function attachedSession(options: AttachedSessionOptions): Promise<AttachedSession> {
   const { attachToApp } = await import('./cdp-page.ts');
   const { page, detach } = await attachToApp({ debugPort: options.debugPort });
@@ -120,8 +169,10 @@ export async function attachedSession(options: AttachedSessionOptions): Promise<
   });
 
   const sessionPage = asSessionPage(page, appHelper(page, options.screenshotDir));
-  const api = await connectApiClient(await apiAddressFromWindow(sessionPage));
-  await api.claim(DRIVE_REF);
+
+  // Everything opened after the attach is closed again if a later step throws — see `_closingOnFailure`
+  const api = await _closingOnFailure(detach, async () => connectApiClient(await apiAddressFromWindow(sessionPage)));
+  await _closingOnFailure(async () => { api.close(); await detach(); }, () => _claimDrive(api));
 
   const session = createSession({
     page: sessionPage,

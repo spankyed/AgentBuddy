@@ -149,6 +149,18 @@ describe('a refusal', () => {
       .rejects.toThrow(/CONFLICT/);
   });
 
+  /**
+   * **The code is on the error, not only in its text.** `attachedSession` waits out a conflict and fails at
+   * once on anything else, and a caller branching on prose breaks the first time the message is reworded.
+   */
+  it('carries the code as a property, which is what a caller branches on', async () => {
+    behaviour.claimRefuses = true;
+    await serve();
+    client = await connect();
+
+    await expect(client.claim('host/drive')).rejects.toMatchObject({ code: 'CONFLICT' });
+  });
+
   // A refusal is one call's failure, not the channel's: the next call must still work
   it('leaves the channel usable', async () => {
     behaviour.claimRefuses = true;
