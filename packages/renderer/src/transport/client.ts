@@ -6,7 +6,7 @@ import { globalToast } from '@/adapters/toast';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /** What the Electron main process reports about the API process */
-type ApiStatusEvent = { type: string; port?: number; restarting?: boolean; error?: unknown; message?: string; stack?: string; source?: string };
+type ApiStatusEvent = { type: string; port?: number; restarting?: boolean; reloaded?: boolean; error?: unknown; message?: string; stack?: string; source?: string };
 
 /** Why the API process stopped or failed: its message and stack apart, which the error page lays out */
 function failureOf(event: ApiStatusEvent): ShellFailure {
@@ -61,8 +61,14 @@ export const feClient: ShellClient = {
     const stopStatus = window.electronAPI?.apiStatus?.onEvent((event: ApiStatusEvent) => {
       if (event.type === 'api:stopped' && event.restarting) return;
       if (event.type === 'api:started') {
-        // A restart can land on a different port; the old subscription died with the old socket
-        if (event.port && reconnectApiClient(event.port)) {
+        // A restart can land on a different port; the old subscription died with the old socket.
+        //
+        // `reloaded` is that resubscribe forced on an *unchanged* port, which a development reload usually
+        // keeps: `reconnectApiClient` then answers `false` and leaves a subscription whose socket is
+        // already dead, and the client's own retry is a backoff whose second attempt is 2s away — four
+        // times the half-second the restart took. Main sets it only for a reload it performed, so the old
+        // socket is known to be gone and tearing it down here is safe.
+        if ((event.port && reconnectApiClient(event.port)) || event.reloaded) {
           subscription.unsubscribe();
           subscription = subscribeToBus();
         }

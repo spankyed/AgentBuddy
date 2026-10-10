@@ -253,6 +253,7 @@ export interface _HostBridge {
             attempt?: number;
             maxAttempts?: number;
             port?: number;
+            reloaded?: boolean;
         }) => void) => () => void;
     };
     apiToken: string;

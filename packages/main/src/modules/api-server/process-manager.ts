@@ -144,28 +144,57 @@ export class ProcessManager {
     this.process.stderr?.destroy();
   }
 
-  kill(signal: NodeJS.Signals = 'SIGTERM', forceKillDelay = 5000): void {
-    if (!this.process) return;
-
+  /**
+   * Ends the process and resolves once it is **gone**, not once the signal was sent.
+   *
+   * **Waiting is what a reload needs and a quit does not.** The departing API holds the port the next one
+   * prefers and the LMDB store it is about to open, so starting the replacement before it lets go of
+   * either is the failure this exists to prevent.
+   *
+   * **The order is the method.** `cleanup()` removes *every* listener, so the waiter goes on after it and
+   * the signal after that: before, and it is stripped with the handlers it replaces. Stripping them first
+   * is also what keeps this off `onExit`, so a reload is never counted as a crash.
+   *
+   * A process that ignores the signal and survives the force-kill still gets an answer; hanging is not one.
+   */
+  stop(signal: NodeJS.Signals = 'SIGTERM', forceKillDelay = 5000): Promise<void> {
+    const child = this.process;
+    if (!child || this.exited) return Promise.resolve();
     this.cleanup();
 
-    try {
-      this.process.kill(signal);
-    } catch (error) {
-      console.error(`Error sending ${signal}:`, error);
-    }
+    let gone = false;
+    const signalling = new Promise<void>((resolve) => {
+      const done = (): void => {
+        gone = true;
+        // `cleanup()` took the handler that normally sets this, and `isRunning()` reads it
+        this.exited = true;
+        clearTimeout(giveUp);
+        resolve();
+      };
+      const giveUp = setTimeout(() => {
+        child.removeListener('exit', done);
+        resolve();
+      }, forceKillDelay + 1000);
+      child.once('exit', done);
+    });
 
-    // Force kill after delay if needed
-    if (forceKillDelay > 0) {
-      setTimeout(() => {
-        if (this.process && !this.process.killed) {
-          try {
-            this.process.kill('SIGKILL');
-          } catch (error) {
-            console.error('Error sending SIGKILL:', error);
-          }
-        }
-      }, forceKillDelay);
+    this.signal(child, signal);
+    // **`gone`, never `child.killed`.** That flag means "a signal was delivered", not "the process ended",
+    // so it is already true here — a force-kill guarded on it can never fire, which is what this one did.
+    if (forceKillDelay > 0) setTimeout(() => { if (!gone) this.signal(child, 'SIGKILL'); }, forceKillDelay);
+    return signalling;
+  }
+
+  /** Fire and forget, for the callers that cannot await — `before-quit` and `window-all-closed`. */
+  kill(signal: NodeJS.Signals = 'SIGTERM', forceKillDelay = 5000): void {
+    void this.stop(signal, forceKillDelay);
+  }
+
+  private signal(child: ChildProcess, signal: NodeJS.Signals): void {
+    try {
+      child.kill(signal);
+    } catch (error) {
+      logError(`[MAIN] Error sending ${signal} to the API:`, error);
     }
   }
 

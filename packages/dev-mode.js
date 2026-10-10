@@ -67,6 +67,23 @@ const rendererWatchServerProvider = {
 // ── 3. Ensure API build is done before Electron spawns ──
 await apiBuildDone;
 
+// ── 3b. Then keep it current: a host, SDK or API edit rebuilds, and the app reloads its API ──
+//
+// Two builds because only the first is a precondition: Electron must not spawn against a missing bundle,
+// so that one is awaited and this one runs for as long as the session does. `ABUDDY_DEV_RELOAD` is what
+// tells Electron to watch for its writes, since a watcher here could not restart the API — main owns that
+// child. The watched paths are in `build:dev:watch`, and `packages/api/tsup.config.ts` says why there.
+const apiWatch = spawn('npm', ['run', 'build:dev:watch', '--workspace', '@app/api'], {
+  stdio: 'inherit',
+  shell: true,
+});
+process.on('exit', () => apiWatch.kill());
+apiWatch.on('exit', (code) => {
+  // A dead watcher leaves the loop silently broken: edits stop landing and nothing says so
+  if (code) console.error(`[dev-mode] the API watcher exited with code ${code} — backend edits will not reload`);
+});
+process.env.ABUDDY_DEV_RELOAD = '1';
+
 // ── 4. Build preload and main in parallel ──
 /** @type {string[]} */
 const packagesToStart = [

@@ -7,6 +7,7 @@
   "scripts": {
     "build": "tsc --noEmit && NODE_OPTIONS='--max-old-space-size=8192' tsup",
     "build:dev": "NODE_OPTIONS='--max-old-space-size=8192' tsup --env.NODE_ENV development",
+    "build:dev:watch": "NODE_OPTIONS='--max-old-space-size=8192' tsup --env.NODE_ENV development --watch src --watch ../abuddy-host/src --watch ../abuddy-sdk/src",
     "dev:types": "tsc -p . --noEmit --watch --preserveWatchOutput",
     "dev:serve": "node ../../scripts/with-source.mjs tsx --watch src/server.ts",
     "start": "node ../../scripts/with-source.mjs node dist/server.js",

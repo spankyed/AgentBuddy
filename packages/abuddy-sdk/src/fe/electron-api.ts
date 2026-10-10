@@ -84,7 +84,12 @@ export interface _HostBridge {
      * blocks renderer-initiated navigation, so `location.reload()` returns having done nothing.
      */
     reload: () => Promise<void>;
-    onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number; port?: number }) => void) => () => void;
+    /**
+     * `reloaded` marks an `api:started` whose predecessor was replaced on purpose — a development rebuild
+     * rather than a crash — so a window may tear its subscription down at once instead of waiting out its
+     * client's reconnect backoff.
+     */
+    onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number; port?: number; reloaded?: boolean }) => void) => () => void;
   };
   rendererLog: {
     write: (entry: {

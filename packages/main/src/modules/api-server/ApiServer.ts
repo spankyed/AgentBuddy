@@ -31,6 +31,10 @@ export class ApiServer implements AppModule {
   /** The port the last successful launch used, reused on restart so the renderer's URL stays valid */
   private preferredPort: number = API_CONFIG.DEFAULT_PORT;
   private lastError?: { message: string; stack?: string };
+  /** The reload in flight, so a rebuild arriving mid-reload joins it rather than starting a second API */
+  private reloading?: Promise<void>;
+  /** Whether the next readiness is a reload's, which `handleServerReady` consumes onto `api:started` */
+  private announceReload = false;
   private readonly startupId = randomUUID();
   /**
    * The API's token for this app run: the API refuses connections and requests without it. The API process gets it
@@ -235,7 +239,11 @@ export class ApiServer implements AppModule {
     this.preferredPort = port;
     this.lastError = undefined;
     logInfo(`[MAIN] API server is running on port ${port}`);
-    broadcastEvent(API_EVENTS.STARTED, { port, startupId: this.startupId });
+    // `reloaded` says the old socket died on purpose, which is what lets the window resubscribe at once
+    // rather than wait out its client's backoff — see `reloadApiServer`
+    const reloaded = this.announceReload;
+    this.announceReload = false;
+    broadcastEvent(API_EVENTS.STARTED, { port, startupId: this.startupId, ...(reloaded && { reloaded: true }) });
     
     if (this.serverReadyResolve) {
       this.serverReadyResolve();
@@ -296,6 +304,37 @@ export class ApiServer implements AppModule {
 
   private stopApiServer(): void {
     this.processManager.kill('SIGTERM', API_CONFIG.SHUTDOWN_TIMEOUT);
+  }
+
+  /**
+   * Ends the API and starts it again, for a development rebuild — **not the restart the rest of this class
+   * means.**
+   *
+   * **It must not look like a crash.** `handleProcessExit` counts every exit against
+   * `MAX_RESTART_ATTEMPTS`, forgiven only `SUCCESS_CHECK_DELAY` after a launch that is still running, so a
+   * handful of quick edits would exhaust the budget and land on `api:stopped { restarting: false }`, the
+   * shell's terminal `error` state, and main refusing to start the API again. `ProcessManager.stop()` is
+   * what keeps it off that path, and it waits for the exit, which is what makes the next launch correct.
+   *
+   * **It does not wait for readiness, deliberately.** `waitForReady` reads `serverReady`, which
+   * `startApiServer` replaces on every launch — so if this launch crashed before it was ready, the crash
+   * path's own restart would orphan the promise this was holding and the wait would run to
+   * `READY_TIMEOUT`, keeping the loop silent for a minute. Nothing needs it either: a rebuild arriving
+   * while the previous API is still booting *should* replace it, because that API is already stale.
+   */
+  public reloadApiServer(): Promise<void> {
+    this.reloading ??= (async () => {
+      try {
+        // Read by `handleServerReady`, which happens after this resolves — so it is a flag and not this
+        // promise, however much one field would be tidier than two
+        this.announceReload = true;
+        await this.processManager.stop('SIGTERM', API_CONFIG.SHUTDOWN_TIMEOUT);
+        await this.startApiServer();
+      } finally {
+        this.reloading = undefined;
+      }
+    })();
+    return this.reloading;
   }
 
   public getStatus(): {

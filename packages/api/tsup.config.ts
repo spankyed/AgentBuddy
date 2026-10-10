@@ -29,6 +29,13 @@ export default defineConfig((options) => {
     // the api still bundled a pack's backend. The dev build must not clean: it emits no declarations, and
     // `dist/types.d.ts` is what the renderer's typecheck resolves `@app/api` to.
     clean: !isDev,
+    // **What to watch is on the command line, not here, and that is not a preference.** tsup watches a
+    // *directory* rather than the module graph, so `@abuddy/host` and `@abuddy/sdk` — both inlined into
+    // this bundle by the `@abuddy/source` condition below — have to be named or an edit to either rebuilds
+    // nothing: measured 2026-10-10, no rebuild in two and a half minutes. Naming them here does not work,
+    // because a `--watch` flag *overrides* a `watch` in the config rather than merging with it (measured
+    // the same day: the config's paths were ignored). So they live in `build:dev:watch`, which is the one
+    // invocation that wants them.
     format: isDev ? ['esm'] : ['esm', 'cjs'],
     dts: !isDev,
     shims: true,
