@@ -73,8 +73,10 @@ live app that published a debug port and said so; what it publishes is its **ses
 one marker (`pack-dev-servers/<id>.json`) that means something else entirely.
 
 **The order matters**: that rename gives `--profile` its name, and this plan changes what the flag
-*means* — it becomes what decides attach-against-launch. A flag should not gain a new name and a new
-behaviour in one change.
+*means* — it stops saying only where a throwaway app's data goes and starts naming **which app a question
+reaches**, the one whose session file is read, with `--profile drive` reserved as a scratch. Whether that
+app is joined or started is decided by liveness rather than by the flag. A flag should not gain a new name
+and a new behaviour in one change.
 
 **A live app is a resource with a lifecycle, not a side effect of a command someone remembered to run.**
 That is the invariant the rest follows from, and it is one step further than *"`dev` holds the app"*: once
@@ -222,6 +224,27 @@ or with the copy from before their last edit. `dev` already builds and installs 
 **And no `dev --no-watch`.** A flag whose only purpose is to let one caller skip a step is the thing that
 drifts, and a watcher costs nothing while nothing is being edited — if something is, the rebuild was
 wanted. One launcher also keeps the "session file's writers are derived, not listed" case to one row.
+
+**"Calling `dev`" means spawning it detached, because `dev` never returns.** Its body ends in
+`await new Promise(() => {})` (`commands/run.ts:333`, `:369`) — it is a foreground supervisor holding the
+app, the watcher and the dev server for as long as the terminal lives. A one-shot has to answer and exit
+while that app stays up, so autostart spawns the CLI's own bin as a **detached child** with `.unref()`,
+and the one-shot then **waits for the session file to appear** rather than for a function to return. Three
+things follow, and each is a way to get this wrong:
+
+- **The deadline is a pack build, not a window.** A cold autostart runs `ensureCheckoutPackages` and
+  `abuddy build` before Electron starts, which is tens of seconds, not the 45s a fixture allows for a
+  window to show up. A deadline sized for the launch reports a timeout on a build that was working.
+- **The child's output cannot go to `/dev/null`.** `dev` spawns Electron with `stdio: 'ignore'` today,
+  which is right for a window a person is watching and wrong here: a pack build that fails would reach the
+  caller as "no session file appeared" with no cause. It goes to the session's `logPath`, which the session
+  file already carries, and the timeout message names that path.
+- **A child that exits before the file appears is an error with a body**, not a timeout. Watch for both,
+  and report the exit.
+
+Nobody is left holding it: on the development dir the developer's own `dev`/`npm start` reclaims it
+(Decision 11 in the goal doc), and on a `drive` profile the idle reap takes it (Decision 12). A detached
+child with no owner is exactly what those two rules exist to answer.
 
 **It starts the `development` app, which is a change in what `drive` touches, and is stated rather than
 defaulted into.** Today the fixture gives every `drive` run a throwaway dir, so a one-shot cannot reach
@@ -373,7 +396,7 @@ is in "Security" below, and it is a condition of the design rather than a mitiga
 |---|---|
 | `abuddy-cli/src/commands/run.ts` → `dev.ts` | rename; add the two argv entries, publish the session file, and reclaim one a tool started (`startedBy: drive` → SIGTERM its pid, wait for exit, launch, say so); `index.ts` `COMMANDS`/`USAGE`. Its body has to be callable from `drive`'s autostart as a function, since autostart *is* this command and not a copy of it |
 | `abuddy-host/src/private-file.ts` | moved: `writePrivateFile` out of `secrets/private-file.ts`, with a `./private-file` export. It is a 0600 atomic write and nothing about secrets, and a session file is not a secret — reaching for it behind the secrets barrel would be the wrong dependency, and it is not in that barrel today anyway |
-| `abuddy-cli/src/app/session-file.ts` | new: write/read `{ debugPort, apiPort, logPath, dataDir, pid, startedBy }` through `writePrivateFile`, `readDevToolsPort` polling `DevToolsActivePort`, and the autostart under `holdExclusiveLock` with the re-read after acquiring. The autostart **calls `dev`** rather than spawning Electron itself, so the pack build and install come with it |
+| `abuddy-cli/src/app/session-file.ts` | new: write/read `{ debugPort, apiPort, logPath, dataDir, pid, startedBy }` through `writePrivateFile`, `readDevToolsPort` polling `DevToolsActivePort`, and the autostart under `holdExclusiveLock` with the re-read after acquiring. The autostart **spawns `dev` detached** rather than launching Electron itself, so the pack build and install come with it, and waits for the session file rather than for a return — `dev` has none |
 | `packages/dev-mode.js` | `npm start` publishes one too, so the app with renderer HMR is attachable |
 | `abuddy-cli/src/commands/drive.ts` | attach-or-launch for the one-shots; a miss calls `dev`. Delete `--serve`, `--attach`, `takeServeFlag`. **The script path and its config are untouched by decision**, per "What stays": a question attaches, a program gets a dir |
 | `abuddy-testing/src/index.ts` | extract two free functions the fixture then calls: `appHelper(page, resultsDir)`, and `waitForAppReady(page)` — the readiness wait (`index.ts:479-507`) with the onboarding dismissal moved *inside* the predicate. Window-finding is not extracted: `findMainWindow` takes an `ElectronApplication`, and the attach path enumerates `browser.contexts()[0].pages()` with the same `!!window.applicationState` predicate |
@@ -433,6 +456,12 @@ below exists.
 - **an autostart in a pack repo has the pack installed**, which is the other half of the same decision and
   fails on the other mistake: an autostart that reproduced dev's *environment* rather than calling `dev`
   passes the case above and leaves the pack author's own pack missing. Assert its plugins are present.
+- **the autostarted app outlives the one-shot that started it**, which is what `detached` plus `.unref()`
+  buys and the case that fails without either: ask one question, let the process exit, assert the session
+  file still names a live pid and a second question attaches rather than starting a second app.
+- **a `dev` that dies before publishing is reported with its output**, not as a timeout. Mutation: a
+  child spawned with `stdio: 'ignore'` turns a failed pack build into "no session file appeared", which is
+  the failure this case exists to keep legible.
 - **a never-onboarded profile answers a verb, and the run says it dismissed onboarding.** `--profile`
   pointed at a fresh dir, driven cold: without the dismissal inside `waitForAppReady`'s predicate nothing
   reaches `connected` and the verb times out. Both halves, because the printed line is what makes the

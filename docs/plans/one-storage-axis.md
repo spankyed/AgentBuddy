@@ -1,8 +1,9 @@
 # One storage axis: a build, and the profile it keeps its data in
 
-Compiled 2026-10-09. Lands between [`profiles-not-instances.md`](profiles-not-instances.md) and
-[`attachable-dev-session.md`](attachable-dev-session.md), so the largest of the three is written once, in
-the vocabulary it keeps.
+Compiled 2026-10-09. **Lands last of the three**, after
+[`profiles-not-instances.md`](profiles-not-instances.md) and
+[`attachable-dev-session.md`](attachable-dev-session.md) — see "Where it goes in the order" below, which
+is a correction to where this plan first put itself.
 
 ## The confound
 
@@ -69,17 +70,31 @@ So `-d`/`-b`/`--production` become `--build` spellings rather than profile short
 `resolveAppContext` takes a build and an optional profile rather than deriving a directory from an
 environment name.
 
-## What makes it the middle phase
+## Where it goes in the order
 
-- It touches `resolveAppContext`, which every package reads, where the rename before it touches one
-  package's surface — so it goes second, not first.
-- It has one real open question, which is the actual reason: **what `-d`/`-b` become** on `db`, `install`,
+**Last, and this plan said "middle" first — the correction is the goal doc's Decision 1 and is worth
+reading as a finding rather than a renumbering.** Three facts decide it:
+
+- **Nothing in the attach work reads a build.** The session file is `<dataDir>/session.json`, the reclaim
+  is per data dir, the idle reap is per profile. So this phase has no downstream dependant: every other
+  phase can land, and be used, with `--app`/`--app-root` exactly as they are.
+- **It is the one phase with an open question in it** — **what `-d`/`-b` become** on `db`, `install`,
   `list` and `uninstall`. They name a data dir today and would name a build, which reads better
   (`abuddy db --build beta` says *whose* data, where `-b` names an environment `db` never launches) — but
   it changes what those commands *mean*, not how they are spelled, and that is a decision rather than a
-  rename. **The axis's name is settled**: `build`, for the reasons above.
-- The attach work does not depend on it, but is written against its vocabulary: doing it after would mean
-  rewriting that plan's flag handling and its `resolveAppContext().env` security gate a second time.
+  rename. **The axis's name is settled**: `build`, for the reasons above. The value is not.
+- So placed in the middle, a flag argument blocks the work the goal is named for. Placed last, it blocks
+  nothing.
+
+**What that costs, stated rather than hidden**: the attach plan's `development`-only debug gate is written
+against `resolveAppContext`'s current signature and then moved to the new one. That was this plan's
+original argument for going second, and it is **one call site** — the attach plan's Security section
+commits to exactly that ("one call site, one gate") — against the risk of stalling four phases behind a
+question about two letters. The trade is accepted in the goal doc, and Phase 7's "Done when" requires the
+gate's firing case to still pass after the move, which is what makes the move provable rather than assumed.
+
+It still touches `resolveAppContext`, which every package reads, so it remains the largest of the three
+and the one to do with the other two already landed.
 
 ## Evidence it is already costing something
 
@@ -96,7 +111,17 @@ coexist here" is the question an attach, an autostart and a profile refusal all 
 
 ## What to read first
 
-`abuddy-sdk/src/env/index.ts` (`APP_NAMES`, `appDataDirFor`, `resolveAppContext`),
-`abuddy-cli/src/app/profiles.ts` and `app-target.ts`'s `appEnv`, `parseAppFlags` and `namedApp` — the one
-place `--app`/`--app-root` are parsed, and the precedence ladder `--build` inherits, which loses a rung
-when the two flags become one.
+`abuddy-sdk/src/env/index.ts` (`APP_NAMES`, `appDataDirFor`, `resolveAppContext`; `platformDataDir` and
+`APP_NAMES` are both private to that file, so the fusion has one home);
+`abuddy-cli/src/app/profiles.ts` — `instances.ts` until
+[`profiles-not-instances.md`](profiles-not-instances.md) lands; and `app-target.ts`'s `parseAppFlags`
+(`:215`, with the one-word `--app` check at `:233`) and `namedApp` (`:115`) — the one place
+`--app`/`--app-root` are parsed, and the precedence ladder `--build` inherits, which loses a rung when the
+two flags become one.
+
+**And `appEnv`, which is the fusion point itself and is not in `app-target.ts`.** It lives in
+`commands/run.ts:48` — `commands/dev.ts` after the attach work renames the file — and maps an `AppTarget`
+to an `AppEnv`, which is precisely the build-to-environment step this plan is undoing. That it sits in a
+command rather than in the module that models app targets is part of the finding: the conversion is done
+where a launcher happened to need it, which is why `abuddy db -b` and `abuddy run --app beta` could drift
+onto different axes in the first place.

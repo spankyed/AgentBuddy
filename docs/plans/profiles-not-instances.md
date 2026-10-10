@@ -5,8 +5,11 @@ Compiled 2026-10-09. A rename with no behaviour in it, to be landed **before**
 
 ## Why now, and why not inside the attach work
 
-`--instance` is about to *change meaning*: in the attach design it becomes the flag that decides whether
-`drive` joins a running app or starts one. Renaming a flag in the same change that changes what it does is
+`--instance` is about to *change meaning*: in the attach design it becomes the flag that decides **which
+app `drive` talks to** — whether that is a live one it joins or one it starts is decided by liveness, not
+by the flag, but the flag is what points at the data dir whose session file answers that. And one spelling
+of it, `--profile drive`, becomes a reserved scratch rather than just a name someone chose. Today it only
+says where a throwaway app's data goes. Renaming a flag in the same change that changes what it does is
 the worst of both — a reviewer cannot tell which half of the diff is which, and a user meets a new name and
 a new behaviour at once. So the rename goes first, alone, and the attach work is then written in the
 vocabulary it will keep.
@@ -59,7 +62,7 @@ exactly this meaning.
 **What does not change.** The four environments, `APP_NAMES`, `resolveAppContext`, any stored layout, and
 the `-d`/`-b`/`--production` flags on `db`, `install`, `list` and `uninstall`. Whether those flags should
 name a *build* rather than an environment, so that "beta" means one thing everywhere, is the larger
-question and is [the phase after this one](one-storage-axis.md) rather than part of it. **This rename does
+question and is [the last of the three phases](one-storage-axis.md) rather than part of it. **This rename does
 not prejudge it**: it names the override, and leaves what the defaults are called alone — a profile named
 after a build is exactly what that plan rejects, so none is introduced here.
 
