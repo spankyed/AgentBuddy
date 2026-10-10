@@ -203,12 +203,31 @@ export interface StepRuntimeFacet {
 }
 
 /*─────────────────────────────────────────────────────────────────
+ * Node model: what a node of this step type is
+ *─────────────────────────────────────────────────────────────────*/
+
+/**
+ * What a node of this step type is, as against how it is drawn: how it is labelled and what fields it
+ * starts with. **Both processes read it** — the backend writes it onto a new entity
+ * (`stepRegistry.createNodeDefaults`, reached from `flowRepository.createNode`) and the renderer applies it
+ * to the node it draws optimistically — so a pack declares it in a module neither Vue nor lucide reaches,
+ * and codegen emits it into both registrations. The frontend facet beside it holds the icon and the
+ * components, which is why it cannot hold this.
+ */
+export interface StepNodeFacet {
+  /** The label a new node starts with, and what the canvas shows */
+  label: string;
+  /** What the palette offers instead of `label` ("Generate text" against "LLM") */
+  defaultLabel?: string;
+  /** The fields a new node starts with */
+  defaults?: Record<string, unknown>;
+}
+
+/*─────────────────────────────────────────────────────────────────
  * Frontend Types
  *─────────────────────────────────────────────────────────────────*/
 
 export interface StepNodeConfig {
-  label: string;
-  defaultLabel?: string;
   icon: unknown;
   color: string;
   bgColor: string;
@@ -229,7 +248,6 @@ export interface StepLayoutDescriptor {
 export interface StepFEFacet {
   nodeConfig: StepNodeConfig;
   colorKey?: string;
-  defaults?: Record<string, unknown>;
   /** Vue component refs: the renderer's pack store (`@abuddy/host/fe`) fills them from `loadComponents` when the pack registers. */
   components?: { node?: unknown; form?: unknown };
   /** Lazy factory that returns Vue components. Runs in FE context only. */
@@ -288,6 +306,8 @@ import type { CallOptions } from '../events/index.ts';
 export interface StepDefinition {
   type: string;
   kind?: 'step' | 'trigger';
+  /** What a node of this type is. The one facet both registrations carry */
+  node?: StepNodeFacet;
   build?: StepBuildFacet;
   runtime?: StepRuntimeFacet;
   fe?: StepFEFacet;

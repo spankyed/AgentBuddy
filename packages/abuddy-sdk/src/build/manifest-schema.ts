@@ -68,9 +68,15 @@ const StepTriggerSchema = z.object({
  * pack's `abuddy build` validates flows with, its `fe` facet is what the flow editor draws, and its
  * `runtime` is what the brain runs — so the three go to three different places and none of them is a
  * barrel the author keeps in step with the others.
+ *
+ * `node` is the exception and the one facet that is **required**: it says what a node of the type is
+ * rather than what any one process does with it, so both registrations carry it and every step has one.
+ * It is required because it was not: the label and the field defaults lived in `fe`, which the backend
+ * cannot import, so every node the app created was missing them and nothing said so.
  */
 export const StepEntrySchema = z.object({
   kind: z.enum(['step', 'trigger']).describe('Whether this is a regular step or a trigger. "step" is the default.').optional(),
+  node: ExportTargetSchema.describe('"path#exportName" of its StepNodeFacet: the label a new node starts with and the fields it starts with. Declare it in a module no Vue or icon import reaches — its `build` module is the usual home — because the backend reads it too.'),
   build: ExportTargetSchema.describe('"path#exportName" of its StepBuildFacet (compile, validate, getLabel, decompile). A trigger declares `trigger` instead.').optional(),
   trigger: StepTriggerSchema.describe('For a trigger: its TriggerFacet and the function that starts it.').optional(),
   fe: ExportTargetSchema.describe('"path#exportName" of its StepFEFacet: what the flow editor draws and the form it opens.').optional(),
@@ -404,7 +410,10 @@ export const ManifestSchema = z.object({
     .describe('Sections of the app settings this pack owns, with their defaults, beside the "plugins" section the app keeps itself. "path#exportName" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled content then.').optional(),
   boot: BootConfigSchema.optional(),
   content: ContentConfigSchema.optional(),
-  migrations: z.string().describe('Path to migrations index module.').optional(),
+  migrations: z.record(
+    z.string().regex(/^\d+\.\d+\.\d+$/, 'Must be the version the migration targets, as "major.minor.patch"'),
+    ExportTargetSchema,
+  ).describe('Migrations this pack runs, keyed by the version each targets. The key is the version — the module names only its description and its `up` — and a migration runs when the stored version is below its key and the key is at or below the pack\'s version.').optional(),
   build: BuildConfigSchema.optional(),
 }).strict().superRefine((manifest, ctx) => {
   // Which plugin opens first is one plugin's annotation, so a pack naming two has said nothing

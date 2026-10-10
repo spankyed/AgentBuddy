@@ -340,7 +340,7 @@ function resolveTrackLabel(steps: StepLookup, track: Track, trackIdx: number): s
   if (track.label) return track.label;
   if (track.event) return track.event;
   const triggerDef = resolveTriggerFromTrack(steps, track);
-  const prefix = triggerDef?.fe?.nodeConfig?.label || triggerDef?.type || 'Trigger';
+  const prefix = triggerDef?.node?.label || triggerDef?.type || 'Trigger';
   return `${prefix} ${trackIdx}`;
 }
 

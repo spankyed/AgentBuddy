@@ -701,6 +701,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     extensions: z.ZodOptional<z.ZodObject<{
         steps: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodEffects<z.ZodObject<{
             kind: z.ZodOptional<z.ZodEnum<["step", "trigger"]>>;
+            node: z.ZodString;
             build: z.ZodOptional<z.ZodString>;
             trigger: z.ZodOptional<z.ZodObject<{
                 facet: z.ZodString;
@@ -758,6 +759,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 custom?: true | undefined;
             }>>;
         }, "strict", z.ZodTypeAny, {
+            node: string;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -778,6 +780,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 custom?: true | undefined;
             } | undefined;
         }, {
+            node: string;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -798,6 +801,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 custom?: true | undefined;
             } | undefined;
         }>, {
+            node: string;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -818,6 +822,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 custom?: true | undefined;
             } | undefined;
         }, {
+            node: string;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -919,6 +924,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         services?: Record<string, string> | undefined;
         steps?: Record<string, {
+            node: string;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -966,6 +972,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         services?: Record<string, string> | undefined;
         steps?: Record<string, {
+            node: string;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -1219,7 +1226,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     }>>;
-    migrations: z.ZodOptional<z.ZodString>;
+    migrations: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     build: z.ZodOptional<z.ZodObject<{
         opaqueDeps: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         bundleUi: z.ZodOptional<z.ZodBoolean>;
@@ -1290,6 +1297,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         services?: Record<string, string> | undefined;
         steps?: Record<string, {
+            node: string;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -1357,7 +1365,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
-    migrations?: string | undefined;
+    migrations?: Record<string, string> | undefined;
 }, {
     name: string;
     id: string;
@@ -1418,6 +1426,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         services?: Record<string, string> | undefined;
         steps?: Record<string, {
+            node: string;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -1485,7 +1494,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
-    migrations?: string | undefined;
+    migrations?: Record<string, string> | undefined;
 }>, {
     name: string;
     id: string;
@@ -1546,6 +1555,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         services?: Record<string, string> | undefined;
         steps?: Record<string, {
+            node: string;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -1613,7 +1623,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
-    migrations?: string | undefined;
+    migrations?: Record<string, string> | undefined;
 }, {
     name: string;
     id: string;
@@ -1674,6 +1684,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         services?: Record<string, string> | undefined;
         steps?: Record<string, {
+            node: string;
             trigger?: {
                 facet: string;
                 register?: string | undefined;
@@ -1741,7 +1752,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }> | undefined;
         writers?: Record<string, string> | undefined;
     } | undefined;
-    migrations?: string | undefined;
+    migrations?: Record<string, string> | undefined;
 }>;
 
 // @public (undocumented)
@@ -2046,6 +2057,7 @@ export type StepEntry = z.infer<typeof StepEntrySchema>;
 // @public
 export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
     kind: z.ZodOptional<z.ZodEnum<["step", "trigger"]>>;
+    node: z.ZodString;
     build: z.ZodOptional<z.ZodString>;
     trigger: z.ZodOptional<z.ZodObject<{
         facet: z.ZodString;
@@ -2103,6 +2115,7 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         custom?: true | undefined;
     }>>;
 }, "strict", z.ZodTypeAny, {
+    node: string;
     trigger?: {
         facet: string;
         register?: string | undefined;
@@ -2123,6 +2136,7 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         custom?: true | undefined;
     } | undefined;
 }, {
+    node: string;
     trigger?: {
         facet: string;
         register?: string | undefined;
@@ -2143,6 +2157,7 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         custom?: true | undefined;
     } | undefined;
 }>, {
+    node: string;
     trigger?: {
         facet: string;
         register?: string | undefined;
@@ -2163,6 +2178,7 @@ export const StepEntrySchema: z.ZodEffects<z.ZodObject<{
         custom?: true | undefined;
     } | undefined;
 }, {
+    node: string;
     trigger?: {
         facet: string;
         register?: string | undefined;
@@ -2192,6 +2208,7 @@ export function toDisplayName(str: string): string;
 
 // @public (undocumented)
 export interface Track {
+    [trackField: string]: string | DSLStepNode[][] | undefined;
     // (undocumented)
     description?: string;
     // (undocumented)

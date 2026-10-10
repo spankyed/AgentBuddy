@@ -114,13 +114,20 @@ const STATIC_COLOR_MAP: Record<string, ColorKey> = {
   event: 'blue',
 }
 
+/**
+ * One config per step the canvas can draw, from the two facets that describe it: `node` says how it is
+ * labelled (both processes read that one) and `fe` how it is drawn. A step needs both to be drawable — one
+ * with no `fe` has no icon, and one with no `node` has no label.
+ */
 function buildNodeConfigs(): Record<string, NodeConfig> {
   const configs: Record<string, NodeConfig> = {}
 
   for (const step of stepRegistry.all()) {
-    if (!step.fe) continue
+    if (!step.fe || !step.node) continue
     configs[step.type] = {
       ...step.fe.nodeConfig,
+      label: step.node.label,
+      ...(step.node.defaultLabel !== undefined && { defaultLabel: step.node.defaultLabel }),
       type: step.type,
       icon: step.fe.nodeConfig.icon as Component,
       ...(step.kind === 'trigger' && {

@@ -8,6 +8,8 @@ import { formatEntities } from './content/items.ts';
 import { resolveContentSources, type ResolvedContentSource } from './content/resolve.ts';
 import { createModuleExports, type ExportInfo, type ModuleExports } from './module-exports.ts';
 import { hasOwn } from '../utils/shared.ts';
+import { compareVersions } from '../utils/compare-versions.ts';
+import type { StepDefinition } from '../steps/types.ts';
 
 const HEADER = `// @generated from abuddy.json — do not edit by hand
 // Regenerate: abuddy generate-entries\n`;
@@ -221,6 +223,43 @@ interface StepDeclaration {
   entry: StepEntry;
   path: string;
 }
+
+/**
+ * The facets a *registration* can carry. `kind` rides on every literal and `dsl` drives the flow helpers
+ * rather than any registration, so neither is one of these.
+ */
+const STEP_FACETS = ['node', 'build', 'trigger', 'runtime', 'fe'] as const satisfies readonly (keyof StepDefinition)[];
+type StepFacetName = (typeof STEP_FACETS)[number];
+
+/** A part of `StepDefinition` that is not a routed facet, each for a reason stated above */
+type UnroutedPart = Exclude<keyof StepDefinition, 'type' | 'kind' | 'dsl' | StepFacetName>;
+const _everyPartIsAFacetOrExcluded: [UnroutedPart] extends [never] ? true : UnroutedPart = true;
+void _everyPartIsAFacetOrExcluded;
+
+/**
+ * **Which facets each target carries, said once.**
+ *
+ * A step's facets go to three places and each takes a different subset: the backend registration runs the
+ * step, the frontend registration draws it, and the generated build module is what a *dependent* pack's
+ * `abuddy build` validates its flows with. Three emitters each rebuilding the literal from its own chain of
+ * `if`s is how a facet comes to reach two of the three and not the third — which is exactly what happened
+ * to `node`, whose label and field defaults the backend needed and silently never got.
+ *
+ * `node` is in two targets and not the build module: a dependent's build compiles and validates flows, and
+ * never creates a node.
+ */
+const FACET_TARGETS = {
+  backend: ['node', 'build', 'trigger', 'runtime'],
+  frontend: ['node', 'fe'],
+  buildModule: ['build', 'trigger'],
+} as const satisfies Record<string, readonly StepFacetName[]>;
+
+type FacetTarget = keyof typeof FACET_TARGETS;
+
+/** A facet no target carries reaches no registration, which is the failure this table exists to prevent */
+type UnroutedFacet = Exclude<StepFacetName, (typeof FACET_TARGETS)[FacetTarget][number]>;
+const _everyFacetIsRouted: [UnroutedFacet] extends [never] ? true : UnroutedFacet = true;
+void _everyFacetIsRouted;
 
 /** Extensions of the TypeScript sources codegen reads exports from */
 const TS_SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts']);
@@ -443,7 +482,8 @@ export function generatePackFiles(
       ...Object.values(manifest.extensions?.services ?? {}),
       ...Object.values(manifest.content?.writers ?? {}),
       ...Object.values(manifest.extensions?.blocks ?? {}).flatMap((b) => (b.be ? [b.be] : [])),
-      ...Object.values(manifest.extensions?.steps ?? {}).flatMap((s) => [s.build, s.trigger?.facet, s.trigger?.register, s.runtime?.handler, s.fe].filter((t): t is string => t !== undefined)),
+      ...Object.values(manifest.extensions?.steps ?? {}).flatMap((s) => [s.node, s.build, s.trigger?.facet, s.trigger?.register, s.runtime?.handler, s.fe].filter((t): t is string => t !== undefined)),
+      ...Object.values(manifest.migrations ?? {}),
       ...(manifest.settingsSections ? [manifest.settingsSections] : []),
       ...(manifest.help ? [manifest.help] : []),
     ].map((target) => target.split('#')[0]);
@@ -602,83 +642,135 @@ export function generatePackFiles(
     return `async (${args}) => (await import('${toImportPath(root, source)}')).${exportName}(${args})`;
   }
 
-  /** The steps a manifest declares, for the backend registration: the build-time facet and the runtime */
-  function stepDefinitionsBE(): { imports: string[]; literal: string } {
-    const imports: string[] = [];
-    const items = stepDefinitions.map((step, index) => {
-      const parts = [`type: '${step.type}'`];
-      if (step.kind) parts.push(`kind: '${step.kind}'`);
-      if (step.entry.build) {
-        const facet = stepFacet(`Step "${step.type}": build`, step.entry.build, `__stepBuild_${index}`);
-        imports.push(facet.import);
-        parts.push(`build: ${facet.expr}`);
-      }
-      if (step.entry.trigger) {
-        const facet = stepFacet(`Step "${step.type}": trigger.facet`, step.entry.trigger.facet, `__stepTrigger_${index}`);
-        imports.push(facet.import);
-        const register = step.entry.trigger.register
-          ? `, register: ${lazyCall(`Step "${step.type}": trigger.register`, step.entry.trigger.register, 'node, ctx')}`
-          : '';
-        parts.push(register ? `trigger: { ...${facet.expr}${register} }` : `trigger: ${facet.expr}`);
-      }
-      const runtime = stepRuntimeLiteral(step, index);
-      if (runtime) {
-        imports.push(...runtime.imports);
-        parts.push(`runtime: ${runtime.literal}`);
-      }
-      return `    { ${parts.join(', ')} },`;
-    });
-    return { imports, literal: items.length ? `[\n${items.join('\n')}\n  ]` : '' };
+  /**
+   * An import local for one of a step's facets, named after the **step type** rather than its position.
+   * An index was what the three emitters used, and the frontend one indexed after filtering out the steps
+   * with no `fe` — so `__stepFE_3` and `__stepBuild_3` named different steps as soon as one lacked a facet.
+   */
+  function facetLocal(type: string, facet: string): string {
+    return `__step_${type.replace(/[^A-Za-z0-9]/g, '_')}_${facet}`;
   }
 
-  /** A step's runtime facet: its flags, and its handler — behind a lazy import unless it declares `sync` */
-  function stepRuntimeLiteral(step: StepDeclaration, index: number): { imports: string[]; literal: string } | undefined {
-    const runtime = step.entry.runtime;
-    if (!runtime) return undefined;
-    const imports: string[] = [];
-    const parts: string[] = [];
-    if (runtime.handler) {
-      const label = `Step "${step.type}": runtime.handler`;
-      if (runtime.sync) {
-        // The one case the module is imported with the entry: the handler's sends have to land in the
-        // brain's own dispatch, and `await import(...)` puts them a tick too late
-        const facet = stepFacet(label, runtime.handler, `__stepHandler_${index}`);
-        imports.push(facet.import);
-        parts.push(`handler: ${facet.expr}`);
-      } else {
-        parts.push(`handler: ${lazyCall(label, runtime.handler, 'tNode, node, ctx, actor')}`);
+  /** What one facet contributes to a step's literal: the imports it needs and the `name: expr` member */
+  interface FacetEmission { imports: string[]; member: string }
+
+  /** A facet that is just its module's export, imported and named */
+  function importedFacet(step: StepDeclaration, facet: StepFacetName, target: string): FacetEmission {
+    const { import: line, expr } = stepFacet(`Step "${step.type}": ${facet}`, target, facetLocal(step.type, facet));
+    return { imports: [line], member: `${facet}: ${expr}` };
+  }
+
+  /**
+   * How each facet is emitted. The table above says *which* target carries a facet; this says *how* it is
+   * written, and is the one place a facet's emission lives. A facet absent from the entry emits nothing.
+   */
+  const FACET_EMITTERS: Record<StepFacetName, (step: StepDeclaration, target: FacetTarget) => FacetEmission | null> = {
+    node: (step) => (step.entry.node ? importedFacet(step, 'node', step.entry.node) : null),
+    build: (step) => (step.entry.build ? importedFacet(step, 'build', step.entry.build) : null),
+    fe: (step) => (step.entry.fe ? importedFacet(step, 'fe', step.entry.fe) : null),
+
+    trigger: (step, target) => {
+      const trigger = step.entry.trigger;
+      if (!trigger) return null;
+      const facet = stepFacet(`Step "${step.type}": trigger.facet`, trigger.facet, facetLocal(step.type, 'trigger'));
+      // `register` starts the trigger, so only the app needs it: a dependent pack's build compiles and
+      // validates a flow and never runs one. It is lazily imported for the same reason a handler is.
+      const register = target === 'backend' && trigger.register
+        ? `, register: ${lazyCall(`Step "${step.type}": trigger.register`, trigger.register, 'node, ctx')}`
+        : '';
+      return { imports: [facet.import], member: register ? `trigger: { ...${facet.expr}${register} }` : `trigger: ${facet.expr}` };
+    },
+
+    runtime: (step) => {
+      const runtime = step.entry.runtime;
+      if (!runtime) return null;
+      const imports: string[] = [];
+      const parts: string[] = [];
+      if (runtime.handler) {
+        const label = `Step "${step.type}": runtime.handler`;
+        if (runtime.sync) {
+          // The one case the module is imported with the entry: the handler's sends have to land in the
+          // brain's own dispatch, and `await import(...)` puts them a tick too late
+          const facet = stepFacet(label, runtime.handler, facetLocal(step.type, 'handler'));
+          imports.push(facet.import);
+          parts.push(`handler: ${facet.expr}`);
+        } else {
+          parts.push(`handler: ${lazyCall(label, runtime.handler, 'tNode, node, ctx, actor')}`);
+        }
       }
+      for (const flag of ['isAsync', 'waits', 'spawnsSubflow'] as const) {
+        if (runtime[flag]) parts.push(`${flag}: true`);
+      }
+      return parts.length ? { imports, member: `runtime: { ${parts.join(', ')} }` } : null;
+    },
+  };
+
+  /**
+   * The steps a manifest declares, as the literal one target carries: `type`, `kind`, and each facet
+   * `FACET_TARGETS` routes there. One builder for all three targets, so a facet cannot reach two of them
+   * and be forgotten in the third.
+   */
+  function stepLiterals(target: FacetTarget, indent: string): { imports: string[]; items: string[] } {
+    const imports: string[] = [];
+    const items: string[] = [];
+    for (const step of stepDefinitions) {
+      const parts = [`type: '${step.type}'`];
+      if (step.kind) parts.push(`kind: '${step.kind}'`);
+      for (const facet of FACET_TARGETS[target]) {
+        const emitted = FACET_EMITTERS[facet](step, target);
+        if (!emitted) continue;
+        imports.push(...emitted.imports);
+        parts.push(emitted.member);
+      }
+      // A step the target carries nothing of is not registered there: the frontend skips one with no `fe`
+      if (parts.length === 1) continue;
+      items.push(`${indent}{ ${parts.join(', ')} },`);
     }
-    for (const flag of ['isAsync', 'waits', 'spawnsSubflow'] as const) {
-      if (runtime[flag]) parts.push(`${flag}: true`);
-    }
-    return parts.length ? { imports, literal: `{ ${parts.join(', ')} }` } : undefined;
+    return { imports, items };
+  }
+
+  /**
+   * The pack's migrations, each with the version its manifest key names. The key is the only place the
+   * version is written — a module exports a `DeclaredMigration`, which has no `target` — so the runners get
+   * `{ target, description, up }` from here and a version cannot be stated twice and disagree.
+   *
+   * Emitted in key order so the runners' sort has nothing to undo, though they sort anyway: a manifest is
+   * JSON and nothing promises its keys keep the order they were written in.
+   */
+  function migrationEntries(): { imports: string[]; literal: string } {
+    const entries = Object.entries(manifest.migrations ?? {})
+      .sort(([a], [b]) => compareVersions(a, b));
+    if (entries.length === 0) return { imports: [], literal: '' };
+    const imports: string[] = [];
+    const items = entries.map(([version, target]) => {
+      const label = `Migration "${version}"`;
+      const local = `__migration_${version.replace(/[^A-Za-z0-9]/g, '_')}`;
+      const { source, exportName, value } = valueExport(label, target);
+      // The target is spread onto it, so a function or a class would contribute no `description` and no
+      // `up` and the migration would run as an empty object
+      if (value === 'function') throw new Error(`${label}: "${exportName}" in ${source} is a function; export the migration object itself (export const ${exportName}: DeclaredMigration = { … })`);
+      if (value === 'class') throw new Error(`${label}: "${exportName}" in ${source} is a class; export an instance of it`);
+      imports.push(`import { ${exportName} as ${local} } from '${toImportPath(root, source)}';`);
+      return `    { target: '${version}', ...${local} },`;
+    });
+    return { imports, literal: `[\n${items.join('\n')}\n  ]` };
+  }
+
+  /** The steps for a registration literal, or no literal at all when the target carries none */
+  function stepDefinitionsFor(target: FacetTarget): { imports: string[]; literal: string } {
+    const { imports, items } = stepLiterals(target, '    ');
+    return { imports, literal: items.length ? `[\n${items.join('\n')}\n  ]` : '' };
   }
 
   /**
    * The module a dependent pack's `abuddy build` loads to validate its flows: the build-time facets alone,
-   * with no runtime handler and nothing frontend. It is generated from the same manifest entries the
-   * backend registration is, so the two cannot name different facets — which is what the hand-written
-   * second barrel could do and what `build-barrel.spec.ts` existed to catch.
+   * with no runtime handler and nothing frontend. It is generated from the same manifest entries and the
+   * same builder the registrations are, so the two cannot name different facets — which is what the
+   * hand-written second barrel could do and what `build-barrel.spec.ts` existed to catch.
    */
   function generateStepsBuild(): string {
     if (stepDefinitions.length === 0) return '';
-    const imports: string[] = [];
-    const items = stepDefinitions.map((step, index) => {
-      const parts = [`type: '${step.type}'`];
-      if (step.kind) parts.push(`kind: '${step.kind}'`);
-      if (step.entry.build) {
-        const facet = stepFacet(`Step "${step.type}": build`, step.entry.build, `__stepBuild_${index}`);
-        imports.push(facet.import);
-        parts.push(`build: ${facet.expr}`);
-      }
-      if (step.entry.trigger) {
-        const facet = stepFacet(`Step "${step.type}": trigger.facet`, step.entry.trigger.facet, `__stepTrigger_${index}`);
-        imports.push(facet.import);
-        parts.push(`trigger: ${facet.expr}`);
-      }
-      return `  { ${parts.join(', ')} },`;
-    });
+    const { imports, items } = stepLiterals('buildModule', '  ');
     return `${HEADER}
 import type { StepDefinition } from '@abuddy/sdk/steps';
 ${imports.join('\n')}
@@ -687,20 +779,6 @@ export const steps: StepDefinition[] = [
 ${items.join('\n')}
 ];
 `;
-  }
-
-  /** The steps a manifest declares, for the frontend registration: what the flow editor draws */
-  function stepDefinitionsFE(): { imports: string[]; literal: string } {
-    const imports: string[] = [];
-    const items = stepDefinitions.filter((step) => step.entry.fe).map((step, index) => {
-      const facet = stepFacet(`Step "${step.type}": fe`, step.entry.fe!, `__stepFE_${index}`);
-      imports.push(facet.import);
-      const parts = [`type: '${step.type}'`];
-      if (step.kind) parts.push(`kind: '${step.kind}'`);
-      parts.push(`fe: ${facet.expr}`);
-      return `    { ${parts.join(', ')} },`;
-    });
-    return { imports, literal: items.length ? `[\n${items.join('\n')}\n  ]` : '' };
   }
 
   /**
@@ -779,22 +857,49 @@ ${items.join('\n')}
   }
 
   /**
-   * The steps this pack declares, each with the directory its modules sit in: the dirname of the first
-   * facet it names. A step's `types.ts` and `helpers.ts` are read from there, because they sit beside the
-   * facets rather than being declared — the step's directory is one fact and the manifest states it once,
-   * as the path to a facet.
+   * The steps this pack declares, each with the directory its modules sit in. A step's `types.ts` and
+   * `helpers.ts` are read from there, because they sit beside the facets rather than being declared — the
+   * step's directory is one fact and the manifest states it once, as the path to a facet.
    */
   const stepDefinitions: StepDeclaration[] = Object.entries(manifest.extensions?.steps ?? {}).map(([type, entry]) => ({
     type,
     kind: entry.kind,
     dsl: entry.dsl,
     entry,
-    path: stepDir(entry),
+    path: stepDir(type, entry),
   }));
 
-  function stepDir(entry: StepEntry): string {
-    const first = entry.build ?? entry.trigger?.facet ?? entry.runtime?.handler ?? entry.fe;
-    return first ? dirname(first.split('#')[0]!) : '';
+  /**
+   * The directory a step's modules sit in, from the facets it names — and a refusal when they disagree.
+   *
+   * Three of the readers below (`stepNodeTypes`, `generateStepTypes`, `emitStepHelper`) go looking for a
+   * `types.ts` or a `helpers.ts` there, and two of them are `existsSync`-filtered: a wrong answer drops the
+   * step's node types out of `PackShapes` and says nothing. So this refuses rather than guesses. It takes
+   * the first facet's directory and holds every other facet to it, because "the step's directory" is only
+   * a fact while they agree; a step that genuinely wants its facets apart declares what it needs beside
+   * each one instead of having a directory inferred for it.
+   */
+  function stepDir(type: string, entry: StepEntry): string {
+    const facets: Array<[string, string | undefined]> = [
+      ['build', entry.build],
+      ['trigger.facet', entry.trigger?.facet],
+      ['node', entry.node],
+      ['runtime.handler', entry.runtime?.handler],
+      ['fe', entry.fe],
+    ];
+    const dirs = facets
+      .filter((pair): pair is [string, string] => pair[1] !== undefined)
+      .map(([name, target]) => [name, dirname(target.split('#')[0]!)] as const);
+    if (dirs.length === 0) {
+      throw new Error(`Step "${type}" names no facet: declare at least "node", and whichever of "build"/"trigger"/"runtime"/"fe" it has`);
+    }
+    const [, first] = dirs[0]!;
+    const elsewhere = dirs.filter(([, dir]) => dir !== first);
+    if (elsewhere.length) {
+      const where = [dirs[0]!, ...elsewhere].map(([name, dir]) => `${name} in ${dir}`).join(', ');
+      throw new Error(`Step "${type}" spreads its facets across directories (${where}); its types.ts and helpers.ts are read from one`);
+    }
+    return first;
   }
 
   // ── Backend entry ──────────────────────────────────────────────
@@ -840,7 +945,8 @@ ${items.join('\n')}
     const writerEntries = contentWriterEntries();
     const blocks = blockDefinitions();
     const artifacts = artifactDefinitions();
-    const steps = stepDefinitionsBE();
+    const steps = stepDefinitionsFor('backend');
+    const migrations = migrationEntries();
     // The pack's settings sections: a function returning them, called the first time the defaults are read
     const sections = manifest.settingsSections
       ? valueExport('settingsSections', manifest.settingsSections)
@@ -871,7 +977,7 @@ import { featureServices } from './services.ts';
 ${hooksImport}
 ${writerEntries.map(([, path, exportName], i) => `import { ${exportName} as __contentWriter_${i} } from '${path}';`).join('\n')}
 ${settingsImports}
-${manifest.migrations ? `import { migrations } from '${toImportPath(root, manifest.migrations)}';` : ''}
+${migrations.imports.join('\n')}
 ${steps.imports.join('\n')}
 ${blocks.imports.join('\n')}
 import { appliers } from './appliers.ts';
@@ -897,7 +1003,7 @@ ${help ? '  help: __help,' : ''}
     entities: ${JSON.stringify(manifest.entities ?? {})},
     relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
   },
-${manifest.boot?.hooks ? '  boot: { ..._hooks },\n' : ''}${manifest.migrations ? '  migrations,' : ''}
+${manifest.boot?.hooks ? '  boot: { ..._hooks },\n' : ''}${migrations.literal ? `  migrations: ${migrations.literal},` : ''}
 };
 ${contractCheck}`;
   }
@@ -929,7 +1035,7 @@ ${contractCheck}`;
 
     const blocks = blockDefinitionsFE();
     const artifacts = artifactDefinitionsFE();
-    const steps = stepDefinitionsFE();
+    const steps = stepDefinitionsFor('frontend');
 
     const extraImports: string[] = [];
     if (fe.tiptapPlugins) {
@@ -1777,9 +1883,12 @@ export type { ImportMode } from '@abuddy/sdk/utils';
 
   function generateStepTypes(): string {
     if (!stepDefinitions.length) return '';
-    const reExports = stepDefinitions
-      .filter(step => existsSync(join(root, step.path, 'types.ts')))
-      .map(step => `export type * from '${toImportPath(root, step.path + '/types')}';`);
+    // By directory rather than by step: two steps may sit in one, and `export type *` twice from the same
+    // module is a duplicate-export error rather than a harmless repeat
+    const dirs = [...new Set(stepDefinitions.map(step => step.path))];
+    const reExports = dirs
+      .filter(dir => existsSync(join(root, dir, 'types.ts')))
+      .map(dir => `export type * from '${toImportPath(root, dir + '/types')}';`);
     if (!reExports.length) return '';
     return `${HEADER}\n${reExports.join('\n')}\n`;
   }

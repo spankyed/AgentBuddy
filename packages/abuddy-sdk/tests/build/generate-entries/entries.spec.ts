@@ -208,21 +208,23 @@ describe('generated registrations', () => {
 
 describe('generated step registrations', () => {
   const stepPack = () => {
-    write('src/steps/llm/build.ts', 'export const llmStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\n');
-    write('src/steps/llm/fe.ts', 'export const llmStepFE = { nodeConfig: { label: \'LLM\' } };\n');
+    write('src/steps/llm/build.ts', 'export const llmStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\nexport const llmStepNode = { label: \'LLM\' };\n');
+    write('src/steps/llm/fe.ts', 'export const llmStepFE = { nodeConfig: {} };\n');
     write('src/steps/llm/runtime.ts', 'export function handler() {}\n');
-    write('src/steps/cron/build.ts', 'export const cronTrigger = { trackField: \'schedule\', compile: () => ({}), decompile: () => ({}) };\n');
-    write('src/steps/cron/fe.ts', 'export const cronTriggerFE = { nodeConfig: { label: \'Cron\' } };\n');
+    write('src/steps/cron/build.ts', 'export const cronTrigger = { trackField: \'schedule\', compile: () => ({}), decompile: () => ({}) };\nexport const cronTriggerNode = { label: \'Cron\' };\n');
+    write('src/steps/cron/fe.ts', 'export const cronTriggerFE = { nodeConfig: {} };\n');
     write('src/steps/cron/runtime.ts', 'export function register() {}\n');
     return {
       steps: {
         llm: {
+          node: 'src/steps/llm/build.ts#llmStepNode',
           build: 'src/steps/llm/build.ts#llmStepBuild',
           fe: 'src/steps/llm/fe.ts#llmStepFE',
           runtime: { handler: 'src/steps/llm/runtime.ts#handler', isAsync: true },
         },
         cron: {
           kind: 'trigger',
+          node: 'src/steps/cron/build.ts#cronTriggerNode',
           trigger: { facet: 'src/steps/cron/build.ts#cronTrigger', register: 'src/steps/cron/runtime.ts#register' },
           fe: 'src/steps/cron/fe.ts#cronTriggerFE',
         },
@@ -236,20 +238,34 @@ describe('generated step registrations', () => {
     const files = generate(stepPack());
 
     const be = files['src/__generated__/pack-entry.ts'];
-    expect(be).toContain("import { llmStepBuild as __stepBuild_0 } from '../steps/llm/build.ts';");
-    expect(be).toContain("{ type: 'llm', build: __stepBuild_0, runtime: { handler: async (tNode, node, ctx, actor) => (await import('../steps/llm/runtime.ts')).handler(tNode, node, ctx, actor), isAsync: true } },");
-    expect(be).toContain("{ type: 'cron', kind: 'trigger', trigger: { ...__stepTrigger_1, register: async (node, ctx) => (await import('../steps/cron/runtime.ts')).register(node, ctx) } },");
+    expect(be).toContain("import { llmStepBuild as __step_llm_build } from '../steps/llm/build.ts';");
+    expect(be).toContain("{ type: 'llm', node: __step_llm_node, build: __step_llm_build, runtime: { handler: async (tNode, node, ctx, actor) => (await import('../steps/llm/runtime.ts')).handler(tNode, node, ctx, actor), isAsync: true } },");
+    expect(be).toContain("{ type: 'cron', kind: 'trigger', node: __step_cron_node, trigger: { ...__step_cron_trigger, register: async (node, ctx) => (await import('../steps/cron/runtime.ts')).register(node, ctx) } },");
     expect(be).not.toContain('llmStepFE');
 
     const build = files['src/__generated__/steps-build.ts'];
-    expect(build).toContain("  { type: 'llm', build: __stepBuild_0 },\n  { type: 'cron', kind: 'trigger', trigger: __stepTrigger_1 },");
+    expect(build).toContain("  { type: 'llm', build: __step_llm_build },\n  { type: 'cron', kind: 'trigger', trigger: __step_cron_trigger },");
     expect(build).not.toContain('runtime');
     expect(build).not.toContain('StepFE');
+    // A dependent's build compiles and validates flows; it never creates a node, so it needs no node facet
+    expect(build).not.toContain('Node');
 
     const fe = files['src/__generated__/pack-entry-fe.ts'];
-    expect(fe).toContain("  steps: [\n    { type: 'llm', fe: __stepFE_0 },\n    { type: 'cron', kind: 'trigger', fe: __stepFE_1 },\n  ],");
+    expect(fe).toContain("  steps: [\n    { type: 'llm', node: __step_llm_node, fe: __step_llm_fe },\n    { type: 'cron', kind: 'trigger', node: __step_cron_node, fe: __step_cron_fe },\n  ],");
     expect(fe).not.toContain('runtime');
     expect(fe).not.toContain('StepBuild');
+  });
+
+  // The facet both halves read. While it was part of `fe`, the backend registration carried none of it, so
+  // every node the app created was missing its label and its field defaults and nothing reported it.
+  it('send the node facet to both registrations', () => {
+    const files = generate(stepPack());
+
+    for (const entry of ['src/__generated__/pack-entry.ts', 'src/__generated__/pack-entry-fe.ts']) {
+      expect(files[entry], entry).toContain("import { llmStepNode as __step_llm_node } from '../steps/llm/build.ts';");
+      expect(files[entry], entry).toContain('node: __step_llm_node');
+      expect(files[entry], entry).toContain('node: __step_cron_node');
+    }
   });
 
   // The module is what a dependent pack's `abuddy build` loads, so the backend and it are generated from the
@@ -257,8 +273,8 @@ describe('generated step registrations', () => {
   it('name the same build facet in the backend entry and the module dependents load', () => {
     const files = generate(stepPack());
     for (const file of ['src/__generated__/pack-entry.ts', 'src/__generated__/steps-build.ts']) {
-      expect(files[file], file).toContain("import { llmStepBuild as __stepBuild_0 } from '../steps/llm/build.ts';");
-      expect(files[file], file).toContain("import { cronTrigger as __stepTrigger_1 } from '../steps/cron/build.ts';");
+      expect(files[file], file).toContain("import { llmStepBuild as __step_llm_build } from '../steps/llm/build.ts';");
+      expect(files[file], file).toContain("import { cronTrigger as __step_cron_trigger } from '../steps/cron/build.ts';");
     }
   });
 
@@ -269,9 +285,9 @@ describe('generated step registrations', () => {
   });
 
   it("carry a runtime of flags alone for a step whose behaviour is one", () => {
-    write('src/steps/sub/build.ts', 'export const subStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\n');
-    const files = generate({ steps: { subflow: { build: 'src/steps/sub/build.ts#subStepBuild', runtime: { spawnsSubflow: true } } } });
-    expect(files['src/__generated__/pack-entry.ts']).toContain("{ type: 'subflow', build: __stepBuild_0, runtime: { spawnsSubflow: true } },");
+    write('src/steps/sub/build.ts', 'export const subStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\nexport const subStepNode = { label: \'Subflow\' };\n');
+    const files = generate({ steps: { subflow: { node: 'src/steps/sub/build.ts#subStepNode', build: 'src/steps/sub/build.ts#subStepBuild', runtime: { spawnsSubflow: true } } } });
+    expect(files['src/__generated__/pack-entry.ts']).toContain("{ type: 'subflow', node: __step_subflow_node, build: __step_subflow_build, runtime: { spawnsSubflow: true } },");
   });
 
   /**
@@ -281,20 +297,47 @@ describe('generated step registrations', () => {
    * still running. `default-setup/tests/extensions/steps/kill/step.spec.ts` is what fails when it regresses.
    */
   it('import a sync handler with the entry rather than on first run', () => {
-    write('src/steps/kill/build.ts', 'export const killStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\n');
+    write('src/steps/kill/build.ts', 'export const killStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\nexport const killStepNode = { label: \'Kill\' };\n');
     write('src/steps/kill/runtime.ts', 'export function handler() {}\n');
-    const files = generate({ steps: { kill: { build: 'src/steps/kill/build.ts#killStepBuild', runtime: { handler: 'src/steps/kill/runtime.ts#handler', sync: true } } } });
+    const files = generate({ steps: { kill: { node: 'src/steps/kill/build.ts#killStepNode', build: 'src/steps/kill/build.ts#killStepBuild', runtime: { handler: 'src/steps/kill/runtime.ts#handler', sync: true } } } });
     const be = files['src/__generated__/pack-entry.ts'];
 
-    expect(be).toContain("import { handler as __stepHandler_0 } from '../steps/kill/runtime.ts';");
-    expect(be).toContain("{ type: 'kill', build: __stepBuild_0, runtime: { handler: __stepHandler_0 } },");
+    expect(be).toContain("import { handler as __step_kill_handler } from '../steps/kill/runtime.ts';");
+    expect(be).toContain("{ type: 'kill', node: __step_kill_node, build: __step_kill_build, runtime: { handler: __step_kill_handler } },");
     expect(be).not.toContain('await import');
   });
 
   it('fail naming the step and the export for a facet the module does not export', () => {
-    write('src/steps/llm/build.ts', 'export const other = {};\n');
-    expect(() => generate({ steps: { llm: { build: 'src/steps/llm/build.ts#llmStepBuild' } } }))
+    write('src/steps/llm/build.ts', 'export const other = {};\nexport const llmStepNode = { label: \'LLM\' };\n');
+    expect(() => generate({ steps: { llm: { node: 'src/steps/llm/build.ts#llmStepNode', build: 'src/steps/llm/build.ts#llmStepBuild' } } }))
       .toThrow('Step "llm": build: src/steps/llm/build.ts doesn\'t export "llmStepBuild"');
+  });
+
+  /**
+   * A step's `types.ts` and `helpers.ts` are read from the directory its facets sit in, and two of the three
+   * readers are `existsSync`-filtered — so a directory guessed wrong drops the step's node types out of the
+   * pack's shapes and says nothing. These are the two ways it could be guessed wrong.
+   */
+  it('refuse a step whose facets sit in different directories, naming the step and where they are', () => {
+    write('src/steps/split/build.ts', 'export const splitStepBuild = { compile: () => ({}), validate: () => [], getLabel: () => \'\' };\nexport const splitStepNode = { label: \'Split\' };\n');
+    write('src/steps/elsewhere/fe.ts', 'export const splitStepFE = { nodeConfig: {} };\n');
+
+    expect(() => generate({
+      steps: {
+        split: {
+          node: 'src/steps/split/build.ts#splitStepNode',
+          build: 'src/steps/split/build.ts#splitStepBuild',
+          fe: 'src/steps/elsewhere/fe.ts#splitStepFE',
+        },
+      },
+    })).toThrow(/Step "split" spreads its facets across directories \(build in src\/steps\/split, fe in src\/steps\/elsewhere\)/);
+  });
+
+  // An assertion rather than a gate: the schema makes `node` required, so no validated manifest reaches
+  // codegen with an entry naming nothing. Make `node` optional again and this is what fires.
+  it('refuse a step entry that names no facet at all, rather than reading the pack root', () => {
+    expect(() => generate({ steps: { ghost: {} } as never }))
+      .toThrow('Step "ghost" names no facet: declare at least "node", and whichever of "build"/"trigger"/"runtime"/"fe" it has');
   });
 });
 

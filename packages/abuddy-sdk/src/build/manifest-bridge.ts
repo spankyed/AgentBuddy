@@ -66,24 +66,26 @@ async function loadPackDefinitions(manifest: PackManifest, packDir: string, depe
     }
   }
 
-  const loadArray = async (relPath: string | undefined, label: string): Promise<unknown[]> => {
-    if (!relPath) return [];
-    const fullPath = path.resolve(packDir, relPath);
-    if (!fs.existsSync(fullPath)) {
-      console.warn(`Warning: ${label} file not found at ${relPath}`);
-      return [];
+  // Build-only facets, so the CLI loads no runtime or FE code (Vue components) to validate a flow. Codegen
+  // writes this module from the manifest's `steps` and writes none for a pack that declares no step — so
+  // a pack with none has nothing to load, while a module missing beside a declared step means codegen has
+  // not run, which is a build that would otherwise validate its flows against no step definitions at all.
+  const declaredSteps = Object.keys(manifest.extensions?.steps ?? {});
+  if (declaredSteps.length) {
+    const generated = path.resolve(packDir, STEPS_BUILD_MODULE);
+    if (!fs.existsSync(generated)) {
+      throw new Error(
+        `${STEPS_BUILD_MODULE} is missing and the manifest declares ${declaredSteps.length} step(s) `
+        + `(${declaredSteps.join(', ')}). Run "abuddy generate-entries".`,
+      );
     }
-    return findExportedArray(await import(pathToFileURL(fullPath).href)) ?? [];
-  };
-
-  // Build-only definitions avoid loading runtime and FE code (Vue components) in the CLI: codegen writes
-  // the pack's build facets into this module, and the build bundles it for dependents
-  for (const step of await loadArray(STEPS_BUILD_MODULE, 'steps') as StepDefinition[]) {
-    const dependency = dependencyStepTypes.get(step.type);
-    if (dependency) {
-      throw new Error(`Step type "${step.type}" is defined by this pack and by a dependency (${dependency}); rename this pack's step`);
+    for (const step of (findExportedArray(await import(pathToFileURL(generated).href)) ?? []) as StepDefinition[]) {
+      const dependency = dependencyStepTypes.get(step.type);
+      if (dependency) {
+        throw new Error(`Step type "${step.type}" is defined by this pack and by a dependency (${dependency}); rename this pack's step`);
+      }
+      mergeStep(steps, step);
     }
-    mergeStep(steps, step);
   }
 
   return {

@@ -258,6 +258,11 @@
                 ],
                 "description": "Whether this is a regular step or a trigger. \"step\" is the default."
               },
+              "node": {
+                "type": "string",
+                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                "description": "\"path#exportName\" of its StepNodeFacet: the label a new node starts with and the fields it starts with. Declare it in a module no Vue or icon import reaches — its `build` module is the usual home — because the backend reads it too."
+              },
               "build": {
                 "type": "string",
                 "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
@@ -341,6 +346,9 @@
                 "description": "DSL configuration for flow-helper generation."
               }
             },
+            "required": [
+              "node"
+            ],
             "additionalProperties": false
           },
           "propertyNames": {
@@ -719,8 +727,15 @@
       "description": "A pack's content: what it ships, how it is compiled, and how it reaches the database."
     },
     "migrations": {
-      "type": "string",
-      "description": "Path to migrations index module."
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
+      },
+      "propertyNames": {
+        "pattern": "^\\d+\\.\\d+\\.\\d+$"
+      },
+      "description": "Migrations this pack runs, keyed by the version each targets. The key is the version — the module names only its description and its `up` — and a migration runs when the stored version is below its key and the key is at or below the pack's version."
     },
     "build": {
       "type": "object",

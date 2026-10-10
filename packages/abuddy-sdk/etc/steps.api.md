@@ -153,6 +153,7 @@ export interface StepDefinition {
     fe?: StepFEFacet;
     // (undocumented)
     kind?: 'step' | 'trigger';
+    node?: StepNodeFacet;
     // (undocumented)
     runtime?: StepRuntimeFacet;
     // (undocumented)
@@ -172,8 +173,6 @@ export interface StepFEFacet {
         node?: unknown;
         form?: unknown;
     };
-    // (undocumented)
-    defaults?: Record<string, unknown>;
     handlePrefix?: string;
     layout?: StepLayoutDescriptor;
     loadComponents?: () => {
@@ -217,8 +216,6 @@ export interface StepNodeConfig {
         outputs: number;
     };
     // (undocumented)
-    defaultLabel?: string;
-    // (undocumented)
     hoverBgColor: string;
     // (undocumented)
     icon: unknown;
@@ -226,7 +223,12 @@ export interface StepNodeConfig {
     isDisabled?: boolean;
     // (undocumented)
     isImplemented?: boolean;
-    // (undocumented)
+}
+
+// @public
+export interface StepNodeFacet {
+    defaultLabel?: string;
+    defaults?: Record<string, unknown>;
     label: string;
 }
 

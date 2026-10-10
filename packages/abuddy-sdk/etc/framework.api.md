@@ -22,6 +22,14 @@ export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 export function checkFeatureSettings(featureId: string, settings: unknown): string[];
 
 // @public
+export interface DeclaredMigration {
+    // (undocumented)
+    description: string;
+    // (undocumented)
+    up: () => void;
+}
+
+// @public
 export function defineHandlers<TContext extends MachineContext, TEvent extends EventObject, TOut extends {
     type: string;
 } = {
@@ -149,14 +157,10 @@ export interface PackFeatureSystem {
     receives: readonly string[];
 }
 
-// @public (undocumented)
-export interface PackMigration {
-    // (undocumented)
-    description: string;
+// @public
+export interface PackMigration extends DeclaredMigration {
     // (undocumented)
     target: string;
-    // (undocumented)
-    up: () => void;
 }
 
 // @public (undocumented)
