@@ -287,13 +287,20 @@ export interface PackRegistryOptions {
   installedPacksDir?: () => string;
 }
 
-/** The refs of an installed manifest's features that can have settings; a malformed manifest has none */
+/**
+ * The refs of an installed manifest's features that can have settings; a malformed manifest has none.
+ *
+ * Read as data, not trusted as a manifest: `features` is a map keyed by feature id, and `splitRef` is what
+ * refuses a key that isn't one. An array is the malformed shape here — nothing writes one — and reading it
+ * as none rather than throwing is the same rule `declaredFeatureRefs` follows in the 0.3.15 migration.
+ */
 function manifestSettingsRefs({ id, features }: { id?: unknown; features?: unknown }): FeatureRef[] {
-  if (typeof id !== 'string' || !Array.isArray(features)) return [];
-  return features.flatMap((feature: { id?: unknown; settings?: unknown; plugin?: unknown } | null) => {
-    const ref = typeof feature?.id === 'string' && (feature.settings || feature.plugin) ? `${id}/${feature.id}` : undefined;
-    return ref && splitRef(ref) ? [ref as FeatureRef] : [];
-  });
+  if (typeof id !== 'string' || typeof features !== 'object' || features === null || Array.isArray(features)) return [];
+  return Object.entries(features as Record<string, { settings?: unknown; plugin?: unknown } | null>)
+    .flatMap(([featureId, feature]) => {
+      const ref = feature && (feature.settings || feature.plugin) ? `${id}/${featureId}` : undefined;
+      return ref && splitRef(ref) ? [ref as FeatureRef] : [];
+    });
 }
 
 /** When the packs dir's entries last changed: an install, update or uninstall renames an entry in or out */
