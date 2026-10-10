@@ -68,7 +68,17 @@ export async function initTests(_args: string[]): Promise<void> {
   const pkgPath = path.join(cwd, 'package.json');
   if (fs.existsSync(pkgPath)) {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-    const wanted: Record<string, string> = { '@abuddy/testing': `^${cliVersion()}`, '@playwright/test': PLAYWRIGHT_RANGE };
+    // `playwright-core` beside the runner, because the two paths need different halves of it: a script
+    // runs on `@playwright/test`, and `abuddy drive --eval` attaches with `playwright-core`'s
+    // `connectOverCDP`. It arrives by hoisting under npm, so the attach usually works without it being
+    // declared — and "usually" is the problem: under pnpm or `--no-hoist` the bare import misses and the
+    // author meets an install hint for something `init-tests` could have written. The three ship in
+    // lockstep, so one range names all of them.
+    const wanted: Record<string, string> = {
+      '@abuddy/testing': `^${cliVersion()}`,
+      '@playwright/test': PLAYWRIGHT_RANGE,
+      'playwright-core': PLAYWRIGHT_RANGE,
+    };
     const missing = Object.keys(wanted).filter(name => !pkg.devDependencies?.[name] && !pkg.dependencies?.[name]);
     if (missing.length > 0) {
       pkg.devDependencies = { ...pkg.devDependencies, ...Object.fromEntries(missing.map(name => [name, wanted[name]])) };
