@@ -20,12 +20,12 @@ Commands:
   install <source> [-d] [-b]  Install a pack (path, URL, GitHub, or registry name)
   uninstall <id> [-d] [-b]   Remove an installed pack
   list [-d] [-b]             Show installed packs
-  dev [--app-root <path> | --app beta] [--profile <name> | --fresh [--rm]]
+  dev [--build <name|path>] [--profile <name> | --fresh [--rm]]
                       Launch the app and hold it. With a pack in hand, reload it as you edit
   init-tests            Scaffold Playwright E2E test setup
   drive [script]        Launch the app and drive it: a script in drive/, a --serve session, or one
                         --eval/--query/--state question (not a test)
-  test [args...]        Run E2E tests in AgentBuddy (--app-root <path> | --app beta)
+  test [args...]        Run E2E tests in AgentBuddy (--build <name|path>)
   open [-b]           Open the installed AgentBuddy app
   upgrade [-b] [--relaunch]  Install the latest AgentBuddy release into /Applications
   db <command>        Query, export, import or reset the app's database (AgentBuddy closed)

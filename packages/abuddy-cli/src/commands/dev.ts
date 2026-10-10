@@ -20,7 +20,7 @@ import { installPackFromLocal, readHostInfo } from '@abuddy/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
 
 const HELP = `
-Usage: abuddy dev [--app-root <path> | --app beta]
+Usage: abuddy dev [--build <name|path>]
 
 Launch AgentBuddy and hold it. With a pack in hand it is installed and kept in step with your
 edits: FE changes reload the window through Vite, BE changes rebuild, reinstall and reload in
@@ -34,8 +34,7 @@ An app already running on the same data dir is used as it is; otherwise one is l
 closing this command closes the app it started.
 
 Options:
-  --app-root <path>   a local AgentBuddy checkout (installed and built)
-  --app beta          the newest AgentBuddy Beta build that satisfies the pack's hostVersion
+  --build <name|path> a build by name (beta) or a local AgentBuddy checkout by path
 ${PROFILE_USAGE}
   --help, -h          Show this help
 
@@ -43,7 +42,7 @@ With no app named: the AgentBuddy checkout this pack is built against, if there 
 Beta build its hostVersion accepts. Nothing is remembered and nothing is asked.
 With no profile named, the shared development data dir is used.
 
-Note that --app beta reloads by restarting rather than in place: a packaged build refuses a
+Note that --build beta reloads by restarting rather than in place: a packaged build refuses a
 pack reload, and publishes no API token for one.
 `.trim();
 

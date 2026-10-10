@@ -70,11 +70,20 @@ function packagedAppVersion(executable: string): string | undefined {
   }
 }
 
-/** ABUDDY_APP: the env form of `--app`, for CI (`ABUDDY_APP=beta`). */
-function appFromEnv(env: NodeJS.ProcessEnv): 'beta' | undefined {
-  if (env.ABUDDY_APP === undefined || env.ABUDDY_APP === '') return undefined;
-  if (env.ABUDDY_APP !== 'beta') throw new Error(`Unknown ABUDDY_APP "${env.ABUDDY_APP}" (supported: beta)`);
-  return 'beta';
+/**
+ * `ABUDDY_BUILD`, the environment's form of `--build`, holding either shape.
+ *
+ * **One variable, because `ABUDDY_APP` and `ABUDDY_ROOT` were one axis asked two ways**: one took a name
+ * and the other a path, which is the same split the two flags they mirrored had. Read before anything can
+ * outrank it, so a value that names nothing is refused wherever it sits rather than only where it won.
+ *
+ * **It is the *selector*, and `ABUDDY_ROOT`/`ABUDDY_APP_EXECUTABLE` are not.** Those two are how this CLI
+ * hands a *resolved* answer to a child process — the fixture takes a checkout at a path or a packaged
+ * executable — so they are two kinds of answer rather than two spellings of one question, and they stay.
+ */
+function buildFromEnv(env: NodeJS.ProcessEnv): string | undefined {
+  const given = env.ABUDDY_BUILD;
+  return given === undefined || given === '' ? undefined : given;
 }
 
 /** What every lookup here needs: where to look, and how to reach a beta when the answer is one. */
@@ -114,18 +123,16 @@ interface NamedApp {
  */
 function namedApp(flags: AppFlags | undefined, env: NodeJS.ProcessEnv, saved?: NamedApp): NamedApp | undefined {
   // Read before anything can outrank it, so a typo'd value is refused wherever it sits. It used to be
-  // short-circuited in the resolvers, which made `ABUDDY_APP=nightly` an error during `build` and
-  // silence during `test` whenever --app-root or --app beta won.
-  const envApp = appFromEnv(env);
-  if (flags?.appRoot) return { choice: { source: flags.appRoot }, from: '--app-root' };
-  if (flags?.app === 'beta') return { choice: { beta: true }, from: '--app beta' };
-  if (envApp === 'beta') return { choice: { beta: true }, from: 'ABUDDY_APP=beta' };
-  if (env.ABUDDY_ROOT) return { choice: { source: env.ABUDDY_ROOT }, from: 'ABUDDY_ROOT' };
+  // short-circuited in the resolvers, which made `ABUDDY_BUILD=nightly` an error during `build` and
+  // silence during `test` whenever --build won.
+  const envBuild = buildFromEnv(env);
+  if (flags?.build) return { choice: buildChoice(flags.build), from: `--build ${flags.build}` };
+  if (envBuild) return { choice: buildChoice(envBuild), from: `ABUDDY_BUILD=${envBuild}` };
   return saved;
 }
 
 /**
- * The built-in packs directory of the app `abuddy build` resolves dependencies through: ABUDDY_APP=beta
+ * The built-in packs directory of the app `abuddy build` resolves dependencies through: ABUDDY_BUILD=beta
  * (downloaded when needed), ABUDDY_ROOT, or the AgentBuddy checkout behind the pack. Lets a pack resolve
  * dependencies on built-in packs before the app has ever run, including in CI.
  *
@@ -196,9 +203,26 @@ function cachedBetaApp(dirs: CliDirs, hostVersion: string): PackagedApp | null {
   return null;
 }
 
+/**
+ * The builds a name can select. Everything else a `--build` is given is a path.
+ *
+ * **One flag, because the two it replaced were never two concepts.** They split on the *shape of the
+ * value* — a name or a path — and the name half accepted exactly one word, so the disambiguation is one
+ * line: a value in this set is a build, anything else is a path. `./beta` says "the directory" the way it
+ * does in every other tool, which is the escape hatch for the day a checkout is named after a channel.
+ *
+ * `build`, because it is the only word that covers all of them: "channel" does not, since `development` and
+ * `test` are not releases. And it keeps one meaning across the CLI — `abuddy build` *produces* one,
+ * `--build` *selects* one.
+ */
+export const BUILD_NAMES = ['beta'] as const;
+export type BuildName = (typeof BUILD_NAMES)[number];
+
+export const isBuildName = (value: string): value is BuildName => (BUILD_NAMES as readonly string[]).includes(value);
+
 export interface AppFlags {
-  appRoot?: string;
-  app?: string;
+  /** A build by name, or a checkout by path. One flag, since the two were one axis all along */
+  build?: string;
   /** Build the pack as a release before testing it, so the tests run what a release ships */
   release?: boolean;
   args: string[];
@@ -211,17 +235,22 @@ export interface AppFlags {
   prebuilt?: boolean;
 }
 
-/** Pulls `--app-root <path>`, `--app <beta>` and `--release` out of the args forwarded to Playwright. */
+/**
+ * Pulls `--build <name|path>` and `--release` out of the args forwarded to Playwright.
+ *
+ * `-d`, `-b` and `--production` are shorthands for `--build development`, `--build beta` and
+ * `--build production`, on every command that has them: they keep working and change what they *mean*, a
+ * build rather than an environment.
+ */
 export function parseAppFlags(argv: string[]): AppFlags {
   const flags: AppFlags = { args: [] };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     const [name, inline] = arg.startsWith('--') ? arg.split(/=(.*)/s, 2) : [arg];
-    if (name === '--app-root' || name === '--app') {
+    if (name === '--build') {
       const value = inline ?? argv[++i];
-      if (!value) throw new Error(`${name} needs a value`);
-      if (name === '--app-root') flags.appRoot = value;
-      else flags.app = value;
+      if (!value) throw new Error('--build needs a value: a build name or a path to a checkout');
+      flags.build = value;
     } else if (name === '--release') {
       flags.release = true;
     } else if (name === '--prebuilt') {
@@ -230,9 +259,18 @@ export function parseAppFlags(argv: string[]): AppFlags {
       flags.args.push(arg);
     }
   }
-  if (flags.app !== undefined && flags.app !== 'beta') throw new Error(`Unknown --app "${flags.app}" (supported: beta)`);
   return flags;
 }
+
+/**
+ * What a `--build` value selects: a named build, or a checkout at that path.
+ *
+ * A bare value that is also a known name is the name; `./beta` is the path. Nothing else needs deciding —
+ * with one reserved name it cannot be ambiguous today, and a value that is neither a name nor an existing
+ * path is reported by whoever tries to use it, which says more than a parse error could.
+ */
+export const buildChoice = (value: string): AppChoice =>
+  (isBuildName(value) ? { beta: true } : { source: value });
 
 export interface ResolveAppOptions extends AppLookupOptions {
   flags: AppFlags;
@@ -307,7 +345,7 @@ export async function resolvePinnedApp(options: ResolveAppOptions): Promise<AppT
 
   const named = namedApp(flags, env, undefined);
   if (named && 'source' in named.choice) return sourceTarget(named.choice.source, named.from);
-  // The default, not just the `--app beta` case: a pinned run always has an answer, from the manifest
+  // The default, not just the `--build beta` case: a pinned run always has an answer, from the manifest
   return packagedTarget(options);
 }
 

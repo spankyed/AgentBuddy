@@ -6,7 +6,7 @@
 # digest, because the work dir is outside the checkout on purpose and the chain can only derive an edge from
 # a repo-relative path.
 #
-#   8. abuddy test passes against the app it is told to use (--app-root; it reads no machine state)
+#   8. abuddy test passes against the app it is told to use (--build; it reads no machine state)
 #   9. the packed CLI's abuddy db reads and exports the data that app written
 # Requires a built app (npm run build) and the author half having run.
 # KEEP_WORK=1 keeps the work dir and the app data dir.
@@ -31,14 +31,14 @@ useWorkDir "$WORK"
 cd "$PACK"
 
 step "8. abuddy test on the packed archive (the app named on the command line)"
-# --app-root, and nothing in the environment: `abuddy test` is pinned to what it is given, so that a run
+# --build, and nothing in the environment: `abuddy test` is pinned to what it is given, so that a run
 # means the same thing on a fresh machine as on one someone has developed on
 # PACK_ARCHIVE installs step 6's .tgz as it is, so this runs the artifact a release ships rather than
 # another build of the same source — the one thing the rest of the script cannot check.
 # The app's data dir is kept for step 9: the app written the installed demo pack into it
 # `if !` so the pipeline's exit status is this script's to report: under `set -e` a failure would otherwise end it
 # here, with only Playwright's own output to say why
-if ! PACK_ARCHIVE="$ARCHIVE" E2E_KEEP_DATA=1 "$ABUDDY" test --app-root "$ROOT" 2>&1 | tee "$WORK/e2e.log"; then fail "abuddy test failed"; fi
+if ! PACK_ARCHIVE="$ARCHIVE" E2E_KEEP_DATA=1 "$ABUDDY" test --build "$ROOT" 2>&1 | tee "$WORK/e2e.log"; then fail "abuddy test failed"; fi
 APP_DATA="$(sed -n 's/.*\[e2e\] kept test data dir: //p' "$WORK/e2e.log" | head -n 1)"
 [ -d "$APP_DATA" ] || fail "abuddy test didn't report the data dir it kept"
 

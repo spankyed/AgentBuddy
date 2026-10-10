@@ -49,7 +49,7 @@ const DRIVE_DIR = 'drive';
  * precedent: exported for exactly this, and asserted in `tests/commands/test-contract.spec.ts`.
  */
 export const DRIVE_USAGE = `
-Usage: abuddy drive [script | --eval <body>] [--app-root <path> | --app beta] [profile flags]
+Usage: abuddy drive [script | --eval <body>] [--build <name|path>] [profile flags]
 
 Launch AgentBuddy and drive it from a script: navigate, send events, read state, screenshot.
 Mainly for an agent debugging or developing against the app; a person can watch, the windows are shown.
@@ -88,8 +88,7 @@ Options:
   --query <code>      the same, for one EARS read over the bus
   --state             the same, for the app shell's state
   --spawn             with none of those running, start an app and keep it, rather than refusing
-  --app-root <path>   a local AgentBuddy checkout (installed and built)
-  --app beta          the newest AgentBuddy Beta build that satisfies the pack's hostVersion
+  --build <name|path> a build by name (beta) or a local AgentBuddy checkout by path
 ${PROFILE_USAGE}
   --help, -h          Show this help
 `.trim();

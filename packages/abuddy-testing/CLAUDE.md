@@ -326,7 +326,7 @@ none of it is needed: measured 2026-10-10, its attach answered in 0.7s against t
 cd /path/to/my-pack
 abuddy init-tests    # playwright.config.ts + tests/e2e/smoke.spec.ts; adds @abuddy/testing + @playwright/test
 npm install
-abuddy test          # a Beta matching your hostVersion, or --app-root <path>
+abuddy test          # a Beta matching your hostVersion, or --build <path>
 ```
 
 No monorepo checkout, `ABUDDY_ROOT`, symlinks or PATH changes are needed.
@@ -335,10 +335,10 @@ No monorepo checkout, `ABUDDY_ROOT`, symlinks or PATH changes are needed.
 
 `abuddy test` (source: `packages/abuddy-cli/src/commands/test.ts`, `src/app/`) resolves the app, in order:
 
-1. `--app-root <path>` — a local AgentBuddy checkout (installed and built)
-2. `--app beta` — the newest AgentBuddy Beta release (from `spankyed/AgentBuddy` releases) whose version satisfies the pack's `hostVersion`. The zip is verified against its published `.sha256` and cached per version in the CLI cache dir (`~/Library/Caches/abuddy-cli/apps/beta/<version>` on macOS). macOS arm64 only.
-3. `ABUDDY_APP=beta` (the env form of `--app beta`, for CI), then `ABUDDY_ROOT` — a local checkout
-4. The newest Beta the pack's `hostVersion` accepts, as `--app beta` would
+1. `--build <path>` — a local AgentBuddy checkout (installed and built)
+2. `--build beta` — the newest AgentBuddy Beta release (from `spankyed/AgentBuddy` releases) whose version satisfies the pack's `hostVersion`. The zip is verified against its published `.sha256` and cached per version in the CLI cache dir (`~/Library/Caches/abuddy-cli/apps/beta/<version>` on macOS). macOS arm64 only.
+3. `ABUDDY_BUILD=beta` (the env form of `--build beta`, for CI), then `ABUDDY_BUILD` — a local checkout
+4. The newest Beta the pack's `hostVersion` accepts, as `--build beta` would
 
 **It reads no machine state and never asks**, which is what makes a test run mean the same thing on a
 fresh machine as on one you have been developing on. It also derives nothing from where the pack sits,
@@ -450,9 +450,9 @@ Screenshot output location depends on context:
 | Variable | Description |
 |----------|-------------|
 | `ABUDDY_ROOT` | A built AgentBuddy checkout to launch. Set by `abuddy test` for checkouts; auto-detected inside the monorepo. |
-| `ABUDDY_APP_EXECUTABLE` | A packaged AgentBuddy executable to launch. Set by `abuddy test --app beta`. |
+| `ABUDDY_APP_EXECUTABLE` | A packaged AgentBuddy executable to launch. Set by `abuddy test --build beta`. |
 | `ABUDDY_CLI` | The abuddy bin that builds the pack. Set by `abuddy test`. |
-| `ABUDDY_APP` | `beta`: `abuddy test` and `abuddy build` use the newest matching AgentBuddy Beta (CI; the scaffolded release workflow sets it). |
+| `ABUDDY_BUILD` | `beta`: `abuddy test` and `abuddy build` use the newest matching AgentBuddy Beta (CI; the scaffolded release workflow sets it). |
 | `PACK_DIR` | Path to an external pack directory. Triggers build/install and plugin waiting. |
 | `PACK_ARCHIVE` | A packed `<id>-<version>.tgz` to install instead of building `PACK_DIR`, so the run tests what a release ships. Refused when it is older than the pack's `dist/`: skipping the rebuild is for testing the shipped artifact, not for testing a stale one. |
 | `E2E_KEEP_DATA` | Set to `1` to keep each worker's temp data dir for debugging. |
@@ -467,8 +467,8 @@ Screenshot output location depends on context:
 
 ```bash
 abuddy test                          # a Beta matching the pack's hostVersion
-abuddy test --app-root ~/AgentBuddy  # a local checkout
-abuddy test --app beta               # the newest matching AgentBuddy Beta
+abuddy test --build ~/AgentBuddy  # a local checkout
+abuddy test --build beta               # the newest matching AgentBuddy Beta
 abuddy test -g "renders"             # Playwright args are forwarded
 ```
 

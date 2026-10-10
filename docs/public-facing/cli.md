@@ -72,7 +72,7 @@ Resolve every dependency and cache its snapshot, build code and backend runtime 
 
 1. `file:` path: read directly, never cached, no fallback
 2. The workspace: in each directory above the pack, nearest first, `packages/<id>` then `<id>`. A pack anywhere inside an AgentBuddy checkout builds against that checkout's packages
-3. The app this pack is built against (`ABUDDY_APP=beta`, `ABUDDY_ROOT`, or the AgentBuddy checkout behind the pack)
+3. The app this pack is built against (`ABUDDY_BUILD=beta`, `ABUDDY_ROOT`, or the AgentBuddy checkout behind the pack)
 4. Installed AgentBuddy apps' built-in packs (production, beta, development, test data dirs)
 5. GitHub releases, for `github:owner/repo` values (the `<id>-<version>.tgz` asset and its `.sha256`)
 
@@ -126,7 +126,7 @@ Stage the built `dist/` into a verified pack (`integrity.json` lists a sha256 pe
 
 Launch AgentBuddy with your pack installed and keep it in step with your edits.
 
-It picks an app the way you tell it to — `--app-root <path>` for a local AgentBuddy checkout, `--app beta` for a Beta that satisfies your `hostVersion` (a downloaded one if you have it, the newest otherwise) — and **with neither it works one out rather than asking**: the AgentBuddy checkout your pack is built against, if there is one, else that newest Beta. Nothing is remembered, nothing is asked, and it prints which app it chose and which rule chose it.
+It picks an app the way you tell it to — `--build <path>` for a local AgentBuddy checkout, `--build beta` for a Beta that satisfies your `hostVersion` (a downloaded one if you have it, the newest otherwise) — and **with neither it works one out rather than asking**: the AgentBuddy checkout your pack is built against, if there is one, else that newest Beta. Nothing is remembered, nothing is asked, and it prints which app it chose and which rule chose it.
 
 Deriving the checkout is the right pairing rather than a convenience: a pack whose `@abuddy/*` resolve into a checkout is *compiled against that checkout's packages*, so running it inside a released Beta would pair source-built pack code with a released host. If that checkout is not built, `run` says so and names `npm run build` instead of quietly using a Beta you were not built against.
 
@@ -143,7 +143,7 @@ The environment follows the app: a checkout runs as `development`, and a package
 
 A profile is self-contained — its data, packs, logs and secrets are all inside it, and the data key that encrypts its secrets goes in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `abuddy profiles rm <name>` does it for you. The path is printed, and `abuddy db --profile <name>` opens its database — by the same name `run` and `profiles` show, throwaway ones included.
 
-A profile is a data dir and nothing else: the environment, the app's identity and the URL scheme are untouched, so `--app beta` and a local checkout can both run the same profile. **The word is `profile` rather than `instance` because an instance of an app is a running process** — which is what Electron's single-instance lock is about — where this is storage, and a named, disposable data dir that leaves the app's identity alone is what a browser calls a profile.
+A profile is a data dir and nothing else: the environment, the app's identity and the URL scheme are untouched, so `--build beta` and a local checkout can both run the same profile. **The word is `profile` rather than `instance` because an instance of an app is a running process** — which is what Electron's single-instance lock is about — where this is storage, and a named, disposable data dir that leaves the app's identity alone is what a browser calls a profile.
 
 An app already running on that data dir is used as it is; otherwise `run` starts one, and closing `run` closes the app it started. It then builds, installs the pack into that app's data dir, and:
 
@@ -153,7 +153,7 @@ An app already running on that data dir is used as it is; otherwise `run` starts
 
 Without an FE entry it rebuilds, reinstalls and reloads on any change instead.
 
-#### `abuddy drive [script | --eval <body>] [--app-root <path> | --app beta] [profile flags]`
+#### `abuddy drive [script | --eval <body>] [--build <name|path>] [profile flags]`
 
 Launch AgentBuddy and drive it from a script: navigate, send events, read state, take screenshots.
 
@@ -302,8 +302,8 @@ answers no value at all.
 
 **With no `abuddy.json` above it, it drives the app of the AgentBuddy checkout it is in** rather than a
 pack: nothing is built or installed, and the app is that checkout's — which is the same rule as for a
-pack, since the checkout behind "no pack here" is the one you are standing in. Naming `--app-root` or
-`--app beta` still overrides it. That is the mode the
+pack, since the checkout behind "no pack here" is the one you are standing in. Naming `--build` or
+`--build beta` still overrides it. That is the mode the
 AgentBuddy repo's own `npm run drive` scripts use, so they are calls to this command rather than a second
 implementation of it.
 
@@ -419,14 +419,14 @@ Print a summary of the current pack: id, version, host version, feature count, s
 
 Scaffold Playwright E2E tests in the pack root: `playwright.config.ts` (tests in `tests/e2e`), `tests/e2e/smoke.spec.ts` (using the first feature with a plugin), `.gitignore` entries for `tests/screenshots/` and `tests/results/`, and `@abuddy/testing` and `@playwright/test` devDependencies. Existing files are kept.
 
-#### `abuddy test [--app-root <path> | --app beta] [--prebuilt] [playwright args...]`
+#### `abuddy test [--build <name|path>] [--prebuilt] [playwright args...]`
 
 Run the pack's Playwright tests in AgentBuddy. Other arguments go to `playwright test`. The app is, in order:
 
-1. `--app-root <path>`: a local AgentBuddy checkout (installed and built)
-2. `--app beta` or `ABUDDY_APP=beta`: an AgentBuddy Beta build satisfying the pack's `hostVersion`
+1. `--build <path>`: a local AgentBuddy checkout (installed and built)
+2. `--build beta` or `ABUDDY_BUILD=beta`: an AgentBuddy Beta build satisfying the pack's `hostVersion`
 3. `ABUDDY_ROOT`
-4. A Beta build satisfying the pack's `hostVersion`, as `--app beta` would
+4. A Beta build satisfying the pack's `hostVersion`, as `--build beta` would
 
 A Beta build is **downloaded once and then reused**: whenever one you already have satisfies the pack's
 `hostVersion`, that one runs — so this works offline and asks GitHub nothing. The newest is fetched only when
@@ -641,7 +641,7 @@ running app does not stop it, it makes the app write the directory back.
 
 Remove build output: `dist/`, `.abuddy/`, `src/__generated__/`.
 
-`--apps` lists the AgentBuddy Beta builds `--app beta` downloaded — a few hundred megabytes each, one per
+`--apps` lists the AgentBuddy Beta builds `--build beta` downloaded — a few hundred megabytes each, one per
 release tested against — and removes all but the newest, which is the one a later run would reuse; `--all`
 removes every build. It works outside a pack.
 

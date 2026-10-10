@@ -6,7 +6,7 @@
  * is that dir, somewhere else, created on demand and disposable.
  *
  * **It is a data dir and nothing more.** `appName` stays `APP_NAMES[env]`, so the environment, the
- * Electron app identity and the URL scheme are untouched, and `--app beta` works: a packaged build stamps
+ * Electron app identity and the URL scheme are untouched, and `--build beta` works: a packaged build stamps
  * its own channel and ignores `ABUDDY_ENV`, where `ABUDDY_USER_DATA_DIR` reaches it. Nothing here is a new
  * concept the app has to learn — an empty directory is already a valid data dir, which is what the E2E
  * fixture has relied on all along.
@@ -19,7 +19,7 @@
  * **profile** is an extra one, created by name, carrying no environment.
  *
  * A profile is not bound to the kind of app that opens it: `abuddy run --profile x` against a checkout and
- * against `--app beta` mean the same directory, because one layout puts both their stores in the same
+ * against `--build beta` mean the same directory, because one layout puts both their stores in the same
  * places inside it.
  */
 import * as fs from 'node:fs';

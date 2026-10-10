@@ -66,7 +66,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const workflow = fs.readFileSync(path.join(pack, '.github', 'workflows', 'release.yml'), 'utf-8');
     // A runner has no installed app, so the build resolves built-in dependencies from a downloaded beta
     expect(workflow).toMatch(/runs-on: macos-14/);
-    expect(workflow).toMatch(/ABUDDY_APP: beta/);
+    expect(workflow).toMatch(/ABUDDY_BUILD: beta/);
   });
 
   it("explains instead of writing a flow the scaffold can't build (no dependency provides steps)", () => {

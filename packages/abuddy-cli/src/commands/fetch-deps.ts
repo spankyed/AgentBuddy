@@ -371,7 +371,7 @@ function copyContent(from: string, to: string): void {
 // ── Resolution chain ──
 
 /**
- * Sources on this machine, in order: the workspace, the app this pack is built against (ABUDDY_APP,
+ * Sources on this machine, in order: the workspace, the app this pack is built against (ABUDDY_BUILD,
  * ABUDDY_ROOT, or the AgentBuddy checkout behind the pack), then installed apps. Each must satisfy the
  * declared range. They're cheap, so they're re-read on every build instead of trusting the cache.
  */

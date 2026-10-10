@@ -13,7 +13,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 ABUDDY="$ROOT/node_modules/.bin/abuddy"
 # Packs depending on a built-in pack (the fixture on default-setup) resolve it from this checkout
-export ABUDDY_ROOT="$ROOT"
+export ABUDDY_BUILD="$ROOT"
 source "$ROOT/tests/scripts/lib/fixture-packs.sh"
 
 for PACK in "${FIXTURE_PACKS[@]}"; do
