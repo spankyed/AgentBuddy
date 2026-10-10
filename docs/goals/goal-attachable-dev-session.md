@@ -572,3 +572,26 @@ The one thing the engine still does better is hold a *warm connection*, and noth
 a per-question process. If an agent asking fifty questions in a row ever makes 15s matter, the answer is a
 session that keeps the CDP connection — which is this design with a server in front of it again, and worth
 building only when something has paid that cost and said so.
+
+### Phase 6 — the deletion (`fd621dddf`)
+
+Done, on the measurement above. 851 lines in four files, plus two generated scripts, a Playwright config
+helper, three specs and the `--serve`/`--attach` flags.
+
+What is left is smaller in the way that matters rather than merely shorter: `drive` has **one path for a
+question** (attach, or refuse, or `--spawn`) and **one for a script** (the Playwright runner, untouched),
+where it had three sharing a config, a scaffold and a one-shot client. `@abuddy/testing/playwright` has two
+helpers rather than three, and neither locks a setting any more — the handshake they were protecting is
+gone, so there is no setting left that a pack changing it would break.
+
+Verified after the cut, all three paths: a miss exits 3 and names both ways forward, `--spawn` answers and
+leaves the app, and the next question attaches.
+
+**Two gates caught orphans nothing else would have found**: `scaffold-templates` found a template nothing
+rendered any more, and `chain-inputs` found six steps declaring inputs that named no file — which is a step
+caching over a gap. Both are checks whose whole subject is a thing going stale quietly, and both fired on
+the first run after the deletion.
+
+One correction worth keeping: the old `drive/README.md` claimed the engine's attach was *"~0.35s instead of
+~3.5s"*. Measured against the new path on one box it is 0.7s against 1.0s. The 3.5s was a cold one-shot —
+two different comparisons quoted as one, which is what a figure without its conditions does.
