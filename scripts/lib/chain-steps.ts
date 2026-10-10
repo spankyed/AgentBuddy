@@ -56,6 +56,21 @@ export interface ChainStep {
    */
   readonly excludeSuffixes?: readonly string[];
   /**
+   * What this step leaves on disk that says *why* it failed, kept before anything can overwrite it.
+   *
+   * **The classification retry is what overwrites it**, which is why this is not merely nice to have: the
+   * retry runs the step again, and a runner that clears its output directory on the way in — Playwright
+   * does — destroys the artifact of the attempt being diagnosed. A teardown that hung for 60s was
+   * unexplainable afterwards for exactly that reason: the app's own log had been replaced by the retry's.
+   *
+   * **Declared rather than taken from `outputs`.** Most outputs are build product — `build:app` and
+   * `compile` write hundreds of megabytes of it — which explains no failure and would be copied on every
+   * one. Deriving it as "outputs nothing else reads" is the clever repair and gives a wrong answer in
+   * silence. `chain-table.spec.ts` holds each entry to being a path the step declares it writes, so one
+   * naming a tree nobody writes fails rather than copying nothing.
+   */
+  readonly keepsOnFailure?: readonly string[];
+  /**
    * A step the chain does not cache, and why. Set means uncached; the chain prints this sentence where a
    * cache verdict would go, so it is a reason and not a flag — the one line it replaced was hardcoded about
    * Electron and was wrong about the second step to opt out.
@@ -1138,6 +1153,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@abuddy/testing` resolves to its
     // built bundle, which launches Electron, finds the window and bypasses onboarding. Reached by package
     // name rather than by path, so nothing that reads a step's text can see the edge
+    keepsOnFailure: FIXTURE_TEST_OUTPUT,
     inputs: [...ROOT, ...BOUNDED_RUNNER, 'tests/packs', 'tests/scripts/test-external-pack-app.sh',
       'tests/scripts/lib', 'playwright.config.ts', ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },
   // Never cached: it drives real Electron with real timing and is the likeliest step to be flaky, and a
@@ -1164,6 +1180,10 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // suite off the gate bought.
   { name: 'test:smoke', timeout: 'suite', seconds: 16,
     outputs: ['tests/results'],
+    // The fixture writes the app's stdout and stderr here (`app-<workerIndex>.log`), which is the only
+    // account of why an app did not start or did not close. Playwright clears the directory on the way in,
+    // so the retry would take it
+    keepsOnFailure: ['tests/results'],
     inputs: [...ROOT, 'tests/e2e/smoke', 'playwright.config.ts',
       'scripts/with-source.mjs', ...APP_ENTRY, ...PACKAGE_BUILD_READS, ...APP_OUTPUTS] },
   // The rest of the E2E suite. **Opt-in, not a gate** — `npm run chain -- --e2e`.
@@ -1176,6 +1196,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     optInBecause: 'it is a harness for driving the app, not a regression gate; nothing has needed it to fail',
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     outputs: ['tests/results'],
+    keepsOnFailure: ['tests/results'],
     // The published trees, because the fixture every spec imports resolves `@abuddy/testing`'s built bundle
     // from one of them — and `packages:check` packs a tarball inside those trees and recreates them, which a
     // reader must not observe. Declaring them is what makes that a mutex instead of a scheduling accident;

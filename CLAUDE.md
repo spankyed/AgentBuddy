@@ -486,6 +486,11 @@ npm run chain            # Before a merge: every check in dependency order, cold
                          # the last line (node_modules/.cache/abuddy-chain/runs/<started>Z-<pid>/), with the
                          # retry of a failed step beside its first attempt rather than over it. So piping a
                          # run is harmless and the output is still answerable after the terminal has gone.
+                         # A **failed** step also leaves what it wrote (`keepsOnFailure`,
+                         # scripts/lib/chain-steps.ts), copied in before the re-run — which is what would
+                         # take it, since a runner that clears its output directory on the way in destroys
+                         # the artifact of the attempt being diagnosed. That is how an app's own log
+                         # survives the retry rather than being replaced by it.
                          # The newest `KEEP_RUNS` of them are kept, the writer pruning the rest, and a
                          # cached run writes no directory at all, having run nothing.
                          # **One run per checkout**, held by a lock beside the stamps

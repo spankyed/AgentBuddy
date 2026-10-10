@@ -562,6 +562,12 @@ async function main(): Promise<void> {
       })
       : `${step.name} failed (exit ${failed.code})${howLong(step, failed.ms, budget, classifying)}`;
     console.log(`\n${'='.repeat(72)}\n${why}\n${'='.repeat(72)}\n${failed.output}`);
+    // **Before the retry, which is what would take them.** The retry runs the step again, and a runner that
+    // clears its output directory on the way in destroys the artifact of the attempt being diagnosed — the
+    // same reason the sweep above is read here rather than after. Kept on any failure, not only a
+    // classified one: a step that ran alone or timed out leaves the same evidence and nobody re-runs it.
+    const artifacts = evidence?.keepArtifacts(step.name, step.keepsOnFailure ?? []) ?? [];
+    if (artifacts.length > 0) console.log(dim(`  kept what it left behind: ${artifacts.join(', ')}`));
     if (classifying) {
       // `run`, never `runAndStamp`: a step that passes alone has not passed the chain, and stamping it here
       // would let the next run skip the thing that just failed. Nothing else is executing — `schedule` drains
@@ -580,6 +586,9 @@ async function main(): Promise<void> {
       // The verdict reports what the chain cost. The retry is a diagnostic after it, so a 60s re-run must not
       // land on the one number a reader compares between runs.
       classifyMs = retry.ms;
+      // The retry's own, beside the first attempt's rather than over them — a re-run that passed and one
+      // that failed left different evidence, and which it was is the question being asked
+      evidence?.keepArtifacts(`${step.name}.retry`, step.keepsOnFailure ?? []);
       console.log(classifyLine(retry, MEASURED_ON, beside));
     }
   }
