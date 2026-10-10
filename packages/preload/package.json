@@ -3,7 +3,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "exports": {
     "./exposed.mjs": "./dist/exposed.mjs"
@@ -12,6 +13,7 @@
     "@abuddy/sdk": "*",
     "@app/electron-versions": "*",
     "typescript": "5.8.3",
-    "vite": "7.0.6"
+    "vite": "7.0.6",
+    "vitest": "^3.2.4"
   }
 }

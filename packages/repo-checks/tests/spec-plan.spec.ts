@@ -503,7 +503,7 @@ describe('what a run\'s outcome is worth', () => {
  */
 describe('a target with no runs at all', () => {
   it('plans nothing for a workspace with no suite, and is neither unmatched nor ambiguous', () => {
-    const planned = planTargets(['packages/preload'], [], REPO_ROOT);
+    const planned = planTargets(['packages/typescript-floor'], [], REPO_ROOT);
 
     expect(planned.runs).toEqual([]);
     expect(planned.unmatched).toEqual([]);

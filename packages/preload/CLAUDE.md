@@ -8,11 +8,36 @@ The preload script every AgentBuddy window loads (`packages/main`'s `WindowManag
 
 - Build: `npm run build -w @app/preload` (`vite build`), or `npm run build` / `npm start` at the root.
 - Type-check: `npm run typecheck -w @app/preload` (`tsc --noEmit`). Root `npm run typecheck` runs it as `typecheck:preload`.
+- Test: `npm test -w @app/preload` (vitest, `tests/**/*.spec.ts`), in the root `test:unit` pool.
+
+## What the suite holds, and what it deliberately doesn't
+
+**This is the narrowest layer in the repo and the only one a renderer can reach directly** — every pack's
+frontend runs in the same window, so what is exposed here is reachable by code the app did not write. The
+suite is four claims nothing else makes, and the IPC table below is deliberately not one of them: a case
+per channel would restate this file rather than test it.
+
+- **The API token comes from main over `api:token`, never from an argument.** `process.argv` is readable by
+  any process on the machine, so a token passed that way is one every process has. The firing case offers it
+  on the command line and expects it to be ignored.
+- **A port argument is a port or the default.** `parseInt` answered `NaN` for an empty or non-numeric value,
+  and a window then connected to `ws://localhost:NaN` and failed about the URL rather than the argument. An
+  assertion rather than a gate — main builds the argument from a number it holds — so the case names the
+  edit that makes it fire: dropping the `Number.isInteger` guard.
+- **Every `on*` unsubscribe leaves no listener behind**, counted across all eight, which is where a partial
+  unsubscribe would hide: `apiStatus.onEvent` registers five listeners for one subscription.
+- **One global and no second one**, since a second name is a second surface every pack frontend can reach.
+
+`tests/electron-stub.ts` stands in for `contextBridge` and `ipcRenderer` and records what the bridge asked
+for, as `@app/main`'s does for `app`. **A case must take the stub from the same fresh registry as the module
+under test** (`load()` in `tests/bridge.spec.ts`): the bridge runs on import, so each case re-imports it
+after `vi.resetModules()`, and a stub imported at the top of the file is then a different object from the one
+the bridge just called — every assertion reads an empty map.
 
 ## Files
 
 - `src/index.ts` — the whole surface: builds the API objects and calls `contextBridge.exposeInMainWorld('electronAPI', …)`.
-- `src/exposed.ts` — the build entry. It imports `./index.js` for that side effect and re-exports it "for tests" (the package has none).
+- `src/exposed.ts` — the build entry. It imports `./index.js` for that side effect; the re-export beside it carries nothing, since the surface reaches a window through `contextBridge`.
 - `vite.config.js` — SSR library build of `src/exposed.ts` to `dist/exposed.mjs` (Electron requires `.mjs` for ESM preloads), targeting the Chrome version from `@app/electron-versions`. Inline sourcemaps in development. In `npm start` it builds in watch mode and sends the renderer dev server a `full-reload` after each rebuild.
 - `package.json` exports only `./exposed.mjs` → `dist/exposed.mjs`. `packages/entry-point.mjs` resolves that path and hands it to `initApp`.
 
@@ -61,4 +86,6 @@ The renderer and packs don't import this package's types. `Window.electronAPI` i
 
 The declaration marks `electronAPI` optional, because it is missing outside Electron (vitest/jsdom). Callers use `window.electronAPI?.…`.
 
-Not every member is declared: the SDK type lacks `apiToken` (on purpose, above), `fileUtils.getPathForFile`, `shell.openImageExternal`, `apiStatus.reload` and `apiStatus.openLogFile`. default-setup reaches `getPathForFile` through `(window as any)`. The renderer's error page, plain script in `packages/renderer/index.html`, calls `reload`, `relaunch` and `openLogFile`. Nothing calls `openImageExternal`.
+Not every member is declared, and **nothing checks the two lists against each other** — which is why this paragraph had gone stale by one entry before anyone noticed. As of 2026-10-10 the SDK type lacks `apiToken` (on purpose, above), `fileUtils.getPathForFile`, `shell.openImageExternal` and `apiStatus.openLogFile`. default-setup reaches `getPathForFile` through `(window as any)`, and the renderer's error page — plain script in `packages/renderer/index.html`, so outside the type anyway — calls `openLogFile` beside `reload` and `relaunch`. Nothing calls `openImageExternal` at all.
+
+**Closing that for good means making the surface and the type one declaration**, the way this repo does elsewhere: a list of member paths that the type is derived from, which a spec then holds the exposed object to. It is not done, because the type is published (`api:update` territory) and the four divergences above are each a separate decision — one deliberate, one dead, two reached through an escape hatch.

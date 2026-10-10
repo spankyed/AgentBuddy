@@ -1,15 +1,22 @@
 import {ipcRenderer, contextBridge, webFrame, webUtils} from 'electron';
 import type {SpeechEvent} from '@abuddy/sdk/fe';
 
-// Parse API port from command line arguments
+const DEFAULT_API_PORT = 3001;
+
+/**
+ * The port main gave this window, from `--api-port=<n>`.
+ *
+ * **A port or the default, never whatever `parseInt` made of the value.** Main builds this argument from a
+ * number it already holds, so nothing reachable from the UI produces a malformed one — which makes the
+ * guard an assertion rather than a gate. Without it an empty or non-numeric value answers `NaN`, and the
+ * window then connects to `ws://localhost:NaN` and fails with a message about the URL rather than about the
+ * argument, two layers from the mistake.
+ */
 function getApiPort(): number {
-  // Look for --api-port= in process.argv
   const portArg = process.argv.find(arg => arg.startsWith('--api-port='));
-  if (portArg) {
-    const port = parseInt(portArg.split('=')[1], 10);
-    return port;
-  }
-  return 3001;
+  if (portArg === undefined) return DEFAULT_API_PORT;
+  const port = Number(portArg.slice('--api-port='.length));
+  return Number.isInteger(port) && port > 0 ? port : DEFAULT_API_PORT;
 }
 
 function getStartupId(): string | undefined {

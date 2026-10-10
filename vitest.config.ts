@@ -42,6 +42,7 @@ export default defineConfig({
       'packages/abuddy-ears',
       'packages/renderer',
       'packages/main',
+      'packages/preload',
       'packages/abuddy-testing',
       'packages/abuddy-ui',
       'packages/publish-checks',

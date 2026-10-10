@@ -44,11 +44,7 @@ const packageDirs = (): string[] =>
  * `src/` is worth a spec — which is a strong claim, so it carries a reason and is reported when it stops
  * applying.
  */
-const NO_SUITE: Record<string, string> = {
-  preload: 'the IPC bridge: a handful of contextBridge declarations with no logic, and its own CLAUDE.md '
-    + 'explains why it is built rather than tested (a bare tsc there writes .js into src/). The E2E suite '
-    + 'exercises it through every window it opens',
-};
+const NO_SUITE: Record<string, string> = {};
 
 describe('a package with source has a suite', () => {
   const withSource = (): string[] => packageDirs().filter((dir) => fs.existsSync(path.join(REPO_ROOT, 'packages', dir, 'src')));
