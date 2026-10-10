@@ -296,9 +296,10 @@ command is asked, and since it leaves `drive --eval` with **one** meaning rather
 app happened to be up. Starting that app is what `npm start` does several times a day, and the apply
 that runs on its boot is the one this repo made non-destructive.
 
-**`dev` reclaims an app a tool started, which is what makes the default safe.** One app per data dir, and
-`SingleInstanceApp` exits on the second — so without this, an agent's one-shot would hold the development
-dir and the developer's own `npm start` would refuse, with the blame landing on `npm start`. The session
+**`dev` reclaims an app a tool started, which is what makes `--spawn` safe to point at the development
+dir.** One app per data dir, and `SingleInstanceApp` exits on the second — so without this, a spawned
+one-shot would hold the development dir and the developer's own `npm start` would refuse, with the blame
+landing on `npm start`. The session
 file already carries what settles it:
 
 ```
@@ -618,8 +619,10 @@ below exists.
   `test` or packaged context is the case that must fire. Its subject is input, so it needs one, and it is
   the single assertion standing between this design and an open port on a user's installed app.
 - **`dev` reclaims a `drive` app and refuses a person's.** Both halves, because the rule is the whole of
-  what makes the default safe: with `startedBy: drive` it takes the dir and says so, and with
+  what makes `--spawn` safe: with `startedBy: drive` it takes the dir and says so, and with
   `startedBy: dev` it exits as today. Mutation: reclaiming unconditionally takes an app somebody opened.
+  **The case has to `--spawn` and then reclaim**, rather than hand-write a session file: a fabricated file
+  passes while `ABUDDY_SESSION_STARTED_BY` is never set, which is the way this silently never fires.
 - **an autostarted app is attachable.** The case that fails if autostart ever routes through the fixture:
   assert the app it started carries a `debugPort` and answers a verb. `PLAYWRIGHT_TEST` would make it
   `test`, and the environment gate would refuse the port, so this is the firing case for that whole
@@ -629,7 +632,7 @@ below exists.
   passes the case above and leaves the pack author's own pack missing. Assert its plugins are present.
 - **the autostarted app outlives the one-shot that started it**, which is what `detached` plus `.unref()`
   buys and the case that fails without either: ask one question, let the process exit, assert the session
-  file still names a live pid and a second question attaches rather than starting a second app.
+  file still names a live `supervisorPid` and a second question attaches rather than starting a second app.
 - **a `dev` that dies before publishing is reported with its output**, not as a timeout. Mutation: a
   child spawned with `stdio: 'ignore'` turns a failed pack build into "no session file appeared", which is
   the failure this case exists to keep legible.
@@ -638,7 +641,7 @@ below exists.
   reaches `connected` and the verb times out. Both halves, because the printed line is what makes the
   write to a developer's dir visible rather than silent.
 - **two `drive` calls at once start one app.** The lock's firing case: without the re-read after acquiring,
-  both see nothing attachable and both launch. Assert one pid.
+  both see nothing attachable and both launch. Assert one `supervisorPid`.
 - **a `drive`-profile app idles out and a `development` one does not**, which is the whole of what
   `startedBy` and the dir decide between them: a scratch nobody watches goes, the app somebody may be
   looking at stays until a reclaim ends it.
@@ -652,7 +655,7 @@ below exists.
 **Before phase 4, measure the thing being deleted.** `npm run measure` on the *end-to-end* one-shot — CLI
 start, `packages:ensure`, the `playwright-core` import, connect, readiness — not the 74ms connect, which is
 one step of it. The spike's numbers size the attach; nothing yet sizes what a question costs, and that is
-the number that says whether autostart carries `--serve`'s load.
+the number that says whether `--spawn` plus attach carries `--serve`'s load.
 
 Then: `npm run spec packages/abuddy-cli`, `npm run spec packages/abuddy-testing`, `npm run chain`. A real
 `abuddy dev` with `drive --eval` against it, `npm start` with the same, and `npm test -- smoke` to prove

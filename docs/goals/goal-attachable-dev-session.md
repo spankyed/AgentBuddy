@@ -32,8 +32,8 @@ Finished when:
   there is none and starts one with `--spawn`; `abuddy test` publishes none.
 - The debug port is on in `development` only, and a spec fails if a packaged or test context gets it.
 - Decision 8's lock question is settled by observation, and all three places say the same thing.
-- `npm run typecheck`, `npm run spec` over each touched package, `npm run chain`, and — once Phase 7
-  lands — `npm test -- smoke` and a real `abuddy dev` with `drive --eval` against it.
+- `npm run typecheck`, `npm run spec` over each touched package, `npm run chain`, plus `npm test -- smoke`
+  and a real `abuddy dev` with `drive --eval` against it.
 - Every `drive` path says whose app it joined, or what it started and how to end it; `abuddy profiles`
   shows which data dirs have a live app; cli.md carries the "Which app, and how long it lives" table.
   The attach plan's "Telling the user" is the spec for all three.
@@ -151,9 +151,11 @@ Final.
     Playwright) rather than a core with the pack work removed. The Files table is the accurate description
     of the work. Second, `--spawn` **spawns `dev` detached** (`.unref()`), because `dev` never returns and
     its own teardown closes the app it holds; the attach plan has both, with the signalling rule.
-11. **`--spawn` starts the `development` app, and `dev` reclaims one a tool started.** A blank app
-    cannot answer most of what `drive` is asked, so the default is the developer's own data, and
-    `drive --eval` keeps one meaning rather than one per whichever app was up. What makes that safe is
+11. **`--spawn` starts the `development` app, and `dev` reclaims one a tool started.** When an app *is*
+    asked for, it is the developer's own data rather than a blank one, because a blank app cannot answer
+    most of what `drive` is asked and because `drive --eval` should keep one meaning rather than one per
+    whichever app happened to be up. (Whether an app is started at all is Decision 16's: it is not, unless
+    asked.) What makes starting the development app safe is
     the reclaim: on the development dir, `dev` reads the session file and, for `startedBy: drive`,
     SIGTERMs its `supervisorPid`, waits for exit and launches, saying what it took; for `startedBy: dev` it refuses
     as today, because a person's app is not a tool's to take. Without it an agent's one-shot would hold
@@ -212,7 +214,10 @@ Final.
     reading the status exited 0 on every real failure, and which this goal was deleting anyway). A failure
     puts **nothing** on stdout, so a pipe never receives half an answer. `state` belongs in the data
     rather than in a sentence because whether a question acquired a process is what a caller needs to
-    know, and `supervisorPid` is what ends it; prose goes to stderr, and only where something was left behind.
+    know, and `supervisorPid` is what ends it; prose goes to stderr, and only where something was left
+    behind. **Two things count as left behind**: an app that is still running, and a *write to the user's
+    data* — which is why completing onboarding (Decision 14) gets a line as surely as spawning does. An
+    attach that changed nothing says nothing.
 
 ## Phases
 
@@ -248,7 +253,10 @@ that proves one `SessionPage` serves both; the fixture reaches `connected` throu
 ### Phase 4 — the session file
 
 That plan's phase 2. `dev` and `npm start` publish `<dataDir>/session.json` with the `supervisorPid` that
-ends them; `drive` attaches to a live one and refuses when there is none; `test` publishes none.
+ends them; `drive` attaches to a live one and, **on a miss, keeps today's behaviour — it launches its own
+through the fixture**; `test` publishes none. The refusal and `--spawn` are Phase 5's, deliberately: this
+phase adds a fast path in front of what `drive` does today and takes nothing away, so landing it alone
+leaves a cold `drive --eval` working exactly as it does now rather than regressed until Phase 5.
 
 **Done when:** every "Done when" of that plan's phase 2; the environment gate's firing case passes (a
 packaged or `test` context never gets the flag); `abuddy test` publishes no session file; **`abuddy dev`
@@ -274,7 +282,7 @@ then reclaim** rather than hand-write a session file, or it passes while `starte
 `drive` at all; a spawned app is **attachable**, carrying a `debugPort` and answering a verb, which is the
 case that fails the moment it routes through the fixture (Decision 10); **a `--spawn` in a pack repo
 installs the pack**, the other half of Decision 10, which fails if it copied dev's environment rather than
-spawning `dev`; two concurrent `--spawn` calls start **one** app (assert one pid — the lock's firing
+spawning `dev`; two concurrent `--spawn` calls start **one** app (assert one `supervisorPid` — the lock's firing
 case); onboarding is named when it was completed (Decisions 13 and 14), which a never-onboarded profile is
 the case for; a `drive`-profile app idles out and a `development` one does not (Decision 12);
 `abuddy profiles` shows a running app with its `supervisorPid` and `startedBy`, and stops showing it once that app has
@@ -283,7 +291,7 @@ the end-to-end one-shot (`npm run measure`, per that plan's Verification) and re
 
 ### Phase 6 — the deletion
 
-That plan's phase 4, **and only if Phase 5's measurement shows autostart carries `--serve`'s load**. If
+That plan's phase 4, **and only if Phase 5's measurement shows `--spawn` plus attach carries `--serve`'s load**. If
 it does not, skip this phase, leave `--serve` in place, say so in the Outcome and go on to Phase 7:
 phases 1-5 stand on their own, which is the property the phasing exists to give.
 
