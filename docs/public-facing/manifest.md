@@ -214,7 +214,7 @@ Every shape also takes `onUserEdit`, which decides what happens about an item th
 |---|---|---|
 | `onUserEdit` | `"theirs" \| "offer"` | `theirs` (the default): their edit makes the item theirs for good, and the app never mentions it again. `offer`: the app records that a newer version is waiting and the Packs view lets them take it or keep theirs. Neither overwrites their edit. See [Content](content.md#theirs-or-offer-what-happens-to-an-item-the-user-edited) |
 
-An entry can't carry format settings, and an unknown key given a path string fails validation. A `content.artifacts` entry takes no `onUserEdit`: nothing of an artefact is written, so there is no edit of the user's for a policy to be about. See [Content](content.md#writing-entities) for examples.
+An entry can't carry format settings, and an unknown key given a path string fails validation. A `content.datasets` entry takes no `onUserEdit`: nothing of a dataset is written, so there is no edit of the user's for a policy to be about. See [Content](content.md#writing-entities) for examples.
 
 ### ContentFormatConfig
 

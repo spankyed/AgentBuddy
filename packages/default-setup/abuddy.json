@@ -608,7 +608,7 @@
         "format": "notes"
       }
     },
-    "artifacts": {
+    "datasets": {
       "faqs": {
         "path": "src/content/faqs",
         "format": "faqs"

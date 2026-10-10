@@ -46,7 +46,7 @@ export function resolveContentSources(
   manifest: PackManifest,
   packDir: string,
   dependencies: ReadonlyMap<string, ContentDependency> = new Map(),
-  section: 'sources' | 'artifacts' = 'sources',
+  section: 'sources' | 'datasets' = 'sources',
 ): Record<string, ResolvedContentSource> {
   const resolved: Record<string, ResolvedContentSource> = {};
   for (const [key, entry] of Object.entries(manifest.content?.[section] ?? {})) {
@@ -62,16 +62,16 @@ export function resolveContentSources(
       if (!entry.path || !entry.format) throw new Error(`Content "${key}" must be { "path", "format" }, optionally with "applier", or { "applier" }`);
       const found = resolveFormat(key, entry.format, manifest, packDir, dependencies);
       /**
-       * **A source whose format writes no entity is an artifact, and says so.** Compiled, indexed, given an
-       * applier that could only find nothing to do — the contradiction `content.artifacts` exists to close,
+       * **A source whose format writes no entity is a dataset, and says so.** Compiled, indexed, given an
+       * applier that could only find nothing to do — the contradiction `content.datasets` exists to close,
        * so the two sections are kept apart here rather than left to produce a key that does nothing.
        */
       const writesNothing = found.format.entity === undefined;
       if (section === 'sources' && !entry.applier && writesNothing) {
-        throw new Error(`Content "${key}": format "${entry.format}" declares no entity, so nothing is written — declare it under content.artifacts instead`);
+        throw new Error(`Content "${key}": format "${entry.format}" declares no entity, so nothing is written — declare it under content.datasets instead`);
       }
-      if (section === 'artifacts' && !writesNothing) {
-        throw new Error(`Artifact "${key}": format "${entry.format}" declares an entity, so it is content — declare it under content.sources instead`);
+      if (section === 'datasets' && !writesNothing) {
+        throw new Error(`Dataset "${key}": format "${entry.format}" declares an entity, so it is content — declare it under content.sources instead`);
       }
       resolved[key] = {
         kind: 'format', path: entry.path, formatRef: entry.format,

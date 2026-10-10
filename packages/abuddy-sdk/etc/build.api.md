@@ -918,10 +918,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
-        artifacts?: Record<string, {
-            icon: string;
-            fe?: string | undefined;
-        }> | undefined;
         services?: Record<string, string> | undefined;
         steps?: Record<string, {
             node: string;
@@ -944,6 +940,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
                 custom?: true | undefined;
             } | undefined;
+        }> | undefined;
+        artifacts?: Record<string, {
+            icon: string;
+            fe?: string | undefined;
         }> | undefined;
         blocks?: Record<string, {
             kind?: "display" | "input" | undefined;
@@ -966,10 +966,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
-        artifacts?: Record<string, {
-            icon: string;
-            fe?: string | undefined;
-        }> | undefined;
         services?: Record<string, string> | undefined;
         steps?: Record<string, {
             node: string;
@@ -992,6 +988,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 defaultLabel?: string | undefined;
                 custom?: true | undefined;
             } | undefined;
+        }> | undefined;
+        artifacts?: Record<string, {
+            icon: string;
+            fe?: string | undefined;
         }> | undefined;
         blocks?: Record<string, {
             kind?: "display" | "input" | undefined;
@@ -1039,7 +1039,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }>>>;
-        artifacts: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodObject<{
+        datasets: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodObject<{
             path: z.ZodOptional<z.ZodString>;
             format: z.ZodOptional<z.ZodString>;
             applier: z.ZodOptional<z.ZodString>;
@@ -1170,7 +1170,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
-        artifacts?: Record<string, {
+        datasets?: Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
@@ -1201,7 +1201,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
-        artifacts?: Record<string, {
+        datasets?: Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
@@ -1291,10 +1291,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
-        artifacts?: Record<string, {
-            icon: string;
-            fe?: string | undefined;
-        }> | undefined;
         services?: Record<string, string> | undefined;
         steps?: Record<string, {
             node: string;
@@ -1318,6 +1314,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 custom?: true | undefined;
             } | undefined;
         }> | undefined;
+        artifacts?: Record<string, {
+            icon: string;
+            fe?: string | undefined;
+        }> | undefined;
         blocks?: Record<string, {
             kind?: "display" | "input" | undefined;
             fe?: string | undefined;
@@ -1340,7 +1340,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
-        artifacts?: Record<string, {
+        datasets?: Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
@@ -1420,10 +1420,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
-        artifacts?: Record<string, {
-            icon: string;
-            fe?: string | undefined;
-        }> | undefined;
         services?: Record<string, string> | undefined;
         steps?: Record<string, {
             node: string;
@@ -1447,6 +1443,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 custom?: true | undefined;
             } | undefined;
         }> | undefined;
+        artifacts?: Record<string, {
+            icon: string;
+            fe?: string | undefined;
+        }> | undefined;
         blocks?: Record<string, {
             kind?: "display" | "input" | undefined;
             fe?: string | undefined;
@@ -1469,7 +1469,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
-        artifacts?: Record<string, {
+        datasets?: Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
@@ -1549,10 +1549,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
-        artifacts?: Record<string, {
-            icon: string;
-            fe?: string | undefined;
-        }> | undefined;
         services?: Record<string, string> | undefined;
         steps?: Record<string, {
             node: string;
@@ -1576,6 +1572,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 custom?: true | undefined;
             } | undefined;
         }> | undefined;
+        artifacts?: Record<string, {
+            icon: string;
+            fe?: string | undefined;
+        }> | undefined;
         blocks?: Record<string, {
             kind?: "display" | "input" | undefined;
             fe?: string | undefined;
@@ -1598,7 +1598,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
-        artifacts?: Record<string, {
+        datasets?: Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
@@ -1678,10 +1678,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             globals?: Record<string, string> | undefined;
             inline?: string[] | undefined;
         }> | undefined;
-        artifacts?: Record<string, {
-            icon: string;
-            fe?: string | undefined;
-        }> | undefined;
         services?: Record<string, string> | undefined;
         steps?: Record<string, {
             node: string;
@@ -1705,6 +1701,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
                 custom?: true | undefined;
             } | undefined;
         }> | undefined;
+        artifacts?: Record<string, {
+            icon: string;
+            fe?: string | undefined;
+        }> | undefined;
         blocks?: Record<string, {
             kind?: "display" | "input" | undefined;
             fe?: string | undefined;
@@ -1727,7 +1727,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             applier?: string | undefined;
             onUserEdit?: "theirs" | "offer" | undefined;
         }> | undefined;
-        artifacts?: Record<string, {
+        datasets?: Record<string, {
             path?: string | undefined;
             format?: string | undefined;
             applier?: string | undefined;
@@ -1975,7 +1975,7 @@ export interface ProvenanceSource {
 export const RECORD_KEYS: ReadonlySet<string>;
 
 // @public
-export function resolveContentSources(manifest: PackManifest, packDir: string, dependencies?: ReadonlyMap<string, ContentDependency>, section?: 'sources' | 'artifacts'): Record<string, ResolvedContentSource>;
+export function resolveContentSources(manifest: PackManifest, packDir: string, dependencies?: ReadonlyMap<string, ContentDependency>, section?: 'sources' | 'datasets'): Record<string, ResolvedContentSource>;
 
 // @public
 export type ResolvedContentSource = {

@@ -492,7 +492,7 @@ An entry can't set or change any format settings; a pack that needs different se
 | Format field | Description |
 |---|---|
 | `format` / `compiler` | Exactly one: `markdown-tree`, `json`, or a compiler module path (see [Compiler modules](#compiler-modules)) |
-| `entity` | The entity type the items are written as, or an array of types. Each record's `entity` must be one of them (and `tree.branchEntity`); a built-in format tags records with `entity` only when it's a single string. Omitted, the source is an artifact: compiled and never written, so it belongs under `content.artifacts`. Each type must be declared by the pack, a dependency or the SDK |
+| `entity` | The entity type the items are written as, or an array of types. Each record's `entity` must be one of them (and `tree.branchEntity`); a built-in format tags records with `entity` only when it's a single string. Omitted, the source is a dataset: compiled and never written, so it belongs under `content.datasets`. Each type must be declared by the pack, a dependency or the SDK |
 | `identity` | Fields matched to find an existing row. `"parent"` also requires the row to be linked from the record's tree parent by `tree.relKind`. Required unless the entity type has a `find` hook: writing a record without either fails |
 | `tree.branch` | A directory's own file (`index.md`) giving the directory's frontmatter and body |
 | `tree.branchEntity` | The entity type directories become; defaults to `entity` |

@@ -124,7 +124,7 @@ describe('the pack id', () => {
   });
 });
 
-describe('content.formats, content.sources and content.artifacts', () => {
+describe('content.formats, content.sources and content.datasets', () => {
   const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'Memo' }, dependencies: { 'base-pack': '*' } };
   const memos = {
     format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'],
@@ -134,8 +134,8 @@ describe('content.formats, content.sources and content.artifacts', () => {
   };
   const errorsFor = (sources: Record<string, unknown>, formats: Record<string, unknown> = { memos }) =>
     parseManifest({ ...pack, content: { formats, sources } }).errors;
-  const artifactErrors = (artifacts: Record<string, unknown>, formats: Record<string, unknown> = { memos }) =>
-    parseManifest({ ...pack, content: { formats, artifacts } }).errors;
+  const datasetErrors = (datasets: Record<string, unknown>, formats: Record<string, unknown> = { memos }) =>
+    parseManifest({ ...pack, content: { formats, datasets } }).errors;
 
   it('accepts specialty paths, sources naming own or dependency formats, applier sources, and format sources with an applier', () => {
     expect(errorsFor({
@@ -168,19 +168,19 @@ describe('content.formats, content.sources and content.artifacts', () => {
   });
 
   /**
-   * An artifact is compiled and never written, so it takes no applier — and a key is a file name in the
+   * A dataset is compiled and never written, so it takes no applier — and a key is a file name in the
    * compiled output, so the two sections cannot share one.
    */
-  it('takes { path, format } for an artifact, and refuses an applier or a key a source has', () => {
-    expect(artifactErrors({ faqs: { path: 'src/content/faqs', format: 'memos' } })).toEqual([]);
-    expect(artifactErrors({ faqs: { path: 'p', format: 'memos', applier: 'a.ts' } }))
-      .toEqual([expect.stringMatching(/Artifact "faqs" must be \{ "path", "format" \}: it is compiled and never written/)]);
-    expect(artifactErrors({ faqs: { format: 'memos' } }))
-      .toEqual([expect.stringMatching(/Artifact "faqs" must be \{ "path", "format" \}/)]);
+  it('takes { path, format } for a dataset, and refuses an applier or a key a source has', () => {
+    expect(datasetErrors({ faqs: { path: 'src/content/faqs', format: 'memos' } })).toEqual([]);
+    expect(datasetErrors({ faqs: { path: 'p', format: 'memos', applier: 'a.ts' } }))
+      .toEqual([expect.stringMatching(/Dataset "faqs" must be \{ "path", "format" \}: it is compiled and never written/)]);
+    expect(datasetErrors({ faqs: { format: 'memos' } }))
+      .toEqual([expect.stringMatching(/Dataset "faqs" must be \{ "path", "format" \}/)]);
     expect(parseManifest({
       ...pack,
-      content: { formats: { memos }, sources: { memos: { path: 'p', format: 'memos' } }, artifacts: { memos: { path: 'q', format: 'memos' } } },
-    }).errors).toEqual([expect.stringMatching(/"memos" is both a content source and an artifact/)]);
+      content: { formats: { memos }, sources: { memos: { path: 'p', format: 'memos' } }, datasets: { memos: { path: 'q', format: 'memos' } } },
+    }).errors).toEqual([expect.stringMatching(/"memos" is both a content source and a dataset/)]);
   });
 
   it('rejects format settings on a source: they belong to a content.formats format', () => {
@@ -233,9 +233,9 @@ describe('content.formats, content.sources and content.artifacts', () => {
     expect(errorsFor({ memos: { path: 'p', format: 'notes' } })).toEqual([expect.stringMatching(/"content\.sources\.memos\.format": Content "memos": no format "notes" in content\.formats/)]);
     expect(errorsFor({ memos: { path: 'p', format: 'other-pack:notes' } })).toEqual([expect.stringMatching(/format "other-pack:notes" names "other-pack", which isn't a dependency/)]);
     expect(errorsFor({ memos: { path: 'p', format: 'Not A Name' } })).toEqual([expect.stringMatching(/Must be a content\.formats name, or "<dependency id>:<name>"/)]);
-    // An artifact's format is checked in the same two places
-    expect(artifactErrors({ faqs: { path: 'p', format: 'notes' } }))
-      .toEqual([expect.stringMatching(/"content\.artifacts\.faqs\.format": Content "faqs": no format "notes" in content\.formats/)]);
+    // A dataset's format is checked in the same two places
+    expect(datasetErrors({ faqs: { path: 'p', format: 'notes' } }))
+      .toEqual([expect.stringMatching(/"content\.datasets\.faqs\.format": Content "faqs": no format "notes" in content\.formats/)]);
   });
 
   it('rejects unknown format keys, bad field sources, and format/compiler misuse', () => {

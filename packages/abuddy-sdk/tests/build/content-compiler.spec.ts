@@ -31,9 +31,9 @@ const read = (file: string) => JSON.parse(fs.readFileSync(path.join(out, file), 
 async function compile(
   formats: Record<string, unknown>,
   sources: Record<string, unknown>,
-  options: { dependencies?: ReadonlyMap<string, ContentDependency>; importModule?: CompilePackOptions['importModule']; manifest?: Record<string, unknown>; asArtifacts?: boolean } = {},
+  options: { dependencies?: ReadonlyMap<string, ContentDependency>; importModule?: CompilePackOptions['importModule']; manifest?: Record<string, unknown>; asDatasets?: boolean } = {},
 ) {
-  const manifest = { id: 'demo', name: 'Demo', version: '1.0.0', content: { formats, ...(options.asArtifacts ? { artifacts: sources } : { sources }) }, ...options.manifest } as unknown as PackManifest;
+  const manifest = { id: 'demo', name: 'Demo', version: '1.0.0', content: { formats, ...(options.asDatasets ? { datasets: sources } : { sources }) }, ...options.manifest } as unknown as PackManifest;
   return compilePack({
     packDir: root,
     outputDir: out,
@@ -42,12 +42,12 @@ async function compile(
   });
 }
 
-/** The same, declaring the entries under `content.artifacts` */
-const compileArtifacts = (
+/** The same, declaring the entries under `content.datasets` */
+const compileDatasets = (
   formats: Record<string, unknown>,
   sources: Record<string, unknown>,
   options: Parameters<typeof compile>[2] = {},
-) => compile(formats, sources, { ...options, asArtifacts: true });
+) => compile(formats, sources, { ...options, asDatasets: true });
 
 const memosFormat = {
   format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'], tree: { branch: 'index.md' }, media: 'media',
@@ -190,22 +190,22 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
   });
 
   /**
-   * **An artifact is compiled and indexed as unwritten**, which is the whole of what `content.artifacts`
+   * **A dataset is compiled and indexed as unwritten**, which is the whole of what `content.datasets`
    * buys: the same compilation, and no applier to find nothing to do.
    */
-  it('compiles an artifact and indexes it as unwritten', async () => {
+  it('compiles a dataset and indexes it as unwritten', async () => {
     write('content/glossary.json', JSON.stringify([{ question: 'Why?' }]));
-    await compileArtifacts({ glossary: { format: 'json' } }, { glossary: { path: 'content/glossary.json', format: 'glossary' } });
+    await compileDatasets({ glossary: { format: 'json' } }, { glossary: { path: 'content/glossary.json', format: 'glossary' } });
     expect(read('glossary.content.json').records).toEqual([{ question: 'Why?', contentHash: expect.any(String) }]);
     expect(read(CONTENT_INDEX_FILE).entries).toEqual([{ key: 'glossary', written: false, count: 1, items: [] }]);
   });
 
   /** And the two sections are not interchangeable: each refuses the other's shape rather than compiling it */
-  it('refuses a source whose format writes nothing, and an artifact whose format writes something', async () => {
+  it('refuses a source whose format writes nothing, and a dataset whose format writes something', async () => {
     write('content/glossary.json', JSON.stringify([{ question: 'Why?' }]));
     await expect(compile({ glossary: { format: 'json' } }, { glossary: { path: 'content/glossary.json', format: 'glossary' } }))
-      .rejects.toThrow(/declares no entity, so nothing is written — declare it under content\.artifacts instead/);
-    await expect(compileArtifacts({ items: { format: 'json', entity: 'Item' } }, { items: { path: 'content/glossary.json', format: 'items' } }))
+      .rejects.toThrow(/declares no entity, so nothing is written — declare it under content\.datasets instead/);
+    await expect(compileDatasets({ items: { format: 'json', entity: 'Item' } }, { items: { path: 'content/glossary.json', format: 'items' } }))
       .rejects.toThrow(/declares an entity, so it is content — declare it under content\.sources instead/);
   });
 

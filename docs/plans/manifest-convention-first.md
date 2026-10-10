@@ -104,13 +104,10 @@ goes entirely: `helpers.ts` existing is the same fact.
 ```jsonc
 "content": {
   "sources":  { "actions": { "onUserEdit": "offer" }, "notes": { "format": "notes" } },
-  "compiled": { "faqs": { "format": "faqs" } },
+  "datasets": { "faqs": { "format": "faqs" } },
   "formats":  { … }
 }
 ```
-
-`content.artifacts` becomes `content.compiled`, because `extensions.artifacts` and `content.artifacts` are
-unrelated things one word apart today.
 
 ## The resolved shape
 
@@ -154,7 +151,7 @@ Against [`goal-manifest-redesign.md`](../goals/goal-manifest-redesign.md):
 | keeps | 1 (sections), 2 (`path#export` as the one encoding — with far fewer paths to apply it to), 3 (entities onto the owning feature), 4 (relations as wire values), 8 (a key only when there is more to say than "it exists" — `opens`, `kind`, `runs` are exactly that), 9 (landed), 10, 11, 13 (`about`), 16, 17 |
 | replaces | **7** — `provides` plus feature-relative paths becomes no paths at all. Phase 4 shrinks to `about`, `role` and the entity merge |
 | untouched | 5 (volatile), 6 (`role`), 12 (landed), 14, 15 |
-| adds | the resolved manifest as a first-class artifact; `content.artifacts` → `compiled`; `runs`; `dsl.custom` derived from `helpers.ts` |
+| adds | the resolved manifest as a first-class artifact; `runs`; `dsl.custom` derived from `helpers.ts` |
 
 ## The work
 

@@ -351,7 +351,7 @@ item: a field, or an edge set. "Entity" is the data layer's word for a thing in 
     term that goes rather than being renamed is `contentHash`, where `source` means "the authored file" while
     everywhere else in this repo it means a logger or event source.
 
-12. **`faqs` moves to `content.artifacts`, in this plan.** A compiled artefact the pack reads back itself is
+12. **`faqs` moves to `content.datasets`, in this plan.** A compiled dataset the pack reads back itself is
     not content applied to a database, and the contradiction between `goal-generic-content-compiler.md`'s
     Decision 9 and "`content.sources` holds only entries that import entities" is closed by giving it a key of its
     own: compiled like any other entry, no applier generated, never touching the database. Two lines of
@@ -524,6 +524,6 @@ chain (~170s) rather than a warm one. Phase 3 rewrites the manifest of every pac
   and it is a separate change: library reads entities straight off relation walks with raw `qx(...).pickAll()` —
   19 sites in 4 files with no filtered read anywhere — flows and the brain another 4, and neither `linksTo`
   nor `findRelations` filters `deleted`.
-- **Not a manifest redesign.** `content.artifacts` is added here because `faqs` needs it and it is two lines
+- **Not a manifest redesign.** `content.datasets` is added here because `faqs` needs it and it is two lines
   of schema (Decision 12); everything else about the manifest's shape stays where it is being designed, in
   `goal-manifest-redesign.md`.

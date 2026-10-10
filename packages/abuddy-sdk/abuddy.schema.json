@@ -582,7 +582,7 @@
           },
           "description": "Content this pack writes into the database. Keys name the content; the specialty keys (actions, prompts, flows) take a path, other keys an entry object."
         },
-        "artifacts": {
+        "datasets": {
           "type": "object",
           "additionalProperties": {
             "type": "object",
@@ -614,7 +614,7 @@
           "propertyNames": {
             "pattern": "^[a-z][a-z0-9-]*$"
           },
-          "description": "Compiled artefacts the pack reads back itself, never written to the database. Each names a format declaring no entity."
+          "description": "Compiled datasets the pack reads back itself, never written to the database. Each names a format declaring no entity."
         },
         "formats": {
           "type": "object",
@@ -646,7 +646,7 @@
                     "minItems": 1
                   }
                 ],
-                "description": "The entity types the format's items are written as. Omitted, sources using it are compiled and never written (content.artifacts)."
+                "description": "The entity types the format's items are written as. Omitted, sources using it are compiled and never written (content.datasets)."
               },
               "identity": {
                 "type": "array",

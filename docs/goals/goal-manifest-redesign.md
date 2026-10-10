@@ -681,7 +681,7 @@ entities exactly: a feature-level home, and a pack-level one for what no feature
 > holds `hooks` alone — so there is no `boot.content` left to move and `boot` is one key away from being
 > `lifecycle`.
 >
-> **`content.artifacts` arrived after this decision was written**: compiled artefacts the pack reads
+> **`content.datasets` arrived after this decision was written**: compiled datasets the pack reads
 > back itself rather than writing to the database. It belongs here by the decision's own test and is
 > listed above, but nothing in the reasoning below was written with it in mind.
 >

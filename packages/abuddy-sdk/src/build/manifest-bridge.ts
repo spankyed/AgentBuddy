@@ -32,10 +32,10 @@ export async function buildPackConfigFromManifest(
 ): Promise<PackConfig> {
   return {
     name: manifest.id,
-    // Both sections compile the same way; only an artifact is never written, which its format says
+    // Both sections compile the same way; only a dataset is never written, which its format says
     sources: {
       ...resolveContentSources(manifest, packDir, options.dependencies),
-      ...resolveContentSources(manifest, packDir, options.dependencies, 'artifacts'),
+      ...resolveContentSources(manifest, packDir, options.dependencies, 'datasets'),
     },
     loadDefinitions: () => loadPackDefinitions(manifest, packDir, options.dependencyStepModules ?? []),
   };

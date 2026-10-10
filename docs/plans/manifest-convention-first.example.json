@@ -241,7 +241,7 @@
         "format": "notes"
       }
     },
-    "compiled": {
+    "datasets": {
       "faqs": {
         "format": "faqs"
       }

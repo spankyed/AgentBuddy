@@ -128,7 +128,7 @@ export const ContentFormatSchema = z.object({
   format: z.enum(['markdown-tree', 'json']).describe('A built-in format: a directory of markdown, or a JSON array of records.').optional(),
   compiler: z.string().describe('A module in this pack whose default export compiles an entry\'s path into records. Used instead of "format".').optional(),
   entity: z.union([z.string(), z.array(z.string()).min(1)])
-    .describe('The entity types the format\'s items are written as. Omitted, sources using it are compiled and never written (content.artifacts).').optional(),
+    .describe('The entity types the format\'s items are written as. Omitted, sources using it are compiled and never written (content.datasets).').optional(),
   identity: z.array(z.string()).min(1)
     .describe('Fields matched to find an existing entity ("parent" = the tree parent). Ignored for entity types whose owning pack registers a content writer with "find".').optional(),
   tree: ContentTreeSpecSchema.describe('Walk subdirectories as parent entities.').optional(),
@@ -193,22 +193,25 @@ const ContentSourcesSchema = z.record(CONTENT_KEY_SCHEMA, z.union([z.string(), C
 });
 
 /**
- * A compiled artefact the pack reads back itself, never written to the database: the build produces
+ * A compiled dataset the pack reads back itself, never written to the database: the build produces
  * `<key>.content.json` and the pack's own code reads it.
  *
  * It is a key of its own because the alternative was a `content.sources` entry whose format declared no
  * entity: compiled, indexed, given an applier that could only find nothing to do, and a standing
  * contradiction with "every source a pack declares is applied". The format it names must declare no
- * `entity`, which is the whole of what makes it an artefact rather than content.
+ * `entity`, which is the whole of what makes it a dataset rather than content.
+ *
+ * It is not an `extensions.artifacts` entry, which is a viewer type the app registers. Nothing of a
+ * dataset is registered or reachable from another pack: the declaring pack compiles it and reads it.
  */
-const ContentArtifactsSchema = z.record(CONTENT_KEY_SCHEMA, ContentSourceSchema).superRefine((artifacts, ctx) => {
-  for (const [key, entry] of Object.entries(artifacts)) {
+const ContentDatasetsSchema = z.record(CONTENT_KEY_SCHEMA, ContentSourceSchema).superRefine((datasets, ctx) => {
+  for (const [key, entry] of Object.entries(datasets)) {
     if (!entry.path || !entry.format || entry.applier) {
-      ctx.addIssue({ code: 'custom', path: [key], message: `Artifact "${key}" must be { "path", "format" }: it is compiled and never written, so it takes no applier` });
+      ctx.addIssue({ code: 'custom', path: [key], message: `Dataset "${key}" must be { "path", "format" }: it is compiled and never written, so it takes no applier` });
     }
-    // Nothing of an artefact reaches the database, so there is no edit of the user's for a policy to be about
+    // Nothing of a dataset reaches the database, so there is no edit of the user's for a policy to be about
     if (entry.onUserEdit) {
-      ctx.addIssue({ code: 'custom', path: [key], message: `Artifact "${key}" is never written, so "onUserEdit" decides nothing: drop it` });
+      ctx.addIssue({ code: 'custom', path: [key], message: `Dataset "${key}" is never written, so "onUserEdit" decides nothing: drop it` });
     }
   }
 });
@@ -274,8 +277,8 @@ export const ArtifactEntrySchema = z.object({
 export const ContentConfigSchema = z.object({
   sources: ContentSourcesSchema
     .describe('Content this pack writes into the database. Keys name the content; the specialty keys (actions, prompts, flows) take a path, other keys an entry object.').optional(),
-  artifacts: ContentArtifactsSchema
-    .describe('Compiled artefacts the pack reads back itself, never written to the database. Each names a format declaring no entity.').optional(),
+  datasets: ContentDatasetsSchema
+    .describe('Compiled datasets the pack reads back itself, never written to the database. Each names a format declaring no entity.').optional(),
   formats: z.record(CONTENT_KEY_SCHEMA, ContentFormatSchema)
     .describe('Named formats that turn a source into items. A content source names one; a dependent pack names one of these as "<this pack id>:<name>".').optional(),
   writers: z.record(z.string(), ExportTargetSchema)
@@ -442,7 +445,7 @@ export const ManifestSchema = z.object({
   }
 
   // Both kinds of entry name a format, and both are checked against the same two places
-  for (const section of ['sources', 'artifacts'] as const) {
+  for (const section of ['sources', 'datasets'] as const) {
     for (const [key, entry] of Object.entries(manifest.content?.[section] ?? {})) {
       if (typeof entry !== 'object' || !entry.format) continue;
       const [, pack, name] = CONTENT_FORMAT_REF.exec(entry.format) ?? [];
@@ -456,9 +459,9 @@ export const ManifestSchema = z.object({
     }
   }
   // A key is a file name in the compiled output, so the two sections cannot share one
-  for (const key of Object.keys(manifest.content?.artifacts ?? {})) {
+  for (const key of Object.keys(manifest.content?.datasets ?? {})) {
     if (key in (manifest.content?.sources ?? {})) {
-      ctx.addIssue({ code: 'custom', path: ['content', 'artifacts', key], message: `"${key}" is both a content source and an artifact: they compile to the same file` });
+      ctx.addIssue({ code: 'custom', path: ['content', 'datasets', key], message: `"${key}" is both a content source and a dataset: they compile to the same file` });
     }
   }
   // The chat lists each name once, so a pack declares it once

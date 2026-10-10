@@ -174,11 +174,11 @@ async function buildIntoStaging(args: string[]) {
   }
   warnStaleDepTypes(root, new Map([...dependencies].map(([depId, dep]) => [depId, dep.manifest.version])));
 
-  const content = { ...manifest.content?.sources, ...manifest.content?.artifacts };
+  const content = { ...manifest.content?.sources, ...manifest.content?.datasets };
   if (Object.keys(content).length > 0) {
     packConfig = await buildPackConfigFromManifest(manifest, root, { dependencyStepModules, dependencies });
   } else {
-    console.log('No content.sources or content.artifacts in manifest. Skipping content compilation.');
+    console.log('No content.sources or content.datasets in manifest. Skipping content compilation.');
   }
 
   const packDir = root;
