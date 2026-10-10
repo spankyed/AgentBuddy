@@ -146,26 +146,20 @@ export function mayReclaim(session: DevSession | undefined): boolean {
 /**
  * How long a drive-profile app waits with nothing attached before it closes itself.
  *
- * Long enough that a person reading an answer, thinking, and asking the next thing keeps the app — the
- * second question is the one that costs 0.9s instead of 3.3s, and losing it is the whole point of keeping
- * one up. Short enough that an agent loop that was interrupted between two questions costs minutes of a
- * held data dir rather than the rest of the session.
+ * Long enough to keep the app across a person reading an answer and asking the next thing, which is the
+ * 0.9s question rather than the 3.3s one. Short enough that an interrupted loop costs minutes of a held
+ * data dir rather than a session.
  */
 export const IDLE_REAP_MS = 10 * 60_000;
 
 /**
  * Whether this supervisor closes its app when nothing attaches, and the profile is the half that decides it.
  *
- * **A person's app is never reaped, and neither is the development dir.** `startedBy: 'drive'` alone is not
- * the rule, because a `--spawn` with no profile flags lands in the *development* data dir — and that one is
- * already answered, by `mayReclaim`: the developer runs `abuddy dev` or `npm start`, which takes the
- * directory back and says so. A timer there would close an app somebody may be watching, which is the thing
- * the design argued against from the start.
- *
- * What is left is a drive app in a profile — `--fresh`, or `--profile <name>` — and nothing reclaims one of
- * those, because `abuddy dev --profile <name>` is not a command a developer happens to run. Before this it
- * stayed up until the machine was rebooted, holding a data dir and, for `--fresh --rm`, a directory whose
- * removal is its supervisor's exit.
+ * **Both clauses matter.** `startedBy: 'drive'` alone would reap the development dir, where a `--spawn`
+ * with no profile flags lands — and that one is `mayReclaim`'s: the developer's own `abuddy dev` takes the
+ * directory back and says so, where a timer would close an app somebody may be watching. A profile is the
+ * case nothing else reclaims, `abuddy dev --profile <name>` not being a command anyone happens to run, so
+ * without this it holds a data dir until the machine is rebooted.
  */
 export function reapsWhenIdle(session: Pick<DevSession, 'startedBy'>, place: AppPlace): boolean {
   return session.startedBy === 'drive' && place.profile !== undefined;

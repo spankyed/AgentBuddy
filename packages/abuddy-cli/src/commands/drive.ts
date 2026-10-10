@@ -29,7 +29,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { findPackRootOrNone, readManifest } from '../utils';
 import { cliDirs, parseAppFlags, resolveLaunchApp, type CliDirs } from '../app/app-target';
 import {
-  freshProfileName, profileDir, profileFor, profileInUse, parseProfileFlags, removeProfile, PROFILE_USAGE,
+  freshProfileName, profileDir, profileFor, dataDirInUse, parseProfileFlags, removeProfile, PROFILE_USAGE,
   type ProfileMode,
 } from '../app/profiles';
 import { askAttached, attachableApp, spawnOrAttach, type AttachableApp } from '../app/drive-attach.ts';
@@ -538,7 +538,7 @@ export async function drive(args: string[]) {
   function teardown(): void {
     if (tornDown || !profile?.ephemeral) return;
     tornDown = true;
-    if (profileInUse(profile.dir)) {
+    if (dataDirInUse(profile.dir)) {
       console.warn(`\nLeft the ephemeral profile ${profile.name}: an app is still running on it.`);
       return;
     }
@@ -568,7 +568,7 @@ export async function drive(args: string[]) {
   async function session(): Promise<void> {
     // Electron allows one app per data dir, so a second one here would die inside Playwright's 45s window
     // for a main window and report that it never saw one, which names neither the profile nor the cause
-    if (profile && profileInUse(profile.dir)) {
+    if (profile && dataDirInUse(profile.dir)) {
       throw new Error(`An app is already running on profile ${profile.name}. Close it, or drive a different profile.`);
     }
 

@@ -8,9 +8,8 @@ import type { SpeechEvent } from './speech-event.ts';
  *
  * `packages/preload` builds an object and asserts it `satisfies` this, so the compiler holds the exposed
  * surface and the declared one to each other in both directions: a member exposed and not declared is an
- * excess property, and one declared and not exposed is a missing one. Four members had drifted apart that
- * way before this type existed — two of them reached from pack code through `(window as any)` — and the
- * paragraph in `packages/preload/CLAUDE.md` recording which was itself wrong by one.
+ * excess property, and one declared and not exposed is a missing one. Without it the two drift, and what
+ * pack code then reaches for is `(window as any)`.
  *
  * **`Window.electronAPI` is a view of this, not this**: `PackFacingBridge` below drops the two members a
  * window has and pack authors are not pointed at. Host code that needs one of those takes this type.

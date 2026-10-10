@@ -1,10 +1,5 @@
 /**
- * Answering a question from the app something else is holding.
- *
- * **The fast path, and eventually the only one.** A one-shot used to stand a whole session up per question —
- * a Playwright run, an app launch, an HTTP server, a token and a marker — because nothing could attach to an
- * app it had not launched. With a session file to read and `connectOverCDP` to attach with, a question costs
- * a connection.
+ * Answering a question from the app something else is holding: read its session, attach, ask, let go.
  *
  * **`@abuddy/testing` is resolved at runtime, never imported.** It is a devDependency of this package, so a
  * static import would make `bundle-package.ts` refuse the bundle outright, and a real dependency would put
@@ -106,7 +101,6 @@ export async function spawnDevApp(
   }
 }
 
-/** The lock one data dir's spawn is taken under. Not `.json`, which `pruneStamps` deletes elsewhere. */
 const spawnLockFile = (dataDir: string): string => path.join(dataDir, 'spawn.lock');
 
 /** Thrown by the lock's own refusal and caught here; nothing outside sees it. */
@@ -131,11 +125,7 @@ const HELD = new Error('another spawn holds this data dir');
  */
 export async function spawnOrAttach(
   from: string, dataDir: string, profileArgs: readonly string[],
-  // Both seams are for the one case that cannot be observed otherwise: refused the lock, this waits rather
-  // than spawning, and *which of the two it did* is the whole claim. Reaching it with real timing would
-  // mean a sleep ordering a publish after the wait had begun — and a spec that sleeps and then asserts is
-  // what `spec-waits` refuses, rightly: the first attempt at this case dropped the sleep, passed, and
-  // stopped firing on the mutation that removes the lock
+  // Seams, because which of the two branches a loser took is the claim and nothing else observes it
   { spawn = spawnDevApp, waitFor = waitForSession }: {
     spawn?: (from: string, dataDir: string, profileArgs: readonly string[]) => Promise<AttachableApp>;
     waitFor?: (dataDir: string) => Promise<DevSession>;
@@ -148,7 +138,7 @@ export async function spawnOrAttach(
     if (error !== HELD) throw error;
     // Another question is already starting an app here. What this one wants is an app, not a spawn
     const session = await waitFor(dataDir);
-    return { app: { session, ...(session.logPath !== undefined && { logPath: session.logPath }) }, state: 'attached' };
+    return { app: { session, logPath: session.logPath }, state: 'attached' };
   }
   try {
     const live = attachableApp(dataDir);

@@ -83,7 +83,7 @@ describe('the environment rows', () => {
  * is on the printed line rather than on the row object: the wording is the thing that scrolled away.
  */
 describe('a live app on an environment row', () => {
-  /** What makes a dir look occupied: the API's port file, which is what `profileInUse` reads. */
+  /** What makes a dir look occupied: the API's port file, which is what `dataDirInUse` reads. */
   const occupy = (env: AppEnv, startedBy: 'dev' | 'drive', pid = process.pid) => {
     const dir = resolve(env);
     const appDir = _appDirOf(dir);
@@ -351,7 +351,7 @@ describe('stop', () => {
     fs.mkdirSync(_appDirOf(dir), { recursive: true });
     if (session !== undefined) publishSession({ debugPort: 1, dataDir: dir, supervisorPid: session, startedBy: 'dev' });
     // Through `appLockFile` rather than a join: it is under the app dir, and a spec that joined its own
-    // path would be the second opinion `profileInUse`'s header records the cost of
+    // path would be the second opinion `dataDirInUse`'s header records the cost of
     if (lock !== undefined) fs.writeFileSync(appLockFile(dir), JSON.stringify({ pid: lock, machine: os.hostname() }));
     return dir;
   };

@@ -102,38 +102,34 @@ const writeRecord = (dir: string, record: ProfileRecord): void => {
 };
 
 /**
- * Whether an app has this profile open, from the port file a running API publishes.
+ * Whether anything is using a data dir, from **two** records — and every caller here wants both.
  *
- * The path comes from `resolveAppContext` rather than a join of its own: it is the API that writes that file,
- * and a second opinion about where is a refusal that never fires. It read `<dir>/api-port` while the API wrote
- * `<dir>/abuddy/api-port` for exactly one commit, which made every check below answer "no app" — and the spec
- * covering it held the same wrong path, so the suite stayed green. The environment is immaterial here: every
- * path in the returned context is joined onto the data dir it is given.
+ * The listing, what `trim` may sweep, what `rename` and `rm` refuse, and what `drive` refuses to launch a
+ * second app over are one question: Electron allows one app per data dir, and taking a dir from a running
+ * app does not stop it — it writes the directory back.
  *
- * Three callers ask:
- * what `clean` may remove, what `removeProfile` refuses, and what `drive` refuses to launch a second app
- * over. Taking a data dir from a running app does not stop it — it writes the directory back — and
- * Electron allows one app per data dir, so both refusals are the same question.
+ * **The API's port file** is the primary record. Its path comes from `resolveAppContext` rather than a join
+ * of its own: the API writes that file and a second opinion about where it is becomes a refusal that never
+ * fires. It read `<dir>/api-port` while the API wrote `<dir>/abuddy/api-port` for exactly one commit, which
+ * made every check answer "no app" — and the spec held the same wrong path, so the suite stayed green. The
+ * build is immaterial: every path in the returned context is joined onto the dir it is given.
+ *
+ * **Chromium's own lock** is the second, because an Electron can be running with no port file at all — its
+ * API not up yet, dead, or a record removed — and then the first alone reports nothing while a browser has
+ * the dir open.
  */
-export function profileInUse(dir: string): boolean {
-  return readApiEndpoint(resolveAppContext({ build: 'development', profile: dir }).apiPortFile) !== null;
+export function dataDirInUse(dir: string): boolean {
+  return readApiEndpoint(resolveAppContext({ build: 'development', profile: dir }).apiPortFile) !== null
+    || chromiumHolding(dir) !== undefined;
 }
 
 /**
- * The Chromium using a data dir, from the lock it writes there — a **second** signal beside the API's port
- * file, and deliberately a weaker one.
+ * The Chromium using a data dir, from the lock it writes there, or nothing.
  *
- * **Why a second at all.** `profileInUse` reads what the *API* publishes, and an Electron can be running
- * with no port file: its API has not come up yet, or died, or a record was removed. Observed on the
- * author's machine, 2026-10-10: a development app alive with its port file, app lock and session all gone,
- * so every tool here reported no app — `trim` would have swept the caches under a running browser and
- * `stop` had nothing to signal.
- *
- * **Why it is not the only signal, and why `findRunningApp` is right to refuse it.** This is another
- * product's private format, written on POSIX only, and it fails *open*: unreadable, or Windows, and the
- * answer is silently "nothing here". That is unacceptable for the question `@abuddy/host/database` asks,
- * where a wrong "no app" means a tool writes under a running one. Here it is only ever *added* to the
- * primary signal, so it can find an app the port file misses and can never hide one it finds.
+ * **Never the only signal**: this is another product's private format, POSIX-only, and it fails *open* —
+ * unreadable, or Windows, and the answer is silently "nothing here". That is why `findRunningApp` refuses
+ * it for the database question, where a wrong "no app" lets a tool write under a running one. Added to the
+ * port file it can only find an app that one missed, never hide one it found.
  */
 export function chromiumHolding(dir: string): number | undefined {
   let target: string;
@@ -147,8 +143,6 @@ export function chromiumHolding(dir: string): number | undefined {
   return Number.isInteger(pid) && pid > 0 && lockIsHeld(pid) ? pid : undefined;
 }
 
-/** Whether anything is using a data dir: the API's port file, or the browser's own lock. */
-export const dataDirInUse = (dir: string): boolean => profileInUse(dir) || chromiumHolding(dir) !== undefined;
 
 export interface OpenedProfile {
   name: string;
@@ -165,8 +159,7 @@ export interface OpenedProfile {
  * **SIGTERM, never SIGKILL**: the holder's own handler closes the app it has and lets LMDB shut down, where
  * a kill leaves the store to recover on next boot. And **what is waited for is the data dir**, not the
  * signal being delivered or even the process going — a second Electron started before the dir clears is
- * the failure this exists to prevent, and `profileInUse` reads the API's port file, which is what says the
- * dir is still held.
+ * the failure this exists to prevent, and `dataDirInUse` is what says the dir is still held.
  *
  * The pid belongs to whatever record named it — a session file's `supervisorPid`, or the app lock's — and
  * both mean the same thing by it: the one process to signal. Nothing here reads a pid for itself.
@@ -179,7 +172,7 @@ export async function endAppHolding(dir: string, pid: number, timeoutMs = 20_000
   }
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (!lockIsHeld(pid) && !profileInUse(dir)) return;
+    if (!lockIsHeld(pid) && !dataDirInUse(dir)) return;
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   throw new Error(`The app on ${dir} (pid ${pid}) did not exit within ${Math.round(timeoutMs / 1000)}s. Close it and try again.`);
@@ -287,7 +280,7 @@ export function listProfiles(dirs: CliDirs): ListedProfile[] {
   const root = profilesRoot(dirs);
   const read = (dir: string, ephemeral: boolean): ListedProfile => {
     const record = readRecord(dir);
-    const inUse = profileInUse(dir);
+    const inUse = dataDirInUse(dir);
     return {
       name: path.basename(dir),
       dir,
@@ -380,7 +373,7 @@ export function renameProfile(dirs: CliDirs, from: string, to: string): { dir: s
   if (!fs.existsSync(source)) throw new Error(`No profile named "${from}".`);
   const target = profileDir(dirs, to);
   if (fs.existsSync(target)) throw new Error(`A profile named "${to}" already exists (${target}).`);
-  if (profileInUse(source)) {
+  if (dataDirInUse(source)) {
     throw new Error(`An app is running on ${source}. Close it before renaming the profile.`);
   }
   fs.renameSync(source, target);
@@ -392,7 +385,7 @@ export function removeProfile(dirs: CliDirs, dir: string): void {
   const resolved = path.resolve(dir);
   const problem = notAProfile(root, resolved);
   if (problem) throw new Error(`Refusing to remove ${resolved}: ${problem}`);
-  if (profileInUse(resolved)) {
+  if (dataDirInUse(resolved)) {
     throw new Error(`An app is running on ${resolved}. Close it before removing the profile.`);
   }
   fs.rmSync(resolved, { recursive: true, force: true });

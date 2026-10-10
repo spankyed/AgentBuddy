@@ -26,7 +26,7 @@ import { findRunningApp } from '@abuddy/host/database';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 import { cliDirs, type CliDirs } from '../app/app-target';
 import {
-  REGENERABLE_DIRS, dirBytes, profileInUse, profileNameProblem, listProfiles, mintProfile, openProfile,
+  REGENERABLE_DIRS, dirBytes, dataDirInUse, profileNameProblem, listProfiles, mintProfile, openProfile,
   chromiumHolding, endAppHolding, removeProfile, renameProfile, size, trimDataDir, type ListedProfile,
 } from '../app/profiles';
 
@@ -85,7 +85,7 @@ export function environmentRows(resolve: (env: AppEnv) => string = appDataDirFor
       // Absent is a row rather than an omission: that nothing has ever run this channel here is the useful
       // half of the answer, and a missing line reads as a bug in the listing
       ...(hasAppData ? { version: readHostInfo(dir).version } : {}),
-      inUse: exists && profileInUse(dir),
+      inUse: exists && dataDirInUse(dir),
       // The session an attachable app published, so a row says who started the app holding this dir and
       // what ends it. The development dir is where a `drive --spawn` lands by default, which makes this
       // the row a forgotten app is found on
@@ -306,12 +306,11 @@ export async function stop(
 export function pidHolding(dir: string): number | undefined {
   const session = readSession(dir);
   if (session !== undefined) return session.supervisorPid;
-  // Through the resolver rather than a join of its own, for `profileInUse`'s reason: the API writes that
+  // Through the resolver rather than a join of its own, for `dataDirInUse`'s reason: the API writes that
   // file and a second opinion about where it is becomes a refusal that never fires. The build is immaterial
   // — every path in the context is joined onto the dir it is given
   const { apiPortFile } = resolveAppContext({ build: 'development', profile: dir });
-  // Last, the browser's own lock: an app whose session, app lock and port file have all gone is still an
-  // app, and before this it was one no verb here could reach — observed, with the dock icon to prove it
+  // Last, the browser's own lock: an app whose session, app lock and port file have all gone is still one
   return findRunningApp({ userDataDir: dir, apiPortFile })?.pid ?? chromiumHolding(dir);
 }
 
