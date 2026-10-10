@@ -653,22 +653,20 @@ production, beta, development, test — and nothing here removes one; a row says
 what version last wrote to it, and `(no app data)` when the directory holds only a Chromium profile. A
 **profile** is a data dir you can throw away.
 
-**`trim` is how you get the disk back, including from an environment nothing removes.** Nearly all of a data
-dir is Chromium's cache: measured on the author's machine, `trim` freed **1.3GB of a 1.6GB development dir**,
-where the app's own data was 5MB. It removes seven directories by name — `Cache`, `Code Cache`, `GPUCache`,
-`DawnGraphiteCache`, `DawnWebGPUCache`, `Shared Dictionary`, `blob_storage` — and nothing else, so it needs
-no confirmation: your notes, settings, installed packs and the in-app browser's logins are all untouched. It
-skips a dir an app is running on, since those files are open. With no names it does every dir there is.
+**`trim` is how you get the disk back, including from an environment nothing removes.** It deletes seven
+directories — `Cache`, `Code Cache`, `GPUCache`, `DawnGraphiteCache`, `DawnWebGPUCache`, `Shared Dictionary`,
+`blob_storage` — and nothing else. Your notes, settings, installed packs and the in-app browser's logins are
+untouched, so it asks for no confirmation. A dir with an app running on it is skipped, those files being
+open. With no names it does every dir there is.
 
-It is deliberately not a sweep by size, and production is why: the same run freed only **13MB of its 1.4GB**,
-because 666MB of that is the in-app browser's logged-in sessions and the rest is your media and database.
-Those are yours to decide about, so no command here deletes them — `abuddy db export` first, then
-`abuddy db reset --force` if you mean it.
+**How much it frees depends on which dir**, which is worth knowing before you run it: a development dir is
+mostly cache and a production one mostly is not. Measured 2026-10-10, 1.3GB came back from a 1.6GB
+development dir and 13MB from a 1.4GB production one — the difference being the in-app browser's logged-in
+sessions and your own media and database, which no command here deletes. For those, `abuddy db export`
+first, then `abuddy db reset --force` if you mean it.
 
-**`stop` closes the app on a data dir**, by name or `--all`. The pid comes from what the app published about
-itself, never from a search for a matching process, and it prefers the record naming the process that closes
-the app *and* cleans up after it. The listing already tells you which pid holds a dir; this is the verb that
-ends it.
+**`stop` closes the app on a data dir**, by name or `--all`, and waits for the dir to come free. The pid
+comes from what the app published about itself rather than from a search for a matching process.
 
 Sizes are behind a flag because taking them means walking every directory: measured, 674ms for a 1.4GB
 production dir and 1255ms for a 1.5GB development one. Names and paths come back immediately.

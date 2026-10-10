@@ -85,9 +85,8 @@ process nobody asked for. --spawn is how you ask, and the app it starts stays up
 costs one flag on the first question and an attach on every one after.
 
 An app a question started on your development data dir stays until abuddy dev or npm start takes the
-directory back, which they do for you and say so. One on a --profile closes itself after 10 minutes with
-nothing attached, since nothing else would: each question resets that, and abuddy profiles lists what is
-still up.
+directory back. One on a --profile closes itself after 10 minutes with no question attached, and each
+question resets that. abuddy profiles lists what is still running, and stops it.
 
 --eval takes a function *body*, not an expression, exactly as the /eval verb does — so "return" is
 required, and a body without one answers no value at all.

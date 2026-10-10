@@ -26,7 +26,7 @@ import { findRunningApp } from '@abuddy/host/database';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 import { cliDirs, type CliDirs } from '../app/app-target';
 import {
-  dirBytes, profileInUse, profileNameProblem, listProfiles, mintProfile, openProfile,
+  REGENERABLE_DIRS, dirBytes, profileInUse, profileNameProblem, listProfiles, mintProfile, openProfile,
   endAppHolding, removeProfile, renameProfile, size, trimDataDir, type ListedProfile,
 } from '../app/profiles';
 
@@ -41,19 +41,15 @@ Usage: abuddy profiles [--sizes] [--all]
 List every AgentBuddy data dir on this machine: the environments an app of each channel uses, and the
 profiles you created. Works outside a pack — a data dir belongs to you rather than to any pack.
 
-\`trim\` removes the caches Chromium rebuilds by itself — where nearly all of a data dir's size is, measured
-1.3GB of a 1.6GB development dir against 5MB of app data — from the dirs you name, or from every one of
-them. It never touches your data, your settings or the in-app browser's logins, so it takes no --force; it
-skips a dir an app is running on, because those files are open.
-
-\`stop\` closes the app running on a data dir. The listing names the process that ends one; this is the verb
-that ends it, so finding a pid in the listing and reaching for \`kill\` is not the last step.
+trim           Delete the caches Chromium rebuilds, from the dirs you name or from all of them:
+               ${REGENERABLE_DIRS.join(', ')}.
+               Your data, settings, installed packs and the in-app browser's logins are left alone.
+               A dir with an app running on it is skipped — close it, or \`abuddy profiles stop\` it.
+stop           Close the app running on a data dir and wait for the dir to come free.
 
 Options:
-  --sizes        Add a size column. Off by default because it walks every directory: measured, 674ms for
-                 production's 1.4GB and 1255ms for development's 1.5GB
-  --all          Include the throwaway profiles \`--fresh --rm\` made, which the listing hides, and say
-                 which a dead run left behind
+  --sizes        Add a size column, which walks every directory
+  --all          Include the throwaway profiles \`--fresh --rm\` made, and say which a dead run left behind
   --leaked       With rm, remove exactly those
   --help, -h     Show this help
 `.trim();
