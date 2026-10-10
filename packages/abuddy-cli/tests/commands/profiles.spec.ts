@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { _appDirOf, type AppEnv } from '@abuddy/sdk/env';
 import { create, environmentRows, list, remove } from '../../src/commands/profiles';
 import { listProfiles, openProfile } from '../../src/app/profiles';
+import { publishSession } from '@abuddy/host/dev-session';
 import type { CliDirs } from '../../src/app/app-target';
 
 let tmp: string;
@@ -66,6 +67,78 @@ describe('the environment rows', () => {
     // Absent rather than `undefined`: the row carries no version at all for a dir with no app data, and
     // `toMatchObject({ version: undefined })` would demand the key be there
     expect(rows.find((row) => row.env === 'development')).not.toHaveProperty('version');
+  });
+});
+
+/**
+ * **Which data dirs have a live app, on the rows that are not profiles.**
+ *
+ * The live evidence for this was one `development` row, and launching an app on each of the four is not
+ * available: `production` is the user's real data. So the `resolve` seam answers for all four here, each
+ * with a real session file and a real port file, and the live run covers the one row a person can safely
+ * have an app on.
+ *
+ * It is the same two fields a profile row reads, so a reader learns one rule — which is why the assertion
+ * is on the printed line rather than on the row object: the wording is the thing that scrolled away.
+ */
+describe('a live app on an environment row', () => {
+  /** What makes a dir look occupied: the API's port file, which is what `profileInUse` reads. */
+  const occupy = (env: AppEnv, startedBy: 'dev' | 'drive', pid = process.pid) => {
+    const dir = resolve(env);
+    const appDir = _appDirOf(dir);
+    fs.mkdirSync(appDir, { recursive: true });
+    fs.writeFileSync(path.join(appDir, 'host.json'), JSON.stringify({ version: '0.3.14' }));
+    fs.writeFileSync(path.join(appDir, 'api-port'), JSON.stringify({ port: 3001, pid }));
+    publishSession({ debugPort: 51873, dataDir: dir, supervisorPid: pid, startedBy });
+  };
+
+  it.each(['production', 'beta', 'development', 'test'] as const)('says so on the %s row', (env) => {
+    occupy(env, 'dev');
+
+    const row = environmentRows(resolve).find((candidate) => candidate.env === env);
+
+    expect(row).toMatchObject({ exists: true, hasAppData: true, inUse: true, version: '0.3.14' });
+    expect(row?.session).toMatchObject({ startedBy: 'dev', supervisorPid: process.pid });
+  });
+
+  /**
+   * The wording is the point: *who* started it decides whether taking the dir back is yours to do, and the
+   * pid is what ends it. A row that said only "(running)" is what sent someone looking for a window.
+   */
+  it('names who started it and the pid that ends it, for either starter', () => {
+    occupy('development', 'dev');
+    occupy('test', 'drive');
+
+    list(dirs, { sizes: false, all: false, resolve, bytes });
+
+    expect(printed()).toMatch(new RegExp(`development.*running, started by abuddy dev — pid ${process.pid}`));
+    expect(printed()).toMatch(new RegExp(`test.*running, started by a question — pid ${process.pid}`));
+  });
+
+  /**
+   * A dir with an app but no session is attachable by nothing — a packaged build, or a `test` run — and the
+   * row still has to say an app is there, since what it guards is `abuddy db` writing underneath one.
+   */
+  it('still says running for an app that published no session', () => {
+    const dir = resolve('beta');
+    const appDir = _appDirOf(dir);
+    fs.mkdirSync(appDir, { recursive: true });
+    fs.writeFileSync(path.join(appDir, 'host.json'), JSON.stringify({ version: '0.3.14' }));
+    fs.writeFileSync(path.join(appDir, 'api-port'), JSON.stringify({ port: 3001, pid: process.pid }));
+
+    list(dirs, { sizes: false, all: false, resolve, bytes });
+
+    expect(environmentRows(resolve).find((row) => row.env === 'beta')).toMatchObject({ inUse: true, session: undefined });
+    expect(printed()).toMatch(/beta.*\(running\)/);
+  });
+
+  /** A session whose process has gone is no app at all, which `readSession` already decides. */
+  it('is not a row left by a killed run', () => {
+    occupy('development', 'drive', 999_999);
+
+    const row = environmentRows(resolve).find((candidate) => candidate.env === 'development');
+
+    expect(row?.session).toBeUndefined();
   });
 });
 
