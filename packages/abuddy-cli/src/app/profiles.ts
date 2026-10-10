@@ -23,6 +23,7 @@
  * places inside it.
  */
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { APP_ENVS, resolveAppContext } from '@abuddy/sdk/env';
 import { lockIsHeld, readApiEndpoint } from '@abuddy/host/process-liveness';
@@ -120,18 +121,20 @@ const writeRecord = (dir: string, record: ProfileRecord): void => {
  */
 export function dataDirInUse(dir: string): boolean {
   return readApiEndpoint(resolveAppContext({ build: 'development', profile: dir }).apiPortFile) !== null
-    || chromiumHolding(dir) !== undefined;
+    || chromiumLockHeld(dir);
 }
 
 /**
- * The Chromium using a data dir, from the lock it writes there, or nothing.
+ * Chromium's lock on a data dir, taken apart.
  *
  * **Never the only signal**: this is another product's private format, POSIX-only, and it fails *open* —
  * unreadable, or Windows, and the answer is silently "nothing here". That is why `findRunningApp` refuses
  * it for the database question, where a wrong "no app" lets a tool write under a running one. Added to the
  * port file it can only find an app that one missed, never hide one it found.
+ *
+ * The host is kept because the two questions below need it, and they want opposite answers about it.
  */
-export function chromiumHolding(dir: string): number | undefined {
+function chromiumLock(dir: string): { host: string; pid: number } | undefined {
   let target: string;
   try {
     target = fs.readlinkSync(path.join(dir, 'SingletonLock'));
@@ -139,8 +142,41 @@ export function chromiumHolding(dir: string): number | undefined {
     return undefined;
   }
   // `<hostname>-<pid>`, and a hostname may hold dashes, so the pid is what follows the last one
-  const pid = Number(target.slice(target.lastIndexOf('-') + 1));
-  return Number.isInteger(pid) && pid > 0 && lockIsHeld(pid) ? pid : undefined;
+  const cut = target.lastIndexOf('-');
+  if (cut <= 0) return undefined;
+  const pid = Number(target.slice(cut + 1));
+  return Number.isInteger(pid) && pid > 0 ? { host: target.slice(0, cut), pid } : undefined;
+}
+
+/**
+ * The Chromium using a data dir **on this machine**, or nothing — the pid something may signal.
+ *
+ * **The host is checked, because this pid is one `endAppHolding` signals.** A data dir reached over a
+ * synced volume, a network home, a restored backup or a VM mount carries the lock of the machine that
+ * wrote it, whose pid means nothing here: pids are small integers and collide, so signalling one would
+ * end whatever local process happens to hold that number. `@abuddy/host/process-liveness` states the rule
+ * this follows — only for a record this machine wrote, which the write lock's `machine` field and the
+ * instance lock's hostname both check first. Here the hostname is in the link itself.
+ */
+export function chromiumHolding(dir: string): number | undefined {
+  const lock = chromiumLock(dir);
+  if (lock === undefined || lock.host !== os.hostname()) return undefined;
+  return lockIsHeld(lock.pid) ? lock.pid : undefined;
+}
+
+/**
+ * Whether a Chromium holds the data dir, whoever's it is.
+ *
+ * **A lock another machine wrote counts as held**, which is the opposite direction from `chromiumHolding`
+ * and the right one for this question: what reads this is `trim`, which deletes, and a dir on a shared
+ * volume may have a live app on the machine that locked it. Erring toward held is what the database write
+ * lock already does with a foreign record, and for the same reason — the cost of being wrong is not
+ * symmetric.
+ */
+export function chromiumLockHeld(dir: string): boolean {
+  const lock = chromiumLock(dir);
+  if (lock === undefined) return false;
+  return lock.host !== os.hostname() || lockIsHeld(lock.pid);
 }
 
 

@@ -26,7 +26,7 @@ import { findRunningApp } from '@abuddy/host/database';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 import { cliDirs, type CliDirs } from '../app/app-target';
 import {
-  REGENERABLE_DIRS, dirBytes, dataDirInUse, profileNameProblem, listProfiles, mintProfile, openProfile,
+  REGENERABLE_DIRS, chromiumLockHeld, dirBytes, dataDirInUse, profileNameProblem, listProfiles, mintProfile, openProfile,
   chromiumHolding, endAppHolding, removeProfile, renameProfile, size, trimDataDir, type ListedProfile,
 } from '../app/profiles';
 
@@ -283,6 +283,16 @@ export async function stop(
     .filter((target): target is { label: string; dir: string; pid: number } => target.pid !== undefined);
 
   if (held.length === 0) {
+    // A dir whose Chromium lock was written by another machine is held and has no pid here to signal, so
+    // "no app is running" would be a lie: it is the one case where there is something to close and this
+    // is not the machine that can
+    const elsewhere = targets.filter(({ dir }) => chromiumLockHeld(dir));
+    if (elsewhere.length > 0) {
+      console.log(`\n  held by an app on another machine — nothing here to signal:`);
+      for (const { label, dir } of elsewhere) console.log(`    ${label}  ${dir}`);
+      console.log('');
+      return;
+    }
     // Named rather than silent, because "it was already closed" and "I misspelled it" read the same from
     // an empty answer, and only one of them is fine
     console.log(`\n  no app is running on ${all ? 'any data dir' : targets.map((target) => target.label).join(', ')}\n`);

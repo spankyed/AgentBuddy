@@ -10,7 +10,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { _appDirOf, type AppEnv } from '@abuddy/sdk/env';
 import { create, environmentRows, list, pidHolding, remove, stop, trim } from '../../src/commands/profiles';
-import { chromiumHolding, dataDirInUse, listProfiles, openProfile, REGENERABLE_DIRS } from '../../src/app/profiles';
+import { chromiumHolding, chromiumLockHeld, dataDirInUse, listProfiles, openProfile, REGENERABLE_DIRS } from '../../src/app/profiles';
 import { publishSession } from '@abuddy/host/dev-session';
 import { appLockFile } from '@abuddy/host/database';
 import type { CliDirs } from '../../src/app/app-target';
@@ -437,12 +437,41 @@ describe('a browser holding a data dir', () => {
     expect(dataDirInUse(dir)).toBe(false);
   });
 
-  /** A hostname may hold dashes, so the pid is what follows the *last* one. */
-  it('reads the pid after the last dash, not the first', () => {
+  /**
+   * **A lock another machine wrote names no pid here, and the dir is still held.**
+   *
+   * The two directions of the same fact, and they are what the pid is read for: `chromiumHolding` feeds
+   * `endAppHolding`, which signals, so a foreign pid there would end whatever local process holds that
+   * number — pids are small integers and collide. `chromiumLockHeld` feeds `trim`, which deletes, so a
+   * dir on a synced volume with a live app on the machine that locked it must read as in use.
+   *
+   * It also covers the parse: a hostname may hold dashes, so the pid is what follows the *last* one.
+   */
+  it('names no pid for another machine, and still counts as held', () => {
     const dir = resolve('beta');
     singletonLock(dir, `my-laptop-at-home-${process.pid}`);
 
+    expect(chromiumHolding(dir), 'nothing here to signal').toBeUndefined();
+    expect(chromiumLockHeld(dir), 'but something has it open').toBe(true);
+    expect(dataDirInUse(dir), 'so trim must refuse it').toBe(true);
+  });
+
+  /** And this machine's own lock does name its pid, which is the half that must keep working. */
+  it('names the pid for a lock this machine wrote, dashes and all', () => {
+    const dir = resolve('production');
+    singletonLock(dir, `${os.hostname()}-${process.pid}`);
+
     expect(chromiumHolding(dir)).toBe(process.pid);
+    expect(chromiumLockHeld(dir)).toBe(true);
+  });
+
+  /** A link with no dash at all is not this format, and reading the whole string as a pid is not a pid. */
+  it('is nothing for a link that is not <host>-<pid>', () => {
+    const dir = resolve('test');
+    singletonLock(dir, 'something-else-entirely');
+
+    expect(chromiumHolding(dir)).toBeUndefined();
+    expect(chromiumLockHeld(dir)).toBe(false);
   });
 
   it('is nothing at all for a dir with no lock, and never throws', () => {
