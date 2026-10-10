@@ -885,6 +885,27 @@ a mutation that was applied to the **subject**, run, and reverted in the same co
 | | the two starters swapped | 1 |
 | | `inUse` ignored | 6 |
 | `npm run spec`'s no-run guard | the guard removed | exit 3 → **0, silently** |
+| `debugPortArgsFor` | the gate opens for every build | 3 |
+
+**The debug port was open on any build `npm start` was pointed at**, which is the Never list, and the beta
+row is what found it. There is no published Beta release — every tag is a `v0.3.x` production one — so
+`--build beta` can resolve nothing and that row can never hold a downloaded build. A checkout *can* run as
+the beta channel, because a source run takes its environment from `ABUDDY_ENV`, and that is the launch that
+exposed this: the watcher's hook is guarded by `NODE_ENV !== 'development'`, which is the **bundle's** mode
+and says nothing about the environment the spawned app resolves. So it pushed `--remote-debugging-port=0`
+unconditionally, and `ABUDDY_ENV=beta npm start` was an unauthenticated port on a beta app — while the CLI's
+identical decision had six cases guarding it.
+
+The asymmetry was the cause, so the fix is one owner: `debugPortArgsFor(build)` in
+`@abuddy/host/dev-session`, which `abuddy dev`'s `debugPortArgs(place)` now delegates to and the watcher
+calls with the build `_inferElectronAppEnv` gives it — the app's own rule rather than a second copy. The
+session follows the same gate, and the publisher's hardcoded `development` went with it: a beta run
+publishes nothing because it is not attachable. Four cases, firing on a gate that opens for every build.
+
+Proven live, and the same run is the beta row's evidence: `ABUDDY_ENV=beta npm start` left **no**
+`DevToolsActivePort` and **no** `session.json` in the beta data dir, and the listing read
+`beta  0.3.14  …/abuddy-beta  (running)` — the no-session variant, which is the row an app with no port must
+still produce, since what it guards is `abuddy db` writing underneath one.
 
 **And `npm run spec` itself could report nothing and pass**, which is the instrument every claim of
 coverage in this goal was made with. Asking it the literal question — *is `npm run spec` over each touched
