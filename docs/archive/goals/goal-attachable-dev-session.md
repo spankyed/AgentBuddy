@@ -880,6 +880,36 @@ a mutation that was applied to the **subject**, run, and reverted in the same co
 | `removeProfile`'s root guard | `notAProfile` removed | 5 |
 | `removeProfile`'s in-use guard | the refusal removed | 2 |
 | `profileDir`'s containment | the check removed | **0 — see below** |
+| the environment row's session | the row stops carrying it | 6 |
+| | the wording collapses to `(running)` | 1 |
+| | the two starters swapped | 1 |
+| | `inUse` ignored | 6 |
+| `npm run spec`'s no-run guard | the guard removed | exit 3 → **0, silently** |
+
+**And `npm run spec` itself could report nothing and pass**, which is the instrument every claim of
+coverage in this goal was made with. Asking it the literal question — *is `npm run spec` over each touched
+package met for a workspace with no suite?* — printed **not one line** and exited **0**. Its documented
+contract is exit 3, *"the target exists and no spec covers it, so nothing ran and nothing passed"*, and the
+report behind that code is built per **run**: a plan with no runs in it had nothing to report, so the code
+came out 0. The named-target case fell through the guard above it, which required `targets.length === 0`.
+
+It says the sentence and exits 3 now, `--dry` still reporting an empty plan as a report, and the other two
+codes are unchanged — 1 for a name that matches nothing, 2 for one wide enough to be a search. The fact it
+rests on is a case in `spec-plan.spec.ts`: a workspace with no vitest config plans nothing and is neither
+unmatched nor ambiguous.
+
+This is the rule *"a check that reports nothing may have looked at nothing, and a green run cannot tell you
+which"* holding in the command the rule is enforced with. **A goal that asks for a tool's output as
+evidence is also a test of the tool**, and this one failed it eight rounds in.
+
+**Two more environment-row facts, covered because the live run could not reach them.** The listing's
+live-app annotation had exactly one piece of evidence — a `development` row with an app on it — and
+launching one on each of the four is not available, `production` being the user's own data. The `resolve`
+seam answers for all four now, with a real session file and port file per row: which starter is named, the
+pid, a row for an app that published no session (a packaged build, which must still read as occupied
+because what it guards is `abuddy db` writing underneath one), and a session whose process has gone. Four
+mutations fire — the row dropping its session (6 cases), the wording collapsing to `(running)` (1), the two
+starters swapped (1), and `inUse` ignored (6).
 
 **Four Phase 1 directory guards were mutated too, and the fourth could not fire.** The name rule removed
 fails 3 cases; `removeProfile`'s "not a profile" guard, 5; its in-use guard, 2. `profileDir`'s containment
