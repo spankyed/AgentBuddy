@@ -595,3 +595,35 @@ the first run after the deletion.
 One correction worth keeping: the old `drive/README.md` claimed the engine's attach was *"~0.35s instead of
 ~3.5s"*. Measured against the new path on one box it is 0.7s against 1.0s. The 3.5s was a cold one-shot —
 two different comparisons quoted as one, which is what a figure without its conditions does.
+
+### Phase 7 — `--build`, one flag (`8f5a0ded5`, `5014dad03`, `eca8156c0`)
+
+Done, in three parts, and the third turned up the one thing the plan did not anticipate.
+
+**The flag.** `--app` and `--app-root` were never two concepts: they split on the *shape of the value*, and
+the name half accepted exactly one word. One flag and one line of disambiguation replace both — a value in
+the known-name set is a build, anything else is a path — with `./beta` as the escape hatch for the day a
+checkout is named after a channel. `ABUDDY_APP` and `ABUDDY_ROOT` collapse into `ABUDDY_BUILD`, read before
+anything can outrank it, which is what stops the two resolvers disagreeing about one value.
+
+**The shorthands.** `-d`, `-b` and `--production` resolve through `--build` on every command that reads a
+build's data, and `--build <name>` says the same thing in the one word the CLI now uses. Two things the old
+flags could not do are now cases: a value that is not a build is refused *by name* with what the builds are,
+and the shorthands are held to the long form pairwise.
+
+**The resolver.** `resolveAppContext({ build?, profile? })`, and `AppContext.build` rather than `.env`, so
+one resolver does not answer in two vocabularies. 27 argument sites, 12 context reads, `AppPlace` and
+`DbTarget`; `api:update` regenerated `env.api.md` and every line of it is this change.
+
+**The finding: `ABUDDY_ENV` does not collapse, and must not.** Decision 3 says `ABUDDY_APP` and
+`ABUDDY_ROOT` become "one variable holding either shape", and the obvious next step is to make the app's own
+`ABUDDY_ENV` that variable too. It is the wrong step. `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR` are the
+**handoff** — how a parent process tells a child what it is and where its data is, written by the CLI and by
+Electron main — where `--build`/`ABUDDY_BUILD` is a **selector** a person types. One is the question and the
+other is the answer, and giving them one name is the same fusion this phase exists to end, one layer down.
+So the selector collapsed and the handoff stayed, which is also why `ABUDDY_ROOT` and
+`ABUDDY_APP_EXECUTABLE` survive as the fixture's inputs: those are two *kinds of answer*, not two spellings
+of one question.
+
+`npm test -- smoke` is what says the app still resolves its own identity and data dir after the rename — the
+one claim no unit can make, since every path in a context is joined onto a dir the resolver chose.
