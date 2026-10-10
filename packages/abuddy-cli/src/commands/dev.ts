@@ -14,6 +14,7 @@ import { reloadPack, type AppPlace, type DevReload } from '../build/dev-reload.t
 import { cliDirs, parseAppFlags, resolveLaunchApp, type AppTarget } from '../app/app-target';
 import { endAppHolding, profileFor, parseProfileFlags, removeProfile, PROFILE_USAGE } from '../app/profiles';
 import { copySecretsInto } from '../app/profile-secrets.ts';
+import { createDevHold } from '../app/dev-hold.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 import type { AppEnv } from '@abuddy/sdk/env';
@@ -184,18 +185,6 @@ export function idleVerdict(lastAttachedMs: number, nowMs: number, idleMs: numbe
   return remaining > 0 ? { reap: false, againInMs: remaining } : { reap: true, againInMs: 0 };
 }
 
-/** Resolves once the child is gone, killing it outright if it will not go. */
-function exited(child: ChildProcess, timeoutMs: number): Promise<void> {
-  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
-  return new Promise(resolve => {
-    const timer = setTimeout(() => child.kill('SIGKILL'), timeoutMs);
-    child.once('exit', () => {
-      clearTimeout(timer);
-      resolve();
-    });
-  });
-}
-
 /**
  * Waits for the app to publish its port file, which is what says the API is up and so what says the pack
  * can be installed and reloaded. One waiter, bounded: a crashed launch must report that rather than hang.
@@ -290,12 +279,22 @@ async function session(args: string[], hooks: SessionHooks) {
   const place: AppPlace = { build: env, ...(profile ? { profile: profile.dir } : {}) };
   const { userDataDir, apiPortFile } = resolveAppContext(place);
 
-  // Registered here rather than once the dev server is up, because the ten seconds before that — the
-  // build, the launch, the install — are exactly when someone presses Ctrl-C, and an ephemeral profile
-  // interrupted there used to be left on disk. `child` and `server` are filled in as they come.
-  let child: ChildProcess | undefined;
-  let server: { close: () => unknown } | undefined;
-  let markerFor: string | undefined;
+  /**
+   * What this session holds, and what letting go of it means (`app/dev-hold.ts` owns the order).
+   *
+   * Taken here rather than once the dev server is up, because the ten seconds before that — the build, the
+   * launch, the install — are exactly when someone presses Ctrl-C, and an ephemeral profile interrupted
+   * there used to be left on disk. Each resource is handed over as it arrives.
+   */
+  const hold = createDevHold({
+    removeMarker: packId => removeDevServerMarker(userDataDir, packId),
+    ...(profile?.ephemeral ? {
+      removeProfile: () => {
+        removeProfile(cliDirs(), profile.dir);
+        console.log(`\nRemoved the ephemeral profile ${profile.name}.`);
+      },
+    } : {}),
+  });
 
   /**
    * Publishes `<dataDir>/session.json`, so something can attach to the app this command holds.
@@ -308,65 +307,24 @@ async function session(args: string[], hooks: SessionHooks) {
    * A launch with no debug port publishes nothing. That is the honest answer rather than a record with a
    * hole in it: the file means "attachable", and a `test` or packaged context is not.
    */
-  let unpublish: (() => void) | undefined;
-  async function publish(spawned: ChildProcess, launchedAt: number): Promise<void> {
+  async function publish(launchedAt: number): Promise<void> {
     if (debugPortArgs(place).length === 0) return;
     try {
       const debugPort = await readDevToolsPort(userDataDir, { after: launchedAt });
-      unpublish = publishSession({
+      hold.holdsSession(publishSession({
         debugPort,
         apiPort: readApiEndpoint(apiPortFile)?.port,
         dataDir: userDataDir,
         supervisorPid: process.pid,
         startedBy: startedByFromEnv(),
-      });
+      }));
       console.log(`  attachable on debug port ${debugPort} — \`abuddy drive\` can reach it`);
       armIdleReap({ startedBy: startedByFromEnv() });
       console.log('');
     } catch (error) {
       // A port that never appeared leaves the app perfectly usable and only un-drivable, so this is a
       // warning rather than a failed launch: whoever wanted to watch the app still has it
-      void spawned;
       console.warn(`  not attachable: ${errorMessage(error)}\n`);
-    }
-  }
-
-  // One-shot: `teardown` calls this and then exits, which fires the `exit` handler and would otherwise
-  // close the Vite server and remove the marker a second time
-  let cleanedUp = false;
-  function cleanup() {
-    if (cleanedUp) return;
-    cleanedUp = true;
-    if (markerFor !== undefined) removeDevServerMarker(userDataDir, markerFor);
-    // Before the app goes: a session file naming a dead supervisor is a miss rather than a lie, but
-    // leaving one is leaving a record of something that is not there
-    unpublish?.();
-    server?.close();
-    // Only one this command launched: an app that was already up outlives it
-    child?.kill();
-  }
-
-  /**
-   * Everything the `exit` handler cannot do, because that one has to be synchronous: removing an
-   * ephemeral profile while the app is still closing pulls LMDB's files and the app's own log dir out
-   * from under it — noisy on macOS, and on Windows an EBUSY that leaves the directory half removed. So
-   * let the app go first.
-   *
-   * **Every way this command ends runs it**, which is the part that took two goes to get right. Wiring it
-   * to the signals alone left the case that actually happens while developing — a pack that fails to
-   * build — exiting through the CLI's own error handler and leaking the directory. A SIGKILL still
-   * leaks one, which is why an ephemeral dir carries the pid that made it and
-   * `abuddy profiles rm --leaked` can reclaim it.
-   */
-  let tornDown = false;
-  async function teardown(): Promise<void> {
-    if (tornDown) return;
-    tornDown = true;
-    cleanup();
-    if (child) await exited(child, 10_000);
-    if (profile?.ephemeral) {
-      removeProfile(cliDirs(), profile.dir);
-      console.log(`\nRemoved the ephemeral profile ${profile.name}.`);
     }
   }
 
@@ -393,17 +351,17 @@ async function session(args: string[], hooks: SessionHooks) {
     setTimeout(tick, IDLE_REAP_MS);
   }
 
-  /** Teardown, then exit, so the profile goes with the app as it does for any other way this ends. */
+  /** Release, then exit, so the profile goes with the app as it does for any other way this ends. */
   async function reap(why: string): Promise<void> {
     console.log(`\nClosing the app this question started: ${why}.`);
-    await teardown();
+    await hold.release();
     process.exit(0);
   }
 
-  hooks.teardown = teardown;
-  process.on('exit', cleanup);
+  hooks.teardown = hold.release;
+  process.on('exit', hold.releaseNow);
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-    process.on(signal, () => void teardown().then(() => process.exit(0)));
+    process.on(signal, () => void hold.release().then(() => process.exit(0)));
   }
 
   if (profile) {
@@ -449,19 +407,20 @@ async function session(args: string[], hooks: SessionHooks) {
     // Before the launch, so the port file this waits for is the one this app writes rather than whatever a
     // previous app on this data dir left behind
     const launchedAt = Date.now();
-    child = launchApp(app, place);
-    const whose = await waitForApi(apiPortFile, child);
+    const spawned = launchApp(app, place);
+    hold.holdsApp(spawned);
+    const whose = await waitForApi(apiPortFile, spawned);
     if (whose === 'other') {
-      // Ours was refused the data dir and another app has it. Forgetting the child is what keeps teardown
+      // Ours was refused the data dir and another app has it. Forgetting it is what keeps the release
       // honest: it closes an app this command started, and this one started none that lived
-      child = undefined;
+      hold.forgetApp();
       console.log(`Using the ${env} app that took the directory first.\n`);
     } else {
       console.log(`  up on ${env} data in ${userDataDir}\n`);
       // Published only for an app this command holds, and after its API is up so the session carries the
       // port a driver needs. An app that was already here has a session of its own or is not attachable,
       // and either way is not this command's to describe.
-      await publish(child, launchedAt);
+      await publish(launchedAt);
     }
   }
 
@@ -485,9 +444,8 @@ async function session(args: string[], hooks: SessionHooks) {
   }
 
   const vite = await import('vite');
-  server = await vite.createServer(await packDevServerConfig(pack.root, pack.feEntry));
-
-  const devServer = server as import('vite').ViteDevServer;
+  const devServer = await vite.createServer(await packDevServerConfig(pack.root, pack.feEntry));
+  hold.holdsServer(devServer);
   await devServer.listen();
   const address = devServer.httpServer?.address();
   const port = typeof address === 'object' && address ? address.port : 0;
@@ -498,7 +456,7 @@ async function session(args: string[], hooks: SessionHooks) {
 
   // Outside the installed pack: its directory is the verified pack, replaced by every install below
   writeDevServerMarker(userDataDir, pack.manifest.id, { port, pid: process.pid });
-  markerFor = pack.manifest.id;
+  hold.holdsMarker(pack.manifest.id);
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   fs.watch(path.join(pack.root, 'abuddy.json'), () => {
