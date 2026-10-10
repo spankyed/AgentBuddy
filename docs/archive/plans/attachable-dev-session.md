@@ -1,5 +1,13 @@
 # `dev` holds the app, `drive` attaches to it
 
+> **Done and closed** (branch `AS/attachable-dev-session`). Phase 1 `2cbb84479`, Phase 2 `fe963e92b`,
+> Phase 3 `5176a75a2`/`1a2ce7938`, Phase 4 `fd621dddf`. The deletion went ahead on the measurement it was
+> conditional on: 0.7s for the engine's attach against 1.0s for the CDP one, end to end, median of 7 — so
+> 0.3s a question against 851 lines and a second long-lived app. Four things the work settled that this text
+> only anticipated: the session module belongs to `@abuddy/host` because two launchers publish one; `dev`
+> had to stop requiring a pack; `@abuddy/testing` is resolved at runtime by `drive` rather than imported;
+> and a question **refuses** rather than starting an app, with `--spawn` to ask. The goal doc's Outcome has
+> the measurements. For the commands as they are now, see `docs/public-facing/cli.md`.
 Compiled 2026-10-09. The spike below is run and green, so this is work that can start, after
 [`profiles-not-instances.md`](profiles-not-instances.md).
 

@@ -1,5 +1,12 @@
 # An instance is a profile, and that is the only thing it is
 
+> **Done and closed** (branch `AS/attachable-dev-session`, `e1992b632`). One deviation, on the user's
+> instruction mid-phase: **the old `<cli data>/instances/` directory is not migrated.** A one-shot rename is
+> the kind of code nobody finds to delete later, and a profile is a disposable data dir by definition. The
+> migration and its four cases were written, mutation-checked and then removed. Two additions the phase
+> settled: `abuddy profiles --ephemeral` became `--all`, since `--ephemeral` had to name nothing; and
+> `ephemeral` stays as the property and the `.ephemeral/` directory, because the flag changed and the
+> concept did not. For the vocabulary as it is now, see `abuddy-cli/src/app/profiles.ts`.
 Compiled 2026-10-09. A rename with no behaviour in it, to be landed **before**
 [`attachable-dev-session.md`](attachable-dev-session.md) rather than inside it.
 

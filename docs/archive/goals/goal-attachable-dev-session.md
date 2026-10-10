@@ -1,4 +1,9 @@
 > **Written in session** `75ab9455-5ee8-4b50-8043-6d5f22284a4a` (Claude Code, 2026-10-09). Resume it with `claude -r 75ab9455-5ee8-4b50-8043-6d5f22284a4a`.
+>
+> **Done** (branch `AS/attachable-dev-session`). All seven phases implemented and committed; the Outcome
+> at the foot of this doc has what each one settled, the measurements, and the three things deferred with
+> their reasons. The text below is the goal as written, corrected in place where the work found a decision
+> wrong.
 
 ```
 # Goal: dev holds the app, drive attaches to it — and the two words stop colliding
