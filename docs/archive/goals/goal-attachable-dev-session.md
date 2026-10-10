@@ -772,3 +772,34 @@ plans' docs under `docs/goals/` and `docs/plans/`, which record what was true wh
 **The lesson is the method, not the list.** A record saying a name is gone is a claim about the whole tree,
 and the only thing that establishes one is the grep. Four of these had been asserted in an Outcome and
 committed.
+
+### Two more properties that were recorded rather than checked
+
+**"No profile is named after a build" was not enforced.** `abuddy profiles new beta` made the directory,
+and so did `development` — which is this goal's own collision put back by the one input a user picks
+freely: `--profile beta` and `--build beta` a letter apart, one a data dir and the other the app that
+opens it. `profileNameProblem` refuses the whole name now, derived from `APP_ENVS` rather than a list of
+its own, so a fifth build arrives refused rather than nameable. Every door goes through `profileDir`, so
+`profiles new`, `dev --profile` and `drive --profile` all report it — checked at each, and mutation-checked
+three ways: the refusal removed fails 8 cases, a hand-written list missing a build fails 4, and a
+substring match fails the case that keeps `beta-work` usable.
+
+**`cli.md`'s prose contradicted the table it introduces.** Above *"Which app, and how long it lives"* it
+still said `abuddy drive` *"launches its own app rather than joining one `abuddy dev` already has"* — true
+of the script half and the opposite of what a question does since Phase 3. The two halves are set out
+separately now, and the table's own rows were checked against the behaviour rather than read: with an app
+on the development dir **and** one on a profile, a `drive <script>` run launched a third in
+`abuddy-e2e-Tvead9`, left both of the others running, and took its app and its dir with it when it
+finished.
+
+The listing was checked the same way, in both of its groups at once, since one live row had been the whole
+of the evidence for it:
+
+```
+  development  0.3.14  …/abuddy-dev  (running, started by abuddy dev — pid 21460)
+  listing-probe  2026-10-10 running, started by a question — pid 21012
+```
+
+**And the lock question's three places do say the same thing** (`packages/main/CLAUDE.md` twice,
+`SingleInstanceApp.ts`'s comment with its observation, and `drive.ts`'s header): the lock is scoped by the
+**data dir**, which is why four builds coexist and two apps on one dir cannot.
