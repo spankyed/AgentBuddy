@@ -3,7 +3,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  lastAttachedAt, publishSession, readDevToolsPort, readSession, sessionFile, startedByFromEnv,
+  debugPortArgsFor, lastAttachedAt, publishSession, readDevToolsPort, readSession, sessionFile,
+  startedByFromEnv,
   touchSession,
   STARTED_BY_ENV, type DevSession,
 } from '../src/dev-session.ts';
@@ -187,5 +188,36 @@ describe('the debug port for a launch', () => {
     fs.writeFileSync(portFile(), '');
     setTimeout(() => writePort(45455), 120);
     expect(await readDevToolsPort(dataDir, { after: Date.now() - 1_000, timeoutMs: 3_000 })).toBe(45455);
+  });
+});
+
+/**
+ * **The one gate between this design and an open port on a user's app.**
+ *
+ * `--remote-debugging-port` is unauthenticated control of the renderer, which holds the app's API token, so
+ * its subject is input and it needs cases that fire: `development` is the only answer that gets a port.
+ *
+ * It lives here because **two** launchers need it, which is the whole reason it is a function. `abuddy dev`
+ * had this decision with six cases guarding it; the `npm start` watcher pushed the flag unconditionally,
+ * behind a `NODE_ENV !== 'development'` check — the *bundle's* mode, which says nothing about the
+ * environment the spawned app resolves. A source run takes that from `ABUDDY_ENV`, so
+ * `ABUDDY_ENV=beta npm start` opened a port on a beta app. Both callers go through this now.
+ */
+describe('the debug port a launcher passes', () => {
+  it('is given to a development app', () => {
+    expect(debugPortArgsFor('development')).toEqual(['--remote-debugging-port=0']);
+  });
+
+  it.each(['production', 'beta', 'test'] as const)('is refused to a %s app', (build) => {
+    expect(debugPortArgsFor(build)).toEqual([]);
+  });
+
+  /**
+   * `0`, never a number. Chromium picks a free port and writes it where the launcher reads it; a fixed one
+   * collides with whatever holds it and with a second app, and a port named here would be one somebody
+   * could arrange to be listening on first.
+   */
+  it('asks Chromium to choose, rather than naming one', () => {
+    expect(debugPortArgsFor('development')).toEqual([expect.stringMatching(/=0$/)]);
   });
 });

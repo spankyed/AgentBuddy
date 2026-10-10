@@ -88,7 +88,7 @@ function handleHotReload() {
       };
     },
 
-    writeBundle() {
+    async writeBundle() {
       if (process.env.NODE_ENV !== 'development') {
         return;
       }
@@ -108,10 +108,25 @@ function handleHotReload() {
         console.log('Starting Electron with Node.js inspector on port 9229');
       }
 
-      // `npm start` is a development run by definition (this whole hook is behind that check), so the app
-      // it spawns is attachable and publishes a session. The port is Chromium's to choose — a fixed one
-      // collides with whatever holds it and with a second app
-      electronArgs.push('--remote-debugging-port=0');
+      /**
+       * **Which build the app it spawns will resolve, asked the app's own way.**
+       *
+       * The `NODE_ENV` check above is the *bundle's* mode and says nothing about this: a source run takes its
+       * environment from `ABUDDY_ENV` (`_inferElectronAppEnv`, the same function `app-context.ts` calls), so
+       * `ABUDDY_ENV=beta npm start` is a beta app. Reading this hook as "development by definition" is what
+       * let it push an unauthenticated debug port onto one.
+       */
+      const { _inferElectronAppEnv, resolveAppContext } = await import('@abuddy/sdk/env');
+      const { debugPortArgsFor, publishSession, readDevToolsPort } = await import('@abuddy/host/dev-session');
+      const build = _inferElectronAppEnv({
+        playwrightTest: process.env.PLAYWRIGHT_TEST === 'true',
+        isPackaged: false,
+        channel: process.env.ABUDDY_ENV ?? '',
+        envVar: process.env.ABUDDY_ENV,
+      });
+
+      // The same gate `abuddy dev` passes, through the same function: development only, and nothing else
+      electronArgs.push(...debugPortArgsFor(build));
 
       // Before the spawn, so the port file below is this app's rather than one a previous run left in the
       // data dir — Chromium's `DevToolsActivePort` outlives the browser that wrote it
@@ -137,13 +152,12 @@ function handleHotReload() {
       const spawned = electronApp;
       void (async () => {
         try {
-          const { publishSession, readDevToolsPort } = await import('@abuddy/host/dev-session');
-          const { resolveAppContext } = await import('@abuddy/sdk/env');
-          // `development` outright: this is the watcher, not a process the app spawned, so there is no
-          // `ABUDDY_ENV` in its environment to infer a build from — and it is the same "by definition"
-          // the debug-port push above rests on. Asking with no build threw here, which published nothing
-          // and reported `not attachable` on a run that was otherwise perfectly fine
-          const { userDataDir } = resolveAppContext({ build: 'development' });
+          // An app with no port is not attachable, and a record with a hole in it is not the honest answer:
+          // the file means attachable, so a beta or test run publishes none
+          if (debugPortArgsFor(build).length === 0) return;
+          // The build this spawn resolves, not a guess: asking with no argument threw here, which published
+          // nothing and reported `not attachable` on a run that was otherwise perfectly fine
+          const { userDataDir } = resolveAppContext({ build });
           const debugPort = await readDevToolsPort(userDataDir, { after: launchedAt });
           if (spawned !== electronApp) return;  // a rebuild replaced it while the port was being waited for
           const unpublish = publishSession({

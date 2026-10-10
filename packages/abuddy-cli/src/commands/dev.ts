@@ -6,7 +6,8 @@ import { createRequire } from 'node:module';
 import { build } from './build';
 import { findPackRootOrNone, readManifest } from '../utils';
 import {
-  lastAttachedAt, publishSession, readDevToolsPort, readSession, startedByFromEnv, type DevSession,
+  debugPortArgsFor, lastAttachedAt, publishSession, readDevToolsPort, readSession, startedByFromEnv,
+  type DevSession,
 } from '@abuddy/host/dev-session';
 import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
 import { reloadPack, type AppPlace, type DevReload } from '../build/dev-reload.ts';
@@ -116,7 +117,7 @@ function appLaunchEnv(place: AppPlace): NodeJS.ProcessEnv {
  * which `readDevToolsPort` reads.
  */
 export function debugPortArgs(place: AppPlace): string[] {
-  return resolveAppContext(place).build === 'development' ? ['--remote-debugging-port=0'] : [];
+  return debugPortArgsFor(resolveAppContext(place).build);
 }
 
 /** Starts the app. A checkout runs its own sources with its own electron, so a pack needs none installed. */

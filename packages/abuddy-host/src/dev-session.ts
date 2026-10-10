@@ -23,6 +23,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import type { AppEnv } from '@abuddy/sdk/env';
 import { writePrivateFile } from './private-file.ts';
 import { recordIsStale } from './process-liveness.ts';
 
@@ -54,6 +55,25 @@ export interface DevSession {
 }
 
 export const sessionFile = (dataDir: string): string => path.join(dataDir, 'session.json');
+
+/**
+ * The debug-port argument a launcher passes, or nothing — **the one gate between this design and an open
+ * port on a user's app**, and it lives here because *two* launchers need it.
+ *
+ * `--remote-debugging-port` is unauthenticated control of the renderer, and the renderer holds the app's API
+ * token, so what decides it must be the build the app will resolve and nothing else. `0` means Chromium
+ * picks a free one, which is the only safe way to ask: a fixed port collides with whatever holds it and with
+ * a second app.
+ *
+ * **It is here rather than in `abuddy dev` because the `npm start` watcher had no gate at all.** That hook
+ * pushed the flag unconditionally, behind a `NODE_ENV !== 'development'` check — which is the *build mode*
+ * of the bundle, not the environment the spawned app resolves. A source run takes that from `ABUDDY_ENV`, so
+ * `ABUDDY_ENV=beta npm start` opened a port on a **beta** app while the CLI's identical decision had six
+ * cases guarding it. One function, both callers, and the asymmetry cannot come back.
+ */
+export function debugPortArgsFor(build: AppEnv): string[] {
+  return build === 'development' ? ['--remote-debugging-port=0'] : [];
+}
 
 /**
  * Waits for a session to be published on a data dir, or says why none was.
