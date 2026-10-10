@@ -308,7 +308,12 @@ pack, since the checkout behind "no pack here" is the one you are standing in. N
 AgentBuddy repo's own `npm run drive` scripts use, so they are calls to this command rather than a second
 implementation of it.
 
-It takes the same app and profile flags as `abuddy dev`, with one difference in the default: where `abuddy dev` uses the shared development data dir, `abuddy drive` gives each session a fresh one and throws it away afterwards, so a driving session starts clean and leaves nothing. `--profile <name>` is how a session keeps its state for the next one. It launches its own app rather than joining one `abuddy dev` already has, because Electron allows one app per data dir — so if a person wants to watch what a driver is doing, they watch the driver's window rather than starting a second app.
+It takes the same app and profile flags as `abuddy dev`, and **the two halves meet an app differently**, which the table below sets out in full:
+
+- **A question** joins the app `abuddy dev` or `npm start` is holding, over the debug port in that app's session file. It asks of the development data dir unless `--profile <name>` names another, because that is where the app you are working in is.
+- **A script** launches its own app and shows its windows, in a fresh data dir thrown away afterwards, so a driving session starts clean and leaves nothing and a script's result does not depend on whatever plugin the last one left open. `--profile <name>` is how a session keeps its state for the next one.
+
+Electron allows one app per data dir, which is what makes a question *join* rather than compete — and why a script, which wants an app of its own, gets a dir of its own with it. If a person wants to watch what a script is doing they watch its window; a question is headless, since nothing is watching one question.
 
 ### Which app, and how long it lives
 

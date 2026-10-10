@@ -24,7 +24,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { resolveAppContext } from '@abuddy/sdk/env';
+import { APP_ENVS, resolveAppContext } from '@abuddy/sdk/env';
 import { lockIsHeld, readApiEndpoint } from '@abuddy/host/process-liveness';
 import { _pathSegmentProblem, randomId } from '@abuddy/sdk/utils/pure';
 import type { CliDirs } from './app-target';
@@ -48,8 +48,21 @@ const profilesRoot = (dirs: CliDirs) => path.join(dirs.data, 'profiles');
  *
  * The rule itself is `_pathSegmentProblem`: a pack's data directory name needs the same one, and the copy
  * that governed it was missing the filesystem's reserved names.
+ *
+ * **And a profile is never named after a build.** `--profile beta` and `--build beta` would otherwise be
+ * two different things a letter apart — one a data dir, the other the app that opens it — which is the
+ * collision this vocabulary exists to end, reintroduced by the one input a user picks freely. The names
+ * come from `APP_ENVS` rather than a list of their own, so a fifth build cannot arrive nameable.
  */
-export const profileNameProblem = (name: string): string | undefined => _pathSegmentProblem(name, 'profile name');
+export const profileNameProblem = (name: string): string | undefined => {
+  const segment = _pathSegmentProblem(name, 'profile name');
+  if (segment) return segment;
+  if ((APP_ENVS as readonly string[]).includes(name)) {
+    return `"${name}" is a build, so it can't also be a profile name: \`--build ${name}\` names the app and`
+      + ` \`--profile <name>\` names a data dir it opens. Pick a name for the data dir — \`${name}-work\`, say.`;
+  }
+  return undefined;
+};
 
 /**
  * The directory for a name, checked to be inside the profiles root. The regex above already refuses a

@@ -14,7 +14,7 @@ import {
   renameProfile,
 } from '../../src/app/profiles';
 import type { CliDirs } from '../../src/app/app-target';
-import { resolveAppContext } from '@abuddy/sdk/env';
+import { APP_ENVS, resolveAppContext } from '@abuddy/sdk/env';
 import { askTarget } from '../../src/commands/drive';
 
 let tmp: string;
@@ -384,5 +384,37 @@ describe('--rm on a name', () => {
     fs.mkdirSync(profileDir(dirs, 'probe'), { recursive: true });
     fs.writeFileSync(path.join(profileDir(dirs, 'probe'), 'dev-spawn.log'), 'starting\n');
     expect(profileFor({ kind: 'named', name: 'probe', rm: true }, dirs)).toMatchObject({ created: true, ephemeral: true });
+  });
+});
+
+/**
+ * **A profile is never named after a build**, which is the one place this vocabulary could be put back
+ * where it started: `--profile beta` and `--build beta` a letter apart, one a data dir and the other the
+ * app that opens it. A name is the only input here a user picks freely, so it is the only way a build name
+ * could reappear as storage.
+ *
+ * It was not enforced — `abuddy profiles new beta` made the directory — and the Outcome had recorded the
+ * property as held. Derived from `APP_ENVS` rather than a list of its own, so a fifth build arrives
+ * refused rather than nameable, which is what the `it.each` below holds.
+ */
+describe('a name that is a build', () => {
+  it.each(APP_ENVS)('is refused, and says what each word names: %s', (build) => {
+    expect(profileNameProblem(build)).toMatch(/is a build/);
+    expect(profileNameProblem(build)).toMatch(/--build/);
+    expect(profileNameProblem(build)).toMatch(/--profile/);
+  });
+
+  /** Every door goes through `profileDir`, so none of them has to remember the rule. */
+  it.each(APP_ENVS)('cannot reach a directory either: %s', (build) => {
+    expect(() => profileDir(dirs, build)).toThrow(/is a build/);
+    expect(() => openProfile(dirs, build)).toThrow(/is a build/);
+    expect(fs.existsSync(path.join(root(), build))).toBe(false);
+  });
+
+  /** Only the whole name. A build's name inside a longer one is an ordinary name and must stay usable. */
+  it('is not a name that merely contains one', () => {
+    for (const name of ['beta-work', 'my-production', 'development-2', 'testing']) {
+      expect(profileNameProblem(name), name).toBeUndefined();
+    }
   });
 });
