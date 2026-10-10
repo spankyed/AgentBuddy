@@ -10,8 +10,7 @@ app `drive` talks to** — whether that is a live one it joins or one it starts 
 by the flag, but the flag is what points at the data dir whose session file answers that. And a profile a one-shot
 started an app in becomes something a reap can take, where today it only says where a throwaway app's
 data goes. (No name is reserved by any of this — see the attach plan's Decision 12.) Renaming a flag in
-the same change that changes what it does is
-the worst of both — a reviewer cannot tell which half of the diff is which, and a user meets a new name and
+the same change that changes what it does is the worst of both — a reviewer cannot tell which half of the diff is which, and a user meets a new name and
 a new behaviour at once. So the rename goes first, alone, and the attach work is then written in the
 vocabulary it will keep.
 

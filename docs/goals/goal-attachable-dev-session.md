@@ -3,7 +3,7 @@
 ```
 # Goal: dev holds the app, drive attaches to it — and the two words stop colliding
 
-Implement docs/goals/goal-attachable-dev-session.md on master, at or after 3d5b21d45 — the base its
+Implement docs/goals/goal-attachable-dev-session.md on the current branch, at or after 3d5b21d45 — the base its
 Background was surveyed at.
 Before Phase 1, confirm the base: packages/abuddy-cli/src/app/instances.ts, src/commands/instances.ts,
 src/app/app-target.ts's parseAppFlags, and packages/abuddy-testing/src/engine/{server,marker,session}.ts
@@ -124,8 +124,7 @@ Final.
    dirs, then the reverse — and make all three say the same thing.
 9. **No commits are squashed across phases.** A phase is separable only while it is finishing.
 10. **What `--spawn` starts *is* `dev` — the same code path, watcher and all — never the Playwright
-    fixture.**
-    Two reasons, and the second is why "spawns it as `dev` does" was not enough. (a) `appLaunchEnv` sets
+    fixture.** Two reasons, and the second is why "spawns it as `dev` does" was not enough. (a) `appLaunchEnv` sets
     `PLAYWRIGHT_TEST = 'true'` unconditionally (`abuddy-testing/src/launch-env.ts:16`), which
     `_inferElectronAppEnv` answers `test` to — so a fixture-launched app can never be `development`, the
     environment gate would refuse it the debug port, and it would be unattachable. Nothing the app can
@@ -154,9 +153,9 @@ Final.
     its own teardown closes the app it holds; the attach plan has both, with the signalling rule.
 11. **`--spawn` with no profile named starts the `development` app, and `dev` reclaims one a tool
     started.** (With `--profile` it starts one there instead, and that one is reapable — Decision 12.)
-    When an app *is*
-    asked for, it is the developer's own data rather than a blank one, because a blank app cannot answer
-    most of what `drive` is asked and because `drive --eval` should keep one meaning rather than one per
+    When an app *is* asked for, it is the developer's own data rather than a blank one, because a blank
+    app cannot answer most of what `drive` is asked, and because `drive --eval` should keep one meaning
+    rather than one per
     whichever app happened to be up. (Whether an app is started at all is Decision 16's: it is not, unless
     asked.) What makes starting the development app safe is
     the reclaim: on the development dir, `dev` reads the session file and, for `startedBy: drive`,
@@ -180,8 +179,7 @@ Final.
     and a Vite dev server, and in a checkout with no pack it is Electron alone. Decision 16 is what keeps
     this rare — it only ever happens because someone asked. The two ways
     out are `abuddy dev`, which reclaims it, and the `supervisorPid` in the session file. **An attach says
-    whose app it joined**, as the answer's
-    `startedBy` field (Decision 17) rather than as a sentence — "a previous question started it" is the
+    whose app it joined**, as the answer's `startedBy` field (Decision 17) rather than as a sentence — "a previous question started it" is the
     case where nobody is minding the app, so it is the one that must not be silent.
     **And because a line printed once is not documentation**, `abuddy profiles` gains a *running* column —
     `supervisorPid`, `startedBy`, uptime, debug port, with the environments' data dirs beside the profiles — over
@@ -219,6 +217,11 @@ Final.
     session file is read *before* a profile is resolved — `openProfile` creates-or-reuses, so the old
     order would mint an empty dir and then decline to use it; and `--fresh --spawn` is accepted as a
     no-op, since `--fresh` already implies `--spawn` and the two flags disagree about nothing.
+    **And `--fresh --rm` on a one-shot means kill-then-remove**: `--fresh` implies `--spawn`, a spawned
+    app persists, and `--rm` promises the dir is gone — so the app it just started is ended first. That
+    is the only reading that keeps the flag's word; "the reap will get it" is a different promise. It is
+    the one case where a one-shot ends an app outside the reclaim rule, on ownership rather than as an
+    exception: it spawned that app itself and holds its `supervisorPid`.
     It does not weaken the case for deleting `--serve`: a spawned app stays, so a cold checkout costs one
     flag on the first question and an attach on every one after — `--serve`'s own bargain, with a flag in
     place of a long-lived foreground process. Everything Decisions 10-13 say about *how* an app is started
@@ -232,8 +235,7 @@ Final.
     not — the root `CLAUDE.md` rule *"a distinct exit code where 'nothing covered this' and 'everything
     passed' are different answers"*, at the code `npm run spec` already uses for it. Both non-zero paths
     put **nothing** on stdout, so a pipe never receives half an answer. `state` and `startedBy` belong in
-    the data rather than in a
-    sentence: the first says whether this question acquired a process, the second whose app answered — and
+    the data rather than in a sentence: the first says whether this question acquired a process, the second whose app answered — and
     `attached` + `startedBy: "drive"` is the case Decision 13 singles out, an app a previous question left
     that nobody is minding. `supervisorPid` is what ends it; prose goes to stderr, and only where something was left
     behind. **Two things count as left behind**: an app that is still running, and a *write to the user's

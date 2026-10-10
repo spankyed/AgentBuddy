@@ -75,8 +75,7 @@ one marker (`pack-dev-servers/<id>.json`) that means something else entirely.
 **The order matters**: that rename gives `--profile` its name, and this plan changes what the flag
 *means* — it stops saying only where a throwaway app's data goes and starts naming **which app a question
 reaches**, the one whose session file is read, and a profile a spawn used is one the reap can take.
-Whether that
-app is joined or started is decided by liveness rather than by the flag. A flag should not gain a new name
+Whether that app is joined or started is decided by liveness rather than by the flag. A flag should not gain a new name
 and a new behaviour in one change.
 
 **A live app is a resource with a lifecycle, not a side effect of a command someone remembered to run.**
@@ -188,8 +187,19 @@ mean another one.
 | `--profile probe`, an attachable app on it | **attach** — the case this plan is for |
 | `--profile probe`, nothing on it | refuse; with `--spawn`, start one there, publish its session file, attach. **The dir is created only on the path that uses it** — see below |
 | `--profile probe`, a non-attachable app on it | the existing `profileInUse` refusal — the dir can be neither launched into nor attached to |
-| `--fresh` / `--fresh --rm` | mints a new dir by definition, so there is never anything to attach to: it implies `--spawn` for a one-shot, since the flag would otherwise ask for a dir and then refuse to use it. Isolation is what was asked for, not a gap |
+| `--fresh` | mints a new dir by definition, so there is never anything to attach to: it implies `--spawn` for a one-shot, since the flag would otherwise ask for a dir and then refuse to use it. Isolation is what was asked for, not a gap |
+| `--fresh --rm`, on a one-shot | **kill, then remove** — the one reading where the flag is honest. See below |
 | `--fresh --spawn` | **accepted, and a no-op** — `--spawn` is what `--fresh` already implies, so the pair is a caller being explicit rather than a contradiction. Refusing it would be a rule with nothing behind it: there is no behaviour the two flags disagree about |
+
+**`--rm` on a one-shot means kill-then-remove, because nothing else makes the flag true.** `--fresh`
+implies `--spawn` and a spawned app persists, so `--fresh --rm` would otherwise answer the question and
+exit having promised to throw away a dir that a live app is still sitting on. The existing semantics do
+not carry over: `--ephemeral` on `run` removes the dir in `teardown`, after `exited(child)`, and a
+one-shot has no such moment because the app it started outlives it *by design*. Of the three readings —
+kill then remove, reject `--rm` here, or let the reap get to it eventually — only the first keeps the
+flag's word, and *"the reap will take it"* is a different promise from *"removed"*. It is also the one
+case where a one-shot may end an app without the reclaim rule, and the reason is ownership rather than an
+exception: it spawned that app itself, seconds ago, and holds its `supervisorPid` directly.
 
 **A refused run creates nothing, which is a question of ordering.** `openProfile` creates-or-reuses by
 design — `mkdirSync` plus a record file, reporting `created` (`instances.ts:100`) — because that call is
@@ -297,8 +307,7 @@ things follow, and each is a way to get this wrong:
 
 Nobody is left holding it: on the development dir the developer's own `dev`/`npm start` reclaims it
 (Decision 11 in the goal doc), and on any profile a spawn used the idle reap takes it (Decision 12). A
-detached
-child with no owner is exactly what those two rules exist to answer.
+detached child with no owner is exactly what those two rules exist to answer.
 
 **It starts the `development` app, which is a change in what `drive` touches, and is stated rather than
 defaulted into.** Today the fixture gives every `drive` run a throwaway dir, so a one-shot cannot reach
@@ -635,6 +644,9 @@ below exists.
   an app `dev` holds from one a previous question left — the case Decision 13 calls the one that must not
   be silent, and the one a shape without that field cannot express. Mutation: an `ok` field reintroduced
   alongside a non-zero exit is the trap this replaced, and the case should fail on it.
+- **`--fresh --rm` leaves neither an app nor a dir.** Both halves, since the flag promises both: assert
+  the `supervisorPid` is gone and the dir with it. Mutation: removing the dir without ending the app
+  leaves a live app on a path that no longer exists, which is worse than either failure alone.
 - **a refused one-shot leaves no profile behind.** `--profile brandnew` with no `--spawn`: assert the
   refusal, and assert `<cli data>/profiles/brandnew` does not exist afterwards. The mutation is resolving
   the profile before reading the session file, which is the order the command has today and which passes
