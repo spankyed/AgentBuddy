@@ -10,7 +10,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { _appDirOf, type AppEnv } from '@abuddy/sdk/env';
 import { create, environmentRows, list, pidHolding, remove, stop, trim } from '../../src/commands/profiles';
-import { listProfiles, openProfile, REGENERABLE_DIRS } from '../../src/app/profiles';
+import { chromiumHolding, dataDirInUse, listProfiles, openProfile, REGENERABLE_DIRS } from '../../src/app/profiles';
 import { publishSession } from '@abuddy/host/dev-session';
 import { appLockFile } from '@abuddy/host/database';
 import type { CliDirs } from '../../src/app/app-target';
@@ -402,5 +402,63 @@ describe('stop', () => {
 
   it('refuses a name that is neither a build nor a profile', async () => {
     await expect(stop(dirs, ['nope'], false, { resolve })).rejects.toThrow(/neither a build nor a profile/);
+  });
+});
+
+/**
+ * **An app the records lost is still an app**, and the API's port file is not enough to find one.
+ *
+ * Observed 2026-10-10: a development app alive with its port file, app lock and session all gone, so every
+ * verb here reported no app — `trim` would have swept the caches under a running browser and `stop` had
+ * nothing to signal. Chromium's own `SingletonLock` is a second signal, and only ever an addition: it is
+ * another product's private format, POSIX-only, and fails open, which is why `findRunningApp` refuses it
+ * for the database question where a wrong "no app" lets a tool write under a running one.
+ */
+describe('a browser holding a data dir', () => {
+  const singletonLock = (dir: string, target: string) => {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.symlinkSync(target, path.join(dir, 'SingletonLock'));
+  };
+
+  it('is found from the lock Chromium writes, when nothing else says so', () => {
+    const dir = resolve('development');
+    singletonLock(dir, `${os.hostname()}-${process.pid}`);
+
+    expect(chromiumHolding(dir)).toBe(process.pid);
+    expect(dataDirInUse(dir), 'and the dir reads as in use with no port file at all').toBe(true);
+  });
+
+  /** A lock whose process has gone is a crash's leftover, not an app. */
+  it('is not a lock left by a process that has gone', () => {
+    const dir = resolve('development');
+    singletonLock(dir, `${os.hostname()}-999999`);
+
+    expect(chromiumHolding(dir)).toBeUndefined();
+    expect(dataDirInUse(dir)).toBe(false);
+  });
+
+  /** A hostname may hold dashes, so the pid is what follows the *last* one. */
+  it('reads the pid after the last dash, not the first', () => {
+    const dir = resolve('beta');
+    singletonLock(dir, `my-laptop-at-home-${process.pid}`);
+
+    expect(chromiumHolding(dir)).toBe(process.pid);
+  });
+
+  it('is nothing at all for a dir with no lock, and never throws', () => {
+    expect(chromiumHolding(resolve('test'))).toBeUndefined();
+    expect(dataDirInUse(resolve('test'))).toBe(false);
+  });
+
+  /** The firing case for the refusal this exists to strengthen. */
+  it('stops trim sweeping the caches under it', () => {
+    const dir = resolve('development');
+    fs.mkdirSync(path.join(dir, 'Cache'), { recursive: true });
+    singletonLock(dir, `${os.hostname()}-${process.pid}`);
+
+    trim(dirs, ["development"], { resolve, bytes: () => 1024 });
+
+    expect(fs.existsSync(path.join(dir, 'Cache'))).toBe(true);
+    expect(printed()).toMatch(/development.*an app is running on it/);
   });
 });

@@ -27,7 +27,7 @@ import { errorMessage } from '@abuddy/sdk/utils/pure';
 import { cliDirs, type CliDirs } from '../app/app-target';
 import {
   REGENERABLE_DIRS, dirBytes, profileInUse, profileNameProblem, listProfiles, mintProfile, openProfile,
-  endAppHolding, removeProfile, renameProfile, size, trimDataDir, type ListedProfile,
+  chromiumHolding, endAppHolding, removeProfile, renameProfile, size, trimDataDir, type ListedProfile,
 } from '../app/profiles';
 
 const HELP = `
@@ -310,7 +310,9 @@ export function pidHolding(dir: string): number | undefined {
   // file and a second opinion about where it is becomes a refusal that never fires. The build is immaterial
   // — every path in the context is joined onto the dir it is given
   const { apiPortFile } = resolveAppContext({ build: 'development', profile: dir });
-  return findRunningApp({ userDataDir: dir, apiPortFile })?.pid;
+  // Last, the browser's own lock: an app whose session, app lock and port file have all gone is still an
+  // app, and before this it was one no verb here could reach — observed, with the dock icon to prove it
+  return findRunningApp({ userDataDir: dir, apiPortFile })?.pid ?? chromiumHolding(dir);
 }
 
 export async function profiles(args: string[]): Promise<void> {

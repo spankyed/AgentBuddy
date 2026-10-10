@@ -119,6 +119,37 @@ export function profileInUse(dir: string): boolean {
   return readApiEndpoint(resolveAppContext({ build: 'development', profile: dir }).apiPortFile) !== null;
 }
 
+/**
+ * The Chromium using a data dir, from the lock it writes there — a **second** signal beside the API's port
+ * file, and deliberately a weaker one.
+ *
+ * **Why a second at all.** `profileInUse` reads what the *API* publishes, and an Electron can be running
+ * with no port file: its API has not come up yet, or died, or a record was removed. Observed on the
+ * author's machine, 2026-10-10: a development app alive with its port file, app lock and session all gone,
+ * so every tool here reported no app — `trim` would have swept the caches under a running browser and
+ * `stop` had nothing to signal.
+ *
+ * **Why it is not the only signal, and why `findRunningApp` is right to refuse it.** This is another
+ * product's private format, written on POSIX only, and it fails *open*: unreadable, or Windows, and the
+ * answer is silently "nothing here". That is unacceptable for the question `@abuddy/host/database` asks,
+ * where a wrong "no app" means a tool writes under a running one. Here it is only ever *added* to the
+ * primary signal, so it can find an app the port file misses and can never hide one it finds.
+ */
+export function chromiumHolding(dir: string): number | undefined {
+  let target: string;
+  try {
+    target = fs.readlinkSync(path.join(dir, 'SingletonLock'));
+  } catch {
+    return undefined;
+  }
+  // `<hostname>-<pid>`, and a hostname may hold dashes, so the pid is what follows the last one
+  const pid = Number(target.slice(target.lastIndexOf('-') + 1));
+  return Number.isInteger(pid) && pid > 0 && lockIsHeld(pid) ? pid : undefined;
+}
+
+/** Whether anything is using a data dir: the API's port file, or the browser's own lock. */
+export const dataDirInUse = (dir: string): boolean => profileInUse(dir) || chromiumHolding(dir) !== undefined;
+
 export interface OpenedProfile {
   name: string;
   dir: string;
@@ -198,7 +229,7 @@ export interface Trimmed {
  */
 export function trimDataDir(dir: string, bytes: (dir: string) => number = dirBytes): Trimmed {
   if (!fs.existsSync(dir)) return { dir, freed: 0, refused: 'no data dir yet' };
-  if (profileInUse(dir)) return { dir, freed: 0, refused: 'an app is running on it' };
+  if (dataDirInUse(dir)) return { dir, freed: 0, refused: 'an app is running on it' };
   let freed = 0;
   for (const name of REGENERABLE_DIRS) {
     const cache = path.join(dir, name);
