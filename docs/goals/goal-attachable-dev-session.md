@@ -85,7 +85,7 @@ spike code is thrown away; everything a phase needs is in that table. The row th
 its window, where a CDP client re-attaches, which is why a long-lived session rots and an attachable app
 does not.
 
-Not covered by the spike, so a phase proves each: autostart under contention, the idle timeout, the
+Not covered by the spike, so a phase proves each: `--spawn` under contention, the idle timeout, the
 environment gate, and the end-to-end cost of a one-shot.
 
 ## Decisions
@@ -123,7 +123,8 @@ Final.
    and `SingleInstanceApp.ts` says "them". Determine it — two apps with the same name and different data
    dirs, then the reverse — and make all three say the same thing.
 9. **No commits are squashed across phases.** A phase is separable only while it is finishing.
-10. **Autostart *is* `dev` — the same code path, watcher and all — and never the Playwright fixture.**
+10. **What `--spawn` starts *is* `dev` — the same code path, watcher and all — never the Playwright
+    fixture.**
     Two reasons, and the second is why "spawns it as `dev` does" was not enough. (a) `appLaunchEnv` sets
     `PLAYWRIGHT_TEST = 'true'` unconditionally (`abuddy-testing/src/launch-env.ts:16`), which
     `_inferElectronAppEnv` answers `test` to — so a fixture-launched app can never be `development`, the
@@ -132,7 +133,7 @@ Final.
     (b) **The fixture is also the only thing that installs the pack under test.** With `PACK_DIR` set it
     builds the pack and installs it into the data dir (`abuddy-testing/src/index.ts:357`), which is
     exactly why `drive` does none of that itself (`drive.ts:477`: *"No build here: the fixture builds the
-    pack itself"*). An autostart that copied dev's *environment* would hand a pack author an app without
+    pack itself"*). A spawn that copied dev's *environment* would hand a pack author an app without
     their pack, or with a stale copy of it. `dev` already does it — `installToApp` (`run.ts:61`, called at
     `:259`) is the pack install, and `ensureCheckoutPackages` beside it is the different job of building
     the `@abuddy` packages' `dist` that a pack compiles against — so spawning `dev` gets both for nothing.
@@ -151,7 +152,8 @@ Final.
     Playwright) rather than a core with the pack work removed. The Files table is the accurate description
     of the work. Second, `--spawn` **spawns `dev` detached** (`.unref()`), because `dev` never returns and
     its own teardown closes the app it holds; the attach plan has both, with the signalling rule.
-11. **`--spawn` starts the `development` app, and `dev` reclaims one a tool started.** When an app *is*
+11. **`--spawn` with no profile named starts the `development` app, and `dev` reclaims one a tool
+    started.** (With `--profile`, it starts one there instead, and that one is reapable — Decision 12.) When an app *is*
     asked for, it is the developer's own data rather than a blank one, because a blank app cannot answer
     most of what `drive` is asked and because `drive --eval` should keep one meaning rather than one per
     whichever app happened to be up. (Whether an app is started at all is Decision 16's: it is not, unless
@@ -169,16 +171,16 @@ Final.
     and nothing on `development` reaps it (Decision 12): in a pack repo that is Electron, a file watcher
     and a Vite dev server, and in a checkout with no pack it is Electron alone. Decision 16 is what keeps
     this rare — it only ever happens because someone asked. The two ways
-    out are `abuddy dev`, which reclaims it, and the `supervisorPid` in the session file. **An attach says whose app
-    it joined** — `startedBy` is in the session file, and "a previous question started it" is the case
-    where nobody is minding the app.
+    out are `abuddy dev`, which reclaims it, and the `supervisorPid` in the session file. **An attach says whose app it joined**, as the answer's
+    `startedBy` field (Decision 17) rather than as a sentence — "a previous question started it" is the
+    case where nobody is minding the app, so it is the one that must not be silent.
     **And because a line printed once is not documentation**, `abuddy profiles` gains a *running* column —
     `supervisorPid`, `startedBy`, uptime, debug port, with the environments' data dirs beside the profiles — over
     `profileInUse` and `recordIsStale`, which already answer liveness. The run says it and the listing
     finds it later; that pair is the remedy, and an idle reap on `development` is not, for the reason
     Decision 12 gives. The attach plan's "Telling the user" has the exact lines and the user-facing table.
 14. **Onboarding is dismissed on every path, and there is no policy flag.** The readiness wait becomes one
-    extracted function, `waitForAppReady(page)`, called by the fixture, by autostart and by attach alike:
+    extracted function, `waitForAppReady(page)`, called by the fixture, by `--spawn` and by attach alike:
     a single `waitForFunction` for `running === 'connected'` that calls `window.__disableOnboardingUI()`
     from *inside* the predicate. In-poll rather than check-then-dismiss, because onboarding can arrive at
     any point during the boot — `engine/index.ts:105` already learned that for `reloadWindow`, and the
@@ -199,7 +201,7 @@ Final.
     pack's suite imports, and would need a gate proving `abuddy test` can never take that path. Revisit
     from a measured complaint, never from the asymmetry alone.
 16. **A one-shot refuses when no app is running, and `--spawn` is how you ask for one.** This replaces
-    autostart-as-default and is the user's call, for the reason that settles it: the intuitive reading of
+    starting one on every miss and is the user's call, for the reason that settles it: the intuitive reading of
     `drive --eval` is *"ask the app"*, so with no app the answer is to say so — exit non-zero, naming
     `abuddy dev` and `--spawn` — rather than to acquire a process the question did not ask for. It is also
     what makes Decision 13's hygiene problem small: **nothing is left running that nobody asked for.**
@@ -209,12 +211,17 @@ Final.
     place of a long-lived foreground process. Everything Decisions 10-13 say about *how* an app is started
     and reclaimed still holds; only *when* has changed, from "on a miss" to "on request".
 17. **A one-shot's stdout is one JSON object and nothing else**, so it pipes:
-    `{"value": …, "state": "attached" | "spawned", "supervisorPid": N}`. **No `ok` field — the exit code is the
-    status**, which is what finally removes `oneShotOutcome`'s trap (an `ok: false` inside a 200, so
-    reading the status exited 0 on every real failure, and which this goal was deleting anyway). A failure
-    puts **nothing** on stdout, so a pipe never receives half an answer. `state` belongs in the data
-    rather than in a sentence because whether a question acquired a process is what a caller needs to
-    know, and `supervisorPid` is what ends it; prose goes to stderr, and only where something was left
+    `{"value": …, "state": "attached" | "spawned", "startedBy": "dev" | "drive", "supervisorPid": N}`.
+    **No `ok` field — the exit code is the status, and there are three**: `0` with a value on stdout, `3`
+    for *no app is running*, `1` for *the verb failed*. That removes `oneShotOutcome`'s trap (an
+    `ok: false` inside a 200, so reading the status exited 0 on every real failure) and keeps the two
+    non-zero answers apart, which matters because a miss is retryable with `--spawn` and a failed verb is
+    not — the root `CLAUDE.md` rule *"a distinct exit code where 'nothing covered this' and 'everything
+    passed' are different answers"*, at the code `npm run spec` already uses for it. Both non-zero paths
+    put **nothing** on stdout, so a pipe never receives half an answer. `state` and `startedBy` belong in the data rather than in a
+    sentence: the first says whether this question acquired a process, the second whose app answered — and
+    `attached` + `startedBy: "drive"` is the case Decision 13 singles out, an app a previous question left
+    that nobody is minding. `supervisorPid` is what ends it; prose goes to stderr, and only where something was left
     behind. **Two things count as left behind**: an app that is still running, and a *write to the user's
     data* — which is why completing onboarding (Decision 14) gets a line as surely as spawning does. An
     attach that changed nothing says nothing.
@@ -272,8 +279,9 @@ That plan's phase 3, under Decisions 16 and 17. `--spawn` spawns `dev` (Decision
 `holdExclusiveLock`, re-reading after acquiring, and that `dev` publishes the session file; **without the
 flag a miss refuses**. A spawned app on a `drive` profile idles out; a `dev` one does not.
 
-**Done when:** a miss **without** `--spawn` exits non-zero, writes nothing to stdout and names both
-`abuddy dev` and `--spawn` — a gate over input, so the empty stdout is the half to assert; the answer is
+**Done when:** a miss **without** `--spawn` exits **3**, writes nothing to stdout and names both
+`abuddy dev` and `--spawn` — a gate over input, so the empty stdout is the half to assert, and 3 rather
+than 1 is the half a caller needs (Decision 17), with a failed verb at 1 as the paired case; the answer is
 `{value, state, supervisorPid}` and nothing else, with `state` reading `attached` and `spawned` in the two cases and
 no `ok` field (the mutation is reintroducing one beside a non-zero exit); `dev` reclaims a
 `startedBy: drive` app and refuses a `startedBy: dev` one — both halves, since that rule is what makes
