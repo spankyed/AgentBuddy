@@ -834,11 +834,27 @@ property the Outcome had asserted rather than checked has since been checked —
   that is the only way their failing path has a case. `after` is required rather than optional.
 - A profile name is refused for a whole build name only; `beta-work` stays an ordinary name.
 
-**Verification at `b372c6d58`**: `npm run typecheck` (19 jobs), `npm run chain` 153.2s, `npm test -- smoke`
-5 passed, and every workspace suite with one — `@abuddy/cli` 566 + 209 integration, `@abuddy/host` 895,
-`@abuddy/sdk` 730, `@app/repo-checks` 906, `@app/default-setup` 843, `@abuddy/ears` 119, `@app/api` 110,
-`@abuddy/testing` 98, `@app/main` 32, `@app/publish-checks` 8. Three workspaces have no suite to run —
-`@app/preload`, `@app/electron-versions`, `@app/typescript-floor` — and this work touched none of them.
+**Four commits came after the phases**, each a defect the evidence rounds found rather than a phase's work:
+`c6b2da9cc` (a profile nameable after a build), `35c61eb49` (`profileDir`'s containment check unable to
+fire), `c932a2423` (`npm run spec` reporting nothing and passing) and `32bf82922` (the debug port ungated in
+the `npm start` watcher). The first two belong to Phase 1's row and the last to Phase 3's; the third is the
+instrument, not the subject.
+
+**Verification at `319ed640b`**: `npm run typecheck` (19 jobs), `npm run chain` 159.4s, `npm test -- smoke`
+5 passed, `app-integration` 14 passed, and every workspace suite with one — `@abuddy/cli` 573 + 209
+integration, `@abuddy/host` 900, `@abuddy/sdk` 730, `@app/repo-checks` 910, `@app/default-setup` 843,
+`@abuddy/ears` 119, `@app/api` 110, `@abuddy/testing` 98, `@app/main` 32, `@app/publish-checks` 8.
+
+**Three workspaces have no suite**, so `npm run spec` over one reports exactly that and exits 3 —
+`@app/preload`, `@app/electron-versions`, `@app/typescript-floor`. That is the whole answer the command can
+give for them, and it is an answer rather than a silence only because `c932a2423` fixed it. This work
+touched none of the three.
+
+**And one row of the listing is not for a terminal to prove.** `production` is the user's real data and
+testing it from the command line is human QA's, so its evidence is the dry run and spot check: the resolver
+answers `…/Application Support/abuddy` matching `appDataDirFor('production')`, `debugPortArgsFor` gives it no
+port, a profile may not take its name, and the dir holds no session and no `DevToolsActivePort`. The live
+rows are `development` and `beta`; all four are covered through the `resolve` seam.
 
 ### Every guard, and the mutation that proves it
 
