@@ -467,3 +467,47 @@ Two things worth keeping:
 Not done here, deliberately: **the missing-`playwright-core` install hint has no firing case yet.** The
 throw is written, but nothing takes that path until `drive` does, so the case belongs to Phase 5 rather than
 being manufactured against a module that is present.
+
+### Phase 4 — the session file (`fe963e92b`)
+
+Done, and proven live rather than only in specs: `abuddy dev` at the checkout root with no pack held the app
+and published a session, and `drive --state` against it answered in **1.15s**.
+
+```
+$ abuddy dev                       # at the repo root, no pack
+  up on development data in <dir>
+  attachable on debug port 60905 — `abuddy drive` can reach it
+No pack here: holding the app. Ctrl-C to close it.
+
+$ abuddy drive --state             # another terminal
+Attached to the development app (pid 36307).
+{"value":{"running":"connected"},"plugin":"default-setup/threads","plugins":[…]}
+```
+
+Four decisions the phase settled, each because the obvious placement was wrong:
+
+- **The session module is `@abuddy/host/dev-session`, not the CLI's.** Two launchers publish one — `dev`, and
+  the `npm start` loop that spawns Electron from `packages/main/vite.config.js` — so a CLI-owned module would
+  have meant a second copy. The `pack-dev-servers` marker is in the host for that same reason.
+- **`readDevToolsPort` went with it, after two wrong homes.** `@abuddy/testing` put a devDependency in the
+  CLI's import graph, which `bundle-package.ts` refuses; `@abuddy/host/process-liveness` reads well but that
+  module is about *whether a writer is still there*, and this answers *what port Chromium picked*.
+- **`@abuddy/testing` is resolved at runtime by `drive`, never imported.** The CLI already reaches it that way
+  for the Playwright binary, from the pack's own `node_modules` — so a pack drives with the harness it tests
+  with. `attachedSession` was added there so the CLI asks for one thing rather than assembling five.
+- **The pid means "the process whose death ends both"**, which differs in direction between the two
+  launchers: `dev` records its own, because its teardown closes the app; `npm start` records Electron's,
+  because that watcher exits *with* it.
+
+Two gates caught real things, and both are the reason they exist: `published-imports` refused bare
+`playwright` in the declarations (tsc writes the canonical `playwright/test` specifier), and
+`sdk-bridge-drift` refused two new host exports that were neither bridged nor declared unbridged — both
+host-only, now declared with the reason a pack must not have them.
+
+**`--query` against the app I drove failed, and the failure was right.** The running app's *built* API
+predates `host/drive`, so it broadcast where the session waits for a reply — which is what the stale-build
+nudge on `npm run dev` exists to warn about, arriving unprompted as evidence that it is worth having.
+
+Left for Phase 5, where Decision 17 defines it: the one-shot's **output shape**. The fast path currently
+prints the engine's own result, so `--eval` without a `return` prints `{"ok":true}` rather than saying the
+body returned nothing. `{value, state, startedBy, supervisorPid}` and the three exit codes replace it.
