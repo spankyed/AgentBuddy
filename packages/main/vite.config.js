@@ -160,8 +160,14 @@ function handleHotReload() {
           const { userDataDir } = resolveAppContext({ build });
           const debugPort = await readDevToolsPort(userDataDir, { after: launchedAt });
           if (spawned !== electronApp) return;  // a rebuild replaced it while the port was being waited for
+          // **No fallback to this process's pid.** The field means "the process to signal to end this", and
+          // for this launcher that is Electron: the watcher exits *with* it (the listener below), never the
+          // other way, so a record naming the watcher would have `profiles stop` end the watcher and leave
+          // the app. A spawn with no pid has no app either, so the port above cannot have appeared — this
+          // throws rather than publishing a record that names the wrong process.
+          if (spawned.pid === undefined) throw new Error('the app was spawned without a pid');
           const unpublish = publishSession({
-            debugPort, dataDir: userDataDir, supervisorPid: spawned.pid ?? process.pid, startedBy: 'dev',
+            debugPort, dataDir: userDataDir, supervisorPid: spawned.pid, startedBy: 'dev',
           });
           spawned.addListener('exit', unpublish);
         } catch (error) {
