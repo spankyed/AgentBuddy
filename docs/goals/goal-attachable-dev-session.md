@@ -440,3 +440,30 @@ their names; a profile is what lets two apps of one environment coexist; and eve
 
 Corrected: `packages/main/CLAUDE.md` (two places, which said the app name) and `SingleInstanceApp.ts`
 (which said "them"). `abuddy-cli/src/commands/drive.ts` was already right and is unchanged.
+
+### Phase 3 — the port (`2cbb84479`)
+
+Done, and the design's one technical risk is retired: a connected page answers identically to a launched
+one, sees the same renderer's writes, and survives the connection being dropped and remade.
+
+`appHelper(page, screenshotDir)` and `waitForAppReady(page)` are free functions the fixture calls;
+`engine/cdp-page.ts` has `attachToApp`, `readDevToolsPort` and `findWindow`. **`asSessionPage` needed no
+change at all** — it already takes a `Page` and an optional window, so there is one set of verbs rather than
+the two the plan expected ("the same body the fixture's uses" turned out to be the same *function*).
+
+Two things worth keeping:
+
+- **The window predicate is held by a unit, not by the E2E spec.** `pages()[0]` is the right window in this
+  app today, so the end-to-end assertion passes with the predicate replaced by "take the first" — measured
+  by doing it. `abuddy-testing/tests/engine/cdp-page.spec.ts` presents several targets on purpose and fails
+  five of six cases on that mutation. The E2E spec now says it does not hold that claim.
+- **A dependency correction, which was blocking the whole phase.** The root pinned `@playwright/test`
+  exactly and floated `playwright` on `^`, so two `playwright-core` copies were installed and a connected
+  `Page` was *not assignable* to a launched one. The three ship in lockstep; pinning them together leaves
+  one copy. tsc then writes the canonical `playwright/test` specifier into the published declarations, so
+  `playwright` joins `playwright-core` as an optional peer that names it — found by `published-imports`,
+  which is the check that exists for exactly this.
+
+Not done here, deliberately: **the missing-`playwright-core` install hint has no firing case yet.** The
+throw is written, but nothing takes that path until `drive` does, so the case belongs to Phase 5 rather than
+being manufactured against a module that is present.
