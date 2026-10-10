@@ -38,8 +38,14 @@ step "8. abuddy test on the packed archive (the app named on the command line)"
 # The app's data dir is kept for step 9: the app written the installed demo pack into it
 # `if !` so the pipeline's exit status is this script's to report: under `set -e` a failure would otherwise end it
 # here, with only Playwright's own output to say why
-if ! PACK_ARCHIVE="$ARCHIVE" E2E_KEEP_DATA=1 "$ABUDDY" test --build "$ROOT" 2>&1 | tee "$WORK/e2e.log"; then fail "abuddy test failed"; fi
-APP_DATA="$(sed -n 's/.*\[e2e\] kept test data dir: //p' "$WORK/e2e.log" | head -n 1)"
+# This attempt's own file, and the pid is what makes it one. The work dir belongs to the *author* half,
+# which is normally cached — so `$WORK` is the same directory on every attempt of this half, and a fixed
+# name meant each attempt truncated the one before it, the chain's own re-run of a failure included. What
+# this file is for is the next line; the durable copy of the same output is the chain's
+# (`scripts/lib/chain-evidence.ts`), which is what it was being read as before that existed.
+E2E_LOG="$WORK/e2e-$$.log"
+if ! PACK_ARCHIVE="$ARCHIVE" E2E_KEEP_DATA=1 "$ABUDDY" test --build "$ROOT" 2>&1 | tee "$E2E_LOG"; then fail "abuddy test failed"; fi
+APP_DATA="$(sed -n 's/.*\[e2e\] kept test data dir: //p' "$E2E_LOG" | head -n 1)"
 [ -d "$APP_DATA" ] || fail "abuddy test didn't report the data dir it kept"
 
 # What shipped is what ran: the integrity.json inside the archive against the one the app installed. A log
