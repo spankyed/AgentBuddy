@@ -24,12 +24,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 . "$ROOT/tests/scripts/lib/authoring.sh"
 # This run's work dir survives it: the chain caches a step on its declared `outputs` existing, and the app
-# half reads the archive out of here. What gets cleaned is the *previous* run's, named by the handoff it left.
-if [ -f "$HANDOFF/work.json" ]; then
-  rm -rf "$(node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).work)' "$HANDOFF/work.json")"
-  rm -rf "$HANDOFF"
-fi
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/abuddy-authoring-XXXXXX")"
+# half reads the archive out of here. Earlier runs' dirs are swept by `newWorkDir`, which can see every one
+# of them rather than only the one a surviving handoff happens to name.
+rm -rf "$HANDOFF"
+WORK="$(newWorkDir)"
 echo "Work dir: $WORK"
 useWorkDir "$WORK"
 
