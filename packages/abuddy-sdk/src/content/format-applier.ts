@@ -129,6 +129,32 @@ export function contentKeySelection(key: string): { entryKey: string; label: str
   }
 }
 
+/** What a content key's entity answers for: its id, and the two fields an apply decides with */
+export interface ContentEntity {
+  id: EARS.EntityId;
+  contentHash?: string;
+  deleted?: boolean;
+}
+
+/**
+ * The entity one content key names, found the way a later apply finds one. An entity type of `undefined` is
+ * an item nothing recorded one for, and names no entity.
+ *
+ * **The keyed lookup sees deleted rows, and that is the whole of how an apply knows the user removed one.**
+ * `qx` carries no filter where the finders do (`@abuddy/ears`' `query-helpers.ts`, `!isDeleted`), and a
+ * soft-deleted row keeps the `contentKey` being searched for. Hide it and `findByIdentity` misses too, on the
+ * same filter, so the record is created again: a fresh copy beside the one in the trash, every time the
+ * pack's compiled content changes.
+ *
+ * **It reaches only as far as the feature's delete does.** A row destroyed rather than trashed leaves nothing
+ * carrying a content key, so nothing here can tell that it ever existed — the entity's own delete is what
+ * decides which it is (`trash.move` against `destroy()`).
+ */
+export function contentEntity(entityType: string | undefined, key: string): ContentEntity | undefined {
+  if (!entityType) return undefined;
+  return qx(entityType as EARS.Entity).where(CONTENT_KEY as string, key).pickAll()[0] as ContentEntity | undefined;
+}
+
 /**
  * Records that this run's content declares `key` (`ApplyRecord.defined`, `@abuddy/sdk/utils`).
  *
@@ -195,22 +221,8 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
        * (`reused`): its children are written under it and the row itself is left alone.
        */
       const find = (record: ContentItem, contentKey: string, context: ContentWriteContext, hooks?: ContentWriter): { match?: ContentMatch; reused?: boolean; deleted?: boolean } => {
-        /**
-         * **The keyed lookup sees deleted rows, and that is the whole of how an apply knows the user removed
-         * one.** `qx` carries no filter; the finders do (`@abuddy/ears`' `query-helpers.ts`, `!isDeleted`),
-         * so `findWhere` here hid exactly the row that answers "did the user delete this" — a soft-deleted
-         * row keeps the `contentKey` this is searching for. With it hidden, `findByIdentity` missed too (same
-         * filter) and the record was created again: a fresh copy beside the one in the trash, every time the
-         * pack's compiled content changed.
-         *
-         * **It reaches only as far as the feature's delete does.** A row destroyed rather than trashed leaves
-         * nothing carrying a content key, so the record is created again and nothing here can tell that it ever
-         * existed — the entity's own delete is what decides which it is (`trash.move` against `destroy()`).
-         */
-        const keyed = record.entity
-          ? qx(record.entity as EARS.Entity).where(CONTENT_KEY as string, contentKey)
-            .pickAll()[0] as { id: EARS.EntityId; contentHash?: string; deleted?: boolean } | undefined
-          : undefined;
+        // Seeing a deleted row is how an apply knows the user removed one; `contentEntity` says why
+        const keyed = contentEntity(record.entity, contentKey);
         if (keyed) return { match: { id: keyed.id, contentHash: keyed.contentHash }, deleted: keyed.deleted === true };
         const match = findByIdentity(record, context, hooks);
         if (!match) return {};
@@ -442,12 +454,6 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
         });
       };
 
-      /** The entity one of this entry's keys names, found as a later apply finds one */
-      const entityOf = (item: AppliedItem, itemKey: string) => item.entityType
-        ? qx(item.entityType as EARS.Entity).where(CONTENT_KEY as string, itemKey)
-          .pickAll()[0] as { id: EARS.EntityId; contentHash?: string; deleted?: boolean } | undefined
-        : undefined;
-
       /**
        * A container holding entities this entry did not write — another pack's documents filed under a shared
        * folder, or the user's. Removing the folder would take their content with it, and it is not ours to
@@ -476,7 +482,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
         const gone = [...record.before.keys()].filter((k) => k.startsWith(prefix) && !record.defined.has(k)).sort();
         const verdicts = gone.map((itemKey) => {
           const item = record.before.get(itemKey)!;
-          const entity = entityOf(item, itemKey);
+          const entity = contentEntity(item.entityType, itemKey);
           const hooks = item.entityType ? _contentWriterRegistry.get(item.entityType) : undefined;
           const live: LiveEntity | undefined = entity && entity.deleted !== true
             ? {
@@ -519,7 +525,7 @@ export function createFormatApplier(options: FormatApplierOptions): ContentAppli
           }
           try {
             // Resolved again: removing a parent may already have removed this one
-            const entity = entityOf(verdict.item, verdict.itemKey);
+            const entity = contentEntity(verdict.item.entityType, verdict.itemKey);
             // An entity the user has already thrown away is theirs to restore, so only the entry goes:
             // destroying the trashed copy would take the undo with it
             if (entity && entity.deleted !== true) remove(entity.id, verdict.hooks);

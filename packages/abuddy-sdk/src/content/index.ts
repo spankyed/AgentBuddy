@@ -1,4 +1,4 @@
-export { createFormatApplier, describeContentKey, contentKeySelection, type FormatApplierOptions } from './format-applier.ts';
+export { createFormatApplier, contentEntity, describeContentKey, contentKeySelection, type ContentEntity, type FormatApplierOptions } from './format-applier.ts';
 export { itemLabel } from '../build/content/items.ts';
 export { _contentWriterRegistry, type ContentWriterRegistry, type ContentWriter, type ContentWriteContext, type ContentMatch } from './writers.ts';
 export type { ContentItem } from '../build/content/items.ts';

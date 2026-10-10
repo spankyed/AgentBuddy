@@ -19,9 +19,7 @@ import { HOST } from '../../../refs.ts';
 import { errorMessage } from '@abuddy/sdk/utils/pure';
 import { applyRecord, importCompiledContent, registeredContentKeys, type ContentSelection } from '@abuddy/sdk/utils';
 import { appliedContent } from '../../../app-state/index.ts';
-import { contentKeySelection, describeContentKey, previewPackContent, removeContentEntity } from '@abuddy/sdk/content';
-import { untypedQx } from '@abuddy/ears';
-import type { EARS } from '@abuddy/sdk';
+import { contentEntity, contentKeySelection, describeContentKey, previewPackContent, removeContentEntity } from '@abuddy/sdk/content';
 
 export type { PackInfo };
 
@@ -256,12 +254,10 @@ export function createPacksSystem(registry: PackRegistry) {
         const ev = packsSpec.typeOf('DELETE_CONTENT_ITEM', event);
         try {
           const item = appliedContent.get(ev.packId).items[ev.key];
-          const id = item?.entityType
-            ? (untypedQx(item.entityType as EARS.Entity).where('contentKey', ev.key).pickAll()[0] as { id: EARS.EntityId } | undefined)?.id
-            : undefined;
+          const entity = contentEntity(item?.entityType, ev.key);
           // Through the owner's own delete: a flow's nodes and wiring go with it, and an entity type whose
           // pack registered a `remove` writer is removed the way that pack removes one
-          if (id) removeContentEntity(item!.entityType!, id);
+          if (entity) removeContentEntity(item!.entityType!, entity.id);
           appliedContent.resolveOffer(ev.packId, ev.key, { choice: 'deleted' });
           sendToSystem('bus', { type: 'PACK_CHANGED', packId: ev.packId });
         } catch (err) {

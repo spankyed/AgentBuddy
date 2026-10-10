@@ -10,7 +10,6 @@ export const referenceTypes: Record<string, ReferenceTypeConfig> = {
   note: {
     protocol: 'note',
     category: 'notes',
-    plugin: notes,
     icon: NotebookText,
     svgElements: [
       ['path', { d: 'M2 6h4' }],
@@ -29,7 +28,6 @@ export const referenceTypes: Record<string, ReferenceTypeConfig> = {
   task: {
     protocol: 'task',
     category: 'notes',
-    plugin: notes,
     icon: CircleCheck,
     svgElements: [
       ['circle', { cx: '12', cy: '12', r: '10' }],
@@ -42,7 +40,6 @@ export const referenceTypes: Record<string, ReferenceTypeConfig> = {
   tasklist: {
     protocol: 'tasklist',
     category: 'notes',
-    plugin: notes,
     icon: ListChecks,
     svgElements: [
       ['path', { d: 'm3 17 2 2 4-4' }],

@@ -44,8 +44,6 @@ export interface ReferenceTypeConfig {
     icon: Component;
     navigate: (refId: string) => void;
     // (undocumented)
-    plugin: string;
-    // (undocumented)
     protocol: string;
     // (undocumented)
     svgElements: SvgElement[];

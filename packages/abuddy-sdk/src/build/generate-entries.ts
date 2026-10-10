@@ -1310,15 +1310,7 @@ export const ITEMS_PROVIDERS: CategoryItemsProvider[] = [
 ${providersEntries}
 ];
 
-export const PROTOCOL_TO_TYPE: Record<string, string> = Object.fromEntries(
-  Object.entries(REFERENCE_TYPES).map(([type, cfg]) => [cfg.protocol, type])
-);
-
 export const ALL_PROTOCOLS: string[] = Object.values(REFERENCE_TYPES).map((cfg) => cfg.protocol);
-
-export function categoryOfType(type: string): string {
-  return REFERENCE_TYPES[type]?.category ?? '';
-}
 
 export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@abuddy/sdk/fe/references';
 `;

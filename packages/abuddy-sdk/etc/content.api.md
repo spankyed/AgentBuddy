@@ -7,6 +7,19 @@
 import { EARS as EARS_2 } from '@abuddy/ears';
 
 // @public
+export interface ContentEntity {
+    // (undocumented)
+    contentHash?: string;
+    // (undocumented)
+    deleted?: boolean;
+    // (undocumented)
+    id: EARS.EntityId;
+}
+
+// @public
+export function contentEntity(entityType: string | undefined, key: string): ContentEntity | undefined;
+
+// @public
 export interface ContentItem {
     // (undocumented)
     [field: string]: unknown;

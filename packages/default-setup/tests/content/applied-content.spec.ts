@@ -10,6 +10,7 @@ import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { importCompiledContent, type AppliedItem, type ApplyRecord } from '@abuddy/sdk/utils';
 import { CONTENT_INDEX_FILE } from '@abuddy/sdk/build';
+import { contentEntity } from '@abuddy/sdk/content';
 import { untypedQx as qx, untypedTx, type EARS } from '@abuddy/ears';
 import { PACK_DIR, applyAfter } from './harness.ts';
 
@@ -66,12 +67,6 @@ function apply(dir: string, previous?: ApplyRecord) {
   const record = applyAfter(previous);
   const counts = importCompiledContent({ compiledDir: dir, mode: 'replace-on-collision', applied: record });
   return { record, counts };
-}
-
-/** The entity one content key names, found the way a later apply would find it */
-function entityFor(key: string, item: AppliedItem): EARS.EntityId | undefined {
-  const rows = qx(item.entityType as EARS.Entity).where('contentKey' as string, key).pickAll() as Array<{ id: EARS.EntityId }>;
-  return rows[0]?.id;
 }
 
 const attr = <T,>(id: EARS.EntityId, name: string): T | null =>
@@ -139,7 +134,7 @@ describe('the applied content over this pack’s real content', () => {
     let compared = 0;
     for (const [key, item] of first.record.written) {
       if (isFlow(item)) continue;
-      const id = entityFor(key, item);
+      const id = contentEntity(item.entityType, key)?.id;
       if (!id) continue;
       compared++;
       const stored = Object.keys((qx([id]).pickAll()[0] ?? {}) as Record<string, unknown>);
@@ -156,7 +151,7 @@ describe('the applied content over this pack’s real content', () => {
     expect(flows.length, 'no flow was recorded').toBeGreaterThan(0);
 
     for (const [key, item] of flows) {
-      const id = entityFor(key, item)!;
+      const id = contentEntity(item.entityType, key)!.id;
       const nodes = Object.keys(item.parts).filter((part) => part.startsWith('node:'));
       const live = qx(id).linksTo('contains' as string, 'Node' as EARS.Entity, true).ids();
       expect(nodes.map((part) => part.slice('node:'.length)).sort(), `${key}'s node parts`).toEqual([...live].sort());
@@ -207,7 +202,7 @@ describe('the applied content over this pack’s real content', () => {
    */
   it('keeps the user’s edit to one item, names the part, and applies the rest', () => {
     const [key, item] = [...first.record.written].find(([, value]) => !isFlow(value) && 'description' in value.parts)!;
-    const id = entityFor(key, item)!;
+    const id = contentEntity(item.entityType, key)!.id;
     untypedTx(id).update('description' as string, 'mine');
 
     const again = apply(compiledDir({ bump: true }), first.record);
@@ -235,7 +230,7 @@ describe('the applied content over this pack’s real content', () => {
 
     // Recorded now, so the next apply sees the user's edit rather than adopting over it
     const [key, item] = [...upgrade.record.written].find(([, value]) => !isFlow(value) && 'description' in value.parts)!;
-    untypedTx(entityFor(key, item)!).update('description' as string, 'mine');
+    untypedTx(contentEntity(item.entityType, key)!.id).update('description' as string, 'mine');
     const again = apply(compiledDir({ bump: 'again' }), upgrade.record);
     expect([...again.record.offers.keys()]).toEqual([key]);
   });

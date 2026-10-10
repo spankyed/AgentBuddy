@@ -6,7 +6,6 @@ type SvgElement = ['path', { d: string }] | ['rect', Record<string, string>] | [
 export interface ReferenceTypeConfig {
   protocol: string
   category: string
-  plugin: string
   icon: Component
   svgElements: SvgElement[]
   /** Opens the entity a reference names */
