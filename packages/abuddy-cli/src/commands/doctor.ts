@@ -65,11 +65,19 @@ export async function doctor(_args: string[]) {
   check('Step files present', () => {
     const missing: string[] = [];
     for (const [type, entry] of Object.entries(manifest.extensions?.steps ?? {})) {
-      const targets = [entry.build, entry.trigger?.facet, entry.trigger?.register, entry.runtime?.handler, entry.fe];
+      const targets = [entry.node, entry.build, entry.trigger?.facet, entry.trigger?.register, entry.runtime?.handler, entry.fe];
       for (const target of targets) {
         if (target && !fs.existsSync(path.join(root, target.split('#')[0]!))) missing.push(`${type} (${target})`);
       }
     }
+    if (missing.length) return `missing: ${missing.join(', ')}`;
+    return 'pass';
+  });
+
+  check('Migration files present', () => {
+    const missing = Object.entries(manifest.migrations ?? {})
+      .filter(([, target]) => !fs.existsSync(path.join(root, target.split('#')[0]!)))
+      .map(([version, target]) => `${version} (${target})`);
     if (missing.length) return `missing: ${missing.join(', ')}`;
     return 'pass';
   });

@@ -23,7 +23,13 @@ describe('buildPackConfigFromManifest step definitions', () => {
     const dependency = stepsModule(tmp, 'dependency.steps.build.mjs', 'collide_step');
     // The pack's own build facets come from the module codegen writes, so that is what the fixture plants
     stepsModule(tmp, path.join('src', '__generated__', 'steps-build.ts'), 'collide_step');
-    const manifest = { id: 'demo', name: 'Demo', version: '1.0.0', boot: { content: { flows: 'src/content/flows' } } } as unknown as PackManifest;
+    // Declared in the manifest, which is what makes the generated module the pack's own steps: a module
+    // for a step no manifest declares is not read at all
+    const manifest = {
+      id: 'demo', name: 'Demo', version: '1.0.0',
+      extensions: { steps: { collide_step: { node: 'src/steps/collide/build.ts#collideNode', build: 'src/steps/collide/build.ts#collideBuild' } } },
+      boot: { content: { flows: 'src/content/flows' } },
+    } as unknown as PackManifest;
 
     const config = await buildPackConfigFromManifest(manifest, tmp, { dependencyStepModules: [dependency] });
     await expect(config.loadDefinitions!()).rejects.toThrow(/Step type "collide_step" is defined by this pack and by a dependency/);

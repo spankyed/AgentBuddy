@@ -1,5 +1,6 @@
 import * as path from 'node:path';
 import { renderTemplate } from '../../templates.ts';
+import { regenerateAfterScaffold } from '../generate-entries';
 import { validateName, writeIfNotExists, logCreated, parseFlag, hasFlag } from './write';
 import { readManifest, writeManifest, addArtifact as addArtifactToManifest } from './manifest';
 
@@ -38,7 +39,13 @@ export async function addArtifact(args: string[], root: string) {
     created.push(filePath);
   }
 
+  // The manifest entry is the whole declaration, and codegen is what carries it into the pack's entries —
+  // there is no barrel to edit any more, so without this the artifact reaches nothing until something else
+  // regenerates
+  const regenerated = await regenerateAfterScaffold(root);
+
   console.log(`\nCreated artifact viewer "${type}":`);
   logCreated(root, created);
   console.log(`  ~ abuddy.json (artifacts.${type})`);
+  if (regenerated) console.log(`\n  __generated__/ regenerated`);
 }

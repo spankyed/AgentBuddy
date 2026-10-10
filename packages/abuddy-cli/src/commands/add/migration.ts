@@ -1,11 +1,8 @@
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { renderTemplate } from '../../templates.ts';
+import { regenerateAfterScaffold } from '../generate-entries';
 import { writeIfNotExists, logCreated, parseFlag, hasFlag } from './write';
-import { readManifest, writeManifest } from './manifest';
-
-// Runs once when the pack updates past `target`; `up` is synchronous and must be safe to run again
-
+import { readManifest, writeManifest, addMigration as addMigrationToManifest } from './manifest';
 
 const HELP = `
 Usage: abuddy add migration [version] [options]
@@ -18,11 +15,6 @@ Example:
   abuddy add migration --version 0.2.0
 `.trim();
 
-/** An identifier for the version's migration: `0.2.0-beta.1` → `v0_2_0_beta_1` */
-function toImportName(version: string): string {
-  return 'v' + version.replace(/[^A-Za-z0-9_$]/g, '_');
-}
-
 export async function addMigration(args: string[], root: string) {
   if (hasFlag(args, '--help') || hasFlag(args, '-h')) {
     console.log(HELP);
@@ -30,47 +22,28 @@ export async function addMigration(args: string[], root: string) {
   }
 
   const manifest = readManifest(root);
-  const version = parseFlag(args, '--version') || args[0] || manifest.version || '0.0.0';
+  // A migration targets a *release*: the runners read a prerelease as its release (`0.3.15-beta.2` runs the
+  // `0.3.15` migrations), so a prerelease target is one nothing would ever match. The default comes from
+  // the manifest's version, which during a beta is a prerelease, so it is normalised rather than refused.
+  const asked = parseFlag(args, '--version') || args[0] || manifest.version || '0.0.0';
+  const version = asked.replace(/[-+].*$/, '');
+  if (version !== asked) console.log(`  ${asked} targets its release, ${version}`);
   const filePath = path.join(root, 'src', 'migrations', `${version}.ts`);
-  const importName = toImportName(version);
+
+  // The manifest entry first: it is the declaration, and its key is the version the migration targets, so
+  // a file no manifest names runs never. It refuses a version already declared rather than writing twice
+  addMigrationToManifest(manifest, version, `src/migrations/${version}.ts#migration`);
+  writeManifest(root, manifest);
 
   const created: string[] = [];
   if (writeIfNotExists(filePath, renderTemplate('pack/src/migrations/migration.ts', { VERSION: version }))) {
     created.push(filePath);
   }
 
-  const indexPath = path.join(root, 'src', 'migrations', 'index.ts');
-  if (!fs.existsSync(indexPath)) {
-    fs.mkdirSync(path.dirname(indexPath), { recursive: true });
-    fs.writeFileSync(indexPath, renderTemplate('pack/src/migrations/index.ts', { FILE_NAME: version, IMPORT_NAME: importName }));
-    created.push(indexPath);
-  } else {
-    let content = fs.readFileSync(indexPath, 'utf-8');
-    if (!content.includes(`'./${version}.ts'`)) {
-      // Where the last import line starts (it may be the file's first line)
-      const lastImportStart = `\n${content}`.lastIndexOf('\nimport ');
-      if (lastImportStart !== -1) {
-        const endOfLastImport = content.indexOf('\n', lastImportStart);
-        content = content.slice(0, endOfLastImport + 1)
-          + `import { migration as ${importName} } from './${version}.ts';\n`
-          + content.slice(endOfLastImport + 1);
-      }
-      const arrayCloseIdx = content.lastIndexOf('];');
-      if (arrayCloseIdx !== -1) {
-        content = content.slice(0, arrayCloseIdx) + `  ${importName},\n` + content.slice(arrayCloseIdx);
-      }
-      fs.writeFileSync(indexPath, content);
-    }
-  }
-
-  const updatedManifest = !manifest.migrations;
-  if (updatedManifest) {
-    manifest.migrations = 'src/migrations/index.ts';
-    writeManifest(root, manifest);
-  }
+  const regenerated = await regenerateAfterScaffold(root);
 
   console.log(`\nCreated migration targeting version "${version}":`);
   logCreated(root, created);
-  if (updatedManifest) console.log(`\n  manifest updated with migrations path`);
-  console.log(`\n  migrations/index.ts updated`);
+  console.log(`  ~ abuddy.json (migrations.${version})`);
+  if (regenerated) console.log(`\n  __generated__/ regenerated`);
 }

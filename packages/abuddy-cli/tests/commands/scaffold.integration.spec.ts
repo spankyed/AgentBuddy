@@ -222,6 +222,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(manifest.extensions.steps).toEqual({
       ping: {
         kind: 'step',
+        node: 'src/extensions/steps/ping/build.ts#pingStepNode',
         build: 'src/extensions/steps/ping/build.ts#pingStepBuild',
         fe: 'src/extensions/steps/ping/fe.ts#pingStepFE',
       },

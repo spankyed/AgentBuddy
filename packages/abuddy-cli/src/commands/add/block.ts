@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import { regenerateAfterScaffold } from '../generate-entries';
 import { validateName, toPascalCase, writeIfNotExists, logCreated, hasFlag } from './write';
 import { renderTemplate } from '../../templates.ts';
 import { readManifest, writeManifest, addBlock as addBlockToManifest } from './manifest';
@@ -47,7 +48,12 @@ export async function addBlock(args: string[], root: string) {
   const filePath = path.join(root, componentPath);
   if (writeIfNotExists(filePath, component)) created.push(filePath);
 
+  // As for an artifact: the manifest entry is the declaration and codegen is what carries it into the
+  // pack's entries, so a scaffold that skipped this left the block reaching nothing
+  const regenerated = await regenerateAfterScaffold(root);
+
   console.log(`\nCreated block "${type}":`);
   logCreated(root, created);
   console.log(`  ~ abuddy.json (blocks.${type})`);
+  if (regenerated) console.log(`\n  __generated__/ regenerated`);
 }

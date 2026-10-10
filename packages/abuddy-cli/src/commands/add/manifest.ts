@@ -52,6 +52,17 @@ export function addBlock(
   ext.blocks[type] = { ...(entry.kind ? { kind: entry.kind } : {}), fe: entry.component };
 }
 
+/**
+ * Adds a migration: the key is the version it targets, which is why the module it names states only its
+ * description and its `up`. A root key rather than an `extensions` one — a migration moves the pack's own
+ * stored data rather than contributing anything to the app.
+ */
+export function addMigration(manifest: PackManifest, version: string, target: string): void {
+  if (!manifest.migrations) manifest.migrations = {};
+  if (manifest.migrations[version]) throw new Error(`Migration "${version}" already exists in manifest`);
+  manifest.migrations[version] = target;
+}
+
 /** Adds a pack-level service: `target` is "path#exportName" of the service object */
 export function addPackService(manifest: PackManifest, key: string, target: string): void {
   const ext = extensions(manifest);
