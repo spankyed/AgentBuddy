@@ -92,7 +92,8 @@ dev    spawn(electron, [root, '--remote-debugging-port=0', '--enable-logging']) 
        Serves nothing. Holds no engine. No Playwright. The supervisor it already is.
 
 drive  attachable -> connectOverCDP -> page -> appHelper(page) -> the verbs
-       otherwise  -> call `dev`, which publishes the session file, attach -> the same verbs
+       otherwise  -> **refuse**, naming `--spawn` and `abuddy dev`
+       --spawn    -> spawn `dev` detached, wait for its session file, attach -> the same verbs
        One SessionPage implementation, and one capability it cannot serve attached (setViewport).
        This is the one-shot path. `drive <script>` is the next line, and the difference is deliberate.
 
@@ -118,7 +119,8 @@ needs a session stood up first.
 | `abuddy run [flags]` | `abuddy dev [flags]` — same flags |
 | `abuddy drive <script>` | unchanged |
 | `abuddy drive --serve` | gone: the app itself is the long-lived thing |
-| `abuddy drive --eval 'body'` | same spelling; attaches rather than launching |
+| `abuddy drive --eval 'body'` | same spelling; attaches, or **refuses** naming `--spawn` |
+| — | `abuddy drive --eval 'body' --spawn` — attach, or start an app and attach to that |
 | `abuddy drive --attach --eval 'body'` | `abuddy drive --eval 'body'` — an attachable app is the whole condition |
 | read-only one-shots (`eval`, `query`, `state`) | every verb, writes included |
 | `npm run drive:serve` | `npm run dev` |
@@ -178,12 +180,13 @@ mean another one.
 
 | `drive` invocation | Behaviour |
 |---|---|
-| no flag | attach to the `development` app, or start it if none is live — saying which |
+| no flag | attach to the `development` app; **refuse** if none is live, naming `--spawn` |
+| `--spawn` | the same, but start one and attach to that instead of refusing |
 | `--profile drive` | a scratch kept between sessions, idling out when unused |
 | `--profile probe`, an attachable app on it | **attach** — the case this plan is for |
-| `--profile probe`, nothing on it | start one there, publish its session file, attach |
+| `--profile probe`, nothing on it | refuse; with `--spawn`, start one there, publish its session file, attach |
 | `--profile probe`, a non-attachable app on it | the existing `profileInUse` refusal — the dir can be neither launched into nor attached to |
-| `--fresh` / `--fresh --rm` | mints a new dir by definition, so there is nothing to attach to: always launches. Isolation is what was asked for, not a gap |
+| `--fresh` / `--fresh --rm` | mints a new dir by definition, so there is never anything to attach to: it implies `--spawn` for a one-shot, since the flag would otherwise ask for a dir and then refuse to use it. Isolation is what was asked for, not a gap |
 
 **A checkout with no pack in hand is a first-class case**, not a fallback. `drive` run where no
 `abuddy.json` sits above it drives *this checkout's* app, which is how the repo's own `drive/` scripts run
@@ -204,11 +207,28 @@ checkout root becomes a lighter `npm start` that does not rebuild the renderer.
 
 ### Starting one when there is none
 
-**Nothing attachable means start an app, not launch one per question.** A `drive --eval` against a cold checkout
-otherwise pays a full launch *every time*, which is worse than today — `--serve` is exactly the thing that
-stops that, so deleting it without this would be a regression on the caller `drive` was built for. An
-autostarted app publishes its session file like any other, so the second question costs the attach and
-nothing else.
+**"Autostart" throughout this doc means what `--spawn` does** — the mechanism, which is unchanged; only
+whether it fires without being asked has changed, and it no longer does.
+
+**A one-shot refuses by default, and `--spawn` is how you ask.** This is the one place the design says no
+rather than being helpful, and it is deliberate: the intuitive reading of `drive --eval` is *"ask the app"*,
+so with no app the honest answer is to say there isn't one — not to start one, leave it running, and
+mention it in a line nobody reads. A question that silently acquires a process is the shape that produces
+forgotten daemons, and refusing by default means **nothing is ever left behind that was not asked for.**
+
+```
+$ abuddy drive --eval 'app.getState()'
+No app is running on the development data dir.
+  Start one with `abuddy dev`, or add --spawn to have this start one and keep it.
+$ echo $?
+1
+```
+
+**And `--spawn` still beats a launch per question, which is what makes the deletion of `--serve` hold.**
+The spawned app publishes its session file like any other and stays, so a cold checkout is one explicit
+flag on the first question and an attach on every one after. That is the same bargain `--serve` offered —
+one setup step, then cheap questions — with the setup step being a flag rather than a long-lived
+foreground process, and nothing to tear down afterwards but the app itself.
 
 **It calls `dev`. Not the fixture, and not a launcher shaped like `dev` — `dev` itself, and that is
 load-bearing twice over.**
@@ -348,8 +368,9 @@ already, and `resolvePlaywrightCli` continues to resolve the pack's copy rather 
 
 **Attachability is declared, never inferred.** A session file is published by a launcher that means its
 app to be driven, so `test` publishes none and a packaged build carries no port. `--attach` stops being a
-flag because an attachable app is the whole condition, and `--serve` stops existing because an attachable app is always there to
-answer — autostarted if nobody started one.
+flag because an attachable app is the whole condition, and `--serve` stops existing because an attachable
+app is there to answer every question after the first — spawned on request by `--spawn`, and then simply
+there.
 
 **`--attach` goes as a flag; the word is not retired.** It is deleted because for a one-shot it has
 nothing left to select, not because attaching stopped being the name of the thing. If `drive <script>`
@@ -410,7 +431,8 @@ wrong field.
 **The port's authentication is a trade taken, not a defect removed.** The engine's port is token-guarded
 today (`ENGINE_TOKEN_HEADER`; a wrong header answers `missing or wrong x-abuddy-drive-token`). CDP is not
 guarded at all, and the renderer it exposes holds the app's API token — so this swaps an authenticated
-local port for an unauthenticated one, and autostart means more apps carry it. What makes that acceptable
+local port for an unauthenticated one, and `--spawn` means an app can carry it without a developer having
+started one by hand — on request, which is the whole of what Decision 16 bought here. What makes that acceptable
 is in "Security" below, and it is a condition of the design rather than a mitigation after it.
 
 ## Files
@@ -419,7 +441,7 @@ is in "Security" below, and it is a condition of the design rather than a mitiga
 |---|---|
 | `abuddy-cli/src/commands/run.ts` → `dev.ts` | rename; add the two argv entries, publish the session file, and reclaim one a tool started (`startedBy: drive` → SIGTERM its pid, wait for exit, launch, say so); `index.ts` `COMMANDS`/`USAGE`. **Drop the pack precondition**: `findPackRoot` (`:156`) becomes `findPackRootOrNone`, and the build, `installToApp`, the watcher and the Vite server all hang off there being a pack — with none, it launches, publishes and holds. `src/` is only required when there is something to watch (`:159`) |
 | `abuddy-host/src/private-file.ts` | moved: `writePrivateFile` out of `secrets/private-file.ts`, with a `./private-file` export. It is a 0600 atomic write and nothing about secrets, and a session file is not a secret — reaching for it behind the secrets barrel would be the wrong dependency, and it is not in that barrel today anyway |
-| `abuddy-cli/src/app/session-file.ts` | new: write/read `{ debugPort, apiPort, logPath, dataDir, pid, startedBy }` through `writePrivateFile`, `readDevToolsPort` polling `DevToolsActivePort`, and the autostart under `holdExclusiveLock` with the re-read after acquiring. The autostart **spawns `dev` detached** rather than launching Electron itself, so the pack build and install come with it, and waits for the session file rather than for a return — `dev` has none |
+| `abuddy-cli/src/app/session-file.ts` | new: write/read `{ debugPort, apiPort, logPath, dataDir, pid, startedBy }` through `writePrivateFile`, `readDevToolsPort` polling `DevToolsActivePort`, and `--spawn` under `holdExclusiveLock` with the re-read after acquiring. It **spawns `dev` detached** rather than launching Electron itself, so the pack build and install come with it, and waits for the session file rather than for a return — `dev` has none. **`startedBy` is passed in, since `dev` writes the file and cannot know who asked**: `ABUDDY_SESSION_STARTED_BY` on the spawn, defaulting to `dev`. Getting this wrong is silent — `dev` records `dev`, nothing is ever reclaimable, and the developer's `npm start` refuses with a message blaming them — which is why Phase 5's reclaim case must spawn and then reclaim rather than hand-write a session file |
 | `packages/dev-mode.js` | `npm start` publishes one too, so the app with renderer HMR is attachable |
 | `abuddy-cli/src/commands/drive.ts` | attach-or-launch for the one-shots; a miss calls `dev`. Delete `--serve`, `--attach`, `takeServeFlag`. **The script path and its config are untouched by decision**, per "What stays": a question attaches, a program gets a dir |
 | `abuddy-testing/src/index.ts` | extract two free functions the fixture then calls: `appHelper(page, resultsDir)`, and `waitForAppReady(page)` — the readiness wait (`index.ts:479-507`) with the onboarding dismissal moved *inside* the predicate. Window-finding is not extracted: `findMainWindow` takes an `ElectronApplication`, and the attach path enumerates `browser.contexts()[0].pages()` with the same `!!window.applicationState` predicate |
@@ -436,24 +458,42 @@ is in "Security" below, and it is a condition of the design rather than a mitiga
 
 ## Telling the user
 
-**One rule, and it is the ordinary one: a command that leaves state behind names the state and the
-inverse.** `docker compose up -d` has `down`; `git stash` says what it saved and `pop` undoes it. This
-design leaves a *running app* behind on one of its paths and on no other, so that path is the one that
-owes a sentence.
-
-Three lines, one per path, printed by the run itself:
+**A one-shot's answer is data, and the status is part of the data.** Its stdout is one JSON object and
+nothing else, so it pipes:
 
 ```
-started     Started the development app (pid 48213). It stays up for the next question.
-            End it with `abuddy dev`, which takes the directory back.
-attached    Attached to the development app that `npm start` is holding.
-            Attached to the development app a previous question started (pid 48213).
-reclaimed   Reclaimed the app a question started (pid 48213) and started yours.
+{"value":{"running":"connected"},"state":"attached","pid":48213}
+{"value":{"running":"connected"},"state":"spawned","pid":48651}
 ```
 
-**The attach line says *whose* app**, which is the half that is easy to drop. `startedBy` is already in
-the session file, and "a previous question started it" is the one case where nobody is minding the app —
-so it is the case worth distinguishing, not a cosmetic difference in wording.
+`value` is the verb's answer; `state` is `attached` or `spawned`; `pid` is the app the answer came from.
+Three consequences, and the first is the one that removes a defect this plan was already deleting:
+
+- **No `ok` field. The exit code is the status.** `oneShotOutcome`'s trap was an `ok: false` inside a 200,
+  so reading the status exited 0 on every real failure ("What goes", above). The fix is not a better
+  envelope but the convention: zero and a value on stdout, or non-zero and a message on stderr with
+  **nothing on stdout at all**, so a pipe never receives half an answer.
+- **Which app answered is a field, not a sentence.** `state` tells a caller whether its question acquired
+  a process — the thing worth knowing — and `pid` is what ends it. A reader wanting only the answer pipes
+  through `jq .value`; a reader wanting both has both, in one parse.
+- **Prose goes to stderr, and only where something was left behind.** `spawned` gets one line, because a
+  process is now running that was not before; `attached` gets none, because nothing changed.
+
+```
+$ abuddy drive --eval 'app.getState()' --spawn
+Started the development app (pid 48651) and left it running — `abuddy dev` takes the directory back.
+{"value":{"running":"connected"},"state":"spawned","pid":48651}
+```
+
+**`dev` is the other half, and there prose is the whole point** — it is a command a person watches:
+
+```
+Reclaimed the app a question started (pid 48213) and started yours.
+```
+
+That one exists for the rule every tool that leaves state behind follows: **name the state and the
+inverse** (`docker compose up -d` has `down`; `git stash` says what it saved and `pop` undoes it). Here
+the state is a running app and the inverse is `abuddy dev`, which is why the reclaim says what it took.
 
 **And a line printed once is not documentation.** Forty minutes later it has scrolled away, and on this
 caller it is often read by nothing at all, since the one-shot's stdout goes to an agent. So `abuddy
@@ -475,14 +515,16 @@ the lifetime model is the thing a user gets wrong, and nothing states it today:
 | What you run | The app it uses | When it closes |
 |---|---|---|
 | `abuddy dev`, `npm start` | starts its own | when you stop the command |
-| `abuddy drive --eval` (and the other one-shots) | a live one if there is one, else it starts one | **it doesn't** — it stays for the next question |
+| `abuddy drive --eval` (and the other one-shots) | a live one; **fails if there is none** | it was not yours to close |
+| the same, with `--spawn` | a live one, else it starts one | **it doesn't** — it stays for the next question |
 | `abuddy drive <script>` | always its own | when the script finishes |
 | `abuddy test` | always its own, isolated | when the run finishes |
 
-with the one sentence that explains both halves — **a question keeps the app so the next question is
-cheap; a script closes it so its result does not depend on what the last one left behind** — the
-one-app-per-data-dir rule that makes `--profile` the way to get a second, and the two ways to end an app a
-question started.
+with the one sentence that explains the halves — **a question keeps the app so the next question is cheap;
+a script closes it so its result does not depend on what the last one left behind; and a question never
+starts one unless you asked** — the one-app-per-data-dir rule that makes `--profile` the way to get a
+second, the one-shot's output contract (`value`, `state`, `pid`, exit code), and the two ways to end an
+app `--spawn` started.
 
 ## Phases
 
@@ -497,8 +539,9 @@ single step, and the deletion is the part with no way back.
 2. **The session file.** `dev` and `npm start` publish one; `drive` attaches when a live one is there and
    launches its own when it is not — today's behaviour, now with a fast path in front of it. `dev`'s pack
    precondition goes here, since without it `dev` cannot publish at a checkout root at all.
-3. **Autostart.** A miss calls `dev` under the lock, and that `dev` publishes the session file. This is what
-   makes a one-shot against a cold checkout cheap, and so what `--serve` would be deleted *in favour of*.
+3. **`--spawn`.** The flag spawns `dev` detached under the lock, and that `dev` publishes the session file;
+   without it a miss refuses. This is what makes a one-shot against a cold checkout cheap after the first,
+   and so what `--serve` would be deleted *in favour of*.
 4. **The deletion.** `--serve`, the four files and the engine's two generated scripts. Only now, because
    only now does nothing reach for them — and the runner is not in this list.
 
@@ -512,9 +555,15 @@ below exists.
 
 - **an attachable app → attaches and launches nothing.** Mutate it: point the session file at a dead port
   and assert the answer names it rather than silently launching a second app.
-- **nothing attachable → starts its own**, and the session answers the same verb identically. This is the case that
-  proves one `SessionPage` serves both, so it must assert equality of the two answers, not merely that each
-  works.
+- **nothing attachable and no `--spawn` → refuses**, exits non-zero, writes **nothing to stdout** and names
+  both ways forward. A gate whose subject is input, so it needs this case; and the empty stdout is the half
+  to assert, since a message printed there is what breaks a pipe.
+- **nothing attachable, with `--spawn` → starts its own**, and that app answers the same verb *identically*
+  to an attached one. This is the case that proves one `SessionPage` serves both, so it must assert
+  equality of the two answers, not merely that each works.
+- **the answer's shape, both states.** `{value, state, pid}` and nothing else, `state` reading `attached`
+  against a live app and `spawned` against none, with the exit code carrying success. Mutation: an `ok`
+  field reintroduced alongside a non-zero exit is the trap this replaced, and the case should fail on it.
 - **`test` publishes no session file**, so a `drive` run during a suite does not attach to the test's app.
 - **`dev` at a checkout root publishes one**, which is the firing case for dropping the pack precondition:
   today that path throws *"No abuddy.json found"* before anything is published. Both halves, since the

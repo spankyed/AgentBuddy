@@ -28,8 +28,8 @@ Finished when:
 - **If and only if Phase 6 ran** (its measurement is the condition): drive's `--serve`/`--attach` are gone
   with abuddy-testing/src/engine/{server,marker}.ts and abuddy-cli/src/app/drive-{engine,one-shot}.ts. If
   it did not, this goal is still finished, and the Outcome says so with the number that decided it.
-- A live `dev` or `npm start` publishes <dataDir>/session.json; `drive` attaches to one and starts an app
-  when there is none; `abuddy test` publishes none.
+- A live `dev` or `npm start` publishes <dataDir>/session.json; `drive` attaches to one, refuses when
+  there is none and starts one with `--spawn`; `abuddy test` publishes none.
 - The debug port is on in `development` only, and a spec fails if a packaged or test context gets it.
 - Decision 8's lock question is settled by observation, and all three places say the same thing.
 - `npm run typecheck`, `npm run spec` over each touched package, `npm run chain`, and — once Phase 7
@@ -146,7 +146,7 @@ Final.
     install, the watcher and the Vite server and only launches and publishes, which is what the attach
     plan's design block already says `dev` is. And autostart **spawns it detached** (`.unref()`), because
     `dev` never returns and its own teardown SIGKILLs the app it holds; the attach plan has both.
-11. **Autostart starts the `development` app, and `dev` reclaims one a tool started.** A blank app
+11. **`--spawn` starts the `development` app, and `dev` reclaims one a tool started.** A blank app
     cannot answer most of what `drive` is asked, so the default is the developer's own data, and
     `drive --eval` keeps one meaning rather than one per whichever app was up. What makes that safe is
     the reclaim: on the development dir, `dev` reads the session file and, for `startedBy: drive`,
@@ -156,11 +156,12 @@ Final.
 12. **The idle reap does not apply to `development`** — only to a profile `drive` was asked to use. The
     development app is the one somebody may be looking at; a reclaim is what ends it. A persistent
     scratch is `--profile drive`, by name, never a default.
-13. **Every `drive` run says which path it took** — attached, reclaimed and started, or started cold —
-    and says when it completed onboarding, which Decision 14 makes possible. **A run that started an app
-    also says the app is still running and how to stop it**, because autostart leaves a detached process
-    a question began and nothing on `development` reaps (Decision 12): in a pack repo that is Electron, a
-    file watcher and a Vite dev server, and in a checkout with no pack it is Electron alone. The two ways
+13. **Every `drive` run says which path it took** — for a one-shot that is the answer's `state` field
+    (Decision 17), and for `dev` it is prose, since a person is watching. **A run that started an app also
+    says the app is still running and how to stop it**, because `--spawn` leaves a detached process behind
+    and nothing on `development` reaps it (Decision 12): in a pack repo that is Electron, a file watcher
+    and a Vite dev server, and in a checkout with no pack it is Electron alone. Decision 16 is what keeps
+    this rare — it only ever happens because someone asked. The two ways
     out are `abuddy dev`, which reclaims it, and the pid in the session file. **An attach says whose app
     it joined** — `startedBy` is in the session file, and "a previous question started it" is the case
     where nobody is minding the app.
@@ -190,6 +191,23 @@ Final.
     would change `electronApp`/`appPage`, the file every repo spec, both fixture packs and every external
     pack's suite imports, and would need a gate proving `abuddy test` can never take that path. Revisit
     from a measured complaint, never from the asymmetry alone.
+16. **A one-shot refuses when no app is running, and `--spawn` is how you ask for one.** This replaces
+    autostart-as-default and is the user's call, for the reason that settles it: the intuitive reading of
+    `drive --eval` is *"ask the app"*, so with no app the answer is to say so — exit non-zero, naming
+    `abuddy dev` and `--spawn` — rather than to acquire a process the question did not ask for. It is also
+    what makes Decision 13's hygiene problem small: **nothing is left running that nobody asked for.**
+    Spelled to match the `state: "spawned"` the answer carries, so the flag and the field are one word.
+    It does not weaken the case for deleting `--serve`: a spawned app stays, so a cold checkout costs one
+    flag on the first question and an attach on every one after — `--serve`'s own bargain, with a flag in
+    place of a long-lived foreground process. Everything Decisions 10-13 say about *how* an app is started
+    and reclaimed still holds; only *when* has changed, from "on a miss" to "on request".
+17. **A one-shot's stdout is one JSON object and nothing else**, so it pipes:
+    `{"value": …, "state": "attached" | "spawned", "pid": N}`. **No `ok` field — the exit code is the
+    status**, which is what finally removes `oneShotOutcome`'s trap (an `ok: false` inside a 200, so
+    reading the status exited 0 on every real failure, and which this goal was deleting anyway). A failure
+    puts **nothing** on stdout, so a pipe never receives half an answer. `state` belongs in the data
+    rather than in a sentence because whether a question acquired a process is what a caller needs to
+    know, and `pid` is what ends it; prose goes to stderr, and only where something was left behind.
 
 ## Phases
 
@@ -232,23 +250,28 @@ packaged or `test` context never gets the flag); `abuddy test` publishes no sess
 at a checkout root publishes one**, which today throws before it can (Decision 10), while a run in a pack
 repo still builds and installs that pack.
 
-### Phase 5 — autostart
+### Phase 5 — `--spawn`, and the answer's shape
 
-That plan's phase 3. A miss calls `dev` (Decision 10) under `holdExclusiveLock`, re-reading after
-acquiring, and that `dev` publishes the session file. An autostarted app idles out; a `dev` one does not.
+That plan's phase 3, under Decisions 16 and 17. `--spawn` spawns `dev` (Decision 10) detached under
+`holdExclusiveLock`, re-reading after acquiring, and that `dev` publishes the session file; **without the
+flag a miss refuses**. A spawned app on a `drive` profile idles out; a `dev` one does not.
 
-**Done when:** `dev` reclaims a `startedBy: drive` app and refuses a `startedBy: dev` one — both halves,
-since that rule is what makes the default safe (Decision 11), and reclaiming unconditionally is the
-mutation; an autostarted app is **attachable**, carrying a `debugPort` and answering a verb, which is the
-case that fails the moment autostart routes through the fixture (Decision 10); **an autostart in a pack
-repo installs the pack**, which is the other half of Decision 10 and fails if autostart copied dev's
-environment rather than calling `dev`; two concurrent `drive` calls start **one** app (assert one pid —
-the lock's firing case); every run says which path it took, naming onboarding when it completed it
-(Decisions 13 and 14), which a never-onboarded profile is the case for; a `drive`-profile app idles out
-and a `development` one does not (Decision 12); `abuddy profiles` shows a running app with its pid and
-`startedBy`, and stops showing it once that app has gone (both halves — a listing that cannot go back to
-empty is a stale record, not a status). Then measure the end-to-end one-shot
-(`npm run measure`, per that plan's Verification) and record the number in the Outcome.
+**Done when:** a miss **without** `--spawn` exits non-zero, writes nothing to stdout and names both
+`abuddy dev` and `--spawn` — a gate over input, so the empty stdout is the half to assert; the answer is
+`{value, state, pid}` and nothing else, with `state` reading `attached` and `spawned` in the two cases and
+no `ok` field (the mutation is reintroducing one beside a non-zero exit); `dev` reclaims a
+`startedBy: drive` app and refuses a `startedBy: dev` one — both halves, since that rule is what makes
+`--spawn` safe (Decision 11), reclaiming unconditionally is the mutation, and the case must **spawn and
+then reclaim** rather than hand-write a session file, or it passes while `startedBy` is never set to
+`drive` at all; a spawned app is **attachable**, carrying a `debugPort` and answering a verb, which is the
+case that fails the moment it routes through the fixture (Decision 10); **a `--spawn` in a pack repo
+installs the pack**, the other half of Decision 10, which fails if it copied dev's environment rather than
+spawning `dev`; two concurrent `--spawn` calls start **one** app (assert one pid — the lock's firing
+case); onboarding is named when it was completed (Decisions 13 and 14), which a never-onboarded profile is
+the case for; a `drive`-profile app idles out and a `development` one does not (Decision 12);
+`abuddy profiles` shows a running app with its pid and `startedBy`, and stops showing it once that app has
+gone (both halves — a listing that cannot go back to empty is a stale record, not a status). Then measure
+the end-to-end one-shot (`npm run measure`, per that plan's Verification) and record it in the Outcome.
 
 ### Phase 6 — the deletion
 
