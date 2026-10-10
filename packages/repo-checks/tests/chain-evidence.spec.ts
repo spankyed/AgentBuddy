@@ -126,24 +126,24 @@ describe('where a chain run keeps its evidence', () => {
     });
 
     /**
-     * What a failed step left on disk, kept before the retry can take it.
+     * The files a failed step wrote, kept before the retry can overwrite them.
      *
      * The paths are repo-relative, so this writes a tree under the repo root and names it — which is what
      * the real callers are (`tests/results`, the fixture packs' own output).
      */
-    it('copies a failed step\'s artifacts in, named for the step', () => {
+    it('copies the files a failed step wrote in, named for the step', () => {
       const run = opened();
       const left = path.join(REPO_ROOT, 'tests', 'results');
       const existed = fs.existsSync(left);
       fs.mkdirSync(left, { recursive: true });
       fs.writeFileSync(path.join(left, 'kept-probe.log'), 'what the app said');
       try {
-        expect(run.keepArtifacts('test:smoke', ['tests/results'])).toEqual(['tests/results']);
-        expect(fs.readFileSync(path.join(run.dir, 'test-smoke.artifacts', 'results', 'kept-probe.log'), 'utf-8'))
+        expect(run.keepFiles('test:smoke', ['tests/results'])).toEqual(['tests/results']);
+        expect(fs.readFileSync(path.join(run.dir, 'test-smoke.files', 'results', 'kept-probe.log'), 'utf-8'))
           .toBe('what the app said');
         // A step and its retry do not share one, as their logs do not
-        run.keepArtifacts('test:smoke.retry', ['tests/results']);
-        expect(fs.existsSync(path.join(run.dir, 'test-smoke.retry.artifacts', 'results'))).toBe(true);
+        run.keepFiles('test:smoke.retry', ['tests/results']);
+        expect(fs.existsSync(path.join(run.dir, 'test-smoke.retry.files', 'results'))).toBe(true);
       } finally {
         fs.rmSync(path.join(left, 'kept-probe.log'), { force: true });
         if (!existed) fs.rmSync(left, { recursive: true, force: true });
@@ -153,7 +153,7 @@ describe('where a chain run keeps its evidence', () => {
     /** A step can fail before writing anything, which is not a second failure to report */
     it('skips a path that is not there, and keeps the ones that are', () => {
       const run = opened();
-      expect(run.keepArtifacts('compile', ['tests/nothing-wrote-this'])).toEqual([]);
+      expect(run.keepFiles('compile', ['tests/nothing-wrote-this'])).toEqual([]);
       expect(run.kept()).toBe(0);
       expect(fs.existsSync(run.dir), 'and wrote no directory for it').toBe(false);
     });

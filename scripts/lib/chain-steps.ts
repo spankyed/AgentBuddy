@@ -60,7 +60,7 @@ export interface ChainStep {
    *
    * **The classification retry is what overwrites it**, which is why this is not merely nice to have: the
    * retry runs the step again, and a runner that clears its output directory on the way in — Playwright
-   * does — destroys the artifact of the attempt being diagnosed. A teardown that hung for 60s was
+   * does — overwrites what the attempt being diagnosed wrote. A teardown that hung for 60s was
    * unexplainable afterwards for exactly that reason: the app's own log had been replaced by the retry's.
    *
    * **Declared rather than taken from `outputs`.** Most outputs are build product — `build:app` and
@@ -68,6 +68,13 @@ export interface ChainStep {
    * one. Deriving it as "outputs nothing else reads" is the clever repair and gives a wrong answer in
    * silence. `chain-table.spec.ts` holds each entry to being a path the step declares it writes, so one
    * naming a tree nobody writes fails rather than copying nothing.
+   *
+   * **Kept on every failure rather than behind a flag, which 68K is what buys**: measured 2026-10-10, one
+   * failing `test:smoke` left that much — the fixture's `app-<worker>.log` beside a 39K `trace.zip` and a
+   * screenshot, since the repo's own `playwright.config.ts` sets `screenshot: 'on'` and
+   * `trace: 'retain-on-failure'` (the helper in `@abuddy/testing/playwright` sets neither, so a pack's
+   * suite leaves less). Evidence you have to ask for in advance is evidence you do not have, because you
+   * learn you wanted it only after the failure.
    */
   readonly keepsOnFailure?: readonly string[];
   /**

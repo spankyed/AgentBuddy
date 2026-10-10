@@ -1,10 +1,11 @@
 // What a run leaves behind for whoever reads it afterwards: one file per step that ran, holding exactly the
 // bytes the step produced.
 //
-// **Two things a run keeps: what each step said, and what a failed one left on disk.** The second exists
-// because the first is not always enough — a step whose runner clears its output directory on the way in
-// has its evidence taken by the chain's own classification retry, which is how a 60s teardown hang came to
-// be unexplainable afterwards. `keepsOnFailure` (`chain-steps.ts`) is where a step says what that is.
+// **Two things a run keeps per step: what it said, and — when it failed — what it wrote.** `<step>.log` is
+// its output; `<step>.files/` is the files themselves. The second exists because the first is not always
+// enough: a step whose runner clears its output directory on the way in has what it wrote taken by the
+// chain's own classification retry, which is how a 60s teardown hang came to be unexplainable afterwards.
+// `keepsOnFailure` (`chain-steps.ts`) is where a step says which files those are.
 //
 // **A failure's output was the one thing a run did not keep.** It was captured, printed once and dropped, so
 // its lifetime was terminal scrollback — which is why the guide had to tell people not to pipe a backgrounded
@@ -125,12 +126,12 @@ export interface RunEvidence {
   readonly dir: string;
   keep(label: string, result: EvidenceResult): void;
   /**
-   * Copies what a failed step left on disk, before anything runs that would overwrite it.
+   * Copies the files a failed step left on disk, before anything runs that would overwrite them.
    *
    * Returns the paths it took, so a caller can say what it has — and skips one that is not there rather
    * than throwing, because a step can fail before writing anything and that is not a second failure.
    */
-  keepArtifacts(label: string, paths: readonly string[]): string[];
+  keepFiles(label: string, paths: readonly string[]): string[];
   /** How many files are in it, which is how the caller knows whether to name it */
   kept(): number;
 }
@@ -156,12 +157,12 @@ export function openRunEvidence(options: { startedAt: Date; pid: number; root?: 
       fs.writeFileSync(evidenceFile(dir, label), `${evidenceHeader(label, result)}\n${result.output}`);
       written += 1;
     },
-    keepArtifacts(label, paths) {
+    keepFiles(label, paths) {
       const taken: string[] = [];
       for (const target of paths) {
         const from = path.join(REPO_ROOT, target);
         if (!fs.existsSync(from)) continue;
-        const into = path.join(dir, `${flatStepName(label)}.artifacts`, path.basename(target));
+        const into = path.join(dir, `${flatStepName(label)}.files`, path.basename(target));
         fs.mkdirSync(path.dirname(into), { recursive: true });
         fs.cpSync(from, into, { recursive: true });
         taken.push(target);

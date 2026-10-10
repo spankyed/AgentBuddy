@@ -195,11 +195,11 @@ describe('the integration step runs every suite that has an expensive half', () 
 //
 // A step declaring `keepsOnFailure` claims it writes those paths, and nothing at run time can tell whether
 // it did: a path that names a tree nobody writes is skipped, so the keep reports nothing taken and reads
-// exactly like a step that failed before writing. That is the whole value of the field — the evidence of a
-// failure nobody can reproduce — so the claim is checked against what the step says it writes rather than
-// trusted. `outputs` or `excludes`: the first is a tree it declares for a later step, the second one it
-// declares the parent of and reads around, and a Playwright output directory is one or the other.
-describe('a step that keeps artifacts on failure writes where it says', () => {
+// exactly like a step that failed before writing. That is the whole value of the field — what a failure
+// nobody can reproduce left behind — so the claim is checked against what the step says it writes rather
+// than trusted. `outputs` or `excludes`: the first is a tree it declares for a later step, the second one
+// it declares the parent of and reads around, and a Playwright output directory is one or the other.
+describe('a step that keeps files on failure writes where it says', () => {
   const declaring = CHAIN_STEPS.filter((step) => step.keepsOnFailure !== undefined);
 
   it('there are some, so this check is not vacuous', () => {
