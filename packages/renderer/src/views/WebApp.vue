@@ -102,7 +102,7 @@ import { applicationState } from '@/main'
 import { HOST, notifyPluginActor, visiblePluginsOf } from '@apackdev/host/fe'
 import { untypedOpenPlugin, PluginScope } from '@apackdev/sdk/fe'
 import Router from '@/views/layout/PluginRouter.vue'
-import { useContextualHelp } from '@/views/help/context';
+import { useContextualHelp } from '@/views/settings/contextual-help';
 const { hasHelp, openFeatureHelp } = useContextualHelp();
 import type { ContextMenuItem } from '@apackdev/sdk/fe'
 import ToastNotification from '@apackdev/ui/design/ToastNotification'

@@ -41,9 +41,9 @@ export function openLink(url: string): void {
   else window.electronAPI?.shell?.openExternal(url);
 }
 
-/** Open the app's help index, a feature's articles, or one pack-qualified article. */
+/** Open Settings → Help at the index, a feature's articles, or one pack-qualified article. */
 export function openHelp(target: import('../framework/pack-help.ts').HelpTarget = {}): void {
   if (target.articleId && !target.packId) throw new Error('Opening an article requires its packId.');
   if (target.featureId && !target.packId) throw new Error('Filtering help by feature requires its packId.');
-  untypedOpenPlugin('host/help', { type: 'HELP.OPEN', target });
+  untypedOpenPlugin('host/settings', { type: 'HELP.OPEN', target });
 }

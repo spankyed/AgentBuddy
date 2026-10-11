@@ -113,7 +113,7 @@
 </template>
 
 <script setup lang="ts">
-import { useContextualHelp } from '@/views/help/context';
+import { useContextualHelp } from '@/views/settings/contextual-help';
 const { hasHelp, openFeatureHelp } = useContextualHelp();
 import { computed, ref, watch, onMounted, onUpdated } from 'vue'
 import type { SettingUpdate } from '@apackdev/sdk/fe'

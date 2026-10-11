@@ -27,5 +27,3 @@ export { installFromProtocol, packInstallRequest, requestPackInstall, type PackI
 
 // The Settings view's machine, as the renderer pairs it with the view's components (`features/settings/fe/`)
 export { createSettingsMachine, type SettingsContext, type SettingsEvents, type SettingsIO, type SettingsSave, type SettingsState, type SettingsTarget } from '../features/settings/fe/machine.ts';
-
-export { helpMachine, type HelpContext, type HelpEvent, type HelpState } from '../features/help/fe/machine.ts';

@@ -12,7 +12,7 @@ export type Contract = {
 const spec = defineSystem<Contract>();
 export const helpSystem = setup({
   types: spec.types,
-  actions: { sendCatalog: () => broadcastToPlugin('help', { type: 'HELP_CATALOG', catalog: getPackHelp() }) },
+  actions: { sendCatalog: () => broadcastToPlugin('settings', { type: 'HELP_CATALOG', catalog: getPackHelp() }) },
 }).createMachine({
   id: 'help', context: {},
   on: {

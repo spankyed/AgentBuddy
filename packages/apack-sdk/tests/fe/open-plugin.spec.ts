@@ -2,7 +2,7 @@
 // that could provide it is still loading; the host's shell specs cover what it does with the request. What untypedOpenPlugin
 // refuses itself is a string that isn't a ref at all.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { untypedOpenPlugin } from '../../src/fe/navigation.ts';
+import { untypedOpenPlugin, openHelp } from '../../src/fe/navigation.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 
 let sent: unknown[];
@@ -39,5 +39,22 @@ describe('untypedOpenPlugin', () => {
   it('refuses a name that is not a ref, rather than resolving it against some pack', () => {
     expect(() => untypedOpenPlugin('memos')).toThrow(`"memos" doesn't name a plugin`);
     expect(sent).toEqual([]);
+  });
+});
+
+
+describe('openHelp', () => {
+  it('opens Settings and delivers the requested Help target', () => {
+    const target = { packId: 'memo-pack', featureId: 'memos' };
+    openHelp(target);
+    expect(sent).toEqual([{ type: 'OPEN_PLUGIN', plugin: 'host/settings', events: [{ type: 'HELP.OPEN', target }] }]);
+  });
+
+  it('opens the index by default and rejects ambiguous article or feature targets', () => {
+    openHelp();
+    expect(sent).toEqual([{ type: 'OPEN_PLUGIN', plugin: 'host/settings', events: [{ type: 'HELP.OPEN', target: {} }] }]);
+    expect(() => openHelp({ articleId: 'start' })).toThrow(/packId/);
+    expect(() => openHelp({ featureId: 'memos' })).toThrow(/packId/);
+    expect(sent).toHaveLength(1);
   });
 });

@@ -213,6 +213,19 @@ describe('the inputs stamp', () => {
     expect(said.join('\n')).toMatch(/inputs unchanged/);
   });
 
+  it('ignores Markdown that is not a declared help input', async () => {
+    writeManifest({ id: 'test-pack', name: 'Test', version: '0.1.0' });
+    fs.mkdirSync(path.join(tmpDir, 'src'), { recursive: true });
+    const prose = path.join(tmpDir, 'src/README.md');
+    fs.writeFileSync(prose, 'Draft');
+    await generateEntries([], tmpDir);
+    fs.writeFileSync(prose, 'Updated prose');
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await generateEntries([], tmpDir);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('inputs unchanged'));
+    log.mockRestore();
+  });
+
   // The case that makes the list recorded rather than fixed: a pack with no plugins never writes `fe.ts`,
   // and an expectation hard-coded from a fuller pack would call it stale on every run, forever.
   it('does not treat a file this pack never generates as missing', async () => {

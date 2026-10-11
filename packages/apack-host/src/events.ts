@@ -23,8 +23,7 @@ import type { OutgoingPacksEvents } from './features/registration.ts';
 type HostPlugins = WithOwnNames<typeof HOST_PACK_ID, {
   'host/application': HostPluginEvents['host/application'];
   'host/packs': OutgoingPacksEvents;
-  'host/help': HelpOutgoing | HostPluginEvents['host/help'];
-  'host/settings': SettingsPluginEvents | HostPluginEvents['host/settings'];
+  'host/settings': HelpOutgoing | SettingsPluginEvents | HostPluginEvents['host/settings'];
 }>;
 
 /** What each of the host's systems receives, from the contracts those features declare */

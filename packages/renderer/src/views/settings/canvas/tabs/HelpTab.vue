@@ -1,9 +1,9 @@
 <template>
   <div class="flex flex-col h-full bg-neutral-900 text-neutral-200" data-testid="help-reader">
     <header class="flex items-center gap-3 p-4 border-b border-neutral-800">
-      <button aria-label="Back to help index" @click="actor.send({ type: 'HELP.BACK' })" class="p-2 hover:bg-neutral-800 rounded"><ArrowLeft :size="18" /></button>
+      <button aria-label="Back" :disabled="!context.history.length" @click="actor.send({ type: 'HELP.BACK' })" class="p-2 hover:bg-neutral-800 rounded disabled:opacity-30"><ArrowLeft :size="18" /></button>
       <h1 class="font-semibold">Help</h1>
-      <input aria-label="Search help" placeholder="Search help" :value="context.query" @input="search" class="ml-auto w-72 bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm" />
+      <input aria-label="Search help" placeholder="Search help" :value="context.query" @input="search" class="ml-auto w-72 max-w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm" />
     </header>
     <div v-for="problem in context.catalog.problems" :key="problem.packId" role="alert" class="p-3 text-amber-300 text-sm">{{ problem.packId }}: {{ problem.message }}</div>
     <div class="flex flex-1 min-h-0">
@@ -16,7 +16,7 @@
         <p v-else-if="!articles.length" class="p-3 text-sm text-neutral-400">{{ context.query ? 'No articles match your search.' : 'No help articles are available for this selection.' }}</p>
         <section v-for="group in groups" :key="group.packId" class="mb-5">
           <h2 class="px-2 mb-2 text-xs text-neutral-400">{{ group.packName }}</h2>
-          <button v-for="article in group.articles" :key="article.id" @click="openHelp({ packId: article.packId, articleId: article.id })" class="block w-full text-left rounded px-2 py-2 text-sm hover:bg-neutral-800" :class="selected?.packId === article.packId && selected?.id === article.id ? 'bg-neutral-800 text-white' : ''">{{ article.title }}</button>
+          <button v-for="article in group.articles" :key="article.id" @click="readArticle(article.packId, article.id)" class="block w-full text-left rounded px-2 py-2 text-sm hover:bg-neutral-800" :class="selected?.packId === article.packId && selected?.id === article.id ? 'bg-neutral-800 text-white' : ''">{{ article.title }}</button>
         </section>
       </aside>
       <main class="flex-1 min-w-0 overflow-auto p-8">
@@ -45,12 +45,12 @@ import { useSelector } from '@xstate/vue';
 import { ArrowLeft } from 'lucide-vue-next';
 import { usePlugin, useShell, openHelp, openLink } from '@apackdev/sdk/fe';
 import { splitRef } from '@apackdev/sdk/ids';
-import { type HelpState } from '@apackdev/host/fe';
+import { type SettingsState } from '@apackdev/host/fe';
 import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor';
 import { DISCORD_URL, MEMORIAL_URL } from '@/views/settings/constants';
-const actor: HelpState = usePlugin();
+const actor: SettingsState = usePlugin();
 const plugins = useShell().plugins;
-const context = useSelector(actor, s => s.context);
+const context = useSelector(actor, s => s.context.help);
 const selected = computed(() => context.value.catalog.articles.find(a => a.packId === context.value.target.packId && a.id === context.value.target.articleId));
 const articles = computed(() => {
   const query = context.value.query.trim().toLocaleLowerCase();
@@ -59,16 +59,38 @@ const articles = computed(() => {
     && (!target.featureId || a.features?.includes(target.featureId))
     && (!query || `${a.title}\n${a.body}`.toLocaleLowerCase().includes(query)));
 });
-const groups = computed(() => [...new Set(articles.value.map(a => a.packId))].map(packId => ({ packId, packName: articles.value.find(a => a.packId === packId)!.packName, articles: articles.value.filter(a => a.packId === packId) })));
-const features = computed(() => [...new Set(context.value.catalog.articles.flatMap(a => (a.features ?? []).map(f => `${a.packId}/${f}`)))].sort().map(ref => ({ ref, label: `${context.value.catalog.articles.find(a => a.packId === ref.split('/')[0])?.packName} · ${plugins.value.find(p => p.id === ref)?.label ?? ref.split('/')[1]}` })));
+const groups = computed(() => {
+  const byPack = new Map<string, { packId: string; packName: string; articles: typeof articles.value }>();
+  for (const article of articles.value) {
+    let group = byPack.get(article.packId);
+    if (!group) {
+      group = { packId: article.packId, packName: article.packName, articles: [] };
+      byPack.set(article.packId, group);
+    }
+    group.articles.push(article);
+  }
+  return [...byPack.values()];
+});
+const features = computed(() => {
+  const labels = new Map<string, string>(plugins.value.map(plugin => [plugin.id, plugin.label]));
+  const byRef = new Map<string, string>();
+  for (const article of context.value.catalog.articles) {
+    for (const featureId of article.features ?? []) {
+      const ref = `${article.packId}/${featureId}`;
+      byRef.set(ref, `${article.packName} · ${labels.get(ref) ?? featureId}`);
+    }
+  }
+  return [...byRef].sort(([a], [b]) => a.localeCompare(b)).map(([ref, label]) => ({ ref, label }));
+});
 const featureFilter = computed(() => context.value.target.featureId ? `${context.value.target.packId}/${context.value.target.featureId}` : '');
+function readArticle(packId: string, articleId: string) { actor.send({ type: 'HELP.READ', packId, articleId }); }
 function search(event: Event) { actor.send({ type: 'HELP.SEARCH', query: (event.target as HTMLInputElement).value }); }
 function filterFeature(event: Event) { const ref = splitRef((event.target as HTMLSelectElement).value); openHelp(ref ?? {}); }
 function articleLink(href: string) {
   const url = new URL(href, window.location.href);
   if (url.hostname === 'help.apack.invalid') {
     const [packId, ...id] = url.pathname.slice(1).split('/');
-    openHelp({ packId: decodeURIComponent(packId), articleId: decodeURIComponent(id.join('/')) });
+    readArticle(decodeURIComponent(packId), decodeURIComponent(id.join('/')));
   } else if (url.protocol === 'https:' || url.protocol === 'http:' || url.protocol === 'mailto:') openLink(url.href);
 }
 </script>

@@ -9,7 +9,7 @@
 </template>
 
 <script setup lang="ts">
-import { useContextualHelp } from '@/views/help/context';
+import { useContextualHelp } from '@/views/settings/contextual-help';
 import { computed, ref } from 'vue';
 import { CircleHelp, ExternalLink, EyeOff, Settings as SettingsIcon } from 'lucide-vue-next';
 import type { Plugin } from '@/types';

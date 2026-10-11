@@ -10,6 +10,7 @@ import type { PackContentPreview } from '@apackdev/sdk/build'
 import type { FeatureRef } from '@apackdev/sdk/ids';
 
 import { splitRef } from '@apackdev/sdk/ids';
+import { createHelpContext, reduceHelp, type HelpContext, type HelpEvent } from './help.ts';
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -65,7 +66,8 @@ export interface SettingsContext {
   secretsStatus: SecretsStatus | null;
   cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
   packContentImport: PackContentImport;
-  activeTab: 'general' | 'plugins';
+  activeTab: 'general' | 'plugins' | 'help';
+  help: HelpContext;
   generalNavItem: 'personal' | 'secrets' | 'projects' | 'application' | 'json';
   selectedPluginId: string | null;
   isLoading: boolean;
@@ -83,7 +85,7 @@ export interface SettingsContext {
 export type SettingsTarget = { entityType: 'plugin'; label: FeatureRef } | { entityType: 'section'; label: string };
 
 type UIEvent =
-  | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' }
+  | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
   | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'projects' | 'application' | 'json' }
   // A plugin by its ref: other packs send it too, so a bare name would be read as this pack's
   | { type: 'PLUGIN.SELECT'; pluginId: FeatureRef }
@@ -104,7 +106,7 @@ type UIEvent =
   | { type: 'PACK_CONTENT.RESET_STATUS' }
   | { type: 'APP.RESET' }
 
-export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent
+export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent | HelpEvent
   | { type: 'PACK_CONTENT_IMPORTED'; result: Record<string, { created: number; updated: number; skipped: number }>; errors: string[] }
   | { type: 'PACK_CONTENT_IMPORT_FAILED'; error: string }
   | { type: 'PACK_CONTENT_PREVIEW'; preview: PackContentPreview }
@@ -144,8 +146,6 @@ export function createSettingsMachine(io: SettingsIO) {
       };
     }),
 
-    // The installed packs changed: what any of them answers with in Help changed with them
-
     setSecrets: assign(({ event }) => {
       const ev = typeOf('SECRETS_UPDATED', event);
       return { secrets: ev.secrets, secretsStatus: ev.status };
@@ -157,6 +157,8 @@ export function createSettingsMachine(io: SettingsIO) {
         settings: ev.data,
       }
     }),
+
+    updateHelp: assign(({ context, event }) => ({ help: reduceHelp(context.help, event as HelpEvent) })),
 
     /* ── tab navigation ────────────────────────────────── */
     selectTab: assign(({ event }) => {
@@ -417,6 +419,14 @@ export function createSettingsMachine(io: SettingsIO) {
   id,
   
   initial: 'loading',
+  entry: () => sendToSystem('help', { type: 'GET_HELP' }),
+  on: {
+    HELP_CATALOG: { actions: 'updateHelp' },
+    'HELP.OPEN': { actions: ['updateHelp', assign({ activeTab: 'help' })] },
+    'HELP.READ': { actions: 'updateHelp' },
+    'HELP.BACK': { actions: 'updateHelp' },
+    'HELP.SEARCH': { actions: 'updateHelp' },
+  },
   context: () => ({
     settings: null,
     secrets: [],
@@ -424,6 +434,7 @@ export function createSettingsMachine(io: SettingsIO) {
     cliTestResults: {},
     packContentImport: freshContentImport(),
     activeTab: 'general',
+    help: createHelpContext(),
     generalNavItem: 'application',
     selectedPluginId: null as string | null,
     isLoading: true,

@@ -33,6 +33,7 @@ describe('Markdown help compilation', () => {
     ['empty H1', { 'a.md': '#  \nBody text' }, /H1/],
     ['missing H1', { 'a.md': 'No title' }, /H1/],
     ['duplicate ID', { 'a.md': '---\nid: same\n---\n# A', 'b.md': '---\nid: same\n---\n# B' }, /duplicate/],
+    ['inherited feature name', { 'a.md': '---\nfeatures: [toString]\n---\n# A' }, /features/],
     ['unknown feature', { 'a.md': '---\nfeatures: [missing]\n---\n# A' }, /features/],
     ['bad order', { 'a.md': '---\norder: later\n---\n# A' }, /order/],
     ['broken link', { 'a.md': '# A\n[Missing](missing.md)' }, /help link/],
@@ -51,4 +52,23 @@ describe('Markdown help compilation', () => {
     const { root, manifest } = fixture({ 'a.md': '# A\n```md\n[Example](missing.md)\n```' });
     expect(compileHelp(root, manifest)[0].body).toContain('[Example](missing.md)');
   });
+  it('keeps inline and indented code examples literal, including links to nonexistent example files', () => {
+    const { root, manifest } = fixture({ 'a.md': '# A\n\n`[Example](missing.md)`\n\n    [Example](missing.md)' });
+    expect(compileHelp(root, manifest)[0].body).toContain('[Example](missing.md)');
+  });
+  it('resolves real Markdown links with angle brackets and titles', () => {
+    const { root, manifest } = fixture({
+      'a.md': '# A\n\n[**Next**](<next.md> "Read next")\n\n[Reference][next]\n\n[next]: <next.md> "Read next"',
+      'next.md': '# Next\nDetails',
+    });
+    const body = compileHelp(root, manifest).find(a => a.id === 'a')!.body;
+    expect(body.match(/https:\/\/help\.apack\.invalid\/test-pack\/next/g)).toHaveLength(2);
+    expect(body).toContain('**Next**');
+    expect(body).toContain('Read next');
+  });
+  it('uses the plain heading text as the title, removing Markdown formatting and closing heading markers', () => {
+    const { root, manifest } = fixture({ 'a.md': '# A **formatted** `title` #\nDetails' });
+    expect(compileHelp(root, manifest)[0]).toMatchObject({ title: 'A formatted title', body: 'Details' });
+  });
+
 });

@@ -3,7 +3,6 @@ import { HOST_PACK_ID } from '@apackdev/sdk/ids';
 import { packsMachine } from '@apackdev/host/fe';
 import { Package } from 'lucide-vue-next';
 import canvas from './canvas.vue';
-import { helpPlugin } from '@/views/help/plugin';
 import { settingsPlugin } from '@/views/settings/plugin';
 
 const packsPlugin: PluginDefinition = {
@@ -21,6 +20,5 @@ export const hostFrontend: PackFERegistration = {
     packs: { plugin: packsPlugin },
     // The app's settings: the host's machine, this window's views
     settings: { plugin: settingsPlugin },
-    help: { plugin: helpPlugin },
   },
 };

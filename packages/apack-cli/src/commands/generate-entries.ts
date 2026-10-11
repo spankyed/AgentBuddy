@@ -29,7 +29,7 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
     if (entry.name === '__generated__' || entry.name === 'node_modules') continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) sourceFiles(full, out);
-    else if (/\.(ts|tsx|js|mjs|vue|json|md)$/.test(entry.name)) out.push(full);
+    else if (/\.(ts|tsx|js|mjs|vue|json)$/.test(entry.name)) out.push(full);
   }
   return out;
 }

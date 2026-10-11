@@ -28,7 +28,7 @@ crashed and restarted, `apack db` against a live data dir, `POST /dev/reload`, `
 dropping sends until a client connects, key strings absent from logs and files — and each `ui/` spec
 asserts rendered output, which is the other half: a component reaching for a plugin it is not rendered in
 (`navigation`), main accepting a ref as a window id (`popout`), a pack's compiled entries reaching the
-standalone Help reader (`settings-help`), a panel a plugin lends another actually drawing (`fallback-panel`).
+Settings Help reader (`settings-help`), a panel a plugin lends another actually drawing (`fallback-panel`).
 
 **The shape that fails the second half is worth recognising, because it reads like a UI test.** A spec
 that sends a plugin an event and then asserts *shell state* — which plugin is open, what the context holds
@@ -363,7 +363,7 @@ data dir, the pack loader: things no harness test can reach.
 | `ui/fallback-panel.spec.ts` | A plugin offering its panel for plugins without one (`fallbackPanel`), and saying itself when it shows: the brain's inspect mode |
 | `ui/navigation.spec.ts` | Opens every plugin and every plugin's settings without a renderer error — a component reaching for a plugin it isn't rendered in fails here |
 | `ui/popout.spec.ts` | A plugin popped out into its own window: main accepts the plugin's ref as its id and the popout renders its canvas as part of that plugin |
-| `ui/settings-help.spec.ts` | Standalone Help: bundled pack articles, search, contextual settings navigation and unavailable targets |
+| `ui/settings-help.spec.ts` | Settings Help: bundled pack articles, search, contextual settings navigation and unavailable targets |
 
 | Elsewhere | |
 |------|---------|
