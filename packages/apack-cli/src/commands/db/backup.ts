@@ -1,3 +1,4 @@
+import { dbBackupVerify, VERIFY_USAGE } from './backup-verify';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { findRunningApp, holdDatabaseWriteLock } from '@apackdev/host/database';
@@ -6,7 +7,7 @@ import { readHostInfo } from '@apackdev/host/packs';
 import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 
 export const BACKUP_USAGE = [
-  'Usage: apack db backup --out <dir> [options]', '',
+  'Usage: apack db backup --out <dir> [options]', VERIFY_USAGE, '',
   'Create a restorable backup of both database partitions and media while the app is closed.',
   'The destination must not exist. Installed packs and secrets are not included.',
   '', '  --out <dir>            New backup directory (required)', TARGET_USAGE,
@@ -19,6 +20,7 @@ function realDestination(file: string): string {
 }
 
 export async function dbBackup(args: string[], io: DbIo): Promise<void> {
+  if (args[0] === 'verify') return dbBackupVerify(args.slice(1), io);
   const { values, positionals, target } = parseDbArgs(args, { out: { type: 'string' } }, BACKUP_USAGE);
   if (positionals.length || typeof values.out !== 'string' || !values.out.trim()) throw new Error(BACKUP_USAGE);
   const destination = path.resolve(values.out);

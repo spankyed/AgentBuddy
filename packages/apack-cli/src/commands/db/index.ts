@@ -34,6 +34,7 @@ Commands:
   script <file>         Run a script file against the database (it imports what it likes)
   inspect [<id>]        An entity's relations, or relation counts per entity type
   backup --out <dir>    Full database and media backup to a new directory
+  backup verify <dir>   Check backup readability and completeness
   export --out <dir>    Each entity type's entities to a file
   import <backup-dir>   Replace the database with a backup (lists the change; --force makes it)
   reset                 Delete all data, as Reset Database does (lists it; --force deletes)

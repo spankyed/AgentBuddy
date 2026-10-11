@@ -731,3 +731,5 @@ Downloads must have a matching published SHA-256 checksum. An incomplete latest 
 `apack logs [--channel production|beta|preview] [--follow] [--lines <count>]` reads the installed app’s `main.log` (100 recent lines by default). Following waits for the file and follows rotation; Ctrl-C stops the reader.
 
 `apack db backup --out <new-directory> [--profile <name> | --data-dir <path>]` creates a full backup compatible with `apack db import`. Close the app first. Both database partitions and media are included; installed packs and secrets are excluded. Existing destinations and destinations inside the source data directory are refused.
+
+`apack db backup verify <directory> [--json]` checks database readability and listed partitions/media before restoration. It does not open your app data. It checks the backup format and completeness; entity-type compatibility depends on the packs installed when you import.

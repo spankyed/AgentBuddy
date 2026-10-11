@@ -27,6 +27,13 @@ it('creates an importable backup with media and run history, and refuses overwri
     const copy = openEnvAt(path.join(out, 'lmdb'), { readOnly: true });
     expect(copy.entities.get('Note-a')).toEqual({ type: 'Note' });
     closeEnv(copy, () => {});
+    await db(['backup', 'verify', out, '--json'], io);
+    expect(JSON.parse(io.out.mock.lastCall![0])).toMatchObject({ valid: true, path: out });
+    fs.renameSync(path.join(out, 'media'), path.join(out, 'lost-media'));
+    await expect(db(['backup', 'verify', out], io)).rejects.toThrow('media directory is missing');
+    fs.renameSync(path.join(out, 'lost-media'), path.join(out, 'media'));
+    fs.rmSync(path.join(out, 'volatileLmdb'), { recursive: true });
+    await expect(db(['backup', 'verify', out], io)).rejects.toThrow('Missing backup databases');
     expect(findDatabaseWriter(source)).toBeNull();
     await expect(db(['backup', '--data-dir', source, '--out', out], io)).rejects.toThrow('already exists');
     await expect(db(['backup', '--data-dir', source, '--out', path.join(source, 'nested')], io)).rejects.toThrow('outside');
