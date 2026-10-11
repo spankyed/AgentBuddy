@@ -108,9 +108,9 @@ it('stores a memo a client adds and sends it back', async () => {
 | `nextEmit(pluginId, type, { timeoutMs? })` | The next such event no earlier call returned, waiting for it (default 5000 ms) |
 | `settle()` | Resolves once the systems have no work left |
 | `system(systemId)` | A running system's actor |
-| `stop()` | Stops the systems; pending and later `connect`, `send`, `nextEmit`, `settle` and `runFlow` calls fail with "The test app stopped", and so does `system`. `emitted` still reads what was sent. Once no app runs, each registered pack's `boot.onShutdown` runs, as when the app stops a pack, so what pack modules keep outside their systems (default-setup's cron jobs and brain listeners) doesn't reach the next test. The harness stops apps after each test |
+| `stop()` | Stops the systems; pending and later `connect`, `send`, `nextEmit`, `settle` and `runFlow` calls fail with "The test app stopped", and so does `system`. `emitted` still reads what was sent. Once no app runs, every registered feature's `onShutdown` runs, as when the app stops a pack, so what pack modules keep outside their systems (default-setup's cron jobs and brain listeners) doesn't reach the next test. The harness stops apps after each test |
 
-**Boot hooks run around a test's apps.** The first app a test starts runs each registered pack's `boot.onInit` (your dependencies' first) before its systems start, as the app does at boot, and the last one to stop runs `boot.onShutdown`. A pack that opens something in `onInit` and closes it in `onShutdown` gets that pair for every test that starts an app.
+**Lifecycle hooks run around a test's apps.** The first app a test starts runs every registered feature's `onInit` (your dependencies' first) before its systems start, as the app does at boot, and the last one to stop runs every `onShutdown`. A feature that opens something in `onInit` and closes it in `onShutdown` gets that pair for every test that starts an app.
 
 `apack pack add feature` scaffolds a system test like this for each feature.
 

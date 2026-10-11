@@ -29,6 +29,10 @@
       "repositories": {
         "memoQueries": "src/features/memos/be/repository.ts#memoQueries",
         "memoCommands": "src/features/memos/be/repository.ts#memoCommands"
+      },
+      "lifecycle": {
+        "onInit": "src/features/memos/be/lifecycle.ts#onInit",
+        "onShutdown": "src/features/memos/be/lifecycle.ts#onShutdown"
       }
     },
     "notes": {
@@ -82,9 +86,6 @@
     "default-setup": "*"
   },
   "permissions": [],
-  "boot": {
-    "hooks": "src/features/hooks.ts"
-  },
   "content": {
     "sources": {
       "actions": "src/content/actions",

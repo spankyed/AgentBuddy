@@ -14,6 +14,12 @@ import { compareVersions } from '../utils/compare-versions.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
 
+/** The hooks a feature's `lifecycle` may declare, which is also the order they are emitted in */
+const LIFECYCLE_HOOKS = ['onInit', 'onShutdown'] as const;
+
+/** The local a feature's hook is imported as: two features may export the same name from two modules */
+const lifecycleBinding = (featureId: string, hook: string): string => `__lifecycle_${featureId}_${hook}`;
+
 const HEADER = `// @generated from apack.json — do not edit by hand
 // Regenerate: apack pack generate-entries\n`;
 
@@ -483,6 +489,7 @@ export function generatePackFiles(
     const features = packFeatures(manifest);
     const targets = [
       ...features.flatMap((f) => [...Object.values(f.services ?? {}), ...Object.values(f.repositories ?? {})]),
+      ...features.flatMap((f) => Object.values(f.lifecycle ?? {})),
       ...Object.values(manifest.extensions?.services ?? {}),
       ...Object.values(manifest.content?.writers ?? {}),
       ...Object.values(manifest.extensions?.blocks ?? {}).flatMap((b) => (b.be ? [b.be] : [])),
@@ -934,6 +941,17 @@ ${items.join('\n')}
       return `packSystem(${systemBinding(f.id)}${options})`;
     };
 
+    /**
+     * A feature's lifecycle hooks, each imported by name. The pack-wide key this replaced was resolved as
+     * `import * as`, so every export of that module landed in the registration whether it was a hook or not.
+     */
+    const lifecycleLiteral = (f: PackFeature): string => {
+      const parts = LIFECYCLE_HOOKS
+        .filter((hook) => f.lifecycle?.[hook])
+        .map((hook) => `${hook}: ${lifecycleBinding(f.id, hook)}`);
+      return parts.length ? `{ ${parts.join(', ')} }` : '';
+    };
+
     const featuresLiteral = features.map(f => {
       const parts: string[] = [];
       if (f.designation) parts.push(`      designation: '${f.designation}'`);
@@ -941,6 +959,8 @@ ${items.join('\n')}
       if (f.plugin) parts.push(`      plugin: { receives: [${receivedEventTypes(f).map((type) => `'${type}'`).join(', ')}] }`);
       parts.push(`      services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
       if (f.settings) parts.push(`      settings: ${settingsBinding(f.id)}`);
+      const lifecycle = lifecycleLiteral(f);
+      if (lifecycle) parts.push(`      lifecycle: ${lifecycle}`);
       return `    '${f.id}': {\n${parts.join(',\n')},\n    }`;
     }).join(',\n');
 
@@ -949,9 +969,12 @@ ${items.join('\n')}
       .map(f => `import ${settingsBinding(f.id)} from '${toImportPath(root, settingsSource(f))}';`)
       .join('\n');
 
-    const hooksImport = manifest.boot?.hooks
-      ? `import * as _hooks from '${toImportPath(root, manifest.boot.hooks)}';`
-      : '';
+    const hooksImport = features.flatMap((f) => LIFECYCLE_HOOKS
+      .filter((hook) => f.lifecycle?.[hook])
+      .map((hook) => {
+        const { source, exportName } = valueExport(`Feature "${f.id}": lifecycle.${hook}`, f.lifecycle![hook]!);
+        return `import { ${exportName} as ${lifecycleBinding(f.id, hook)} } from '${toImportPath(root, source)}';`;
+      })).join('\n');
 
     const writerEntries = contentWriterEntries();
     const blocks = blockDefinitions();
@@ -1015,7 +1038,7 @@ ${help ? `  help: ${JSON.stringify(help)},` : ''}
     entities: ${JSON.stringify(manifest.entities ?? {})},
     relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
   },
-${manifest.boot?.hooks ? '  boot: { ..._hooks },\n' : ''}${migrations.literal ? `  migrations: ${migrations.literal},` : ''}
+${migrations.literal ? `  migrations: ${migrations.literal},` : ''}
 };
 ${contractCheck}`;
   }

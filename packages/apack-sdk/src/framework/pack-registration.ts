@@ -41,14 +41,24 @@ export interface PackMigrations {
 }
 
 /**
- * The pack's boot hooks: code the app runs for it, and nothing else.
+ * A feature's lifecycle: code the app runs for it, and nothing else.
+ *
+ * **On the feature, not the pack**, because what these do belongs to one. The shipped pack's single hook was
+ * four teardowns — one the `code` feature's terminals, three the `brain`'s schedules, ad-hoc listeners and
+ * flow registry — and the fixture pack's two were both its one feature's journal. A pack-wide key made each
+ * of them look like the pack's business and let a reload tear down every feature to reload one.
+ *
+ * **Why a hook and not the system's own `exit` action**: a stopped XState actor never reaches its own
+ * cleanup, which is the whole reason this exists — `clearFlowActorRegistry`'s comment and
+ * `@apackdev/testing`'s guide both say so. `onShutdown` runs *before* the systems stop, and on an app reset
+ * they are not stopped at all.
  *
  * **A registration carries code; the manifest and the compiled artifacts carry facts.** So nothing here
  * describes a pack's content: which keys it writes is `content.json`'s, where its compiled content is follows
  * from where the pack is installed, and what an apply leaves alone the applier decides from the rows — an
  * unchanged hash, an edited row, one the user deleted. A fact put here is a second account of one of those.
  */
-export interface PackBootHooks {
+export interface PackLifecycle {
   onInit?: () => void;
   onShutdown?: () => void;
 }
@@ -85,6 +95,8 @@ export interface PackFeature {
   services?: readonly string[];
   /** The feature's default settings (apack.json `features[].settings`) */
   settings?: import('./pack-settings.ts').FeatureSettings;
+  /** What the app runs for the feature when its pack starts and stops (apack.json `features[].lifecycle`) */
+  lifecycle?: PackLifecycle;
 }
 
 export interface PackRegistration {
@@ -98,7 +110,6 @@ export interface PackRegistration {
   ears?: PackEARS;
   /** The pack's repositories by name (apack.json `features[].repositories`), registered with the app's engine */
   repositories?: Record<string, unknown>;
-  boot?: PackBootHooks;
   /**
    * The pack's migrations by version line, mirroring `apack.json`'s two maps: `app` runs against
    * apack's version, `pack` against this pack's own. Nested rather than two sibling fields so one

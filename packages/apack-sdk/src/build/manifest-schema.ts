@@ -286,9 +286,18 @@ export const ContentConfigSchema = z.object({
     .describe('How one entity type this pack declares is found, created, updated and removed when content is written as it ("path#exportName" of a ContentWriter object). Any pack writing that entity type goes through them.').optional(),
 }).strict().describe("A pack's content: what it ships, how it is compiled, and how it reaches the database.");
 
-export const BootConfigSchema = z.object({
-  hooks: z.string().describe('Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and content) and onShutdown (when the pack\'s backend stops).').optional(),
-}).strict().describe('Boot sequence configuration.');
+/**
+ * A feature's lifecycle hooks, each named by its export.
+ *
+ * **On the feature rather than the pack**, which is where the work always belonged: the shipped pack's one
+ * hook was four teardowns, three of them the `brain` feature's and one the `code` feature's, and the
+ * fixture pack's two were both its single feature's. A pack-wide key also had to be resolved as
+ * `import * as`, so every export of the module it named reached the registration, hook or not.
+ */
+const LifecycleSchema = z.object({
+  onInit: ExportTargetSchema.describe('"path#exportName" of what runs after EARS has hydrated and before migrations and content.').optional(),
+  onShutdown: ExportTargetSchema.describe('"path#exportName" of what runs when the pack\'s backend stops. It runs *before* the feature\'s system is stopped, because a stopped actor never reaches its own cleanup.').optional(),
+}).strict();
 
 const ServicesSchema = z.record(IdentifierSchema, ExportTargetSchema);
 
@@ -317,6 +326,8 @@ const FEATURE_ID_SCHEMA = z.string()
 export const FeatureEntrySchema = z.object({
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: z.string().describe('Path to default settings file.').optional(),
+  lifecycle: LifecycleSchema
+    .describe('What the app runs for this feature when its pack starts and stops. Each hook names its export, so only what is declared reaches the registration.').optional(),
   typesEntry: z.string().describe('Additional types to include in the generated type barrel.').optional(),
   system: SystemSchema.describe('Backend system module.').optional(),
   plugin: PluginSchema.describe('Frontend plugin definition.').optional(),
@@ -399,6 +410,7 @@ export const _MOVED_ROOT_KEYS: Readonly<Record<string, string>> = {
   ...Object.fromEntries(Object.keys(ExtensionsSchema.shape).map((key) => [key, `extensions.${key}`])),
   packServices: 'extensions.services',
   bundleUi: 'build.bundleUi',
+  boot: 'features.<id>.lifecycle',
 };
 
 // ── Main manifest schema ────────────────────────────────────────────
@@ -495,7 +507,6 @@ export const ManifestSchema = z.object({
     .describe('Directory of Markdown help articles, bundled into the pack runtime.').optional(),
   settingsSections: ExportTargetSchema
     .describe('Sections of the app settings this pack owns, with their defaults, beside the "plugins" section the app keeps itself. "path#exportName" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled content then.').optional(),
-  boot: BootConfigSchema.optional(),
   content: ContentConfigSchema.optional(),
   migrations: MigrationsSchema.optional(),
   build: BuildConfigSchema.optional(),

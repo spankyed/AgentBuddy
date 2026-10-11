@@ -2,7 +2,7 @@
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { createBusMachine, HOST } from '@apackdev/host/bus';
 import { resolveRegistered } from '@apackdev/sdk/ids';
-import type { PackBootHooks } from '@apackdev/sdk/framework';
+import type { PackLifecycle } from '@apackdev/sdk/framework';
 import { newCall, type Message } from '@apackdev/sdk/events';
 import { testRootEvents } from '@apackdev/sdk/testing';
 import { untypedQx } from '@apackdev/ears';
@@ -127,7 +127,7 @@ export interface TestApp {
 
 /** What test apps read of the test file's registered packs (host's PackRegistry, which the published declarations can't name) */
 interface AppPacks {
-  getBootHooks(): PackBootHooks[];
+  getLifecycleHooks(): PackLifecycle[];
   getRegisteredSystems(): Map<string, AnyStateMachine>;
   getRegisteredPackSystemIds(packId: string): string[];
   /** What each plugin receives, so a test app drops a send no plugin declares, as the app does */
@@ -177,7 +177,7 @@ const describeError = (error: unknown) => errorMessage(error);
  * so each test's apps run between one onInit and one onShutdown.
  */
 function startPacks(): void {
-  for (const boot of packs().getBootHooks()) {
+  for (const boot of packs().getLifecycleHooks()) {
     try {
       boot.onInit?.();
     } catch (error) {
@@ -196,7 +196,7 @@ function startPacks(): void {
 /** Runs each registered pack's `boot.onShutdown`, as the app does when it stops a pack's systems */
 function shutDownPacks(): void {
   const failures: string[] = [];
-  for (const boot of packs().getBootHooks()) {
+  for (const boot of packs().getLifecycleHooks()) {
     try {
       boot.onShutdown?.();
     } catch (error) {

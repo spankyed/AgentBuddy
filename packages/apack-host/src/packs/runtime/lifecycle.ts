@@ -3,6 +3,7 @@ import * as path from 'path';
 import { createLogger } from '@apackdev/sdk/logger';
 import { resolveAppContext } from '@apackdev/sdk/env';
 import type { PackRegistry } from '../registry.ts';
+import { packLifecycleHooks } from '../registry.ts';
 import type { PackManifest } from '../discovery.ts';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
@@ -103,11 +104,10 @@ export function activatePack(
     return false;
   }
 
-  const { boot } = pack.registration;
-  if (boot?.onShutdown) {
-    registry.registerShutdownHook(boot.onShutdown, packId);
+  for (const lifecycle of packLifecycleHooks(pack.registration)) {
+    if (lifecycle.onShutdown) registry.registerShutdownHook(lifecycle.onShutdown, packId);
   }
-  boot?.onInit?.();
+  for (const lifecycle of packLifecycleHooks(pack.registration)) lifecycle.onInit?.();
   // The pack is registered by now, so its migrations and content are read from the registry like a boot's
   runPackMigrations(registry.packMigrationTargets('pack', [packId]));
   applyPacks(registry.packContentTargets([packId]));

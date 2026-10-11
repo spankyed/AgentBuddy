@@ -5,7 +5,7 @@ import { _getLmdbPath, _getVolatileLmdbPath } from '@apackdev/sdk/utils';
 import type { EarsEngine } from '@apackdev/ears';
 import type { LmdbStore, WriteFailure } from '@apackdev/ears/lmdb';
 import { assertNoDatabaseWriter, openDatabaseStore } from '@apackdev/host/database';
-import { createPackRegistry, installShippedPacks, prepareHostDataDirs, type PackRegistry } from '@apackdev/host/packs';
+import { createPackRegistry, installShippedPacks, prepareHostDataDirs, packLifecycleHooks, type PackRegistry } from '@apackdev/host/packs';
 import { resolveAppContext } from '@apackdev/sdk/env';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { loadAppPacks, startPacks } from '@apackdev/host/packs/runtime';
@@ -177,8 +177,8 @@ export async function setupBackend(): Promise<void> {
 
   // ── Wire shutdown hooks (keyed by pack ID for scoped reload teardown) ──
   for (const pack of loadedPacks) {
-    if (pack.registration.boot?.onShutdown) {
-      packs.registerShutdownHook(pack.registration.boot.onShutdown, pack.origin.id);
+    for (const { onShutdown } of packLifecycleHooks(pack.registration)) {
+      if (onShutdown) packs.registerShutdownHook(onShutdown, pack.origin.id);
     }
   }
 

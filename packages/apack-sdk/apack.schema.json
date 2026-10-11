@@ -153,6 +153,23 @@
             "type": "string",
             "description": "Path to default settings file."
           },
+          "lifecycle": {
+            "type": "object",
+            "properties": {
+              "onInit": {
+                "type": "string",
+                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                "description": "\"path#exportName\" of what runs after EARS has hydrated and before migrations and content."
+              },
+              "onShutdown": {
+                "type": "string",
+                "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+                "description": "\"path#exportName\" of what runs when the pack's backend stops. It runs *before* the feature's system is stopped, because a stopped actor never reaches its own cleanup."
+              }
+            },
+            "additionalProperties": false,
+            "description": "What the app runs for this feature when its pack starts and stops. Each hook names its export, so only what is declared reaches the registration."
+          },
           "typesEntry": {
             "type": "string",
             "description": "Additional types to include in the generated type barrel."
@@ -532,17 +549,6 @@
       "type": "string",
       "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
       "description": "Sections of the app settings this pack owns, with their defaults, beside the \"plugins\" section the app keeps itself. \"path#exportName\" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled content then."
-    },
-    "boot": {
-      "type": "object",
-      "properties": {
-        "hooks": {
-          "type": "string",
-          "description": "Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and content) and onShutdown (when the pack's backend stops)."
-        }
-      },
-      "additionalProperties": false,
-      "description": "Boot sequence configuration."
     },
     "content": {
       "type": "object",

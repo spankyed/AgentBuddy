@@ -1,6 +1,6 @@
 # Manifest Reference
 
-The `apack.json` file at the root of your pack is the single source of truth. It declares features, extensions, content, entities, dependencies, and boot-time hooks. The CLI reads it to generate code, compile content, and bundle your pack.
+The `apack.json` file at the root of your pack is the single source of truth. It declares features, extensions, content, entities, dependencies, and each feature's lifecycle hooks. The CLI reads it to generate code, compile content, and bundle your pack.
 
 ## Field reference
 
@@ -22,7 +22,6 @@ The `apack.json` file at the root of your pack is the single source of truth. It
 | `relKinds` | `Record<string, string>` | no | EARS relation kind declarations; see [Entities and relations](#entities-and-relations) |
 | `dependencies` | `Record<string, string>` | no | Pack dependencies (`id` -> semver, `github:owner/repo range`, or `file:path`) |
 | `permissions` | `string[]` | no | Required capabilities: `ears`, `llm`, `filesystem`, `network`, `terminal` |
-| `boot` | `PackBootConfig` | no | Boot hooks and content; see [Boot configuration](#boot-configuration) |
 | `entityShapes` | `Record<string, { source, type }>` | no | Entity type -> TS interface mappings |
 | `content.formats` | `Record<string, ContentFormatConfig>` | no | Named content formats: how a source becomes records. `content.sources` entries name them, dependents as `<pack id>:<name>`; see [Content](content.md#writing-entities) |
 | `content.writers` | `Record<string, string>` | no | Content writers for entity types this pack declares: the entity type's value in `entities` -> `path#exportName` of a `ContentWriter` object (`find`, `create`, `update`, `remove`, all optional). Every pack writing that type goes through them; see [Content](content.md#content-hooks) |
@@ -161,40 +160,40 @@ A step's `dsl` fields:
 | `custom: true` | No generated helper: re-exports the step's own `helpers` module |
 | `{}` | `name(label?)` |
 
-## Boot configuration
+## Feature lifecycle
 
-The `boot` object configures hooks that run during app startup:
+A feature declares what the app runs for it when its pack starts and stops, each hook naming its export:
 
 ```json
 {
-  "boot": {
-    "hooks": "src/hooks.ts",
-    "sources": {
-      "actions": "src/content/actions",
-      "prompts": "src/content/prompts",
-      "flows": { "path": "src/content/flows" }
+  "features": {
+    "sessions": {
+      "lifecycle": {
+        "onInit": "src/features/sessions/be/lifecycle.ts#onInit",
+        "onShutdown": "src/features/sessions/be/lifecycle.ts#onShutdown"
+      }
     }
   }
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `hooks` | `string` | Module exporting lifecycle hooks (see below) |
-| `content` | `Record<string, string \| ContentSourceConfig>` | Content sources: `actions`, `prompts` and `flows` take a path; any other key is `{ path, format }` (optionally with `applier`) or `{ applier }`. **Every content source writes entities into the database** — that is what `content.sources` is for, so content your own code reads back is an ordinary import of your own source, not an entry here. Declare a feature's default settings with `features.<id>.settings` |
-
-The `hooks` module's named exports become the pack's boot hooks:
-
 ```typescript
-// src/hooks.ts
+// src/features/sessions/be/lifecycle.ts
 export const onInit = () => ensureDefaults();     // after EARS hydration, before migrations and content
 export const onShutdown = () => stopProcesses(); // when the pack's backend stops (app exit, pack unload or reload)
 ```
 
 | Export | Runs |
 |---|---|
-| `onInit` | Once per boot, after EARS hydration and before migrations and content. Create rows the pack's systems expect to exist here |
-| `onShutdown` | When the pack's backend stops. Release what outlives its actors: processes, timers, listeners |
+| `onInit` | Once per boot, after EARS hydration and before migrations and content. Create rows the feature's systems expect to exist here |
+| `onShutdown` | When the pack's backend stops, **before** the feature's system is stopped. Release what outlives its actors: processes, timers, listeners |
+
+**On the feature rather than the pack**, because what a hook does belongs to one: a feature that spawns
+processes kills them, a feature that registers timers clears them. A pack with several features declares
+several, and a reload runs only those of the pack being reloaded.
+
+**Why a hook and not the system's own exit action**: a stopped XState actor never reaches its own cleanup,
+so anything outliving the actor — a child process, a cron job, a listener — has to be released from here.
 
 Every system starts when the bus does, after hydration. There is no way for a feature to ask to start before it.
 
@@ -434,7 +433,7 @@ For each entry with a `monaco` target, `apack pack build` writes `dist/defs/mona
     }
   },
 
-  "boot": {
+  "content": {
     "sources": {
       "actions": "src/content/actions",
       "flows": "src/content/flows"

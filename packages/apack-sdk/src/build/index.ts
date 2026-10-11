@@ -42,7 +42,7 @@ export type {
   PackManifest, PackTypeManifest, PackSnapshot, PackFlowHelpers, PackPermission,
   PackProvenance, ProvenanceKind, ProvenanceManifest, ProvenanceSource,
   PackSystemEntry, PackPluginEntry,
-  PackFeatureEntry, PackFeature, PackBootConfig, ContentSourceConfig, ContentFormatConfig,
+  PackFeatureEntry, PackFeature, ContentSourceConfig, ContentFormatConfig,
   StepEntry, StepDSLMeta,
 } from './manifest.ts';
 export { packFeatures, contentFile, contentPath, CONTENT_COMPILERS_FILE, PROVENANCE_KINDS, PACK_SNAPSHOT_FORMAT, _snapshotFormatMismatch, _cliFormatMismatchMessage, type SnapshotFormatMismatch, _mergeProvenance, _buildProvenance, _provenanceRecord } from './manifest.ts';
@@ -69,7 +69,7 @@ export type { ManifestValidation } from './validate.ts';
 // Manifest schema (Zod — single source of truth for types, validation, and JSON schema generation)
 export {
   ManifestSchema, FeatureEntrySchema, FEATURE_ID_PATTERN,
-  BootConfigSchema, ContentSourceSchema, ContentFormatSchema, StepEntrySchema, StepDSLMetaSchema,
+  ContentSourceSchema, ContentFormatSchema, StepEntrySchema, StepDSLMetaSchema,
   DslEntrySchema, PackPermissionSchema, MigrationsSchema, MIGRATION_LINES, MIGRATION_TARGET_PATTERN,
 } from './manifest-schema.ts';
 export type { MigrationLine } from './manifest-schema.ts';

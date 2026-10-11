@@ -358,8 +358,10 @@ Version-targeted migrations in `src/migrations/`, one file per target version. R
 ## Boot sequence extensions
 
 The pack registers boot hooks via `__generated__/pack-entry.ts`:
-- `onInit` — from `boot.hooks` (`src/features/hooks.ts`): nothing to do at present. The Settings row is the host's and is written on the user's first change
-- `onShutdown` — from `boot.hooks`: kills terminal processes, clears brain schedules, removes ad-hoc listeners and clears the flow actor registry
+- Each hook is a **feature's**, declared at `features.<id>.lifecycle`, because what it does belongs to one. No feature needs an `onInit`: the Settings row is the host's and is written on the user's first change
+- `brain`'s `onShutdown` (`features/brain/be/lifecycle.ts`): clears schedules, removes ad-hoc listeners and clears the flow actor registry
+- `code`'s `onShutdown` (`features/code/be/lifecycle.ts`): kills the terminal processes it spawned
+- Both exist because a stopped actor never reaches its own cleanup, which is why these are hooks rather than a system's `exit` action
 
 ## Build
 

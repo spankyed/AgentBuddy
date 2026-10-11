@@ -68,6 +68,9 @@
       "repositories": {
         "terminalQueries": "src/features/code/be/repository/index.ts#terminalQueries",
         "terminalCommands": "src/features/code/be/repository/index.ts#terminalCommands"
+      },
+      "lifecycle": {
+        "onShutdown": "src/features/code/be/lifecycle.ts#onShutdown"
       }
     },
     "notes": {
@@ -193,6 +196,9 @@
       "repositories": {
         "brainQueries": "src/features/brain/be/repository/index.ts#brainQueries",
         "brainCommands": "src/features/brain/be/repository/index.ts#brainCommands"
+      },
+      "lifecycle": {
+        "onShutdown": "src/features/brain/be/lifecycle.ts#onShutdown"
       }
     },
     "database": {
@@ -579,9 +585,6 @@
         "welcome": "src/extensions/app/Welcome.vue"
       }
     }
-  },
-  "boot": {
-    "hooks": "src/features/hooks.ts"
   },
   "content": {
     "sources": {

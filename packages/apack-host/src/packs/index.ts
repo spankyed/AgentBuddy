@@ -1,6 +1,7 @@
 // Registration: the registered packs, an instance per app (the composition root), test file or build
 export { createPackRegistry } from './registry.ts';
-export type { PackRegistry, PackRegistryOptions, PackRegistration, PackBootHooks, PackEARS, PackMigration, PackExtensions, PackInfo, PackOrigin } from './registry.ts';
+export { packLifecycleHooks } from './registry.ts';
+export type { PackRegistry, PackRegistryOptions, PackRegistration, PackLifecycle, PackEARS, PackMigration, PackExtensions, PackInfo, PackOrigin } from './registry.ts';
 
 // Loading pack runtime code on the loader's own @apackdev/sdk
 export { withModuleBridge } from './module-bridge.ts';
