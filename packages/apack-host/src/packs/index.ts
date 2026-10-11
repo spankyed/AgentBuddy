@@ -38,7 +38,8 @@ export { recordHostInfo, readHostInfo, type HostInfo } from './host-info.ts';
 export { prepareHostDataDirs } from './staging.ts';
 
 // Updater
-export { checkForUpdates, getAvailableUpdates } from './updater.ts';
+export { checkForUpdates, getAvailableUpdates, findLatestRelease } from './updater.ts';
+export type { ReleaseCandidate } from './updater.ts';
 
 // Pack layout (build output, release archive and installed layout)
 export {

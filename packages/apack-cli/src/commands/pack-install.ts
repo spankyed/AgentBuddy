@@ -1,6 +1,7 @@
+import { recordCliInstall } from '../app/installed-packs';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { installPack, installPackFromLocal, readHostInfo } from '@apackdev/host/packs';
+import { installPack, installPackFromLocal, readHostInfo, readInstalledPacks } from '@apackdev/host/packs';
 import { parseStorageProfile, targetDataContext, profileLabel, TARGET_ENV_USAGE } from '../utils';
 
 /** `registry` is a bare pack name, resolvable only through apack.dev; `undefined` is a GitHub slug. */
@@ -41,7 +42,8 @@ Options:
     return;
   }
 
-  const { packsDir, userDataDir } = targetDataContext(env, profile);
+  const { packsDir, userDataDir, installedPacksFile } = targetDataContext(env, profile);
+  readInstalledPacks(installedPacksFile, { strict: true });
   // Recorded by the app when it starts with this data dir
   const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
   const kind = detectSource(source);
@@ -54,6 +56,8 @@ Options:
   const result = kind === 'local'
     ? await installPackFromLocal(resolvedSource, packsDir, { hostVersion, packFormat })
     : await installPack(resolvedSource, kind === 'registry' ? 'url' : kind, packsDir, { hostVersion, packFormat });
+
+  recordCliInstall(installedPacksFile, result.id, kind === undefined ? source : undefined);
 
   if (result.missingDependencies.length > 0) {
     if (fs.existsSync(packsDir)) {

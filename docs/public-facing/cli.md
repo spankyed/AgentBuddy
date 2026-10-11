@@ -733,3 +733,5 @@ Downloads must have a matching published SHA-256 checksum. An incomplete latest 
 `apack db backup --out <new-directory> [--profile <name> | --data-dir <path>]` creates a full backup compatible with `apack db import`. Close the app first. Both database partitions and media are included; installed packs and secrets are excluded. Existing destinations and destinations inside the source data directory are refused.
 
 `apack db backup verify <directory> [--json]` checks database readability and listed partitions/media before restoration. It does not open your app data. It checks the backup format and completeness; entity-type compatibility depends on the packs installed when you import.
+
+`apack pack outdated [--profile <name>] [--json]` checks GitHub-installed packs for newer releases compatible with the profile’s recorded app version. Beta profiles include prereleases. Local/URL installs and app-shipped packs are reported as unmanaged. A failed check exits nonzero; finding an update alone does not. CLI GitHub installs now record their source for subsequent checks.

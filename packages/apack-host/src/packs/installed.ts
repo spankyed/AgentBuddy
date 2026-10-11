@@ -25,7 +25,7 @@ export interface PackRecord {
   enabled: boolean;
   /** When the app placed it; absent for a pack installed outside the app */
   installedAt?: string;
-  /** The GitHub slug an update reinstalls from; absent for a pack installed outside the app */
+  /** The GitHub slug an update reinstalls from; absent for local and URL installs */
   installedFrom?: string;
   availableVersion?: string;
   /** Release tag for availableVersion, so updates install exactly what the check found. */
@@ -51,13 +51,17 @@ function getInstalledPacksPath(): string {
  * about any pack. That is not "no packs" — the packs directory says what is installed — so there is
  * nothing for a caller to tell apart.
  */
-export function readInstalledPacks(installedPacksPath = getInstalledPacksPath()): PackRecord[] {
+export function readInstalledPacks(installedPacksPath = getInstalledPacksPath(), { strict = false } = {}): PackRecord[] {
   if (!fs.existsSync(installedPacksPath)) return [];
 
   try {
     const data: InstalledPacksFile = JSON.parse(fs.readFileSync(installedPacksPath, 'utf-8'));
+    if (strict && (!data || !Array.isArray(data.packs) || data.packs.some(e => !e || typeof e.id !== 'string' || (e.installedFrom !== undefined && typeof e.installedFrom !== 'string')))) {
+      throw new Error('Invalid installed pack records');
+    }
     return (data.packs ?? []).map(e => ({ ...e, enabled: e.enabled ?? true }));
   } catch (err) {
+    if (strict) throw new Error(`Cannot read ${installedPacksPath}: ${(err as Error).message}`, { cause: err });
     logger.warn('Failed to read the installed packs, starting fresh:', err as Error);
     return [];
   }
@@ -92,8 +96,7 @@ export function disabledPackIds(installedPacksPath = getInstalledPacksPath()): R
 }
 
 /** Writes the record, reporting whether it reached disk: a caller acting on a user's decision says so. */
-export function writeInstalledPacks(entries: PackRecord[]): boolean {
-  const installedPacksPath = getInstalledPacksPath();
+export function writeInstalledPacks(entries: PackRecord[], installedPacksPath = getInstalledPacksPath()): boolean {
   const dir = path.dirname(installedPacksPath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
