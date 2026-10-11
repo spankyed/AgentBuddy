@@ -57,7 +57,7 @@ export interface TemplateInput {
 
 /**
  * The fields every Node row has. A pack's step node types extend it (`interface FireNode extends
- * NodeBase`), and `apack generate-entries` unions them into the pack's shape for Node.
+ * NodeBase`), and `apack pack generate-entries` unions them into the pack's shape for Node.
  */
 export interface NodeBase extends BaseEntity {
   entityType: typeof SDK_ENTITIES.Node;

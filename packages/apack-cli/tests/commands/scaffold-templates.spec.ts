@@ -32,7 +32,7 @@ describe('what the scaffold ships', () => {
   /**
    * electron-builder strips every `.d.ts` from the packaged app whatever its `files` array says — measured on a
    * `--dir` build: zero remain in app.asar. So a `.d.ts` template would be missing from the CLI the app
-   * installs, and `apack init` would scaffold a pack without it. `init.ts` keeps that one as a string.
+   * installs, and `apack pack init` would scaffold a pack without it. `init.ts` keeps that one as a string.
    */
   it('holds no .d.ts template, which the packaged app would drop', () => {
     expect(templateFiles().filter((file) => file.endsWith('.d.ts'))).toEqual([]);
@@ -42,8 +42,8 @@ describe('what the scaffold ships', () => {
 describe('the scaffold templates', () => {
   /**
    * Both directions, which is what replaces the rule that used to check a hand-kept list of the files holding
-   * template literals. Not "one caller each": `steps/register.ts` has two by design — `apack init` writes it
-   * and `apack add step` writes it again when the pack has no step list yet.
+   * template literals. Not "one caller each": `steps/register.ts` has two by design — `apack pack init` writes it
+   * and `apack pack add step` writes it again when the pack has no step list yet.
    */
   it('are each rendered by a call site', () => {
     const calls = rendered();

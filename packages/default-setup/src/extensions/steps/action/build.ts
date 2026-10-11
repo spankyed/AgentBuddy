@@ -88,7 +88,7 @@ export function decompile(node: Record<string, unknown>, ctx: StepDecompileConte
   return dsl;
 }
 
-/** Build-time facets only (no runtime or FE imports); loaded by `apack build` in dependent packs. */
+/** Build-time facets only (no runtime or FE imports); loaded by `apack pack build` in dependent packs. */
 export const actionStepBuild: StepBuildFacet = { compile, validate, getLabel, decompile, relation: { field: 'actionId', targetEntity: 'Action' } };
 
 /** What a node of this type starts with; the backend writes it and the canvas draws it */

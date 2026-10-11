@@ -23,7 +23,7 @@ function readGenerated(): string {
   return fs.readFileSync(path.join(tmpDir, 'src', '__generated__', 'ears.ts'), 'utf-8');
 }
 
-describe('apack generate-entries', () => {
+describe('apack pack generate-entries', () => {
   it('creates src/__generated__/ears.ts from manifest entities', async () => {
     writeManifest({
       id: 'test-pack',

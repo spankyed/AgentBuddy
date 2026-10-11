@@ -20,7 +20,7 @@ Every process resolves its environment and data paths through `resolveAppContext
 | `api-port` | The API's port (development only) |
 | `api-token` | The token the API requires, for local tools (development only, readable only by you) |
 
-CLI commands pass `{ env }` explicitly: `apack pack install`/`apack pack uninstall`/`apack list` target production unless given `-d` (development) or `-b` (beta).
+CLI commands pass `{ env }` explicitly: `apack pack install`/`apack pack uninstall`/`apack pack list` target production unless given `-d` (development) or `-b` (beta).
 
 ## Layers
 
@@ -40,7 +40,7 @@ Packs import `@apackdev/sdk`, `@apackdev/ears` and `@apackdev/ui`, never `@apack
 
 ### Install
 
-`apack pack install` (or the Packs view) installs into the data dir's `packs/<id>/`. An installed pack has the pack layout, the same layout as `apack build`'s `dist/` and the release archive:
+`apack pack install` (or the Packs view) installs into the data dir's `packs/<id>/`. An installed pack has the pack layout, the same layout as `apack pack build`'s `dist/` and the release archive:
 
 ```
 <id>/
@@ -62,7 +62,7 @@ Installing is stage, verify, place:
 2. **Verify:** the pack's format version must match the host's, and the files on disk must be exactly the ones `integrity.json` lists, with matching checksums.
 3. **Place:** the staged pack is copied into a hidden `.<id>.installing-<pid>-…` dir in `packs/`, the current copy (if any) is renamed aside to `.<id>.previous-…`, the new copy is renamed into place, and the previous one is removed. At boot, `prepareHostDataDirs` restores a pack whose install crashed between those renames, unless the pack was uninstalled since, and removes stale staging dirs (a dir whose process is gone, or which predates the boot).
 
-The source directory must be built first: installing a directory with neither a `integrity.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` fails and asks you to run `apack build`. A directory in `packs/` that isn't a pack layout is skipped at boot with a warning.
+The source directory must be built first: installing a directory with neither a `integrity.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` fails and asks you to run `apack pack build`. A directory in `packs/` that isn't a pack layout is skipped at boot with a warning.
 
 ### Backend boot
 
@@ -101,7 +101,7 @@ The `packs` system handles install, uninstall, enable/disable and update from th
 
 - **Activate** (after install or update, or on enable): reads the pack's manifest, loads and registers it, registers `onShutdown`, runs `onInit`, then the pack's pending migrations and its content (skipped when its compiled content are unchanged), sends the bus `PACK_CHANGED` so running systems refresh what they read from packs, then `ACTIVATE_PACK` to spawn its systems. The renderer hears `PACK_ACTIVATED` and asks the application actor to load the frontends it hasn't, the new pack's included. The bus asks a pack's systems to publish right away only for a pack without frontend code; otherwise it waits for `packClientReady`. An install or update that activated but failed to apply reports the content error.
 - **Teardown** (before uninstall or update, or on disable): runs the pack's shutdown hooks, unregisters it (registration keeps the event types `bus.send` accepts current), clears its modules from the require cache, and sends the bus `TEARDOWN_PACK` to stop its systems. The renderer hears `PACK_DEACTIVATED`, unregisters the pack's FE extensions, removes its stylesheets and unloads its plugins.
-- **Reload** (development, `POST /dev/reload` on the API from `apack dev` or a built-in pack's watch build; a development or test app takes it only with the API token, handled by `reloadPackById` in `@apackdev/host/packs/runtime`, which asks the registry which directory the pack came from): loads and registers the rebuilt runtime before shutting the running one down. If the fresh runtime fails to load or register, the running pack is re-registered and stays as it was. Otherwise the old shutdown hooks run, the new `onShutdown` registers, `onInit` runs, external packs run their pending migrations and re-apply, and the bus `RELOAD_PACK` stops the old and new system ids and starts those still registered, then sends them `CLIENT_CONNECTED` and asks them to publish; `PACK_CHANGED` and its ask follow for every running system. Teardown (disable, uninstall) sends it too, after stopping the pack's systems.
+- **Reload** (development, `POST /dev/reload` on the API from `apack pack dev` or a built-in pack's watch build; a development or test app takes it only with the API token, handled by `reloadPackById` in `@apackdev/host/packs/runtime`, which asks the registry which directory the pack came from): loads and registers the rebuilt runtime before shutting the running one down. If the fresh runtime fails to load or register, the running pack is re-registered and stays as it was. Otherwise the old shutdown hooks run, the new `onShutdown` registers, `onInit` runs, external packs run their pending migrations and re-apply, and the bus `RELOAD_PACK` stops the old and new system ids and starts those still registered, then sends them `CLIENT_CONNECTED` and asks them to publish; `PACK_CHANGED` and its ask follow for every running system. Teardown (disable, uninstall) sends it too, after stopping the pack's systems.
 
 An external pack's migrations run at boot, on activation and on reload, each against the pack's own version; the app's run at boot and after a reset or backup import.
 
@@ -129,7 +129,7 @@ export const registration: PackRegistration = {
 };
 ```
 
-The app runs each feature at `<packId>/<featureId>` and derives everything else from `features`: the systems it starts (an `early` one before hydration, outside the bus), the events each system accepts (`receives`: its machine's, plus the manifest's `system.events.incoming`, put there by `packSystem` when `apack build` generates the entry), the plugins and the events each receives, and the roles.
+The app runs each feature at `<packId>/<featureId>` and derives everything else from `features`: the systems it starts (an `early` one before hydration, outside the bus), the events each system accepts (`receives`: its machine's, plus the manifest's `system.events.incoming`, put there by `packSystem` when `apack pack build` generates the entry), the plugins and the events each receives, and the roles.
 
 The runtime bundle also exports `setCompiledDir(dir)`, which the host calls with the directory of the pack's compiled content.
 
@@ -180,7 +180,7 @@ pack://<packId>/<filePath>
 
 - Resolves to `<userDataDir>/packs/<packId>/<filePath>`
 - Path traversal protection: the resolved path must be inside the pack's directory
-- While `apack dev` runs, `<userDataDir>/pack-dev-servers/<packId>.json` names the pack's Vite dev server port, and requests are proxied there (an invalid port answers 502; a failed or non-OK fetch falls back to the file). The marker lives outside the pack directory, so the installed pack still verifies and the marker survives reinstalls
+- While `apack pack dev` runs, `<userDataDir>/pack-dev-servers/<packId>.json` names the pack's Vite dev server port, and requests are proxied there (an invalid port answers 502; a failed or non-OK fetch falls back to the file). The marker lives outside the pack directory, so the installed pack still verifies and the marker survives reinstalls
 - Used by the renderer to load `runtime/fe.js`, `runtime/fe.css`, and other pack assets
 
 ## Host dependency sharing
@@ -228,7 +228,7 @@ Only registered barrel subpaths are externalized. Other SDK modules resolve and 
 
 Components, editors and UI composables (`@apackdev/ui/design/button`, `@apackdev/ui/components/tiptap/TiptapEditor`, `@apackdev/ui/composables/useDebounce`) come from the separate `@apackdev/ui` package. Add it to your pack's dependencies when your UI uses them; backend-only packs don't install it or its editor libraries. The package ships compiled JS with declarations, so component props typecheck with plain `tsc`.
 
-At runtime your pack uses the app's copy: `apack build` turns `@apackdev/ui` imports into references to the modules the app exposes, the same way it handles the shared SDK modules. Your `fe.js` stays small, and stateful modules (the Monaco configuration, editor extensions) have one instance across the app. `@apackdev/ui` changes follow semver, and your pack's `hostVersion` states which apps it runs in.
+At runtime your pack uses the app's copy: `apack pack build` turns `@apackdev/ui` imports into references to the modules the app exposes, the same way it handles the shared SDK modules. Your `fe.js` stays small, and stateful modules (the Monaco configuration, editor extensions) have one instance across the app. `@apackdev/ui` changes follow semver, and your pack's `hostVersion` states which apps it runs in.
 
 To ship your own copy instead, set `build.bundleUi` in `apack.json`. All of `@apackdev/ui` is then bundled into `fe.js`, so the pack never mixes its copy with the app's.
 
@@ -297,15 +297,15 @@ The policy is `appPartitionPolicy()` (`@apackdev/host/database`), a constant ove
 | `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the typed `services` proxy (with dependencies' services). `Services` types `services.emitter` as `PackEmitter`, with this pack's plugin and system events |
 | `repository.ts` | `repository`, typed with the repositories declared in `features.<id>.repositories` and dependencies' |
 | `repositories.ts` | This pack's repositories by name, which `pack-entry.ts` puts in the registration (the host registers them with the app's engine) |
-| `pack-types.ts` | The facade types `apack build` bundles into `dist/types/pack-types.d.ts` for dependents |
-| `deps/<id>.d.ts` | Each dependency's facade types, from its snapshot. Its header names the version (`// <id>@<version> facade types`); `apack build` warns when the dependency it builds with is another version |
+| `pack-types.ts` | The facade types `apack pack build` bundles into `dist/types/pack-types.d.ts` for dependents |
+| `deps/<id>.d.ts` | Each dependency's facade types, from its snapshot. Its header names the version (`// <id>@<version> facade types`); `apack pack build` warns when the dependency it builds with is another version |
 | `deps/<id>.flow-helpers.js`, `.d.ts` | Each dependency's flow helpers module and declarations, from its snapshot |
 | `references.ts` | Reference type aggregation: which things are linkable from an editor |
 | `appliers.ts` | `appliers`, one per content key, which `pack-entry.ts` puts in the registration, and the compiled data path accessors (`setCompiledDir`, `getCompiledDir`) |
-| `content-runtime.ts` | The pack's content runtime (entity types, relation kinds, repositories, content writers). The pack's tests import it; `apack build` bundles it into `dist/build/content-runtime.mjs` for dependents' tests |
+| `content-runtime.ts` | The pack's content runtime (entity types, relation kinds, repositories, content writers). The pack's tests import it; `apack pack build` bundles it into `dist/build/content-runtime.mjs` for dependents' tests |
 | `flow-helpers.ts` | Typed DSL helpers for each step definition, with dependencies' |
 | `step-types.ts` | Re-exports DSL/compiled node types from step definitions |
-| `dsl-types-fe.ts` | `dslTypes` for the Monaco editor, from the definitions `apack build` writes to `dist/defs/monaco/`, which `pack-entry-fe.ts` puts in the frontend registration |
+| `dsl-types-fe.ts` | `dslTypes` for the Monaco editor, from the definitions `apack pack build` writes to `dist/defs/monaco/`, which `pack-entry-fe.ts` puts in the frontend registration |
 
 ## FE build pipeline
 
@@ -336,7 +336,7 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 
 ## Build-time dependency resolution
 
-`apack generate-entries`, `apack validate`, `apack build` and `apack fetch-deps` resolve each dependency in `apack.json` to its artifacts: `types/snapshot.json`, plus `build/` and `runtime/index.cjs` with its compiled content when it ships them (dependents' tests load the runtime). Sources, in order:
+`apack pack generate-entries`, `apack pack validate`, `apack pack build` and `apack pack fetch-deps` resolve each dependency in `apack.json` to its artifacts: `types/snapshot.json`, plus `build/` and `runtime/index.cjs` with its compiled content when it ships them (dependents' tests load the runtime). Sources, in order:
 
 1. **`file:` path** — the given directory (relative to the pack root or absolute), in any layout. Not cached. A missing snapshot is an error.
 2. **Workspace** — `../<id>`, `../../packages/<id>`, `../../<id>`.

@@ -123,7 +123,7 @@ function handleHotReload() {
         envVar: process.env.APACK_ENV,
       });
 
-      // The same gate `apack dev` passes, through the same function: development only, and nothing else
+      // The same gate `apack pack dev` passes, through the same function: development only, and nothing else
       electronArgs.push(...debugPortArgsFor(build));
 
       // Before the spawn, so the port file below is this app's rather than one a previous run left in the
@@ -135,10 +135,10 @@ function handleHotReload() {
 
       /**
        * The session file, so `apack drive` can reach the app this loop is holding — which is the half
-       * worth having: `apack dev` serves a *pack's* frontend, where this one serves the renderer itself,
+       * worth having: `apack pack dev` serves a *pack's* frontend, where this one serves the renderer itself,
        * so it is the app you are most often looking at.
        *
-       * **The pid is Electron's here, where `apack dev` records its own.** The field means "the process to
+       * **The pid is Electron's here, where `apack pack dev` records its own.** The field means "the process to
        * signal to end this", and the direction differs between the two: `dev` is a supervisor whose
        * teardown closes the app, while this watcher exits *with* Electron (the listener below). So in both
        * cases one signal ends the app and the tooling holding it.

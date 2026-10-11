@@ -423,7 +423,7 @@ async function resolveFromUpstream(root: string, depId: string, depValue: string
 /**
  * A resolved dependency, with where it came from when that is known.
  *
- * The label is the one `apack fetch-deps` prints (`workspace`, `file:<path>`, `installed app (env)`,
+ * The label is the one `apack pack fetch-deps` prints (`workspace`, `file:<path>`, `installed app (env)`,
  * `github:<owner>/<repo>@<version>`). It is per-resolution, not a property of the artifact — the same
  * bundle is a workspace sibling to its author and a GitHub release to everyone else — so it is not
  * recorded in the snapshot, which ships inside the pack.

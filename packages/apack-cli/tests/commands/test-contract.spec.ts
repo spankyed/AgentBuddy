@@ -1,4 +1,4 @@
-// `apack test --contract`: the pack's vitest, with no app. The point of the flag is what it does *not* do —
+// `apack pack test --contract`: the pack's vitest, with no app. The point of the flag is what it does *not* do —
 // no Playwright, no app download, no `playwright.config.ts` required — so these assert the absences.
 //
 // In the integration half although every test here injects a recorder and spawns nothing, and runs in ~20ms.
@@ -21,6 +21,7 @@ const dirs: string[] = [];
 function pack(files: Record<string, string> = {}, { vitest = true } = {}): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'contract-test-'));
   dirs.push(dir);
+  fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id: 'a-pack', hostVersion: '*' }));
   fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'a-pack' }));
   if (vitest) {
     const installed = path.join(dir, 'node_modules', 'vitest');
@@ -42,7 +43,7 @@ function recorder(status: number | null = 0) {
   return { calls, run: (command: string, args: readonly string[], options: { cwd: string }) => (calls.push({ command, args, cwd: options.cwd }), status) };
 }
 
-describe('apack test --contract', () => {
+describe('apack pack test --contract', () => {
   it('runs the pack vitest against the pack root', async () => {
     const dir = pack({ 'vitest.config.ts': 'export default {}\n' });
     const spawned = recorder();
@@ -113,7 +114,7 @@ describe('apack test --contract', () => {
 });
 
 /**
- * `apack build` reads a pack's `src`, so a test file naming `#generated/ears` with no extension is refused
+ * `apack pack build` reads a pack's `src`, so a test file naming `#generated/ears` with no extension is refused
  * here instead — before a run whose resolution depends on it, and by the same rule and sentence.
  */
 describe('a pack whose tests name no file', () => {
@@ -123,7 +124,8 @@ describe('a pack whose tests name no file', () => {
       'src/__generated__/ears.ts': 'export const findAll = 1;\n',
       'tests/memos.spec.ts': "import { findAll } from '#generated/ears';\n",
     });
-    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'a-pack', imports: { '#generated/*': './src/__generated__/*' } }));
+    fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id: 'a-pack', hostVersion: '*' }));
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'a-pack', imports: { '#generated/*': './src/__generated__/*' } }));
     const spawned = recorder();
     await expect(contractTest(dir, [], spawned.run)).rejects
       .toThrow(/tests\/memos\.spec\.ts:1: '#generated\/ears' names no file — write '#generated\/ears\.ts'/);
@@ -136,7 +138,8 @@ describe('a pack whose tests name no file', () => {
       'src/__generated__/ears.ts': 'export const findAll = 1;\n',
       'tests/memos.spec.ts': "import { findAll } from '#generated/ears.ts';\n",
     });
-    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'a-pack', imports: { '#generated/*': './src/__generated__/*' } }));
+    fs.writeFileSync(path.join(dir, 'apack.json'), JSON.stringify({ id: 'a-pack', hostVersion: '*' }));
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'a-pack', imports: { '#generated/*': './src/__generated__/*' } }));
     const spawned = recorder();
     await contractTest(dir, [], spawned.run);
     expect(spawned.calls).toHaveLength(1);

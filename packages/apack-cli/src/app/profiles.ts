@@ -1,7 +1,7 @@
 /**
  * Profiles: a data dir you can throw away.
  *
- * `apack dev` launches into the one shared `development` data dir, so every run inherits what the last
+ * `apack open --session` launches into the one shared `development` data dir, so every run inherits what the last
  * one left — applied content, half-migrated rows, settings from a pack you have since deleted. A profile
  * is that dir, somewhere else, created on demand and disposable.
  *
@@ -18,7 +18,7 @@
  * an **environment** is one of four fixed data dirs by name (`APP_NAMES`), which nobody creates; a
  * **profile** is an extra one, created by name, carrying no environment.
  *
- * A profile is not bound to the kind of app that opens it: `apack dev --profile x` against a checkout and
+ * A profile is not bound to the kind of app that opens it: `apack open --session --profile x` against a checkout and
  * against `--build beta` mean the same directory, because one layout puts both their stores in the same
  * places inside it.
  */
@@ -33,7 +33,7 @@ import type { CliDirs } from './app-target';
 /** What a profile records about itself, in `.apack-profile.json` at its root. */
 interface ProfileRecord {
   created: string;
-  /** The `apack dev` that owns an ephemeral profile, so a later run can tell a leak from a live one */
+  /** The `apack open --session` that owns an ephemeral profile, so a later run can tell a leak from a live one */
   pid?: number;
 }
 
@@ -306,7 +306,7 @@ export interface ListedProfile {
   ephemeral: boolean;
   /** An app is running on it right now, whoever started it */
   inUse: boolean;
-  /** Ephemeral, with neither its `apack dev` nor an app still going: a crash left it, and it can go */
+  /** Ephemeral, with neither its `apack open --session` nor an app still going: a crash left it, and it can go */
   leaked: boolean;
   bytes: number;
 }
@@ -323,7 +323,7 @@ export function listProfiles(dirs: CliDirs): ListedProfile[] {
       created: record?.created,
       ephemeral,
       inUse,
-      // Two holders, and both have to be gone. The pid is the `apack dev` that made it; the app is the
+      // Two holders, and both have to be gone. The pid is the `apack open --session` that made it; the app is the
       // one that has the data open, and it outlives a killed run — measured, by killing a run and
       // watching its app rebuild the directory that had just been removed underneath it. `lockIsHeld` is
       // `processExists`, whose contract is the one this needs: never miss a live holder, because
@@ -450,7 +450,7 @@ export const PROFILE_USAGE = [
 
 /**
  * Takes the profile flags out of the arguments, leaving the rest for `parseAppFlags`. They live here
- * rather than in `AppFlags` because `apack test` shares that parser and must never take them: its data
+ * rather than in `AppFlags` because `apack pack test` shares that parser and must never take them: its data
  * dir is a fresh temp one every run, which is what makes a test mean the same thing on any machine.
  */
 export function parseProfileFlags(argv: string[]): { mode: ProfileMode; withSecrets: boolean; rest: string[] } {

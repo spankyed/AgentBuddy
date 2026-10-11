@@ -83,8 +83,8 @@ export function isolatedDataDir(prefix = 'apack-tests-'): IsolatedDataDir {
  * `.vue` they reach, which is any pack with a plugin.
  *
  * This is the third place the toolchain answers that question the same way, so it is the convention rather
- * than a shortcut: `apack init`'s `env.d.ts` declares `*.vue` as a generic component for `tsc` (*"Plain
- * `tsc` can't read .vue files"*), and `apack build` stubs `.vue` and `.css` for the backend bundle (*"The
+ * than a shortcut: `apack pack init`'s `env.d.ts` declares `*.vue` as a generic component for `tsc` (*"Plain
+ * `tsc` can't read .vue files"*), and `apack pack build` stubs `.vue` and `.css` for the backend bundle (*"The
  * backend runtime never renders them"*). A stubbed SFC is also never *parsed*, which is why a pack's own path
  * aliases need no handling here: nothing inside one is resolved.
  *
@@ -142,7 +142,7 @@ export interface PackTestConfig {
  * A pack's vitest config.
  *
  * It exists because there were three of these and they had drifted: the built-in pack, the repo's fixture
- * pack and the config `apack init` scaffolds each restated the same settings, and one of them ran without
+ * pack and the config `apack pack init` scaffolds each restated the same settings, and one of them ran without
  * `globals` while another set it. Nobody decided that; it is what three copies do.
  *
  * **No `resolve.conditions`, ever.** A pack resolves the `@apackdev` packages' published `dist`, which is the
@@ -158,7 +158,7 @@ export async function definePackTestConfig(options: PackTestConfig = {}): Promis
       environment: 'node',
       // A spec's path mirrors the source it covers, so one pattern finds every one of them
       include: ['tests/**/*.spec.ts'],
-      // `tests/e2e/` is Playwright's, run by `apack test` — a different runner, not a cost half. `_support/`
+      // `tests/e2e/` is Playwright's, run by `apack pack test` — a different runner, not a cost half. `_support/`
       // is helpers and fixture packs: a fixture that grew a spec would otherwise join this suite.
       exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**', 'tests/_support/**', ...(options.exclude ?? [])],
       // Small (`SIZE_MS`, scripts/lib/unit-suites.ts): a unit test that takes longer is hung, not

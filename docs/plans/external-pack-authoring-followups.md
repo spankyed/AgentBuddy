@@ -27,7 +27,7 @@ code; this is the index from item to commit.
 |---|---|
 | 1, 2 — release packs a dev build; `--app beta` resolved deps against the wrong app | `c5a16033b` |
 | 3 — tear down an active pack before installing over it | `e5d71b849` |
-| 4, 5 — `test()` exiting on the release path; a resumable `apack release` | `6efd8f48c` |
+| 4, 5 — `test()` exiting on the release path; a resumable `apack pack release` | `6efd8f48c` |
 | 6, 7, 8 — delete `emitDepTypes`, drop the deps glob, use the scaffolded tsconfig | `7d018e0e5`, `df90afeae` |
 | 9 — one installed-packs reader, "no record" in its type | `1d6cf3226` |
 | 10 — `recoverStagingDirs` takes known/not-known, not an optional Set | `d78131150` |

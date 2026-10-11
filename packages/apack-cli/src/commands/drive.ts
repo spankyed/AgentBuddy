@@ -13,10 +13,10 @@
  * this command exists to end. A driving script asserts nothing, nothing should gate on it, and a test
  * runner should never collect it.
  *
- * **It is not `apack test`.** `test` is pinned, ephemeral and assertive on purpose. This is your app,
+ * **It is not `apack pack test`.** `test` is pinned, ephemeral and assertive on purpose. This is your app,
  * your profile, and state that is still there next session.
  *
- * **It is not `apack dev`.** `dev` *holds* an app — it builds, installs, serves a frontend and stays up —
+ * `apack open --session` holds an app; `apack pack dev` also builds, installs, and watches a pack.
  * where this drives one and exits. The two halves meet it differently: a **question** attaches over the
  * debug port in `dev`'s session file, so it joins the app `dev` has rather than competing with it (one app
  * per data dir, which Electron's single-instance lock scopes), while a **script** launches its own app and
@@ -26,7 +26,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { findPackRootOrNone, readManifest } from '../utils';
+import { findPackRoot, readManifest } from '../utils';
 import { cliDirs, parseAppFlags, resolveLaunchApp, type CliDirs } from '../app/app-target';
 import {
   freshProfileName, profileDir, profileFor, dataDirInUse, parseProfileFlags, removeProfile, PROFILE_USAGE,
@@ -62,7 +62,7 @@ Scripts live in ${DRIVE_DIR}/ and are not tests — no runner collects them, and
 
 With no script, every file in ${DRIVE_DIR}/ runs. The app's windows are shown, so you can watch.
 
-A script drives a built app of its own: apack dev serves your pack's frontend with HMR, and a script
+A script drives a built app of its own: apack pack dev serves your pack's frontend with HMR, and a script
 launches its own app, so a question about one is not answerable with the other.
 
 By default the app gets a fresh data dir that is thrown away afterwards, so each session starts clean.
@@ -76,7 +76,7 @@ watching one question.
   apack drive --eval 'return document.title'  ->  {"value":"Agent X","state":"attached",...}
   apack drive --state                         ->  {"value":{...},"state":"attached",...}
 
-A question is asked of the app apack dev (or npm run dev) is holding. One JSON object goes to stdout and
+A question is asked of the app apack open --session (or npm run dev) is holding. One JSON object goes to stdout and
 nothing else, so it pipes: "value" is the answer, "state" is attached or spawned, "startedBy" says whose
 app answered, and "supervisorPid" is what ends it. The exit code is the status — 0 with a value, 3 when
 no app is running, 1 when the verb failed.
@@ -85,7 +85,7 @@ With no app running it says so and exits 3 rather than starting one: a question 
 process nobody asked for. --spawn is how you ask, and the app it starts stays up, so a cold checkout
 costs one flag on the first question and an attach on every one after.
 
-An app a question started on your development data dir stays until apack dev or npm run dev takes the
+An app a question started on your development data dir stays until apack open --session or npm run dev takes the
 directory back. One on a --profile closes itself after 10 minutes with no question attached, and each
 question resets that. apack profiles lists what is still running, and stops it.
 
@@ -108,7 +108,7 @@ const CONFIG = (): string => renderTemplate('drive/playwright.config.ts');
 
 const README = `# drive/
 
-Scripts that drive the app. **Not tests.** Nothing here is collected by \`apack test\` or gates anything.
+Scripts that drive the app. **Not tests.** Nothing here is collected by \`apack pack test\` or gates anything.
 
 **Mainly for an agent.** This is how a coding agent debugs and develops against your pack: open what it
 just built, click through it, read the state back, screenshot it, and see whether the change worked. You
@@ -128,11 +128,11 @@ drive('open notes and look at it', async ({ app, appPage }) => {
 Run everything with \`apack drive\`, or one script with \`apack drive drive/notes.ts\`.
 
 For one question, no script is needed — \`apack drive --eval 'return document.title'\` asks the app
-\`apack dev\` is holding and prints one JSON object (\`value\`, \`state\`, \`startedBy\`,
+\`apack open --session\` is holding and prints one JSON object (\`value\`, \`state\`, \`startedBy\`,
 \`supervisorPid\`). It is a function *body*, so \`return\` is required. \`--query\` and \`--state\` ask the
 same way. With no app running it exits 3 and says so; \`--spawn\` starts one and keeps it.
 
-A script drives a built app of its own — \`apack dev\` is the one that serves your frontend with HMR.
+A script drives a built app of its own — \`apack pack dev\` serves a pack's frontend with HMR.
 
 \`app.report(name, value)\` is for an answer you want to read rather than watch: it writes
 \`drive/results/<name>.json\` and prints one \`[drive:report] <name> <json>\` line.
@@ -254,7 +254,7 @@ export function driveScripts(root: string): string[] {
  * scaffolded before `defineDriveConfig` existed would otherwise never hear that its settings had stopped
  * following the package.
  */
-export function scaffold(root: string): DriveScaffold {
+export function scaffold(root: string, scope: 'app' | 'pack' = 'app'): DriveScaffold {
   const dir = path.join(root, DRIVE_DIR);
   const report: DriveScaffold = { created: [], keptStale: [] };
   if (fs.existsSync(path.join(dir, 'playwright.config.ts'))) {
@@ -262,7 +262,8 @@ export function scaffold(root: string): DriveScaffold {
     return report;
   }
   fs.mkdirSync(dir, { recursive: true });
-  for (const [name, body] of [['playwright.config.ts', CONFIG()], ['README.md', README], ['.gitignore', GITIGNORE]] as const) {
+  const readme = scope === 'pack' ? README.replaceAll('apack drive', 'apack pack drive') : README;
+  for (const [name, body] of [['playwright.config.ts', CONFIG()], ['README.md', readme], ['.gitignore', GITIGNORE]] as const) {
     const file = path.join(dir, name);
     if (fs.existsSync(file)) continue;
     fs.writeFileSync(file, body);
@@ -290,22 +291,13 @@ interface DriveTarget {
   readonly hostVersion: string;
 }
 
-/**
- * The pack this drives, or the checkout it drives *itself* from.
- *
- * **A root with no `apack.json` is the second case, not an error.** This command used to open with
- * `findPackRoot`, which throws there — so the apack repo could not use it at all and kept npm scripts
- * calling Playwright directly, with their own environment and their own drift. Driving the app with no pack
- * under test is exactly what those scripts did, so it is a shape this understands now and the two entry
- * points are one implementation.
- */
-function driveTarget(cwd: string): DriveTarget {
-  const pack = findPackRootOrNone(cwd);
+/** Command scope selects the subject; a root app drive never installs a nearby pack. */
+export function driveTarget(cwd: string, scope: 'app' | 'pack'): DriveTarget {
+  const pack = scope === 'pack' ? findPackRoot(cwd) : undefined;
   if (pack !== undefined) return { root: pack, packDir: pack, hostVersion: readManifest(pack).hostVersion ?? '*' };
   const checkout = checkoutFor(cwd);
   if (checkout === undefined) {
-    throw new Error('No apack.json here, and no apack checkout above it. Run this from inside a pack,'
-      + ' or from a checkout to drive its app on its own.');
+    throw new Error('App driving scripts require an apack checkout. Use apack pack drive to drive a pack.');
   }
   return { root: checkout, hostVersion: '*' };
 }
@@ -392,7 +384,7 @@ async function answerAttached(
   // Prose only where something was left behind — a process still running, or a write to the user's data.
   // An attach that changed nothing says nothing, because the fields already said it
   if (state === 'spawned') {
-    notes.push(`Started the development app (pid ${live.session.supervisorPid}) and left it running — \`apack dev\` takes the directory back.`);
+    notes.push(`Started the development app (pid ${live.session.supervisorPid}) and left it running — \`apack open --session\` takes the directory back.`);
   }
   try {
     const answer = await askAttached(live, root, screenshotDir, async (session) => {
@@ -442,7 +434,7 @@ function noAppHere(dataDir: string): OneShotOutput {
   return {
     notes: [
       `No app is running on ${dataDir}.`,
-      '  Start one with `apack dev`, or add --spawn to have this start one and keep it.',
+      '  Start one with `apack open --session`, or add --spawn to have this start one and keep it.',
     ],
     code: MISS_EXIT_CODE,
   };
@@ -455,14 +447,18 @@ function report(output: OneShotOutput): void {
   process.exitCode = output.code;
 }
 
-export async function drive(args: string[]) {
+export async function packDrive(args: string[]) {
+  return drive(args, 'pack');
+}
+
+export async function drive(args: string[], scope: 'app' | 'pack' = 'app') {
   if (args.includes('--help') || args.includes('-h')) {
-    console.log(HELP);
+    console.log(scope === 'pack' ? HELP.replaceAll('apack drive', 'apack pack drive') : HELP);
     return;
   }
 
-  const target = driveTarget(process.cwd());
-  const root = target.root;
+  const cwd = process.cwd();
+  if (scope === 'pack') findPackRoot(cwd);
   const { ask, argument, spawn: spawnFlag, rest } = takeOneShotFlags(args);
   const { mode, withSecrets, rest: scriptArgs } = parseProfileFlags(rest);
   const flags = parseAppFlags(scriptArgs);
@@ -482,11 +478,12 @@ export async function drive(args: string[]) {
     if (flags.build !== undefined) {
       throw new Error(
         `--build ${flags.build} names a build to launch, and a question launches nothing: it attaches to the `
-        + 'app `apack dev` or `npm run dev` is holding, which only a development build can be — a packaged or '
+        + 'app `apack open --session` or `npm run dev` is holding, which only a development build can be — a packaged or '
         + 'test app publishes no session. Drop it, or use `apack drive <script> --build` for a run that '
         + 'launches its own app.',
       );
     }
+    const root = scope === 'pack' ? findPackRoot(cwd) : checkoutFor(cwd) ?? cwd;
     const target = askTarget(mode, withSecrets);
     const live = attachableApp(target.dir);
     if (live) return report(await answerAttached(live, root, ask, argument, 'attached'));
@@ -494,16 +491,19 @@ export async function drive(args: string[]) {
     // otherwise ask for a directory and then refuse to use it
     if (spawnFlag || mode.kind === 'fresh') {
       if (target.note !== undefined) console.error(target.note);
-      const { app, state } = await spawnOrAttach(root, target.dir, target.spawnArgs);
+      const { app, state } = await spawnOrAttach(root, target.dir, target.spawnArgs, { scope });
       return report(await answerAttached(app, root, ask, argument, state));
     }
     return report(noAppHere(target.dir));
   }
 
+  const target = driveTarget(cwd, scope);
+  const root = target.root;
+
   // Before the app is resolved, which can download a Beta: a first run has nothing to drive, and used to
   // find that out only after paying for a build and a launch and then failing with Playwright's
   // "No tests found"
-  const layer = scaffold(root);
+  const layer = scaffold(root, scope);
   if (layer.created.length > 0) console.error(`Created ${DRIVE_DIR}/ — a README and a config are in there.\n`);
   reportStaleConfigs(layer.keptStale);
   if (driveScripts(root).length === 0) {
@@ -573,7 +573,7 @@ export async function drive(args: string[]) {
     }
 
     // No build here: the fixture builds the pack itself when PACK_DIR is set, which `fixtureEnv` does
-    // below. `apack test` leaves it to the fixture for the same reason
+    // below. `apack pack test` leaves it to the fixture for the same reason
     ensureCheckoutPackages(root);
 
     if (profile) {

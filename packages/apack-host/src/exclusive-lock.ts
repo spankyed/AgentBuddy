@@ -2,7 +2,7 @@
 //
 // The mechanism, not the policy: what the lock file is called and what the refusal says belong to whoever takes
 // it. `database/write-lock.ts` is one caller (a tool changing a data dir's database), the CLI's code generation
-// another (two `apack generate-entries` runs writing one pack's `src/__generated__/`, which is how this module
+// another (two `apack pack generate-entries` runs writing one pack's `src/__generated__/`, which is how this module
 // came to exist — concurrent runs overwrote each other and the output read as stale).
 //
 // A check followed by a write cannot do this: every racer reads "nothing holds it" and then writes in turn. The

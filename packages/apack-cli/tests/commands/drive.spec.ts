@@ -65,7 +65,7 @@ describe('the help text', () => {
    */
   it('says what to do when no app is running', () => {
     expect(DRIVE_USAGE).toContain('--spawn');
-    expect(DRIVE_USAGE).toContain('apack dev');
+    expect(DRIVE_USAGE).toContain('apack open --session');
   });
 
   // One per claim a reader acts on, which is this file's existing bar for the usage text
@@ -120,6 +120,14 @@ describe('a config that has stopped delegating', () => {
     writeConfig('playwright.config.ts', "import { defineDriveConfig } from '@apackdev/testing/playwright';\nexport default defineDriveConfig();\n");
 
     expect(scaffold(root).keptStale).toEqual([]);
+  });
+
+  it('names the pack command in a pack driving scaffold', () => {
+    scaffold(root, 'pack');
+    const readme = fs.readFileSync(path.join(root, 'drive', 'README.md'), 'utf8');
+    expect(readme).toContain('apack pack drive');
+    expect(readme).not.toContain('`apack drive`');
+    expect(readme).toContain('apack pack dev');
   });
 
   it('reports what it created, so a caller can tell a first run from a later one', () => {

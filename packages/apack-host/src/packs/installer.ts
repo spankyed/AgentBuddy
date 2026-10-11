@@ -51,7 +51,7 @@ export interface InstallOptions {
   beforePlace?: (manifest: PackManifest) => void;
   /**
    * The pack snapshot format the app that will load the pack reads, so a build in any other is refused: the app
-   * passes its own (`PACK_SNAPSHOT_FORMAT`), `apack pack install` and `apack dev` the one the app recorded in the data
+   * passes its own (`PACK_SNAPSHOT_FORMAT`), `apack pack install` and `apack pack dev` the one the app recorded in the data
    * dir (`readHostInfo`). Without it — no apack that records it has started with the data dir — a build this
    * process can't read is only warned about, and the app's loader decides at its next start.
    */
@@ -277,7 +277,7 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
 
   try {
     if (!isPackLayout(layoutDir)) {
-      throw new Error(`Pack ${manifestSource.id} is not built: ${dir} has no ${PACK_LAYOUT.integrity} and no dist/${PACK_LAYOUT.runtimeEntry} with dist/${PACK_LAYOUT.snapshot}. Run "apack build" first.`);
+      throw new Error(`Pack ${manifestSource.id} is not built: ${dir} has no ${PACK_LAYOUT.integrity} and no dist/${PACK_LAYOUT.runtimeEntry} with dist/${PACK_LAYOUT.snapshot}. Run "apack pack build" first.`);
     }
     const integrity = verifyPack(layoutDir);
     // Refused here rather than at the app's next start, where the loader would skip it
@@ -380,12 +380,12 @@ export async function installPackFromGitHub(slug: string, targetPacksDir?: strin
     throw new Error(`No .tgz asset found in release${tag ? ` ${tag}` : ' (latest)'}`);
   }
 
-  // Releases published by `apack release` carry <archive>.sha256; without one, nothing says what was downloaded is the release
+  // Releases published by `apack pack release` carry <archive>.sha256; without one, nothing says what was downloaded is the release
   let sha256 = options.sha256;
   if (!sha256) {
     const checksumAsset = release.assets.find(a => a.name === `${tgzAsset.name}.sha256`);
     if (!checksumAsset) {
-      throw new Error(`Release${tag ? ` ${tag}` : ' (latest)'} of ${owner}/${repo} has no ${tgzAsset.name}.sha256; publish one with "apack release", or install with a checksum you know`);
+      throw new Error(`Release${tag ? ` ${tag}` : ' (latest)'} of ${owner}/${repo} has no ${tgzAsset.name}.sha256; publish one with "apack pack release", or install with a checksum you know`);
     }
     sha256 = (await (await fetchReleaseAsset(checksumAsset)).text()).trim().split(/\s+/)[0];
     if (!/^[0-9a-f]{64}$/i.test(sha256)) {

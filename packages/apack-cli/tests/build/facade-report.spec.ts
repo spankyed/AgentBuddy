@@ -3,7 +3,7 @@
 // The normalisation is the whole reason the report exists: `tsc` emits a bundle whose statement order and
 // import order are its own business, so a report taken from one verbatim would differ from itself. Every case
 // below writes its fixture bundle deliberately **out of** report order — which is why these cases are here
-// rather than driven through `apack facade-report`: that command derives its bundle from a pack's sources
+// rather than driven through `apack pack facade-report`: that command derives its bundle from a pack's sources
 // now, and no pack can be asked to emit its declarations in the wrong order on purpose.
 //
 // The command's own spec is `tests/commands/facade-report.integration.spec.ts`, over a real pack.

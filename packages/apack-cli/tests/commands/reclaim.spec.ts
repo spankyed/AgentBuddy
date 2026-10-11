@@ -1,7 +1,7 @@
 // What makes `--spawn` safe to point at the development data dir.
 //
 // One app per data dir, and the app exits on the second — so a spawned one-shot that kept the dir would make
-// the developer's own `apack dev` refuse, with the blame landing on the command they just ran. `dev` takes
+// the developer's own `apack open --session` refuse, with the blame landing on the command they just ran. `dev` takes
 // it back; the question is only *whose* app it may take, and the answer has to be "one a tool started for
 // itself" and nothing else. Both halves, because reclaiming unconditionally is the failure.
 import { describe, expect, it } from 'vitest';

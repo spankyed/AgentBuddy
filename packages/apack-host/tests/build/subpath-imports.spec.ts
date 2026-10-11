@@ -31,7 +31,7 @@ describe('readSubpathImports', () => {
   });
 
   /**
-   * `apack init` writes `"type": "module"`, so `import` is the condition a pack's own entries are most
+   * `apack pack init` writes `"type": "module"`, so `import` is the condition a pack's own entries are most
    * likely to carry — and the reader tried `default`, then `require`, then `node`, never `import`. A pack
    * whose map named a source under `import` and a build under `default` silently bundled the build.
    */

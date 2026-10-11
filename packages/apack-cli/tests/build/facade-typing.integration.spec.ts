@@ -1,8 +1,8 @@
-// @slow: two TypeScript programs and six language-service queries, over two real `apack build`s
+// @slow: two TypeScript programs and six language-service queries, over two real `apack pack build`s
 // Its subject is whether a generated facade *resolves and completes*, which only a compiler can answer, so
 // the fixture builds a dependency and a dependent for real and the completion cases query a language
 // service over the result: measured 2026-10-06, the two typechecks are 2.0s and 1.8s and six completion
-// queries ~0.5s apiece, over a `beforeAll` that runs two `apack build`s.
+// queries ~0.5s apiece, over a `beforeAll` that runs two `apack pack build`s.
 //
 // This file is the **workspace source** layout; `facade-typing-published.integration.spec.ts` is the same
 // suite against the npm-packed packages, which is the seam a pack author meets. They are two files because

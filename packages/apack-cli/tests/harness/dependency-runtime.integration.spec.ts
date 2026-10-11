@@ -11,7 +11,7 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
 const DEFAULT_SETUP_DIST = path.join(REPO_ROOT, 'packages', 'default-setup', 'dist');
 const built = fs.existsSync(path.join(DEFAULT_SETUP_DIST, 'runtime', 'index.cjs')) && fs.existsSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.snapshot));
-if (!built && process.env[ALLOW_UNBUILT] !== '1') throw new Error('default-setup must be built (apack build) for the dependency runtime spec');
+if (!built && process.env[ALLOW_UNBUILT] !== '1') throw new Error('default-setup must be built (apack pack build) for the dependency runtime spec');
 
 const dirs: string[] = [];
 afterAll(() => {
@@ -23,7 +23,7 @@ function write(root: string, file: string, content: string): void {
   fs.writeFileSync(path.join(root, file), content);
 }
 
-/** A pack depending on default-setup, with default-setup cached as `apack build` caches a dependency */
+/** A pack depending on default-setup, with default-setup cached as `apack pack build` caches a dependency */
 function dependentPack(spec: string): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-dependent-runtime-'));
   dirs.push(root);
@@ -37,7 +37,7 @@ function dependentPack(spec: string): string {
   // Its compiled content, from the one place every pack's build writes them, into the one place the harness
   // reads a dependency's from
   fs.cpSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.contentDir), path.join(dep, PACK_LAYOUT.contentDir), { recursive: true });
-  // As `apack init` scaffolds it: one call, so this fixture stays what a real pack has
+  // As `apack pack init` scaffolds it: one call, so this fixture stays what a real pack has
   write(root, 'vitest.config.ts', `
 import { definePackTestConfig } from '@apackdev/testing/vitest';
 export default definePackTestConfig({ dataDirPrefix: 'dependent-runtime-' });`);

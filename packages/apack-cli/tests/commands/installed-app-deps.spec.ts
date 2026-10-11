@@ -38,7 +38,7 @@ function builtInPack(snapshot: object = { types: { entities: {}, relKinds: {} },
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "base-pack" };');
   // Compiled content at the top of a shipped pack's dist, beside files that aren't content
-  // Compiled content, where `apack build` writes them for every pack
+  // Compiled content, where `apack pack build` writes them for every pack
   fs.mkdirSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir), { recursive: true });
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'settings.content.json'), '{"theme":"dark"}');
   fs.writeFileSync(path.join(dir, 'dist', PACK_LAYOUT.contentDir, 'content.json'), '{"version":1,"content":[]}');
@@ -102,7 +102,7 @@ describe('dependency resolution from an installed app', () => {
     expect(fs.existsSync(path.join(packRoot, '.apack', 'deps', 'base-pack', 'runtime'))).toBe(false);
   });
 
-  it('resolves a shipped dependency from the app configured for apack test, before the app has run', async () => {
+  it('resolves a shipped dependency from the app configured for apack pack test, before the app has run', async () => {
     const checkout = path.join(tmp, 'apack');
     fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
     fs.renameSync(builtInPack(), path.join(checkout, 'packages', 'base-pack'));
@@ -157,7 +157,7 @@ describe('dependency resolution from an installed app', () => {
     expect((await resolveDepFiles(packRoot, 'base-pack', '^1.0.0'))?.snapshot.manifest.version).toBe('1.0.0');
   });
 
-  it('prefers the app configured for apack test over an installed app', async () => {
+  it('prefers the app configured for apack pack test over an installed app', async () => {
     await publishInstalled('1.0.0');
     const checkout = path.join(tmp, 'apack');
     fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
@@ -223,7 +223,7 @@ describe('dependency resolution from an installed app', () => {
     });
   });
 
-  /** An archived release of dep-pack in snapshot `format`, and its checksum, as `apack release` publishes them */
+  /** An archived release of dep-pack in snapshot `format`, and its checksum, as `apack pack release` publishes them */
   async function publishedRelease(version: string, format: number | undefined) {
     const src = path.join(tmp, `dep-pack-${version}`);
     fs.mkdirSync(path.join(src, 'dist', 'types'), { recursive: true });

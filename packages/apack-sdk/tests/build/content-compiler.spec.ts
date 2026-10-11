@@ -27,7 +27,7 @@ function write(file: string, content: string): void {
 
 const read = (file: string) => JSON.parse(fs.readFileSync(path.join(out, file), 'utf-8'));
 
-/** Compiles a pack whose apack.json has these content.formats and content.sources, as apack build does */
+/** Compiles a pack whose apack.json has these content.formats and content.sources, as apack pack build does */
 async function compile(
   formats: Record<string, unknown>,
   sources: Record<string, unknown>,

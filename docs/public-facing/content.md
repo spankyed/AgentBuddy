@@ -9,7 +9,7 @@ A pack's content passes through four, and each has its own vocabulary. **The con
 | Stage | What happens | Named |
 |---|---|---|
 | **author** | you write the sources | `src/content/`, `content.sources`, `content.formats`, `content.writers` |
-| **compile** | `apack build` turns them into items and hashes each one | `dist/runtime/content/*.content.json`, `content.json`, `contentHash` |
+| **compile** | `apack pack build` turns them into items and hashes each one | `dist/runtime/content/*.content.json`, `content.json`, `contentHash` |
 | **apply** | the app writes those items into the database, and converges them on every upgrade | `applyPacks()`, a `ContentApplier`'s `apply()`, `ApplyResult` |
 | **import** | the user asks for the content back, which reads none of the record below | `importContent()`, `ImportMode`, `ImportResult` |
 | **record** | the app remembers what it last wrote, part by part, so your edits survive the next import | `contentKey`, the pack's applied content |
@@ -38,7 +38,7 @@ An action is an async function with typed metadata. Actions are invoked by flow 
 ### Scaffolding
 
 ```bash
-apack add action analyze-text --category analysis
+apack pack add action analyze-text --category analysis
 ```
 
 Creates `src/content/actions/analysis/analyze-text.ts`.
@@ -154,7 +154,7 @@ Actions receive a `services` object: default-setup's feature services (each is t
 |---|---|---|
 | `label` | `string` | The action's name: flow `action` steps and `services.action.getByLabel` find it by label. Two actions with one label fail the build |
 | `description` | `string?` | Shown in the Actions UI |
-| `category` | `string?` | Groups the action in the Actions UI (`apack add action --category`, default the pack id) |
+| `category` | `string?` | Groups the action in the Actions UI (`apack pack add action --category`, default the pack id) |
 | `input` | `Record<string, ActionParameter>` | The parameters, by name |
 | `output` | `unknown?` | A description of the result, stored with the action |
 
@@ -191,7 +191,7 @@ A prompt is a synchronous template function with typed inputs.
 ### Scaffolding
 
 ```bash
-apack add prompt summarize-text
+apack pack add prompt summarize-text
 ```
 
 Creates `src/content/prompts/summarize-text.ts`.
@@ -257,7 +257,7 @@ A flow is a declarative workflow composed of steps. Flows use a DSL with typed h
 ### Scaffolding
 
 ```bash
-apack add flow onboarding
+apack pack add flow onboarding
 ```
 
 Creates `src/content/flows/onboarding.ts`.
@@ -443,7 +443,7 @@ Point your manifest at the content directories:
 }
 ```
 
-A specialty key takes its path as a string or `{ "path": … }`; any other key is a [content source](#writing-entities). `apack build` compiles each key into `<key>.content.json` (media into `media/<key>/`) and writes `content.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Content. Writing runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. The hash covers every written key's compiled file, so changing one key's source re-runs the pack's boot apply, its other rows still being skipped by their own hashes. At boot, packs content in dependency order, so a pack's content can reference what a pack it declares a dependency on written. An apply that reports errors fails: an external pack's error is recorded on its installed-packs entry, and the same output isn't retried until it changes — or until one of the packs it depends on content, since that is the other thing that can change the outcome. Installing the pack again is also a fresh attempt, even at the version already installed: an install replaces the compiled files, and what was last written is remembered as the files and not only their contents.
+A specialty key takes its path as a string or `{ "path": … }`; any other key is a [content source](#writing-entities). `apack pack build` compiles each key into `<key>.content.json` (media into `media/<key>/`) and writes `content.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Content. Writing runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. The hash covers every written key's compiled file, so changing one key's source re-runs the pack's boot apply, its other rows still being skipped by their own hashes. At boot, packs content in dependency order, so a pack's content can reference what a pack it declares a dependency on written. An apply that reports errors fails: an external pack's error is recorded on its installed-packs entry, and the same output isn't retried until it changes — or until one of the packs it depends on content, since that is the other thing that can change the outcome. Installing the pack again is also a fresh attempt, even at the version already installed: an install replaces the compiled files, and what was last written is remembered as the files and not only their contents.
 
 ### Include sets
 
@@ -643,7 +643,7 @@ Parts rather than one hash per item is what keeps an edit from spreading. A thir
 
 When a changed item no longer sets a field the last apply set (the source dropped `completed: true`), updating the entity resets that field: without hooks the applier drops it from the row, and an `update` hook gets it in `clearedFields` to reset (default-setup's Note hooks reset it to a new note's value). A field no apply of the entity ever set, like a user's favorite, isn't touched.
 
-Written entities also store a `contentKey`: the writing pack's id, the entry key and the record's identity in the source (for a tree, its ancestors' too). An apply finds a row by its `contentKey` first, so a row the user renamed is still found, left as renamed (a renamed row is edited), and not written again as a copy. Two packs' records with the same entry key and identity content a row each. A row without a `contentKey` that matches a record's identity (a user's row with the same name) isn't written again beside it. The pack id comes from `content.json`, which `apack build` writes; writing compiled content without it fails until the pack is rebuilt.
+Written entities also store a `contentKey`: the writing pack's id, the entry key and the record's identity in the source (for a tree, its ancestors' too). An apply finds a row by its `contentKey` first, so a row the user renamed is still found, left as renamed (a renamed row is edited), and not written again as a copy. Two packs' records with the same entry key and identity content a row each. A row without a `contentKey` that matches a record's identity (a user's row with the same name) isn't written again beside it. The pack id comes from `content.json`, which `apack pack build` writes; writing compiled content without it fails until the pack is rebuilt.
 
 Flows follow the same rules, with the parts above: its row's fields, each node's values, and its wiring (independent of the relations' order). Editing a node marks that node, adding or removing one marks it and the wiring, and renaming the flow marks its fields. Moving nodes in the editor doesn't mark anything.
 
@@ -716,7 +716,7 @@ An edited item you stopped shipping is kept, and under an `offer` entry it is na
 
 A slash command is a `/name` the chat composer recognizes. The composer's list is two sources merged:
 
-1. **The manifest**: `"commands": { "standup": { "placeholder": "Topic" } }` under `extensions` in `apack.json`, keyed by the name. They come with the pack: installing or enabling it adds them, disabling or uninstalling it takes them away. A name another registered pack declares is refused, and with it the whole pack, so `apack build` fails for a name one of your dependencies declares. Names are `^[a-z][a-z0-9-]*$` and unique across the app.
+1. **The manifest**: `"commands": { "standup": { "placeholder": "Topic" } }` under `extensions` in `apack.json`, keyed by the name. They come with the pack: installing or enabling it adds them, disabling or uninstalling it takes them away. A name another registered pack declares is refused, and with it the whole pack, so `apack pack build` fails for a name one of your dependencies declares. Names are `^[a-z][a-z0-9-]*$` and unique across the app.
 2. **The library**: every document in the `internal/commands` folder, each with a field section of `**name**: placeholder` lines. Users edit those from the Library, so a pack content there what it wants them to change; default-setup content `Claude Code commands` and `Codex commands` from `src/content/library/internal/commands/`, and declares its own `pr2md` and `instructions` in the manifest.
 
 Declared commands come first, in the order their packs were first registered (a pack rebuilt or updated keeps its place); a document repeating a declared name is ignored, and a name two documents define keeps the first. The threads system sends the list whenever it is asked to publish, and only when it has changed since — so a pack changing while the app runs (installed, updated, enabled, disabled, uninstalled or rebuilt, or its content imported from Settings; the bus's `PACK_CHANGED`) or a library change alters it (a document in the folder, or the folder, created, edited, moved, renamed or deleted).

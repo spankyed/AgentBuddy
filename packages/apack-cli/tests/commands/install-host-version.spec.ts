@@ -21,7 +21,7 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-/** A pack dir as `apack build` leaves it. */
+/** A pack dir as `apack pack build` leaves it. */
 function builtPack(hostVersion: string): string {
   const root = path.join(tmp, 'pack');
   const write = (rel: string, content: string) => {

@@ -1,4 +1,4 @@
-// The unit test setup `apack add feature` gives a pack without one: it keeps any config vitest already loads, and
+// The unit test setup `apack pack add feature` gives a pack without one: it keeps any config vitest already loads, and
 // adds or checks @apackdev/testing and vitest against what the harness runs on
 import * as fs from 'node:fs';
 import * as os from 'node:os';

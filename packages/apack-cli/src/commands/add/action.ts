@@ -5,13 +5,13 @@ import { readManifest } from './manifest';
 
 
 const HELP = `
-Usage: apack add action <name> [options]
+Usage: apack pack add action <name> [options]
 
 Options:
   --category <category>    Action category (default: pack id)
 
 Example:
-  apack add action analyze-text --category analysis
+  apack pack add action analyze-text --category analysis
 `.trim();
 
 export async function addAction(args: string[], root: string) {

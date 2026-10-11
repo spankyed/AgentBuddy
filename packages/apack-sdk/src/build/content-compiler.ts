@@ -94,7 +94,7 @@ async function loadPackConfig(options: CompilePackOptions): Promise<PackConfig> 
   return buildPackConfigFromManifest(manifest, options.packDir);
 }
 
-/** @internal Removes what compilePack writes, so a key or media dropped from the sources doesn't linger (apack build clears it up front) */
+/** @internal Removes what compilePack writes, so a key or media dropped from the sources doesn't linger (apack pack build clears it up front) */
 export function _clearCompiledContent(outputDir: string): void {
   if (!fs.existsSync(outputDir)) return;
   for (const entry of fs.readdirSync(outputDir, { withFileTypes: true })) {
@@ -178,7 +178,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
       if (!fs.existsSync(source.compiler.module)) {
         const dependency = source.formatRef.includes(':') ? source.formatRef.split(':')[0] : undefined;
         throw new Error(dependency
-          ? `Content "${key}": format "${source.formatRef}" compiles with ${dependency}'s content compilers, but ${source.compiler.module} doesn't exist: build ${dependency} first (apack build)`
+          ? `Content "${key}": format "${source.formatRef}" compiles with ${dependency}'s content compilers, but ${source.compiler.module} doesn't exist: build ${dependency} first (apack pack build)`
           : `Content "${key}": compiler module ${source.compiler.module} doesn't exist`);
       }
       const mod = await importModule(source.compiler.module);

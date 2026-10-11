@@ -61,7 +61,7 @@ export async function featureSettingsProblems(root: string, features: ReadonlyAr
  *
  * **What that replaced is removing `dist` first**, which every reader of a pack's output reads as *not built* —
  * so a build published ~20s in which that was the answer, and the fixture-pack race in `1e19b40d9` was it. The
- * tree still goes whole, which is what stops `apack pack` and the test fixtures shipping a dropped output: it
+ * tree still goes whole, which is what stops `apack pack archive` and the test fixtures shipping a dropped output: it
  * goes whole by being a different tree, rather than by being deleted.
  *
  * Inside the pack, so the rename cannot cross a filesystem, and under `.apack/` because every pack already
@@ -73,11 +73,11 @@ export function buildStagingDir(root: string): string {
 }
 
 /**
- * `apack build` as the user runs it. A pack compiles against the @apackdev packages' dist, and when that
+ * `apack pack build` as the user runs it. A pack compiles against the @apackdev packages' dist, and when that
  * dist belongs to a checkout it is built on demand, so the command brings it up to date first — as
- * `apack test` and `apack dev` do (the doors are listed in packages/apack-testing/CLAUDE.md).
+ * `apack pack test` and `apack pack dev` do (the doors are listed in packages/apack-testing/CLAUDE.md).
  *
- * It sits here rather than in `build()` because `apack dev` calls that on every file change, and the
+ * It sits here rather than in `build()` because `apack pack dev` calls that on every file change, and the
  * check reads every source of all five packages: once per command is right, once per keystroke is not.
  *
  * `npm run dev` depends on this one. The dev launcher builds the pack the app ships with `apack
@@ -85,6 +85,8 @@ export function buildStagingDir(root: string): string {
  * in the dev launcher is the fix if this ever stops ensuring.
  */
 export async function buildCommand(args: string[]): Promise<void> {
+  const unknown = args.filter(arg => !['--watch', '--skip-generate', '--skip-fe', '--release'].includes(arg));
+  if (unknown.length) throw new Error(`Unknown build option: ${unknown.join(', ')}. Use apack pack build --help.`);
   const root = findPackRoot(process.cwd());
   ensureCheckoutPackages(root);
   if (args.includes('--watch')) {
@@ -105,7 +107,7 @@ export async function build(args: string[]) {
   // already running is waited for rather than refused — see `build/build-lock.ts`
   const lock = await holdPackBuildLock(root, {
     packId: readValidManifest(root).id,
-    what: ['apack build', ...args].join(' '),
+    what: ['apack pack build', ...args].join(' '),
     onWait: (holder) => console.log(`Waiting for ${holder} to finish...`),
   });
   try {

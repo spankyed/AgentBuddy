@@ -1,72 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { runCommand } from './command-tree.ts';
 
 const pkg = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf-8'));
-
-const USAGE = `
-apack - app and pack CLI
-
-Commands:
-  init [name]         Scaffold a new pack
-  add <entity>        Add a feature, step, action, etc.
-  generate-entries    Generate __generated__/ files from manifest
-  fetch-deps          Fetch dependency type manifests
-  build [--skip-generate]  Compile the pack to dist/
-  build --watch       Rebuild the backend runtime on every change, and reload a running app
-  pack                Bundle dist/ into a verified .tgz + .sha256
-  release [patch|minor|major] [--beta] [--dry-run] [--local]  Cut a release
-  validate            Check manifest and types
-  facade-report [--update]  Report the pack's facade types (etc/pack-types.api.md)
-  pack install <source> [-d] [-b]  Install a pack (path, URL, GitHub, or registry name)
-  pack uninstall <id> [-d] [-b]  Remove an installed pack
-  list [-d] [-b]             Show installed packs
-  dev [--build <name|path>] [--profile <name> | --fresh [--rm]]
-                      Launch the app and hold it. With a pack in hand, reload it as you edit
-  init-tests            Scaffold Playwright E2E test setup
-  drive [script]        Drive the app: a script in drive/, or one --eval/--query/--state question
-                        asked of the app apack dev is holding (not a test)
-  test [args...]        Run E2E tests in apack (--build <name|path>)
-  open [-b]           Open the installed apack app
-  install [version] [--replace] [-b]  Download and install the app (latest production by default)
-  uninstall [-b]      Remove the app; keep user data
-  upgrade [version] [-b] [--relaunch]  Update an installed app
-  db <command>        Query, export, import or reset the app's database (apack closed)
-  info                Show pack summary
-  doctor              Run health checks
-  profiles            List every apack data dir; create, rename or remove a profile,
-                      trim the caches Chromium rebuilds, or stop the app running on one
-  clean [--apps]      Remove this pack's build output, or the downloaded Beta builds
-
-Options:
-  --help, -h          Show this help
-  --version, -v       Show version
-`.trim();
-
-const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>> = {
-  'init':              async () => (await import('./commands/init')).init,
-  'add':               async () => (await import('./commands/add')).add,
-  'generate-entries':  async () => (await import('./commands/generate-entries')).generateEntries,
-  'fetch-deps':        async () => (await import('./commands/fetch-deps')).fetchDeps,
-  'build':      async () => (await import('./commands/build')).buildCommand,
-  'pack':       async () => (await import('./commands/pack')).pack,
-  'facade-report':     async () => (await import('./commands/facade-report')).facadeReport,
-  'release':    async () => (await import('./commands/release')).release,
-  'validate':   async () => (await import('./commands/validate')).validate,
-  'install':    async () => (await import('./commands/install')).install,
-  'uninstall':  async () => (await import('./commands/uninstall')).uninstall,
-  'list':       async () => (await import('./commands/list')).list,
-  'dev':        async () => (await import('./commands/dev')).dev,
-  'init-tests': async () => (await import('./commands/init-tests')).initTests,
-  'drive':      async () => (await import('./commands/drive')).drive,
-  'test':       async () => (await import('./commands/test')).test,
-  'open':       async () => (await import('./commands/open')).open,
-  'upgrade':    async () => (await import('./commands/upgrade')).upgrade,
-  'db':         async () => (await import('./commands/db')).db,
-  'info':       async () => (await import('./commands/info')).info,
-  'doctor':     async () => (await import('./commands/doctor')).doctor,
-  'profiles':  async () => (await import('./commands/profiles')).profiles,
-  'clean':      async () => (await import('./commands/clean')).clean,
-};
 
 /**
  * Exit quietly when whatever is reading our stdout goes away.
@@ -97,8 +33,8 @@ async function main() {
   const command = args[0];
 
   if (!command || command === '--help' || command === '-h') {
-    console.log(USAGE);
-    process.exit(0);
+    await runCommand([]);
+    return;
   }
 
   if (command === '--version' || command === '-v') {
@@ -106,16 +42,8 @@ async function main() {
     process.exit(0);
   }
 
-  const loader = COMMANDS[command];
-  if (!loader) {
-    console.error(`Unknown command: ${command}`);
-    console.log(USAGE);
-    process.exit(1);
-  }
-
   try {
-    const fn = await loader();
-    await fn(args.slice(1));
+    await runCommand(args);
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
     process.exit(1);

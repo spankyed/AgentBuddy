@@ -2,7 +2,7 @@
 //
 // `-d`, `-b` and `--production` are `--build` shorthands now: they keep working and change what they
 // *mean*, a build rather than an environment. The two spellings have to agree, because a reader who learned
-// `--build` on `apack dev` should not have to learn a second one here — and because this was the half of
+// `--build` on `apack pack dev` should not have to learn a second one here — and because this was the half of
 // the vocabulary change with an open question in it, where the same word selecting a different axis per
 // command was the symptom.
 import { describe, expect, it, vi } from 'vitest';

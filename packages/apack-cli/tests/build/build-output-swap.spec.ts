@@ -7,7 +7,7 @@ import { build, buildStagingDir } from '../../src/commands/build';
 import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 /**
- * **`apack build` assembles `dist/` elsewhere and renames it into place**, so a reader finds the previous
+ * **`apack pack build` assembles `dist/` elsewhere and renames it into place**, so a reader finds the previous
  * build whole or this one whole. What that replaced is removing `dist` first, which published ~20s in which
  * every reader of a pack's output — all of which read a missing output as *not built* — had the wrong answer;
  * the fixture-pack race in `1e19b40d9` was exactly that, fixed then by removing one reader.

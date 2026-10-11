@@ -18,7 +18,7 @@ perturbing the recorded file would only prove that `!==` works.
 
 **Re-taking the answer means running whatever produces it, and that is the half a derivation loses
 quietly.** `facade:check` compared the committed report against `dist/types/pack-types.d.ts` — a file some
-earlier `apack build` wrote, from whatever the sources were then — so `npm run build:default-setup` was right by
+earlier `apack pack build` wrote, from whatever the sources were then — so `npm run build:default-setup` was right by
 ordering alone and the same command run by hand could pass over a bundle an hour old, while `--update` wrote
 a committed file off it.
 

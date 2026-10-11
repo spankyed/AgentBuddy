@@ -3,7 +3,7 @@
  *
  * **`@apackdev/testing` is resolved at runtime, never imported.** It is a devDependency of this package, so a
  * static import would make `bundle-package.ts` refuse the bundle outright, and a real dependency would put
- * the whole Playwright harness in every install of someone who only runs `apack build`. The CLI already
+ * the whole Playwright harness in every install of someone who only runs `apack pack build`. The CLI already
  * reaches it this way for the Playwright binary (`resolvePlaywrightCli`), from the pack's own
  * `node_modules` — so a pack drives with the harness it tests with, rather than one this CLI carried.
  */
@@ -64,7 +64,7 @@ export function attachableApp(dataDir: string): AttachableApp | undefined {
 }
 
 /**
- * Starts an app and waits for it to be attachable, by running `apack dev` detached.
+ * Starts an app or pack session explicitly and waits for it to be attachable.
  *
  * **`dev` itself, and detached, are both load-bearing.** The fixture sets `PLAYWRIGHT_TEST`, which makes the
  * app resolve the `test` environment and so refuse the debug port — and the fixture is also the only thing
@@ -77,12 +77,13 @@ export function attachableApp(dataDir: string): AttachableApp | undefined {
  * "no session appeared" with no cause, and the timeout message names this path.
  */
 export async function spawnDevApp(
-  from: string, dataDir: string, profileArgs: readonly string[],
+  from: string, dataDir: string, profileArgs: readonly string[], scope: 'app' | 'pack' = 'app',
 ): Promise<AttachableApp> {
   const logPath = path.join(dataDir, 'dev-spawn.log');
   fs.mkdirSync(dataDir, { recursive: true });
   const log = fs.openSync(logPath, 'a');
-  const child = spawn(process.execPath, [cliBin(), 'dev', ...profileArgs], {
+  const command = scope === 'pack' ? ['pack', 'dev'] : ['open', '--session'];
+  const child = spawn(process.execPath, [cliBin(), ...command, ...profileArgs], {
     cwd: from,
     detached: true,
     stdio: ['ignore', log, log],
@@ -126,9 +127,10 @@ const HELD = new Error('another spawn holds this data dir');
 export async function spawnOrAttach(
   from: string, dataDir: string, profileArgs: readonly string[],
   // Seams, because which of the two branches a loser took is the claim and nothing else observes it
-  { spawn = spawnDevApp, waitFor = waitForSession }: {
+  { spawn, waitFor = waitForSession, scope = 'app' }: {
     spawn?: (from: string, dataDir: string, profileArgs: readonly string[]) => Promise<AttachableApp>;
     waitFor?: (dataDir: string) => Promise<DevSession>;
+    scope?: 'app' | 'pack';
   } = {},
 ): Promise<{ app: AttachableApp; state: 'spawned' | 'attached' }> {
   let lock: ExclusiveLock;
@@ -143,7 +145,8 @@ export async function spawnOrAttach(
   try {
     const live = attachableApp(dataDir);
     if (live) return { app: live, state: 'attached' };
-    return { app: await spawn(from, dataDir, profileArgs), state: 'spawned' };
+    const app = spawn ? await spawn(from, dataDir, profileArgs) : await spawnDevApp(from, dataDir, profileArgs, scope);
+    return { app, state: 'spawned' };
   } finally {
     lock.release();
   }

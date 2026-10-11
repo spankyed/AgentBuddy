@@ -76,7 +76,7 @@ async function loadPackDefinitions(manifest: PackManifest, packDir: string, depe
     if (!fs.existsSync(generated)) {
       throw new Error(
         `${STEPS_BUILD_MODULE} is missing and the manifest declares ${declaredSteps.length} step(s) `
-        + `(${declaredSteps.join(', ')}). Run "apack generate-entries".`,
+        + `(${declaredSteps.join(', ')}). Run "apack pack generate-entries".`,
       );
     }
     for (const step of (findExportedArray(await import(pathToFileURL(generated).href)) ?? []) as StepDefinition[]) {

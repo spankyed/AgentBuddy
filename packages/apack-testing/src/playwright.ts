@@ -13,7 +13,7 @@ import { defineConfig, type PlaywrightTestConfig } from '@playwright/test';
 const DRIVE_CONFIG_FILE = 'playwright.config.ts';
 
 /**
- * A pack's E2E suite, run by `apack test`.
+ * A pack's E2E suite, run by `apack pack test`.
  *
  * Nothing in the tooling reads these back, so a pack's own word is last — pass anything Playwright takes.
  *

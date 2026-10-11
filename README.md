@@ -104,7 +104,7 @@ npm run typecheck        # Type checks for every workspace, plus import specifie
 The built-in pack's content (actions, prompts, flows, library, notes, FAQs, settings) are TypeScript and markdown sources that its build compiles.
 
 ```sh
-npm run build:default-setup          # Build the default-setup pack (apack build, DSL defs, runtime)
+npm run build:default-setup          # Build the default-setup pack (apack pack build, DSL defs, runtime)
 ```
 
 ### Database Tools

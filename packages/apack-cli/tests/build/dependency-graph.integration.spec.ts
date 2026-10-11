@@ -121,7 +121,7 @@ describe.skipIf(!PACKAGES_BUILT)('a collision that is real', () => {
 
     const clashDir = preparePack(parent, 'clash-pack', pack('clash-pack', {}, on(DEEP, rival)), modules);
     // process: the exit code and the colliding-entity message are the assertion
-    const clash = run(process.execPath, [CLI, 'build'], clashDir);
+    const clash = run(process.execPath, [CLI, 'pack', 'build'], clashDir);
 
     expect(clash.code, clash.output).not.toBe(0);
     expect(clash.output).toMatch(/entity "Memo" declared by both/);

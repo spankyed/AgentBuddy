@@ -286,7 +286,7 @@ describe('configuredAppPackagesDir', () => {
 
   /**
    * The strictness that must *not* be shared with `deriveApp`. A build reads the checkout's `packages/`;
-   * refusing it for want of `main/dist` would fail `apack build` on a tree that is perfectly readable.
+   * refusing it for want of `main/dist` would fail `apack pack build` on a tree that is perfectly readable.
    */
   it('takes an unbuilt checkout, where launching one would refuse it', async () => {
     const raw = makeCheckout('raw-for-build', { built: false });
@@ -444,7 +444,7 @@ describe('fixtureEnv', () => {
   });
 
   /**
-   * `apack test` is pinned and hermetic: it reads no machine state. These two reach the fixture straight
+   * `apack pack test` is pinned and hermetic: it reads no machine state. These two reach the fixture straight
    * from the environment, so an exported one sent a test run at a directory the user owns — and the data
    * dir is kept rather than cleaned up, so the run would also leave its writes there.
    *

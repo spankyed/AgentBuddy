@@ -15,7 +15,7 @@ export const defaultDataBuild = (): AppEnv => parseAppEnv(process.env.APACK_CLI_
  * **`-d`, `-b` and `--production` are `--build` shorthands**, which is Decision 4 of the vocabulary
  * change: they keep working and change what they *mean*, a build rather than an environment. `--build
  * <name>` says the same thing in the one word the whole CLI now uses, so a reader who learned the flag on
- * `apack dev` does not have to learn a second spelling here.
+ * `apack pack dev` does not have to learn a second spelling here.
  *
  * It names a **build**, never a profile: a build keeps its own default storage, and `--profile` is the one
  * override. That is the fusion kept where it is harmless — a default, stated once, rather than a second

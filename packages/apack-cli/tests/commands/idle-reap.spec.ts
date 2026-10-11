@@ -2,7 +2,7 @@
 //
 // **Both halves need a firing case, and they fail to opposite mutations.** Reaping on `startedBy` alone
 // closes the development app a developer is working in; reaping on the profile alone closes the app they
-// opened themselves with `apack dev --profile`. So the two clauses are asserted apart, and the deadline
+// opened themselves with `apack open --session --profile`. So the two clauses are asserted apart, and the deadline
 // arithmetic is asserted as the claim it makes — that a session asked a question wakes this once per
 // question and an idle one wakes it once.
 import { describe, expect, it } from 'vitest';
@@ -17,7 +17,7 @@ describe('which app closes itself when nothing attaches', () => {
   });
 
   /**
-   * The development dir is `mayReclaim`'s, not this timer's: the developer's own `apack dev` or
+   * The development dir is `mayReclaim`'s, not this timer's: the developer's own `apack open --session` or
    * `npm run dev` takes it back and says so. Mutation — drop the `profile` clause — and this is the case
    * that fails, where a `--spawn` with no flags lands exactly here.
    */

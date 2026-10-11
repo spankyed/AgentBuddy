@@ -1,7 +1,7 @@
 /**
  * Reusing a build phase's output when nothing it reads has moved.
  *
- * **Three of `apack build`'s phases are expensive and read a bounded set of files** — the frontend
+ * **Three of `apack pack build`'s phases are expensive and read a bounded set of files** — the frontend
  * bundle, the facade types and the DSL defs — so a build whose pack sources have not changed can take the
  * previous build's output forward instead of making it again. Measured on the pack the app ships,
  * 2026-10-08: hashing the whole scope is **17-19ms over 705 files**, against 11.3s for the frontend bundle
@@ -10,7 +10,7 @@
  * produced — 101 files and 8.5 MB for the pack the app ships.
  *
  * **Reuse, not skip.** `--skip-fe` omits the frontend from the published tree; this produces the same tree
- * either way, which is the whole requirement — `apack build` stages into `.apack/build/` and renames
+ * either way, which is the whole requirement — `apack pack build` stages into `.apack/build/` and renames
  * that over `dist/`, so a phase that does not run still has to leave its files in the staged tree.
  * Everything here exists to make the two trees identical, not to leave one short.
  *

@@ -1,6 +1,6 @@
 # Content parity (`tests/content/`)
 
-**`npm run spec` knows these specs cover `src/content/`.** The edge runs `src` -> `apack build` ->
+**`npm run spec` knows these specs cover `src/content/`.** The edge runs `src` -> `apack pack build` ->
 `dist/*.content.json` -> the goldens here, which no module graph can see, so it is a declared route
 (`packBuildEdge`, `scripts/lib/spec-plan.ts`): naming a content item source prints what covers it, and
 `npm run spec:full -- <that file>` builds the pack and runs this directory. An apply *helper* that specs

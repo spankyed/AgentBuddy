@@ -2,7 +2,7 @@
 // one says about a facade.
 //
 // Two callers, which is why the text lives here rather than in the command that records it: `apack
-// facade-report` derives the facade from the pack's sources and compares, and `apack build` compares the
+// facade-report` derives the facade from the pack's sources and compares, and `apack pack build` compares the
 // bundle it has just produced. One module is what keeps them from normalising or wording the same report
 // differently — and the label the normalisation parses under is computed here rather than passed, so the
 // command's temp path and the build's `dist` path cannot reach the output between them.
@@ -26,7 +26,7 @@ export function shownPath(file: string): string {
 }
 
 /**
- * The label the bundle is parsed under. The canonical path of what `apack build` writes, whoever produced
+ * The label the bundle is parsed under. The canonical path of what `apack pack build` writes, whoever produced
  * the text: a declaration bundle's own filename decides nothing about the report, and deriving it here is
  * what makes that true by construction rather than by two callers agreeing.
  */

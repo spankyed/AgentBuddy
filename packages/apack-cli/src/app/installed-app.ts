@@ -114,17 +114,19 @@ function bundleExists(appPath: string): boolean {
   }
 }
 
-function validateIncoming(incoming: string, channel: Channel, version: string): void {
+export function validateAppBundle(incoming: string, channel: Channel, expectedVersion?: string): string {
   if (!bundleExists(incoming)) throw new Error(`Download does not contain ${PRODUCT_NAMES[channel]}.app.`);
   const plist = path.join(incoming, 'Contents', 'Info.plist');
   const id = execFileSync('plutil', ['-extract', 'CFBundleIdentifier', 'raw', plist], { encoding: 'utf8' }).trim();
   const expectedId = channel === 'beta' ? 'dev.apack.beta' : 'dev.apack.app';
-  if (id !== expectedId || installedVersion(incoming) !== version) {
-    throw new Error(`Downloaded app identity or version does not match ${PRODUCT_NAMES[channel]} ${version}.`);
+  const version = installedVersion(incoming);
+  if (id !== expectedId || !version || (expectedVersion !== undefined && version !== expectedVersion)) {
+    throw new Error(`App identity or version does not match ${PRODUCT_NAMES[channel]}${expectedVersion ? ` ${expectedVersion}` : ''}.`);
   }
   const executable = path.join(incoming, 'Contents', 'MacOS', PRODUCT_NAMES[channel]);
   if (!fs.lstatSync(executable).isFile()) throw new Error('Downloaded app has no regular executable.');
   fs.accessSync(executable, fs.constants.X_OK);
+  return version;
 }
 
 /** Download and validate first; preserve the existing bundle until a staged replacement is ready. */
@@ -176,11 +178,11 @@ export async function manageInstalledApp(options: AppCommandOptions, deps: AppCo
     const expanded = path.join(staging, 'app');
     await run('ditto', ['-x', '-k', zipPath, expanded]);
     const incoming = path.join(expanded, `${product}.app`);
-    validateIncoming(incoming, channel, release.version);
+    validateAppBundle(incoming, channel, release.version);
 
     staged = path.join(applications, stagingDirName(`${product}.app`, 'installing'));
     await run('ditto', [incoming, staged]);
-    validateIncoming(staged, channel, release.version);
+    validateAppBundle(staged, channel, release.version);
     if (exists) await quit(product, channel, log, appPath);
     // Recheck at the last moment: an app installed outside this CLI also needs explicit replacement.
     if (action === 'install' && !options.replace && bundleExists(appPath)) {

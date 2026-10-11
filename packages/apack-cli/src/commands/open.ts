@@ -3,8 +3,12 @@ import { parseTargetEnv, TARGET_ENV_USAGE } from '../utils';
 
 const HELP = `
 Usage: apack open [-b]
+       apack open --session [--build <name|path>] [--profile <name> | --fresh [--rm]] [--with-secrets]
 
 Open the installed apack app (or bring it to the front if it is running).
+--session launches or attaches to a development app and holds it until Ctrl-C.
+It never builds, installs, or watches a pack. With no --build, it uses a linked
+checkout or the newest beta. Use npm run dev for app source watchers.
 
 Options:
   ${TARGET_ENV_USAGE}
@@ -23,7 +27,12 @@ export async function open(args: string[]) {
     return;
   }
 
-  const { env } = parseTargetEnv(args);
+  if (args.includes('--session')) {
+    const { holdSession } = await import('./dev');
+    return holdSession(args.filter(arg => arg !== '--session'), 'app');
+  }
+  const { env, args: rest } = parseTargetEnv(['--production', ...args]);
+  if (rest.length) throw new Error('Unexpected arguments. Use apack open --help; session flags require --session.');
   if (env !== 'production' && env !== 'beta' && env !== 'preview') {
     throw new Error('There is no installed dev app. Run `npm run dev` in the apack repo instead.');
   }

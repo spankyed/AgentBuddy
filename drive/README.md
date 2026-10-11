@@ -31,13 +31,11 @@ npm run drive -- drive/notes.ts  # just one
 **It drives the *built* app**, loaded from `file://` — `npm run build:runtime` and `npm run build:default-setup` are what
 put the thing you are looking at on disk, and the run warns when either has gone stale rather than
 quietly showing you the previous build. So this is not the tool for a question about a dev server: nothing
-here stands one up, and `npm run dev`'s renderer and `apack dev`'s pack server are not in the picture.
+here stands one up, and `npm run dev`'s renderer and `apack open --session`'s pack server are not in the picture.
 
-**Every script here is `apack drive`**, which is also what a pack author runs — the npm scripts are thin
-calls to it, so `npm run drive -- --help` is the reference and a flag works the same from either side. With
-no `apack.json` above it the command drives *this checkout's* app rather than a pack's, which is what
-makes that possible — the checkout behind "no pack here" is the one you are standing in, which is the
-same rule `apack drive` applies inside a pack.
+**Every script here uses `apack drive`.** The npm scripts are thin calls to it, so
+`npm run drive -- --help` is the reference. Root `drive` always targets the app and never
+installs a pack inferred from the working directory. Pack authors use `apack pack drive`.
 
 **Each run gets a fresh data dir under `$TMPDIR` and throws it away**, so a script cannot touch your
 development or production data, and every session starts clean. `--profile <name>` keeps a data dir
@@ -83,7 +81,7 @@ npm run drive:state                               # 0.9s from then on
 ```
 
 `apack profiles` says which data dirs have a live app and who started it, which is where a forgotten one
-is found. `apack dev` takes the directory back from an app a question started.
+is found. `apack open --session` takes the directory back from an app a question started.
 
 ## The verbs
 

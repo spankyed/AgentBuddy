@@ -10,10 +10,10 @@ import { readPackIntegrity } from '@apackdev/host/packs';
  * runRelease verifies with a release build; these tests use prebuilt packs, so the build is a stand-in.
  *
  * **It still has to leave what the steps after it read.** `writeVersion` rewrites `apack.json` immediately
- * before `verify`, and `apack pack` refuses a build older than the sources it came from — a build it cannot
+ * before `verify`, and `apack pack archive` refuses a build older than the sources it came from — a build it cannot
  * see having happened is exactly the stale build that check exists for. A stand-in returning nothing claimed
  * the build had run and left a tree it had not touched, which is the fidelity gap rather than the check being
- * wrong: a real `apack build` writes `dist` here.
+ * wrong: a real `apack pack build` writes `dist` here.
  */
 const builtAt = vi.hoisted(() => ({ root: undefined as string | undefined }));
 vi.mock('../../src/commands/build', () => ({
@@ -30,7 +30,7 @@ vi.mock('../../src/commands/build', () => ({
     }
   }),
 }));
-import { buildPackArchive } from '../../src/commands/pack';
+import { buildPackArchive } from '../../src/commands/archive';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 
 let tmp: string;
@@ -275,7 +275,7 @@ describe('releaseStateReport', () => {
       .toMatch(/resumes this version/);
     // Past the push the release exists for everyone: a rerun cuts the next version, so say the other thing
     expect(releaseStateReport('1.2.4', { committed: true, tagged: true, pushed: true }))
-      .toMatch(/apack release publish/);
+      .toMatch(/apack pack release publish/);
   });
 });
 

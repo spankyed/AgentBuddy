@@ -36,7 +36,7 @@ function featureValues(name: string) {
 }
 
 const HELP = `
-Usage: apack add feature <name> [options]
+Usage: apack pack add feature <name> [options]
 
 Options:
   --label <Label>          Display label (default: derived from name)
@@ -44,7 +44,7 @@ Options:
   --designation <role>     The role this feature plays, for getDesignated(role); need not be the feature name
 
 Example:
-  apack add feature bookmarks --label "Bookmarks" --icon Bookmark
+  apack pack add feature bookmarks --label "Bookmarks" --icon Bookmark
 `.trim();
 
 export async function addFeature(args: string[], root: string) {

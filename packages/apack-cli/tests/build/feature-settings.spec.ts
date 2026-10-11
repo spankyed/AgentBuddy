@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { featureSettingsProblems } from '../../src/commands/build';
 
-/** apack build fails on feature settings the app would refuse when the pack loads */
+/** apack pack build fails on feature settings the app would refuse when the pack loads */
 let root: string;
 afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 

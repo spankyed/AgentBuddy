@@ -91,7 +91,7 @@ const SPANS_PACKAGES: Record<string, string> = {
  */
 const PACKS_AS_A_FIXTURE: Record<string, string> = {
   'packages/apack-cli/tests/build/facade-typing.integration.spec.ts':
-    "the facade gate: it compiles a dependent pack against the packed packages, so a failure is apack build's",
+    "the facade gate: it compiles a dependent pack against the packed packages, so a failure is apack pack build's",
   'packages/apack-cli/tests/build/facade-typing-published.integration.spec.ts':
     'the same gate asked of the layout a pack author has, which is the half of that suite the packed '
     + 'consumer belongs to — it reaches the fixture through _support/facade-packs.ts, as its sibling does',
@@ -163,7 +163,7 @@ describe('a spec about the published packages lives in @app/publish-checks', () 
  */
 const NOT_MIRRORED_YET: Record<string, string> = {
   'apack-cli/harness': "@apackdev/testing's harness: the scaffolded setup, a dependency's cached runtime, and "
-    + 'isolatedDataDir. The CLI owns the commands that launch it (`apack test`, `init-tests`) and none of the '
+    + 'isolatedDataDir. The CLI owns the commands that launch it (`apack pack test`, `init-tests`) and none of the '
     + 'harness itself, so a tests/commands/ name would say the wrong thing about all three',
 };
 

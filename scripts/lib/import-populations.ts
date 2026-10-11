@@ -99,7 +99,7 @@ export const PACK_SOURCE_DIRS = packHalves('src');
 
 /**
  * A pack's own code, tests included: the population for a rule about a specifier a pack may not write, wherever
- * it writes it. `apack test` runs the whole rule set over a pack's `tests` (`refusePackRuleViolations(cwd,
+ * it writes it. `apack pack test` runs the whole rule set over a pack's `tests` (`refusePackRuleViolations(cwd,
  * TEST_DIRS)`), so a rule that reads only `src` here is narrower in this repo than the same rule is for a pack.
  */
 export const PACK_TEST_DIRS = packHalves('tests');

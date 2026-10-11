@@ -9,13 +9,13 @@
 # Phases, and the end state they establish for outside pack authors
 # (docs/archive/goals/goal-external-pack-authoring.md):
 #   1. install @apackdev/cli + @apackdev/sdk (with @apackdev/ears) from tarballs
-#   2. apack init -> add feature -> a flow using keepAlive from default-setup -> content from a format with a
+#   2. apack pack init -> add feature -> a flow using keepAlive from default-setup -> content from a format with a
 #      .ts compiler module, default-setup's notes format, and its library format -> an llm flow and a
 #      service calling services.inference
-#   3. apack build
+#   3. apack pack build
 #   4. unit tests on the harness, with inference mocked by mockInference
 #   5. @apackdev/testing's published declarations type-check on their own (skipLibCheck off)
-#   6. apack release --local --dry-run produces a verified archive (--skip-e2e: the app half runs that)
+#   6. apack pack release --local --dry-run produces a verified archive (--skip-e2e: the app half runs that)
 #   7. install that archive into an isolated test data dir
 # Requires a built checkout's packages (npm run packages:build), not a built app.
 # KEEP_WORK=1 is the app half's flag; this half always leaves its work dir, which is its declared output.
@@ -52,9 +52,9 @@ mkdir "$WORK/tools"
 APACK="$WORK/tools/node_modules/.bin/apack"
 "$APACK" --version
 
-step "2. apack init → add feature"
+step "2. apack pack init → add feature"
 cd "$WORK"
-"$APACK" init demo-pack >/dev/null
+"$APACK" pack init demo-pack >/dev/null
 PACK="$WORK/demo-pack"
 cd "$PACK"
 # The tarballs stand in for the npm registry
@@ -66,7 +66,7 @@ for lib in @tiptap highlight.js lowlight @guolao/vue-monaco-editor; do
 done
 # From here on, `apack` is the pack's own pinned CLI
 APACK="$PACK/node_modules/.bin/apack"
-"$APACK" add feature notes --label Notes >/dev/null
+"$APACK" pack add feature notes --label Notes >/dev/null
 # @apackdev/ui's heavier components must build in a pack, not only in the monorepo
 npm pkg set "dependencies.@apackdev/ui=file:$UI_TGZ"
 npm install --silent --prefer-offline --no-audit --no-fund
@@ -81,12 +81,12 @@ node -e '
   const file = "src/features/notes/fe/plugin.ts";
   fs.writeFileSync(file, "import { editors } from \"./editors.ts\";\nconsole.debug(Object.keys(editors));\n" + fs.readFileSync(file, "utf8"));
 '
-"$APACK" init-tests
+"$APACK" pack init-tests
 npm pkg set "devDependencies.@apackdev/testing=file:$TESTING_TGZ"
 npm install --silent --prefer-offline --no-audit --no-fund
 
 step "Name the checkout the build resolves a shipped pack through"
-# `apack build` reads a dependency on a shipped pack out of an app's `packages/` (fetch-deps'
+# `apack pack build` reads a dependency on a shipped pack out of an app's `packages/` (fetch-deps'
 # `configuredAppPackagesDir`), so something has to name an app before step 2 adds that dependency.
 #
 # **APACK_BUILD, and only for the commands that build.** That function derives the apack checkout
@@ -95,7 +95,7 @@ step "Name the checkout the build resolves a shipped pack through"
 # So the derivation correctly finds nothing here and the checkout has to be named. It used to be named by
 # writing the first-run prompt's config file by hand; there is no prompt and no config file now.
 #
-# Per-command rather than exported, so step 8 still means something: `apack test` reads APACK_BUILD like
+# Per-command rather than exported, so step 8 still means something: `apack pack test` reads APACK_BUILD like
 # any other caller, and exporting it would hand that step a build without its asking. Left unset, step 8 has
 # no build at all but the one it names on the command line — which is what makes it a check of hermeticity
 # rather than a restatement of it.
@@ -146,7 +146,7 @@ node -e '
 '
 
 step "2. An llm flow on default-setup's brain, and a service calling services.inference"
-"$APACK" add prompt summarize-note >/dev/null
+"$APACK" pack add prompt summarize-note >/dev/null
 cat > src/content/prompts/summarize-note.ts <<'TS'
 import type { PromptMeta } from '@apackdev/sdk/build';
 
@@ -173,7 +173,7 @@ export default {
   ],
 };
 TS
-"$APACK" add service digest --feature notes >/dev/null
+"$APACK" pack add service digest --feature notes >/dev/null
 cat > src/features/notes/be/services/digest.ts <<'TS'
 import { Output } from 'ai';
 import { z } from 'zod';
@@ -201,8 +201,8 @@ node -e '
 # The digest service imports the AI SDK's pure pieces (Output); mockInference runs the AI SDK in tests
 npm install --silent --prefer-offline --no-audit --no-fund --save ai@^7.0.100
 
-step "3. apack build"
-"${BUILD_ENV[@]}" "$APACK" build | tee "$WORK/build.log"
+step "3. apack pack build"
+"${BUILD_ENV[@]}" "$APACK" pack build | tee "$WORK/build.log"
 node -e '
   const fs = require("fs");
   const read = (key) => JSON.parse(fs.readFileSync(`dist/runtime/content/${key}.content.json`, "utf8")).records;
@@ -219,7 +219,7 @@ node -e '
 ' || fail "the compiler modules and markdown content were not compiled"
 
 step "4. Unit tests through the harness, with default-setup's runtime"
-# A spec's path mirrors the source it covers, which is the layout `apack init` scaffolds and the one a
+# A spec's path mirrors the source it covers, which is the layout `apack pack init` scaffolds and the one a
 # pack author reads about (docs/public-facing/testing.md). These three cover the content, a feature's service
 # and a written flow, so they go where those live.
 mkdir -p tests/content/flows tests/features/notes/be/services
@@ -328,13 +328,13 @@ if [ "$TYPES_STATUS" -ne 0 ] && ! grep -qE "^(node_modules|\.apack/deps)/[^(]+\(
   fail "tsc exited $TYPES_STATUS without type errors while checking the types probe"
 fi
 
-step "6. apack release --local --dry-run"
+step "6. apack pack release --local --dry-run"
 git init --quiet -b main
 git add -A
 git -c user.name=author -c user.email=author@example.com commit --quiet -m "initial pack"
 git remote add origin https://github.com/example/demo-pack.git
 # The release runs a build of its own, so it needs the same naming
-"${BUILD_ENV[@]}" "$APACK" release patch --local --dry-run --skip-e2e | tee "$WORK/release.log"
+"${BUILD_ENV[@]}" "$APACK" pack release patch --local --dry-run --skip-e2e | tee "$WORK/release.log"
 ARCHIVE="$(sed -n 's/^Pack: //p' "$WORK/release.log")"
 [ -f "$ARCHIVE" ] && [ -f "$ARCHIVE.sha256" ] || fail "release did not produce an archive and checksum"
 (cd "$(dirname "$ARCHIVE")" && shasum -a 256 -c "$(basename "$ARCHIVE").sha256")

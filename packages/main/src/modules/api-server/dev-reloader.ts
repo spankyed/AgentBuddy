@@ -27,7 +27,7 @@ const DEBOUNCE_MS = 300;
 /**
  * Whether this app watches its API bundle — **the build and the launcher, and neither alone.**
  *
- * `development` is true of `apack dev` and of a bare `electron .` as well, so it cannot be the whole
+ * `development` is true of `apack pack dev` and of a bare `electron .` as well, so it cannot be the whole
  * condition: the loop belongs to the run that is building the bundle. And the variable cannot be either,
  * or a stray export would arm a watcher in a packaged app or a `test` run, whose API restarting underneath
  * it would be a strange thing to debug.

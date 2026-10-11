@@ -36,7 +36,7 @@
  * facade gate pays. Plus the file-level floor, and two files named for what they cover.
  *
  * **And layout is the only axis that splits it without paying the fixture twice.** `buildPacks` runs two
- * real `apack build`s, and for the published layout an `installPublishedPackages()` that npm-packs three
+ * real `apack pack build`s, and for the published layout an `installPublishedPackages()` that npm-packs three
  * tarballs and is *not* memoised. A split by subject — typechecks here, completions there — would run
  * that fixture in both files and raise the half's total work to lower its floor, which is the trade
  * `generate-entries` already made for nothing (`apack-sdk/tests/build/generate-entries/_support/pack.ts`
@@ -54,7 +54,7 @@ import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 /**
  * A pack's typed facades (#generated/ears, events, services, repository) cover its own
- * declarations and its dependencies'. A real `apack build` of a dependency pack produces its facade
+ * declarations and its dependencies'. A real `apack pack build` of a dependency pack produces its facade
  * types; a dependent pack built against it (file: dependency) typechecks a consumer, with every
  * generated file, against the workspace SDK source and the packed SDK under node16 and bundler.
  */
@@ -316,7 +316,7 @@ tx('Nope');
 async function addBaseStep(dir: string): Promise<void> {
   // produces: the step whose scaffolded types this function then rewrites
   const added = await callCli(dir, 'add', ['step', 'ping']);
-  if (added.code !== 0) throw new Error(`apack add step failed in base-pack:\n${added.output}`);
+  if (added.code !== 0) throw new Error(`apack pack add step failed in base-pack:\n${added.output}`);
   const types = path.join(dir, 'src', 'extensions', 'steps', 'ping', 'types.ts');
   const scaffolded = fs.readFileSync(types, 'utf-8');
   if (!/export interface PingNode extends NodeBase \{\n {2}nodeType: 'ping';/.test(scaffolded)) {
@@ -335,7 +335,7 @@ async function buildPacks(published: boolean): Promise<string> {
     if (name === 'base-pack') await addBaseStep(dir);
     // produces: the built pack whose snapshot and declarations the tests read
     const build = await callCli(dir, 'build');
-    if (build.code !== 0) throw new Error(`apack build failed in ${name}:\n${build.output}`);
+    if (build.code !== 0) throw new Error(`apack pack build failed in ${name}:\n${build.output}`);
   }
   write(path.join(parent, 'app-pack'), { 'src/consumer.ts': CONSUMER });
   return parent;

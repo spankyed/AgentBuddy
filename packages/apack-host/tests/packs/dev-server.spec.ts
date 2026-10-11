@@ -1,4 +1,4 @@
-// `apack dev` state lives in the data dir, outside the installed (verified, replaced-on-install) pack
+// `apack pack dev` state lives in the data dir, outside the installed (verified, replaced-on-install) pack
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -28,7 +28,7 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-/** A pack source dir as `apack build` leaves it. */
+/** A pack source dir as `apack pack build` leaves it. */
 function builtPack(): string {
   const root = path.join(tmp, 'src-pack');
   const write = (rel: string, content: string) => {
@@ -65,7 +65,7 @@ describe('dev server marker', () => {
     expect(() => devServerUrl(userDataDir, 'demo-pack', '/runtime/fe.js')).toThrow(/port 70000/);
   });
 
-  it('leaves an installed pack verifiable, and survives the reinstalls apack dev runs', async () => {
+  it('leaves an installed pack verifiable, and survives the reinstalls apack pack dev runs', async () => {
     const { dir } = await installPackFromLocal(builtPack(), packsDir);
     writeDevServerMarker(userDataDir, 'demo-pack', { port: 5199, pid: process.pid });
 
@@ -77,7 +77,7 @@ describe('dev server marker', () => {
   });
 });
 
-// The marker is removed on the way out, so one still here after `apack dev` crashed names a port nothing
+// The marker is removed on the way out, so one still here after `apack pack dev` crashed names a port nothing
 // is listening on. Serving the pack's frontend from it fails with a connection error and nothing saying
 // this file is why; falling back to the installed copy at least shows the pack.
 describe('a dev server that is no longer running', () => {

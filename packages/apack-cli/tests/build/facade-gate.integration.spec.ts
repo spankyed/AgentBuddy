@@ -6,7 +6,7 @@ import { facadeProblems } from '../../src/build/facade-gate';
 import { bundlePackTypes } from '../../src/build/types-bundler';
 
 /**
- * apack build bundles a pack's facade types and refuses a bundle its dependents couldn't use:
+ * apack pack build bundles a pack's facade types and refuses a bundle its dependents couldn't use:
  * one that doesn't type-check on its own, or that imports a package a dependent doesn't have.
  */
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');

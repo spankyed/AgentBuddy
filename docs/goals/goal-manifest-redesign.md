@@ -41,7 +41,7 @@ Finished when:
 - `$manifestVersion` exists in no manifest and no schema, and neither `verifyPack` nor the loader uses
   `Math.floor` on the format stamp.
 - `FEATURE_LAYOUT` is the one definition of the feature layout; `validateFeatures`, `generate-entries`,
-  `doctor` and `apack add feature` all resolve through it, and a spec fails when the documented table
+  `doctor` and `apack pack add feature` all resolve through it, and a spec fails when the documented table
   and the constant disagree.
 - An entity is volatile by carrying `"volatile": true` beside the entity's shape, and any pack may mark
   one it declares — Decision 5's addition, which is all that is left of it, and which that decision
@@ -163,8 +163,8 @@ Every other manifest a phase has to change — **four hand-maintained, two gener
 | `tests/packs/external-pack/apack.json` | 101 lines | two features, `memos` and `notes` |
 | `tests/packs/bundled-ui-pack/apack.json` | 23 lines | one feature, `scribbles`, no system; the one manifest that sets `build.bundleUi` |
 | `packages/default-setup/tests/_support/fixtures/dependent-pack/apack.json` | 22 lines | no features; root keys are `$schema, id, name, version, hostVersion, dependencies, content` |
-| the `apack init` scaffold | — | a template literal, `apack-cli/src/commands/init.ts`'s `MANIFEST_TEMPLATE` |
-| the packaged-authoring pack | — | built by `apack init` then edited by `tests/scripts/test-packaged-authoring-author.sh` |
+| the `apack pack init` scaffold | — | a template literal, `apack-cli/src/commands/init.ts`'s `MANIFEST_TEMPLATE` |
+| the packaged-authoring pack | — | built by `apack pack init` then edited by `tests/scripts/test-packaged-authoring-author.sh` |
 | `tests/packs/external-pack/.apack/bundle/e2e-fixture/apack.json` | — | a build artifact; regenerated, never edited |
 
 Besides those, two in-process fixtures stand in for a manifest and move with the shape:
@@ -179,7 +179,7 @@ Fixtures also use `dependencies` and `permissions`, which default-setup does not
 
 **Two maps carry no information.**
 
-- `entities` is an identity map: all 12 keys equal their values. `apack init` scaffolds it that way
+- `entities` is an identity map: all 12 keys equal their values. `apack pack init` scaffolds it that way
   (`init.ts:18`, `entities: { [pascalName]: pascalName }`).
 - `relKinds` maps SCREAMING_SNAKE to snake_case (`PARENT_OF: "parent_of"`), which is mechanical. The keys
   are load-bearing — they become `EARS.RelKind.PARENT_OF` in `__generated__/ears.ts:47-67`, used in pack
@@ -307,7 +307,7 @@ and reaching for nesting to solve navigation is what produces containers like `l
 reads fine when its order tells the pack's story — this repo's own `package.json` has 12 root keys and
 no sections, and nobody finds it unnavigable, because the ecosystem settled on a conventional order
 (the one `sort-package-json` encodes) rather than on nesting. Every
-`apack add` subcommand that edits a manifest writes it through one line (`writeManifest`,
+`apack pack add` subcommand that edits a manifest writes it through one line (`writeManifest`,
 `add/manifest.ts:7`), so the order is enforced in one place, which also makes manifest diffs stable.
 
 An earlier draft of this decision said "identity at the root, everything else in sections" and then
@@ -361,16 +361,16 @@ repeats `src/features/<id>/` for every typed entity, which is the redundancy Dec
 everywhere else. On the feature, the same line is `"Note": "be/types.ts#NoteEntity"`.
 
 **`data.entities` stays, and it is where every pack starts.** This is not a hedge against an imagined
-pack: `apack init` scaffolds `features: []` with one entity, content rows of it through `content.formats`,
-and only then tells the author to run `apack add feature` (`init.ts:18-20`, `init.ts:386`). So the
+pack: `apack pack init` scaffolds `features: []` with one entity, content rows of it through `content.formats`,
+and only then tells the author to run `apack pack add feature` (`init.ts:18-20`, `init.ts:386`). So the
 scaffolded shape is exactly an entity with no feature to own it, and the pack-level map is the one a
 new pack is born with. Entities move onto features as the pack grows a structure to hold them;
 default-setup is the far end of that path, with all twelve placed, which is why it has no
 `data.entities` at all. A pack that never grows features — one contributing only a data model and an apply — simply stays
 where it started.
 
-`apack add feature` does not relocate an entity: that would edit a declaration the author did not
-name. `apack doctor` reporting a pack-level entity whose shape lives inside a feature's directory is
+`apack pack add feature` does not relocate an entity: that would edit a declaration the author did not
+name. `apack pack doctor` reporting a pack-level entity whose shape lives inside a feature's directory is
 the right nudge, and it is a suggestion, not an error.
 
 **Exactly one home per entity.** An entity declared both on a feature and in `data.entities` fails
@@ -568,7 +568,7 @@ warning. That is the same bargain `package.json`'s `files` and `exports` make, a
 
 **The convention is a declared table, not folklore — and today it is folklore.** Because every path is
 spelled out in the manifest right now, the layout exists nowhere as a definition: three hardcoded
-strings in `apack add feature`'s scaffold (`add/feature.ts:203-205`, which does not even scaffold
+strings in `apack pack add feature`'s scaffold (`add/feature.ts:203-205`, which does not even scaffold
 `references` or `types`) and prose examples in `cli.md:57`, `features.md` and `manifest.md`. A
 `provides` list resolved against an undocumented layout would be exactly the magic this goal is
 supposed to remove. So the table ships with it:
@@ -589,7 +589,7 @@ Four things follow from its being one object, and each is what keeps the convent
 - **`provides`' vocabulary is `Object.keys(FEATURE_LAYOUT)`**, so the Zod enum and the resolver cannot
   drift, and a name that is not a capability cannot be listed.
 - **Every consumer derives from it** — `validateFeatures`, the import paths `generate-entries` writes,
-  `doctor`, and `apack add feature`'s scaffold, which today keeps its own copy of three of the five.
+  `doctor`, and `apack pack add feature`'s scaffold, which today keeps its own copy of three of the five.
 - **Errors name the resolved path**: `Feature "notes": provides "system", but
   src/features/notes/be/system.ts is missing`, and the inverse in `doctor` for a conventional file that
   is present and unlisted. A convention whose failure message names the path it looked for is
@@ -642,7 +642,7 @@ rather than a second way of declaring it.
 
 **One reader breaks silently here, the same way two do in Decision 3.** `init-tests.ts:46` picks the
 feature to scaffold a test for with `(manifest.features ?? []).find((f: any) => f.plugin)` — an
-`any`-typed predicate, so after this change it compiles, finds nothing, and `apack init-tests`
+`any`-typed predicate, so after this change it compiles, finds nothing, and `apack pack init-tests`
 scaffolds against no plugin. It becomes `f.provides?.includes('plugin')`. Together with
 `ProvenanceManifest` and `features/packs/be/system.ts`, that is **every loosely-typed manifest read in the repo**:
 `apack-cli/src/utils.ts:34` returns a real `PackManifest`, and `@apackdev/testing`'s
@@ -739,7 +739,7 @@ changes; `validate` additionally rejects two features of one pack claiming it.
 **13. Every feature carries an `about` line.** The manifest is the one place that says what a pack
 contributes, and today it cannot say what any feature is *for* — only where its files are. A one-line
 `about` is the highest-value thing the manifest can gain, and the only part of this goal that adds
-content rather than moving it. `apack add feature` prompts for it and `validate` requires it.
+content rather than moving it. `apack pack add feature` prompts for it and `validate` requires it.
 
 **14. `$manifestVersion` is deleted, and the pack's existing format stamp is what covers its shape.**
 
@@ -779,13 +779,13 @@ was deprecated and is now reported as obsolete.
 `package.json` gets away with it for a reason worth naming, because it is not "a stamp is never
 needed": **npm has never made a breaking change to it.** Fifteen years of purely additive evolution,
 new fields that old readers ignore. That is a discipline, and it is one this goal is explicitly not
-following. A pack, meanwhile, is a built artifact — `apack build` produces it and `stagePack` writes
+following. A pack, meanwhile, is a built artifact — `apack pack build` produces it and `stagePack` writes
 the built `apack.json` into the archive beside `integrity.json` — so it is in `package.json`'s
 category, and the manifest needs no version inside it.
 
 **`hostVersion` cannot take over the job, which is why the artifact keeps one stamp.** It is already
 the `engines.vscode` answer, checked at install (`packs/installer.ts`), at load (`loader.ts:159`)
-and by update checks. But it is author-declared and open at the top: `apack init` scaffolds
+and by update checks. But it is author-declared and open at the top: `apack pack init` scaffolds
 `">=0.3.0"`, and a 0.4.0 host satisfies that. `hostVersion` says "the oldest host I work with", never
 "the newest", so a pack built against the old manifest shape would claim compatibility with a host
 that cannot read it. Expressing a format break needs something the host controls and the author
@@ -882,11 +882,11 @@ schema's own doc comment says so:
   format bump and a rebuild of every pack in the wild. The bar for one is a problem that cannot be
   solved additively, not a name someone would spell differently.
 - **Deprecate by leaving it alone.** A key that stops mattering stops being written by
-  `apack add` and stops being documented; it does not need removing, and removing it is the
+  `apack pack add` and stops being documented; it does not need removing, and removing it is the
   expensive half.
 
 **16. No compatibility of any kind.** No dual-read, no alias, no deprecation warning. Every manifest in
-the repo — default-setup, all three fixtures, the `apack init` scaffold and the packaged-authoring
+the repo — default-setup, all three fixtures, the `apack pack init` scaffold and the packaged-authoring
 script's generated pack (the Background's table) — changes in the same phase as the schema section it
 depends on.
 
@@ -896,7 +896,7 @@ translation, only a larger set of valid manifests. Decision 6 is the example. Wh
 a renamed or removed key that keeps working through code written to accept it.
 
 **17. Two sections for what the app never loads: `build` and `checks`, and no sidecar files.**
-`build` holds settings that change what `apack build` produces or how long it takes; `checks` holds the
+`build` holds settings that change what `apack pack build` produces or how long it takes; `checks` holds the
 pack rules the pack switches off. `apack.checks.json` is **deleted** and its contents become
 `checks: { allow: [...] }`, keeping that shape and vocabulary so the move is mechanical and its error
 messages stay true.
@@ -925,7 +925,7 @@ nineteen it says the app never reads are now mostly inside `extensions`, which i
 key. The test it states is unchanged, and it is the reason `extensions` and `build` are two sections
 rather than one.
 
-`checks` is its own section rather than `build.checks`, because `apack validate` runs the rules without
+`checks` is its own section rather than `build.checks`, because `apack pack validate` runs the rules without
 building anything, so "build" is the wrong word for authoring policy, and `build.checks.allow` is three
 levels deep for one list.
 
@@ -936,7 +936,7 @@ was written, by the measurement above. The second is the cost of that change, no
 sidecar costs is paid in validation: `apack.build.json` was built on 2026-10-08 and deleted the same day,
 because a bare JSON file has no schema, so it needed a 60-line hand-written reader and a seven-case spec
 for parse errors, unknown keys and wrong types. In the manifest, `.strict()` Zod does all of that — a
-typo'd `opaqueDeeps` fails `apack validate` with *"apack.json \"build\": Unrecognized key(s) in object"*,
+typo'd `opaqueDeeps` fails `apack pack validate` with *"apack.json \"build\": Unrecognized key(s) in object"*,
 a better message than the hand-rolled one — and pack authors get completion from `$schema`. Folding in
 deletes code; splitting out writes it.
 
@@ -984,11 +984,11 @@ it, then leaves the full chain green. They are ordered so the largest mechanical
 - Delete `$manifestVersion`; widen the format stamp's doc
   comment to the manifest's structure. It stays at `1` (Decision 14).
 - Update default-setup and every other manifest in the Background's table: all three fixtures
-  (`external-pack`, `bundled-ui-pack`, `dependent-pack`), the `apack init` scaffold, the pack
+  (`external-pack`, `bundled-ui-pack`, `dependent-pack`), the `apack pack init` scaffold, the pack
   `tests/scripts/test-packaged-authoring-author.sh` writes, and the two in-process fixtures Background
   names (`packFixture`'s `DEFAULT_MANIFEST` and `generate-entries`' spec-support `manifest()`).
 
-**Done when:** `npm run schema:update` is clean and `apack.schema.json` is committed; `apack build`
+**Done when:** `npm run schema:update` is clean and `apack.schema.json` is committed; `apack pack build`
 for default-setup produces a `src/__generated__/ears.ts` byte-identical to the one before the change
 (diff it, and record that in the phase's commit); `partitionPolicy` appears in no manifest and in no schema, and
 `loader.ts` no longer mentions it; every reader of a manifest's entities calls `packEntities` and a
@@ -1032,7 +1032,7 @@ what is left of Decision 10 is the key `boot` has been reduced to.
 - Three sites read it, all in `generate-entries.ts`: the hooks import, the registration's `boot` member,
   and the manifest field itself. `PackRegistration.boot` is the registration's own name for the pair of
   hooks and is not a manifest key — leave it alone.
-- Update default-setup's and `external-pack`'s manifests and the `apack init` scaffold; the other two fixtures declare no `boot`.
+- Update default-setup's and `external-pack`'s manifests and the `apack pack init` scaffold; the other two fixtures declare no `boot`.
 
 **Done when:** no manifest has a `boot` key, `lifecycle` is a string in every manifest that has one,
 and `migrations` is still a root key; no pack re-applies on the next boot — `contentRevision`
@@ -1048,7 +1048,7 @@ byte-identical (`dist/*.content.json`, `dist/content.json`); `tests/content` pas
   and the three docs that stated the old rule). Keep a feature's `designation` as the string it is.
 - Add `FEATURE_LAYOUT` to `@apackdev/sdk/build` as the one definition of the feature layout, derive
   `provides`' schema enum from its keys, and route `validateFeatures`, `generate-entries`' import
-  paths, `doctor` and `apack add feature`'s scaffold through it — `add/feature.ts:203-205` keeps its
+  paths, `doctor` and `apack pack add feature`'s scaffold through it — `add/feature.ts:203-205` keeps its
   own copy of three of the five today (Decision 7).
 - Replace the per-capability keys with one `provides` list, each name resolving through
   `FEATURE_LAYOUT`, and make every path a feature does spell out relative to `src/features/<id>/`
@@ -1064,7 +1064,7 @@ byte-identical (`dist/*.content.json`, `dist/content.json`); `tests/content` pas
   whose file is missing must fail here, not much later. Resolve each name to its conventional path, or
   to the feature-relative `entry` when one is given, and reject a path that escapes the feature's
   directory.
-- Add `about` to every feature and require it in `validate.ts`; `apack add feature` prompts for it
+- Add `about` to every feature and require it in `validate.ts`; `apack pack add feature` prompts for it
   (Decision 13).
 - Rename `features.<id>.typesEntry` to `types`, relative to the feature's directory like every other
   feature path (Decision 7). Phase 1 already put `entities` on the feature; this phase makes its shape
@@ -1127,7 +1127,7 @@ fail validation with the message naming the expected form.
   regrow. Naming them beats counting them: a count passes when one key is swapped for another, and the
   order is half of what makes a flat root readable (Decision 1). This spec, not Decision 1's prose, is
   what stops the root regrowing to 24 keys.
-- Make `apack add`'s manifest writer emit the canonical order (`writeManifest`,
+- Make `apack pack add`'s manifest writer emit the canonical order (`writeManifest`,
   `apack-cli/src/commands/add/manifest.ts:7`, the one line `add feature`, `add service`,
   `add migration` and `add step` all write through), so no `add` command can produce a file the spec
   then rejects. **Preserving insertion order is not enough and the current code does no more than
@@ -1164,7 +1164,7 @@ moving keys within the manifest. **Its first bullet is done**; what is left is `
   reader has one input and no filesystem of its own.
 - **No pack has a checks file** (measured 2026-10-08: zero on disk), so nothing migrates — the escape
   hatch has never been used, which is also why this costs nothing to move.
-- `docs/public-facing/cli.md`'s `apack validate` section documents `checks` in the manifest instead of
+- `docs/public-facing/cli.md`'s `apack pack validate` section documents `checks` in the manifest instead of
   the file, and `manifest.md` gains `build` and `checks` beside the other sections.
 
 **Done when:** `apack.checks.json` appears in no source, doc, scaffold or fixture, and

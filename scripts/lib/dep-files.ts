@@ -56,7 +56,7 @@
  *
  * Revisit if a leg lands on the critical path, or if the app-dependent steps stop dominating it.
  *
- * `build-reads.ts` is the same kind of evidence for the other tool this repo can ask: `apack build`,
+ * `build-reads.ts` is the same kind of evidence for the other tool this repo can ask: `apack pack build`,
  * whose bundlers report their module graphs. The two are kept apart because everything below is shaped by
  * TypeScript — one cache directory, one suffix, a compiler version per workspace, a dep file traced to the
  * tsconfig that named it — and a bundler's record answers none of those questions.

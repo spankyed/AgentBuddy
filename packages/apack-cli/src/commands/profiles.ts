@@ -4,7 +4,7 @@
  * Two kinds of directory, listed apart because the difference is the whole point. An **environment** is
  * where an app of that channel keeps its data whatever anyone does — `production`, `beta`, `development`,
  * `test`, one per `APP_ENVS` — and nothing here removes one. A **profile** is a data dir you can throw
- * away (`app/profiles.ts`), created on demand by `apack dev --profile x` or by `new` below. The word is
+ * away (`app/profiles.ts`), created on demand by `apack open --session --profile x` or by `new` below. The word is
  * `profile` and not `instance` because an instance of an app is a running process, which is what Electron's
  * single-instance lock is about; a named, disposable data dir that leaves the app's identity alone is a
  * browser profile.
@@ -100,12 +100,12 @@ export function environmentRows(resolve: (env: AppEnv) => string = appDataDirFor
  * **A line printed once is not documentation.** A question that started an app says so, but forty minutes
  * later that has scrolled away — and on the caller this is for, an agent's stdout, it was read by nothing.
  * So the listing is where a forgotten app is found: who started it, how long it has been up, and the pid
- * that ends it. `apack dev` is the `docker ps` to a spawn's `docker run`.
+ * that ends it. `apack open --session` is the `docker ps` to a spawn's `docker run`.
  */
 const note = (profile: ListedProfile): string => {
   const session = readSession(profile.dir);
   if (session) {
-    const by = session.startedBy === 'drive' ? 'a question' : 'apack dev';
+    const by = session.startedBy === 'drive' ? 'a question' : 'apack open --session';
     return `running, started by ${by} — pid ${session.supervisorPid}`;
   }
   // An app with no session file is one that published no debug port, so nothing can attach to it — still
@@ -140,7 +140,7 @@ export function list(dirs: CliDirs, { sizes, all, resolve, bytes = dirBytes }: L
   for (const row of envs) {
     const running = row.session === undefined
       ? '  (running)'
-      : `  (running, started by ${row.session.startedBy === 'drive' ? 'a question' : 'apack dev'} — pid ${row.session.supervisorPid})`;
+      : `  (running, started by ${row.session.startedBy === 'drive' ? 'a question' : 'apack open --session'} — pid ${row.session.supervisorPid})`;
     const state = !row.exists ? '  (none yet)' : !row.hasAppData ? '  (no app data)' : row.inUse ? running : '';
     console.log(`  ${row.env.padEnd(width)}${sizes ? `  ${(row.exists ? sized(row.dir) : '—').padStart(6)}` : ''}`
       + `  ${(row.version ?? '—').padEnd(10)}  ${row.dir}${state}`);
@@ -168,14 +168,14 @@ export function list(dirs: CliDirs, { sizes, all, resolve, bytes = dirBytes }: L
 export function create(dirs: CliDirs, name: string | undefined): void {
   if (name === undefined) {
     const minted = mintProfile(dirs, false);
-    console.log(`  created ${minted.name}\n  ${minted.dir}\n\n  apack dev --profile ${minted.name}`);
+    console.log(`  created ${minted.name}\n  ${minted.dir}\n\n  apack open --session --profile ${minted.name}`);
     return;
   }
   const problem = profileNameProblem(name);
   if (problem) throw new Error(problem);
   const opened = openProfile(dirs, name);
   if (!opened.created) throw new Error(`A profile named "${name}" already exists (${opened.dir}).`);
-  console.log(`  created ${opened.name}\n  ${opened.dir}\n\n  apack dev --profile ${opened.name}`);
+  console.log(`  created ${opened.name}\n  ${opened.dir}\n\n  apack open --session --profile ${opened.name}`);
 }
 
 export function remove(dirs: CliDirs, names: string[], leaked: boolean): void {

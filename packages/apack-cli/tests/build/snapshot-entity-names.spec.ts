@@ -45,7 +45,7 @@ describe('a built pack\'s snapshot', () => {
    * Surfacing an inherited name is half of it; saying who declares it is the other half, and the half a
    * dependent of two packs sharing an ancestor depends on. The diamond spec proves the mechanism on
    * synthetic packs; this proves the real graph's snapshot carries it — written by the same
-   * `apack build` a pack author runs.
+   * `apack pack build` a pack author runs.
    */
   it.skipIf(!fixtureBuilt || !built)("attributes an inherited entity to the pack that declares it, not the one it arrived through", () => {
     const declared = Object.keys(JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages/default-setup/apack.json'), 'utf-8')).entities ?? {});

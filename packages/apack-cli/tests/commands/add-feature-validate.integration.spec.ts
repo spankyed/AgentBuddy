@@ -1,4 +1,4 @@
-// apack.json is a feature's only config: `apack add feature` writes its designation there, and `apack validate`
+// apack.json is a feature's only config: `apack pack add feature` writes its designation there, and `apack pack validate`
 // checks the manifest's `features` against the pack on disk
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -62,7 +62,7 @@ async function runValidate(): Promise<{ exitCode: number | undefined; output: st
   return { exitCode, output: log.mock.calls.map(args => args.join(' ')).join('\n') };
 }
 
-describe('apack add feature', () => {
+describe('apack pack add feature', () => {
   // Pack code names features and the host addresses them, so what the scaffold writes never holds an address
   it('writes a feature whose code names it and never holds its address', async () => {
     await addFeature(['memos'], pack);
@@ -76,7 +76,7 @@ describe('apack add feature', () => {
   // A plugin's contract declares its inbox with `PluginInbox`, so reading one takes the pack's @apackdev/sdk. Without
   // it the type collapses to `any`, which has no properties — codegen used to read that as an inbox open to nothing
   // and generate a pack whose plugin silently received none of what it declares. It stops and says so now, and
-  // `init` puts `npm install` before `apack add feature` for exactly this reason.
+  // `init` puts `npm install` before `apack pack add feature` for exactly this reason.
   it("keeps the scaffold of a pack whose dependencies aren't installed, and says npm install regenerates", async () => {
     await addFeature(['memos'], pack);
 
@@ -105,7 +105,7 @@ describe('apack add feature', () => {
   });
 });
 
-describe('apack validate', () => {
+describe('apack pack validate', () => {
   it("reports a feature's missing settings file, and accepts a designation that is not its id", async () => {
     await addFeature(['memos'], pack);
     const manifest = readManifest();

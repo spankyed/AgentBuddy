@@ -1,5 +1,5 @@
 // Where the harness finds the pack, and which tests it runs: a pack's unit tests run from anywhere with --root,
-// tests that run concurrently, or test files sharing the harness, fail naming why, and a pack scaffolded before the harness gets its setup from `apack add feature`.
+// tests that run concurrently, or test files sharing the harness, fail naming why, and a pack scaffolded before the harness gets its setup from `apack pack add feature`.
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -51,7 +51,7 @@ function dataPack(spec: string, manifest: Record<string, unknown> = {}): string 
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
   write(root, 'package.json', JSON.stringify({ name: 'data-pack', type: 'module' }));
   write(root, 'apack.json', JSON.stringify({ id: 'data-pack', name: 'Data', version: '1.0.0', ...manifest }));
-  // As `apack init` scaffolds it: one call, so this fixture stays what a real pack has
+  // As `apack pack init` scaffolds it: one call, so this fixture stays what a real pack has
   write(root, 'vitest.config.ts', `
 import { definePackTestConfig } from '@apackdev/testing/vitest';
 export default definePackTestConfig({ dataDirPrefix: 'harness-setup-' });`);
@@ -137,7 +137,7 @@ describe.concurrent('a concurrent suite', () => {
   });
 });
 
-describe('apack add feature in a pack without the unit test setup', () => {
+describe('apack pack add feature in a pack without the unit test setup', () => {
   it('adds the harness setup its system test runs on, and the test passes', async () => {
     const tmp = tempDir('apack-pre-harness-');
     // produces: the pre-harness pack the test then strips and re-adds a feature to
@@ -152,7 +152,7 @@ describe('apack add feature in a pack without the unit test setup', () => {
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
 
     // process: the report the command prints, line by line, is the assertion
-    const added = run(process.execPath, [CLI, 'add', 'feature', 'memos'], pack);
+    const added = run(process.execPath, [CLI, 'pack', 'add', 'feature', 'memos'], pack);
 
     expect(added.code, added.output).toBe(0);
     expect(added.output).toContain('+ tests/setup.ts');

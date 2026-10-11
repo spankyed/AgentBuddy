@@ -1,4 +1,4 @@
-// `apack add step|artifact|block|migration` scaffold what the host uses: flow helpers generate valid names
+// `apack pack add step|artifact|block|migration` scaffold what the host uses: flow helpers generate valid names
 // and types for a kebab-case step, and components declare the props and emits the host passes
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
@@ -59,7 +59,7 @@ afterAll(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-describe('apack add step', () => {
+describe('apack pack add step', () => {
   it('names the DSL node interface DSL<Type>Node and the form takes node/resources, emitting update-node and close', async () => {
     await addStep(['my-step'], pack);
     const dir = 'src/extensions/steps/my-step';
@@ -98,7 +98,7 @@ describe('apack add step', () => {
   });
 });
 
-describe('apack add step in a pack without steps', () => {
+describe('apack pack add step in a pack without steps', () => {
   it('declares the first step, in a manifest that names none', async () => {
     const bare = path.join(tmp, 'bare-pack');
     // A manifest with no features is the subject here, so it is written verbatim rather than varied
@@ -161,7 +161,7 @@ describe('apack add step in a pack without steps', () => {
   });
 });
 
-describe('apack add artifact and block', () => {
+describe('apack pack add artifact and block', () => {
   it('scaffolds an artifact viewer taking artifact, declared with its icon and viewer', async () => {
     await addArtifact(['chart'], pack);
     await addArtifact(['table', '--icon', 'Table2'], pack);
@@ -213,7 +213,7 @@ describe('apack add artifact and block', () => {
   });
 });
 
-describe('apack add migration', () => {
+describe('apack pack add migration', () => {
   it('declares each migration under its version line and the version it targets, which the pack entry registers and tsc accepts', async () => {
     await addMigration(['0.2.0'], pack);
     await addMigration(['--version', '0.10.1'], pack);
@@ -287,12 +287,12 @@ describe('apack add migration', () => {
 });
 
 /**
- * Everything `apack add` wrote, held to the rule `apack build` applies: a pack's specifier names the file
+ * Everything `apack pack add` wrote, held to the rule `apack pack build` applies: a pack's specifier names the file
  * that is there. This is where the scaffold's own templates are checked against real files — the repo's
  * `check:specifiers` reads them as text, where a `'./${name}'` tells it nothing about the extension the
  * substitution carries.
  */
-describe('what apack add scaffolds', () => {
+describe('what apack pack add scaffolds', () => {
   it('names its own modules by the file that is there', () => {
     expect([...packRuleProblems(pack, ['src', 'tests'])]).toEqual([]);
   });
@@ -300,10 +300,10 @@ describe('what apack add scaffolds', () => {
 
 /**
  * The apply scaffolds, which had no test reading their output before their templates became files
- * (`docs/goals/goal-one-rule-set.md`): `apack add action`, `add prompt` and `add flow` were covered only by
+ * (`docs/goals/goal-one-rule-set.md`): `apack pack add action`, `add prompt` and `add flow` were covered only by
  * whether they exited 0.
  */
-describe('apack add action, prompt and flow', () => {
+describe('apack pack add action, prompt and flow', () => {
   it('writes an action under its category, with the label and the typed services import', async () => {
     await addAction(['analyze-text'], pack);
     const action = read('src/content/actions/demo-pack/analyze-text.ts');

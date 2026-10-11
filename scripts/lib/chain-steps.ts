@@ -1058,7 +1058,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'packages/apack-host/src/replace-dir.ts'] },
   // Build the built-in pack before build:runtime reads its outputs.
   { name: 'build:default-setup', timeout: 'suite', seconds: 28, outputs: PACK_OUTPUTS,
-    // Its sources and its manifest, not its tests: `apack build` never reads those
+    // Its sources and its manifest, not its tests: `apack pack build` never reads those
     //
     // The CLI's sources reach here through `PACKAGE_BUILD_OUTPUTS`, since an edit to them makes the
     // `@apackdev/cli` build unit stale and `packages:ensure` rewrites the bundle this declares — and what the
@@ -1105,7 +1105,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // there cannot make the step a no-op — the script runs four commands per fixture (`validate`, `build`,
   // `tsc --noEmit`, `test --contract`) and only the second caches anything, so the step still validates,
   // typechecks and runs the harness specs however that hash reads. That is the whole reason, and it is the
-  // condition to re-check: were this step's work ever to become `apack build` alone, or were that skip to
+  // condition to re-check: were this step's work ever to become `apack pack build` alone, or were that skip to
   // grow to cover the typecheck or the specs, it would have the shape the pool steps had — stale for a
   // reason its inner layer cannot see, so it runs, skips everything and stamps green.
   //

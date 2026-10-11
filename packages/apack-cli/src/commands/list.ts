@@ -4,7 +4,8 @@ import { resolveAppContext } from '@apackdev/sdk/env';
 import { parseTargetEnv, envLabel } from '../utils';
 
 export async function list(args: string[]) {
-  const { env } = parseTargetEnv(args);
+  const { env, args: rest } = parseTargetEnv(args);
+  if (rest.length) throw new Error('Usage: apack pack list [-d|-b]');
   const { packsDir } = resolveAppContext({ build: env });
   const label = envLabel(env);
 

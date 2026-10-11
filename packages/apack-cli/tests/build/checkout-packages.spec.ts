@@ -1,5 +1,5 @@
 // A pack compiles and runs against the @apackdev packages' dist. When that dist belongs to a checkout it is
-// built on demand, so the commands that load it (apack test, apack dev) ask the checkout to refresh it.
+// built on demand, so the commands that load it (apack pack test, apack pack dev) ask the checkout to refresh it.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -45,7 +45,7 @@ describe('the checkout a pack\'s @apackdev packages come from', () => {
 });
 
 /**
- * Which entry points bring a checkout's packages up to date. `apack dev` rebuilds the pack on every
+ * Which entry points bring a checkout's packages up to date. `apack pack dev` rebuilds the pack on every
  * file change through `build()`, and the freshness check reads every source of all five packages — so
  * the check belongs to the command a user runs, not to the function the watch loop calls.
  */
@@ -56,7 +56,7 @@ describe('the commands that refresh a checkout before loading its packages', () 
     expect(source(file)).toContain('ensureCheckoutPackages(');
   });
 
-  it('asks once per apack build, not once per rebuild in apack dev', () => {
+  it('asks once per apack pack build, not once per rebuild in apack pack dev', () => {
     const build = source('commands/build.ts');
     // buildCommand is what the CLI dispatches; build() is what dev's watch loop calls
     const command = build.indexOf('export async function buildCommand');
@@ -67,22 +67,22 @@ describe('the commands that refresh a checkout before loading its packages', () 
     expect(build.slice(reusable)).not.toContain('ensureCheckoutPackages(');
   });
 
-  it('dispatches apack build to the command that refreshes, not to the bare build', () => {
-    expect(source('index.ts')).toContain("'build':      async () => (await import('./commands/build')).buildCommand,");
+  it('dispatches apack pack build to the command that refreshes, not to the bare build', () => {
+    expect(source('command-tree.ts')).toContain("load: async () => (await import('./commands/build')).buildCommand");
   });
 
   // npm run dev declares no packages:ensure of its own: it reaches the check by building the built-in pack
-  // with `apack build`. Nothing else holds that link, so a build:dev that stopped being an apack build
+  // with `apack pack build`. Nothing else holds that link, so a build:dev that stopped being an apack pack build
   // would drop npm run dev's only door without failing anything.
-  it('leaves npm run dev reaching the check through apack build, its only door on that path', () => {
+  it('leaves npm run dev reaching the check through apack pack build, its only door on that path', () => {
     const script = (pkg: string, name: string): string =>
       JSON.parse(fs.readFileSync(path.join(REPO_ROOT, pkg, 'package.json'), 'utf-8')).scripts[name] ?? '';
 
     const launcher = fs.readFileSync(path.join(REPO_ROOT, 'packages/dev-mode.js'), 'utf-8');
     expect(launcher).toContain("['run', 'build:dev', '-w', '@app/default-setup']");
-    expect(launcher, 'npm run dev reaches packages:ensure through apack build')
+    expect(launcher, 'npm run dev reaches packages:ensure through apack pack build')
       .not.toContain('packages:ensure');
-    expect(script('packages/default-setup', 'build:dev')).toMatch(/^apack build\b/);
+    expect(script('packages/default-setup', 'build:dev')).toMatch(/^apack pack build\b/);
   });
 });
 

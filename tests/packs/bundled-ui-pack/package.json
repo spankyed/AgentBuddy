@@ -7,9 +7,9 @@
     "#generated/*": "./src/__generated__/*"
   },
   "scripts": {
-    "build": "apack build",
-    "validate": "apack validate",
+    "build": "apack pack build",
+    "validate": "apack pack validate",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "apack test"
+    "test:e2e": "apack pack test"
   }
 }

@@ -19,16 +19,16 @@ jobs:
           node-version: 23
           cache: npm
 
-      # `prepare` runs `apack generate-entries`, so src/__generated__ exists for everything below
+      # `prepare` runs `apack pack generate-entries`, so src/__generated__ exists for everything below
       - run: npm ci
 
-      - run: npx apack validate
+      - run: npx apack pack validate
 
       - run: npm run typecheck
 
       - run: npm test
 
-      - run: npx apack build
+      - run: npx apack pack build
 
       # After the build, which is what it reads: the facade is what packs depending on this one compile
       # against, so a change to it should be visible in review rather than only at their next build

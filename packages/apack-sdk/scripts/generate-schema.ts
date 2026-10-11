@@ -9,7 +9,7 @@ const jsonSchema = zodToJsonSchema(ManifestSchema, {
 });
 
 // The schema's refinements aren't JSON Schema: state the SDK's reserved names here, so editors flag them too
-// (an entity's key equal to its value can't be expressed, and is checked by apack build)
+// (an entity's key equal to its value can't be expressed, and is checked by apack pack build)
 const properties = (jsonSchema as { properties: Record<string, Record<string, unknown>> }).properties;
 for (const [field, reserved] of [['entities', SDK_ENTITIES], ['relKinds', SDK_REL_KINDS]] as const) {
   Object.assign(properties[field], {

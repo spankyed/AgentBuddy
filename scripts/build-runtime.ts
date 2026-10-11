@@ -26,7 +26,7 @@ import { sealBuildSession } from '../build/build-metadata.ts';
  *
  * **None of the four reads a pack's sources, and that is what keeps this step's inputs its own.** No pack is
  * compiled into the app: a pack's backend is loaded at run time from the `dist/runtime/index.cjs` its own
- * `apack build` wrote, and its frontend is fetched over `pack://` from the bundle beside it. So the app's
+ * `apack pack build` wrote, and its frontend is fetched over `pack://` from the bundle beside it. So the app's
  * build reads the app's four workspaces and the built packs' `dist`, and an edit to a pack's `src` reaches
  * this step only through `build:default-setup`, which the chain orders ahead of it. A bundler config here that reached
  * into a pack's `src` again would make this step's real inputs the whole repo, which is the thing four
@@ -36,7 +36,7 @@ import { sealBuildSession } from '../build/build-metadata.ts';
  *
  * `check:tiers` scans this file's text for the ways the repo launches the app, and comments are stripped
  * while **string literals are not** — so a log line or an error message naming `playwright test`,
- * `apack test` or `_electron.launch` would fail that check for `build:runtime`. `chain-graph.spec.ts` derives
+ * `apack pack test` or `_electron.launch` would fail that check for `build:runtime`. `chain-graph.spec.ts` derives
  * a step's timeout rung from the same text, so an `npm install` in it would imply `scenario` against the
  * declared `suite`. The commands themselves live in `lib/runtime-build-legs.ts`, which says why.
  */

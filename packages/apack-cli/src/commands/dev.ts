@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { build } from './build';
-import { findPackRootOrNone, readManifest } from '../utils';
+import { findPackRoot, readManifest } from '../utils';
 import {
   debugPortArgsFor, lastAttachedAt, publishSession, readDevToolsPort, readSession, startedByFromEnv,
   type DevSession,
@@ -24,12 +24,11 @@ import { installPackFromLocal, readHostInfo } from '@apackdev/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@apackdev/host/packs/dev-server';
 
 const HELP = `
-Usage: apack dev [--build <name|path>]
+Usage: apack pack dev [--build <name|path>]
 
-Launch apack and hold it. With a pack in hand it is installed and kept in step with your
-edits: FE changes reload the window through Vite, BE changes rebuild, reinstall and reload in
-place. Run from a checkout with no pack above it, it launches the app and holds it, and that
-is all — no build, no install, no watcher and no dev server.
+Build and install this pack, then watch it: FE changes reload through Vite,
+BE changes rebuild, reinstall, and reload in place. Requires a pack directory.
+Use apack open --session to hold an app without developing a pack.
 
 A development app is launched with a debug port and publishes <dataDir>/session.json, which is
 what lets \`apack drive\` ask it questions instead of launching one of its own.
@@ -91,7 +90,7 @@ function appLaunchEnv(place: AppPlace): NodeJS.ProcessEnv {
   out.APACK_ENV = place.build;
   if (place.profile !== undefined) {
     // Set only for a profile, and deliberately: it is also what tells Electron the run was pointed at
-    // its own dir, which moves the logs inside it (`main/src/app-context.ts`). A plain `apack dev` should
+    // its own dir, which moves the logs inside it (`main/src/app-context.ts`). A plain `apack pack dev` should
     // keep writing to the platform log dir, and should keep honouring an APACK_USER_DATA_DIR the caller
     // exported, which naming one here would override.
     out.APACK_USER_DATA_DIR = place.profile;
@@ -157,9 +156,9 @@ export const IDLE_REAP_MS = 10 * 60_000;
  * Whether this supervisor closes its app when nothing attaches, and the profile is the half that decides it.
  *
  * **Both clauses matter.** `startedBy: 'drive'` alone would reap the development dir, where a `--spawn`
- * with no profile flags lands — and that one is `mayReclaim`'s: the developer's own `apack dev` takes the
+ * with no profile flags lands — and that one is `mayReclaim`'s: the developer's own `apack pack dev` takes the
  * directory back and says so, where a timer would close an app somebody may be watching. A profile is the
- * case nothing else reclaims, `apack dev --profile <name>` not being a command anyone happens to run, so
+ * case nothing else reclaims, `apack pack dev --profile <name>` not being a command anyone happens to run, so
  * without this it holds a data dir until the machine is rebooted.
  */
 export function reapsWhenIdle(session: Pick<DevSession, 'startedBy'>, place: AppPlace): boolean {
@@ -220,9 +219,13 @@ interface SessionHooks {
 }
 
 export async function dev(args: string[]) {
+  return holdSession(args, 'pack');
+}
+
+export async function holdSession(args: string[], target: 'app' | 'pack') {
   const hooks: SessionHooks = {};
   try {
-    await session(args, hooks);
+    await session(args, hooks, target);
   } catch (error) {
     // The signals have their own handlers; this is every other way a session ends, and it is the one
     // that happens while developing — a pack that fails to build used to exit through the CLI's error
@@ -232,24 +235,14 @@ export async function dev(args: string[]) {
   }
 }
 
-async function session(args: string[], hooks: SessionHooks) {
+async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pack') {
   if (args.includes('--help') || args.includes('-h')) {
     console.log(HELP);
     return;
   }
 
-  /**
-   * **The pack is optional, and that is the whole of what `dev` does without one.**
-   *
-   * A checkout with no `apack.json` above it is a first-class case rather than an error: it is how this
-   * repo drives its own app, and refusing it would leave the app most often looked at the one command that
-   * cannot hold it. With no pack there is nothing to build, install, watch or serve, so what is left is the
-   * launch, the session file and the hold — and every pack-shaped step below hangs off `pack` being there.
-   *
-   * `src/` is required only when there is something to watch: a pack without it cannot be developed, where
-   * a checkout without one is not a pack at all.
-   */
-  const root = findPackRootOrNone(process.cwd());
+  // The command path selects the subject; the current directory never turns an app session into a pack session.
+  const root = target === 'pack' ? findPackRoot(process.cwd()) : undefined;
   const pack = root === undefined ? undefined : {
     root,
     srcDir: path.join(root, 'src'),
@@ -262,12 +255,13 @@ async function session(args: string[], hooks: SessionHooks) {
 
   const { mode, withSecrets, rest } = parseProfileFlags(args);
   const flags = parseAppFlags(rest);
+  if (flags.release || flags.prebuilt) throw new Error('--release and --prebuilt belong to apack pack test.');
   // `dev` forwards nothing, so a leftover flag is a typo rather than an argument for something else —
   // where `drive` hands its own leftovers to Playwright and must not refuse them. Ignoring one silently
   // is how a removed or misspelled flag reads as having been obeyed.
-  const unknown = flags.args.filter(arg => arg.startsWith('-'));
+  const unknown = flags.args;
   if (unknown.length > 0) {
-    throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See apack dev --help.`);
+    throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See ${target === 'pack' ? 'apack pack dev' : 'apack open'} --help.`);
   }
   const app = await resolveLaunchApp({ flags, hostVersion: pack?.manifest.hostVersion ?? '*', from: pack?.root ?? process.cwd() });
   const env = appEnv(app);
@@ -382,7 +376,7 @@ async function session(args: string[], hooks: SessionHooks) {
    * **Reclaiming an app a tool started, which is what makes `--spawn` safe to point at this data dir.**
    *
    * One app per data dir, and `SingleInstanceApp` exits on the second — so without this a spawned one-shot
-   * would hold the development dir and the developer's own `apack dev` or `npm run dev` would refuse, with the
+   * would hold the development dir and the developer's own `apack pack dev` or `npm run dev` would refuse, with the
    * blame landing on the command they just ran. The rule is narrow by construction: it takes what a tool
    * started *for itself* (`startedBy: 'drive'`) and nothing else, because a person's app is not a tool's to
    * take. The pid comes from a file the process wrote about itself, which is the only kind of kill allowed
@@ -427,7 +421,7 @@ async function session(args: string[], hooks: SessionHooks) {
   if (!pack) {
     // The launch and the hold, which is all there is without a pack. Returning here is what makes every
     // step below — install, dev server, watchers, reload — a pack's rather than the command's.
-    console.log('No pack here: holding the app. Ctrl-C to close it.\n');
+    console.log('Holding the app session. Ctrl-C to close it.\n');
     await new Promise(() => {});
     return;
   }

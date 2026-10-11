@@ -11,7 +11,7 @@ const ENTITIES: Record<string, () => Promise<(args: string[], root: string) => P
 };
 
 const USAGE = `
-Usage: apack add <entity> <name> [options]
+Usage: apack pack add <entity> <name> [options]
 
 Entities:
   feature <name>     Full feature (system + plugin)
@@ -24,7 +24,7 @@ Entities:
   service <name>     Service module
   migration          Version-targeted migration
 
-Options vary by entity. Run "apack add <entity> --help" for details.
+Options vary by entity. Run "apack pack add <entity> --help" for details.
 `.trim();
 
 import { findPackRoot } from '../utils';

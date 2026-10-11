@@ -12,7 +12,7 @@
  * which it already treats as "nobody is watching" and answers with the emulated viewport.
  *
  * `playwright-core` is imported lazily and is an optional peer: a published CLI must not drag 11MB into an
- * install of someone who only runs `apack build`, and nothing but this path needs it.
+ * install of someone who only runs `apack pack build`, and nothing but this path needs it.
  */
 // **The published types come from `@playwright/test`, not from `playwright-core`.** The runtime import is
 // `playwright-core` — that is the package this needs and declares — but typing the exported surface from it

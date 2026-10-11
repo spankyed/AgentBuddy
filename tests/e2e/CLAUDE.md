@@ -77,7 +77,7 @@ DEBUG_E2E=1 npm run test:e2e                  # Electron process output to termi
 
 ## How the fixture works
 
-The test infrastructure lives in `@apackdev/testing` (source: `packages/apack-testing/src/index.ts`), and every spec imports it directly — the same line a pack author writes. A local re-export stood in front of it until it was removed: it forwarded three names and added nothing, while putting this suite one indirection away from what `apack init-tests` scaffolds.
+The test infrastructure lives in `@apackdev/testing` (source: `packages/apack-testing/src/index.ts`), and every spec imports it directly — the same line a pack author writes. A local re-export stood in front of it until it was removed: it forwarded three names and added nothing, while putting this suite one indirection away from what `apack pack init-tests` scaffolds.
 
 ### Startup lifecycle
 
@@ -120,7 +120,7 @@ Three fixtures are provided, each at a different scope:
 
 ```ts
 app.screenshot(name)             // Save a PNG where the caller said: drive/screenshots/ under
-                                 // `drive`, a pack's tests/screenshots/ under `apack test`
+                                 // `drive`, a pack's tests/screenshots/ under `apack pack test`
 app.navigate(pluginId)           // Send SELECT_PLUGIN + wait for activePlugin match + 500ms render delay
 app.getState()                   // Returns snapshot.value (e.g. { running: 'connected' })
 app.getContext()                 // Returns { activePluginId, pluginIds }
@@ -263,10 +263,10 @@ Pack developers can write and run E2E tests without the apack repo. The fixture 
 
 ```bash
 cd /path/to/my-pack
-apack init-tests          # scaffold config + sample test, add @apackdev/testing + @playwright/test
+apack pack init-tests          # scaffold config + sample test, add @apackdev/testing + @playwright/test
 npm install
-apack test                # a Beta matching the pack's hostVersion; --build <path> for a checkout
-apack test --build beta   # CI: never prompts; --build <path> for a checkout
+apack pack test                # a Beta matching the pack's hostVersion; --build <path> for a checkout
+apack pack test --build beta   # CI: never prompts; --build <path> for a checkout
 ```
 
 ### 2. From this repo (quick iteration)
@@ -285,7 +285,7 @@ PACK_DIR=/path/to/my-pack npm run test:e2e -- tests/e2e/smoke
 
 1. **Read manifest** — parses `apack.json` from `PACK_DIR` to get the pack ID and plugin IDs
 2. **Isolated data dir** — creates `$TMPDIR/apack-e2e-*` for the worker
-3. **Build**: always runs `apack build` in the pack directory (fails the run if the build fails)
+3. **Build**: always runs `apack pack build` in the pack directory (fails the run if the build fails)
 4. **Install** — installs the built pack into that data dir through the pack installer; no other packs are present
 5. **Launch Electron** — starts the app, which discovers the pack in its packs directory
 6. **Check applying** — fails if the pack's installed-packs entry has a `lastError`
@@ -314,9 +314,9 @@ The renderer exposes on `window`:
 | `PACK_DIR=/path/to/pack` | Builds the pack, installs it into the worker's isolated data dir, waits for plugins before tests run |
 | `E2E_KEEP_DATA=1` | Keep each worker's temp data dir (path is logged) |
 | `APACK_ROOT=/path/to/apack` | A built apack checkout to launch (auto-detected inside the monorepo) |
-| `APACK_APP_EXECUTABLE=/path/to/exe` | A packaged apack executable to launch (set by `apack test --build beta`); wins over `APACK_ROOT` |
-| `APACK_CLI=/path/to/apack.mjs` | The apack bin that builds `PACK_DIR` (set by `apack test`) |
-| `APACK_BUILD=beta` | Read by `apack test` (and `apack build`), not the fixture: use the newest matching apack Beta without prompting (CI) |
+| `APACK_APP_EXECUTABLE=/path/to/exe` | A packaged apack executable to launch (set by `apack pack test --build beta`); wins over `APACK_ROOT` |
+| `APACK_CLI=/path/to/apack.mjs` | The apack bin that builds `PACK_DIR` (set by `apack pack test`) |
+| `APACK_BUILD=beta` | Read by `apack pack test` (and `apack pack build`), not the fixture: use the newest matching apack Beta without prompting (CI) |
 
 ## Key events for sendEvent()
 

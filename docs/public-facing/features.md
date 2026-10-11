@@ -5,7 +5,7 @@ A **feature** is the primary unit of pack functionality. It bundles a backend sy
 ## Scaffolding
 
 ```bash
-apack add feature bookmarks --label "Bookmarks" --icon "Bookmark"
+apack pack add feature bookmarks --label "Bookmarks" --icon "Bookmark"
 ```
 
 | Flag | Default | Effect |
@@ -275,14 +275,14 @@ export default {
 
 - `visible` controls whether the plugin's sidebar tab shows by default (it shows when omitted). What the user shows or hides is the app's own state, kept by the host (`host/application`), and wins over it.
 - Feature-specific settings go under the plugin ID key.
-- A feature sets only its own slice, `plugins.<feature id>`, and `visible`. `apack build` fails on anything else (the app's `general` settings, another plugin's), and the app refuses to register such a pack.
+- A feature sets only its own slice, `plugins.<feature id>`, and `visible`. `apack pack build` fails on anything else (the app's `general` settings, another plugin's), and the app refuses to register such a pack.
 - The settings are defaults: when your pack is enabled they join the app's defaults, and what the user changes is stored over them. Disabling the pack removes its defaults; a new version's defaults apply to every key the user didn't change.
 - Read them at runtime with the app's settings service, `services.settings.forFeature('<packId>/<feature id>')`, which returns the user's values over the defaults; `setForFeature('<packId>/<feature id>', path, value)` changes one. Both take the feature's ref and throw for a bare name, naming the ref they likely meant. In a component, `useFeatureSettings(ref('<feature id>'))` from `@apackdev/sdk/fe` follows them, and `useSettingsSave()` gives the same change with whether the store stored it.
 - When a feature's settings change, however they changed (a setting, the settings replaced or reset, a pack's defaults coming or going), its system gets `FEATURE_SETTINGS_UPDATED { settings, changes }` (`changes`: what changed in each list, by its key) and its plugin `FEATURE_SETTINGS_UPDATED { settings }`. Every system and plugin receives it, like `SEND_STATE`: nothing declares it, and a feature without a system or a plugin just doesn't get that half.
 
 ## Manifest entry
 
-`apack.json` is a feature's only configuration. The entry `apack add feature` writes:
+`apack.json` is a feature's only configuration. The entry `apack pack add feature` writes:
 
 ```json
 {
@@ -312,11 +312,11 @@ Other feature fields:
 | `typesEntry` | Types module re-exported from `#generated/types`; default `src/features/<id>/be/types` |
 | `references` | Built-in packs only; ignored for external packs |
 
-A feature that fills a role other packs look up (`getDesignated('<role>')`, or `sendToSystem({ role }, event)`) sets `"designation"` to that role. A role is not a name: a feature `inbox` can play `notes`. `apack add feature bookmarks --designation bookmarks` writes it. One feature plays a role: `apack validate` reports two features of a pack claiming the same one, and the app refuses a pack claiming a role another pack plays. `apack validate` also reports a `settings`, `system.entry` or `plugin.entry` file that doesn't exist.
+A feature that fills a role other packs look up (`getDesignated('<role>')`, or `sendToSystem({ role }, event)`) sets `"designation"` to that role. A role is not a name: a feature `inbox` can play `notes`. `apack pack add feature bookmarks --designation bookmarks` writes it. One feature plays a role: `apack pack validate` reports two features of a pack claiming the same one, and the app refuses a pack claiming a role another pack plays. `apack pack validate` also reports a `settings`, `system.entry` or `plugin.entry` file that doesn't exist.
 
 ## Types dependents see
 
-`apack build` bundles the types of what a pack exposes (entity shapes, events, services, repositories) into `dist/types/pack-types.d.ts`. Packs depending on it compile against that file, so the build fails when the bundle:
+`apack pack build` bundles the types of what a pack exposes (entity shapes, events, services, repositories) into `dist/types/pack-types.d.ts`. Packs depending on it compile against that file, so the build fails when the bundle:
 
 - doesn't type-check on its own, or
 - imports a package other than `@apackdev/*`, `@apackdev/sdk`'s peer dependencies (`vue`, `xstate`, `zod`, `ai`, ...) or a Node built-in. For example, a service whose methods return a `Page` from `playwright`: a dependent doesn't have your pack's other dependencies installed, and would read those types as `any`, or

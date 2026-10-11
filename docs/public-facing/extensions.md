@@ -19,8 +19,8 @@ A step definition adds a new node type to the visual flow editor. A `StepDefinit
 ### Scaffolding
 
 ```bash
-apack add step my-step
-apack add step my-trigger --trigger   # sets kind: 'trigger' in the manifest; no trigger facet is scaffolded
+apack pack add step my-step
+apack pack add step my-trigger --trigger   # sets kind: 'trigger' in the manifest; no trigger facet is scaffolded
 ```
 
 Creates:
@@ -234,7 +234,7 @@ A step is declared in `apack.json` under `extensions.steps`, keyed by its type, 
 
 Codegen sends each facet where it is used, so no barrel keeps them in step with each other: `build` and
 `runtime` to the pack's backend registration, `fe` to its frontend one, and `build` (or `trigger`) alone to
-`src/__generated__/steps-build.ts`, which `apack build` bundles to `dist/build/steps.build.mjs` — the
+`src/__generated__/steps-build.ts`, which `apack pack build` bundles to `dist/build/steps.build.mjs` — the
 module a *dependent* pack's build loads to validate its flows with your step code. A dependency's step types
 are loaded that way too, and a type this pack and a dependency both define fails the build.
 
@@ -271,7 +271,7 @@ An artifact is a typed content item (code, image, markdown, …) shown in a thre
 ### Scaffolding
 
 ```bash
-apack add artifact chart --icon BarChart3
+apack pack add artifact chart --icon BarChart3
 ```
 
 Writes the manifest entry under `extensions.artifacts` and creates `src/extensions/artifacts/viewers/chart-artifact.vue`. A type the manifest already declares is refused.
@@ -349,8 +349,8 @@ A block is an inline UI widget inside a chat message. A `BlockDefinition` (`@apa
 ### Scaffolding
 
 ```bash
-apack add block rating                # display block
-apack add block color-picker --input  # input block
+apack pack add block rating                # display block
+apack pack add block color-picker --input  # input block
 ```
 
 Writes the manifest entry under `extensions.blocks` and creates `src/extensions/blocks/display/RatingBlock.vue` or `src/extensions/blocks/input/ColorPickerInput.vue`. The scaffolded display block declares an example `text` prop; the input block declares `label`, `disabled` and `response` and emits `submit` and `cancel`. A type the manifest already declares is refused.

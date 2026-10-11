@@ -87,7 +87,7 @@ function installTestPack() {
       registration: {
         id: '${TEST_PACK_ID}',
         features: {
-          // As apack build writes it: the machine's events and the manifest's incoming ones
+          // As apack pack build writes it: the machine's events and the manifest's incoming ones
           hello: { system: { machine: helloMachine, receives: ['CLIENT_CONNECTED', 'HELLO_PING'] }, plugin: { receives: [] } },
           dataOnly: { plugin: { receives: [] } },
         },

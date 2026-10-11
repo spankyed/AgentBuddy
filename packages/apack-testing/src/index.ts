@@ -78,7 +78,7 @@ function packagedApp(executable: string): AppLaunch {
 function resolveApp(options: CreateTestOptions): AppLaunch {
   if (options.appExecutable) return packagedApp(options.appExecutable);
   if (options.appRoot) return sourceApp(options.appRoot);
-  // Set by `apack test` for a downloaded app build
+  // Set by `apack pack test` for a downloaded app build
   if (process.env.APACK_APP_EXECUTABLE) return packagedApp(process.env.APACK_APP_EXECUTABLE);
   if (process.env.APACK_ROOT) return sourceApp(process.env.APACK_ROOT);
 
@@ -92,7 +92,7 @@ function resolveApp(options: CreateTestOptions): AppLaunch {
   }
 
   throw new Error(
-    'Could not find an apack app to test against. Run the tests with `apack test`, which ' +
+    'Could not find an apack app to test against. Run the tests with `apack pack test`, which ' +
     'resolves one (--build <path>, --build beta, or the apack checkout behind your pack), or set\n' +
     'APACK_ROOT to a built apack checkout.',
   );
@@ -122,7 +122,7 @@ function resolveReportDir(): string {
 
 /** The apack CLI bin that builds the pack under test. */
 function resolveApackBin(app: AppLaunch, packDir: string): string {
-  // `apack test` passes itself, so the build uses the same CLI as the test run
+  // `apack pack test` passes itself, so the build uses the same CLI as the test run
   if (process.env.APACK_CLI) return process.env.APACK_CLI;
   const bases = [path.join(packDir, 'package.json'), ...(app.kind === 'source' ? [path.join(app.root, 'package.json')] : [])];
   for (const base of bases) {
@@ -130,7 +130,7 @@ function resolveApackBin(app: AppLaunch, packDir: string): string {
       return path.join(path.dirname(createRequire(base).resolve('@apackdev/cli/package.json')), 'bin', 'apack.mjs');
     } catch {}
   }
-  throw new Error('Could not find the apack CLI to build the pack. Install it in the pack (npm i -D @apackdev/cli) or run the tests with `apack test`.');
+  throw new Error('Could not find the apack CLI to build the pack. Install it in the pack (npm i -D @apackdev/cli) or run the tests with `apack pack test`.');
 }
 
 /** The newest thing under `dir`, or 0 when there is nothing there. */
@@ -503,23 +503,23 @@ export function createTest(options: CreateTestOptions = {}) {
           const archive = process.env.PACK_ARCHIVE ? path.resolve(process.env.PACK_ARCHIVE) : undefined;
           if (archive) assertArchiveIsCurrent(archive, packDir);
           if (!archive && process.env.APACK_PACK_PREBUILT) {
-            // The caller built it in an earlier step (`apack test --prebuilt`), so this installs that build.
+            // The caller built it in an earlier step (`apack pack test --prebuilt`), so this installs that build.
             // **Because rebuilding it here is the expensive half of the step**: with two fixture packs rebuilt
             // per run, dropping the rebuild took `test:external-pack:app` from 1.3m to 4.4s. It also stopped
             // the step rebuilding a tree it declares as an input, which made each pack look unbuilt for the
             // ~20s the rebuild took — a race this suite lost under load rather than a hypothetical, and one
-            // `apack build` no longer creates now that it stages its output and renames it into place.
+            // `apack pack build` no longer creates now that it stages its output and renames it into place.
             //
             // What the rebuild bought is checked instead of dropped: a build older than the sources it came
             // from fails here, which is the whole of "a stale build tested silently is worse than no test".
             const stale = staleBuildOutput(packDir);
-            if (stale) throw new Error(`Pack ${manifest.id} was built before ${stale} changed. Build it (apack build) or drop --prebuilt.`);
+            if (stale) throw new Error(`Pack ${manifest.id} was built before ${stale} changed. Build it (apack pack build) or drop --prebuilt.`);
           } else if (!archive) {
             // Always rebuild: installing an existing dist would silently test stale code
             const apackBin = resolveApackBin(appLaunch, packDir);
             // A release run tests what it ships: without this the rebuild below replaces the release
             // build with a development one, and the archive is cut from that.
-            const buildArgs = process.env.APACK_PACK_RELEASE ? ['build', '--release'] : ['build'];
+            const buildArgs = process.env.APACK_PACK_RELEASE ? ['pack', 'build', '--release'] : ['pack', 'build'];
             console.log(`[pack] Building ${manifest.id} from ${packDir}${process.env.APACK_PACK_RELEASE ? ' (release)' : ''}...`);
             try {
               execFileSync(process.execPath, [apackBin, ...buildArgs], { cwd: packDir, stdio: 'pipe' });
@@ -690,7 +690,7 @@ export function createTest(options: CreateTestOptions = {}) {
   return { test, expect: base.expect };
 }
 
-// Direct exports — the app comes from `apack test` (APACK_APP_EXECUTABLE / APACK_ROOT) or the enclosing monorepo
+// Direct exports — the app comes from `apack pack test` (APACK_APP_EXECUTABLE / APACK_ROOT) or the enclosing monorepo
 const _default = createTest();
 export const test = _default.test;
 

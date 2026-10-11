@@ -1,6 +1,8 @@
 # CLI Reference
 
-The `apack` CLI manages the full pack lifecycle: scaffolding, code generation, building, validation, testing, releasing and installation. It also reads and repairs the app's database (`apack db`).
+The `apack` CLI manages the desktop app and packs. App operations are root commands; pack operations live under `apack pack`. Bare `apack pack` displays help.
+
+Pack operations cover scaffolding, code generation, building, validation, testing, releasing and installation. It also reads and repairs the app's database (`apack db`).
 
 ## Installing
 
@@ -14,39 +16,39 @@ Packs pin `@apackdev/cli` in `devDependencies`. Any `apack` run inside a pack ha
 
 ### Scaffolding
 
-#### `apack init [name]`
+#### `apack pack init [name]`
 
 Create a new pack from scratch. `name` is the pack id: lowercase letters, digits and hyphens (prompted for when omitted). The directory must not exist.
 
 ```bash
-apack init my-pack
+apack pack init my-pack
 ```
 
-Creates no feature (add one with `apack add feature`). It writes:
+Creates no feature (add one with `apack pack add feature`). It writes:
 
-- `apack.json`: one entity type named after the pack, empty `features`, `dependencies` and `permissions`, and `content.sources` with `actions`, `flows` and an `examples` entry using the `examples` content format (`markdown-tree`). No `extensions` section: `apack add step|artifact|block` each declare their own entry under it
+- `apack.json`: one entity type named after the pack, empty `features`, `dependencies` and `permissions`, and `content.sources` with `actions`, `flows` and an `examples` entry using the `examples` content format (`markdown-tree`). No `extensions` section: `apack pack add step|artifact|block` each declare their own entry under it
 - `package.json` (depends on `@apackdev/sdk`; pins `@apackdev/cli`, `@apackdev/testing`, `vitest`, `typescript`), `tsconfig.json`, `.gitignore`, `src/env.d.ts`
-- `.github/workflows/release.yml`: publishes the GitHub release when `apack release` pushes a `v*` tag
+- `.github/workflows/release.yml`: publishes the GitHub release when `apack pack release` pushes a `v*` tag
 - `src/content/actions/`, `src/content/flows/`, `src/content/examples/hello.md`
 - `vitest.config.ts`, `tests/setup.ts` (the `@apackdev/testing/harness` setup) and `tests/<name>.spec.ts`
 
 Then runs `generate` and `generate-entries`.
 
-#### `apack add <entity> <name> [options]`
+#### `apack pack add <entity> <name> [options]`
 
 Add an entity to an existing pack. Run from inside a pack directory. Names other than a feature's are kebab-case (`^[a-z][a-z0-9-]*$`). Existing files are never overwritten.
 
 | Entity | Command | What it creates |
 |---|---|---|
-| Feature | `apack add feature <name> [--label <Label>] [--icon <Icon>] [--designation <role>]` | See below |
-| Step | `apack add step <type> [--trigger]` | `src/extensions/steps/<type>/{build.ts,fe.ts,types.ts,form.vue}` (`types.ts` declares `DSL<Type>Node` and `<Type>Node`); with `--trigger`, `trigger.ts` in place of `build.ts`, holding a `TriggerFacet` rather than a `StepBuildFacet`. Declares one `extensions.steps.<type>` entry naming each facet: its `node` (the label and field defaults both the backend and the canvas read), its `build` or `trigger`, and its `fe` |
-| Artifact | `apack add artifact <type> [--icon <Icon>]` | `src/extensions/artifacts/viewers/<type>-artifact.vue`; when the manifest declares `artifacts`, adds `{ type, fe: { icon } }` to that register file and the viewer to its `-fe.ts` `componentMap` |
-| Block | `apack add block <type> [--input]` | `src/extensions/blocks/display/<Type>Block.vue` (or `input/<Type>Input.vue`); updates the `blocks` register file and its `-fe.ts` when the manifest declares `blocks` |
-| Action | `apack add action <name> [--category <cat>]` | `src/content/actions/<category>/<name>.ts` (category defaults to the pack id) |
-| Prompt | `apack add prompt <name>` | `src/content/prompts/<name>.ts` |
-| Flow | `apack add flow <name>` | `src/content/flows/<name>.ts`. Needs a dependency that provides flow steps (e.g. `default-setup`) |
-| Service | `apack add service <name> [--feature <feature>]` | `src/extensions/services/<name>.ts` in `extensions.services`, or `src/features/<feature>/be/services/<name>.ts` in that feature's `services`. The key is the camelCased name, the value `path#<camelName>Service` |
-| Migration | `apack add migration [version] [--version <ver>]` | `src/migrations/<version>.ts` exporting a `PackMigration`, added to `src/migrations/index.ts`; sets `migrations` if unset. Version defaults to the manifest's |
+| Feature | `apack pack add feature <name> [--label <Label>] [--icon <Icon>] [--designation <role>]` | See below |
+| Step | `apack pack add step <type> [--trigger]` | `src/extensions/steps/<type>/{build.ts,fe.ts,types.ts,form.vue}` (`types.ts` declares `DSL<Type>Node` and `<Type>Node`); with `--trigger`, `trigger.ts` in place of `build.ts`, holding a `TriggerFacet` rather than a `StepBuildFacet`. Declares one `extensions.steps.<type>` entry naming each facet: its `node` (the label and field defaults both the backend and the canvas read), its `build` or `trigger`, and its `fe` |
+| Artifact | `apack pack add artifact <type> [--icon <Icon>]` | `src/extensions/artifacts/viewers/<type>-artifact.vue`; when the manifest declares `artifacts`, adds `{ type, fe: { icon } }` to that register file and the viewer to its `-fe.ts` `componentMap` |
+| Block | `apack pack add block <type> [--input]` | `src/extensions/blocks/display/<Type>Block.vue` (or `input/<Type>Input.vue`); updates the `blocks` register file and its `-fe.ts` when the manifest declares `blocks` |
+| Action | `apack pack add action <name> [--category <cat>]` | `src/content/actions/<category>/<name>.ts` (category defaults to the pack id) |
+| Prompt | `apack pack add prompt <name>` | `src/content/prompts/<name>.ts` |
+| Flow | `apack pack add flow <name>` | `src/content/flows/<name>.ts`. Needs a dependency that provides flow steps (e.g. `default-setup`) |
+| Service | `apack pack add service <name> [--feature <feature>]` | `src/extensions/services/<name>.ts` in `extensions.services`, or `src/features/<feature>/be/services/<name>.ts` in that feature's `services`. The key is the camelCased name, the value `path#<camelName>Service` |
+| Migration | `apack pack add migration [version] [--version <ver>]` | `src/migrations/<version>.ts` exporting a `PackMigration`, added to `src/migrations/index.ts`; sets `migrations` if unset. Version defaults to the manifest's |
 
 `add feature`, `add service`, `add step`, `add artifact` and `add block` each declare what they add in `apack.json` and then run `generate-entries`, because the manifest entry is the whole declaration and codegen is what carries it into the pack's entries — there is no barrel to edit. `add migration` declares its own entry too. `add action`, `add prompt` and `add flow` only write files, their content being found by the directory `content.sources` already names. In a pack whose dependencies aren't installed yet, `generate-entries` can't read a system's events through `@apackdev/sdk`: the files and `apack.json` are still written, and `npm install` regenerates the entries (the pack's `prepare` script).
 
@@ -61,11 +63,11 @@ and adds a `features[]` entry with `settings`, `system.entry`, `plugin` (`entry`
 
 ### Code generation
 
-#### `apack generate-entries`
+#### `apack pack generate-entries`
 
 Read `apack.json` and generate all files in `src/__generated__/`. Uses input hashing to skip when the manifest and template haven't changed. Pass `--force` to regenerate unconditionally.
 
-#### `apack fetch-deps`
+#### `apack pack fetch-deps`
 
 Resolve every dependency and cache its snapshot, build code and backend runtime in `.apack/deps/<id>/`. Resolution order:
 
@@ -75,11 +77,11 @@ Resolve every dependency and cache its snapshot, build code and backend runtime 
 4. Installed apack apps' built-in packs (production, beta, development, test data dirs)
 5. GitHub releases, for `github:owner/repo` values (the `<id>-<version>.tgz` asset and its `.sha256`)
 
-Sources 2–5 must satisfy the declared range, and every source must carry a snapshot in the format this CLI reads; a build in another format is passed over, and reported if nothing else resolves. `apack build` resolves the same way but uses the `.apack/deps` cache, while it satisfies the range, before going to GitHub. See [Manifest Reference — Dependencies](manifest.md#dependencies) for the value formats.
+Sources 2–5 must satisfy the declared range, and every source must carry a snapshot in the format this CLI reads; a build in another format is passed over, and reported if nothing else resolves. `apack pack build` resolves the same way but uses the `.apack/deps` cache, while it satisfies the range, before going to GitHub. See [Manifest Reference — Dependencies](manifest.md#dependencies) for the value formats.
 
 ### Building
 
-#### `apack build [--skip-generate] [--skip-fe] [--release]`
+#### `apack pack build [--skip-generate] [--skip-fe] [--release]`
 
 External packs build into `dist/` in the pack layout:
 
@@ -104,7 +106,7 @@ Steps:
 4. Checks each feature's `settings` file exists and sets only `plugins.<id>` and `visible`
 5. Resolves every dependency (fails if one can't be), and warns when `src/__generated__` holds a dependency's types from a different version than the one the build resolved
 6. Compiles `content.sources` into `runtime/content/`, validating flows against the dependencies' step build code
-7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@apackdev/*` packages, `@apackdev/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`. Warns, without failing, when a committed `etc/pack-types.api.md` no longer matches what it bundled (`apack facade-report`)
+7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@apackdev/*` packages, `@apackdev/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`. Warns, without failing, when a committed `etc/pack-types.api.md` no longer matches what it bundled (`apack pack facade-report`)
 8. Writes `types/snapshot.json`, and notes entity types with no `entityShapes` entry
 9. Bundles `steps.build`, the content runtime and any content compilers into `build/`. The content runtime is then loaded in a fresh Node process with only `@apackdev/sdk`, as a dependent's tests load it; it fails if repositories or content writers need native modules or `@apackdev/sdk`'s optional peers
 10. Bundles the backend runtime into `runtime/index.cjs`
@@ -115,13 +117,13 @@ Bundle and gate failures are all reported, and the command exits with code 1. `-
 
 A build also writes `.apack/reads.json`: the files each bundling phase read, as esbuild, Rollup and Vite report them, keyed by phase and relative to the pack. It is the build's own record of its inputs — what a build system calls a dep file — for a cache or a CI check that wants to know whether what it declared covers what the build touched; the build never reads it back, and a phase that didn't run is absent rather than empty. `APACK_NO_BUILD_READS=1` turns it off, for a read-only tree.
 
-A build resolves the pack's `@apackdev` packages to the `dist` each published package ships — the one layout a pack ever has, whether the packages came from the registry or from a link to an apack checkout. There is nothing to configure, and a pack's own configs set no resolution conditions. `apack test` and `apack dev` resolve the same way, so a pack's tests run against what its build compiled; against a checkout they first bring that `dist` up to date with the checkout's sources.
+A build resolves the pack's `@apackdev` packages to the `dist` each published package ships — the one layout a pack ever has, whether the packages came from the registry or from a link to an apack checkout. There is nothing to configure, and a pack's own configs set no resolution conditions. `apack pack test` and `apack pack dev` resolve the same way, so a pack's tests run against what its build compiled; against a checkout they first bring that `dist` up to date with the checkout's sources.
 
-#### `apack pack [--out <dir>]`
+#### `apack pack archive [--out <dir>]`
 
-Stage the built `dist/` into a verified pack (`integrity.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `apack build` first (`--release` for publishable output). Refuses built-in packs and invalid manifests.
+Stage the built `dist/` into a verified pack (`integrity.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `apack pack build` first (`--release` for publishable output). Refuses built-in packs and invalid manifests.
 
-#### `apack dev`
+#### `apack pack dev`
 
 Launch apack with your pack installed and keep it in step with your edits.
 
@@ -129,7 +131,7 @@ It picks an app the way you tell it to — `--build <path>` for a local apack ch
 
 Deriving the checkout is the right pairing rather than a convenience: a pack whose `@apackdev/*` resolve into a checkout is *compiled against that checkout's packages*, so running it inside a released Beta would pair source-built pack code with a released host. If that checkout is not built, `dev` says so and names `npm run build` instead of quietly using a Beta you were not built against.
 
-`apack test` deliberately derives nothing — it pins from your `hostVersion` — so a test run means the same thing on a fresh machine as on one you have been developing on.
+`apack pack test` deliberately derives nothing — it pins from your `hostVersion` — so a test run means the same thing on a fresh machine as on one you have been developing on.
 
 The environment follows the app: a checkout runs as `development`, and a packaged Beta runs as `beta`, because a packaged build stamps its own channel. Neither touches production data.
 
@@ -147,7 +149,7 @@ A profile is a data dir and nothing else: the environment, the app's identity an
 
 An app already running on that data dir is used as it is; otherwise `dev` starts one, and closing `dev` closes the app it started. It then builds, installs the pack into that app's data dir, and:
 
-- serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, recording its port in `pack-dev-servers/<id>.json` in the app's data dir so the app's `pack://` requests go to it. The marker sits outside the installed pack, which stays exactly the verified files, and is removed when `apack dev` exits
+- serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, recording its port in `pack-dev-servers/<id>.json` in the app's data dir so the app's `pack://` requests go to it. The marker sits outside the installed pack, which stays exactly the verified files, and is removed when `apack pack dev` exits
 - on `apack.json` changes, regenerates `src/__generated__/`
 - on `.ts` changes under `src/`, rebuilds, reinstalls and asks the running app to reload the pack's backend
 
@@ -159,7 +161,7 @@ Launch apack and drive it from a script: navigate, send events, read state, take
 
 **This is mainly for an agent.** It is how a coding agent debugs and develops against the app it is changing — open the thing it just built, click through it, read the state back, screenshot it, and see for itself whether the change worked. A person can use it the same way, and the app's windows are shown so you can watch, but the reason it exists is that an agent has no other way to look at a running app.
 
-**It is not testing, and nothing treats it as testing.** A driving script asserts nothing, nothing gates on it, and no test runner collects it. Scripts live in `drive/`, which `apack drive` creates the first time you run it, and which sits outside every test glob by construction rather than by exclusion. `apack test` never sees it.
+**It is not testing, and nothing treats it as testing.** A driving script asserts nothing, nothing gates on it, and no test runner collects it. Scripts live in `drive/`, which `apack drive` creates the first time you run it, and which sits outside every test glob by construction rather than by exclusion. `apack pack test` never sees it.
 
 ```ts
 // drive/notes.ts
@@ -177,11 +179,11 @@ The import is `drive`, not `test`: the same runner under a name that says what t
 ##### One question, many times
 
 A driving script is a closed program. It runs, it ends, and the next question costs another edit and
-another app launch. So a question is asked of the app `apack dev` is already holding, over the debug port
+another app launch. So a question is asked of the app `apack pack dev` is already holding, over the debug port
 that app published — one process per question, no session to stand up and nothing to tear down.
 
 ```bash
-apack dev                                   # one terminal: holds the app
+apack pack dev                                   # one terminal: holds the app
 apack drive --state                         # another: 0.9s
 apack drive --eval 'return window.appVersion'
 apack drive --query 'return qx(EARS.Entity.Note).count()'
@@ -296,16 +298,14 @@ and the exit code is the status. It runs headless, since nothing is watching a s
 `--eval` takes a function **body**, not an expression, so `return` is required and a body without one
 answers no value at all.
 
-**With no `apack.json` above it, it drives the app of the apack checkout it is in** rather than a
-pack: nothing is built or installed, and the app is that checkout's — which is the same rule as for a
-pack, since the checkout behind "no pack here" is the one you are standing in. Naming `--build` or
-`--build beta` still overrides it. That is the mode the
-apack repo's own `npm run drive` scripts use, so they are calls to this command rather than a second
-implementation of it.
+**`apack drive` always drives the app itself**, even inside a pack directory. Script runs
+require an apack checkout; questions can attach from any directory. Use `apack pack drive`
+for pack scripts: it requires a pack and installs it into the isolated app used by the script.
+Both commands share the same runner and attachment behavior.
 
-It takes the same app and profile flags as `apack dev`, and **the two halves meet an app differently**, which the table below sets out in full:
+It takes the same app and profile flags as `apack pack dev`, and **the two halves meet an app differently**, which the table below sets out in full:
 
-- **A question** joins the app `apack dev` or `npm run dev` is holding, over the debug port in that app's session file. It asks of the development data dir unless `--profile <name>` names another, because that is where the app you are working in is.
+- **A question** joins the app `apack pack dev` or `npm run dev` is holding, over the debug port in that app's session file. It asks of the development data dir unless `--profile <name>` names another, because that is where the app you are working in is.
 - **A script** launches its own app and shows its windows, in a fresh data dir thrown away afterwards, so a driving session starts clean and leaves nothing and a script's result does not depend on whatever plugin the last one left open. `--profile <name>` is how a session keeps its state for the next one.
 
 Electron allows one app per data dir, which is what makes a question *join* rather than compete — and why a script, which wants an app of its own, gets a dir of its own with it. If a person wants to watch what a script is doing they watch its window; a question is headless, since nothing is watching one question.
@@ -314,11 +314,11 @@ Electron allows one app per data dir, which is what makes a question *join* rath
 
 | What you run | The app it uses | When it closes |
 |---|---|---|
-| `apack dev`, `npm run dev` | starts its own | when you stop the command |
+| `apack pack dev`, `npm run dev` | starts its own | when you stop the command |
 | `apack drive --eval` (and the other one-shots) | a live one; **fails if there is none** | it was not yours to close |
 | the same, with `--spawn` | a live one, else it starts one | **it stays for the next question** — and, on a profile, closes itself after 10 minutes with nothing attached |
 | `apack drive <script>` | always its own | when the script finishes |
-| `apack test` | always its own, isolated | when the run finishes |
+| `apack pack test` | always its own, isolated | when the run finishes |
 
 **A question keeps the app so the next question is cheap; a script closes it so its result does not depend
 on what the last one left behind; and a question never starts one unless you asked.** That is the whole
@@ -339,7 +339,7 @@ Only one app can run per data dir, which is why `drive` joins yours rather than 
 worth retrying with `--spawn` and a failed verb is not — and neither puts anything on stdout, so a pipe
 never receives half an answer.
 
-A run that **started** an app says so on stderr and names the two ways to end it: `apack dev`, which takes
+A run that **started** an app says so on stderr and names the two ways to end it: `apack pack dev`, which takes
 the directory back, or the `supervisorPid` above. An attach that changed nothing says nothing, because the
 fields already said it.
 
@@ -347,7 +347,7 @@ fields already said it.
 two cases have different answers:
 
 - **On your development data dir** — a `--spawn` with no profile flags — the app stays until you take the
-  directory back, which `apack dev` and `npm run dev` do for you: they close the one a question started,
+  directory back, which `apack pack dev` and `npm run dev` do for you: they close the one a question started,
   say so, and start yours. So there is nothing to remember, and no timer closes an app you may be watching.
 - **On a profile** — `--profile <name>` — nothing reclaims it that way, so the app closes itself after **10
   minutes** with no question attached. Each question resets that, so a session you are working in keeps
@@ -359,13 +359,13 @@ the answer when a terminal has been scrolled away and you want to know what is s
 
 ### Validation
 
-#### `apack validate`
+#### `apack pack validate`
 
 Checks:
 - Manifest structure validation
 - Each `features[]` entry against the pack: its `settings`, `system.entry` and `plugin.entry` files exist, and no two features claim the same `designation`
 - Dependency resolution (a warning when one can't be resolved)
-- **What your pack's code may say** — the same rules `apack build` refuses on, reported here without building:
+- **What your pack's code may say** — the same rules `apack pack build` refuses on, reported here without building:
 
 | Rule | What it refuses | Switchable? |
 |---|---|---|
@@ -396,19 +396,20 @@ the next app version may rename — so there is nothing to allow, and naming one
 
 Exits with code 1 on errors.
 
-#### `apack doctor`
+#### `apack pack doctor`
 
-Health checks with pass/warn/fail output:
+Health checks with pass/warn/fail output. Failures exit with code 1; warnings alone succeed.
+
 - `apack.json` exists and parses
 - `id` and `hostVersion` are set
 - `src/__generated__/` exists (warn)
 - Each feature's `system.entry` and `plugin.entry` exist
 - Each facet path an `extensions.steps` entry names exists (its `node`, `build` or `trigger`, `runtime.handler` and `fe`)
 
-#### `apack facade-report [--update]`
+#### `apack pack facade-report [--update]`
 
 Reports your pack's **facade types** — what packs depending on yours compile against, the same bundle
-`apack build` writes to `dist/types/pack-types.d.ts` — as a reviewed file at `etc/pack-types.api.md`.
+`apack pack build` writes to `dist/types/pack-types.d.ts` — as a reviewed file at `etc/pack-types.api.md`.
 
 **It needs no build.** It regenerates `src/__generated__/` and bundles the facade itself, so the report is
 held against the facade your sources describe now; a `dist` left by an older build is never its subject.
@@ -416,7 +417,7 @@ Without `--update` it fails, printing a diff, when the committed report differs;
 the report. Commit the result: the point is that a change to what dependents can see is visible in review
 rather than buried in a generated bundle.
 
-`apack build` warns when your committed report has fallen behind the bundle it just produced. The command
+`apack pack build` warns when your committed report has fallen behind the bundle it just produced. The command
 above is what fails, which is why a pack's own CI runs it.
 
 The report is normalised so it moves only when the facade does — imports first and sorted, declarations in
@@ -424,17 +425,17 @@ name order, literal unions sorted, and the pack's own path shortened to `.`. Tha
 for a reason worth knowing: TypeScript prints an inferred union's members in the order it created the member
 types, and that order varies between builds, so an unnormalised report would differ from itself.
 
-#### `apack info`
+#### `apack pack info`
 
 Print a summary of the current pack: id, version, host version, feature count, step count, pack service count, action/prompt/flow content file counts, dependency count, whether `dist/` exists, and the pack root.
 
 ### Testing
 
-#### `apack init-tests`
+#### `apack pack init-tests`
 
 Scaffold Playwright E2E tests in the pack root: `playwright.config.ts` (tests in `tests/e2e`), `tests/e2e/smoke.spec.ts` (using the first feature with a plugin), `.gitignore` entries for `tests/screenshots/` and `tests/results/`, and `@apackdev/testing` and `@playwright/test` devDependencies. Existing files are kept.
 
-#### `apack test [--build <name|path>] [--prebuilt] [playwright args...]`
+#### `apack pack test [--build <name|path>] [--prebuilt] [playwright args...]`
 
 Run the pack's Playwright tests in apack. Other arguments go to `playwright test`. The app is, in order:
 
@@ -445,10 +446,10 @@ Run the pack's Playwright tests in apack. Other arguments go to `playwright test
 
 A Beta build is **downloaded once and then reused**: whenever one you already have satisfies the pack's
 `hostVersion`, that one runs — so this works offline and asks GitHub nothing. The newest is fetched only when
-none of them fits. `apack clean --apps` lists what has been downloaded, with sizes, and removes all but the
+none of them fits. `apack cache clean` lists what has been downloaded, with sizes, and removes all but the
 newest; `--all` removes that one too, which is how you move to a newer Beta.
 
-**`apack test` never reads the app you saved and never asks**, so a test run means the same thing on a fresh machine as on one you have been developing on. Holding that preference is `apack dev`'s job. The fixture builds the pack with the same CLI and installs it into a fresh data dir for each worker, so a run leaves nothing behind either.
+**`apack pack test` never reads the app you saved and never asks**, so a test run means the same thing on a fresh machine as on one you have been developing on. Holding that preference is `apack pack dev`'s job. The fixture builds the pack with the same CLI and installs it into a fresh data dir for each worker, so a run leaves nothing behind either.
 
 `--prebuilt` installs the build already in `dist/` instead of making a new one, for a pipeline that built the
 pack in an earlier step. The build is still held to being no older than the pack's sources and `apack.json`,
@@ -459,18 +460,18 @@ reading that directory meanwhile, sees a pack that is not built.
 
 ### Distribution
 
-#### `apack release [patch|minor|major] [--beta] [--dry-run] [--local] [--skip-tests] [--skip-e2e]`
+#### `apack pack release [patch|minor|major] [--beta] [--dry-run] [--local] [--skip-tests] [--skip-e2e]`
 
 Cut a release (default `patch`):
 
 1. Preflight: valid manifest with `hostVersion`, dependencies resolve, a clean git tree on the default branch, not behind `origin`, and the tag not already on `origin`
 2. Bump `apack.json` and `package.json`. `--beta` follows the app's cycle: `1.2.3` → `1.2.4-beta.0` → `1.2.4-beta.1` → `1.2.4`
-3. `apack build --release`, `tsc --noEmit`, the `test` script (skip with `--skip-tests`), and `apack test` when `playwright.config.ts` exists (skip with `--skip-e2e`)
+3. `apack pack build --release`, `tsc --noEmit`, the `test` script (skip with `--skip-tests`), and `apack pack test` when `playwright.config.ts` exists (skip with `--skip-e2e`)
 4. Commit, pack into `.apack/release/`, tag `v<version>` and push
 
 The scaffolded `.github/workflows/release.yml` publishes the GitHub release from the tag. `--local` publishes from this machine instead; it needs `GITHUB_TOKEN` or `GH_TOKEN` and refuses when the workflow exists. `--dry-run` edits no files, runs no git operations and publishes nothing: it builds and verifies the next version's pack under `.apack/release/`.
 
-#### `apack release publish [--dir <dir>] [--dry-run]`
+#### `apack pack release publish [--dir <dir>] [--dry-run]`
 
 Verify the pack in `<dir>` (default `.apack/release`) and create the GitHub release `v<version>` (a prerelease for prerelease versions), uploading `<id>-<version>.tgz`, `.sha256` and `.integrity.json`. The release workflow runs it. Needs `GITHUB_TOKEN` (or `GH_TOKEN`), and `GITHUB_REPOSITORY` or a GitHub `origin` remote.
 
@@ -491,23 +492,40 @@ apack pack install ../my-pack
 apack pack install user/my-pack
 ```
 
-A GitHub release needs a `.tgz` asset and the `.sha256` asset published beside it (`apack release` writes both); a release without one is refused, since nothing would say the download is that release. A URL install is unverified, and says so. The pack is verified before it's placed, and `hostVersion` is checked against the version the app recorded in that data dir. A source directory must be built: one with neither a `integrity.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` is refused, with a note to run `apack build` first. Restart the app after installing.
+A GitHub release needs a `.tgz` asset and the `.sha256` asset published beside it (`apack pack release` writes both); a release without one is refused, since nothing would say the download is that release. A URL install is unverified, and says so. The pack is verified before it's placed, and `hostVersion` is checked against the version the app recorded in that data dir. A source directory must be built: one with neither a `integrity.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` is refused, with a note to run `apack pack build` first. Restart the app after installing.
 
 #### `apack pack uninstall <id> [-d|--dev] [-b|--beta]`
 
 Remove an installed pack by ID. Restart the app after uninstalling.
 
-#### `apack list [-d|--dev] [-b|--beta]`
+#### `apack pack list [-d|--dev] [-b|--beta]`
 
 Show installed packs.
 
-`pack install`, `pack uninstall` and `list` read the production build's data by default. `--build <name>` says which — `production`, `beta`, `development` or `test` — and `-d`, `-b` and `--production` are shorthands for the first three. They name a **build**, never a profile: a build keeps its own default storage, and `--profile` is the one override.
+`pack install`, `pack uninstall` and `pack list` read the production build's data by default. `--build <name>` says which — `production`, `beta`, `development` or `test` — and `-d`, `-b` and `--production` are shorthands for the first three. They name a **build**, never a profile: a build keeps its own default storage, and `--profile` is the one override.
 
 ### App
 
 #### `apack open [-b]`
 
-Open the installed apack app, or bring it to the front if it's running. Pass `-b` for apack Beta. macOS only.
+Open the installed production app, or bring it to the front. `-b` selects beta. macOS only.
+The current directory never changes this into a pack operation.
+
+#### `apack open --session [--build <name|path>] [profile flags]`
+
+Launch or attach to a development app and hold the session until Ctrl-C. It never builds,
+installs, or watches a pack. `--build` selects a checkout by path or beta; without it, a
+linked checkout is preferred, otherwise the latest beta is used. Profile flags are the same
+as `apack pack dev`. Development sessions publish the debug connection used by `apack drive`.
+`npm run open` uses this command; `npm run dev` runs the app source watchers.
+
+#### `apack doctor [-b]`
+
+Inspect the installed production app (`-b` selects beta), its bundle identity, version,
+executable, data directory permissions, and API listener when running. A closed app is normal.
+Nothing is launched, downloaded, repaired, or removed. Failures exit with code 1.
+This checks listener reachability, not application-level API health. Pack checks are
+`apack pack doctor`.
 
 #### `apack upgrade [-b] [--relaunch] [--force]`
 
@@ -540,7 +558,7 @@ apack db import ./apack-backup-2026-09-17 --production --force
 apack db reset --production        # lists what it would delete
 ```
 
-**Which data.** `--build <name>` says which build's data dir — `-d`, `-b` and `--production` are its shorthands — `--data-dir <path>` any data dir, such as a copy of the user's, and `--profile <name>` a profile `apack dev` made, by the name it printed. Name one of them, not two. `--schema-from <path>` names a pack snapshot for a data dir that publishes none of its own. Without it such a dir still opens to **read**, and the command says which entity types it could not name; a command that **changes** it is refused, because an incomplete schema makes a write land on the wrong rows. A command that only reads takes the production app's data without being told, and a dry run of `import`, `reset` or `clear-settings` counts as reading; **a change (`exec`, `repl --write`, and those three with `--force`) names its data dir**, so the user's own data is never what a forgotten flag hits. Each command prints the data dir it opens (on stderr, so results on stdout stay clean). A flag means that app's own data dir, whatever `APACK_USER_DATA_DIR` is set to in the shell; the variable applies only when nothing names a data dir.
+**Which data.** `--build <name>` says which build's data dir — `-d`, `-b` and `--production` are its shorthands — `--data-dir <path>` any data dir, such as a copy of the user's, and `--profile <name>` a profile `apack pack dev` made, by the name it printed. Name one of them, not two. `--schema-from <path>` names a pack snapshot for a data dir that publishes none of its own. Without it such a dir still opens to **read**, and the command says which entity types it could not name; a command that **changes** it is refused, because an incomplete schema makes a write land on the wrong rows. A command that only reads takes the production app's data without being told, and a dry run of `import`, `reset` or `clear-settings` counts as reading; **a change (`exec`, `repl --write`, and those three with `--force`) names its data dir**, so the user's own data is never what a forgotten flag hits. Each command prints the data dir it opens (on stderr, so results on stdout stay clean). A flag means that app's own data dir, whatever `APACK_USER_DATA_DIR` is set to in the shell; the variable applies only when nothing names a data dir.
 
 **While the app runs.** The commands open the database files themselves (offline); the app keeps the whole database in memory and is its only writer. So a change (`exec`, `repl --write`, and `import`, `reset` or `clear-settings` with `--force`) refuses while an apack app runs on the data dir: the API it published is running, or (on macOS and Linux) its single-instance lock is held by a live process. Files left behind by a crash name processes that have exited, so they don't stand in the way. Quit the app first. Reading commands work, with a warning that they miss what the app hasn't written yet, and so do the dry runs: they open the database without writing to it, so they also work against a copy you have no permission to change.
 
@@ -548,7 +566,7 @@ While a command changes the database it holds a lock on the data dir (`db-write.
 
 **The run history.** The database has two partitions: the app's data, and the run history (`TNode` rows, what each flow step did). Commands read the data only, as the app does, so a query for `TNode` comes back empty until you pass `--volatile`, which reads both. `reset` deletes both either way; its listing counts the run history only with `--volatile`.
 
-**Writing.** There is no apply command: apack content each pack's data when it starts (and `apack dev` re-applies a pack it rebuilds), so start the app rather than content a data dir by hand.
+**Writing.** There is no apply command: apack content each pack's data when it starts (and `apack pack dev` re-applies a pack it rebuilds), so start the app rather than content a data dir by hand.
 
 **Installed packs.** Entity types, relation kinds and where each type is stored come from the packs installed in the data dir — every enabled pack in `packs/`, the ones the app ships included, read from its own `apack.json`; no pack code runs. A data dir with no packs installed knows only the names the app itself declares, which is the truth about it rather than a degraded reading of it.
 
@@ -669,11 +687,13 @@ production dir and 1255ms for a 1.5GB development one. Names and paths come back
 A profile an app is currently running on is never renamed or removed: taking a data dir away from a
 running app does not stop it, it makes the app write the directory back.
 
-#### `apack clean`
+#### `apack pack clean`
 
 Remove build output: `dist/`, `.apack/`, `src/__generated__/`.
 
-`--apps` lists the apack Beta builds `--build beta` downloaded — a few hundred megabytes each, one per
+#### `apack cache clean [--all]`
+
+Lists the apack Beta builds `--build beta` downloaded — a few hundred megabytes each, one per
 release tested against — and removes all but the newest, which is the one a later run would reuse; `--all`
 removes every build. It works outside a pack.
 

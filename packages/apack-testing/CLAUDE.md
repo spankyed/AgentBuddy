@@ -21,7 +21,7 @@ Every spec (`tests/e2e/{smoke,app-integration,ui}/*.spec.ts`) imports `@apackdev
 
 ### How external packs use it
 
-External packs add `@apackdev/testing` and `@playwright/test` as devDependencies (`apack init-tests` does this) and import directly:
+External packs add `@apackdev/testing` and `@playwright/test` as devDependencies (`apack pack init-tests` does this) and import directly:
 ```ts
 import { test, expect } from '@apackdev/testing';
 ```
@@ -30,7 +30,7 @@ import { test, expect } from '@apackdev/testing';
 
 A pack's Playwright configs are calls to a helper, not copies of one — the same answer `definePackTestConfig`
 gives for vitest, for the same reason. There were six copies (the repo's own E2E config, the one
-`apack init-tests` scaffolds, both fixture packs', and the drive layer's pair), and the repo's own had
+`apack pack init-tests` scaffolds, both fixture packs', and the drive layer's pair), and the repo's own had
 already drifted to a `use` block giving it screenshots and traces the three packs' lacked. Nobody decided
 that; it is what six copies do. `@app/repo-checks`' `playwright-config.spec.ts` is the gate.
 
@@ -38,7 +38,7 @@ One helper per kind of run, and there are two kinds:
 
 | Helper | For | Overrides |
 |---|---|---|
-| `definePackE2EConfig` | a pack's suite, run by `apack test` | anything Playwright takes; the pack's word is last |
+| `definePackE2EConfig` | a pack's suite, run by `apack pack test` | anything Playwright takes; the pack's word is last |
 | `defineDriveConfig` | driving scripts, run by `apack drive <script>` | the same |
 
 Two, and no more: a question needs no runner at all — it attaches to an app something else is holding —
@@ -71,7 +71,7 @@ export default defineConfig({
 });
 ```
 
-The run's dir is named `<prefix><pid>-XXXXXX`; `isolatedDataDir` first removes dirs with its prefix whose process is gone, left by runs that crashed before their teardown. The per-worker split matters when spec files run in parallel: without it, a spec resetting the media store deletes another worker's files mid-test. The entry uses only Node built-ins (`src/vitest.ts`, `vitest-worker.ts`, `vitest-teardown.ts`), so it loads without the `@apackdev/source` condition. The bundle ships the three as separate entries, since vitest loads the worker and teardown modules by path. The global setup also `provide`s the vitest project's root (`PROJECT_ROOT_KEY`), which the harness `inject`s to find the pack. A pack's config sets no `resolve.conditions`: a pack resolves the `@apackdev` packages' published `dist` whether they came from the registry or a checkout link, so there is nothing to select, and `check:specifiers` fails a pack config that declares the `@apackdev/source` condition. This is the config `apack init` scaffolds (`apack-cli/src/commands/init.ts`). default-setup's `vitest.config.ts` uses `isolatedDataDir` and is a pack config too: it also declares no condition, and `npm run typecheck:pack` and `npm run test:external-pack` run `packages:ensure` first so the `dist` it reads is current.
+The run's dir is named `<prefix><pid>-XXXXXX`; `isolatedDataDir` first removes dirs with its prefix whose process is gone, left by runs that crashed before their teardown. The per-worker split matters when spec files run in parallel: without it, a spec resetting the media store deletes another worker's files mid-test. The entry uses only Node built-ins (`src/vitest.ts`, `vitest-worker.ts`, `vitest-teardown.ts`), so it loads without the `@apackdev/source` condition. The bundle ships the three as separate entries, since vitest loads the worker and teardown modules by path. The global setup also `provide`s the vitest project's root (`PROJECT_ROOT_KEY`), which the harness `inject`s to find the pack. A pack's config sets no `resolve.conditions`: a pack resolves the `@apackdev` packages' published `dist` whether they came from the registry or a checkout link, so there is nothing to select, and `check:specifiers` fails a pack config that declares the `@apackdev/source` condition. This is the config `apack pack init` scaffolds (`apack-cli/src/commands/init.ts`). default-setup's `vitest.config.ts` uses `isolatedDataDir` and is a pack config too: it also declares no condition, and `npm run typecheck:pack` and `npm run test:external-pack` run `packages:ensure` first so the `dist` it reads is current.
 
 ## Keeping a checkout's packages current
 
@@ -88,7 +88,7 @@ carries no comments.
 |---|---|---|---|
 | 1 | `npm run packages:ensure &&` in a root script | a repo command: `test`, `test:headed`, `test:explorer`, `test:external-pack`, `typecheck`, `typecheck:pack`, `build:default-setup`, `api:update` | root `package.json` |
 | 2 | that workspace's `pretest` | `npm test -w @apackdev/cli`, `-w @app/default-setup` and `-w @app/repo-checks` run directly, which no root script wraps | each package's `package.json` |
-| 3 | `ensureCheckoutPackages(packRoot)` | `apack build`, `apack test`, `apack dev` — from any directory, for a pack whose packages are a checkout's | `apack-cli/src/build/checkout-packages.ts`, called from `commands/{build,test,run}.ts` |
+| 3 | `ensureCheckoutPackages(packRoot)` | `apack pack build`, `apack pack test`, `apack pack dev` — from any directory, for a pack whose packages are a checkout's | `apack-cli/src/build/checkout-packages.ts`, called from `commands/{build,test,run}.ts` |
 | 4 | the `Build publishable packages` step | CI, whose typecheck step already built them through `typecheck:pack` | `.github/workflows/ci.yml` |
 
 **Checkers** run inside a process that has already started, where the modules are loaded and rebuilding
@@ -105,9 +105,9 @@ Three things follow.
 
 - **A new entry point needs a fixer in front of it, not another copy of the rule.** Every door above calls
   the same check; what differs is only when it runs and whether it can repair what it finds.
-- **A fixer belongs to the command a user runs, not to a function a watch loop calls.** `apack dev`
+- **A fixer belongs to the command a user runs, not to a function a watch loop calls.** `apack pack dev`
   rebuilds the pack through `build()` on every file change, and the check reads every source of all five
-  packages, so `apack build` refreshes in `buildCommand` while `build()` stays clean. Both placements
+  packages, so `apack pack build` refreshes in `buildCommand` while `build()` stays clean. Both placements
   are pinned by `apack-cli/tests/build/checkout-packages.spec.ts`.
 - **A checker must not try to repair, but waiting is not repairing.** Its process has already resolved and
   loaded modules; a rebuild underneath it would leave half of two builds in memory. So doors 5 and 6 both
@@ -119,7 +119,7 @@ Three things follow.
   What is still named is a holder that outlasted the bound, which is a wedge rather than a queue.
 
 One path is deliberately not in the table twice. `npm run dev` reaches door 3, because its
-dev launcher builds the built-in pack with `apack build --skip-fe`, and that command ensures —
+dev launcher builds the built-in pack with `apack pack build --skip-fe`, and that command ensures —
 so the script carries no prefix of its own. For a full app build, run `npm run build:default-setup` before
 `npm run build:runtime`; `build:default-setup` ensures the package bundles before building the built-in pack.
 
@@ -137,7 +137,7 @@ source hot-reloads the browser with no build step. The API's tsup build declares
 (`esbuildOptions.conditions`), and built-in packs' backends are bundled into the API, so the pack's
 running code follows source as well.
 
-**Frozen at the moment the command ran.** Everything `apack build` produced for the pack, because a
+**Frozen at the moment the command ran.** Everything `apack pack build` produced for the pack, because a
 pack build resolves the packages' `dist`: the compiled content (`*.content.json`), the facade types
 (`dist/types/pack-types.d.ts`), the step build and the content runtime (`dist/build/`). `npm run dev` builds
 those once, through door 3, and nothing rebuilds them while the app runs.
@@ -153,7 +153,7 @@ the layout a pack author has, and in a checkout that layout is only as current a
 
 ## Unit test harness (`@apackdev/testing/harness`)
 
-A pack's unit tests run its code without the app: content, repositories and content writers against an in-memory EARS, and with `registration` its systems, services, steps and flows, all including its dependencies' behaviour. The registered packs are the test file's own: `harness.ts` creates a registry (`createPackRegistry()` from `@apackdev/host/packs`) per test file, registers the pack and its dependencies in it with no guard against an earlier registration, binds it for the SDK's lookups and hands it to `startApp` (`setAppPacks`). `apack init` scaffolds the setup (`vitest.config.ts` with `isolatedDataDir`, `tests/setup.ts` passing `contentRuntime` and `registration`, an example content test); `apack add feature` scaffolds a system test, adding `tests/setup.ts` (and `vitest.config.ts` when vitest has no config, devDependencies) to a pack without it. Published declarations import only published packages (`Message` from `@apackdev/sdk/events`, never `@apackdev/host`). Pack-facing guide: `docs/public-facing/testing.md`.
+A pack's unit tests run its code without the app: content, repositories and content writers against an in-memory EARS, and with `registration` its systems, services, steps and flows, all including its dependencies' behaviour. The registered packs are the test file's own: `harness.ts` creates a registry (`createPackRegistry()` from `@apackdev/host/packs`) per test file, registers the pack and its dependencies in it with no guard against an earlier registration, binds it for the SDK's lookups and hands it to `startApp` (`setAppPacks`). `apack pack init` scaffolds the setup (`vitest.config.ts` with `isolatedDataDir`, `tests/setup.ts` passing `contentRuntime` and `registration`, an example content test); `apack pack add feature` scaffolds a system test, adding `tests/setup.ts` (and `vitest.config.ts` when vitest has no config, devDependencies) to a pack without it. Published declarations import only published packages (`Message` from `@apackdev/sdk/events`, never `@apackdev/host`). Pack-facing guide: `docs/public-facing/testing.md`.
 
 - **`setupPackTests({ contentRuntime, registration?, appliers?, packDir? })`** — from a vitest setup file. `packDir` defaults to the nearest `apack.json` at or above the injected vitest project root (else the working directory).
   - Starts `@apackdev/sdk/testing`'s runtime (`startTestRuntime`), which creates and installs an in-memory EARS engine (`createEarsEngine`; `resetTestData` before each test installs a fresh one, keeping the registered repositories) checking the SDK's, the host's (`AppState`, `@apackdev/host/app-state`), pack's and dependencies' entity types, and the in-memory app it binds (`@apackdev/sdk/src/testing/host.ts`): `testRootEvents` as the bus behind `broadcastToPlugin`/`sendToSystem`/`onConnected`/`onIncoming`, loggers and `onLog` (each log event printed to the console), the `SYSTEM_ERROR` events `reportError` sends (recorded for `takeSystemErrors`), version `0.0.0-test`, `appData` (reset, and `hasOnboarded`/`completeOnboarding` over the host's `AppState` row, as in the app), a trace store over the in-memory database, `secrets` (metadata only, emptied by `resetTestData`), and an `inference` that fails until a test mocks it with `mockInference`.
@@ -184,11 +184,11 @@ A pack's unit tests run its code without the app: content, repositories and cont
 - **`addTestSecret(provider, label)`** — stores a key's metadata (no value) in the test host's in-memory `services.secrets`, by the host's selection rules; emptied with the rest of the test data.
 - **`mockInference(reply, replies?)`** — mocks `services.inference` for the current test with `fakeInference(reply, replies)` (text, agents, and `embedding`, `image`, `speech`, `transcript` and `relevance` replies; `calls` kinds `text`, `embedding`, `image`, `speech`, `transcription`, `reranking`) (`@apackdev/sdk/testing`) and returns the fake, whose `calls` a test asserts.
 - **One SDK and engine instance.** The harness imports `@apackdev/sdk` and `@apackdev/ears` externally (the published bundle keeps the shared-instance packages external for this entry and declares them peer dependencies; `scripts/bundle-package.ts` `sharedExternalEntries`) and inlines `@apackdev/host`, so its registrations are the ones the pack's code and dependency runtimes see. `setupPackTests` first checks that the pack's `@apackdev/ears` is the copy its `@apackdev/sdk` loads (`src/shared-ears.ts`, `apack-testing/tests/shared-ears.spec.ts`): with versions that don't match, npm nests another copy under the SDK, the test runtime would install its engine there, and the pack's code would find none; the harness fails naming both copies, or asks to install `@apackdev/ears` when the pack has none. It then calls `assertCheckoutPackagesFresh` (`src/checkout-freshness.ts`), which fails naming `npm run packages:ensure` when this bundle is older than the checkout's sources — a stale bundle would load and silently test the previous `@apackdev/host`, which it inlines. For an installed package there is no checkout above it and the check is a no-op (`apack-testing/tests/checkout-freshness.spec.ts`, and `checkout-packages.spec.ts` for the checkout a pack's packages come from).
-- **The content runtime facet** (`src/__generated__/content-runtime.ts`, bundled by `apack build` into `dist/build/content-runtime.mjs` with only the shared-instance packages, `@apackdev/sdk` and `@apackdev/ears`, external) holds the pack's entity types, relation kinds, repositories and content writers. Everything it imports must load in a plain Node process: no `@apackdev/host` (rejected at build), no native modules, no optional SDK peers. `apack build` checks this for every pack (`apack-cli/src/build/content-runtime-check.ts`).
+- **The content runtime facet** (`src/__generated__/content-runtime.ts`, bundled by `apack pack build` into `dist/build/content-runtime.mjs` with only the shared-instance packages, `@apackdev/sdk` and `@apackdev/ears`, external) holds the pack's entity types, relation kinds, repositories and content writers. Everything it imports must load in a plain Node process: no `@apackdev/host` (rejected at build), no native modules, no optional SDK peers. `apack pack build` checks this for every pack (`apack-cli/src/build/content-runtime-check.ts`).
 - **Proofs:**
   - `tests/packs/external-pack` unit-tests its memo content, its memos system, a memo flow on default-setup's brain, its `boot.onInit`/`onShutdown` pair around a test's apps (`boot-hooks.spec.ts`), and the harness's isolation (mocks, waits and calls ended by stop, events for systems before a client connects), run by `test:external-pack`.
   - `default-setup/tests/harness-app-stop.spec.ts`: a real schedule (an action step) ticks while its app runs and stops with it.
-  - `apack-cli/tests/harness/harness-setup.integration.spec.ts`: `vitest run --root <pack>` from elsewhere, tests that run concurrently rejected (a lone concurrent test isn't), a second `setupPackTests` in one process (vitest `isolate: false`) rejected naming why, `apack add feature` adding the setup to a pack without one.
+  - `apack-cli/tests/harness/harness-setup.integration.spec.ts`: `vitest run --root <pack>` from elsewhere, tests that run concurrently rejected (a lone concurrent test isn't), a second `setupPackTests` in one process (vitest `isolate: false`) rejected naming why, `apack pack add feature` adding the setup to a pack without one.
   - `apack-cli/tests/commands/scaffold-unit-test-setup.spec.ts`: that setup keeps any config vitest loads (`vitest.config.*`, `vite.config.*`), adds `@apackdev/testing` at the pack's `@apackdev/sdk` range (the two release at one version, and `@apackdev/testing` peers on `^<version>`), and names the upgrade for an `@apackdev/testing` without `./harness` or off the SDK range, or a vitest before 3.
   - `test:packaged-authoring` also type-checks the packed declarations with `skipLibCheck: false`, failing unless tsc checked the probe and every error is in other packages' declarations.
   - `apack-cli/tests/harness/dependency-runtime.integration.spec.ts` runs default-setup's systems, and the app's settings beside them, from a dependent pack.
@@ -245,7 +245,7 @@ the SDK was not measured, and is probably well under that. Measure before moving
 
 ## A session over the app something else is holding (`src/engine/`)
 
-`apack drive --eval` asks one question of the app `apack dev` is holding, and `attachedSession`
+`apack drive --eval` asks one question of the app `apack pack dev` is holding, and `attachedSession`
 (`engine/index.ts`) is what it asks through. **It is assembled from the same four pieces a launched session
 is** — the page, the app helper over it, the session's own connection to the API, and the log — so
 `createSession` cannot tell which it was given, which is the property the whole design rests on.
@@ -328,16 +328,16 @@ Things worth knowing before changing it:
 
 ```bash
 cd /path/to/my-pack
-apack init-tests    # playwright.config.ts + tests/e2e/smoke.spec.ts; adds @apackdev/testing + @playwright/test
+apack pack init-tests    # playwright.config.ts + tests/e2e/smoke.spec.ts; adds @apackdev/testing + @playwright/test
 npm install
-apack test          # a Beta matching your hostVersion, or --build <path>
+apack pack test          # a Beta matching your hostVersion, or --build <path>
 ```
 
 No monorepo checkout, `APACK_ROOT`, symlinks or PATH changes are needed.
 
 ## Which app the tests run in
 
-`apack test` (source: `packages/apack-cli/src/commands/test.ts`, `src/app/`) resolves the app, in order:
+`apack pack test` (source: `packages/apack-cli/src/commands/test.ts`, `src/app/`) resolves the app, in order:
 
 1. `--build <path>` — a local apack checkout (installed and built)
 2. `--build beta` — the newest apack Beta release (from `spankyed/apack` releases) whose version satisfies the pack's `hostVersion`. The zip is verified against its published `.sha256` and cached per version in the CLI cache dir (`~/Library/Caches/apack-cli/apps/beta/<version>` on macOS). macOS arm64 only.
@@ -346,16 +346,16 @@ No monorepo checkout, `APACK_ROOT`, symlinks or PATH changes are needed.
 
 **It reads no machine state and never asks**, which is what makes a test run mean the same thing on a
 fresh machine as on one you have been developing on. It also derives nothing from where the pack sits,
-where `apack dev` and `apack drive` do (the checkout behind the pack) — holding that is their job.
+where `apack pack dev` and `apack drive` do (the checkout behind the pack) — holding that is their job.
 
 It then runs the Playwright CLI that the pack's `@apackdev/testing` resolves (never `npx playwright`), so the runner and the fixture share one `@playwright/test`. It passes the fixture:
 
 - `APACK_ROOT` (checkout) or `APACK_APP_EXECUTABLE` (packaged app, e.g. `apack Beta.app/Contents/MacOS/apack Beta`)
 - `PACK_DIR` — the pack directory
 - `APACK_CLI` — its own bin, which the fixture uses to build the pack
-- `NODE_OPTIONS` without `--conditions=@apackdev/source`: the runner, the fixture and the app it launches all load the `@apackdev` packages' built `dist`, as a pack does. `apack test` first runs the checkout's `packages:ensure` when the pack's packages are a checkout's (`apack-cli/src/build/checkout-packages.ts`), so that `dist` is the checkout's current sources; the Playwright and vitest entries check it again themselves for a run started directly.
+- `NODE_OPTIONS` without `--conditions=@apackdev/source`: the runner, the fixture and the app it launches all load the `@apackdev` packages' built `dist`, as a pack does. `apack pack test` first runs the checkout's `packages:ensure` when the pack's packages are a checkout's (`apack-cli/src/build/checkout-packages.ts`), so that `dist` is the checkout's current sources; the Playwright and vitest entries check it again themselves for a run started directly.
 
-Every non-Playwright arg is forwarded (`apack test -g "renders"`, `apack test smoke`).
+Every non-Playwright arg is forwarded (`apack pack test -g "renders"`, `apack pack test smoke`).
 
 ## How the fixture finds apack
 
@@ -369,17 +369,17 @@ The fixture launches, in priority order: `createTest({ appExecutable })`, `creat
 
 1. **Pack build/install** (if `PACK_DIR` is set):
    - Parse `apack.json` from `PACK_DIR` → extract pack `id` and `pluginIds`
-   - Always rebuild the pack with `apack build` (a stale `dist/` would otherwise be tested silently), including while `apack dev` runs for that pack: its marker means a dev server is up, not that `dist/` is current (N4 in `docs/archive/issues/postmortem-external-pack-calendar-extraction.md`). `PACK_ARCHIVE` skips the build and installs that packed `.tgz` as it is, so a run can exercise the artifact a release ships (`tests/scripts/test-packaged-authoring.sh` step 8), and is refused when it is older than the pack's `dist/`; everything else still comes from `PACK_DIR`
+   - Always rebuild the pack with `apack pack build` (a stale `dist/` would otherwise be tested silently), including while `apack pack dev` runs for that pack: its marker means a dev server is up, not that `dist/` is current (N4 in `docs/archive/issues/postmortem-external-pack-calendar-extraction.md`). `PACK_ARCHIVE` skips the build and installs that packed `.tgz` as it is, so a run can exercise the artifact a release ships (`tests/scripts/test-packaged-authoring.sh` step 8), and is refused when it is older than the pack's `dist/`; everything else still comes from `PACK_DIR`
    - Install it into the worker's data dir with `installPackFromLocal()` — the same stage → verify → place bundle path users get — passing `hostVersion`: the launched app's version (`src/app-version.ts`: the checkout's `package.json`, or the packaged app's `Resources/app/package.json` / `resources/app/package.json`), so a pack whose manifest `hostVersion` excludes it fails to install
    - It passes no `packFormat`. Whether the app can read a pack's build is the app's to decide, and it decides at boot, naming which side is older; the fixture reports that verdict (step 6) instead of forming its own. It has no way to form one: the app's `host.json` is written at its first boot, after this install, the CLI running the fixture needn't be the app's, and inferring the app's format from an artifact it ships (a built-in pack's snapshot) refuses good packs whenever that artifact is the stale one. `packs/runtime/load-messages.spec.ts` pins that a refusal reaches the fixture as a line it matches
-   - Build uses `APACK_CLI` (set by `apack test`), else the `@apackdev/cli` the pack resolves, else the checkout's; it runs as `node <bin> build`
+   - Build uses `APACK_CLI` (set by `apack pack test`), else the `@apackdev/cli` the pack resolves, else the checkout's; it runs as `node <bin> build`
    - After the app connects, the fixture fails the test if the pack's installed-packs entry has a `lastError` (its data failed to write)
 
 2. **Launch Electron** — for a checkout, resolves `electron` from the checkout's `node_modules` and calls `_electron.launch({ executablePath, args: [appRoot], cwd: appRoot })`; for a packaged app, launches its executable with no args. Packs never need `electron` installed. The env (`src/launch-env.ts`) is the runner's without `ELECTRON_RUN_AS_NODE` (set when the app-bundled `apack` runs on the app's runtime; inherited, it would start Electron as plain Node) and without the `@apackdev/source` condition in `NODE_OPTIONS`, plus `PLAYWRIGHT_TEST=true`, which makes the app use the `test` environment (a packaged beta included), and `APACK_USER_DATA_DIR`.
 
 3. **Debug logging** (if `DEBUG_E2E=1`): pipes Electron's stdout/stderr to the test terminal with `[electron]` prefix
 4. **A log file, always**: the same output goes to `app-<workerIndex>.log` in Playwright's `outputDir` —
-   `tests/results/` under `apack test`, `drive/results/` under `apack drive`. Playwright wipes that
+   `tests/results/` under `apack pack test`, `drive/results/` under `apack drive`. Playwright wipes that
    directory at the start of every run, so it is always the last run and never an archive. It is what a
    fixture failure now names, in place of asking for a re-run under `DEBUG_E2E`; the app's own
    electron-log files live in the data dir, which an ephemeral drive session deletes on the way out.
@@ -453,16 +453,16 @@ Screenshot output location depends on context:
 
 | Variable | Description |
 |----------|-------------|
-| `APACK_ROOT` | A built apack checkout to launch. Set by `apack test` for checkouts; auto-detected inside the monorepo. |
-| `APACK_APP_EXECUTABLE` | A packaged apack executable to launch. Set by `apack test --build beta`. |
-| `APACK_CLI` | The apack bin that builds the pack. Set by `apack test`. |
-| `APACK_BUILD` | `beta`: `apack test` and `apack build` use the newest matching apack Beta (CI; the scaffolded release workflow sets it). |
+| `APACK_ROOT` | A built apack checkout to launch. Set by `apack pack test` for checkouts; auto-detected inside the monorepo. |
+| `APACK_APP_EXECUTABLE` | A packaged apack executable to launch. Set by `apack pack test --build beta`. |
+| `APACK_CLI` | The apack bin that builds the pack. Set by `apack pack test`. |
+| `APACK_BUILD` | `beta`: `apack pack test` and `apack pack build` use the newest matching apack Beta (CI; the scaffolded release workflow sets it). |
 | `PACK_DIR` | Path to an external pack directory. Triggers build/install and plugin waiting. |
 | `PACK_ARCHIVE` | A packed `<id>-<version>.tgz` to install instead of building `PACK_DIR`, so the run tests what a release ships. Refused when it is older than the pack's `dist/`: skipping the rebuild is for testing the shipped artifact, not for testing a stale one. |
 | `E2E_KEEP_DATA` | Set to `1` to keep each worker's temp data dir for debugging. |
-| `E2E_DATA_DIR` | A data dir the caller owns and keeps, used instead of the per-worker temp one and never cleaned up. Set by `apack drive` for a profile. **`apack test` strips it** (`fixtureEnv`), so a pinned run cannot be aimed at a directory by the shell it was started from. |
-| `E2E_SCREENSHOT_DIR` | Where `app.screenshot()` writes, ahead of the `PACK_DIR` and cwd fallbacks. Set by `apack drive` to `drive/screenshots/`, and stripped by `apack test` for the same reason. |
-| `E2E_REPORT_DIR` | Where `app.report()` writes, ahead of the same two fallbacks (`drive/results/`). Set by this repo's `drive` scripts and stripped by `apack test`, for the reason the two above are: the run decides where its output lands, not the shell that started it. |
+| `E2E_DATA_DIR` | A data dir the caller owns and keeps, used instead of the per-worker temp one and never cleaned up. Set by `apack drive` for a profile. **`apack pack test` strips it** (`fixtureEnv`), so a pinned run cannot be aimed at a directory by the shell it was started from. |
+| `E2E_SCREENSHOT_DIR` | Where `app.screenshot()` writes, ahead of the `PACK_DIR` and cwd fallbacks. Set by `apack drive` to `drive/screenshots/`, and stripped by `apack pack test` for the same reason. |
+| `E2E_REPORT_DIR` | Where `app.report()` writes, ahead of the same two fallbacks (`drive/results/`). Set by this repo's `drive` scripts and stripped by `apack pack test`, for the reason the two above are: the run decides where its output lands, not the shell that started it. |
 | `PLAYWRIGHT_TEST` | Set automatically to `'true'` by the fixture. The app resolves the `test` environment (`apack-test` name, lock and data dir), crashes on uncaught errors, and runs headless (suppresses window display and splash screen). |
 | `APACK_USER_DATA_DIR` | Optional. Overrides the app's data dir (e.g. an isolated temp dir); read through `@apackdev/sdk/env`. |
 | `DEBUG_E2E` | Set to `1` to pipe Electron stdout/stderr to the test terminal. |
@@ -470,10 +470,10 @@ Screenshot output location depends on context:
 ## Running tests
 
 ```bash
-apack test                          # a Beta matching the pack's hostVersion
-apack test --build ~/apack  # a local checkout
-apack test --build beta               # the newest matching apack Beta
-apack test -g "renders"             # Playwright args are forwarded
+apack pack test                          # a Beta matching the pack's hostVersion
+apack pack test --build ~/apack  # a local checkout
+apack pack test --build beta               # the newest matching apack Beta
+apack pack test -g "renders"             # Playwright args are forwarded
 ```
 
 From the apack monorepo, run Playwright directly (the app is auto-detected):
@@ -490,5 +490,5 @@ PACK_DIR=/path/to/my-pack npm run test:e2e -- tests/e2e/scratch
 - **Data dir alignment**: The fixture installs into `resolveAppContext({ build: 'test', profile: userDataDir }).packsDir` for the worker's temp dir and passes that dir as `APACK_USER_DATA_DIR`. The Electron app launched with `PLAYWRIGHT_TEST=true` infers the `test` environment in `packages/main/src/app-context.ts`, which sets the app name and `userData` from the same resolver (`@apackdev/sdk/env`) and passes `APACK_ENV` / `APACK_USER_DATA_DIR` to the API process, so both sides always agree.
 - **Pinned viewport**: the fixture sets the main window viewport to 1400×900. The window's default size depends on whether main was built in dev or production mode, so without this, layout and `toHaveScreenshot` baselines differ between `npm run dev` builds and `npm run build:runtime`/CI.
 - **Pack manifest caching**: `getPackManifest()` reads and parses `apack.json` once per process, cached at module scope. Plugin IDs are the keys of `features` entries with a `plugin` (the manifest's `plugin` has no `id`).
-- **Dev server marker**: `apack dev` writes `{devUserDataDir}/pack-dev-servers/{packId}.json` containing `{ port, pid }` for the dev app's HMR. The E2E fixture ignores it: tests always run a fresh build in an isolated data dir.
+- **Dev server marker**: `apack pack dev` writes `{devUserDataDir}/pack-dev-servers/{packId}.json` containing `{ port, pid }` for the dev app's HMR. The E2E fixture ignores it: tests always run a fresh build in an isolated data dir.
 - **`pack://` protocol**: Custom Electron protocol (`packages/main/src/modules/pack-protocol/PackProtocol.ts`) that reads the marker through `devServerUrl` (`@apackdev/host/packs/dev-server`) and proxies to the Vite dev server if present, otherwise serves files from disk.

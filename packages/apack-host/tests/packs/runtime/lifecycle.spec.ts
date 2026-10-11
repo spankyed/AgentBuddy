@@ -35,7 +35,7 @@ function restoreEnv(key: string, value: string | undefined) {
 
 const packsDir = () => path.join(_appDirOf(tmpDir), 'packs');
 
-/** Writes what `apack build` leaves in a pack's dist/: a runtime registering `featuresSource`, and a snapshot */
+/** Writes what `apack pack build` leaves in a pack's dist/: a runtime registering `featuresSource`, and a snapshot */
 function writeBuild(packDir: string, id: string, featuresSource = '{}', extraFiles: Record<string, string> = {}) {
   const write = (rel: string, content: string) => {
     fs.mkdirSync(path.dirname(path.join(packDir, 'dist', rel)), { recursive: true });

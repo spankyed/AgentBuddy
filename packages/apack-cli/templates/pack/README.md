@@ -14,7 +14,7 @@ An [apack](https://github.com/spankyed/apack) pack.
 | `npm run facade:check` | Fail if `etc/pack-types.api.md` is stale. Needs no build: it bundles the facade itself |
 | `npm run facade:update` | Rewrite it, and commit the result |
 
-`apack add feature <name>` scaffolds a feature; `apack add --help` lists the rest (steps, artifacts,
+`apack pack add feature <name>` scaffolds a feature; `apack pack add --help` lists the rest (steps, artifacts,
 blocks, actions, prompts, flows, services, migrations).
 
 ## The facade report
@@ -31,8 +31,8 @@ It does not exist until the first `npm run facade:update`. Commit it once it doe
 
 ## Testing against the app
 
-`apack init-tests` adds a Playwright suite that launches apack with this pack installed, and
-`apack test` runs it. `apack test --contract` runs the unit tests alone, with no app.
+`apack pack init-tests` adds a Playwright suite that launches apack with this pack installed, and
+`apack pack test` runs it. `apack pack test --contract` runs the unit tests alone, with no app.
 
 ## Releasing
 

@@ -10,7 +10,7 @@
  *   <id>/build/                 build-time code dependents load (step build facets)
  *   <id>/types/snapshot.json    types + manifest for dependents' codegen
  *
- * `apack build` writes runtime/, build/ and types/ into dist/. Staging adds the
+ * `apack pack build` writes runtime/, build/ and types/ into dist/. Staging adds the
  * manifest and integrity.json. The installer copies a verified stage into
  * the packs directory unchanged, and the host loader reads it as-is.
  */
@@ -45,7 +45,7 @@ export const PACK_LAYOUT = {
   snapshot: 'types/snapshot.json',
 } as const;
 
-/** Sections `apack build` writes into dist/ and staging copies into the staged pack. */
+/** Sections `apack pack build` writes into dist/ and staging copies into the staged pack. */
 const SECTIONS = [PACK_LAYOUT.runtimeDir, PACK_LAYOUT.buildDir, PACK_LAYOUT.typesDir];
 
 export interface PackIntegrity {
@@ -104,7 +104,7 @@ export interface LoadedPackEntry {
   feRevision?: string;
 }
 
-/** A pack's frontend files, pack-relative: its FE entry and stylesheet when `apack build` wrote them */
+/** A pack's frontend files, pack-relative: its FE entry and stylesheet when `apack pack build` wrote them */
 export function packFrontendFiles(layoutDir: string): { entry?: string; styles?: string } {
   const has = (file: string) => fs.existsSync(path.join(layoutDir, file));
   return {
@@ -118,7 +118,7 @@ export function packFrontendFiles(layoutDir: string): { entry?: string; styles?:
  *
  * **Every pack, by the same rule.** The app's own pack is here with its `feEntry` like any other, because
  * nothing compiles a pack's frontend into the renderer any more: the shell fetches each one over `pack://`
- * from the bundle that pack's own `apack build` wrote. A pack with neither file is still listed — it has
+ * from the bundle that pack's own `apack pack build` wrote. A pack with neither file is still listed — it has
  * systems the renderer must know are running — and the shell reads that as "no frontend code".
  */
 export function getLoadedPackEntries(registry: Pick<PackRegistry, 'loadedPacks'>): LoadedPackEntry[] {
@@ -194,7 +194,7 @@ export function stagePack(
   options: { sdkVersion?: string; source?: PackIntegrity['source'] } = {},
 ): PackIntegrity {
   if (!hasBuiltPackSections(packRoot)) {
-    throw new Error(`Pack at ${packRoot} is not built (missing dist/${PACK_LAYOUT.runtimeEntry} or dist/${PACK_LAYOUT.snapshot}). Run "apack build" first.`);
+    throw new Error(`Pack at ${packRoot} is not built (missing dist/${PACK_LAYOUT.runtimeEntry} or dist/${PACK_LAYOUT.snapshot}). Run "apack pack build" first.`);
   }
   // The built manifest, staged as it is. A pack's version reaches an archive by being written before the
   // build, never by being substituted here: dist/types/snapshot.json is a build artifact copied verbatim,
@@ -319,10 +319,10 @@ export function packContentFiles(contentDir: string): string[] {
  * nothing when the build is current.
  *
  * **Absence is no longer the signal that a build failed**, which is why this is here rather than in the one
- * caller it started with. `apack build` assembles its output aside and renames it over `dist`, so a failed
+ * caller it started with. `apack pack build` assembles its output aside and renames it over `dist`, so a failed
  * build leaves the previous one in place; every reader that took a missing tree to mean "nothing to use" has
- * to ask this instead. Two do: `apack pack`, which would otherwise ship the build before the one that
- * failed, and `apack test --prebuilt`, which trusts a build it did not make.
+ * to ask this instead. Two do: `apack pack archive`, which would otherwise ship the build before the one that
+ * failed, and `apack pack test --prebuilt`, which trusts a build it did not make.
  *
  * Sources are the pack's `src/` and its `apack.json`; the build is the oldest of the two files the installer
  * requires, since a build is only as current as its least finished part. mtimes are what a build leaves

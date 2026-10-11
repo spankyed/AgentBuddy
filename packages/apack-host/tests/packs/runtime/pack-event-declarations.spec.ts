@@ -23,7 +23,7 @@ const RECEIVED = ['MEMOS_CONNECTED', 'MEMO_ADDED'];
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
 
-/** An installed pack with one plugin feature, declaring what that plugin receives — what `apack build` emits */
+/** An installed pack with one plugin feature, declaring what that plugin receives — what `apack pack build` emits */
 function installDeclaringPack(received: string[]) {
   const packDir = path.join(_appDirOf(tmpDir), 'packs', PACK_ID);
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });

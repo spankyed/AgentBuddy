@@ -10,8 +10,8 @@ Services are stateless modules that systems and actions can call. They come in t
 ### Scaffolding
 
 ```bash
-apack add service cache                         # pack-level
-apack add service bookmarks --feature bookmarks # feature-level
+apack pack add service cache                         # pack-level
+apack pack add service bookmarks --feature bookmarks # feature-level
 ```
 
 ### Writing a service
@@ -59,7 +59,7 @@ Each entry names the file and its export, as `"path#exportName"`. The export can
 }
 ```
 
-Service names (the keys) are identifiers. `apack add service <name>` writes both: a module exporting `<name>Service` (camelCase) and its entry.
+Service names (the keys) are identifiers. `apack pack add service <name>` writes both: a module exporting `<name>Service` (camelCase) and its entry.
 
 ### Generated aggregation
 
@@ -211,7 +211,7 @@ const { rerankedDocuments } = await services.inference.rerank({ model: 'cohere:r
 - **Actions** can't import `ai`, and don't need to: `output` as data, tools as plain `{ description, inputSchema, execute }` objects (`tool()` only returns its argument), and `stopWhen` as a function (`({ steps }) => steps.length >= 5`).
 - **Unit tests** mock the service with `mockInference` (see [Testing](testing.md#models)).
 
-Pack code never imports `@apackdev/host`, the app's private package: `apack build` fails a bundle that does.
+Pack code never imports `@apackdev/host`, the app's private package: `apack pack build` fails a bundle that does.
 
 ---
 
@@ -384,7 +384,7 @@ Declare them in the feature's `repositories` (name → `path#exportName`):
 }
 ```
 
-The generated pack entry carries them in its registration, and the app registers them with its engine before any system starts. Repository names are the app's, not the feature's: `apack build` fails on a name two of your features declare, or one a dependency declares, naming both, since the app refuses to register two packs that share a repository name. Use them through `repository` from `#generated/repository`, typed with your repositories and your dependencies':
+The generated pack entry carries them in its registration, and the app registers them with its engine before any system starts. Repository names are the app's, not the feature's: `apack pack build` fails on a name two of your features declare, or one a dependency declares, naming both, since the app refuses to register two packs that share a repository name. Use them through `repository` from `#generated/repository`, typed with your repositories and your dependencies':
 
 ```typescript
 import { repository } from '#generated/repository.ts';
@@ -497,7 +497,7 @@ openBookmark(idFromEvent);     // ok: a plain id
 openBookmark(tagId);           // compile error: an EARS.EntityId<'Tag'>
 ```
 
-`apack build` lists your entities without a shape, whose fields read as `unknown` values.
+`apack pack build` lists your entities without a shape, whose fields read as `unknown` values.
 
 Declare every attribute you actually write. A field written at runtime but missing from
 the interface (a soft-delete marker, say) becomes a compile error at its read sites.
@@ -550,7 +550,7 @@ Migrations are version-targeted data transformations that run on app boot when t
 ### Scaffolding
 
 ```bash
-apack add migration --version 0.2.0
+apack pack add migration --version 0.2.0
 ```
 
 Creates `src/migrations/0.2.0.ts` and lists it in `src/migrations/index.ts`.

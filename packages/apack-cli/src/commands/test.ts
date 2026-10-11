@@ -6,11 +6,11 @@ import { spawnSync } from 'node:child_process';
 import { appLabel, parseAppFlags, resolvePinnedApp, type AppTarget } from '../app/app-target';
 import { resolvePlaywrightCli } from '../app/playwright';
 import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
-import { cliBin, readManifest, resolveVitestCli } from '../utils';
+import { cliBin, findPackRoot, readManifest, resolveVitestCli } from '../utils';
 import { VITEST_CONFIG_FILES } from './init.ts';
 
-export const TEST_USAGE = `Usage: apack test [--build <name|path>] [--release] [--prebuilt] [playwright args...]
-       apack test --contract [vitest args...]
+export const TEST_USAGE = `Usage: apack pack test [--build <name|path>] [--release] [--prebuilt] [playwright args...]
+       apack pack test --contract [vitest args...]
 
 Runs the pack's Playwright tests in apack. The build is, in order: --build (a name, or a
 local apack checkout by path), APACK_BUILD, or the newest apack Beta satisfying the
@@ -22,7 +22,7 @@ pack in an earlier step. The build is still held to being no older than the sour
 rather than being tested quietly.
 
 --release builds the pack the way a release does, so the tests run the artifact that ships.
-\`apack release\` passes it; on its own the default build is the faster one to debug.
+\`apack pack release\` passes it; on its own the default build is the faster one to debug.
 
 --contract runs the pack's vitest instead, and starts no app: the checks that read compiled
 output, generated types and the harness. Nothing to download, nothing to build but the pack.`;
@@ -68,7 +68,7 @@ export function fixtureEnv(
     env.APACK_APP_EXECUTABLE = app.executable;
     env.APACK_BUILD = 'beta';
   }
-  // Cleared when there is none, as APACK_PACK_RELEASE below is: `apack test` runs the pack it is in,
+  // Cleared when there is none, as APACK_PACK_RELEASE below is: `apack pack test` runs the pack it is in,
   // so an exported PACK_DIR in a directory that holds no manifest would have it build and install a
   // pack the caller never named. `tests/scripts/test-packaged-authoring.sh` used to `unset` it by hand
   if (packDir) env.PACK_DIR = packDir;
@@ -87,7 +87,7 @@ export function fixtureEnv(
  * harness specs without an apack to run them in — which is the same split the repo's own chain makes
  * between its contract tier and its app tier, offered to packs rather than kept for this repo.
  */
-/** Where a pack keeps its tests: what `apack init-tests` scaffolds, and what the harness docs describe */
+/** Where a pack keeps its tests: what `apack pack init-tests` scaffolds, and what the harness docs describe */
 const TEST_DIRS = ['tests'];
 
 export interface ContractRunner {
@@ -100,10 +100,10 @@ const spawnContract: ContractRunner = (command, args, options) =>
 
 export async function contractTest(cwd: string, args: string[], run: ContractRunner = spawnContract): Promise<void> {
   if (!VITEST_CONFIG_FILES.some((file) => fs.existsSync(path.join(cwd, file)))) {
-    console.log('No vitest config in this pack, so there are no contract checks to run. `apack init-tests` scaffolds one.');
+    console.log('No vitest config in this pack, so there are no contract checks to run. `apack pack init-tests` scaffolds one.');
     return;
   }
-  // A pack's tests name its modules the way its sources do, and `apack build` reads only `src` — so this is
+  // A pack's tests name its modules the way its sources do, and `apack pack build` reads only `src` — so this is
   // where a test file's `#generated/ears` is refused, before a run whose resolution depends on it
   refusePackRuleViolations(cwd, TEST_DIRS);
   // The harness this run loads is built from the checkout's source, so bring it up to date first
@@ -130,19 +130,19 @@ export async function test(args: string[], run?: ContractRunner): Promise<void> 
     console.log(TEST_USAGE);
     return;
   }
-  const cwd = process.cwd();
+  const cwd = findPackRoot(process.cwd());
 
   if (args.includes('--contract')) return contractTest(cwd, args.filter((arg) => arg !== '--contract'), run);
 
   if (!fs.existsSync(path.join(cwd, 'playwright.config.ts'))) {
-    throw new Error('No playwright.config.ts found. Run `apack init-tests` first.');
+    throw new Error('No playwright.config.ts found. Run `apack pack init-tests` first.');
   }
 
-  const manifest = fs.existsSync(path.join(cwd, 'apack.json')) ? readManifest(cwd) : undefined;
+  const manifest = readManifest(cwd);
 
   const flags = parseAppFlags(args);
   const playwrightCli = resolvePlaywrightCli(cwd);
-  const app = await resolvePinnedApp({ flags, hostVersion: manifest?.hostVersion ?? '*' });
+  const app = await resolvePinnedApp({ flags, hostVersion: manifest.hostVersion ?? '*' });
 
   refusePackRuleViolations(cwd, TEST_DIRS);
   // The harness bundle this run loads is built from the checkout's source, so bring it up to date first
@@ -151,10 +151,10 @@ export async function test(args: string[], run?: ContractRunner): Promise<void> 
   console.log(`Testing in ${appLabel(app)}`);
   const result = spawnSync(process.execPath, [playwrightCli, 'test', ...flags.args], {
     cwd,
-    env: fixtureEnv(app, manifest ? cwd : undefined, process.env, { release: flags.release, prebuilt: flags.prebuilt }),
+    env: fixtureEnv(app, cwd, process.env, { release: flags.release, prebuilt: flags.prebuilt }),
     stdio: 'inherit',
   });
-  // Thrown, not exited: `apack release` calls this, and an exit here skipped the message telling the
+  // Thrown, not exited: `apack pack release` calls this, and an exit here skipped the message telling the
   // author their version files are already bumped. The CLI's dispatcher prints the message and exits 1.
   if (result.status !== 0) throw new Error(`E2E tests failed (Playwright exited ${result.status ?? 'without a status'})`);
 }

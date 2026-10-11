@@ -101,7 +101,7 @@ export async function reloadPackById(
   // app only once the installed copy carries it. `installShippedPacks` is the same comparison the boot
   // makes and writes nothing when the two agree, so asking here costs a pack's worth of hashing on a
   // reload that changed nothing — and a reload of any other pack matches no shipped id and does nothing.
-  // Without it `apack build --watch` rebuilds and the app re-requires the copy from before the edit.
+  // Without it `apack pack build --watch` rebuilds and the app re-requires the copy from before the edit.
   const shippedDir = process.env.SHIPPED_PACKS_DIR;
   if (shippedDir) {
     for (const result of await installShippedPacks(shippedDir, packsDir, {

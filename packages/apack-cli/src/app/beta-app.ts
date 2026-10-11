@@ -70,7 +70,7 @@ export interface CachedBeta {
 }
 
 /**
- * Every downloaded build, newest tag first — what resolution chooses from and what `apack clean --apps`
+ * Every downloaded build, newest tag first — what resolution chooses from and what `apack cache clean`
  * reclaims. Enumerating is this module's business because it owns the layout; *which* build a pack's range
  * accepts is `cachedBetaApp`'s (`app-target.ts`), which reads each app's own version to answer it.
  *
@@ -107,7 +107,7 @@ export function betaDownloadLeftovers(cacheDir: string): string[] {
 export async function ensureBetaApp(options: BetaAppOptions): Promise<PackagedApp> {
   const { hostVersion, cacheDir, log = console.log } = options;
   if (process.platform !== 'darwin' || process.arch !== 'arm64') {
-    throw new Error('apack Beta builds are published for macOS on Apple Silicon only. Point `apack test` at a local apack checkout with --build <path>.');
+    throw new Error('apack Beta builds are published for macOS on Apple Silicon only. Point `apack pack test` at a local apack checkout with --build <path>.');
   }
 
   const releases = await (options.listReleases ?? listAppReleases)();

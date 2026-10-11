@@ -10,8 +10,8 @@ import { formatPackWide, loadPackChecks, packRuleProblems, PACK_RULES, refusePac
 import { resetSourceCache } from '../../src/build/pack-sources.ts';
 
 /**
- * src/build/pack-rules.ts: the rules every pack is held to, which `apack build`, `apack validate` and
- * `apack test` run. The repo's own packs go through the same functions from
+ * src/build/pack-rules.ts: the rules every pack is held to, which `apack pack build`, `apack pack validate` and
+ * `apack pack test` run. The repo's own packs go through the same functions from
  * `scripts/check-import-specifiers.ts`; this is every other pack.
  */
 const dirs: string[] = [];
@@ -161,7 +161,7 @@ describe('every rule', () => {
   });
 
   /**
-   * `apack generate-entries` writes this very cast into every pack's `#generated/repository`, where it is the
+   * `apack pack generate-entries` writes this very cast into every pack's `#generated/repository`, where it is the
    * point: the registry is untyped and the facade is what types it. It escapes the rule's shape only by naming
    * its import `earsRepository`, which is a rename away from failing every pack's build, so the exemption is by
    * what the file *is*. The offending spelling outside `__generated__` still fires, or the exemption would be
@@ -195,7 +195,7 @@ describe('every rule', () => {
    *
    * A pack's own code has the verbs and no reason to name the key. A spec driving a machine directly has no
    * delivery door in front of it, so it has to synthesise what a door would write — which is `answerTo`'s
-   * job, and this is what refuses the hand-rolled alternative. `apack test` passes `['tests']` for the
+   * job, and this is what refuses the hand-rolled alternative. `apack pack test` passes `['tests']` for the
    * same reason, so both entry points cover the same ground.
    */
   it('reserved-event-keys fires in a pack\'s tests as well as its src', () => {
@@ -307,7 +307,7 @@ describe('every rule', () => {
   /**
    * The one shape both a whole-pack rule and a per-file one are right about: a contract leaf importing another
    * feature's frontend is a crossing (`cross-feature-imports`) and a leaf reaching outside its feature
-   * (`contract-leaves`). Before the site dedupe, `apack validate` printed the identical line under both
+   * (`contract-leaves`). Before the site dedupe, `apack pack validate` printed the identical line under both
    * sentences — one offence, two messages, which is the thing this table is ordered to prevent.
    *
    * `contract-leaves` keeps it, being second in that order where the crossing is last.
@@ -407,7 +407,7 @@ describe('apack.checks.json', () => {
   });
 });
 
-/** What `apack build` throws: every failing rule at once, and the paste-able line for the switchable ones */
+/** What `apack pack build` throws: every failing rule at once, and the paste-able line for the switchable ones */
 describe('refusePackRuleViolations', () => {
   it('names every rule that fired, and how to allow the switchable one', () => {
     const dir = pack({
@@ -538,7 +538,7 @@ describe('when several rules are right about one site', () => {
       .toBe('packages/demo/vitest.config.ts:1: @apackdev/source');
     expect(formatPackWide({ what: './state.ts', at: { file: 'src/a/fe/contract.ts', line: 2 }, from: 'src/a/be/contract.ts' }, where))
       .toBe('packages/demo/src/a/fe/contract.ts:2: ./state.ts (reached from packages/demo/src/a/be/contract.ts)');
-    // The default writes them as the rule did, which is what `apack validate` prints
+    // The default writes them as the rule did, which is what `apack pack validate` prints
     expect(formatPackWide({ what: 'x', at: { file: 'src/a.ts', line: 3 } })).toBe('src/a.ts:3: x');
   });
 

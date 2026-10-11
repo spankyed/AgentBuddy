@@ -5,7 +5,7 @@ import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { bundlePackContentRuntime } from '../../src/build/be-bundler';
 import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 
-/** A content runtime that bundles but can't load where dependents' unit tests load it fails `apack build` */
+/** A content runtime that bundles but can't load where dependents' unit tests load it fails `apack pack build` */
 const tmpDirs: string[] = [];
 afterEach(() => {
   for (const dir of tmpDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
@@ -29,7 +29,7 @@ function pack(repository: string): string {
   return dir;
 }
 
-describe('apack build loads the content runtime it bundles', () => {
+describe('apack pack build loads the content runtime it bundles', () => {
   it('passes a content runtime that uses only @apackdev/sdk', async () => {
     const dir = pack("import { findRelations } from '@apackdev/ears';\nexport const memoQueries = { links: findRelations };\n");
     expect(await bundlePackContentRuntime(dir, path.join(dir, 'dist'))).toEqual({ success: true });

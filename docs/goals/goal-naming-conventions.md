@@ -279,8 +279,8 @@ Mutation: adding an `export interface FooInfo` anywhere under `packages/*/src` f
     not a location;
   - `installPackFromLocal(source, …)` (`pack-installer.ts:228`) takes a path or an archive;
   - `PackIntegrity.source` (`packages/apack-host/src/packs/pack-layout.ts:49`) is the git provenance
-    `apack release` records, and is written into every pack's `integrity.json`.
-- `PackIntegrity` is read by the installer, the updater and `apack release`; the field appears in the
+    `apack pack release` records, and is written into every pack's `integrity.json`.
+- `PackIntegrity` is read by the installer, the updater and `apack pack release`; the field appears in the
   `.integrity.json` release asset, so rename it in the writer and every reader in the same change.
 - Add the invariant: no exported interface has a field named exactly `source`.
 

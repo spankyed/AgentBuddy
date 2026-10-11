@@ -1,6 +1,6 @@
 // The desktop app's own releases on GitHub: listing them, and fetching an asset against its published sha256.
 //
-// Shared by the two things that install a build — `ensureBetaApp`, which caches one for `apack test`, and
+// Shared by the two things that install a build — `ensureBetaApp`, which caches one for `apack pack test`, and
 // `apack upgrade`, which replaces the app in /Applications. Both want the same three steps (list, pick,
 // fetch verified) and differ only in which release they pick and where the app lands.
 //

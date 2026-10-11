@@ -1,88 +1,71 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { packFeatures, MIGRATION_LINES } from '@apackdev/sdk/build';
-import { findPackRoot, readManifest } from '../utils';
+import { connect } from 'node:net';
+import { resolveAppContext, appDataDirFor } from '@apackdev/sdk/env';
+import { findRunningApp } from '@apackdev/host/database';
+import { readApiEndpoint } from '@apackdev/host/process-liveness';
+import { API_HOST } from '@apackdev/sdk/utils/pure';
+import { parseTargetEnv } from '../utils';
+import { validateAppBundle, PRODUCT_NAMES, type Channel } from '../app/installed-app';
 
-type Status = 'pass' | 'warn' | 'fail';
-
-function check(label: string, fn: () => Status | string): void {
-  try {
-    const result = fn();
-    let status: Status;
-    let msg = '';
-    if (result === 'pass' || result === 'warn' || result === 'fail') {
-      status = result;
-    } else {
-      status = 'fail';
-      msg = result;
-    }
-    const icon = status === 'pass' ? '✓' : status === 'warn' ? '!' : '✗';
-    const color = status === 'pass' ? '\x1b[32m' : status === 'warn' ? '\x1b[33m' : '\x1b[31m';
-    console.log(`  ${color}${icon}\x1b[0m ${label}${msg ? ` — ${msg}` : ''}`);
-  } catch (err) {
-    console.log(`  \x1b[31m✗\x1b[0m ${label} — ${err instanceof Error ? err.message : err}`);
-  }
+export function doctorChannel(args: string[]): Channel {
+  const { env, args: rest } = parseTargetEnv(['--production', ...args]);
+  if (rest.length || (env !== 'production' && env !== 'beta')) throw new Error('Usage: apack doctor [-b]');
+  return env;
 }
 
-export async function doctor(_args: string[]) {
-  const root = findPackRoot(process.cwd());
-
-  console.log('\n  Pack health check\n');
-
-  check('Manifest exists and parses', () => {
-    readManifest(root);
-    return 'pass';
+function reachable(port: number): Promise<boolean> {
+  return new Promise(resolve => {
+    const socket = connect({ host: API_HOST, port });
+    const finish = (ok: boolean) => { socket.destroy(); resolve(ok); };
+    socket.setTimeout(2_000, () => finish(false));
+    socket.once('connect', () => finish(true));
+    socket.once('error', () => finish(false));
   });
+}
 
-  const manifest = readManifest(root);
-
-  check('Manifest has required fields', () => {
-    if (!manifest.id) return 'missing "id"';
-    if (!manifest.hostVersion) return 'missing "hostVersion"';
-    return 'pass';
+/** Read-only diagnostics. Tests supply temporary installation and data paths. */
+export async function inspectApp(channel: Channel, options: {
+  applications?: string;
+  dataDir?: string;
+  probe?: (port: number) => Promise<boolean>;
+} = {}): Promise<void> {
+  const product = PRODUCT_NAMES[channel];
+  const bundle = path.join(options.applications ?? '/Applications', `${product}.app`);
+  const context = resolveAppContext({ build: channel, profile: options.dataDir ?? appDataDirFor(channel) });
+  let failures = 0;
+  const check = async (label: string, run: () => string | Promise<string>) => {
+    try { console.log(`  ✓ ${label}: ${await run()}`); }
+    catch (error) { failures++; console.log(`  ✗ ${label}: ${error instanceof Error ? error.message : error}`); }
+  };
+  console.log(`${product} health check\n`);
+  await check('Installation', () => {
+    const version = validateAppBundle(bundle, channel);
+    return `${version} — ${bundle}`;
   });
-
-  check('Generated files exist', () => {
-    const genDir = path.join(root, 'src', '__generated__');
-    if (!fs.existsSync(genDir)) return 'warn';
-    return 'pass';
+  await check('Data directory', () => {
+    if (!fs.existsSync(context.userDataDir)) return `${context.userDataDir} (not created yet)`;
+    if (!fs.statSync(context.userDataDir).isDirectory()) throw new Error(`Not a directory: ${context.userDataDir}`);
+    fs.accessSync(context.userDataDir, fs.constants.R_OK | fs.constants.W_OK | fs.constants.X_OK);
+    return context.userDataDir;
   });
-
-  check('Feature files present', () => {
-    const missing: string[] = [];
-    for (const f of packFeatures(manifest)) {
-      if (f.system?.entry && !fs.existsSync(path.join(root, f.system.entry))) {
-        missing.push(`${f.id}/system`);
-      }
-      if (f.plugin?.entry && !fs.existsSync(path.join(root, f.plugin.entry))) {
-        missing.push(`${f.id}/plugin`);
-      }
-    }
-    if (missing.length) return `missing: ${missing.join(', ')}`;
-    return 'pass';
+  await check('Runtime', async () => {
+    const running = findRunningApp(context);
+    const endpoint = readApiEndpoint(context.apiPortFile);
+    if (!running && !endpoint) return 'app is closed; API check skipped';
+    if (!endpoint) throw new Error(`${running?.why}; no live API endpoint`);
+    if (!await (options.probe ?? reachable)(endpoint.port)) throw new Error(`API port ${endpoint.port} is unreachable`);
+    return `API listener reachable on port ${endpoint.port} (pid ${endpoint.pid})`;
   });
+  if (failures) throw new Error(`App health check failed: ${failures} check(s).`);
+}
 
-  check('Step files present', () => {
-    const missing: string[] = [];
-    for (const [type, entry] of Object.entries(manifest.extensions?.steps ?? {})) {
-      const targets = [entry.node, entry.build, entry.trigger?.facet, entry.trigger?.register, entry.runtime?.handler, entry.fe];
-      for (const target of targets) {
-        if (target && !fs.existsSync(path.join(root, target.split('#')[0]!))) missing.push(`${type} (${target})`);
-      }
-    }
-    if (missing.length) return `missing: ${missing.join(', ')}`;
-    return 'pass';
-  });
-
-  check('Migration files present', () => {
-    // Both lines: a file missing under either is a migration that cannot run, and reading one map would
-    // report `pass` over a pack whose migrations are all declared on the other
-    const missing = MIGRATION_LINES.flatMap((line) => Object.entries(manifest.migrations?.[line] ?? {})
-      .filter(([, target]) => !fs.existsSync(path.join(root, target.split('#')[0]!)))
-      .map(([version, target]) => `${line}/${version} (${target})`));
-    if (missing.length) return `missing: ${missing.join(', ')}`;
-    return 'pass';
-  });
-
-  console.log('');
+export async function doctor(args: string[]): Promise<void> {
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log('Usage: apack doctor [-b]\n\nInspect the installed production app, its data directory, and its API listener if running. -b selects beta. Nothing is launched or modified. Pack checks are apack pack doctor.');
+    return;
+  }
+  const channel = doctorChannel(args);
+  if (process.platform !== 'darwin') throw new Error('Installed app diagnostics currently support macOS only.');
+  await inspectApp(channel);
 }

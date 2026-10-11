@@ -7,7 +7,7 @@
  * would put two unrelated records under one word.
  *
  * **It is declared, never inferred.** A launcher writes one because it means its app to be driven, so
- * `apack test` writes none and a packaged build carries no port: there is no probing a port to find out,
+ * `apack pack test` writes none and a packaged build carries no port: there is no probing a port to find out,
  * and nothing treats the absence of a file as "try anyway".
  *
  * **The pid is the supervisor's, not the app's.** The supervisor is what wrote this file and what has to be
@@ -16,7 +16,7 @@
  * and leave a watcher and a dev server running with nothing to serve. The app needs no pid here; it is
  * reached through `debugPort`.
  *
- * **It lives here rather than in the CLI because two launchers publish one**: `apack dev` and the
+ * **It lives here rather than in the CLI because two launchers publish one**: `apack open --session` and the
  * renderer-HMR loop `npm run dev` runs, which spawns Electron from `packages/main/vite.config.js`. The
  * `pack-dev-servers` marker is here for the same reason — a record about a running app's data dir, written
  * by whoever started it and read by whoever wants to reach it.
@@ -65,7 +65,7 @@ export const sessionFile = (dataDir: string): string => path.join(dataDir, 'sess
  * picks a free one, which is the only safe way to ask: a fixed port collides with whatever holds it and with
  * a second app.
  *
- * **It is here rather than in `apack dev` because the `npm run dev` watcher had no gate at all.** That hook
+ * **It is here rather than in `apack open --session` because the `npm run dev` watcher had no gate at all.** That hook
  * pushed the flag unconditionally, behind a `NODE_ENV !== 'development'` check — which is the *build mode*
  * of the bundle, not the environment the spawned app resolves. A source run takes that from `APACK_ENV`, so
  * `APACK_ENV=beta npm run dev` opened a port on a **beta** app while the CLI's identical decision had six
@@ -79,7 +79,7 @@ export function debugPortArgsFor(build: AppEnv): string[] {
  * Waits for a session to be published on a data dir, or says why none was.
  *
  * **The deadline is a pack build, not a window.** A cold spawn runs the packages' freshness check and
- * `apack build` before Electron starts, which is tens of seconds — a deadline sized for a launch reports a
+ * `apack pack build` before Electron starts, which is tens of seconds — a deadline sized for a launch reports a
  * timeout on a build that was working. `isAlive` is how the caller says the launcher has gone: a child that
  * exited is an error with a body rather than a wait to the deadline, and the two read quite differently to
  * whoever is waiting.

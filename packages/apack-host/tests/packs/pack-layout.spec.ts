@@ -26,7 +26,7 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-/** A pack source dir as `apack build` leaves it. */
+/** A pack source dir as `apack pack build` leaves it. */
 function builtPack(overrides: Record<string, unknown> = {}): string {
   const root = path.join(tmp, 'src-pack');
   const write = (rel: string, content: string) => {
@@ -185,7 +185,7 @@ describe('installPackFromLocal (pack layout path)', () => {
     expect(fs.existsSync(path.join(packsDir, 'demo-pack'))).toBe(false);
   });
 
-  // `apack pack install` and `apack dev` pass the format the app recorded, which need not be the one this process reads
+  // `apack pack install` and `apack pack dev` pass the format the app recorded, which need not be the one this process reads
   it("checks against the app's format, not this process's: refusing one only this process reads, installing one only the app reads", async () => {
     const packsDir = path.join(tmp, 'packs');
     const appFormat = PACK_SNAPSHOT_FORMAT + 1;
@@ -262,7 +262,7 @@ describe('installPackFromLocal (pack layout path)', () => {
     const root = builtPack();
     fs.rmSync(path.join(root, 'dist'), { recursive: true });
     await expect(installPackFromLocal(root, path.join(tmp, 'packs'))).rejects.toThrow(
-      /^Pack demo-pack is not built: .* has no integrity\.json and no dist\/runtime\/index\.cjs with dist\/types\/snapshot\.json\. Run "apack build" first\.$/,
+      /^Pack demo-pack is not built: .* has no integrity\.json and no dist\/runtime\/index\.cjs with dist\/types\/snapshot\.json\. Run "apack pack build" first\.$/,
     );
     expect(fs.existsSync(path.join(tmp, 'packs', 'demo-pack'))).toBe(false);
   });
@@ -353,7 +353,7 @@ describe('installPackFromGitHub', () => {
     const { name } = await mockRelease(null);
 
     await expect(installPackFromGitHub('acme/pack@v1.2.3', path.join(tmp, 'packs'))).rejects.toThrow(
-      `Release v1.2.3 of acme/pack has no ${name}.sha256; publish one with "apack release", or install with a checksum you know`,
+      `Release v1.2.3 of acme/pack has no ${name}.sha256; publish one with "apack pack release", or install with a checksum you know`,
     );
     expect(fs.existsSync(path.join(tmp, 'packs'))).toBe(false);
   });

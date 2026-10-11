@@ -16,7 +16,7 @@ export type AppChoice = { source: string } | { beta: true };
 
 export interface CliDirs {
   cache: string;
-  /** Machine state the CLI owns and the app does not: today, the profiles `apack dev` creates */
+  /** Machine state the CLI owns and the app does not: today, the profiles `apack open --session` creates */
   data: string;
 }
 
@@ -132,7 +132,7 @@ function namedApp(flags: AppFlags | undefined, env: NodeJS.ProcessEnv, saved?: N
 }
 
 /**
- * The built-in packs directory of the app `apack build` resolves dependencies through: APACK_BUILD=beta
+ * The built-in packs directory of the app `apack pack build` resolves dependencies through: APACK_BUILD=beta
  * (downloaded when needed), APACK_ROOT, or the apack checkout behind the pack. Lets a pack resolve
  * dependencies on built-in packs before the app has ever run, including in CI.
  *
@@ -164,7 +164,7 @@ export async function configuredAppPackagesDir(options: ConfiguredAppOptions = {
   if ('source' in named.choice) {
     // No `sourceAppProblems` here, and that is the point of the branch being its own: a build reads the
     // checkout's `packages/`, where launching it needs main/dist, renderer/dist and electron. Validating
-    // would fail `apack build` on a checkout nobody has run `npm run build:default-setup && npm run build:runtime` in.
+    // would fail `apack pack build` on a checkout nobody has run `npm run build:default-setup && npm run build:runtime` in.
     const root = path.resolve(expandHome(named.choice.source));
     return { dir: path.join(root, 'packages'), label: `apack checkout ${root}` };
   }
@@ -212,7 +212,7 @@ function cachedBetaApp(dirs: CliDirs, hostVersion: string): PackagedApp | null {
  * does in every other tool, which is the escape hatch for the day a checkout is named after a channel.
  *
  * `build`, because it is the only word that covers all of them: "channel" does not, since `development` and
- * `test` are not releases. And it keeps one meaning across the CLI — `apack build` *produces* one,
+ * `test` are not releases. And it keeps one meaning across the CLI — `apack pack build` *produces* one,
  * `--build` *selects* one.
  */
 export const BUILD_NAMES = ['beta'] as const;

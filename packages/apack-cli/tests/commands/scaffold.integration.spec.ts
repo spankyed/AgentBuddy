@@ -12,17 +12,7 @@ import { extractPackArchive, verifyPack } from '@apackdev/host/packs';
 import { parse as parseYaml } from 'yaml';
 import { callCli, typecheckPack } from '../_support/pack-builds';
 
-/**
- * The commands `apack` answers to, read from `src/index.ts`'s COMMANDS table — the authority. Read as text
- * rather than imported because that module calls `main()` at the top level, which is why the test support
- * keeps its own map; a second hand-written list here would be a third copy that nothing keeps honest.
- */
-const CLI_COMMANDS: string[] = (() => {
-  const source = fs.readFileSync(path.join(import.meta.dirname, '..', '..', 'src', 'index.ts'), 'utf-8');
-  const table = /const COMMANDS[^{]*\{([\s\S]*?)\n\};/.exec(source)?.[1];
-  if (table === undefined) throw new Error("couldn't find the COMMANDS table in src/index.ts");
-  return [...table.matchAll(/^\s*'([\w-]+)':/gm)].map((m) => m[1]!);
-})();
+import { COMMANDS, type Command } from '../../src/command-tree.ts';
 
 /**
  * The scaffold an outside author starts from must build, typecheck and pack as
@@ -59,7 +49,7 @@ afterAll(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-describe('apack init → add feature → build → tsc → pack', () => {
+describe('apack pack init → add feature → build → tsc → pack', () => {
   it('scaffolds a pack with a release workflow and no unresolvable dependencies', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(pack, 'apack.json'), 'utf-8'));
     expect(manifest.dependencies).toEqual({});
@@ -71,7 +61,7 @@ describe('apack init → add feature → build → tsc → pack', () => {
 
   it("explains instead of writing a flow the scaffold can't build (no dependency provides steps)", () => {
     // process: the exit code and the message an author reads are the assertion
-    const result = run('node', [CLI, 'add', 'flow', 'heartbeat'], pack);
+    const result = run('node', [CLI, 'pack', 'add', 'flow', 'heartbeat'], pack);
     expect(result.code).not.toBe(0);
     expect(result.output).toMatch(/"dependencies": \{ "default-setup": "\*" \}/);
     expect(fs.existsSync(path.join(pack, 'src', 'content', 'flows', 'heartbeat.ts'))).toBe(false);
@@ -79,7 +69,7 @@ describe('apack init → add feature → build → tsc → pack', () => {
 
   it('rejects a feature id that is not an identifier', () => {
     // process: the exit code and the message an author reads are the assertion
-    const result = run('node', [CLI, 'add', 'feature', 'my-notes'], pack);
+    const result = run('node', [CLI, 'pack', 'add', 'feature', 'my-notes'], pack);
     expect(result.code).not.toBe(0);
     expect(result.output).toMatch(/must start with a lowercase letter and contain only letters and digits/);
   });
@@ -103,7 +93,7 @@ describe('apack init → add feature → build → tsc → pack', () => {
 
     const out = path.join(tmp, 'out');
     // produces: the archive extractPackArchive/verifyPack read below
-    const packed = await callCli(pack, 'pack', ['--out', out]);
+    const packed = await callCli(pack, 'archive', ['--out', out]);
     expect(packed.code, packed.output).toBe(0);
     const extracted = await extractPackArchive(path.join(out, 'demo-pack-0.1.0.tgz'), path.join(tmp, 'extract'));
     expect(verifyPack(extracted).id).toBe('demo-pack');
@@ -111,7 +101,7 @@ describe('apack init → add feature → build → tsc → pack', () => {
 
   /**
    * The facade round trip through the **scripts the scaffold writes**, on a pack scaffolded the way an author
-   * gets one: `apack init` writes no `etc/`, so a pack's report appears at its first `facade:update`, and
+   * gets one: `apack pack init` writes no `etc/`, so a pack's report appears at its first `facade:update`, and
    * what this holds is that the two scripts it ships work in that order on a pack nobody has edited.
    *
    * What the command decides — that it re-bundles the facade rather than reading `dist`, and so needs no
@@ -166,7 +156,8 @@ describe('apack init → add feature → build → tsc → pack', () => {
      * first word is a runner has to resolve here; a line that is shell (`test "v$(…)"`, `echo`) is not ours.
      */
     const unknown = (line: string): string | undefined => {
-      const [first = '', second = '', third = ''] = line.split(/\s+/);
+      const tokens = line.split(/\s+/);
+      const [first = '', second = '', third = ''] = tokens;
       if (!RUNNERS.includes(first)) return undefined;
       // `npm run x`, and npm's lifecycle shorthands, which do run a script of that name
       if (first === 'npm') {
@@ -176,7 +167,11 @@ describe('apack init → add feature → build → tsc → pack', () => {
       }
       const command = first === 'apack' ? second : second === 'apack' ? third : undefined;
       if (command === undefined) return `${first} ${second}`; // a runner invoking something that is not ours
-      return CLI_COMMANDS.includes(command) ? undefined : `apack ${command}`;
+      const commandIndex = first === 'apack' ? 1 : 2;
+      let node: Command | undefined = (COMMANDS as Record<string, Command>)[command];
+      let index = commandIndex + 1;
+      while (node?.children && tokens[index] && !tokens[index]!.startsWith('-')) node = node.children[tokens[index++]!];
+      return node ? undefined : tokens.slice(0, index).join(' ');
     };
 
     const offenders: string[] = [];
@@ -248,7 +243,7 @@ describe('apack init → add feature → build → tsc → pack', () => {
     expect(generate.output).not.toMatch(/inputs unchanged/);
     expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toMatch(/import \{ cacheService as __service_cache \}/);
     // process: the stdout a second, unchanged run prints is the assertion
-    expect(run('node', [CLI, 'generate-entries'], pack).output).toMatch(/inputs unchanged/);
+    expect(run('node', [CLI, 'pack', 'generate-entries'], pack).output).toMatch(/inputs unchanged/);
   });
 
   it('keeps unit tests runnable after init-tests adds Playwright specs', async () => {
@@ -277,7 +272,7 @@ describe('apack init → add feature → build → tsc → pack', () => {
     manifest.features = { notes_v2: Object.values(manifest.features)[0] };
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
     try {
-      for (const args of [['build'], ['pack', '--out', path.join(tmp, 'invalid-out')], ['generate-entries', '--force']]) {
+      for (const args of [['pack', 'build'], ['pack', 'archive', '--out', path.join(tmp, 'invalid-out')], ['pack', 'generate-entries', '--force']]) {
         // process: each command's exit code and message for an invalid manifest is the assertion
         const result = run('node', [CLI, ...args], pack);
         expect(result.code, args.join(' ')).not.toBe(0);
@@ -295,7 +290,7 @@ describe('apack init → add feature → build → tsc → pack', () => {
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
     // process: the exit code and the unresolved-dependency message are the assertion
-    const build = run('node', [CLI, 'build'], pack);
+    const build = run('node', [CLI, 'pack', 'build'], pack);
     expect(build.code).not.toBe(0);
     expect(build.output).toMatch(/Unresolved pack dependencies:[\s\S]*nonexistent-pack/);
     // The failed build left the previous one where it was: it assembles `dist` aside and renames it into
@@ -304,7 +299,7 @@ describe('apack init → add feature → build → tsc → pack', () => {
     // **Which is why `pack` asks whether that build is of these sources**, rather than failing for want of
     // files as it used to. The manifest edited above is newer than the build, so this is refused and names it
     // process: the exit code and the message are the assertion
-    const packed = run('node', [CLI, 'pack', '--out', path.join(tmp, 'stale-out')], pack);
+    const packed = run('node', [CLI, 'pack', 'archive', '--out', path.join(tmp, 'stale-out')], pack);
     expect(packed.code).not.toBe(0);
     expect(packed.output).toMatch(/build is older than apack\.json/);
   });

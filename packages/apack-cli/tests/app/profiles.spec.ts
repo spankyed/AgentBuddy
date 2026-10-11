@@ -269,7 +269,7 @@ describe('the flags', () => {
 });
 
 /**
- * The app outlives the `apack dev` that started it, so the run's pid is not enough to call a directory
+ * The app outlives the `apack pack dev` that started it, so the run's pid is not enough to call a directory
  * abandoned. Found by killing a run, reclaiming what looked like its leak, and watching the app that was
  * still going rebuild the directory underneath — the removal had only corrupted what was in it.
  */

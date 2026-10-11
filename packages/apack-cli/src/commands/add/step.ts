@@ -7,14 +7,14 @@ import { renderTemplate } from '../../templates.ts';
 
 
 const HELP = `
-Usage: apack add step <type> [options]
+Usage: apack pack add step <type> [options]
 
 Options:
   --trigger    Create a trigger-type step instead of a regular step
 
 Example:
-  apack add step my-step
-  apack add step my-trigger --trigger
+  apack pack add step my-step
+  apack pack add step my-trigger --trigger
 `.trim();
 
 

@@ -65,7 +65,7 @@ export default defineConfig((options) => {
        * The API's own `@/`, and only the API's (`packages/api/tsconfig.json` maps it to `src/*`).
        *
        * It used to try the importer's built-in pack first, because a pack named its own modules that way too
-       * — a per-importer rule that this config, the renderer's, the pack's vitest config and `apack build`
+       * — a per-importer rule that this config, the renderer's, the pack's vitest config and `apack pack build`
        * each implemented separately. Packs use `#` subpath imports now, and esbuild resolves those from the
        * pack's own `package.json` with no help from here, since each names the file that is there.
        */

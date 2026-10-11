@@ -7,7 +7,7 @@ import { importCompiledContent } from '@apackdev/sdk/utils'
 import { repository } from '#generated/repository.ts'
 import type { LibraryIndex } from '#features/library/be/types.ts'
 
-/** Where `apack build` writes this pack's compiled content */
+/** Where `apack pack build` writes this pack's compiled content */
 const DIST = path.resolve(import.meta.dirname, '../../../../dist', 'runtime', 'content')
 
 const indexOf = (event: unknown) => (event as { data: { index: LibraryIndex } }).data.index

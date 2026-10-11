@@ -1090,7 +1090,7 @@ function readLock(file: string): LockHolder | null {
 /**
  * Why this process wants to build, which decides what it does when another build already holds the lock.
  *
- * A `command` is someone asking for a build — `npm run packages:build`, `apack build`. It fails at once
+ * A `command` is someone asking for a build — `npm run packages:build`, `apack pack build`. It fails at once
  * naming the holder, because the person wants to know, and it builds whether or not the output is already
  * fresh, because they asked for a build.
  *
