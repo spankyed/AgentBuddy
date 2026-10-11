@@ -399,11 +399,9 @@ export function orderedSteps(given: readonly ChainStep[] = CHAIN_STEPS): readonl
 }
 
 /**
- * In dependency order. `compile` stays ahead of `build` and is not redundant with it: `build -ws` gives no
- * ordering guarantee, since no workspace declares a dependency on `@app/default-setup`, and the renderer's
- * build reads the generated pack entry that `compile` writes.
+ * In dependency order. `compile` builds the built-in pack before `build:runtime` reads its outputs.
  *
- * `test:external-pack` is split: its contract half runs here, before `build`, because validating,
+ * `test:external-pack` is split: its contract half runs here, before `build:runtime`, because validating,
  * building and typechecking a pack and running its harness specs needs no app — proved by running it with
  * `packages/renderer/dist` moved aside. Its Playwright half needs the app.
  *
@@ -1058,8 +1056,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
       'packages/apack-host/src/build/published-manifest.ts',
       'packages/apack-host/src/build/source-resolution.ts',
       'packages/apack-host/src/replace-dir.ts'] },
-  // Ahead of build and not redundant with it: build -ws gives no ordering guarantee, since no workspace
-  // declares a dependency on @app/default-setup, and the renderer's build reads the pack entry this writes
+  // Build the built-in pack before build:runtime reads its outputs.
   { name: 'compile', timeout: 'suite', seconds: 28, outputs: PACK_OUTPUTS,
     // Its sources and its manifest, not its tests: `apack build` never reads those
     //
@@ -1138,11 +1135,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // It keeps a cache of its own now, like the two unit pools, so `--all` has to reach inside it
     forceArgs: ['--all'],
     ...inputsForSuites(INTEGRATION_SUITES, 'integration') },
-  // `build:runtime`, not `build`. Root `build` is `-ws`, which includes `@app/default-setup`, whose own build is
-  // the very command `compile` runs — so a `build` step rebuilt the pack every run, rewriting the `dist`
-  // it declares as an input. It invalidated itself, and the five steps that read that tree, on every run:
-  // measured, a warm chain cached 7 of 17 steps instead of 16. `npm run build` still builds everything, for
-  // CI and `build/build.sh`; the chain does not need it to, because `compile` is a declared `need`.
+  // compile owns pack outputs; build:runtime only builds the four app workspaces.
   // **No pack's `src` here, and that is a property of the build rather than an omission.** Nothing compiles a
   // pack into the app any more: a pack's backend is loaded at run time from its own `dist/runtime/index.cjs`
   // and its frontend fetched over `pack://`, so what this reads of a pack is `PACK_OUTPUTS` — its `dist`,

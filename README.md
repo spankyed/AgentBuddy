@@ -83,7 +83,8 @@ npm run start:inspect    # Dev mode with Electron inspection enabled
 ### Build
 
 ```sh
-npm run build            # Build all workspaces
+npm run compile          # Build the built-in pack and ensure package bundles
+npm run build:runtime    # Build the app runtime
 npm run build:be         # Build backend only
 npm run build:production       # Full production build
 npm run build:preview -- --version 0.4.0  # Unsigned local preview, separate app and data

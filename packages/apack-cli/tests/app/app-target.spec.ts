@@ -173,7 +173,7 @@ describe('deriveApp', () => {
   it('refuses an unbuilt checkout instead of falling through to a beta', async () => {
     const raw = makeCheckout('raw', { built: false });
 
-    await expect(derive({ checkout: finds(raw) })).rejects.toThrow(/npm run build/);
+    await expect(derive({ checkout: finds(raw) })).rejects.toThrow(/npm run compile && npm run build:runtime/);
     expect(beta, 'it must not answer with a beta the pack was not built against').not.toHaveBeenCalled();
   });
 

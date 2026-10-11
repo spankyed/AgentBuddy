@@ -19,7 +19,6 @@
   "scripts": {
     "preinstall": "[ \"$NODE_ENV\" = 'production' ] && echo '\u26a0\ufe0f  NODE_ENV=production \u2014 devDependencies will be skipped. Run: unset NODE_ENV' >&2 || true",
     "postinstall": "node scripts/postinstall.mjs",
-    "build": "npm run build -ws --if-present",
     "build:runtime": "tsx scripts/build-runtime.ts",
     "build:preview": "tsx scripts/build-preview.ts",
     "build:production": "bash build/build.sh",
@@ -71,7 +70,6 @@
     "prebuild:be": "npm run generate:entries -w @app/default-setup && npm run compile",
     "build:be:dev": "npm run build:dev --workspace @app/api",
     "compile": "npm run packages:ensure && npm run build -w @app/default-setup",
-    "prebuild": "npm run packages:ensure",
     "prebuild:be:dev": "npm run build:dev -w @app/default-setup",
     "typecheck": "tsx scripts/typecheck.ts",
     "typecheck:fe": "npm run type-check --workspace @app/renderer && echo '\u2705 Frontend type check passed'",

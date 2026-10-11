@@ -28,7 +28,7 @@ Things that waste the most time, in order:
   `packages/apack-testing/CLAUDE.md`; what makes it worth revisiting is appearing on that path, not the
   ratio getting worse. **Read the path before measuring a ratio**, which is the mistake this bullet is made
   of: two sessions went into that pool's overhead before anyone asked whether it was on the path.
-- **Running `npm run build` to test a change no build output depends on.** The renderer and API build
+- **Running `npm run build:runtime` to test a change no build output depends on.** The renderer and API build
   from source; a CLI or SDK change does not need them rebuilt to be tested.
 - **Running an E2E suite to find a bug you have a stack trace for.** A minified frame with a line and
   column is a solved problem: build once with `sourcemap: true` in the renderer's Vite config, decode
