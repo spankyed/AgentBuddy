@@ -65,7 +65,7 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 
 `initAppContext()` runs first and is the only place the environment is decided:
 
-- `_inferElectronAppEnv` (`@apack/sdk/env`) gets `PLAYWRIGHT_TEST === 'true'`, `app.isPackaged`, the build-time `__APACK_CHANNEL__` and `process.env.APACK_ENV`. `build/build-metadata.ts` supplies the main/API bundlers and electron-builder with one version and channel (`production`, `beta`, or `preview` for packaged apps). Packaging rejects inconsistent stamps, main checks its baked version against `app.getVersion()`, and the API checks `APACK_EXPECTED_APP_VERSION` before opening data. See `docs/reference/preview-builds.md` for the local preview command.
+- `_inferElectronAppEnv` (`@apack/sdk/env`) gets `PLAYWRIGHT_TEST === 'true'`, `app.isPackaged`, the channel read from packaged `build-manifest.json`, and `process.env.APACK_ENV`. `build/build-metadata.ts` creates a fresh staging build and one manifest; main and API read that manifest at runtime. Packaging checks file hashes before signing, so no baked-version comparison is needed. See `docs/reference/preview-builds.md`.
 - `resolveAppContext({ build })` gives the app name, data dir, `packsDir`, `urlScheme`, …. It then calls `app.setName` and `app.setPath('userData')` (so Electron's own storage and the single-instance lock follow the **data dir**), and writes `APACK_ENV` / `APACK_USER_DATA_DIR` to `process.env`, which the API child inherits.
 - Everything else reads it with `getAppContext()`, which throws if called first. Don't read `app.getPath('userData')`, `NODE_ENV` or `PLAYWRIGHT_TEST` to choose paths.
 
@@ -115,4 +115,4 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 
 ## Tests
 
-`npm test -w @app/main` (vitest, `tests/**/*.spec.ts`), in the root `test:unit` chain. `tests/electron-stub.ts` stands in for Electron's `app` and records what a module asked it to do; `vitest.config.ts` aliases `electron` to it and defines `__APACK_CHANNEL__`, which the identity guard allows for the same reason it allows `vite.config.js`. A test must take the stub from the same fresh registry as the module under test (`load()` in `tests/app-context.spec.ts`), because `vi.resetModules()` gives the module a new one.
+`npm test -w @app/main` (vitest, `tests/**/*.spec.ts`), in the root `test:unit` chain. `tests/electron-stub.ts` stands in for Electron's `app` and records what a module asked it to do; `vitest.config.ts` aliases `electron` to it. A test must take the stub from the same fresh registry as the module under test (`load()` in `tests/app-context.spec.ts`), because `vi.resetModules()` gives the module a new one.

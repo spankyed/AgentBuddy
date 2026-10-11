@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import pkg from '../package.json' with { type: 'json' };
 
 /** Shared by the main/API bundlers and electron-builder; release metadata stays in package.json. */
@@ -33,20 +34,66 @@ export function resolveBuildMetadata(env: NodeJS.ProcessEnv = process.env): Buil
   };
 }
 
-/** Rejects stale process bundles before signing or producing an installable app. */
-export function verifyPackagedBuild(appDir: string, expected: BuildMetadata): void {
-  if (!['production', 'beta', 'preview'].includes(expected.channel)) {
-    throw new Error(`Cannot package an unstamped build (${expected.channel || 'no channel'}). Use the production, beta, or preview build command.`);
-  }
-  const packaged = JSON.parse(fs.readFileSync(path.join(appDir, 'package.json'), 'utf8'));
-  if (packaged.version !== expected.version) throw new Error(`Packaged version ${packaged.version} differs from ${expected.version}`);
-  for (const [name, metadata] of [
-    ['package', packaged.apackBuild],
-    ['main', JSON.parse(fs.readFileSync(path.join(appDir, 'packages/main/dist/build-metadata.json'), 'utf8'))],
-    ['API', JSON.parse(fs.readFileSync(path.join(appDir, 'packages/api/dist/build-metadata.json'), 'utf8'))],
-  ] as const) {
-    for (const key of Object.keys(expected) as (keyof BuildMetadata)[]) {
-      if (metadata?.[key] !== expected[key]) throw new Error(`${name} build metadata ${key} differs: expected ${expected[key]}, got ${metadata?.[key]}`);
+/** A new directory for each packaging run; workspace dist remains for development/checks. */
+export function createBuildSession(env: NodeJS.ProcessEnv = process.env): string {
+  const metadata = resolveBuildMetadata(env);
+  if (!['production', 'beta', 'preview'].includes(metadata.channel)) throw new Error('Packaging requires a production, beta, or preview channel.');
+  const parent = path.resolve('.temp/app-builds');
+  fs.mkdirSync(parent, { recursive: true });
+  const root = fs.mkdtempSync(path.join(parent, `${metadata.channel}-`));
+  fs.writeFileSync(path.join(root, 'build-manifest.json'), JSON.stringify(metadata, null, 2) + '\n');
+  return root;
+}
+
+export function readBuildManifest(root: string): BuildMetadata {
+  const metadata = JSON.parse(fs.readFileSync(path.join(root, 'build-manifest.json'), 'utf8')) as BuildMetadata;
+  if (!['production', 'beta', 'preview'].includes(metadata.channel) || !metadata.version) throw new Error('Invalid packaged build manifest');
+  return metadata;
+}
+
+export function appBuildOutput(workspace: string): string {
+  const root = process.env.APACK_BUILD_ROOT;
+  if (!root) return 'dist';
+  readBuildManifest(root);
+  return path.join(root, 'packages', workspace, 'dist');
+}
+
+const WORKSPACES = ['main', 'api', 'renderer', 'preload'] as const;
+function artifactHashes(root: string): Record<string, string> {
+  const hashes: Record<string, string> = {};
+  function walk(relative: string): void {
+    for (const entry of fs.readdirSync(path.join(root, relative), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const file = `${relative}/${entry.name}`;
+      if (entry.isDirectory()) walk(file);
+      else if (entry.isFile()) hashes[file] = createHash('sha256').update(fs.readFileSync(path.join(root, file))).digest('hex');
+      else throw new Error(`Unexpected build artifact: ${file}`);
     }
   }
+  for (const workspace of WORKSPACES) {
+    const dir = `packages/${workspace}/dist`;
+    walk(dir);
+    if (!Object.keys(hashes).some(file => file.startsWith(`${dir}/`))) throw new Error(`Missing build output: ${workspace}`);
+  }
+  hashes['build-manifest.json'] = createHash('sha256').update(fs.readFileSync(path.join(root, 'build-manifest.json'))).digest('hex');
+  return hashes;
+}
+
+/** Written only after all four bundlers succeed; an interrupted run cannot be packaged. */
+export function sealBuildSession(root: string): void {
+  readBuildManifest(root);
+  fs.writeFileSync(path.join(root, 'build-artifacts.json'), JSON.stringify(artifactHashes(root), null, 2) + '\n');
+}
+
+export function verifyBuildArtifacts(root: string, appDir = root): void {
+  const expected = JSON.parse(fs.readFileSync(path.join(root, 'build-artifacts.json'), 'utf8'));
+  const actual = artifactHashes(appDir);
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('Build artifacts differ from the completed staging build');
+}
+
+/** Packaging consumes only a completed stage, then verifies the actual packaged files. */
+export function verifyPackagedBuild(appDir: string, root: string): void {
+  const manifest = readBuildManifest(root);
+  const packaged = JSON.parse(fs.readFileSync(path.join(appDir, 'package.json'), 'utf8'));
+  if (packaged.version !== manifest.version) throw new Error(`Packaged version ${packaged.version} differs from ${manifest.version}`);
+  verifyBuildArtifacts(root, appDir);
 }

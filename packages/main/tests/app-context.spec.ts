@@ -1,5 +1,8 @@
 // Where this process puts its data and its logs, decided once. Every other process is told the answer, so
 // a change here reaches all of them — including one that would move an installed app's logs.
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const env = { APACK_ENV: process.env.APACK_ENV, APACK_USER_DATA_DIR: process.env.APACK_USER_DATA_DIR };
@@ -30,15 +33,19 @@ async function load() {
 const context = async () => (await load()).getAppContext();
 
 describe('the app context', () => {
-  it('refuses a packaged app whose version differs from the main bundle', async () => {
+  it('reads packaged identity from the manifest rather than the launching environment', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'main-manifest-'));
+    fs.writeFileSync(path.join(dir, 'build-manifest.json'), JSON.stringify({ version: '0.4.0-preview.1', channel: 'preview' }));
     const { app, getAppContext } = await load();
     app.isPackaged = true;
-    vi.spyOn(app, 'getVersion').mockReturnValue('999.0.0');
+    vi.spyOn(app, 'getAppPath').mockReturnValue(dir);
     try {
-      expect(() => getAppContext()).toThrow(/Packaged app version .* differs from main build/);
+      expect(getAppContext().build).toBe('preview');
+      expect(getAppContext().appName).toBe('apack-preview');
     } finally {
-      vi.restoreAllMocks();
       app.isPackaged = false;
+      vi.restoreAllMocks();
+      fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 

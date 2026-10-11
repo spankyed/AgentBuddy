@@ -1,9 +1,9 @@
 import {app} from 'electron';
 import * as path from 'node:path';
+import {readFileSync} from 'node:fs';
 import {_inferElectronAppEnv, resolveAppContext, type AppContext} from '@apack/sdk/env';
 
-declare const __APACK_CHANNEL__: string;
-declare const __APACK_BUILD_VERSION__: string;
+
 
 /** The app's environment and paths, plus the log directory only this process can resolve. */
 export interface MainAppContext extends AppContext {
@@ -27,13 +27,13 @@ let context: MainAppContext | null = null;
  * did: electron-log fixed its directory at import and every run's logs went to the same place.
  */
 function initialise(): MainAppContext {
-  if (app.isPackaged && app.getVersion() !== __APACK_BUILD_VERSION__) {
-    throw new Error(`Packaged app version ${app.getVersion()} differs from main build ${__APACK_BUILD_VERSION__}`);
-  }
+  const channel = app.isPackaged
+    ? JSON.parse(readFileSync(path.join(app.getAppPath(), 'build-manifest.json'), 'utf8')).channel
+    : '';
   const env = _inferElectronAppEnv({
     playwrightTest: process.env.PLAYWRIGHT_TEST === 'true',
     isPackaged: app.isPackaged,
-    channel: __APACK_CHANNEL__,
+    channel,
     envVar: process.env.APACK_ENV,
   });
   // Read before the assignment below, so this is the caller's choice and not the one made here

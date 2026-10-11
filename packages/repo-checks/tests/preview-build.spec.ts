@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { previewEnvironment, previewVersion } from '../../../scripts/lib/preview-build.ts';
-import { resolveBuildMetadata, verifyPackagedBuild } from '../../../build/build-metadata.ts';
+import { resolveBuildMetadata, createBuildSession, readBuildManifest, sealBuildSession, verifyBuildArtifacts, verifyPackagedBuild } from '../../../build/build-metadata.ts';
 
 const dirs: string[] = [];
 afterEach(() => { for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
@@ -28,29 +28,37 @@ describe('local preview builds', () => {
     expect(() => resolveBuildMetadata({ APACK_ENV: 'preview' })).toThrow(/Preview builds require/);
   });
 
-  it('rejects a stale API or main bundle and a mismatched packaged version', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'preview-packaging-'));
-    dirs.push(dir);
-    const metadata = resolveBuildMetadata(previewEnvironment('0.4.0-preview.1', {}));
-    expect(() => verifyPackagedBuild(dir, resolveBuildMetadata({}))).toThrow(/unstamped build/);
-    const write = (file: string, value: unknown) => {
-      const target = path.join(dir, file);
-      fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.writeFileSync(target, JSON.stringify(value));
-    };
-    const packageFile = { version: metadata.version, apackBuild: metadata };
-    write('package.json', packageFile);
-    for (const process of ['main', 'api']) write(`packages/${process}/dist/build-metadata.json`, metadata);
-    expect(() => verifyPackagedBuild(dir, metadata)).not.toThrow();
-    for (const process of ['main', 'api']) {
-      write(`packages/${process}/dist/build-metadata.json`, { ...metadata, version: '0.3.14' });
-      expect(() => verifyPackagedBuild(dir, metadata)).toThrow(/build metadata version differs/);
-      write(`packages/${process}/dist/build-metadata.json`, metadata);
+  it('isolates channels and rejects incomplete or changed artifacts before packaging', () => {
+    const preview = createBuildSession(previewEnvironment('0.4.0-preview.1', {}));
+    const production = createBuildSession({ APACK_ENV: 'production' });
+    dirs.push(preview, production);
+    expect(preview).not.toBe(production);
+    expect(readBuildManifest(preview).version).toBe('0.4.0-preview.1');
+    expect(readBuildManifest(production).channel).toBe('production');
+    expect(() => verifyBuildArtifacts(preview)).toThrow();
+    const app = fs.mkdtempSync(path.join(os.tmpdir(), 'preview-package-'));
+    dirs.push(app);
+    for (const workspace of ['main', 'api', 'renderer', 'preload']) {
+      const dist = path.join(preview, 'packages', workspace, 'dist');
+      fs.mkdirSync(dist, { recursive: true });
+      fs.writeFileSync(path.join(dist, 'index.js'), workspace);
     }
-    write('packages/api/dist/build-metadata.json', { ...metadata, channel: 'production' });
-    expect(() => verifyPackagedBuild(dir, metadata)).toThrow(/build metadata channel differs/);
-    write('packages/api/dist/build-metadata.json', metadata);
-    write('package.json', { ...packageFile, version: '0.3.14' });
-    expect(() => verifyPackagedBuild(dir, metadata)).toThrow(/Packaged version/);
+    sealBuildSession(preview);
+    fs.cpSync(preview, app, { recursive: true });
+    fs.writeFileSync(path.join(app, 'package.json'), JSON.stringify({ version: '0.4.0-preview.1' }));
+    expect(() => verifyPackagedBuild(app, preview)).not.toThrow();
+    for (const workspace of ['main', 'api', 'renderer', 'preload']) {
+      const file = path.join(app, 'packages', workspace, 'dist/index.js');
+      fs.writeFileSync(file, 'stale');
+      expect(() => verifyPackagedBuild(app, preview)).toThrow(/artifacts differ/);
+      fs.writeFileSync(file, workspace);
+    }
+    fs.writeFileSync(path.join(app, 'build-manifest.json'), '{}');
+    expect(() => verifyPackagedBuild(app, preview)).toThrow(/artifacts differ/);
+    fs.copyFileSync(path.join(preview, 'build-manifest.json'), path.join(app, 'build-manifest.json'));
+    fs.writeFileSync(path.join(app, 'package.json'), JSON.stringify({ version: '0.3.14' }));
+    expect(() => verifyPackagedBuild(app, preview)).toThrow(/Packaged version/);
+    fs.writeFileSync(path.join(preview, 'packages/api/dist/index.js'), 'changed after build');
+    expect(() => verifyBuildArtifacts(preview)).toThrow(/artifacts differ/);
   });
 });

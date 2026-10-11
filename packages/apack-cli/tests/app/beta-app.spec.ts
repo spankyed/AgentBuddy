@@ -45,11 +45,29 @@ describe('pickBetaRelease', () => {
 
 describe('beta release file names', () => {
   it('match what electron-builder.mjs names the apack Beta zip, with only characters GitHub keeps', async () => {
-    vi.stubEnv('APACK_ENV', 'beta');
+    const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'beta-packaging-'));
+    const manifest = { version: '0.4.0-beta.1', channel: 'beta', appId: 'dev.apack.beta', productName: 'apack Beta', urlScheme: 'apack-beta' };
+    const hashes: Record<string, string> = {};
+    for (const workspace of ['main', 'api', 'renderer', 'preload']) {
+      const file = `packages/${workspace}/dist/index.js`;
+      fs.mkdirSync(path.dirname(path.join(stage, file)), { recursive: true });
+      fs.writeFileSync(path.join(stage, file), workspace);
+      hashes[file] = createHash('sha256').update(workspace).digest('hex');
+    }
+    const json = JSON.stringify(manifest);
+    fs.writeFileSync(path.join(stage, 'build-manifest.json'), json);
+    hashes['build-manifest.json'] = createHash('sha256').update(json).digest('hex');
+    fs.writeFileSync(path.join(stage, 'build-artifacts.json'), JSON.stringify(hashes));
+    vi.stubEnv('APACK_BUILD_ROOT', stage);
     vi.resetModules();
     const configUrl = pathToFileURL(path.resolve(__dirname, '..', '..', '..', '..', 'electron-builder.mjs')).href;
-    const config = (await import(configUrl)).default as { artifactName: string };
-    vi.unstubAllEnvs();
+    let config: { artifactName: string };
+    try {
+      config = (await import(configUrl)).default as { artifactName: string };
+    } finally {
+      vi.unstubAllEnvs();
+      fs.rmSync(stage, { recursive: true, force: true });
+    }
 
     const version = '0.4.0-beta.1';
     const name = config.artifactName

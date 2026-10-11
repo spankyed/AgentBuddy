@@ -1152,7 +1152,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // back quietly
   { name: 'build:app', timeout: 'suite', seconds: 13, outputs: APP_OUTPUTS,
     inputs: [...ROOT, ...APP_RUNNER, ...['renderer', 'api', 'main', 'preload'].flatMap(workspace),
-      'packages/api/tsup.config.ts', 'build/build-metadata.ts', ...APP_ENTRY,
+      'packages/api/tsup.config.ts', 'build/build-metadata.ts', 'package.json', ...APP_ENTRY,
       ...PACKAGE_BUILD_READS, ...PACK_OUTPUTS] },
   { name: 'test:external-pack:app', timeout: 'scenario', seconds: 18,
     // Its own Playwright output, rewritten every run

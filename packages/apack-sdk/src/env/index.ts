@@ -29,7 +29,7 @@ export type AppEnv = (typeof APP_ENVS)[number];
  */
 export type AppBuild = AppEnv;
 
-/** Channels a packaged build can be stamped with (build/build.sh → __APACK_CHANNEL__). */
+/** Channels recorded in a packaged build manifest. */
 export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta' | 'preview'>;
 
 /** The app's own directory inside Electron's `userData`. See `AppContext.appDir`. */

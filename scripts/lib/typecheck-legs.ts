@@ -94,7 +94,7 @@ export const ENSURE = 'packages:ensure';
  */
 export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: ENSURE, command: 'npm run packages:ensure', scope: ['apack-ears', 'apack-sdk', 'apack-ui', 'apack-cli', 'apack-testing'], seconds: 0.3 },
-  { name: 'typecheck:fe', command: 'npm run typecheck:fe', seconds: 9 },
+  { name: 'typecheck:fe', command: 'npm run typecheck:fe', alsoReads: ['build/build-metadata.ts', 'package.json'], seconds: 9 },
   { name: 'typecheck:be', command: 'npm run typecheck:be', alsoReads: ['package.json'], seconds: 7 },
   { name: 'typecheck:ears', command: 'npm run typecheck:ears', seconds: 2 },
   { name: 'typecheck:sdk', command: 'npm run typecheck:sdk', seconds: 4 },

@@ -3,10 +3,11 @@ import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { packagesBuiltOrRefuse, REPO_ROOT } from '@apack/host/build/packages-built';
 import { population } from '@apack/sdk/testing';
+import { createBuildSession, sealBuildSession } from '../../../build/build-metadata.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 import { PACK_WORK_DIR } from '@apack/host/build/pack-workdir';
 import { FileMatcher } from 'app-builder-lib/out/fileMatcher.js';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // What the app installs, asked of the matcher electron-builder itself builds from `electron-builder.mjs`.
 //
@@ -39,10 +40,19 @@ const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm tes
 /** The `files` array electron-builder is given, which is also the data the mutation cases edit a copy of */
 let patterns: string[];
 
+const stage = createBuildSession({ APACK_ENV: 'production' });
+for (const name of ['main', 'api', 'renderer', 'preload']) {
+  const dist = path.join(stage, 'packages', name, 'dist');
+  fs.mkdirSync(dist, { recursive: true });
+  fs.writeFileSync(path.join(dist, 'index.js'), name);
+}
+sealBuildSession(stage);
+afterAll(() => { vi.unstubAllEnvs(); fs.rmSync(stage, { recursive: true, force: true }); });
 beforeAll(async () => {
+  vi.stubEnv('APACK_BUILD_ROOT', stage);
   // By URL rather than a relative specifier, as `apack-cli/tests/app/beta-app.spec.ts` reads the same config
   const config = (await import(pathToFileURL(path.join(REPO_ROOT, 'electron-builder.mjs')).href)).default as { files: string[] };
-  patterns = config.files;
+  patterns = config.files.filter((file): file is string => typeof file === 'string');
 });
 
 /**

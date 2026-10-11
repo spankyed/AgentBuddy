@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { resolveBuildMetadata } from '../../build/build-metadata.ts';
+import { appBuildOutput } from '../../build/build-metadata.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const apiSrc = path.resolve(__dirname, 'src');
@@ -22,12 +22,8 @@ function tryResolve(base: string, subpath: string): string | null {
 
 export default defineConfig((options) => {
   const isDev = options.env?.NODE_ENV === 'development';
-  const metadata = resolveBuildMetadata();
   return {
-    define: { __APACK_BUILD_VERSION__: JSON.stringify(metadata.version) },
-    onSuccess: async () => {
-      fs.writeFileSync(path.join(__dirname, 'dist/build-metadata.json'), JSON.stringify(metadata, null, 2) + '\n');
-    },
+    outDir: appBuildOutput('api'),
     entry: isDev ? ['src/server.ts'] : ['src/types.ts', 'src/server.ts'],
     // **The production build owns this directory; the dev build only adds to it.** Code splitting names
     // chunks by content, so a bundle that stops importing one leaves it behind — and `electron-builder.mjs`

@@ -21,10 +21,12 @@ import { rootEvents } from '@/transport/emitter';
 import { initializeLogCapture, printLogEvents } from '@/adapters/logging';
 import { createRequire } from 'module';
 import pkg from '../../../../package.json';
+import { readFileSync } from 'node:fs';
 
-declare const __APACK_BUILD_VERSION__: string;
-/** Bundles use the shared build version; source runs use release metadata. */
-const APP_VERSION: string = typeof __APACK_BUILD_VERSION__ === 'undefined' ? pkg.version : __APACK_BUILD_VERSION__;
+/** Packaged processes read the same manifest; source runs use the checkout version. */
+const APP_VERSION: string = process.env.APACK_BUILD_MANIFEST
+  ? JSON.parse(readFileSync(process.env.APACK_BUILD_MANIFEST, 'utf8')).version
+  : pkg.version;
 
 const logger = createLogger('backend');
 
@@ -89,10 +91,6 @@ function reportDroppedWrite({ op, key, error }: WriteFailure): void {
 }
 
 export function openAppStore(): AppStore {
-  const expected = process.env.APACK_EXPECTED_APP_VERSION;
-  if (expected && expected !== APP_VERSION) {
-    throw new Error(`API build version ${APP_VERSION} differs from Electron version ${expected}`);
-  }
   // Installed packs that aren't running keep their settings: the settings take writes for their features too
   const packs = createPackRegistry({ installedPacksDir: () => resolveAppContext().packsDir });
   const { store, engine } = openDatabaseStore({

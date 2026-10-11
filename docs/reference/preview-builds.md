@@ -22,7 +22,12 @@ Open the bundle directly or use `apack open --build preview` after Launch Servic
 If you install its bundled CLI using Settings, the command is `apack-preview`. Its data commands default to
 preview data; explicit target flags override that default. A standalone npm CLI still defaults to production.
 
-Main, API and electron-builder consume `build/build-metadata.ts`. Both bundles carry metadata files, and
-packaging rejects missing or different versions/channels. Main also checks its version against the packaged
-app, and the API checks the version its parent supplies before opening data. To build a release or beta,
-continue using the release workflow; the preview version override is refused outside the preview channel.
+Each packaging run gets a fresh staging directory under `.temp/app-builds`. The four app bundlers write
+there, leaving development's workspace `dist` directories alone. A single `build-manifest.json` records
+version and channel; main and API read that same file at runtime, and electron-builder uses it for app identity
+and package version. After all bundlers succeed, a hash receipt records their outputs. Packaging verifies the
+staging files and the actual packaged files against that receipt before signing. Incomplete, changed, or mixed
+artifacts are refused during packaging, with no runtime version comparisons.
+
+Production and beta use the same staging mechanism through the release workflow. Release versions still
+come from `package.json`; preview overrides are refused outside the preview channel.

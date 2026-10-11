@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { sealBuildSession } from '../build/build-metadata.ts';
 /**
  * `npm run build:app`: the four builds that produce the app, run at once.
  *
@@ -115,5 +116,6 @@ if (failed.length > 0 || result.threw.length > 0) {
   process.stderr.write(`\n❌ only ${result.started.length} of ${APP_BUILD_LEGS.length} ran, and none failed\n`);
   process.exitCode = 1;
 } else {
+  if (process.env.APACK_BUILD_ROOT) sealBuildSession(process.env.APACK_BUILD_ROOT);
   console.log('✅ App built');
 }

@@ -1,3 +1,4 @@
+import {appBuildOutput} from '../../build/build-metadata.ts';
 import {getChromeMajorVersion} from '@app/electron-versions';
 import {defaultServerConditions, defineConfig} from 'vite';
 
@@ -14,7 +15,7 @@ export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */
   build: {
     ssr: true,
     sourcemap: mode === 'development' ? 'inline' : false,
-    outDir: 'dist',
+    outDir: appBuildOutput('preload'),
     target: `chrome${getChromeMajorVersion()}`,
     assetsDir: '.',
     lib: {

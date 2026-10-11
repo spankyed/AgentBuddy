@@ -1,7 +1,7 @@
 import pkg from './package.json' with {type: 'json'};
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {resolveBuildMetadata, verifyPackagedBuild} from './build/build-metadata.ts';
+import {readBuildManifest, verifyBuildArtifacts, verifyPackagedBuild} from './build/build-metadata.ts';
 
 /**
  * Electron Builder Configuration
@@ -11,9 +11,12 @@ import {resolveBuildMetadata, verifyPackagedBuild} from './build/build-metadata.
  * so it installs alongside the production app).
  */
 
-const isBeta = process.env.APACK_ENV === 'beta';
-const isPreview = process.env.APACK_ENV === 'preview';
-const metadata = resolveBuildMetadata();
+const buildRoot = process.env.APACK_BUILD_ROOT;
+if (!buildRoot) throw new Error('Packaging requires a completed staging build. Use build-prod or build:preview.');
+verifyBuildArtifacts(buildRoot);
+const metadata = readBuildManifest(buildRoot);
+const isBeta = metadata.channel === 'beta';
+const isPreview = metadata.channel === 'preview';
 const {appId, productName, urlScheme} = metadata;
 // File names without spaces: GitHub rewrites spaces in release asset names, and
 // `apack test --build beta` looks for apack-Beta-<version>-mac-arm64.zip
@@ -36,12 +39,12 @@ export default /** @type import('electron-builder').Configuration */
   // Basic configuration
   appId,
   productName,
-  extraMetadata: {version: metadata.version, apackBuild: metadata},
+  extraMetadata: {version: metadata.version},
   afterPack: async (context) => {
     const appDir = context.electronPlatformName === 'darwin'
       ? path.join(context.appOutDir, `${productName}.app`, 'Contents/Resources/app')
       : path.join(context.appOutDir, 'resources/app');
-    verifyPackagedBuild(appDir, metadata);
+    verifyPackagedBuild(appDir, buildRoot);
     execFileSync(process.execPath, ['build/prod/verify-node-modules.mjs', appDir], {stdio: 'inherit'});
   },
   directories: {
@@ -158,6 +161,7 @@ export default /** @type import('electron-builder').Configuration */
     '!packages/renderer/public/**',
     // Include compiled output
     'packages/*/dist/**',
+    ...['main', 'api', 'renderer', 'preload'].map(name => `!packages/${name}/dist/**`),
     // ...but not the tree each publishable package stages for npm (stagePublishTree): a second copy of the same
     // dist, which the app never loads — it resolves @apack/sdk through node_modules to packages/apack-sdk/dist.
     // electron-builder reads no .gitignore, so ignoring it there was not enough: 'packages/**/*' above took it.
@@ -181,6 +185,9 @@ export default /** @type import('electron-builder').Configuration */
     '!**/node_modules/**/docs/**',
     '!**/node_modules/**/CHANGELOG*',
     '!**/node_modules/**/.eslintrc*',
+    ...['main', 'api', 'renderer', 'preload'].map(name => ({
+      from: path.join(buildRoot, 'packages', name, 'dist'), to: `packages/${name}/dist`, filter: ['**/*'],
+    })),
   ],
 
   // Disable ASAR — API server runs as a separate child process (spawn + ELECTRON_RUN_AS_NODE)
@@ -197,6 +204,7 @@ export default /** @type import('electron-builder').Configuration */
     //   to: 'api/local_cache',
     //   filter: ['**/*']
     // }
+    {from: path.join(buildRoot, 'build-manifest.json'), to: 'app/build-manifest.json'},
     ...speechResources,
     // `apack` launcher for "Install 'apack' command in PATH"; runs packages/apack-cli/dist/package
     ...(process.platform === 'darwin'

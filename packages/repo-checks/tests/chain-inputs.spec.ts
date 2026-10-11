@@ -761,7 +761,8 @@ describe('a step keys on the command it runs', () => {
    * `alsoReads`. The dep-file gate found this the moment the manifest left `ROOT` — while every step
    * declared it, a real read and an accident were indistinguishable.
    *
-   * Shared build metadata imports the version for script/repo programs (confirmed by their dep files);
+   * Shared build metadata imports the version for script/repo programs (confirmed by their dep files)
+   * and the renderer config checked by typecheck:fe;
    * source-wide checks and suites cover those readers through EVERY_SOURCE.
    *
    * `packages:ensure` declares it too, through `SHARED_INPUTS` in `BUILD_UNITS`, and is filtered out
@@ -773,8 +774,8 @@ describe('a step keys on the command it runs', () => {
     expect(cached.filter((step) => step.inputs.includes('package.json')).map((step) => step.name),
       'a step keying on the whole manifest re-runs when any unrelated script is edited; add one here only '
       + 'with the dep-file evidence that it reads the manifest').toEqual([
-        'typecheck:be', 'check:specifiers', 'typecheck:scripts', 'check:tiers',
-        'lint:check', 'test:unit:host', 'test:integration',
+        'typecheck:fe', 'typecheck:be', 'check:specifiers', 'typecheck:scripts', 'check:tiers',
+        'lint:check', 'test:unit:host', 'test:integration', 'build:app',
       ]);
   });
 });

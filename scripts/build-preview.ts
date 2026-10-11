@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveBuildMetadata } from '../build/build-metadata.ts';
+import { createBuildSession, readBuildManifest } from '../build/build-metadata.ts';
 import { boundedSpawn } from './lib/bounded-spawn.ts';
 import { TIMEOUT_MS } from './lib/step-timeouts.ts';
 import { previewEnvironment, previewVersion } from './lib/preview-build.ts';
@@ -11,7 +11,8 @@ if (process.argv.includes('--help')) {
   console.log('Usage: npm run build:preview -- --version <x.y.z>\nBuilds unsigned apack Preview locally in dist/preview, without publishing or changing release metadata.');
 } else {
   const env = previewEnvironment(previewVersion(process.argv.slice(2)), process.env);
-  const metadata = resolveBuildMetadata(env);
+  env.APACK_BUILD_ROOT = createBuildSession(env);
+  const metadata = readBuildManifest(env.APACK_BUILD_ROOT);
   const platform = process.platform === 'darwin' ? 'mac' : process.platform === 'win32' ? 'win' : 'linux';
   const commands: [string, string[]][] = [
     ['npm', ['run', 'generate:entries', '-w', '@app/default-setup']],
