@@ -729,3 +729,5 @@ Downloads must have a matching published SHA-256 checksum. An incomplete latest 
 `apack status [--channel production|beta|preview] [--json]` reports the installed app version, running state, and paths without launching it.
 
 `apack logs [--channel production|beta|preview] [--follow] [--lines <count>]` reads the installed app’s `main.log` (100 recent lines by default). Following waits for the file and follows rotation; Ctrl-C stops the reader.
+
+`apack db backup --out <new-directory> [--profile <name> | --data-dir <path>]` creates a full backup compatible with `apack db import`. Close the app first. Both database partitions and media are included; installed packs and secrets are excluded. Existing destinations and destinations inside the source data directory are refused.
