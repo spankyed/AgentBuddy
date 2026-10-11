@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import { createRequire } from 'node:module';
+import Module, { createRequire } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -49,6 +49,30 @@ afterEach(() => {
 });
 
 describe('withModuleBridge', () => {
+  it('bounds host resolution when bridges are nested', () => {
+    const lib = name('nested-host');
+    const hostEntry = installPackage(lib, 'module.exports = { host: true };');
+    const options = { modules: {}, hostPackages: [lib], resolveFrom };
+    const internals = Module as typeof Module & { _resolveFilename: (...args: unknown[]) => string };
+    let calls = 0;
+
+    const result = withModuleBridge(options, () => withModuleBridge(options, () => {
+      const resolve = internals._resolveFilename;
+      internals._resolveFilename = function (...args: unknown[]) {
+        if (args[0] === lib && ++calls > 10) throw new Error('Recursive host resolution');
+        return resolve.apply(this, args);
+      };
+      try {
+        return createRequire(path.join(runtimeDir, 'entry.cjs')).resolve(lib);
+      } finally {
+        internals._resolveFilename = resolve;
+      }
+    }));
+
+    expect(result).toBe(hostEntry);
+    expect(calls).toBeLessThanOrEqual(3);
+  });
+
   it('gives the loaded code the bridged module for a specifier', () => {
     const lib = name('lib');
     const bridged = { value: 'bridged' };
@@ -154,6 +178,7 @@ describe('withModuleBridge', () => {
     const missing = name('not-installed');
     const bare = writeRuntime(`module.exports = require('${missing}');`);
     expect(() => withModuleBridge({ modules: {}, resolveFrom }, () => createRequire(bare)(bare))).toThrow(/Cannot find module/);
+    expect(() => withModuleBridge({ modules: {}, hostPackages: [missing], resolveFrom }, () => createRequire(bare)(bare))).toThrow(/Cannot find module/);
 
     const relative = path.join(runtimeDir, 'relative.cjs');
     fs.writeFileSync(relative, `module.exports = require('./${missing}');`);

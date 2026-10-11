@@ -65,14 +65,21 @@ function primeRequireCache(cache: NodeJS.Dict<NodeJS.Module>, modules: Readonly<
 /** Resolves a host-provided package, and any subpath of one, from `hostRequire`; `null` for anything else */
 function hostPackageResolver(hostPackages: readonly string[], hostRequire: NodeRequire): (request: string) => string | null {
   const resolved = new Map<string, string | null>();
+  const resolving = new Set<string>();
   return (request: string) => {
     if (!hostPackages.some((name) => request === name || request.startsWith(`${name}/`))) return null;
+    // createRequire.resolve consults our hook too. Let that recursive call reach Node's
+    // original resolver, with createRequire's host parent, instead of resolving again.
+    if (resolving.has(request)) return null;
     if (!resolved.has(request)) {
+      resolving.add(request);
       try {
         resolved.set(request, hostRequire.resolve(request));
       } catch {
         // Not installed for the host either: the pack's own resolution decides what happens
         resolved.set(request, null);
+      } finally {
+        resolving.delete(request);
       }
     }
     return resolved.get(request) ?? null;
