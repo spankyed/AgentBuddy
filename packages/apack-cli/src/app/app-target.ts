@@ -17,7 +17,7 @@ export type AppChoice = { source: string } | { beta: true };
 
 export interface CliDirs {
   cache: string;
-  /** Machine state the CLI owns and the app does not: today, the profiles `apack dev open` creates */
+  /** Machine state the CLI owns and the app does not: today, the profiles `npm run dev:open --` creates */
   data: string;
 }
 
@@ -94,11 +94,11 @@ function pathTarget(input: string, from: string): AppTarget {
 /** App development never falls back to a downloaded release. */
 export function resolveDevApp(flags: AppFlags, from: string, env: NodeJS.ProcessEnv = process.env): AppTarget {
   const named = namedApp(flags, env);
-  if (named && 'beta' in named.choice) throw new Error('apack dev requires a source checkout; release channels are not attachable.');
+  if (named && 'beta' in named.choice) throw new Error('App development requires a source checkout; release channels are not attachable.');
   const root = named && 'source' in named.choice ? named.choice.source : checkoutFor(from);
   if (!root) throw new Error('No apack checkout found. Use --app <checkout> or run inside the app repository.');
   const app = pathTarget(root, named?.from ?? 'the current checkout');
-  if (app.kind !== 'source') throw new Error('apack dev requires a source checkout; packaged apps are not attachable.');
+  if (app.kind !== 'source') throw new Error('App development requires a source checkout; packaged apps are not attachable.');
   announceApp(app, named?.from ?? 'the current checkout');
   return app;
 }

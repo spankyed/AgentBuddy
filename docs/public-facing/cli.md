@@ -1,6 +1,6 @@
 # CLI Reference
 
-The `apack` CLI manages the desktop app and packs. Installed-app operations are root commands, app development lives under `apack dev`, and pack operations live under `apack pack`. Bare namespaces display help.
+The `apack` CLI manages the desktop app and packs. Installed-app operations are root commands, app development uses repository npm scripts, and pack operations live under `apack pack`. Bare namespaces display help.
 
 Pack operations cover scaffolding, code generation, building, validation, testing, releasing and installation. It also reads and repairs the app's database (`apack db`).
 
@@ -19,8 +19,6 @@ Packs pin `@apackdev/cli` in `devDependencies`. Any `apack` run inside a pack ha
 | `apack open` | Open the installed production app; `--channel beta` or `--channel preview` selects another installed app |
 | `apack install`, `upgrade`, `uninstall` | Manage published production/beta apps |
 | `apack doctor` | Read-only installed-app diagnostics, without debugging |
-| `apack dev open` | Hold an attachable source development app, without watchers |
-| `apack dev drive` | Ask a development session questions, or run app automation scripts |
 | `apack pack dev` | Build, install, and watch a pack in a development host |
 | `apack pack drive`, `pack test` | Automate or test a pack in its host |
 
@@ -28,6 +26,8 @@ Packs pin `@apackdev/cli` in `devDependencies`. Any `apack` run inside a pack ha
 and `--data` selects stored data. Development is a data namespace, not a release channel.
 `open --session` and root `drive` are removed. There is no production `--attach` option.
 Debugging connections are enabled only for source development launches.
+For app contributors working in the apack source monorepo, see the
+[repository development guide](../../README.md#development) and [app automation guide](../../drive/README.md).
 
 ### Scaffolding
 
@@ -170,13 +170,13 @@ An app already running on that data dir is used as it is; otherwise `dev` starts
 
 Without an FE entry it rebuilds, reinstalls and reloads on any change instead.
 
-#### `apack dev drive [script | --eval <body>] [--app <path>] [profile flags]`
+#### `apack pack drive [script | --eval <body>] [--app <path>] [profile flags]`
 
 Launch apack and drive it from a script: navigate, send events, read state, take screenshots.
 
 **This is mainly for an agent.** It is how a coding agent debugs and develops against the app it is changing — open the thing it just built, click through it, read the state back, screenshot it, and see for itself whether the change worked. A person can use it the same way, and the app's windows are shown so you can watch, but the reason it exists is that an agent has no other way to look at a running app.
 
-**It is not testing, and nothing treats it as testing.** A driving script asserts nothing, nothing gates on it, and no test runner collects it. Scripts live in `drive/`, which `apack dev drive` creates the first time you run it, and which sits outside every test glob by construction rather than by exclusion. `apack pack test` never sees it.
+**It is not testing, and nothing treats it as testing.** A driving script asserts nothing, nothing gates on it, and no test runner collects it. Scripts live in `drive/`, which `apack pack drive` creates the first time you run it, and which sits outside every test glob by construction rather than by exclusion. `apack pack test` never sees it.
 
 ```ts
 // drive/notes.ts
@@ -199,9 +199,9 @@ that app published — one process per question, no session to stand up and noth
 
 ```bash
 apack pack dev                                   # one terminal: holds the app
-apack dev drive --state                         # another: 0.9s
-apack dev drive --eval 'return window.appVersion'
-apack dev drive --query 'return qx(EARS.Entity.Note).count()'
+apack pack drive --state                         # another: 0.9s
+apack pack drive --eval 'return window.appVersion'
+apack pack drive --query 'return qx(EARS.Entity.Note).count()'
 ```
 
 With no app running it exits 3 and says so. `--spawn` starts one and keeps it, so a cold checkout costs
@@ -256,7 +256,7 @@ accepted. It used to resolve on the send, so every refusal read as success.
 features left `general` and `assistant` readable and unwritable.
 
 **`/set-viewport` resizes whichever thing the run actually has.** A session whose window is shown — a
-person watching `npm run dev:drive` — has its *window* resized, because a viewport Playwright sets is an
+person watching `apack pack drive` — has its *window* resized, because a viewport Playwright sets is an
 emulation inside the window: the app would draw into one corner and leave the desktop showing through the
 rest. A session nobody is watching gets that emulation, which is what makes a suite's layout the same
 everywhere. Either way `/viewport` answers with what the layout has, read from the window.
@@ -302,25 +302,22 @@ A script and a session both assume you have more than one question. For the firs
 one — `--eval`, `--query` and `--state` attach to a development app, ask one thing, print it and exit. Without a session they exit 3; `--spawn` explicitly starts one:
 
 ```bash
-apack dev drive --eval 'return document.title'
+apack pack drive --eval 'return document.title'
 {"value":"Agent X","state":"attached","startedBy":"dev","supervisorPid":12345}
 ```
 
 The answer is one object with `value`, `state`, `startedBy` and `supervisorPid`, as **one JSON line on stdout and
-nothing else there**, so `$(apack dev drive --eval …)` is directly parseable; the app's output goes to stderr
+nothing else there**, so `$(apack pack drive --eval …)` is directly parseable; the app's output goes to stderr
 and the exit code is the status. It runs headless, since nothing is watching a single question.
 
 `--eval` takes a function **body**, not an expression, so `return` is required and a body without one
 answers no value at all.
 
-**`apack dev drive` always drives the app itself**, even inside a pack directory. Script runs
-require an apack checkout; questions can attach from any directory. Use `apack pack drive`
-for pack scripts: it requires a pack and installs it into the isolated app used by the script.
-Both commands share the same runner and attachment behavior.
+**`apack pack drive` requires a pack** and installs it into the isolated app used by a script.
 
 Scripts select an executable with `--app <path>`; pack scripts also accept `--channel beta`. Live questions select a development session with `--profile`, and reject executable/channel flags. The two modes have different ownership:
 
-- **A question** joins the app `apack dev open`, `apack pack dev` or `npm run dev` is holding, over the debug port in that app's session file. It asks of the development data dir unless `--profile <name>` names another, because that is where the app you are working in is.
+- **A question** joins the app `apack pack dev` is holding, over the debug port in that app's session file. It asks of the development data dir unless `--profile <name>` names another, because that is where the app you are working in is.
 - **A script** launches its own app and shows its windows, in a fresh data dir thrown away afterwards, so a driving session starts clean and leaves nothing and a script's result does not depend on whatever plugin the last one left open. `--profile <name>` is how a session keeps its state for the next one.
 
 Electron allows one app per data dir, which is what makes a question *join* rather than compete — and why a script, which wants an app of its own, gets a dir of its own with it. If a person wants to watch what a script is doing they watch its window; a question is headless, since nothing is watching one question.
@@ -329,10 +326,10 @@ Electron allows one app per data dir, which is what makes a question *join* rath
 
 | What you run | The app it uses | When it closes |
 |---|---|---|
-| `apack dev open`, `apack pack dev`, `npm run dev` | starts its own | when you stop the command |
-| `apack dev drive --eval` (and the other one-shots) | a live one; **fails if there is none** | it was not yours to close |
+| `apack pack dev` | starts its own | when you stop the command |
+| `apack pack drive --eval` (and the other one-shots) | a live one; **fails if there is none** | it was not yours to close |
 | the same, with `--spawn` | a live one, else it starts one | **it stays for the next question** — and, on a profile, closes itself after 10 minutes with nothing attached |
-| `apack dev drive <script>` | always its own | when the script finishes |
+| `apack pack drive <script>` | always its own | when the script finishes |
 | `apack pack test` | always its own, isolated | when the run finishes |
 
 **A question keeps the app so the next question is cheap; a script closes it so its result does not depend
@@ -525,14 +522,6 @@ Show installed packs.
 
 Open the installed app or bring it to the front. Production is always the default, including
 from a beta-bundled CLI. macOS only. No debugging connection is enabled.
-
-#### `apack dev open [--app <checkout>] [profile flags]`
-
-Launch a built source checkout and hold its attachable development session until Ctrl-C.
-Without `--app`, use the checkout behind the current directory. A missing checkout fails;
-there is no fallback to a downloaded release. Packaged apps are refused.
-It never builds, installs or watches a pack. `npm run dev:open` uses this command;
-`npm run dev` runs app source watchers. `--session` and `--attach` flags are unnecessary.
 
 #### `apack doctor [--channel production|beta|preview]`
 

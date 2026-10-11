@@ -71,7 +71,7 @@ export async function initTests(_args: string[]): Promise<void> {
   if (fs.existsSync(pkgPath)) {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
     // `playwright-core` beside the runner, because the two paths need different halves of it: a script
-    // runs on `@playwright/test`, and `apack dev drive --eval` attaches with `playwright-core`'s
+    // runs on `@playwright/test`, and `npm run dev:drive -- --eval` attaches with `playwright-core`'s
     // `connectOverCDP`. It arrives by hoisting under npm, so the attach usually works without it being
     // declared — and "usually" is the problem: under pnpm or `--no-hoist` the bare import misses and the
     // author meets an install hint for something `init-tests` could have written. The three ship in

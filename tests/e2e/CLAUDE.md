@@ -177,7 +177,7 @@ npm run dev:drive -- drive/notes.ts  # one script
 ```
 
 The import is `drive`, not `test`, and that is the point: the same runner under a name that says what the
-file is. A pack author gets the same thing from `apack dev drive`, which scaffolds the directory on first use
+file is. A pack author gets the same thing from `npm run dev:drive --`, which scaffolds the directory on first use
 and takes `--profile <name>` to keep the app's data between sessions.
 
 ## Debugging the running app

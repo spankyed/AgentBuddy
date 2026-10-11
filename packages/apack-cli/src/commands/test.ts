@@ -41,7 +41,7 @@ export function fixtureEnv(
   // A pack resolves the packages' published dist, whoever runs it: the condition never reaches this run,
   // even when the caller had it (npm test in a checkout).
   //
-  // **`keepSourceCondition` is for a run with no pack in it** — `apack dev drive` driving the app itself from
+  // **`keepSourceCondition` is for a run with no pack in it** — `npm run dev:drive --` driving the app itself from
   // a checkout, which is what this repo's `npm run dev:drive` does. There is no pack to resolve `dist` for, the
   // subject is the checkout's own source, and stripping the condition would change what that run loads.
   const nodeOptions = options.keepSourceCondition === true ? base.NODE_OPTIONS : withoutSourceCondition(base.NODE_OPTIONS);
@@ -59,7 +59,7 @@ export function fixtureEnv(
   // Where the app's data goes, and where its screenshots and reports land, is this run's to decide and
   // never the shell's. All three are read straight from the environment by the fixture, because the `test`
   // a spec imports is built at module scope and no option can reach it — so an exported E2E_DATA_DIR would
-  // have a pinned run use a directory it did not make, and leave it behind. `apack dev drive` sets them after
+  // have a pinned run use a directory it did not make, and leave it behind. `npm run dev:drive --` sets them after
   // calling this.
   delete env.E2E_DATA_DIR;
   delete env.E2E_SCREENSHOT_DIR;

@@ -113,7 +113,7 @@ describe('parseAppFlags', () => {
  * leak. These cases fail the moment the config read comes back.
  */
 /**
- * The policy for a command driving the app with no pack in front of it — `apack dev drive` at an apack
+ * The policy for a command driving the app with no pack in front of it — `npm run dev:drive --` at an apack
  * checkout, which is how this repo's own `npm run dev:drive` scripts reach it.
  */
 /**

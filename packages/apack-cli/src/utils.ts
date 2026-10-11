@@ -42,7 +42,7 @@ export const TARGET_ENV_USAGE = '--data <name>  App data namespace: ' + APP_ENVS
  * The pack at or above `from`, or undefined.
  *
  * Every command but one wants the throwing form below: they act on a pack, and having none is the end of
- * it. `apack dev drive` is the exception — driving the app with no pack under test is a coherent thing to do,
+ * it. `npm run dev:drive --` is the exception — driving the app with no pack under test is a coherent thing to do,
  * and this is what lets it say so rather than treating it as a failure.
  */
 export function findPackRootOrNone(from: string): string | undefined {

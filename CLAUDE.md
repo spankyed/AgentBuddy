@@ -735,7 +735,7 @@ npm run check:repro      # **A diagnostic instrument, not a gate**, and nothing 
 ### E2E visual testing
 
 **Driving the app now has its own place: `drive/`, run with `npm run dev:drive` (a pack author gets
-`apack dev drive`).** That is where an agent debugs and develops against the app — open what you just built,
+`npm run dev:drive --`).** That is where an agent debugs and develops against the app — open what you just built,
 click through it, read the state back, screenshot it. Scripts there import `drive` rather than `test`,
 nothing collects them, and nothing gates on them. **One question needs no script at all**: `npm run dev:eval`
 and its neighbours ask the app `npm run dev` is holding, over its debug port — one JSON object on stdout,

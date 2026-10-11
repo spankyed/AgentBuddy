@@ -15,6 +15,7 @@ import { createRequire } from 'node:module';
 import type { AttachedSession, AttachedSessionOptions } from '@apackdev/testing';
 import { readSession, touchSession, waitForSession, STARTED_BY_ENV, type DevSession } from '@apackdev/host/dev-session';
 import { holdExclusiveLock, type ExclusiveLock } from '@apackdev/host/exclusive-lock';
+import { checkoutFor } from '../build/checkout-packages.ts';
 
 /** Just the part of `@apackdev/testing` this needs, so a wrong resolve fails on the name rather than later. */
 interface TestingModule {
@@ -79,11 +80,15 @@ export function attachableApp(dataDir: string): AttachableApp | undefined {
 export async function spawnDevApp(
   from: string, dataDir: string, profileArgs: readonly string[], scope: 'app' | 'pack' = 'app',
 ): Promise<AttachableApp> {
+  const checkout = scope === 'app' ? checkoutFor(from) : undefined;
+  if (scope === 'app' && !checkout) throw new Error('App automation requires a source checkout. Use npm run dev:drive in the app repository.');
+  const command = checkout
+    ? ['--conditions=@apackdev/source', path.join(checkout, 'scripts/app-dev.mjs'), 'open']
+    : [cliBin(), 'pack', 'dev'];
   const logPath = path.join(dataDir, 'dev-spawn.log');
   fs.mkdirSync(dataDir, { recursive: true });
   const log = fs.openSync(logPath, 'a');
-  const command = scope === 'pack' ? ['pack', 'dev'] : ['dev', 'open'];
-  const child = spawn(process.execPath, [cliBin(), ...command, ...profileArgs], {
+  const child = spawn(process.execPath, [...command, ...profileArgs], {
     cwd: from,
     detached: true,
     stdio: ['ignore', log, log],
@@ -136,7 +141,7 @@ export async function spawnOrAttach(
 ): Promise<{ app: AttachableApp; state: 'spawned' | 'attached' }> {
   let lock: ExclusiveLock;
   try {
-    lock = holdExclusiveLock({ file: spawnLockFile(dataDir), what: 'apack dev drive --spawn', refuse: () => HELD });
+    lock = holdExclusiveLock({ file: spawnLockFile(dataDir), what: 'development session spawn', refuse: () => HELD });
   } catch (error) {
     if (error !== HELD) throw error;
     // Another question is already starting an app here. What this one wants is an app, not a spawn

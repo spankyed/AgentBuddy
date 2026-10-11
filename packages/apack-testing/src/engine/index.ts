@@ -90,7 +90,7 @@ export const asSessionPage = (page: Page, app: EngineAppHelper, window?: EngineW
  *
  * The port file would do, but the **token file is not always written**: `publishApiFiles` skips it unless
  * `NODE_ENV` is development or the API invented its own token, and a packaged app satisfies neither. So reading
- * from disk would work in a checkout and fail against `apack dev drive --channel beta`, which is the worst split to
+ * from disk would work in a checkout and fail against `apack pack drive --channel beta`, which is the worst split to
  * ship. The window has both from the preload, which is also how `tests/e2e/app-integration/api-access.spec.ts`
  * gets them.
  */
@@ -112,7 +112,7 @@ async function apiAddressFromWindow(page: SessionPage): Promise<{ port: number; 
  * Runs `work`, and closes what is already open if it throws.
  *
  * **A handle left open does not fail, it hangs.** Node keeps running while one is, so a refused claim left
- * both the CDP connection and the socket open and `apack dev drive --eval` printed its refusal and then sat
+ * both the CDP connection and the socket open and `npm run dev:drive -- --eval` printed its refusal and then sat
  * there for ever — which reads as the verb hanging rather than as a refusal that was reported. Every step
  * after the attach is wrapped, so the failure is rethrown unchanged and only the cleanup is added.
  *

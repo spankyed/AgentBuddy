@@ -1,5 +1,5 @@
 /**
- * `apack dev drive` — run the app and poke at it.
+ * `npm run dev:drive --` — run the app and poke at it.
  *
  * Driving is looking at what you built: clicking through it, firing an event, taking a screenshot.
  *
@@ -16,7 +16,7 @@
  * **It is not `apack pack test`.** `test` is pinned, ephemeral and assertive on purpose. This is your app,
  * your profile, and state that is still there next session.
  *
- * `apack dev open` holds an app; `apack pack dev` also builds, installs, and watches a pack.
+ * `npm run dev:open --` holds an app; `apack pack dev` also builds, installs, and watches a pack.
  * where this drives one and exits. The two halves meet it differently: a **question** attaches over the
  * debug port in `dev`'s session file, so it joins the app `dev` has rather than competing with it (one app
  * per data dir, which Electron's single-instance lock scopes), while a **script** launches its own app and
@@ -53,8 +53,13 @@ const DRIVE_DIR = 'drive';
  * hand-kept copies of the same facts, and nothing held any of them together. `TEST_USAGE` is the
  * precedent: exported for exactly this, and asserted in `tests/commands/test-contract.spec.ts`.
  */
+const APP_CONTEXT = `App contributor tool: run from the root of the apack source monorepo.
+Pack authors: run apack pack drive from your pack repository.`;
+
 export const DRIVE_USAGE = `
-Usage: apack dev drive [script | --eval <body>] [--app <checkout>] [profile flags]
+${APP_CONTEXT}
+
+Usage: npm run dev:drive -- [script | --eval <body>] [--app <checkout>] [profile flags]
 
 Launch apack and drive it from a script: navigate, send events, read state, screenshot.
 Mainly for an agent debugging or developing against the app; a person can watch, the windows are shown.
@@ -73,10 +78,10 @@ the answer and exit. One JSON object goes to stdout and
 nothing else there, so a program can read it; everything else goes to stderr. Headless, because nothing is
 watching one question.
 
-  apack dev drive --eval 'return document.title'  ->  {"value":"Agent X","state":"attached",...}
-  apack dev drive --state                         ->  {"value":{...},"state":"attached",...}
+  npm run dev:drive -- --eval 'return document.title'  ->  {"value":"Agent X","state":"attached",...}
+  npm run dev:drive -- --state                         ->  {"value":{...},"state":"attached",...}
 
-A question is asked of the app apack dev open (or npm run dev) is holding. One JSON object goes to stdout and
+A question is asked of the app npm run dev:open -- (or npm run dev) is holding. One JSON object goes to stdout and
 nothing else, so it pipes: "value" is the answer, "state" is attached or spawned, "startedBy" says whose
 app answered, and "supervisorPid" is what ends it. The exit code is the status — 0 with a value, 3 when
 no app is running, 1 when the verb failed.
@@ -85,7 +90,7 @@ With no app running it says so and exits 3 rather than starting one: a question 
 process nobody asked for. --spawn is how you ask, and the app it starts stays up, so a cold checkout
 costs one flag on the first question and an attach on every one after.
 
-An app a question started on your development data dir stays until apack dev open or npm run dev takes the
+An app a question started on your development data dir stays until npm run dev:open -- or npm run dev takes the
 directory back. One on a --profile closes itself after 10 minutes with no question attached, and each
 question resets that. apack profiles lists what is still running, and stops it.
 
@@ -125,10 +130,10 @@ drive('open notes and look at it', async ({ app, appPage }) => {
 });
 \`\`\`
 
-Run everything with \`apack dev drive\`, or one script with \`apack dev drive drive/notes.ts\`.
+Run everything with \`npm run dev:drive --\`, or one script with \`npm run dev:drive -- drive/notes.ts\`.
 
-For one question, no script is needed — \`apack dev drive --eval 'return document.title'\` asks the app
-\`apack dev open\` is holding and prints one JSON object (\`value\`, \`state\`, \`startedBy\`,
+For one question, no script is needed — \`npm run dev:drive -- --eval 'return document.title'\` asks the app
+\`npm run dev:open --\` is holding and prints one JSON object (\`value\`, \`state\`, \`startedBy\`,
 \`supervisorPid\`). It is a function *body*, so \`return\` is required. \`--query\` and \`--state\` ask the
 same way. With no app running it exits 3 and says so; \`--spawn\` starts one and keeps it.
 
@@ -262,7 +267,7 @@ export function scaffold(root: string, scope: 'app' | 'pack' = 'app'): DriveScaf
     return report;
   }
   fs.mkdirSync(dir, { recursive: true });
-  const readme = scope === 'pack' ? README.replaceAll('apack dev drive', 'apack pack drive') : README;
+  const readme = scope === 'pack' ? README.replaceAll('npm run dev:drive --', 'apack pack drive').replaceAll('npm run dev:open --', 'apack pack dev').replace(APP_CONTEXT, 'Run from your pack repository to automate this pack in an app.') : README;
   for (const [name, body] of [['playwright.config.ts', CONFIG()], ['README.md', readme], ['.gitignore', GITIGNORE]] as const) {
     const file = path.join(dir, name);
     if (fs.existsSync(file)) continue;
@@ -341,7 +346,7 @@ export function askTarget(mode: ProfileMode, withSecrets: boolean, dirs: CliDirs
     spawnArgs: ['--profile', name, ...rm, ...secrets],
     ...(mode.kind === 'fresh' ? {
       note: `Fresh profile ${name}${mode.rm ? ' — removed when the app closes' : ''}.`
-        + ` \`apack dev drive --profile ${name}\` asks the next question of it.`,
+        + ` \`npm run dev:drive -- --profile ${name}\` asks the next question of it.`,
     } : {}),
   };
 }
@@ -384,7 +389,7 @@ async function answerAttached(
   // Prose only where something was left behind — a process still running, or a write to the user's data.
   // An attach that changed nothing says nothing, because the fields already said it
   if (state === 'spawned') {
-    notes.push(`Started the development app (pid ${live.session.supervisorPid}) and left it running — \`apack dev open\` takes the directory back.`);
+    notes.push(`Started the development app (pid ${live.session.supervisorPid}) and left it running. Use \`apack profiles\` to inspect or stop it.`);
   }
   try {
     const answer = await askAttached(live, root, screenshotDir, async (session) => {
@@ -434,7 +439,7 @@ function noAppHere(dataDir: string): OneShotOutput {
   return {
     notes: [
       `No app is running on ${dataDir}.`,
-      '  Start one with `apack dev open`, or add --spawn to have this start one and keep it.',
+      '  Start one with `apack pack dev` or `npm run dev:open`, or add --spawn to have this start one and keep it.',
     ],
     code: MISS_EXIT_CODE,
   };
@@ -453,7 +458,7 @@ export async function packDrive(args: string[]) {
 
 export async function drive(args: string[], scope: 'app' | 'pack' = 'app') {
   if (args.includes('--help') || args.includes('-h')) {
-    console.log(scope === 'pack' ? HELP.replaceAll('apack dev drive', 'apack pack drive') : HELP);
+    console.log(scope === 'pack' ? HELP.replaceAll('npm run dev:drive --', 'apack pack drive').replaceAll('npm run dev:open --', 'apack pack dev').replace(APP_CONTEXT, 'Run from your pack repository to automate this pack in an app.') : HELP);
     return;
   }
 

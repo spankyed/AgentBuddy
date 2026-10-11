@@ -1,5 +1,8 @@
 # drive/
 
+Run these npm scripts from the root of the apack source monorepo. This directory contains
+app-contributor automation. External pack authors use `apack pack drive` in their pack repository.
+
 Scripts that drive the app — navigate, send events, read state, screenshot.
 
 **This is mainly for an agent.** It is how a coding agent debugs and develops against the app it is
@@ -31,10 +34,10 @@ npm run dev:drive -- drive/notes.ts  # just one
 **It drives the *built* app**, loaded from `file://` — `npm run build:runtime` and `npm run build:default-setup` are what
 put the thing you are looking at on disk, and the run warns when either has gone stale rather than
 quietly showing you the previous build. So this is not the tool for a question about a dev server: nothing
-here stands one up, and `npm run dev`'s renderer and `apack dev open`'s pack server are not in the picture.
+here stands one up, and the source watcher servers from `npm run dev` are not in the picture.
 
-**Every script here uses `apack dev drive`.** The npm scripts are thin calls to it, so
-`npm run dev:drive -- --help` is the reference. Root `drive` always targets the app and never
+**Every script here uses `npm run dev:drive --`.** The npm scripts use a repository-only entry point, so
+`npm run dev:drive -- --help` is the reference. This runner always targets the app and never
 installs a pack inferred from the working directory. Pack authors use `apack pack drive`.
 
 **Each run gets a fresh data dir under `$TMPDIR` and throws it away**, so a script cannot touch your
@@ -81,7 +84,7 @@ npm run dev:state                               # 0.9s from then on
 ```
 
 `apack profiles` says which data dirs have a live app and who started it, which is where a forgotten one
-is found. `apack dev open` takes the directory back from an app a question started.
+is found. `npm run dev:open --` takes the directory back from an app a question started.
 
 ## The verbs
 
@@ -101,7 +104,7 @@ An attached session has no window of its own, so a viewport it sets is Playwrigh
 run, which shows the window, resizes the window itself — asking for a viewport there the other way would
 letterbox the app against the desktop.
 
-A pack author gets the same thing from `apack dev drive`, which also takes `--profile <name>` to keep the
+A pack author gets the same thing from `apack pack drive`, which also takes `--profile <name>` to keep the
 app's data between sessions. In a pack everything here but this file and `playwright.config.ts` is
 gitignored.
 

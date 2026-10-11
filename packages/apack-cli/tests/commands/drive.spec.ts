@@ -15,7 +15,7 @@ const write = (name: string) => {
 };
 
 /**
- * What decides whether `apack dev drive` has anything to do. It used to scaffold the directory and then run
+ * What decides whether `npm run dev:drive --` has anything to do. It used to scaffold the directory and then run
  * Playwright against it regardless, so the first run in any pack ended in `No tests found` and exit 1 —
  * after a full pack build and an app launch. The question is the scripts that exist, not whether this
  * call created the directory: a pack whose author deleted their last script hits the same wall.
@@ -65,7 +65,7 @@ describe('the help text', () => {
    */
   it('says what to do when no app is running', () => {
     expect(DRIVE_USAGE).toContain('--spawn');
-    expect(DRIVE_USAGE).toContain('apack dev open');
+    expect(DRIVE_USAGE).toContain('npm run dev:open --');
   });
 
   // One per claim a reader acts on, which is this file's existing bar for the usage text
@@ -126,7 +126,7 @@ describe('a config that has stopped delegating', () => {
     scaffold(root, 'pack');
     const readme = fs.readFileSync(path.join(root, 'drive', 'README.md'), 'utf8');
     expect(readme).toContain('apack pack drive');
-    expect(readme).not.toContain('`apack dev drive`');
+    expect(readme).not.toContain('`npm run dev:drive --`');
     expect(readme).toContain('apack pack dev');
   });
 

@@ -5,7 +5,7 @@ const HELP = `
 Usage: apack open [--channel production|beta|preview]
 
 Open the installed app or bring it to the front. Production is the default.
-Debugging is disabled. For an attachable checkout, use apack dev open.
+Debugging is disabled.
 
 Options:
   --channel <name>  production (default), beta, preview
@@ -25,7 +25,7 @@ export async function open(args: string[]) {
   }
 
   const { env, args: rest } = parseReleaseChannel(args);
-  if (rest.length) throw new Error('Unexpected arguments. Use apack open --help; development sessions use apack dev open.');
+  if (rest.length) throw new Error('Unexpected arguments. Use apack open --help.');
   if (env !== 'production' && env !== 'beta' && env !== 'preview') {
     throw new Error('There is no installed dev app. Run `npm run dev` in the apack repo instead.');
   }

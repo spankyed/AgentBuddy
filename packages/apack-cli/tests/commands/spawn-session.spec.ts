@@ -14,10 +14,22 @@ let dataDir: string;
 beforeEach(() => { dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-spawn-session-')); });
 afterEach(() => { vi.clearAllMocks(); fs.rmSync(dataDir, { recursive: true, force: true }); });
 
-it.each([
-  ['app', ['dev', 'open']],
-  ['pack', ['pack', 'dev']],
-] as const)('spawns an explicit %s session without relying on cwd inference', async (scope, command) => {
-  await spawnDevApp('/pack-directory', dataDir, ['--profile', 'review'], scope);
-  expect(spawn).toHaveBeenCalledWith(process.execPath, [expect.any(String), ...command, '--profile', 'review'], expect.objectContaining({ cwd: '/pack-directory', detached: true }));
+it('spawns pack development through the CLI', async () => {
+  await spawnDevApp('/pack-directory', dataDir, ['--profile', 'review'], 'pack');
+  expect(spawn).toHaveBeenCalledWith(process.execPath, [expect.any(String), 'pack', 'dev', '--profile', 'review'], expect.objectContaining({ cwd: '/pack-directory', detached: true }));
+});
+
+it('spawns app development through the repository entry point', async () => {
+  const checkout = path.resolve(import.meta.dirname, '../../../..');
+  await spawnDevApp(checkout, dataDir, ['--profile', 'review'], 'app');
+  expect(spawn).toHaveBeenCalledWith(process.execPath, [
+    '--conditions=@apackdev/source', path.join(checkout, 'scripts/app-dev.mjs'), 'open', '--profile', 'review',
+  ], expect.objectContaining({ cwd: checkout, detached: true }));
+});
+
+it('refuses app spawning outside a checkout before creating data or launching', async () => {
+  const absent = path.join(dataDir, 'absent');
+  await expect(spawnDevApp(dataDir, absent, [], 'app')).rejects.toThrow('source checkout');
+  expect(fs.existsSync(absent)).toBe(false);
+  expect(spawn).not.toHaveBeenCalled();
 });

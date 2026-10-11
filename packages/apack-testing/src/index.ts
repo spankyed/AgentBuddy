@@ -101,7 +101,7 @@ function resolveApp(options: CreateTestOptions): AppLaunch {
 function resolveScreenshotDir(override?: string): string {
   if (override) return path.resolve(override);
   // A caller that is not a test says where its own output goes. The fallbacks below assume the caller is
-  // a suite — written when it always was — so `apack dev drive` landed its screenshots under `tests/`,
+  // a suite — written when it always was — so `npm run dev:drive --` landed its screenshots under `tests/`,
   // which is the one place the command exists to keep driving out of. Same reason `E2E_DATA_DIR` exists:
   // the `screenshotDir` option cannot reach the `test` every script imports, built here with no options
   if (process.env.E2E_SCREENSHOT_DIR) return path.resolve(process.env.E2E_SCREENSHOT_DIR);
@@ -485,7 +485,7 @@ export function createTest(options: CreateTestOptions = {}) {
       assertCheckoutPackagesFresh();
       // Every worker gets a fresh data dir: no data, installed packs or onboarding state leak
       // between runs or from other packs, and nothing touches the developer's apack-test dir
-      // E2E_DATA_DIR overrides that with one the caller owns and keeps, which is how `apack dev drive`
+      // E2E_DATA_DIR overrides that with one the caller owns and keeps, which is how `npm run dev:drive --`
       // runs against a profile whose state survives the session. An environment variable rather than a
       // `createTest` option because the `test` every spec imports is built at module scope with no
       // options, so an option could never reach it.
@@ -695,7 +695,7 @@ const _default = createTest();
 export const test = _default.test;
 
 /**
- * The same runner under a name that says what a driving script is, for `apack dev drive`. A driving script
+ * The same runner under a name that says what a driving script is, for `npm run dev:drive --`. A driving script
  * asserts nothing and nothing gates on it, so calling it `test` was the whole confusion; Playwright
  * discovers work from the calls made at import rather than from the binding's name, so the alias costs
  * nothing and reporters and `--grep` still match titles.

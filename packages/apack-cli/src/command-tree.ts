@@ -14,13 +14,6 @@ export const COMMANDS = {
   'uninstall': { usage: '[--channel production|beta]', description: 'Uninstall the app; keep user data', load: async () => (await import('./commands/uninstall')).uninstall, detailedHelp: true },
   'open': { usage: '[--channel production|beta|preview]', description: 'Open the installed app', load: async () => (await import('./commands/open')).open, detailedHelp: true },
   'doctor': { usage: '[--channel production|beta|preview]', description: 'Check the installed app; production by default', load: async () => (await import('./commands/doctor')).doctor, detailedHelp: true },
-  dev: {
-    description: 'Launch and automate a development app',
-    children: {
-      open: { usage: '[--app <checkout>] [profile flags]', description: 'Hold an attachable development app session', load: async () => (await import('./commands/dev-open')).devOpen, detailedHelp: true },
-      drive: { usage: '[script|--eval <body>|--query <code>|--state] [options]', description: 'Inspect or automate a development app', load: async () => (await import('./commands/drive')).drive, detailedHelp: true },
-    },
-  },
   'db': { usage: '<command> [options]', description: 'Query, export, import, or reset app data', load: async () => (await import('./commands/db')).db, detailedHelp: true },
   'profiles': { usage: '[command] [options]', description: 'Manage app data directories and profiles', load: async () => (await import('./commands/profiles')).profiles, detailedHelp: true },
   pack: {

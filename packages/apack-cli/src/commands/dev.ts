@@ -28,10 +28,9 @@ Usage: apack pack dev [--app <path> | --channel beta]
 
 Build and install this pack, then watch it: FE changes reload through Vite,
 BE changes rebuild, reinstall, and reload in place. Requires a pack directory.
-Use apack dev open to hold an app without developing a pack.
 
 A development app is launched with a debug port and publishes <dataDir>/session.json, which is
-what lets \`apack dev drive\` ask it questions instead of launching one of its own.
+what lets \`apack pack drive\` ask it questions instead of launching one of its own.
 
 An app already running on the same data dir is used as it is; otherwise one is launched, and
 closing this command closes the app it started.
@@ -271,7 +270,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   // is how a removed or misspelled flag reads as having been obeyed.
   const unknown = flags.args;
   if (unknown.length > 0) {
-    throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See ${target === 'pack' ? 'apack pack dev' : 'apack dev open'} --help.`);
+    throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See ${target === 'pack' ? 'apack pack dev' : 'npm run dev:open --'} --help.`);
   }
   const app = target === 'app' ? resolveDevApp(flags, process.cwd())
     : await resolveLaunchApp({ flags, hostVersion: pack!.manifest.hostVersion ?? '*', from: pack!.root });
@@ -323,7 +322,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
         supervisorPid: process.pid,
         startedBy: startedByFromEnv(),
       }));
-      console.log(`  attachable on debug port ${debugPort} — \`apack dev drive\` can reach it`);
+      console.log(`  attachable on debug port ${debugPort} — \`apack pack drive\` can reach it`);
       armIdleReap({ startedBy: startedByFromEnv() });
       console.log('');
     } catch (error) {
@@ -404,7 +403,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   // An app already on this data dir is the one to use: a second Electron over the same LMDB store is not a
   // choice anyone wants. Only an app this command started is one it may close.
   if (readApiEndpoint(apiPortFile)) {
-    if (env === 'development' && !readSession(userDataDir)) throw new Error('The running app has no development session. Close it and launch with apack dev open or npm run dev.');
+    if (env === 'development' && !readSession(userDataDir)) throw new Error('The running app has no development session. Close it and launch with npm run dev:open -- or npm run dev.');
     console.log(`Using the ${env} app already running.\n`);
   } else {
     console.log(`Starting ${appLabel(app)}...`);
