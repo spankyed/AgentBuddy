@@ -786,9 +786,9 @@ describe('classifyLine', () => {
 
   // What the schedule recorded, rather than what the budget permitted — which is why this was a guess before
   it('names the steps that actually ran beside it', () => {
-    const line = classifyLine({ code: 0, ms: 1_000 }, HERE, ['lint:check', 'typecheck:fe']);
+    const line = classifyLine({ code: 0, ms: 1_000 }, HERE, ['lint:check', 'typecheck:renderer']);
 
-    expect(line).toContain('It ran beside lint:check, typecheck:fe the first time.');
+    expect(line).toContain('It ran beside lint:check, typecheck:renderer the first time.');
   });
 
   it('counts the rest rather than listing a whole schedule', () => {

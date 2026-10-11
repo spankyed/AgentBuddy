@@ -3,14 +3,14 @@ import path from 'node:path';
 import os from 'node:os';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { packagedOptions, selectPackagedApp, stopPackagedApp, resetTargets, startPackagedApp, REPO_ROOT } from './lib/packaged-app.ts';
+import { packagedOptions, selectPackagedApp, stopPackagedApp, resetTargets, startPackagedApp, verifyPackagedSigning, REPO_ROOT } from './lib/packaged-app.ts';
 
 const [action, ...args] = process.argv.slice(2);
 if (args.includes('--help')) {
-  console.log('Usage: npm run <start|reset|diagnostics>:packaged -- [--channel production|beta|preview] [--app <bundle.app>] [--data-dir <directory>]\nmacOS only. Defaults to production; prefers the local build over /Applications. Reset removes runtime data and logs only.');
+  console.log('Usage: npm run <start|reset|diagnostics>:packaged -- [--channel production|beta|preview] [--app <bundle.app>] [--data-dir <directory>]\nmacOS only. Defaults to production; prefers the local build over /Applications. Reset removes runtime data and logs only. Signing checks: npm run verify-signing -- [same options].');
 } else {
   if (process.platform !== 'darwin') throw new Error('Packaged app tools currently support macOS only.');
-  if (!['start', 'reset', 'diagnostics'].includes(action)) throw new Error(`Unknown action: ${action}`);
+  if (!['start', 'reset', 'diagnostics', 'verify-signing'].includes(action)) throw new Error(`Unknown action: ${action}`);
   const app = selectPackagedApp(packagedOptions(args));
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   console.log(`${app.metadata.productName} ${app.metadata.version}: ${app.appPath}`);
@@ -21,6 +21,10 @@ if (args.includes('--help')) {
     const targets = resetTargets(app);
     await stopPackagedApp(app);
     for (const target of targets) { fs.rmSync(target, { recursive: true, force: true }); console.log(`Removed ${target}`); }
+  } else if (action === 'verify-signing') {
+    const failures = verifyPackagedSigning(app);
+    for (const failure of failures) console.error(failure);
+    process.exitCode = failures.length ? 1 : 0;
   } else {
     const out = path.join(REPO_ROOT, 'diagnostics', app.metadata.channel, stamp);
     fs.mkdirSync(out, { recursive: true });

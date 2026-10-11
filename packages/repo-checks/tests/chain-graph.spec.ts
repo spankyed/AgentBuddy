@@ -531,7 +531,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
     it('names the rung and its factor on any other machine, and calls the rope the finding', () => {
       const assumed = assumedRungs()[0]!;
       const why = timedOutBecause({
-        what: 'typecheck:fe', timeout: assumed, seconds: 10, measuredOn: HERE, machine: SMALLER,
+        what: 'typecheck:renderer', timeout: assumed, seconds: 10, measuredOn: HERE, machine: SMALLER,
       });
       expect(why, 'never the flat conclusion, which here is the half of the answer that is not knowable')
         .not.toContain('so it is wedged rather than slow');
@@ -624,7 +624,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
     it('tells an assumed rung\'s reader to record this run, and names the edit that does', () => {
       const assumed = assumedRungs()[0]!;
       const why = timedOutBecause({
-        what: 'typecheck:fe', timeout: assumed, seconds: 10, measuredOn: HERE, machine: SMALLER,
+        what: 'typecheck:renderer', timeout: assumed, seconds: 10, measuredOn: HERE, machine: SMALLER,
       });
       expect(why).toContain('so this run is the evidence it waits for');
       expect(why, 'the edit, so the terms and the invariant say the same thing')

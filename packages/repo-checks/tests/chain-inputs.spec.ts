@@ -33,7 +33,6 @@ const NOT_A_CHAIN_INPUT: Record<string, string> = {
   // signs or releases it, so none of this runs in any step — listed per file rather than as a `build/`
   // prefix so that something chain-relevant landing there has to be noticed.
   'build/build.sh': 'npm run build:production; packaging, which no chain step does',
-  'build/prod/verify-signing.sh': 'checks a signed artifact, which only build:production produces',
   'build/release/release.sh': 'the release path, which the chain never runs',
   'build/release/beta-tag.sh': 'the release path; its rule is covered by release-beta-rule.test.sh',
   'build/release/unrelease.sh': 'the release path',
@@ -754,13 +753,13 @@ describe('a step keys on the command it runs', () => {
   /**
    * The manifest stays out of keys except steps that read it or cover metadata readers.
    *
-   * `typecheck:be` is the exception and it is evidenced rather than assumed: its three programs each
+   * `typecheck:api` is the exception and it is evidenced rather than assumed: its three programs each
    * resolve through the root `package.json`, which its dep files report, so it declares it through
    * `alsoReads`. The dep-file gate found this the moment the manifest left `ROOT` — while every step
    * declared it, a real read and an accident were indistinguishable.
    *
    * Shared build metadata imports the version for script/repo programs (confirmed by their dep files)
-   * and the renderer config checked by typecheck:fe;
+   * and the renderer config checked by typecheck:renderer;
    * source-wide checks and suites cover those readers through EVERY_SOURCE.
    *
    * `packages:ensure` declares it too, through `SHARED_INPUTS` in `BUILD_UNITS`, and is filtered out
@@ -772,7 +771,7 @@ describe('a step keys on the command it runs', () => {
     expect(cached.filter((step) => step.inputs.includes('package.json')).map((step) => step.name),
       'a step keying on the whole manifest re-runs when any unrelated script is edited; add one here only '
       + 'with the dep-file evidence that it reads the manifest').toEqual([
-        'typecheck:fe', 'typecheck:be', 'check:specifiers', 'typecheck:scripts', 'check:tiers',
+        'typecheck:renderer', 'typecheck:api', 'check:specifiers', 'typecheck:scripts', 'check:tiers',
         'lint:check', 'test:unit:host', 'test:integration', 'build:runtime',
       ]);
   });

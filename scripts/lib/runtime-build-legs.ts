@@ -44,8 +44,8 @@ export const BUILD_TIMEOUT: TimeoutClass = 'suite';
  * oversubscribing the box silently.
  *
  * **`@app/renderer` runs `build-only`, not `build`.** Its `build` is
- * `run-p type-check "build-only {@}"`, and that `type-check` is the identical `vue-tsc` the `typecheck:fe`
- * chain step runs — the same compile twice, in a step reached only by the chain, where `typecheck:fe` is
+ * `run-p type-check "build-only {@}"`, and that `type-check` is the identical `vue-tsc` the `typecheck:renderer`
+ * chain step runs — the same compile twice, in a step reached only by the chain, where `typecheck:renderer` is
  * already its own step. It costs the leg that sets this table's floor: the pair is 18.0s against the vite
  * build's 16.0s. Whoever runs `npm run build -w @app/renderer` directly still typechecks.
  *

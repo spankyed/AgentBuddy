@@ -88,7 +88,6 @@ npm run build:runtime    # Build the app runtime
 npm run build:api         # Build backend only
 npm run build:production       # Full production build
 npm run build:preview -- --version 0.4.0  # Unsigned local preview, separate app and data
-npm run package:all      # Package for macOS, Windows, and Linux
 ```
 
 ### Test

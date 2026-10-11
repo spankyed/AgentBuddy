@@ -2,9 +2,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { afterEach, expect, it, vi } from 'vitest';
-import { packagedOptions, selectPackagedApp, resetTargets, startPackagedApp, REPO_ROOT } from '../../../scripts/lib/packaged-app.ts';
+import { packagedOptions, selectPackagedApp, resetTargets, startPackagedApp, verifyPackagedSigning, REPO_ROOT } from '../../../scripts/lib/packaged-app.ts';
 import { resolveBuildMetadata } from '../../../build/build-metadata.ts';
 
 const roots: string[] = [];
@@ -72,4 +72,34 @@ it.skipIf(process.platform !== 'darwin')('collects the selected bundle and profi
   expect(summary.appPath).toBe(app);
   expect(summary.apiSha256).toBe(createHash('sha256').update('preview-api').digest('hex'));
   expect(fs.readFileSync(path.join(out, 'logs/main.log'), 'utf8')).toBe('preview-log');
+});
+
+it('reports any signing failure even if the later assessments succeed', () => {
+  const { app } = fixture();
+  const selected = selectPackagedApp({ channel: 'preview', app });
+  const commands: string[] = [];
+  const failures = verifyPackagedSigning(selected, (command, args) => {
+    commands.push(command);
+    expect(args).toContain(app);
+    if (command === 'codesign') throw new Error('invalid signature');
+  });
+  expect(commands).toEqual(['codesign', 'xcrun', 'spctl']);
+  expect(failures).toHaveLength(1);
+  expect(failures[0]).toContain('invalid signature');
+  expect(verifyPackagedSigning(selected, () => {})).toEqual([]);
+});
+
+it.skipIf(process.platform !== 'darwin')('returns a failing exit code from the signing command when the last check succeeds', () => {
+  const { root, app } = fixture();
+  const bin = path.join(root, 'bin');
+  fs.mkdirSync(bin);
+  for (const command of ['codesign', 'xcrun', 'spctl']) {
+    fs.writeFileSync(path.join(bin, command), `#!/bin/sh\nexit ${command === 'codesign' ? 1 : 0}\n`, { mode: 0o755 });
+  }
+  const result = spawnSync(process.execPath, ['--import', 'tsx', path.join(REPO_ROOT, 'scripts/packaged-app.ts'), 'verify-signing', '--channel', 'preview', '--app', app], {
+    encoding: 'utf8', env: { ...process.env, PATH: bin + path.delimiter + process.env.PATH },
+  });
+  expect(result.status).toBe(1);
+  expect(result.stdout).toContain('Gatekeeper');
+  expect(result.stderr).toContain('Code signature');
 });

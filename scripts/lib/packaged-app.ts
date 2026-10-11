@@ -105,3 +105,21 @@ export async function startPackagedApp(app: PackagedApp, logFile: string): Promi
     log.once('error', error => { child.kill('SIGTERM'); reject(error); });
   });
 }
+
+/** Run every assessment and retain failures rather than letting a later success hide them. */
+export function verifyPackagedSigning(app: PackagedApp,
+  run: (command: string, args: string[]) => void = (command, args) => {
+    execFileSync(command, args, { stdio: 'inherit', timeout: 30000 });
+  }): string[] {
+  const failures: string[] = [];
+  for (const [label, command, args] of [
+    ['Code signature', 'codesign', ['--verify', '--deep', '--strict', '--verbose=2', app.appPath]],
+    ['Notarization staple', 'xcrun', ['stapler', 'validate', app.appPath]],
+    ['Gatekeeper', 'spctl', ['--assess', '--type', 'exec', '--verbose', app.appPath]],
+  ] as const) {
+    console.log(label);
+    try { run(command, [...args]); }
+    catch (error) { failures.push(`${label}: ${String(error)}`); }
+  }
+  return failures;
+}

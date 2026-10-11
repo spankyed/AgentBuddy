@@ -59,7 +59,7 @@ describe('the compiler says what it read', () => {
   /**
    * Which legs this can speak for, named rather than implied.
    *
-   * The gate below is only as wide as the evidence, and one leg produces none: `typecheck:fe` writes build
+   * The gate below is only as wide as the evidence, and one leg produces none: `typecheck:renderer` writes build
    * infos that record no program at all, because a solution-style config records its references and the
    * referenced configs do the compiling. Asserting the list keeps that honest in both directions — a leg
    * quietly losing its dep file shows up here, and so does one gaining it.
@@ -75,7 +75,7 @@ describe('the compiler says what it read', () => {
       .map((leg) => leg.name)
       .sort();
     expect(uncovered, 'the legs no dep file speaks for — change this list only with the reason why')
-      .toEqual(['typecheck:fe']);
+      .toEqual(['typecheck:renderer']);
   });
 
   it('finds dep files to read, or says plainly that there is no evidence here', () => {
@@ -299,7 +299,7 @@ describe('a dep file is checked against itself before it is believed', () => {
   });
 
   /**
-   * Why `typecheck:fe` is on the uncovered list, as a fact rather than a claim.
+   * Why `typecheck:renderer` is on the uncovered list, as a fact rather than a claim.
    *
    * The renderer *does* write build infos — three, under `packages/renderer/node_modules/.tmp` — and they
    * record no program at all: no `fileNames` key, because a solution-style config records its references
@@ -527,7 +527,7 @@ describe('a build record is checked against itself before it is believed', () =>
  * not a gate over it: the list is asserted so it cannot drift in prose, so a step gaining observation
  * shows up, and so a new step that nothing watches has to be added here deliberately.
  *
- * `typecheck:fe` is in this list and in the one above for the same reason.
+ * `typecheck:renderer` is in this list and in the one above for the same reason.
  */
 describe('what has looked at a step at all', () => {
   const observation = (): { byDepFile: string[]; byGraph: string[]; byNothing: string[] } => {
@@ -613,7 +613,7 @@ describe('what has looked at a step at all', () => {
       'test:packaged-authoring:app',
       'test:packaged-authoring:author',
       'test:smoke',
-      'typecheck:fe',
+      'typecheck:renderer',
     ]);
   });
 });

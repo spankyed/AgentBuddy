@@ -21,7 +21,7 @@ Validates, bumps version, generates changelog, tags, and pushes — triggering C
 | `npm run start:packaged` | Launch the built app with logging |
 | `npm run diagnostics:packaged` | Collect the selected app’s diagnostics |
 | `npm run reset:packaged` | Delete the selected app’s runtime data and logs |
-| `npm run verify-signing` | Verify code signature and notarization |
+| `npm run verify-signing` | Verify the selected app’s signature, notarization and Gatekeeper assessment |
 
 Packaged-app tools currently support macOS. They default to production and prefer a local build over
 `/Applications`. Select beta or preview with `--channel`; use `--app` to select a specific bundle.
@@ -214,3 +214,7 @@ For local signed builds, create `.env.signing` (gitignored) from `.env.signing.e
 | `APPLE_API_KEY_ID` | Key ID from App Store Connect |
 | `APPLE_API_ISSUER` | Issuer ID from App Store Connect |
 | `APPLE_API_KEY` | Contents of the .p8 private key file |
+
+`npm run verify-signing -- --channel beta` uses the same bundle selection as the packaged-app tools.
+Pass `--app <bundle.app>` for a specific build. Any failed assessment returns a nonzero exit status;
+unsigned preview builds are expected to fail signing verification.

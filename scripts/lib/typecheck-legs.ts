@@ -45,7 +45,7 @@ export interface Leg {
   /**
    * Files this leg's compiler reads that no workspace scope can name, because they belong to no workspace.
    *
-   * Three legs have any, and only two kinds of file. `typecheck:be`'s three programs each resolve through
+   * Three legs have any, and only two kinds of file. `typecheck:api`'s three programs each resolve through
    * the root `package.json`, which `scope: ['api']` cannot express. `typecheck:main` and `typecheck:preload`
    * compile `types/`, the repo-root ambient declarations their tsconfigs `include`.
    *
@@ -94,8 +94,8 @@ export const ENSURE = 'packages:ensure';
  */
 export const TYPECHECK_LEGS: readonly Leg[] = [
   { name: ENSURE, command: 'npm run packages:ensure', scope: ['apack-ears', 'apack-sdk', 'apack-ui', 'apack-cli', 'apack-testing'], seconds: 0.3 },
-  { name: 'typecheck:fe', command: 'npm run typecheck:fe', alsoReads: ['build/build-metadata.ts', 'package.json'], seconds: 9 },
-  { name: 'typecheck:be', command: 'npm run typecheck:be', alsoReads: ['package.json'], seconds: 7 },
+  { name: 'typecheck:renderer', command: 'npm run typecheck:renderer', alsoReads: ['build/build-metadata.ts', 'package.json'], seconds: 9 },
+  { name: 'typecheck:api', command: 'npm run typecheck:api', alsoReads: ['package.json'], seconds: 7 },
   { name: 'typecheck:ears', command: 'npm run typecheck:ears', seconds: 2 },
   { name: 'typecheck:sdk', command: 'npm run typecheck:sdk', seconds: 4 },
   { name: 'typecheck:host', command: 'npm run typecheck:host', seconds: 4 },
@@ -166,7 +166,7 @@ export function namedByScript(leg: string): ScriptScope {
  * **It refuses rather than defaulting**, which is the whole safety argument. A leg whose script names no
  * workspace and declares no scope would otherwise get an empty one: empty inputs, so it depends on nothing,
  * sorts first, and never goes stale again. That is a silently-always-cached step, which is strictly worse
- * than a loud failure here — and the three legs with no dep file behind them (`typecheck:fe`, `:main`,
+ * than a loud failure here — and the three legs with no dep file behind them (`typecheck:renderer`, `:main`,
  * `:preload`) are exactly the ones nothing else would catch it for.
  */
 export function scopeOf(leg: Leg): readonly string[] | 'repo' {

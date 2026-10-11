@@ -36,17 +36,16 @@
     "build:preview": "tsx scripts/build-preview.ts",
     "build:production": "bash build/build.sh",
     "build:production:signed": "bash -c 'set -a; . ./.env.signing; set +a; bash build/build.sh'",
-    "package:all": "electron-builder --mac --win --linux",
 
     "start:packaged": "tsx scripts/packaged-app.ts start",
     "reset:packaged": "tsx scripts/packaged-app.ts reset",
     "diagnostics:packaged": "tsx scripts/packaged-app.ts diagnostics",
-    "verify-signing": "sh build/prod/verify-signing.sh",
+    "verify-signing": "tsx scripts/packaged-app.ts verify-signing",
 
     "chain": "tsx scripts/chain.ts",
     "typecheck": "tsx scripts/typecheck.ts",
-    "typecheck:fe": "npm run type-check --workspace @app/renderer && echo '\u2705 Frontend type check passed'",
-    "typecheck:be": "cd packages/api && npx tsc -p . --noEmit && npx tsc -p tsconfig.test.json && npx tsc -p tsconfig.scripts.json && echo '\u2705 Backend type check passed'",
+    "typecheck:renderer": "npm run type-check --workspace @app/renderer && echo '\u2705 Frontend type check passed'",
+    "typecheck:api": "cd packages/api && npx tsc -p . --noEmit && npx tsc -p tsconfig.test.json && npx tsc -p tsconfig.scripts.json && echo '\u2705 Backend type check passed'",
     "typecheck:main": "npm run typecheck --workspace @app/main && echo '\u2705 Electron main type check passed'",
     "typecheck:preload": "npm run typecheck --workspace @app/preload && echo '\u2705 Preload type check passed'",
     "typecheck:pack": "npm run packages:ensure && npm run typecheck --workspace @app/default-setup && echo '\u2705 Default-setup pack type check passed'",
@@ -69,7 +68,6 @@
     "schema:check": "npm run schema:check -w @apack/sdk",
 
     "test": "npm run packages:ensure && node scripts/with-source.mjs playwright test",
-    "test:all": "npm run test:unit && npm run test",
     "test:unit": "tsx scripts/test-unit.ts",
     "test:unit:host": "tsx scripts/test-unit-pool.ts host",
     "test:unit:pack": "tsx scripts/test-unit-pool.ts pack",

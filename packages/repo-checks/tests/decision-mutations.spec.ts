@@ -276,7 +276,7 @@ const MUTATIONS: readonly Mutation[] = [
     from: '(rung.measured === undefined',
     to: '(rung.measured !== undefined',
     call: (lib) => lib.timedOutBecause({
-      what: 'typecheck:fe',
+      what: 'typecheck:renderer',
       timeout: 'quick',
       seconds: 10,
       measuredOn: { cpu: 'Measured CPU', cores: 10 },

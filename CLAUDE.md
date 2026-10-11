@@ -404,7 +404,7 @@ a causal claim is an argument and no check holds an argument.
   carry the *same* noun: `api:*`, `facade:*`, `schema:*`, `exports:*`, `content-parity:*`. `check` and
   `update` are reserved as suffixes, so a name ending in `update` is the only kind that rewrites a file
   you would commit.
-- `<action>:<scope>` — an action over part of the repo: `typecheck:fe`, `test:unit`, `build:api`. The
+- `<action>:<scope>` — an action over part of the repo: `typecheck:renderer`, `test:unit`, `build:api`. The
   second word is a place, and nothing here writes a tracked file.
 - `<action>:<variant>` — a variant of one action: `build:dev`, `test:watch`, `lint:fix`.
 
@@ -442,8 +442,8 @@ npm run typecheck        # Every check below, plus check:specifiers — its 17 l
                          # two are the only jobs that write. `-- --cores 1` runs everything one at a time, to
                          # test that claim or to read a confusing failure. A failure prints that job's output
                          # alone, and several can fail in one run where the old `&&` chain stopped at the first
-npm run typecheck:fe     # Frontend only (vue-tsc)
-npm run typecheck:be     # Backend only (tsc --noEmit, plus the api's scripts)
+npm run typecheck:renderer     # Frontend only (vue-tsc)
+npm run typecheck:api     # Backend only (tsc --noEmit, plus the api's scripts)
 npm run typecheck:ears   # @apack/ears only
 npm run typecheck:sdk    # @apack/sdk only
 npm run typecheck:host   # @apack/host only
@@ -590,7 +590,6 @@ npm run test:unit:pack   # (--project per stale project, one process). Each is a
                          # worker pool across projects. Each runs packages:ensure first, since npm pretest
                          # does not fire under a root run, and then prunes the pool stamps no pool would
                          # write — the key gained its half on 2026-10-01 and left a dead file per suite
-npm run test:all         # test:unit, then the E2E tests
 npm run bench -w @apack/ears    # EARS engine benchmark (baseline and tolerance: packages/apack-ears/CLAUDE.md)
 npm run test:external-pack       # Both halves of the fixture-pack check, for running it by hand
 npm run test:external-pack:contract  # validate, build, typecheck, harness specs — no app needed
