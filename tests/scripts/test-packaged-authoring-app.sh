@@ -6,7 +6,7 @@
 # digest, because the work dir is outside the checkout on purpose and the chain can only derive an edge from
 # a repo-relative path.
 #
-#   8. apack pack test passes against the app it is told to use (--build; it reads no machine state)
+#   8. apack pack test passes against the app it is told to use (--app; it reads no machine state)
 #   9. the packed CLI's apack db reads and exports the data that app written
 # Requires a built app (npm run build:default-setup && npm run build:runtime) and the author half having run.
 # KEEP_WORK=1 keeps the work dir and the app data dir.
@@ -31,7 +31,7 @@ useWorkDir "$WORK"
 cd "$PACK"
 
 step "8. apack pack test on the packed archive (the app named on the command line)"
-# --build, and nothing in the environment: `apack pack test` is pinned to what it is given, so that a run
+# --app, and nothing in the environment: `apack pack test` is pinned to what it is given, so that a run
 # means the same thing on a fresh machine as on one someone has developed on
 # PACK_ARCHIVE installs step 6's .tgz as it is, so this runs the artifact a release ships rather than
 # another build of the same source — the one thing the rest of the script cannot check.
@@ -44,7 +44,7 @@ step "8. apack pack test on the packed archive (the app named on the command lin
 # this file is for is the next line; the durable copy of the same output is the chain's
 # (`scripts/lib/chain-evidence.ts`), which is what it was being read as before that existed.
 E2E_LOG="$WORK/e2e-$$.log"
-if ! PACK_ARCHIVE="$ARCHIVE" E2E_KEEP_DATA=1 "$APACK" pack test --build "$ROOT" 2>&1 | tee "$E2E_LOG"; then fail "apack pack test failed"; fi
+if ! PACK_ARCHIVE="$ARCHIVE" E2E_KEEP_DATA=1 "$APACK" pack test --app "$ROOT" 2>&1 | tee "$E2E_LOG"; then fail "apack pack test failed"; fi
 APP_DATA="$(sed -n 's/.*\[e2e\] kept test data dir: //p' "$E2E_LOG" | head -n 1)"
 [ -d "$APP_DATA" ] || fail "apack pack test didn't report the data dir it kept"
 

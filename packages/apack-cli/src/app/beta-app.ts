@@ -107,13 +107,13 @@ export function betaDownloadLeftovers(cacheDir: string): string[] {
 export async function ensureBetaApp(options: BetaAppOptions): Promise<PackagedApp> {
   const { hostVersion, cacheDir, log = console.log } = options;
   if (process.platform !== 'darwin' || process.arch !== 'arm64') {
-    throw new Error('apack Beta builds are published for macOS on Apple Silicon only. Point `apack pack test` at a local apack checkout with --build <path>.');
+    throw new Error('apack Beta builds are published for macOS on Apple Silicon only. Point `apack pack test` at a local apack checkout with --app <path>.');
   }
 
   const releases = await (options.listReleases ?? listAppReleases)();
   const release = pickBetaRelease(releases, hostVersion);
   if (!release) {
-    throw new Error(`No apack Beta release satisfies this pack's hostVersion (${hostVersion}). Use --build <path> to test against a local checkout.`);
+    throw new Error(`No apack Beta release satisfies this pack's hostVersion (${hostVersion}). Use --app <path> to test against a local checkout.`);
   }
 
   const appDir = path.join(betaCacheDir(cacheDir), release.version);

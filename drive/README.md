@@ -4,7 +4,7 @@ Scripts that drive the app — navigate, send events, read state, screenshot.
 
 **This is mainly for an agent.** It is how a coding agent debugs and develops against the app it is
 changing: open what it just built, click through it, read the state back, screenshot it, and see for
-itself whether the change worked. A person can use it the same way, and `npm run drive` shows the app's
+itself whether the change worked. A person can use it the same way, and `npm run dev:drive` shows the app's
 windows so you can watch — but the reason it exists is that an agent has no other way to look at a
 running app.
 
@@ -24,22 +24,22 @@ drive('open notes and look at it', async ({ app, appPage }) => {
 ```
 
 ```bash
-npm run drive                    # every script here, windows shown
-npm run drive -- drive/notes.ts  # just one
+npm run dev:drive                    # every script here, windows shown
+npm run dev:drive -- drive/notes.ts  # just one
 ```
 
 **It drives the *built* app**, loaded from `file://` — `npm run build:runtime` and `npm run build:default-setup` are what
 put the thing you are looking at on disk, and the run warns when either has gone stale rather than
 quietly showing you the previous build. So this is not the tool for a question about a dev server: nothing
-here stands one up, and `npm run dev`'s renderer and `apack open --session`'s pack server are not in the picture.
+here stands one up, and `npm run dev`'s renderer and `apack dev open`'s pack server are not in the picture.
 
-**Every script here uses `apack drive`.** The npm scripts are thin calls to it, so
-`npm run drive -- --help` is the reference. Root `drive` always targets the app and never
+**Every script here uses `apack dev drive`.** The npm scripts are thin calls to it, so
+`npm run dev:drive -- --help` is the reference. Root `drive` always targets the app and never
 installs a pack inferred from the working directory. Pack authors use `apack pack drive`.
 
 **Each run gets a fresh data dir under `$TMPDIR` and throws it away**, so a script cannot touch your
 development or production data, and every session starts clean. `--profile <name>` keeps a data dir
-between sessions: `npm run drive -- --profile probe`.
+between sessions: `npm run dev:drive -- --profile probe`.
 
 **For an answer you want to read rather than watch**, `app.report(name, value)` writes
 `drive/results/<name>.json` and prints one `[drive:report] <name> <json>` line — so a program reading the
@@ -59,10 +59,10 @@ the debug port that app published.
 
 ```bash
 npm run dev                                       # one terminal: source watchers and a drive session
-# Or: npm run open                                # hold the built app; no builds or watchers
-npm run drive:state                               # another: 0.9s
-npm run drive:eval -- 'return document.title'     # {"value":"Agent X","state":"attached",…}
-npm run drive:query -- 'return qx(EARS.Entity.Note).count()'
+# Or: npm run dev:open                                # hold the built app; no builds or watchers
+npm run dev:state                               # another: 0.9s
+npm run dev:eval -- 'return document.title'     # {"value":"Agent X","state":"attached",…}
+npm run dev:query -- 'return qx(EARS.Entity.Note).count()'
 ```
 
 **It is a function body, not an expression** — so `return` is required, and a body without one answers no
@@ -76,12 +76,12 @@ process nobody asked for. `--spawn` is how you ask, and the app it starts stays 
 costs one flag on the first question and an attach on every one after.
 
 ```bash
-npm run drive:state -- --spawn                    # 3.3s: starts the app, answers, leaves it running
-npm run drive:state                               # 0.9s from then on
+npm run dev:state -- --spawn                    # 3.3s: starts the app, answers, leaves it running
+npm run dev:state                               # 0.9s from then on
 ```
 
 `apack profiles` says which data dirs have a live app and who started it, which is where a forgotten one
-is found. `apack open --session` takes the directory back from an app a question started.
+is found. `apack dev open` takes the directory back from an app a question started.
 
 ## The verbs
 
@@ -101,7 +101,7 @@ An attached session has no window of its own, so a viewport it sets is Playwrigh
 run, which shows the window, resizes the window itself — asking for a viewport there the other way would
 letterbox the app against the desktop.
 
-A pack author gets the same thing from `apack drive`, which also takes `--profile <name>` to keep the
+A pack author gets the same thing from `apack dev drive`, which also takes `--profile <name>` to keep the
 app's data between sessions. In a pack everything here but this file and `playwright.config.ts` is
 gitignored.
 

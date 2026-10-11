@@ -5,12 +5,12 @@ import { resolveAppContext, appDataDirFor } from '@apackdev/sdk/env';
 import { findRunningApp } from '@apackdev/host/database';
 import { readApiEndpoint } from '@apackdev/host/process-liveness';
 import { API_HOST } from '@apackdev/sdk/utils/pure';
-import { parseTargetEnv } from '../utils';
+import { parseReleaseChannel } from '../utils';
 import { validateAppBundle, PRODUCT_NAMES, type Channel } from '../app/installed-app';
 
-export function doctorChannel(args: string[]): Channel {
-  const { env, args: rest } = parseTargetEnv(['--production', ...args]);
-  if (rest.length || (env !== 'production' && env !== 'beta')) throw new Error('Usage: apack doctor [-b]');
+export function doctorChannel(args: string[]): Channel | 'preview' {
+  const { env, args: rest } = parseReleaseChannel(args);
+  if (rest.length || (env !== 'production' && env !== 'beta' && env !== 'preview')) throw new Error('Usage: apack doctor [--channel production|beta|preview]');
   return env;
 }
 
@@ -25,7 +25,7 @@ function reachable(port: number): Promise<boolean> {
 }
 
 /** Read-only diagnostics. Tests supply temporary installation and data paths. */
-export async function inspectApp(channel: Channel, options: {
+export async function inspectApp(channel: Channel | 'preview', options: {
   applications?: string;
   dataDir?: string;
   probe?: (port: number) => Promise<boolean>;
@@ -62,7 +62,7 @@ export async function inspectApp(channel: Channel, options: {
 
 export async function doctor(args: string[]): Promise<void> {
   if (args.includes('--help') || args.includes('-h')) {
-    console.log('Usage: apack doctor [-b]\n\nInspect the installed production app, its data directory, and its API listener if running. -b selects beta. Nothing is launched or modified. Pack checks are apack pack doctor.');
+    console.log('Usage: apack doctor [--channel production|beta|preview]\n\nInspect the installed production app, its data directory, and its API listener if running. --channel beta selects beta. Nothing is launched or modified. Pack checks are apack pack doctor.');
     return;
   }
   const channel = doctorChannel(args);

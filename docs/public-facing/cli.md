@@ -1,6 +1,6 @@
 # CLI Reference
 
-The `apack` CLI manages the desktop app and packs. App operations are root commands; pack operations live under `apack pack`. Bare `apack pack` displays help.
+The `apack` CLI manages the desktop app and packs. Installed-app operations are root commands, app development lives under `apack dev`, and pack operations live under `apack pack`. Bare namespaces display help.
 
 Pack operations cover scaffolding, code generation, building, validation, testing, releasing and installation. It also reads and repairs the app's database (`apack db`).
 
@@ -13,6 +13,21 @@ Pack operations cover scaffolding, code generation, building, validation, testin
 Packs pin `@apackdev/cli` in `devDependencies`. Any `apack` run inside a pack hands off to that pinned version.
 
 ## Commands
+
+| Command | Purpose |
+|---|---|
+| `apack open` | Open the installed production app; `--channel beta` or `--channel preview` selects another installed app |
+| `apack install`, `upgrade`, `uninstall` | Manage published production/beta apps |
+| `apack doctor` | Read-only installed-app diagnostics, without debugging |
+| `apack dev open` | Hold an attachable source development app, without watchers |
+| `apack dev drive` | Ask a development session questions, or run app automation scripts |
+| `apack pack dev` | Build, install, and watch a pack in a development host |
+| `apack pack drive`, `pack test` | Automate or test a pack in its host |
+
+`--channel` selects a release channel, `--app` selects an explicit checkout or app bundle,
+and `--data` selects stored data. Development is a data namespace, not a release channel.
+`open --session` and root `drive` are removed. There is no production `--attach` option.
+Debugging connections are enabled only for source development launches.
 
 ### Scaffolding
 
@@ -73,7 +88,7 @@ Resolve every dependency and cache its snapshot, build code and backend runtime 
 
 1. `file:` path: read directly, never cached, no fallback
 2. The workspace: in each directory above the pack, nearest first, `packages/<id>` then `<id>`. A pack anywhere inside an apack checkout builds against that checkout's packages
-3. The app this pack is built against (`APACK_BUILD=beta`, `APACK_ROOT`, or the apack checkout behind the pack)
+3. The app this pack is built against (`APACK_CHANNEL=beta`, `APACK_APP`, or the apack checkout behind the pack)
 4. Installed apack apps' built-in packs (production, beta, development, test data dirs)
 5. GitHub releases, for `github:owner/repo` values (the `<id>-<version>.tgz` asset and its `.sha256`)
 
@@ -127,9 +142,9 @@ Stage the built `dist/` into a verified pack (`integrity.json` lists a sha256 pe
 
 Launch apack with your pack installed and keep it in step with your edits.
 
-It picks an app the way you tell it to — `--build <path>` for a local apack checkout, `--build beta` for a Beta that satisfies your `hostVersion` (a downloaded one if you have it, the newest otherwise) — and **with neither it works one out rather than asking**: the apack checkout your pack is built against, if there is one, else that newest Beta. Nothing is remembered, nothing is asked, and it prints which app it chose and which rule chose it.
+It picks an app the way you tell it to — `--app <path>` for a local apack checkout, `--channel beta` for a Beta that satisfies your `hostVersion` (a downloaded one if you have it, the newest otherwise) — and **with neither it works one out rather than asking**: the apack checkout your pack is built against, if there is one, else that newest Beta. Nothing is remembered, nothing is asked, and it prints which app it chose and which rule chose it.
 
-Deriving the checkout is the right pairing rather than a convenience: a pack whose `@apackdev/*` resolve into a checkout is *compiled against that checkout's packages*, so running it inside a released Beta would pair source-built pack code with a released host. If that checkout is not built, `dev` says so and names `npm run build` instead of quietly using a Beta you were not built against.
+Deriving the checkout is the right pairing rather than a convenience: a pack whose `@apackdev/*` resolve into a checkout is *compiled against that checkout's packages*, so running it inside a released Beta would pair source-built pack code with a released host. If that checkout is not built, `dev` says so and names `npm run build:default-setup && npm run build:runtime` instead of quietly using a Beta you were not built against.
 
 `apack pack test` deliberately derives nothing — it pins from your `hostVersion` — so a test run means the same thing on a fresh machine as on one you have been developing on.
 
@@ -145,7 +160,7 @@ The environment follows the app: a checkout runs as `development`, and a package
 
 A profile is self-contained — its data, packs, logs and secrets are all inside it, and the data key that encrypts its secrets goes in a file beside them rather than into the OS keychain, which is shared by every app of one channel. So `rm -rf` is the whole cleanup, and `apack profiles rm <name>` does it for you. The path is printed, and `apack db --profile <name>` opens its database — by the same name `dev` and `profiles` show, throwaway ones included.
 
-A profile is a data dir and nothing else: the environment, the app's identity and the URL scheme are untouched, so `--build beta` and a local checkout can both run the same profile. **The word is `profile` rather than `instance` because an instance of an app is a running process** — which is what Electron's single-instance lock is about — where this is storage, and a named, disposable data dir that leaves the app's identity alone is what a browser calls a profile.
+A profile is a data dir and nothing else: the environment, the app's identity and the URL scheme are untouched, so `--channel beta` and a local checkout can both run the same profile. **The word is `profile` rather than `instance` because an instance of an app is a running process** — which is what Electron's single-instance lock is about — where this is storage, and a named, disposable data dir that leaves the app's identity alone is what a browser calls a profile.
 
 An app already running on that data dir is used as it is; otherwise `dev` starts one, and closing `dev` closes the app it started. It then builds, installs the pack into that app's data dir, and:
 
@@ -155,13 +170,13 @@ An app already running on that data dir is used as it is; otherwise `dev` starts
 
 Without an FE entry it rebuilds, reinstalls and reloads on any change instead.
 
-#### `apack drive [script | --eval <body>] [--build <name|path>] [profile flags]`
+#### `apack dev drive [script | --eval <body>] [--app <path>] [profile flags]`
 
 Launch apack and drive it from a script: navigate, send events, read state, take screenshots.
 
 **This is mainly for an agent.** It is how a coding agent debugs and develops against the app it is changing — open the thing it just built, click through it, read the state back, screenshot it, and see for itself whether the change worked. A person can use it the same way, and the app's windows are shown so you can watch, but the reason it exists is that an agent has no other way to look at a running app.
 
-**It is not testing, and nothing treats it as testing.** A driving script asserts nothing, nothing gates on it, and no test runner collects it. Scripts live in `drive/`, which `apack drive` creates the first time you run it, and which sits outside every test glob by construction rather than by exclusion. `apack pack test` never sees it.
+**It is not testing, and nothing treats it as testing.** A driving script asserts nothing, nothing gates on it, and no test runner collects it. Scripts live in `drive/`, which `apack dev drive` creates the first time you run it, and which sits outside every test glob by construction rather than by exclusion. `apack pack test` never sees it.
 
 ```ts
 // drive/notes.ts
@@ -184,9 +199,9 @@ that app published — one process per question, no session to stand up and noth
 
 ```bash
 apack pack dev                                   # one terminal: holds the app
-apack drive --state                         # another: 0.9s
-apack drive --eval 'return window.appVersion'
-apack drive --query 'return qx(EARS.Entity.Note).count()'
+apack dev drive --state                         # another: 0.9s
+apack dev drive --eval 'return window.appVersion'
+apack dev drive --query 'return qx(EARS.Entity.Note).count()'
 ```
 
 With no app running it exits 3 and says so. `--spawn` starts one and keeps it, so a cold checkout costs
@@ -241,7 +256,7 @@ accepted. It used to resolve on the send, so every refusal read as success.
 features left `general` and `assistant` readable and unwritable.
 
 **`/set-viewport` resizes whichever thing the run actually has.** A session whose window is shown — a
-person watching `npm run drive` — has its *window* resized, because a viewport Playwright sets is an
+person watching `npm run dev:drive` — has its *window* resized, because a viewport Playwright sets is an
 emulation inside the window: the app would draw into one corner and leave the desktop showing through the
 rest. A session nobody is watching gets that emulation, which is what makes a suite's layout the same
 everywhere. Either way `/viewport` answers with what the layout has, read from the window.
@@ -284,28 +299,28 @@ The app's own output is in `drive/results/app-0.log` for the whole session, so t
 ##### One question
 
 A script and a session both assume you have more than one question. For the first one — and often the only
-one — `--eval`, `--query` and `--state` launch the app, ask the session one thing, print it and exit:
+one — `--eval`, `--query` and `--state` attach to a development app, ask one thing, print it and exit. Without a session they exit 3; `--spawn` explicitly starts one:
 
 ```bash
-apack drive --eval 'return document.title'
-{"ok":true,"value":"Agent X"}
+apack dev drive --eval 'return document.title'
+{"value":"Agent X","state":"attached","startedBy":"dev","supervisorPid":12345}
 ```
 
-The answer is the same `{ ok, value }` envelope the HTTP verbs return, as **one JSON line on stdout and
-nothing else there**, so `$(apack drive --eval …)` is directly parseable; the app's output goes to stderr
+The answer is one object with `value`, `state`, `startedBy` and `supervisorPid`, as **one JSON line on stdout and
+nothing else there**, so `$(apack dev drive --eval …)` is directly parseable; the app's output goes to stderr
 and the exit code is the status. It runs headless, since nothing is watching a single question.
 
 `--eval` takes a function **body**, not an expression, so `return` is required and a body without one
 answers no value at all.
 
-**`apack drive` always drives the app itself**, even inside a pack directory. Script runs
+**`apack dev drive` always drives the app itself**, even inside a pack directory. Script runs
 require an apack checkout; questions can attach from any directory. Use `apack pack drive`
 for pack scripts: it requires a pack and installs it into the isolated app used by the script.
 Both commands share the same runner and attachment behavior.
 
-It takes the same app and profile flags as `apack pack dev`, and **the two halves meet an app differently**, which the table below sets out in full:
+Scripts select an executable with `--app <path>`; pack scripts also accept `--channel beta`. Live questions select a development session with `--profile`, and reject executable/channel flags. The two modes have different ownership:
 
-- **A question** joins the app `apack pack dev` or `npm run dev` is holding, over the debug port in that app's session file. It asks of the development data dir unless `--profile <name>` names another, because that is where the app you are working in is.
+- **A question** joins the app `apack dev open`, `apack pack dev` or `npm run dev` is holding, over the debug port in that app's session file. It asks of the development data dir unless `--profile <name>` names another, because that is where the app you are working in is.
 - **A script** launches its own app and shows its windows, in a fresh data dir thrown away afterwards, so a driving session starts clean and leaves nothing and a script's result does not depend on whatever plugin the last one left open. `--profile <name>` is how a session keeps its state for the next one.
 
 Electron allows one app per data dir, which is what makes a question *join* rather than compete — and why a script, which wants an app of its own, gets a dir of its own with it. If a person wants to watch what a script is doing they watch its window; a question is headless, since nothing is watching one question.
@@ -314,10 +329,10 @@ Electron allows one app per data dir, which is what makes a question *join* rath
 
 | What you run | The app it uses | When it closes |
 |---|---|---|
-| `apack pack dev`, `npm run dev` | starts its own | when you stop the command |
-| `apack drive --eval` (and the other one-shots) | a live one; **fails if there is none** | it was not yours to close |
+| `apack dev open`, `apack pack dev`, `npm run dev` | starts its own | when you stop the command |
+| `apack dev drive --eval` (and the other one-shots) | a live one; **fails if there is none** | it was not yours to close |
 | the same, with `--spawn` | a live one, else it starts one | **it stays for the next question** — and, on a profile, closes itself after 10 minutes with nothing attached |
-| `apack drive <script>` | always its own | when the script finishes |
+| `apack dev drive <script>` | always its own | when the script finishes |
 | `apack pack test` | always its own, isolated | when the run finishes |
 
 **A question keeps the app so the next question is cheap; a script closes it so its result does not depend
@@ -435,21 +450,21 @@ Print a summary of the current pack: id, version, host version, feature count, s
 
 Scaffold Playwright E2E tests in the pack root: `playwright.config.ts` (tests in `tests/e2e`), `tests/e2e/smoke.spec.ts` (using the first feature with a plugin), `.gitignore` entries for `tests/screenshots/` and `tests/results/`, and `@apackdev/testing` and `@playwright/test` devDependencies. Existing files are kept.
 
-#### `apack pack test [--build <name|path>] [--prebuilt] [playwright args...]`
+#### `apack pack test [--app <path>] [--prebuilt] [playwright args...]`
 
 Run the pack's Playwright tests in apack. Other arguments go to `playwright test`. The app is, in order:
 
-1. `--build <path>`: a local apack checkout (installed and built)
-2. `--build beta` or `APACK_BUILD=beta`: an apack Beta build satisfying the pack's `hostVersion`
-3. `APACK_ROOT`
-4. A Beta build satisfying the pack's `hostVersion`, as `--build beta` would
+1. `--app <path>`: a local apack checkout (installed and built)
+2. `--channel beta` or `APACK_CHANNEL=beta`: an apack Beta build satisfying the pack's `hostVersion`
+3. `APACK_APP`
+4. A Beta build satisfying the pack's `hostVersion`, as `--channel beta` would
 
 A Beta build is **downloaded once and then reused**: whenever one you already have satisfies the pack's
 `hostVersion`, that one runs — so this works offline and asks GitHub nothing. The newest is fetched only when
 none of them fits. `apack cache clean` lists what has been downloaded, with sizes, and removes all but the
 newest; `--all` removes that one too, which is how you move to a newer Beta.
 
-**`apack pack test` never reads the app you saved and never asks**, so a test run means the same thing on a fresh machine as on one you have been developing on. Holding that preference is `apack pack dev`'s job. The fixture builds the pack with the same CLI and installs it into a fresh data dir for each worker, so a run leaves nothing behind either.
+**`apack pack test` never reads a stored app preference and never asks**, so a test run means the same thing on a fresh machine as on one you have been developing on. Holding that preference is `apack pack dev`'s job. The fixture builds the pack with the same CLI and installs it into a fresh data dir for each worker, so a run leaves nothing behind either.
 
 `--prebuilt` installs the build already in `dist/` instead of making a new one, for a pipeline that built the
 pack in an earlier step. The build is still held to being no older than the pack's sources and `apack.json`,
@@ -475,7 +490,7 @@ The scaffolded `.github/workflows/release.yml` publishes the GitHub release from
 
 Verify the pack in `<dir>` (default `.apack/release`) and create the GitHub release `v<version>` (a prerelease for prerelease versions), uploading `<id>-<version>.tgz`, `.sha256` and `.integrity.json`. The release workflow runs it. Needs `GITHUB_TOKEN` (or `GH_TOKEN`), and `GITHUB_REPOSITORY` or a GitHub `origin` remote.
 
-#### `apack pack install <source> [-d|--dev] [-b|--beta]`
+#### `apack pack install <source> [--data <name>]`
 
 Install a pack into the app's data dir (`<userDataDir>/packs/<id>`). `<source>` is one of:
 
@@ -494,44 +509,41 @@ apack pack install user/my-pack
 
 A GitHub release needs a `.tgz` asset and the `.sha256` asset published beside it (`apack pack release` writes both); a release without one is refused, since nothing would say the download is that release. A URL install is unverified, and says so. The pack is verified before it's placed, and `hostVersion` is checked against the version the app recorded in that data dir. A source directory must be built: one with neither a `integrity.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` is refused, with a note to run `apack pack build` first. Restart the app after installing.
 
-#### `apack pack uninstall <id> [-d|--dev] [-b|--beta]`
+#### `apack pack uninstall <id> [--data <name>]`
 
 Remove an installed pack by ID. Restart the app after uninstalling.
 
-#### `apack pack list [-d|--dev] [-b|--beta]`
+#### `apack pack list [--data <name>]`
 
 Show installed packs.
 
-`pack install`, `pack uninstall` and `pack list` read the production build's data by default. `--build <name>` says which — `production`, `beta`, `development` or `test` — and `-d`, `-b` and `--production` are shorthands for the first three. They name a **build**, never a profile: a build keeps its own default storage, and `--profile` is the one override.
+`pack install`, `pack uninstall` and `pack list` select stored data with `--data production|development|beta|preview|test`. The default follows the bundled CLI's channel, or production for a standalone CLI. These commands do not select or launch an executable.
 
 ### App
 
-#### `apack open [-b]`
+#### `apack open [--channel production|beta|preview]`
 
-Open the installed production app, or bring it to the front. `-b` selects beta. macOS only.
-The current directory never changes this into a pack operation.
+Open the installed app or bring it to the front. Production is always the default, including
+from a beta-bundled CLI. macOS only. No debugging connection is enabled.
 
-#### `apack open --session [--build <name|path>] [profile flags]`
+#### `apack dev open [--app <checkout>] [profile flags]`
 
-Launch or attach to a development app and hold the session until Ctrl-C. It never builds,
-installs, or watches a pack. `--build` selects a checkout by path or beta; without it, a
-linked checkout is preferred, otherwise the latest beta is used. Profile flags are the same
-as `apack pack dev`. Development sessions publish the debug connection used by `apack drive`.
-`npm run open` uses this command; `npm run dev` runs the app source watchers.
+Launch a built source checkout and hold its attachable development session until Ctrl-C.
+Without `--app`, use the checkout behind the current directory. A missing checkout fails;
+there is no fallback to a downloaded release. Packaged apps are refused.
+It never builds, installs or watches a pack. `npm run dev:open` uses this command;
+`npm run dev` runs app source watchers. `--session` and `--attach` flags are unnecessary.
 
-#### `apack doctor [-b]`
+#### `apack doctor [--channel production|beta|preview]`
 
-Inspect the installed production app (`-b` selects beta), its bundle identity, version,
-executable, data directory permissions, and API listener when running. A closed app is normal.
-Nothing is launched, downloaded, repaired, or removed. Failures exit with code 1.
-This checks listener reachability, not application-level API health. Pack checks are
-`apack pack doctor`.
+Inspect the installed app's identity, version, executable, data permissions and API listener.
+Production is the default. A closed app is normal. Nothing is launched or modified, and no
+debugging connection is opened. Failures exit 1. Pack checks are `apack pack doctor`.
 
-#### `apack upgrade [-b] [--relaunch] [--force]`
+#### `apack upgrade [version] [--channel production|beta] [--relaunch] [--force]`
 
-Install the newest published apack into `/Applications`, replacing what is there. `-b` upgrades
-apack Beta from the newest prerelease instead; the two channels never see each other's releases, so a
-beta never arrives as a production upgrade. macOS on Apple Silicon only, which is where the app is published.
+Upgrade the installed app to the indicated version or latest published release. Production
+is the default; `--channel beta` selects published prereleases. macOS on Apple Silicon only.
 
 It takes the release's `.zip` and checks it against the `.sha256` published beside it, then expands it with
 `ditto` — which keeps the bundle's symlinks, permissions and code signature. Nothing is installed until that
@@ -554,11 +566,11 @@ app afterwards.
 apack db query "return qx(EARS.Entity.Note).count()"
 apack db inspect Flow-123 --depth 2
 apack db export --out ./export
-apack db import ./apack-backup-2026-09-17 --production --force
-apack db reset --production        # lists what it would delete
+apack db import ./apack-backup-2026-09-17 --data production --force
+apack db reset --data production        # lists what it would delete
 ```
 
-**Which data.** `--build <name>` says which build's data dir — `-d`, `-b` and `--production` are its shorthands — `--data-dir <path>` any data dir, such as a copy of the user's, and `--profile <name>` a profile `apack pack dev` made, by the name it printed. Name one of them, not two. `--schema-from <path>` names a pack snapshot for a data dir that publishes none of its own. Without it such a dir still opens to **read**, and the command says which entity types it could not name; a command that **changes** it is refused, because an incomplete schema makes a write land on the wrong rows. A command that only reads takes the production app's data without being told, and a dry run of `import`, `reset` or `clear-settings` counts as reading; **a change (`exec`, `repl --write`, and those three with `--force`) names its data dir**, so the user's own data is never what a forgotten flag hits. Each command prints the data dir it opens (on stderr, so results on stdout stay clean). A flag means that app's own data dir, whatever `APACK_USER_DATA_DIR` is set to in the shell; the variable applies only when nothing names a data dir.
+**Which data.** `--data production|development|beta|preview|test` selects an app data namespace, `--data-dir <path>` any data dir, such as a copy of the user's, and `--profile <name>` a profile `apack pack dev` made, by the name it printed. Name one of them, not two. `--schema-from <path>` names a pack snapshot for a data dir that publishes none of its own. Without it such a dir still opens to **read**, and the command says which entity types it could not name; a command that **changes** it is refused, because an incomplete schema makes a write land on the wrong rows. A command that only reads takes the production app's data without being told, and a dry run of `import`, `reset` or `clear-settings` counts as reading; **a change (`exec`, `repl --write`, and those three with `--force`) names its data dir**, so the user's own data is never what a forgotten flag hits. Each command prints the data dir it opens (on stderr, so results on stdout stay clean). A flag means that app's own data dir, whatever `APACK_USER_DATA_DIR` is set to in the shell; the variable applies only when nothing names a data dir.
 
 **While the app runs.** The commands open the database files themselves (offline); the app keeps the whole database in memory and is its only writer. So a change (`exec`, `repl --write`, and `import`, `reset` or `clear-settings` with `--force`) refuses while an apack app runs on the data dir: the API it published is running, or (on macOS and Linux) its single-instance lock is held by a live process. Files left behind by a crash name processes that have exited, so they don't stand in the way. Quit the app first. Reading commands work, with a warning that they miss what the app hasn't written yet, and so do the dry runs: they open the database without writing to it, so they also work against a copy you have no permission to change.
 
@@ -605,8 +617,8 @@ export default async ({ db, EARS, args, log }) => {
 ```
 
 ```bash
-apack db script ./notes-report.ts --production -o json --out notes.json
-apack db script ./cleanup.ts -d -- --older-than 30
+apack db script ./notes-report.ts --data production -o json --out notes.json
+apack db script ./cleanup.ts --data development -- --older-than 30
 ```
 
 | It receives | |
@@ -693,7 +705,7 @@ Remove build output: `dist/`, `.apack/`, `src/__generated__/`.
 
 #### `apack cache clean [--all]`
 
-Lists the apack Beta builds `--build beta` downloaded — a few hundred megabytes each, one per
+Lists the apack Beta builds `--channel beta` downloaded — a few hundred megabytes each, one per
 release tested against — and removes all but the newest, which is the one a later run would reuse; `--all`
 removes every build. It works outside a pack.
 
@@ -708,9 +720,9 @@ apack install --replace             # Explicitly replace an existing app
 apack upgrade                       # Update an installed app to the latest stable release
 apack upgrade 0.4.0 --force          # Explicit reinstall or downgrade
 apack uninstall                     # Remove the app bundle; keep data and settings
-apack install -b                    # Latest beta, installed separately
+apack install --channel beta                    # Latest beta, installed separately
 ```
 
-These commands manage `/Applications/apack.app` (or `apack Beta.app` with `-b`) on macOS Apple Silicon. App commands default to production even when invoked from the beta app. Pack installation is `apack pack install <source>`; pack removal is `apack pack uninstall <id>`.
+These commands manage `/Applications/apack.app` (or `apack Beta.app` with `--channel beta`) on macOS Apple Silicon. App commands default to production even when invoked from the beta app. Pack installation is `apack pack install <source>`; pack removal is `apack pack uninstall <id>`.
 
 Downloads must have a matching published SHA-256 checksum. An incomplete latest release fails rather than silently installing an older version. The downloaded bundle's identity, executable and version are checked before the existing app is asked to quit. Replacement is staged on the destination filesystem and restores the previous bundle if the swap fails. A concurrent app operation is refused. `install` refuses any existing bundle without `--replace`; `upgrade` requires an existing app and skips a same-version or older release unless `--force` is supplied. `--relaunch` opens the installed app after install or upgrade. Uninstall never deletes databases, packs, profiles or settings.

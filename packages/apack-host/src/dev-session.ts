@@ -16,7 +16,7 @@
  * and leave a watcher and a dev server running with nothing to serve. The app needs no pid here; it is
  * reached through `debugPort`.
  *
- * **It lives here rather than in the CLI because two launchers publish one**: `apack open --session` and the
+ * **It lives here rather than in the CLI because two launchers publish one**: `apack dev open` and the
  * renderer-HMR loop `npm run dev` runs, which spawns Electron from `packages/main/vite.config.js`. The
  * `pack-dev-servers` marker is here for the same reason — a record about a running app's data dir, written
  * by whoever started it and read by whoever wants to reach it.
@@ -65,7 +65,7 @@ export const sessionFile = (dataDir: string): string => path.join(dataDir, 'sess
  * picks a free one, which is the only safe way to ask: a fixed port collides with whatever holds it and with
  * a second app.
  *
- * **It is here rather than in `apack open --session` because the `npm run dev` watcher had no gate at all.** That hook
+ * **It is here rather than in `apack dev open` because the `npm run dev` watcher had no gate at all.** That hook
  * pushed the flag unconditionally, behind a `NODE_ENV !== 'development'` check — which is the *build mode*
  * of the bundle, not the environment the spawned app resolves. A source run takes that from `APACK_ENV`, so
  * `APACK_ENV=beta npm run dev` opened a port on a **beta** app while the CLI's identical decision had six

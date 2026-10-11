@@ -67,7 +67,7 @@ my-pack/
       notes-system.spec.ts  # added with the feature: its system under the app's bus
 ```
 
-The scaffold has no dependencies, so it builds as generated. To use another pack's entity types or flow steps (for example `keepAlive` from the built-in `default-setup` pack), add it to `dependencies` in `apack.json`. `apack pack build` resolves each dependency from a `file:` path, the workspace, the app you configured for `apack pack test` (a checkout or the downloaded beta; `APACK_BUILD=beta` in CI), an installed apack app, the `.apack/deps` cache, or a GitHub release, in that order. The resolved version must satisfy the range you declare, and your flows are validated with the dependency's real step code. The scaffolded release workflow runs on macOS with `APACK_BUILD=beta`, so built-in dependencies resolve in CI.
+The scaffold has no dependencies, so it builds as generated. To use another pack's entity types or flow steps (for example `keepAlive` from the built-in `default-setup` pack), add it to `dependencies` in `apack.json`. `apack pack build` resolves each dependency from a `file:` path, the workspace, the app you configured for `apack pack test` (a checkout or the downloaded beta; `APACK_CHANNEL=beta` in CI), an installed apack app, the `.apack/deps` cache, or a GitHub release, in that order. The resolved version must satisfy the range you declare, and your flows are validated with the dependency's real step code. The scaffolded release workflow runs on macOS with `APACK_CHANNEL=beta`, so built-in dependencies resolve in CI.
 
 ## The dev loop
 
@@ -77,7 +77,7 @@ apack pack dev
 
 This launches apack with your pack installed and keeps it in step with your edits: frontend changes hot-reload through Vite HMR, `apack.json` changes regenerate `src/__generated__/`, and backend `.ts` changes rebuild, reinstall and reload the pack's backend in the running app.
 
-It works out which app to use rather than asking: the apack checkout your pack is built against if there is one, else the newest Beta build your `hostVersion` accepts. `--build <path>` and `--build beta` name one outright, and it always says which it chose and why. If an app is already running on that data dir, `dev` uses it rather than starting a second.
+It works out which app to use rather than asking: the apack checkout your pack is built against if there is one, else the newest Beta build your `hostVersion` accepts. `--app <path>` and `--channel beta` name one outright, and it always says which it chose and why. If an app is already running on that data dir, `dev` uses it rather than starting a second.
 
 The build pipeline (`apack pack build`):
 
@@ -116,7 +116,7 @@ apack pack install my-pack.zip         # zip archive
 apack pack install user/repo           # latest GitHub release (user/repo@v0.1.0 for a tag)
 ```
 
-`apack pack install` targets the production app; add `-d` for the development data dir or `-b` for apack Beta.
+`apack pack install` targets the production app; add `--data development` for the development data dir or `--data beta` for apack Beta.
 
 After installing, **restart the app** for the pack to load.
 
@@ -135,10 +135,10 @@ Unit tests run your pack without the app, through `@apackdev/testing/harness`: c
 ```bash
 apack pack init-tests
 npm install
-apack pack test --build beta      # or --build ../apack for a local checkout
+apack pack test --channel beta      # or --app ../apack for a local checkout
 ```
 
-`apack pack init-tests` adds `playwright.config.ts` and a smoke test in `tests/e2e/`. `apack pack test` builds the pack, installs it into a throwaway data dir and runs the tests in the app: a checkout (`--build`, or `APACK_ROOT`), or the newest apack Beta satisfying your `hostVersion` (`--build beta`, or `APACK_BUILD=beta` in CI). With neither, it uses that newest Beta: `apack pack test` never reads the app you saved and never asks, so a test run means the same thing on any machine. See [Testing](testing.md).
+`apack pack init-tests` adds `playwright.config.ts` and a smoke test in `tests/e2e/`. `apack pack test` builds the pack, installs it into a throwaway data dir and runs the tests in the app: a checkout (`--app`, or `APACK_APP`), or the newest apack Beta satisfying your `hostVersion` (`--channel beta`, or `APACK_CHANNEL=beta` in CI). With neither, it uses that newest Beta: `apack pack test` never reads a stored app preference and never asks, so a test run means the same thing on any machine. See [Testing](testing.md).
 
 ## Verify it works
 

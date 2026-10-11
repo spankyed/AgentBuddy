@@ -9,13 +9,13 @@ import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
 import { cliBin, findPackRoot, readManifest, resolveVitestCli } from '../utils';
 import { VITEST_CONFIG_FILES } from './init.ts';
 
-export const TEST_USAGE = `Usage: apack pack test [--build <name|path>] [--release] [--prebuilt] [playwright args...]
+export const TEST_USAGE = `Usage: apack pack test [--app <path> | --channel beta] [--release] [--prebuilt] [playwright args...]
        apack pack test --contract [vitest args...]
 
-Runs the pack's Playwright tests in apack. The build is, in order: --build (a name, or a
-local apack checkout by path), APACK_BUILD, or the newest apack Beta satisfying the
-pack's hostVersion, downloaded and cached. It reads no machine state and derives nothing from where
-the pack sits, so a run means the same thing on any machine.
+Runs the pack's Playwright tests in isolated test data. --app selects a checkout or .app bundle;
+--channel beta selects a cached/downloaded host satisfying hostVersion. APACK_APP and
+APACK_CHANNEL provide the corresponding environment selectors. With none, resolve a beta
+from hostVersion. No checkout is implicitly derived for tests.
 
 --prebuilt installs the build already in dist/ instead of making a new one, for a caller that built the
 pack in an earlier step. The build is still held to being no older than the sources, so a stale one fails
@@ -41,8 +41,8 @@ export function fixtureEnv(
   // A pack resolves the packages' published dist, whoever runs it: the condition never reaches this run,
   // even when the caller had it (npm test in a checkout).
   //
-  // **`keepSourceCondition` is for a run with no pack in it** — `apack drive` driving the app itself from
-  // a checkout, which is what this repo's `npm run drive` does. There is no pack to resolve `dist` for, the
+  // **`keepSourceCondition` is for a run with no pack in it** — `apack dev drive` driving the app itself from
+  // a checkout, which is what this repo's `npm run dev:drive` does. There is no pack to resolve `dist` for, the
   // subject is the checkout's own source, and stripping the condition would change what that run loads.
   const nodeOptions = options.keepSourceCondition === true ? base.NODE_OPTIONS : withoutSourceCondition(base.NODE_OPTIONS);
   if (nodeOptions) env.NODE_OPTIONS = nodeOptions;
@@ -51,22 +51,23 @@ export function fixtureEnv(
   // ELECTRON_RUN_AS_NODE (app-bundled launcher) stays: the runner and its workers run on
   // process.execPath. The fixture drops it for the app it launches (appLaunchEnv).
   delete env.APACK_APP_EXECUTABLE;
-  // APACK_BUILD as well as the executable: the fixture builds the pack, and resolving its dependencies
-  // on built-in packs reads the app choice, not the launch target. Without it a `--build beta` run
+  // APACK_APP as well as the executable: the fixture builds the pack, and resolving its dependencies
+  // on built-in packs reads the app choice, not the launch target. Without it a `--channel beta` run
   // resolves against the checkout behind the pack, or finds nothing at all in CI.
-  delete env.APACK_BUILD;
+  delete env.APACK_APP;
+  delete env.APACK_CHANNEL;
   // Where the app's data goes, and where its screenshots and reports land, is this run's to decide and
   // never the shell's. All three are read straight from the environment by the fixture, because the `test`
   // a spec imports is built at module scope and no option can reach it — so an exported E2E_DATA_DIR would
-  // have a pinned run use a directory it did not make, and leave it behind. `apack drive` sets them after
+  // have a pinned run use a directory it did not make, and leave it behind. `apack dev drive` sets them after
   // calling this.
   delete env.E2E_DATA_DIR;
   delete env.E2E_SCREENSHOT_DIR;
   delete env.E2E_REPORT_DIR;
-  if (app.kind === 'source') env.APACK_ROOT = app.root;
+  if (app.kind === 'source') { env.APACK_ROOT = app.root; env.APACK_APP = app.root; }
   else {
     env.APACK_APP_EXECUTABLE = app.executable;
-    env.APACK_BUILD = 'beta';
+    env.APACK_APP = path.dirname(path.dirname(path.dirname(app.executable)));
   }
   // Cleared when there is none, as APACK_PACK_RELEASE below is: `apack pack test` runs the pack it is in,
   // so an exported PACK_DIR in a directory that holds no manifest would have it build and install a

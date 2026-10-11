@@ -20,7 +20,7 @@ Finished when:
 - npm run typecheck, api:check (sdk, ui, ears), packages:build + packages:check, and the renderer,
   sdk, cli and default-setup unit suites pass.
 - npm run build, the E2E suite, npm run test:external-pack, npm run test:packaged-authoring and the
-  example pack's `apack pack test --build <repo>` pass.
+  example pack's `apack pack test --app <repo>` pass.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
 Never:

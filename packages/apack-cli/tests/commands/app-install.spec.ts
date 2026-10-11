@@ -20,14 +20,14 @@ describe('app command arguments', () => {
   it('defaults to production even in a beta-bundled CLI', () => {
     vi.stubEnv('APACK_CLI_CHANNEL', 'beta');
     expect(parseAppCommand('install', []).channel).toBe('production');
-    expect(parseAppCommand('install', ['-b']).channel).toBe('beta');
+    expect(parseAppCommand('install', ['--channel', 'beta']).channel).toBe('beta');
   });
   it('accepts an exact version, leading v, and explicit replacement', () => {
     expect(parseAppCommand('install', ['v0.4.0', '--replace'])).toMatchObject({ version: '0.4.0', replace: true });
     expect(parseAppCommand('install', ['latest']).version).toBeUndefined();
   });
   it('refuses ambiguous or unsupported inputs', () => {
-    for (const args of [['0.4'], ['--force'], ['0.4.0', '0.5.0'], ['--build', 'preview'], ['0.4.0-beta.1']]) {
+    for (const args of [['0.4'], ['--force'], ['0.4.0', '0.5.0'], ['--app', 'preview'], ['0.4.0-beta.1']]) {
       expect(() => parseAppCommand('install', args)).toThrow();
     }
     expect(() => parseAppCommand('uninstall', ['0.4.0'])).toThrow();

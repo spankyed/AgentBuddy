@@ -1,7 +1,7 @@
 // What every `apack db` command shares: the data dir it targets, and opening its database offline
 import * as path from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { appDataDirFor, resolveAppContext, type AppContext, type AppEnv } from '@apackdev/sdk/env';
+import { appDataDirFor, resolveAppContext, parseAppEnv, APP_ENVS, type AppContext, type AppEnv } from '@apackdev/sdk/env';
 import { findRunningApp, holdDatabaseWriteLock, openAppDatabase, type AppDatabase } from '@apackdev/host/database';
 import { consoleEars, type ConsoleScope } from '@apackdev/sdk/database-console';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
@@ -21,9 +21,7 @@ export const processIo: DbIo = {
 };
 
 const TARGET_OPTIONS = {
-  dev: { type: 'boolean', short: 'd', default: false },
-  beta: { type: 'boolean', short: 'b', default: false },
-  production: { type: 'boolean', default: false },
+  data: { type: 'string', multiple: true },
   'data-dir': { type: 'string' },
   profile: { type: 'string' },
   'schema-from': { type: 'string' },
@@ -31,9 +29,7 @@ const TARGET_OPTIONS = {
 } satisfies ParseArgsConfig['options'];
 
 export const TARGET_USAGE = [
-  '  -d, --dev              The development app\'s data',
-  '  -b, --beta             The beta app\'s data',
-  '  --production           The production app\'s data (standalone CLI default; bundled CLI uses its app channel)',
+  '  --data <name>         App data: production, development, beta, preview, test',
   '  --data-dir <path>      A data dir, a copy of the user\'s for example',
   '  --profile <name>      An `apack pack dev` profile, by the name run and clean print',
   '  --schema-from <path>   A pack snapshot to read entity types from, for a data dir that publishes none',
@@ -41,7 +37,7 @@ export const TARGET_USAGE = [
 ].join('\n');
 
 export type DbTarget = Pick<AppContext, 'build' | 'userDataDir' | 'apiPortFile'> & {
-  /** The command named this data dir (`-d`, `-b`, `--production`, `--data-dir` or `--profile`) rather than taking the default */
+  /** The command named this data dir (`--data`, `--data-dir` or `--profile`) rather than taking the default */
   named: boolean;
   /** `--volatile`: the run history is read with the rest of the data */
   volatile: boolean;
@@ -80,16 +76,18 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
   } catch (error) {
     throw new Error(`${(error as Error).message}\n\n${usage}`);
   }
-  const { dev, beta, production, 'data-dir': dataDir, profile, 'schema-from': schemaFrom, volatile } = parsed.values as
-    { dev: boolean; beta: boolean; production: boolean; 'data-dir'?: string; profile?: string; 'schema-from'?: string; volatile: boolean };
+  const { data: dataValues, 'data-dir': dataDir, profile, 'schema-from': schemaFrom, volatile } = parsed.values as
+    { data?: string[]; 'data-dir'?: string; profile?: string; 'schema-from'?: string; volatile: boolean };
+  if (dataValues && dataValues.length > 1) throw new Error('Specify --data once.');
+  const data = dataValues?.[0];
   // An empty value would otherwise read as "not given" and target the default data dir
   if (dataDir !== undefined && dataDir.trim() === '') throw new Error(`--data-dir needs a path\n\n${usage}`);
   if (profile !== undefined && profile.trim() === '') throw new Error(`--profile needs a name\n\n${usage}`);
   if (schemaFrom !== undefined && schemaFrom.trim() === '') throw new Error(`--schema-from needs a path\n\n${usage}`);
-  const named = [dev && '-d', beta && '-b', production && '--production', dataDir !== undefined && '--data-dir',
+  const named = [data !== undefined && '--data', dataDir !== undefined && '--data-dir',
     profile !== undefined && '--profile'].filter(Boolean) as string[];
   if (named.length > 1) throw new Error(`Name one data dir, not ${named.length}: ${named.join(', ')}\n\n${usage}`);
-  const env: AppEnv = beta ? 'beta' : dev ? 'development' : production ? 'production' : defaultDataBuild();
+  const env: AppEnv = data === undefined ? defaultDataBuild() : parseAppEnv(data) ?? (() => { throw new Error(`--data needs one of: ${APP_ENVS.join(', ')}`); })();
   // A named app is that app's data dir, not the one APACK_USER_DATA_DIR points at: the flag says which app, and a
   // command that changes data must name one. With no flag the variable still applies, which is how the repo's
   // db:* scripts and tests read a temp data dir.
@@ -98,7 +96,7 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
   // the app flags rather than combining with them — there would be nothing for the combination to mean.
   const userDataDir = dataDir !== undefined ? path.resolve(dataDir)
     : profile !== undefined ? profileDataDir(profile, usage)
-    : (dev || beta || production) ? appDataDirFor(env)
+    : data !== undefined ? appDataDirFor(env)
     : undefined;
   const context = resolveAppContext({ build: env, ...(userDataDir !== undefined && { profile: userDataDir }) });
   const target: DbTarget = {
@@ -123,7 +121,7 @@ export interface OpenOptions {
  */
 export async function openTarget(target: DbTarget, { write, command }: OpenOptions, io: DbIo): Promise<AppDatabase> {
   if (write && !target.named) {
-    throw new Error('Name the data dir to change: --production, -d, -b, --data-dir <path>, or --profile <name>');
+    throw new Error('Name the data dir to change: --data <name>, --data-dir <path>, or --profile <name>');
   }
   io.err(`Database: ${target.userDataDir} (offline)`);
   // Taken before the check, so an app that starts from here on finds it and refuses to open the database

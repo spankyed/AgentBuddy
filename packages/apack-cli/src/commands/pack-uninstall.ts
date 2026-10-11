@@ -1,18 +1,17 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { resolveAppContext } from '@apackdev/sdk/env';
 import { uninstallPack } from '@apackdev/host/packs';
-import { parseTargetEnv, envLabel } from '../utils';
+import { parseTargetEnv, targetDataContext, envLabel } from '../utils';
 
 export async function uninstall(args: string[]) {
   const { env, args: filtered } = parseTargetEnv(args);
   const packId = filtered[0];
 
-  if (!packId) {
-    throw new Error('Usage: apack pack uninstall <pack-id> [-d|--dev] [-b|--beta]');
+  if (!packId || filtered.length !== 1 || packId.startsWith('-')) {
+    throw new Error('Usage: apack pack uninstall <pack-id> [--data <name>]');
   }
 
-  const { packsDir } = resolveAppContext({ build: env });
+  const { packsDir } = targetDataContext(env, args);
   const manifestPath = path.join(packsDir, packId, 'apack.json');
   let name = packId;
   if (fs.existsSync(manifestPath)) {

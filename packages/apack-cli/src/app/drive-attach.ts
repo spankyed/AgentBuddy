@@ -82,7 +82,7 @@ export async function spawnDevApp(
   const logPath = path.join(dataDir, 'dev-spawn.log');
   fs.mkdirSync(dataDir, { recursive: true });
   const log = fs.openSync(logPath, 'a');
-  const command = scope === 'pack' ? ['pack', 'dev'] : ['open', '--session'];
+  const command = scope === 'pack' ? ['pack', 'dev'] : ['dev', 'open'];
   const child = spawn(process.execPath, [cliBin(), ...command, ...profileArgs], {
     cwd: from,
     detached: true,
@@ -90,6 +90,7 @@ export async function spawnDevApp(
     // The one thing `dev` cannot work out for itself: it writes the session file and cannot know who asked
     env: { ...process.env, [STARTED_BY_ENV]: 'drive' },
   });
+  fs.closeSync(log);
   child.unref();
   let exited = false;
   child.once('exit', () => { exited = true; });
@@ -135,7 +136,7 @@ export async function spawnOrAttach(
 ): Promise<{ app: AttachableApp; state: 'spawned' | 'attached' }> {
   let lock: ExclusiveLock;
   try {
-    lock = holdExclusiveLock({ file: spawnLockFile(dataDir), what: 'apack drive --spawn', refuse: () => HELD });
+    lock = holdExclusiveLock({ file: spawnLockFile(dataDir), what: 'apack dev drive --spawn', refuse: () => HELD });
   } catch (error) {
     if (error !== HELD) throw error;
     // Another question is already starting an app here. What this one wants is an app, not a spawn

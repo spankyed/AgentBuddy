@@ -3,7 +3,7 @@
 // Both subjects are one defect: two questions asked at once against one app. The second's claim is refused
 // — correctly, since two drivers must not receive each other's answers — but the refusal was reported and
 // then nothing closed the CDP connection or the socket, so the process sat there for ever. Measured before
-// the fix: `apack drive --eval` printed its reason to stderr and was still running 25s later.
+// the fix: `apack dev drive --eval` printed its reason to stderr and was still running 25s later.
 import { describe, expect, it, vi } from 'vitest';
 import { _claimDrive, _closingOnFailure } from '../../src/engine/index.ts';
 

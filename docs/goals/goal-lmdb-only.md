@@ -26,7 +26,7 @@ Finished when:
   `facade:check -w @app/default-setup`, and the api, sdk, ears, host, cli, default-setup and renderer
   unit suites pass.
 - `npm run build`, the monorepo E2E suite, `npm run test:external-pack`,
-  `npm run test:packaged-authoring` and the example pack's `apack pack test --build <repo>` pass.
+  `npm run test:packaged-authoring` and the example pack's `apack pack test --app <repo>` pass.
 - A final summary: phase → done/deferred, evidence, benchmark numbers, conventional choices.
 
 Never:

@@ -107,25 +107,24 @@ describe('apack pack dev reloads', () => {
   });
 });
 
-/**
- * `dev` does not decide the environment, the app does — which is what keeps production out of reach. A
- * packaged build stamps its own channel at build time, so the only two answers are a checkout's
- * `development` and a Beta's `beta`, and no flag or variable this command reads adds a third.
- */
 describe('the environment apack pack dev targets', () => {
-  it('follows the app it resolved', async () => {
-    const { appEnv } = await import('../../src/commands/dev');
+  it('reads the bundle channel even when a beta tag carries a production app', async () => {
+    const { appEnv, developmentHostEnv } = await import('../../src/commands/dev');
     expect(appEnv({ kind: 'source', root: '/repo' })).toBe('development');
-    expect(appEnv({ kind: 'packaged', executable: '/Applications/apack Beta.app', version: '0.4.0-beta.1' }))
-      .toBe('beta');
-  });
-
-  it('never targets production', async () => {
-    const { appEnv } = await import('../../src/commands/dev');
-    const every = [
-      { kind: 'source', root: '/repo' },
-      { kind: 'packaged', executable: '/Applications/apack Beta.app', version: '0.4.0-beta.1' },
-    ] as const;
-    expect(every.map(appEnv)).not.toContain('production');
+    const resources = path.join(userDataDir, 'apack.app', 'Contents', 'Resources', 'app');
+    fs.mkdirSync(resources, { recursive: true });
+    const executable = path.join(userDataDir, 'apack.app', 'Contents', 'MacOS', 'apack');
+    for (const channel of ['production', 'beta', 'preview']) {
+      fs.writeFileSync(path.join(resources, 'build-manifest.json'), JSON.stringify({ channel }));
+      const app = { kind: 'packaged', executable, version: '0.4.0-beta.1' } as const;
+      expect(appEnv(app)).toBe(channel);
+      if (channel === 'production') expect(() => developmentHostEnv(app, true)).toThrow('This bundle is production');
+      else {
+        expect(() => developmentHostEnv(app, false)).toThrow('requires --profile');
+        expect(developmentHostEnv(app, true)).toBe(channel);
+      }
+    }
+    fs.writeFileSync(path.join(resources, 'build-manifest.json'), '{"channel":"development"}');
+    expect(() => appEnv({ kind: 'packaged', executable, version: '0.4.0' })).toThrow('Invalid packaged channel');
   });
 });

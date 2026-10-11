@@ -19,7 +19,7 @@ const isBeta = metadata.channel === 'beta';
 const isPreview = metadata.channel === 'preview';
 const {appId, productName, urlScheme} = metadata;
 // File names without spaces: GitHub rewrites spaces in release asset names, and
-// `apack pack test --build beta` looks for apack-Beta-<version>-mac-arm64.zip
+// `apack pack test --channel beta` looks for apack-Beta-<version>-mac-arm64.zip
 export const artifactPrefix = productName.replace(/ /g, '-');
 
 // Exclude prebuilds for platforms we're not targeting

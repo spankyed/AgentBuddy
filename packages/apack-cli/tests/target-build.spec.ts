@@ -1,76 +1,21 @@
-// Which build's data a command is pointed at.
-//
-// `-d`, `-b` and `--production` are `--build` shorthands now: they keep working and change what they
-// *mean*, a build rather than an environment. The two spellings have to agree, because a reader who learned
-// `--build` on `apack pack dev` should not have to learn a second one here — and because this was the half of
-// the vocabulary change with an open question in it, where the same word selecting a different axis per
-// command was the symptom.
-import { describe, expect, it, vi } from 'vitest';
-import { APP_ENVS } from '@apackdev/sdk/env';
-import { parseTargetEnv } from '../src/utils';
+import { afterEach, expect, it, vi } from 'vitest';
+import { appDataDirFor } from '@apackdev/sdk/env';
+import { parseTargetEnv, parseReleaseChannel, targetDataContext } from '../src/utils';
+afterEach(() => vi.unstubAllEnvs());
+it('uses the bundled channel only for the default data target', () => {
+  vi.stubEnv('APACK_CLI_CHANNEL', 'preview');
+  expect(parseTargetEnv([]).env).toBe('preview');
+  expect(parseReleaseChannel(['--channel', 'production']).env).toBe('production');
+});
+it('separates release channels from development data', () => {
+  expect(parseTargetEnv(['--data=development', 'pack'])).toEqual({ env: 'development', args: ['pack'] });
+  expect(() => parseReleaseChannel(['--channel', 'development'])).toThrow('--channel needs');
+  expect(() => parseTargetEnv(['--data', 'bogus'])).toThrow('--data needs');
+  expect(parseTargetEnv(['--app', '/checkout']).args).toEqual(['--app', '/checkout']);
+});
 
-describe('which build a command reads', () => {
-  it('defaults an app-bundled preview CLI to preview data, with explicit targets taking precedence', () => {
-    vi.stubEnv('APACK_CLI_CHANNEL', 'preview');
-    try {
-      expect(parseTargetEnv([]).env).toBe('preview');
-      expect(parseTargetEnv(['--production']).env).toBe('production');
-      expect(parseTargetEnv(['--build', 'beta']).env).toBe('beta');
-    } finally {
-      vi.unstubAllEnvs();
-    }
-  });
-
-  it('is production when nothing says otherwise', () => {
-    expect(parseTargetEnv([])).toEqual({ env: 'production', args: [] });
-  });
-
-  it('takes --build by name, inline or as the next argument', () => {
-    expect(parseTargetEnv(['--build', 'development']).env).toBe('development');
-    expect(parseTargetEnv(['--build=beta']).env).toBe('beta');
-  });
-
-  /**
-   * The shorthands and the long form are one answer. Mutation: map `-b` to `development` and this fails on
-   * the pair rather than on either half, which is what says they are held together rather than separately.
-   */
-  it('reads a shorthand as the build it is short for', () => {
-    for (const [flags, build] of [
-      [['-d'], 'development'], [['--dev'], 'development'],
-      [['-b'], 'beta'], [['--beta'], 'beta'],
-      [['--production'], 'production'],
-    ] as const) {
-      expect(parseTargetEnv([...flags]).env, flags.join(' ')).toBe(build);
-      expect(parseTargetEnv(['--build', build]).env, `--build ${build}`).toBe(build);
-    }
-  });
-
-  it('leaves every other argument in place and in order', () => {
-    expect(parseTargetEnv(['my-pack', '-b', '--force']).args).toEqual(['my-pack', '--force']);
-    expect(parseTargetEnv(['my-pack', '--build', 'beta', '--force']).args).toEqual(['my-pack', '--force']);
-  });
-
-  /**
-   * A build this command cannot read is named, with what it can — where the old flags could not express a
-   * wrong value at all, so a reader who guessed `--build nightly` would have had it silently forwarded to
-   * whatever took the leftovers.
-   */
-  it('refuses a name that is not a build, and says which are', () => {
-    expect(() => parseTargetEnv(['--build', 'nightly'])).toThrow(/Unknown build "nightly"/);
-    for (const env of APP_ENVS) expect(() => parseTargetEnv(['--build', env])).not.toThrow();
-  });
-
-  it('refuses a --build with nothing after it', () => {
-    expect(() => parseTargetEnv(['--build'])).toThrow(/needs a build name/);
-  });
-
-  /**
-   * It names a **build**, never a profile. A build keeps its own default storage and `--profile` is the one
-   * override, so a profile arriving here would be the fusion the whole change exists to end — and `db`'s
-   * own parser is where `--profile` is read.
-   */
-  it('does not take a profile', () => {
-    expect(parseTargetEnv(['--profile', 'probe']).args).toEqual(['--profile', 'probe']);
-    expect(parseTargetEnv(['--profile', 'probe']).env).toBe('production');
-  });
+it('explicit stored-data targets cannot be redirected by a shell override', () => {
+  vi.stubEnv('APACK_USER_DATA_DIR', '/tmp/apack-target-test');
+  expect(targetDataContext('beta', ['--data', 'beta']).userDataDir).toBe(appDataDirFor('beta'));
+  expect(targetDataContext('production', []).userDataDir).toBe('/tmp/apack-target-test');
 });

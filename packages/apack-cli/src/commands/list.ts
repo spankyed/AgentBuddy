@@ -1,12 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { resolveAppContext } from '@apackdev/sdk/env';
-import { parseTargetEnv, envLabel } from '../utils';
+import { parseTargetEnv, targetDataContext, envLabel } from '../utils';
 
 export async function list(args: string[]) {
   const { env, args: rest } = parseTargetEnv(args);
-  if (rest.length) throw new Error('Usage: apack pack list [-d|-b]');
-  const { packsDir } = resolveAppContext({ build: env });
+  if (rest.length) throw new Error('Usage: apack pack list [--data <name>]');
+  const { packsDir } = targetDataContext(env, args);
   const label = envLabel(env);
 
   if (!fs.existsSync(packsDir)) {

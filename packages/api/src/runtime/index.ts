@@ -24,8 +24,8 @@ import pkg from '../../../../package.json';
 import { readFileSync } from 'node:fs';
 
 /** Packaged processes read the same manifest; source runs use the checkout version. */
-const APP_VERSION: string = process.env.APACK_BUILD_MANIFEST
-  ? JSON.parse(readFileSync(process.env.APACK_BUILD_MANIFEST, 'utf8')).version
+const APP_VERSION: string = process.env.APACK_APP_MANIFEST
+  ? JSON.parse(readFileSync(process.env.APACK_APP_MANIFEST, 'utf8')).version
   : pkg.version;
 
 const logger = createLogger('backend');

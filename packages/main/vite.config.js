@@ -134,7 +134,7 @@ function handleHotReload() {
       });
 
       /**
-       * The session file, so `apack drive` can reach the app this loop is holding — which is the half
+       * The session file, so `apack dev drive` can reach the app this loop is holding — which is the half
        * worth having: `apack pack dev` serves a *pack's* frontend, where this one serves the renderer itself,
        * so it is the app you are most often looking at.
        *

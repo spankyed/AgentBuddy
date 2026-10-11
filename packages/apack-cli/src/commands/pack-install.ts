@@ -1,8 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { installPack, installPackFromLocal, readHostInfo } from '@apackdev/host/packs';
-import { resolveAppContext } from '@apackdev/sdk/env';
-import { parseTargetEnv, envLabel, TARGET_ENV_USAGE } from '../utils';
+import { parseTargetEnv, targetDataContext, envLabel, TARGET_ENV_USAGE } from '../utils';
 
 /** `registry` is a bare pack name, resolvable only through apack.dev; `undefined` is a GitHub slug. */
 function detectSource(input: string): 'local' | 'url' | 'registry' | undefined {
@@ -22,10 +21,11 @@ async function resolveFromRemoteRegistry(name: string): Promise<string> {
 export async function install(args: string[]) {
   const { env, args: filtered } = parseTargetEnv(args);
   const source = filtered[0];
+  if (filtered.length > 1 || (source?.startsWith('-') && source !== '--help' && source !== '-h')) throw new Error('Usage: apack pack install <source> [--data <name>]');
 
   if (!source || source === '--help' || source === '-h') {
     console.log(`
-Usage: apack pack install <source> [-d|--dev] [-b|--beta]
+Usage: apack pack install <source> [--data <name>]
 
 Source can be:
   ./path/to/pack        Local directory
@@ -41,7 +41,7 @@ Options:
     return;
   }
 
-  const { packsDir, userDataDir } = resolveAppContext({ build: env });
+  const { packsDir, userDataDir } = targetDataContext(env, args);
   // Recorded by the app when it starts with this data dir
   const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
   const kind = detectSource(source);

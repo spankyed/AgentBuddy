@@ -11,7 +11,7 @@ import {
 } from '@apackdev/host/dev-session';
 import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
 import { reloadPack, type AppPlace, type DevReload } from '../build/dev-reload.ts';
-import { cliDirs, parseAppFlags, resolveLaunchApp, type AppTarget } from '../app/app-target';
+import { cliDirs, parseAppFlags, resolveLaunchApp, resolveDevApp, packagedAppEnv, appLabel, type AppTarget } from '../app/app-target';
 import { endAppHolding, profileFor, parseProfileFlags, removeProfile, PROFILE_USAGE } from '../app/profiles';
 import { copySecretsInto } from '../app/profile-secrets.ts';
 import { createDevHold } from '../app/dev-hold.ts';
@@ -24,29 +24,30 @@ import { installPackFromLocal, readHostInfo } from '@apackdev/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@apackdev/host/packs/dev-server';
 
 const HELP = `
-Usage: apack pack dev [--build <name|path>]
+Usage: apack pack dev [--app <path> | --channel beta]
 
 Build and install this pack, then watch it: FE changes reload through Vite,
 BE changes rebuild, reinstall, and reload in place. Requires a pack directory.
-Use apack open --session to hold an app without developing a pack.
+Use apack dev open to hold an app without developing a pack.
 
 A development app is launched with a debug port and publishes <dataDir>/session.json, which is
-what lets \`apack drive\` ask it questions instead of launching one of its own.
+what lets \`apack dev drive\` ask it questions instead of launching one of its own.
 
 An app already running on the same data dir is used as it is; otherwise one is launched, and
 closing this command closes the app it started.
 
 Options:
-  --build <name|path> a build by name (beta) or a local apack checkout by path
+  --app <path> | --channel beta an explicit checkout or .app bundle; --channel beta selects a cached/downloaded host
 ${PROFILE_USAGE}
   --help, -h          Show this help
 
 With no app named: the apack checkout this pack is built against, if there is one, else the newest
-Beta build its hostVersion accepts. Nothing is remembered and nothing is asked.
-With no profile named, the shared development data dir is used.
+Beta build its hostVersion accepts. A packaged host requires --profile or --fresh.
+Production bundles are refused. Other packaged hosts never enable development debugging. Nothing is remembered and nothing is asked.
+For a checkout with no profile named, the shared development data dir is used.
 
-Note that --build beta reloads by restarting rather than in place: a packaged build refuses a
-pack reload, and publishes no API token for one.
+Packaged hosts refuse in-place backend reloads. After a backend rebuild, restart the
+pack development command to apply it. Frontend changes still use Vite HMR.
 `.trim();
 
 /**
@@ -55,7 +56,15 @@ pack reload, and publishes no API token for one.
  * APACK_ENV to a beta binary would change nothing.
  */
 export function appEnv(app: AppTarget): AppEnv {
-  return app.kind === 'source' ? 'development' : 'beta';
+  return app.kind === 'source' ? 'development' : packagedAppEnv(app.executable);
+}
+
+/** Live pack development never touches production; packaged non-production hosts need isolated data. */
+export function developmentHostEnv(app: AppTarget, isolated: boolean): AppEnv {
+  const env = appEnv(app);
+  if (env === 'production') throw new Error('This bundle is production, regardless of its release tag. Use a checkout for development, or apack pack test for isolated release verification.');
+  if (app.kind === 'packaged' && !isolated) throw new Error('Pack development on a packaged app requires --profile <name> or --fresh to isolate release data.');
+  return env;
 }
 
 /** Prints what a reload came to; `what` names the changes (`BE changes`, `changes`) */
@@ -88,6 +97,7 @@ function appLaunchEnv(place: AppPlace): NodeJS.ProcessEnv {
   else delete out.NODE_OPTIONS;
   // Only a source run reads this; a packaged build stamps its channel (see `appEnv`)
   out.APACK_ENV = place.build;
+  delete out.PLAYWRIGHT_TEST;
   if (place.profile !== undefined) {
     // Set only for a profile, and deliberately: it is also what tells Electron the run was pointed at
     // its own dir, which moves the logs inside it (`main/src/app-context.ts`). A plain `apack pack dev` should
@@ -261,10 +271,11 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   // is how a removed or misspelled flag reads as having been obeyed.
   const unknown = flags.args;
   if (unknown.length > 0) {
-    throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See ${target === 'pack' ? 'apack pack dev' : 'apack open'} --help.`);
+    throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See ${target === 'pack' ? 'apack pack dev' : 'apack dev open'} --help.`);
   }
-  const app = await resolveLaunchApp({ flags, hostVersion: pack?.manifest.hostVersion ?? '*', from: pack?.root ?? process.cwd() });
-  const env = appEnv(app);
+  const app = target === 'app' ? resolveDevApp(flags, process.cwd())
+    : await resolveLaunchApp({ flags, hostVersion: pack!.manifest.hostVersion ?? '*', from: pack!.root });
+  const env = developmentHostEnv(app, mode.kind !== 'shared');
   const profile = profileFor(mode, cliDirs());
   if (profile?.created && withSecrets) {
     const { count, from } = copySecretsInto(profile, env);
@@ -312,13 +323,11 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
         supervisorPid: process.pid,
         startedBy: startedByFromEnv(),
       }));
-      console.log(`  attachable on debug port ${debugPort} — \`apack drive\` can reach it`);
+      console.log(`  attachable on debug port ${debugPort} — \`apack dev drive\` can reach it`);
       armIdleReap({ startedBy: startedByFromEnv() });
       console.log('');
     } catch (error) {
-      // A port that never appeared leaves the app perfectly usable and only un-drivable, so this is a
-      // warning rather than a failed launch: whoever wanted to watch the app still has it
-      console.warn(`  not attachable: ${errorMessage(error)}\n`);
+      throw new Error(`Development debugging failed: ${errorMessage(error)}`);
     }
   }
 
@@ -395,9 +404,10 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   // An app already on this data dir is the one to use: a second Electron over the same LMDB store is not a
   // choice anyone wants. Only an app this command started is one it may close.
   if (readApiEndpoint(apiPortFile)) {
+    if (env === 'development' && !readSession(userDataDir)) throw new Error('The running app has no development session. Close it and launch with apack dev open or npm run dev.');
     console.log(`Using the ${env} app already running.\n`);
   } else {
-    console.log(`Starting ${app.kind === 'source' ? app.root : `apack Beta ${app.version}`}...`);
+    console.log(`Starting ${appLabel(app)}...`);
     // Before the launch, so the port file this waits for is the one this app writes rather than whatever a
     // previous app on this data dir left behind
     const launchedAt = Date.now();
@@ -415,6 +425,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
       // port a driver needs. An app that was already here has a session of its own or is not attachable,
       // and either way is not this command's to describe.
       await publish(launchedAt);
+      spawned.once('exit', () => void hold.release().then(() => process.exit(0)));
     }
   }
 

@@ -26,7 +26,7 @@ export function appLaunchEnv(base: NodeJS.ProcessEnv, userDataDir: string): Reco
  *
  * **But Playwright emulates a viewport inside the real window rather than resizing it.** With the window
  * shown, the app renders into the top-left 1400x900 and the rest of the window stays empty, showing the
- * desktop through it — which is what `npm run drive` looked like, and reads as a broken app rather than a
+ * desktop through it — which is what `npm run dev:drive` looked like, and reads as a broken app rather than a
  * pinned one. So a run that shows its windows keeps the window's own size, and a run nobody watches keeps
  * the determinism.
  */

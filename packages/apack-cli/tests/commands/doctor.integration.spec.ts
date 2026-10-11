@@ -27,7 +27,7 @@ afterEach(() => { process.chdir(cwd); vi.restoreAllMocks(); vi.unstubAllEnvs(); 
 it('defaults to production and rejects pack or development arguments', () => {
   vi.stubEnv('APACK_CLI_CHANNEL', 'beta');
   expect(doctorChannel([])).toBe('production');
-  expect(doctorChannel(['-b'])).toBe('beta');
+  expect(doctorChannel(['--channel', 'beta'])).toBe('beta');
   expect(() => doctorChannel(['-d'])).toThrow('Usage');
   expect(() => doctorChannel(['--fix'])).toThrow('Usage');
 });

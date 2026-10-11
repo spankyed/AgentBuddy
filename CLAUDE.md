@@ -417,7 +417,7 @@ npm run dev              # Prepare the pack, then run dev mode with hot reload a
                          # The pack's backend watcher rebuilds its runtime on source changes;
                          # Vite serves frontend source. Use build:default-setup for all pack artifacts.
 npm run dev:inspect      # Same workflow with Electron’s Node debugger
-npm run open             # Open/reuse the built app and hold it; no builds or watchers
+npm run dev:open             # Open/reuse the built app and hold it; no builds or watchers
 npm run build:api         # Build backend only
 npm run build:default-setup          # Build the built-in pack and ensure package bundles
 npm run build:runtime    # Build the app runtime after build:default-setup
@@ -734,10 +734,10 @@ npm run check:repro      # **A diagnostic instrument, not a gate**, and nothing 
 
 ### E2E visual testing
 
-**Driving the app now has its own place: `drive/`, run with `npm run drive` (a pack author gets
-`apack drive`).** That is where an agent debugs and develops against the app — open what you just built,
+**Driving the app now has its own place: `drive/`, run with `npm run dev:drive` (a pack author gets
+`apack dev drive`).** That is where an agent debugs and develops against the app — open what you just built,
 click through it, read the state back, screenshot it. Scripts there import `drive` rather than `test`,
-nothing collects them, and nothing gates on them. **One question needs no script at all**: `npm run drive:eval`
+nothing collects them, and nothing gates on them. **One question needs no script at all**: `npm run dev:eval`
 and its neighbours ask the app `npm run dev` is holding, over its debug port — one JSON object on stdout,
 0.9s. With no app running they exit 3 and say so; `--spawn` starts one and keeps it for the next question.
 `docs/public-facing/cli.md` has the verbs.
@@ -778,9 +778,9 @@ npm run test:explorer                 # Playwright's UI mode: its test explorer,
                                       # orthogonal, and `--debug` is a third thing (the Inspector)
 ```
 
-This suite takes no screenshots — looking at the app is `drive/`'s job, and `npm run drive` saves to `drive/screenshots/`. The `app` fixture provides `navigate(pluginId)`, `screenshot(name)`, `sendEvent(event)`, `getState()`, `getContext()`, `waitForState(check)`, and `waitForPlugin(pluginId)`.
+This suite takes no screenshots — looking at the app is `drive/`'s job, and `npm run dev:drive` saves to `drive/screenshots/`. The `app` fixture provides `navigate(pluginId)`, `screenshot(name)`, `sendEvent(event)`, `getState()`, `getContext()`, `waitForState(check)`, and `waitForPlugin(pluginId)`.
 
-The fixture is `@apackdev/testing` (`packages/apack-testing/src/index.ts`), which every spec imports directly, as a pack's own do. It launches Electron, finds the main window via `window.applicationState`, bypasses onboarding, and provides the `AppHelper` API. External packs share the same fixture — `apack pack init-tests` scaffolds tests in a pack repo, then `apack pack test` runs them in a local checkout (`--build`) or a downloaded apack Beta (`--build beta`). Set `PACK_DIR=/path/to/pack` to sync/build a pack and wait for its plugins.
+The fixture is `@apackdev/testing` (`packages/apack-testing/src/index.ts`), which every spec imports directly, as a pack's own do. It launches Electron, finds the main window via `window.applicationState`, bypasses onboarding, and provides the `AppHelper` API. External packs share the same fixture — `apack pack init-tests` scaffolds tests in a pack repo, then `apack pack test` runs them in a local checkout (`--app`) or a downloaded apack Beta (`--channel beta`). Set `PACK_DIR=/path/to/pack` to sync/build a pack and wait for its plugins.
 
 For full fixture lifecycle, API reference, and ad-hoc testing pattern, see `tests/e2e/CLAUDE.md`. For external pack testing details, see `packages/apack-testing/CLAUDE.md`.
 
@@ -909,7 +909,7 @@ Each plugin registers: `id`, `label`, `icon`, `state` (XState machine), `canvas`
 
 **A build, and the profile it keeps its data in, come from one resolver**: `@apackdev/sdk/env`'s `resolveAppContext({ build?, profile? })`. Those are two axes and one word was doing both jobs — `APP_NAMES[build]` decides the app name, the URL scheme and so Electron's own storage, while the same value decided *where* the data went, as a default a profile overrides. Don't read `NODE_ENV`, `PLAYWRIGHT_TEST` or platform paths to decide which data dir to use.
 
-`APACK_ENV` and `APACK_USER_DATA_DIR` are the **handoff**, not the selector: how a parent process tells a child what it is and where its data is. `--build`/`APACK_BUILD` is what a person types, and the two are deliberately different names — collapsing them would put the choice and the answer under one word, which is the confusion the resolver exists to end.
+`APACK_ENV` and `APACK_USER_DATA_DIR` are the **handoff**, not the selector: how a parent process tells a child what it is and where its data is. `--app`/`APACK_APP` is what a person types, and the two are deliberately different names — collapsing them would put the choice and the answer under one word, which is the confusion the resolver exists to end.
 
 - The log directory is the one app path the resolver doesn't give you: only the Electron process can ask the platform for it. `packages/main/src/app-context.ts` resolves it once — `app.getPath('logs')`, or `<userDataDir>/logs` when the run was given its own data dir — and hands it to electron-log, to the API (`APACK_LOG_DIR`) and to the IPC that opens the log file, so none of them decides it for itself.
 - The Electron main process infers the environment once at startup (`packages/main/src/app-context.ts`): Playwright → `test`; packaged builds → the channel from `build/build-metadata.ts` (`production` | `beta` | `preview`; an unstamped packaged build refuses to start); source runs → `APACK_ENV` if set, else `development`. It passes `APACK_ENV` and `APACK_USER_DATA_DIR` to the API process. `npm run build:preview -- --version 0.4.0` creates a local unsigned preview with separate data and shared main/API version metadata; see `docs/reference/preview-builds.md`.

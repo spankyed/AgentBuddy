@@ -11,8 +11,8 @@ import { holdExclusiveLock } from '@apackdev/host/exclusive-lock';
 const execFileAsync = promisify(execFile);
 
 /** Product names from electron-builder.mjs; the release artifacts use them with spaces removed */
-export const PRODUCT_NAMES = { production: 'apack', beta: 'apack Beta' } as const;
-export type Channel = keyof typeof PRODUCT_NAMES;
+export const PRODUCT_NAMES = { production: 'apack', beta: 'apack Beta', preview: 'apack Preview' } as const;
+export type Channel = 'production' | 'beta';
 
 
 /** The release this channel wants, and the two assets it needs, or why there is none */
@@ -114,11 +114,11 @@ function bundleExists(appPath: string): boolean {
   }
 }
 
-export function validateAppBundle(incoming: string, channel: Channel, expectedVersion?: string): string {
+export function validateAppBundle(incoming: string, channel: Channel | 'preview', expectedVersion?: string): string {
   if (!bundleExists(incoming)) throw new Error(`Download does not contain ${PRODUCT_NAMES[channel]}.app.`);
   const plist = path.join(incoming, 'Contents', 'Info.plist');
   const id = execFileSync('plutil', ['-extract', 'CFBundleIdentifier', 'raw', plist], { encoding: 'utf8' }).trim();
-  const expectedId = channel === 'beta' ? 'dev.apack.beta' : 'dev.apack.app';
+  const expectedId = channel === 'production' ? 'dev.apack.app' : `dev.apack.${channel}`;
   const version = installedVersion(incoming);
   if (id !== expectedId || !version || (expectedVersion !== undefined && version !== expectedVersion)) {
     throw new Error(`App identity or version does not match ${PRODUCT_NAMES[channel]}${expectedVersion ? ` ${expectedVersion}` : ''}.`);

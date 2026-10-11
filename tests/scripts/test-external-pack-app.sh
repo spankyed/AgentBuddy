@@ -13,7 +13,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 APACK="$ROOT/node_modules/.bin/apack"
-export APACK_BUILD="$ROOT"
+export APACK_APP="$ROOT"
 source "$ROOT/tests/scripts/lib/fixture-packs.sh"
 
 for PACK in "${FIXTURE_PACKS[@]}"; do
@@ -22,5 +22,5 @@ for PACK in "${FIXTURE_PACKS[@]}"; do
     echo "$PACK is not built. Run npm run test:external-pack:contract first." >&2
     exit 1
   fi
-  "$APACK" pack test --build "$ROOT" --prebuilt "$@"
+  "$APACK" pack test --app "$ROOT" --prebuilt "$@"
 done

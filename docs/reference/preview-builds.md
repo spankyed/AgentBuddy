@@ -18,7 +18,7 @@ is `apack-preview` (on macOS, `~/Library/Application Support/apack-preview`). It
 and beta. Import a backup through Settings to test the upgrade using a separate copy of your data. A test can
 override `APACK_USER_DATA_DIR` to keep all its data temporary.
 
-Open the bundle directly or use `apack open --build preview` after Launch Services has registered it.
+Open the bundle directly or use `apack open --app preview` after Launch Services has registered it.
 If you install its bundled CLI using Settings, the command is `apack-preview`. Its data commands default to
 preview data; explicit target flags override that default. A standalone npm CLI still defaults to production.
 

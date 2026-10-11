@@ -98,7 +98,7 @@ function platformDataDir(appName: string): string {
  */
 /**
  * Where an environment's app keeps its data on this machine, whatever `APACK_USER_DATA_DIR` says: the dir a tool
- * means when it names an app (`apack db -d`), rather than the one a shell happens to point at.
+ * means when it names an app (`apack db --data development`), rather than the one a shell happens to point at.
  */
 export function appDataDirFor(env: AppEnv): string {
   return platformDataDir(APP_NAMES[env]);
@@ -125,8 +125,8 @@ export const _appDirOf = (userDataDir: string): string => path.join(userDataDir,
  * meaning the word carries everywhere.
  *
  * **`APACK_ENV` and `APACK_USER_DATA_DIR` stay as they are, and they are a different thing from
- * `--build`.** They are the *handoff*: how a parent process tells a child what it is and where its data is,
- * set by the CLI and by Electron main. `--build`/`APACK_BUILD` is a *selector* a person types, and
+ * `--app`.** They are the *handoff*: how a parent process tells a child what it is and where its data is,
+ * set by the CLI and by Electron main. `--app`/`APACK_APP` is a *selector* a person types, and
  * collapsing the two would put the choice and the answer under one name — which is the confusion this
  * resolver exists to end.
  */

@@ -1,17 +1,14 @@
 import { execFileSync } from 'node:child_process';
-import { parseTargetEnv, TARGET_ENV_USAGE } from '../utils';
+import { parseReleaseChannel } from '../utils';
 
 const HELP = `
-Usage: apack open [-b]
-       apack open --session [--build <name|path>] [--profile <name> | --fresh [--rm]] [--with-secrets]
+Usage: apack open [--channel production|beta|preview]
 
-Open the installed apack app (or bring it to the front if it is running).
---session launches or attaches to a development app and holds it until Ctrl-C.
-It never builds, installs, or watches a pack. With no --build, it uses a linked
-checkout or the newest beta. Use npm run dev for app source watchers.
+Open the installed app or bring it to the front. Production is the default.
+Debugging is disabled. For an attachable checkout, use apack dev open.
 
 Options:
-  ${TARGET_ENV_USAGE}
+  --channel <name>  production (default), beta, preview
 `.trim();
 
 // Product names from electron-builder.mjs
@@ -27,12 +24,8 @@ export async function open(args: string[]) {
     return;
   }
 
-  if (args.includes('--session')) {
-    const { holdSession } = await import('./dev');
-    return holdSession(args.filter(arg => arg !== '--session'), 'app');
-  }
-  const { env, args: rest } = parseTargetEnv(['--production', ...args]);
-  if (rest.length) throw new Error('Unexpected arguments. Use apack open --help; session flags require --session.');
+  const { env, args: rest } = parseReleaseChannel(args);
+  if (rest.length) throw new Error('Unexpected arguments. Use apack open --help; development sessions use apack dev open.');
   if (env !== 'production' && env !== 'beta' && env !== 'preview') {
     throw new Error('There is no installed dev app. Run `npm run dev` in the apack repo instead.');
   }

@@ -1104,7 +1104,7 @@ function readLock(file: string): LockHolder | null {
 export type BuildIntent = 'command' | 'freshness';
 
 /** Set by `ensurePackagesBuilt` on the builds it spawns, since the intent has to cross a process boundary */
-export const BUILD_INTENT_ENV = 'APACK_BUILD_INTENT';
+export const BUILD_INTENT_ENV = 'APACK_APP_INTENT';
 
 const intentFromEnv = (): BuildIntent => (process.env[BUILD_INTENT_ENV] === 'freshness' ? 'freshness' : 'command');
 

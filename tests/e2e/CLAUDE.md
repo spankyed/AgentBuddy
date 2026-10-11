@@ -45,7 +45,7 @@ boundary pays a full Electron launch for nothing.
 **Driving does not belong here at all — it belongs in `drive/`, and it is mainly for you.** Driving is how
 an agent debugs and develops against the app: open what you just built, click through it, read the state
 back, screenshot it, and find out whether the change worked instead of reasoning about it. A driving
-script asserts nothing and nothing gates on it, so `npm run drive` collects it and no test runner does.
+script asserts nothing and nothing gates on it, so `npm run dev:drive` collects it and no test runner does.
 A scratch file kept inside `testDir` does not work for this, however it is named and even gitignored: the
 suite picks it up anyway. A script graduates into a spec here only when it asserts something a
 future change could break **and** it needs the real app. Most driving is neither.
@@ -172,12 +172,12 @@ drive('check something', async ({ app, appPage }) => {
 ```
 
 ```bash
-npm run drive                    # everything in drive/, windows shown
-npm run drive -- drive/notes.ts  # one script
+npm run dev:drive                    # everything in drive/, windows shown
+npm run dev:drive -- drive/notes.ts  # one script
 ```
 
 The import is `drive`, not `test`, and that is the point: the same runner under a name that says what the
-file is. A pack author gets the same thing from `apack drive`, which scaffolds the directory on first use
+file is. A pack author gets the same thing from `apack dev drive`, which scaffolds the directory on first use
 and takes `--profile <name>` to keep the app's data between sessions.
 
 ## Debugging the running app
@@ -265,8 +265,8 @@ Pack developers can write and run E2E tests without the apack repo. The fixture 
 cd /path/to/my-pack
 apack pack init-tests          # scaffold config + sample test, add @apackdev/testing + @playwright/test
 npm install
-apack pack test                # a Beta matching the pack's hostVersion; --build <path> for a checkout
-apack pack test --build beta   # CI: never prompts; --build <path> for a checkout
+apack pack test                # a Beta matching the pack's hostVersion; --app <path> for a checkout
+apack pack test --channel beta   # CI: never prompts; --app <path> for a checkout
 ```
 
 ### 2. From this repo (quick iteration)
@@ -275,7 +275,7 @@ Set `PACK_DIR` to test an external pack using the monorepo's test runner. No set
 
 ```bash
 # Drive a pack's app instead of testing it
-PACK_DIR=/path/to/my-pack npm run drive
+PACK_DIR=/path/to/my-pack npm run dev:drive
 
 # Run against any test file
 PACK_DIR=/path/to/my-pack npm run test:e2e -- tests/e2e/smoke
@@ -314,9 +314,9 @@ The renderer exposes on `window`:
 | `PACK_DIR=/path/to/pack` | Builds the pack, installs it into the worker's isolated data dir, waits for plugins before tests run |
 | `E2E_KEEP_DATA=1` | Keep each worker's temp data dir (path is logged) |
 | `APACK_ROOT=/path/to/apack` | A built apack checkout to launch (auto-detected inside the monorepo) |
-| `APACK_APP_EXECUTABLE=/path/to/exe` | A packaged apack executable to launch (set by `apack pack test --build beta`); wins over `APACK_ROOT` |
+| `APACK_APP_EXECUTABLE=/path/to/exe` | A packaged apack executable to launch (set by `apack pack test --channel beta`); wins over `APACK_ROOT` |
 | `APACK_CLI=/path/to/apack.mjs` | The apack bin that builds `PACK_DIR` (set by `apack pack test`) |
-| `APACK_BUILD=beta` | Read by `apack pack test` (and `apack pack build`), not the fixture: use the newest matching apack Beta without prompting (CI) |
+| `APACK_CHANNEL=beta` | Read by `apack pack test` (and `apack pack build`), not the fixture: use the newest matching apack Beta without prompting (CI) |
 
 ## Key events for sendEvent()
 

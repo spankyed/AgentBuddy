@@ -9,7 +9,9 @@ import {
   parseAppFlags,
   resolveLaunchApp,
   resolvePinnedApp,
-  type CliDirs, BUILD_NAMES, buildChoice, isBuildName } from '../../src/app/app-target';
+  resolveDevApp,
+  type CliDirs,
+} from '../../src/app/app-target';
 import { fixtureEnv } from '../../src/commands/test';
 import { cliBin } from '../../src/utils';
 import { packagedExecutable } from '../../src/app/beta-app';
@@ -29,7 +31,7 @@ function makeCheckout(name: string, { built = true } = {}): string {
   return root;
 }
 
-const beta = vi.fn(async (_range: string, _cacheDir: string) => ({ version: '0.4.0-beta.2', executable: '/cache/apack Beta' }));
+const beta = vi.fn(async (_range: string, _cacheDir: string) => ({ version: '0.4.0-beta.2', executable: cacheBeta('0.4.0-beta.2') }));
 
 /**
  * A downloaded beta in the cache, as `ensureBetaApp` leaves one: the tag names the directory, and
@@ -40,6 +42,11 @@ function cacheBeta(tag: string, appVersion?: string): string {
   const executable = packagedExecutable(path.join(dirs.cache, 'apps', 'beta', tag));
   fs.mkdirSync(path.dirname(executable), { recursive: true });
   fs.writeFileSync(executable, '');
+  {
+    const metadataDir = path.join(path.dirname(path.dirname(executable)), 'Resources', 'app');
+    fs.mkdirSync(metadataDir, { recursive: true });
+    fs.writeFileSync(path.join(metadataDir, 'build-manifest.json'), JSON.stringify({ channel: appVersion ? 'production' : 'beta', version: appVersion ?? tag, productName: 'apack Beta' }));
+  }
   if (appVersion !== undefined) {
     const appDir = path.join(path.dirname(path.dirname(executable)), 'Resources', 'app');
     fs.mkdirSync(appDir, { recursive: true });
@@ -67,41 +74,21 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-/**
- * The one line of disambiguation the collapse rests on, and the case that makes it falsifiable.
- *
- * `--build` takes two shapes of value — a build's name or a checkout's path — so it needs a rule for
- * which it was handed: a value in the known-name set is a build, anything else is a path. With one
- * reserved name it cannot be ambiguous today, and `./beta` is the escape hatch for the day a checkout is
- * named after a channel, which is how every other tool spells "the directory".
- *
- * Mutation: make the rule `endsWith('/')` or drop the set lookup, and the pair below disagrees.
- */
-describe('what a --build value selects', () => {
-  it('reads a known name as the build and anything else as a path', () => {
-    expect(buildChoice('beta')).toEqual({ beta: true });
-    expect(buildChoice('./beta')).toEqual({ source: './beta' });
-    expect(buildChoice('/Users/me/apack')).toEqual({ source: '/Users/me/apack' });
-    expect(buildChoice('~/checkouts/beta')).toEqual({ source: '~/checkouts/beta' });
+describe('explicit app selection', () => {
+  it('treats a directory named beta as a path', () => {
+    expect(parseAppFlags(['--app', 'beta']).app).toBe(path.resolve('beta'));
+    expect(parseAppFlags(['--channel', 'beta']).channel).toBe('beta');
   });
-
-  /**
-   * The names and the type are one declaration, so a build added to the set cannot be missed by the type
-   * or the other way round — the repo's rule for a list and its type.
-   */
-  it('derives what counts as a name from the one list', () => {
-    expect(BUILD_NAMES.length).toBeGreaterThan(0);
-    for (const name of BUILD_NAMES) expect(isBuildName(name)).toBe(true);
-    expect(isBuildName('nightly')).toBe(false);
-    // A path that merely contains a name is not one, which is the near miss worth pinning
-    expect(isBuildName('./beta')).toBe(false);
+  it('refuses conflicting selectors and release channels without an authoring host', () => {
+    expect(() => parseAppFlags(['--app', '.', '--channel', 'beta'])).toThrow('Choose one');
+    expect(() => parseAppFlags(['--channel', 'production'])).toThrow('downloaded pack authoring host');
   });
 });
 
 describe('parseAppFlags', () => {
   it('takes the app flags out of the Playwright args', () => {
-    expect(parseAppFlags(['--build', '/repo', '-g', 'renders', 'smoke'])).toEqual({
-      build: '/repo',
+    expect(parseAppFlags(['--app', '/repo', '-g', 'renders', 'smoke'])).toEqual({
+      app: '/repo',
       args: ['-g', 'renders', 'smoke'],
     });
   });
@@ -112,7 +99,7 @@ describe('parseAppFlags', () => {
   });
 
   it('rejects unknown app channels', () => {
-    expect(() => parseAppFlags(['--build'])).toThrow(/--build needs a value/);
+    expect(() => parseAppFlags(['--app'])).toThrow(/--app needs a value/);
   });
 });
 
@@ -126,8 +113,8 @@ describe('parseAppFlags', () => {
  * leak. These cases fail the moment the config read comes back.
  */
 /**
- * The policy for a command driving the app with no pack in front of it — `apack drive` at an apack
- * checkout, which is how this repo's own `npm run drive` scripts reach it.
+ * The policy for a command driving the app with no pack in front of it — `apack dev drive` at an apack
+ * checkout, which is how this repo's own `npm run dev:drive` scripts reach it.
  */
 /**
  * The derivation that replaced a question asked once and stored for every pack on the machine.
@@ -156,11 +143,11 @@ describe('deriveApp', () => {
     const named = makeCheckout('named');
     const derived = makeCheckout('derived');
 
-    await expect(derive({ flags: { build: named, args: [] }, checkout: finds(derived) }))
+    await expect(derive({ flags: { app: named, args: [] }, checkout: finds(derived) }))
       .resolves.toMatchObject({ target: { kind: 'source', root: named } });
-    await expect(derive({ env: { APACK_BUILD: named }, checkout: finds(derived) }))
+    await expect(derive({ env: { APACK_APP: named }, checkout: finds(derived) }))
       .resolves.toMatchObject({ target: { kind: 'source', root: named } });
-    await expect(derive({ flags: { build: 'beta', args: [] }, checkout: finds(derived) }))
+    await expect(derive({ flags: { channel: 'beta', args: [] }, checkout: finds(derived) }))
       .resolves.toMatchObject({ target: { kind: 'packaged' } });
   });
 
@@ -207,7 +194,7 @@ describe('deriveApp', () => {
     fs.rmSync(link, { recursive: true, force: true });
     fs.symlinkSync(root, link, 'dir');
     try {
-      await expect(derive({ flags: { build: `~/${name}`, args: [] } }))
+      await expect(derive({ flags: { app: `~/${name}`, args: [] } }))
         .resolves.toMatchObject({ target: { kind: 'source', root: link } });
     } finally {
       fs.rmSync(link, { recursive: true, force: true });
@@ -236,8 +223,8 @@ describe('resolvePinnedApp', () => {
 
   it('still takes an explicitly named app', async () => {
     const root = makeCheckout('explicit');
-    await expect(pinned({ flags: { build: root, args: [] } })).resolves.toEqual({ kind: 'source', root });
-    await expect(pinned({ env: { APACK_BUILD: root } })).resolves.toEqual({ kind: 'source', root });
+    await expect(pinned({ flags: { app: root, args: [] } })).resolves.toEqual({ kind: 'source', root });
+    await expect(pinned({ env: { APACK_APP: root } })).resolves.toEqual({ kind: 'source', root });
   });
 
   /**
@@ -249,7 +236,7 @@ describe('resolvePinnedApp', () => {
     const executable = cacheBeta('0.4.0-beta.9');
 
     await expect(pinned()).resolves.toEqual({ kind: 'packaged', version: '0.4.0-beta.9', executable });
-    await expect(pinned({ flags: { build: 'beta', args: [] } })).resolves.toMatchObject({ version: '0.4.0-beta.9' });
+    await expect(pinned({ flags: { channel: 'beta', args: [] } })).resolves.toMatchObject({ version: '0.4.0-beta.9' });
     expect(beta, 'a downloaded build satisfied the range, so nothing should have been fetched').not.toHaveBeenCalled();
   });
 
@@ -265,7 +252,7 @@ describe('resolvePinnedApp', () => {
   // No path yields a production-stamped app: the target is a checkout or a Beta build, and that is what
   // keeps production's data dir and its `apack` keychain entry out of reach
   it('never resolves anything but a checkout or a beta build', async () => {
-    for (const target of [await pinned(), await pinned({ flags: { build: 'beta', args: [] } })]) {
+    for (const target of [await pinned(), await pinned({ flags: { channel: 'beta', args: [] } })]) {
       expect(['source', 'packaged']).toContain(target.kind);
       if (target.kind === 'packaged') expect(target.version).toMatch(/beta/);
     }
@@ -278,9 +265,9 @@ describe('configuredAppPackagesDir', () => {
   const betaPackages = (version: string) =>
     path.join(dirs.cache, 'apps', 'beta', version, 'apack Beta.app', 'Contents', 'Resources', 'app', 'packages');
 
-  it('uses APACK_BUILD, then the checkout behind the pack', async () => {
+  it('uses APACK_APP, then the checkout behind the pack', async () => {
     const derived = makeCheckout('derived');
-    expect((await configuredAppPackagesDir(opts({ APACK_BUILD: '/env-root' }, derived)))?.dir).toBe('/env-root/packages');
+    expect((await configuredAppPackagesDir(opts({ APACK_APP: '/env-root' }, derived)))?.dir).toBe('/env-root/packages');
     expect((await configuredAppPackagesDir(opts({}, derived)))?.dir).toBe(path.join(derived, 'packages'));
   });
 
@@ -294,21 +281,21 @@ describe('configuredAppPackagesDir', () => {
     expect((await configuredAppPackagesDir(opts({}, raw)))?.dir).toBe(path.join(raw, 'packages'));
   });
 
-  it('downloads the beta for APACK_BUILD=beta (CI), ahead of the derived checkout', async () => {
-    await expect(configuredAppPackagesDir(opts({ APACK_BUILD: 'beta' }))).resolves.toEqual({
-      dir: packagedAppPackagesDir('/cache/apack Beta'),
+  it('downloads the beta for APACK_CHANNEL=beta (CI), ahead of the derived checkout', async () => {
+    await expect(configuredAppPackagesDir(opts({ APACK_CHANNEL: 'beta' }))).resolves.toEqual({
+      dir: packagedAppPackagesDir(packagedExecutable(path.join(dirs.cache, 'apps', 'beta', '0.4.0-beta.2'))),
       label: 'apack Beta 0.4.0-beta.2',
     });
     expect(beta).toHaveBeenCalledWith('>=0.3.0', dirs.cache);
     // A value that is not a build name is a path, and this resolver validates nothing on purpose: a
     // build reads the checkout's `packages/`, so refusing a tree for want of `main/dist` would refuse
     // one that is perfectly readable
-    await expect(configuredAppPackagesDir(opts({ APACK_BUILD: '/some-checkout' })))
+    await expect(configuredAppPackagesDir(opts({ APACK_APP: '/some-checkout' })))
       .resolves.toMatchObject({ dir: path.join('/some-checkout', 'packages') });
   });
 
   it('uses the newest downloaded beta the range accepts, and downloads one when none is cached', async () => {
-    const asBeta = { APACK_BUILD: 'beta' };
+    const asBeta = { APACK_CHANNEL: 'beta' };
     expect((await configuredAppPackagesDir(opts(asBeta)))?.label).toBe('apack Beta 0.4.0-beta.2');
     expect(beta).toHaveBeenCalledTimes(1);
 
@@ -326,13 +313,13 @@ describe('configuredAppPackagesDir', () => {
     await expect(configuredAppPackagesDir(opts({}))).resolves.toBeNull();
   });
 
-  // An empty APACK_BUILD used to swallow the next source and resolve nothing: the lookup read
-  // `env.APACK_BUILD ?? …`, and '' is not nullish, so it won the `??` and then failed the `if`. The two
+  // An empty APACK_APP used to swallow the next source and resolve nothing: the lookup read
+  // `env.APACK_APP ?? …`, and '' is not nullish, so it won the `??` and then failed the `if`. The two
   // resolvers beside it had always treated '' as unset.
-  it('treats an empty APACK_BUILD as unset, as the resolvers do', async () => {
+  it('treats an empty APACK_APP as unset, as the resolvers do', async () => {
     const derived = makeCheckout('derived');
 
-    expect((await configuredAppPackagesDir(opts({ APACK_BUILD: '' }, derived)))?.dir).toBe(path.join(derived, 'packages'));
+    expect((await configuredAppPackagesDir(opts({ APACK_APP: '' }, derived)))?.dir).toBe(path.join(derived, 'packages'));
   });
 
   // The `null` contract, and what makes the no-unasked-download rule checkable: `fetch-deps` falls through
@@ -348,9 +335,9 @@ describe('configuredAppPackagesDir', () => {
    * asked for.
    */
   describe('a cached beta, against the range the pack asks for', () => {
-    // `APACK_BUILD=beta` is how these name a beta now. It was a stored `{ beta: true }` until the choice
+    // `APACK_CHANNEL=beta` is how these name a beta now. It was a stored `{ beta: true }` until the choice
     // stopped being stored, and naming it per case is what the stored one was standing in for anyway.
-    const asBeta = (hostVersion: string) => ({ dirs, env: { APACK_BUILD: 'beta' }, hostVersion, betaApp: beta });
+    const asBeta = (hostVersion: string) => ({ dirs, env: { APACK_CHANNEL: 'beta' }, hostVersion, betaApp: beta });
 
     it('skips a cached build the range excludes, and downloads nothing to do it', async () => {
       cacheBeta('0.5.0-beta.0');
@@ -384,7 +371,7 @@ describe('configuredAppPackagesDir', () => {
     // included. Dropping that option would empty the cache for every pack that declares no hostVersion.
     it('still accepts a prerelease when the pack declares no hostVersion', async () => {
       cacheBeta('0.4.0-beta.10');
-      await expect(configuredAppPackagesDir({ dirs, env: { APACK_BUILD: 'beta' }, betaApp: beta }))
+      await expect(configuredAppPackagesDir({ dirs, env: { APACK_CHANNEL: 'beta' }, betaApp: beta }))
         .resolves.toMatchObject({ label: 'apack Beta 0.4.0-beta.10' });
       expect(beta).not.toHaveBeenCalled();
     });
@@ -392,17 +379,17 @@ describe('configuredAppPackagesDir', () => {
 });
 
 /**
- * `APACK_BUILD` is read before anything can outrank it, which is what keeps the two resolvers agreeing.
+ * `APACK_APP` is read before anything can outrank it, which is what keeps the two resolvers agreeing.
  * It used to be read only where nothing else won, so the same value was an error during `build` and
  * silence during `test` — and a typo was reported or ignored depending on which flag happened to be set.
  *
  * A value that is not a build name is a **path**, so what makes one unusable is naming no checkout — and
  * that is reported by whoever tries to use it, which says more than a parse error could.
  */
-describe('an APACK_BUILD that names nothing', () => {
+describe('an APACK_APP that names nothing', () => {
   const flags = { args: [] };
   it('is refused by both resolvers', async () => {
-    const env = { APACK_BUILD: path.join(tmp, 'no-such-checkout') };
+    const env = { APACK_APP: path.join(tmp, 'no-such-checkout') };
     await expect(resolvePinnedApp({ flags, hostVersion: '*', dirs, env, betaApp: beta })).rejects.toThrow();
     await expect(deriveApp({ flags, hostVersion: '*', dirs, env, betaApp: beta, from: tmp, checkout: finds(undefined) }))
       .rejects.toThrow();
@@ -412,28 +399,28 @@ describe('an APACK_BUILD that names nothing', () => {
   // override an inherited one, and that has to work rather than inherit the inherited value's problem
   it('is outranked by the flag, which is what a flag is for', async () => {
     await expect(resolvePinnedApp({
-      flags: { build: 'beta', args: [] }, hostVersion: '*', dirs,
-      env: { APACK_BUILD: path.join(tmp, 'no-such-checkout') }, betaApp: beta,
+      flags: { channel: 'beta', args: [] }, hostVersion: '*', dirs,
+      env: { APACK_APP: path.join(tmp, 'no-such-checkout') }, betaApp: beta,
     })).resolves.toMatchObject({ kind: 'packaged' });
   });
 });
 
 describe('fixtureEnv', () => {
   it('points the fixture at exactly one app', () => {
-    const base = { APACK_ROOT: '/stale', APACK_APP_EXECUTABLE: '/stale-exe', APACK_BUILD: 'beta', ELECTRON_RUN_AS_NODE: '1', HOME: '/home' };
-    expect(fixtureEnv({ kind: 'packaged', executable: '/exe', version: '1.0.0-beta.0' }, '/pack', base))
-      .toEqual({ APACK_APP_EXECUTABLE: '/exe', APACK_BUILD: 'beta', PACK_DIR: '/pack', APACK_CLI: cliBin(), ELECTRON_RUN_AS_NODE: '1', HOME: '/home' });
+    const base = { APACK_ROOT: '/stale', APACK_APP_EXECUTABLE: '/stale-exe', APACK_CHANNEL: 'beta', ELECTRON_RUN_AS_NODE: '1', HOME: '/home' };
+    expect(fixtureEnv({ kind: 'packaged', executable: '/fixture/apack.app/Contents/MacOS/apack', version: '1.0.0-beta.0' }, '/pack', base))
+      .toEqual({ APACK_APP_EXECUTABLE: '/fixture/apack.app/Contents/MacOS/apack', APACK_APP: '/fixture/apack.app', PACK_DIR: '/pack', APACK_CLI: cliBin(), ELECTRON_RUN_AS_NODE: '1', HOME: '/home' });
     expect(fixtureEnv({ kind: 'source', root: '/repo' }, undefined, base))
-      .toEqual({ APACK_ROOT: '/repo', APACK_CLI: cliBin(), ELECTRON_RUN_AS_NODE: '1', HOME: '/home' });
+      .toEqual({ APACK_ROOT: '/repo', APACK_APP: '/repo', APACK_CLI: cliBin(), ELECTRON_RUN_AS_NODE: '1', HOME: '/home' });
     expect(fs.existsSync(cliBin())).toBe(true);
   });
 
-  // The executable says which app to launch; APACK_BUILD says which build to resolve dependencies
-  // against, and the fixture builds the pack. Without both, `--build beta` builds against whatever
+  // The executable says which app to launch; APACK_APP says which build to resolve dependencies
+  // against, and the fixture builds the pack. Without both, `--channel beta` builds against whatever
   // checkout the shell happened to name, and against nothing at all in CI.
   it('tells the fixture which build to resolve dependencies against, not just which app to launch', () => {
-    expect(fixtureEnv({ kind: 'packaged', executable: '/exe', version: '1.0.0-beta.0' }, '/pack', {}).APACK_BUILD).toBe('beta');
-    expect(fixtureEnv({ kind: 'source', root: '/repo' }, '/pack', { APACK_BUILD: 'beta' })).not.toHaveProperty('APACK_BUILD');
+    expect(fixtureEnv({ kind: 'packaged', executable: '/fixture/apack.app/Contents/MacOS/apack', version: '1.0.0-beta.0' }, '/pack', {}).APACK_APP).toBe('/fixture/apack.app');
+    expect(fixtureEnv({ kind: 'source', root: '/repo' }, '/pack', { APACK_CHANNEL: 'beta' })).not.toHaveProperty('APACK_CHANNEL');
   });
 
   it('asks for a release build only when the caller does', () => {
@@ -455,7 +442,7 @@ describe('fixtureEnv', () => {
   it('decides where the data and screenshots go, whatever the shell says', () => {
     const base = { E2E_DATA_DIR: '/Users/me/the-users-own-data-dir', E2E_SCREENSHOT_DIR: '/elsewhere' };
     expect(fixtureEnv({ kind: 'source', root: '/repo' }, undefined, base))
-      .toEqual({ APACK_ROOT: '/repo', APACK_CLI: cliBin() });
+      .toEqual({ APACK_ROOT: '/repo', APACK_APP: '/repo', APACK_CLI: cliBin() });
   });
 
   it('never gives the runner the @apackdev/source condition: a pack resolves the published dist', () => {
@@ -469,3 +456,18 @@ describe('fixtureEnv', () => {
   });
 });
 
+
+describe('development app resolution', () => {
+  it('refuses a release selector and never downloads a replacement for a missing checkout', () => {
+    expect(() => resolveDevApp({ channel: 'beta', args: [] }, tmp, {})).toThrow('not attachable');
+    expect(() => resolveDevApp({ args: [] }, tmp, {})).toThrow('No apack checkout found');
+    expect(beta).not.toHaveBeenCalled();
+  });
+  it('allows only source checkouts, even with a valid packaged app path', () => {
+    const executable = cacheBeta('0.4.0-beta.1');
+    fs.chmodSync(executable, 0o755);
+    const bundle = path.dirname(path.dirname(path.dirname(executable)));
+    expect(() => resolveDevApp({ app: bundle, args: [] }, tmp, {})).toThrow('packaged apps are not attachable');
+    expect(resolveDevApp({ app: makeCheckout('dev-source'), args: [] }, tmp, {})).toMatchObject({ kind: 'source' });
+  });
+});

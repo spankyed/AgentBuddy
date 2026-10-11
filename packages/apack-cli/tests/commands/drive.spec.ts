@@ -15,7 +15,7 @@ const write = (name: string) => {
 };
 
 /**
- * What decides whether `apack drive` has anything to do. It used to scaffold the directory and then run
+ * What decides whether `apack dev drive` has anything to do. It used to scaffold the directory and then run
  * Playwright against it regardless, so the first run in any pack ended in `No tests found` and exit 1 —
  * after a full pack build and an app launch. The question is the scripts that exist, not whether this
  * call created the directory: a pack whose author deleted their last script hits the same wall.
@@ -65,7 +65,7 @@ describe('the help text', () => {
    */
   it('says what to do when no app is running', () => {
     expect(DRIVE_USAGE).toContain('--spawn');
-    expect(DRIVE_USAGE).toContain('apack open --session');
+    expect(DRIVE_USAGE).toContain('apack dev open');
   });
 
   // One per claim a reader acts on, which is this file's existing bar for the usage text
@@ -126,7 +126,7 @@ describe('a config that has stopped delegating', () => {
     scaffold(root, 'pack');
     const readme = fs.readFileSync(path.join(root, 'drive', 'README.md'), 'utf8');
     expect(readme).toContain('apack pack drive');
-    expect(readme).not.toContain('`apack drive`');
+    expect(readme).not.toContain('`apack dev drive`');
     expect(readme).toContain('apack pack dev');
   });
 
@@ -198,22 +198,22 @@ describe('takeOneShotFlags', () => {
 
 /**
  * **A flag a command advertises and ignores reads as having been obeyed**, which is the class `dev` refuses
- * unknown options over. The usage offers `--build` for the script half, and the question half parsed it and
- * never looked at it: `drive --eval x --build beta` answered from the *development* app while naming beta.
+ * unknown options over. The usage offers `--app` for the script half, and the question half parsed it and
+ * never looked at it: `drive --eval x --channel beta` answered from the *development* app while naming beta.
  *
  * Refusing is the right answer rather than honouring it, and the reason is structural: a question attaches
  * over a debug port, and only a development build is given one (`debugPortArgsFor`). There is no beta app
- * to attach to, so a `--build` that worked would have to launch one — which is the script half's job.
+ * to attach to, so a `--app` that worked would have to launch one — which is the script half's job.
  */
-describe('--build on a question', () => {
+describe('release selection on a question', () => {
   it('is refused, and says why a question cannot take one', async () => {
-    await expect(drive(['--state', '--build', 'beta'])).rejects.toThrow(/a question launches nothing/);
-    await expect(drive(['--eval', 'return 1', '--build=beta'])).rejects.toThrow(/publishes no session/);
+    await expect(drive(['--state', '--channel', 'beta'])).rejects.toThrow(/[Rr]elease channels are not attachable/);
+    await expect(drive(['--eval', 'return 1', '--channel=beta'])).rejects.toThrow(/[Rr]elease channels are not attachable/);
   });
 
   /** Still a script flag: the usage offers it, so the refusal must not reach that half. */
   it('is still offered for a script', () => {
-    expect(DRIVE_USAGE).toMatch(/--build <name\|path>/);
+    expect(DRIVE_USAGE).toMatch(/--app <checkout>/);
   });
 });
 

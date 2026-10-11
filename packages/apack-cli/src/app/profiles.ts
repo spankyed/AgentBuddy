@@ -1,12 +1,12 @@
 /**
  * Profiles: a data dir you can throw away.
  *
- * `apack open --session` launches into the one shared `development` data dir, so every run inherits what the last
+ * `apack dev open` launches into the one shared `development` data dir, so every run inherits what the last
  * one left — applied content, half-migrated rows, settings from a pack you have since deleted. A profile
  * is that dir, somewhere else, created on demand and disposable.
  *
  * **It is a data dir and nothing more.** `appName` stays `APP_NAMES[env]`, so the environment, the
- * Electron app identity and the URL scheme are untouched, and `--build beta` works: a packaged build stamps
+ * Electron app identity and the URL scheme are untouched, and `--channel beta` works: a packaged build stamps
  * its own channel and ignores `APACK_ENV`, where `APACK_USER_DATA_DIR` reaches it. Nothing here is a new
  * concept the app has to learn — an empty directory is already a valid data dir, which is what the E2E
  * fixture has relied on all along.
@@ -18,8 +18,8 @@
  * an **environment** is one of four fixed data dirs by name (`APP_NAMES`), which nobody creates; a
  * **profile** is an extra one, created by name, carrying no environment.
  *
- * A profile is not bound to the kind of app that opens it: `apack open --session --profile x` against a checkout and
- * against `--build beta` mean the same directory, because one layout puts both their stores in the same
+ * A profile is not bound to the kind of app that opens it: `apack dev open --profile x` against a checkout and
+ * against `--channel beta` mean the same directory, because one layout puts both their stores in the same
  * places inside it.
  */
 import * as fs from 'node:fs';
@@ -33,7 +33,7 @@ import type { CliDirs } from './app-target';
 /** What a profile records about itself, in `.apack-profile.json` at its root. */
 interface ProfileRecord {
   created: string;
-  /** The `apack open --session` that owns an ephemeral profile, so a later run can tell a leak from a live one */
+  /** The `apack dev open` that owns an ephemeral profile, so a later run can tell a leak from a live one */
   pid?: number;
 }
 
@@ -50,7 +50,7 @@ const profilesRoot = (dirs: CliDirs) => path.join(dirs.data, 'profiles');
  * The rule itself is `_pathSegmentProblem`: a pack's data directory name needs the same one, and the copy
  * that governed it was missing the filesystem's reserved names.
  *
- * **And a profile is never named after a build.** `--profile beta` and `--build beta` would otherwise be
+ * **And a profile is never named after a build.** `--profile beta` and `--channel beta` would otherwise be
  * two different things a letter apart — one a data dir, the other the app that opens it — which is the
  * collision this vocabulary exists to end, reintroduced by the one input a user picks freely. The names
  * come from `APP_ENVS` rather than a list of their own, so a fifth build cannot arrive nameable.
@@ -59,8 +59,8 @@ export const profileNameProblem = (name: string): string | undefined => {
   const segment = _pathSegmentProblem(name, 'profile name');
   if (segment) return segment;
   if ((APP_ENVS as readonly string[]).includes(name)) {
-    return `"${name}" is a build, so it can't also be a profile name: \`--build ${name}\` names the app and`
-      + ` \`--profile <name>\` names a data dir it opens. Pick a name for the data dir — \`${name}-work\`, say.`;
+    return `"${name}" is an app data namespace, so it can't also be a profile name.`
+      + ` Use --data ${name} for app data or --profile ${name}-work for a separate profile.`;
   }
   return undefined;
 };
@@ -88,6 +88,15 @@ export function profileDir(dirs: CliDirs, name: string): string {
   const dir = path.resolve(root, name);
   if (path.dirname(dir) !== root) throw new Error(`"${name}" doesn't resolve inside ${root}.`);
   return dir;
+}
+
+/** Resolve a printed profile name across persistent and temporary storage without claiming ownership. */
+export function resolveProfileDir(dirs: CliDirs, name: string): string {
+  const regular = profileDir(dirs, name);
+  const temporary = path.join(profilesRoot(dirs), EPHEMERAL, name);
+  if (!fs.existsSync(temporary)) return regular;
+  if (fs.existsSync(regular)) throw new Error(`Ambiguous profile name ${name}: both regular and temporary profiles exist.`);
+  return temporary;
 }
 
 const readRecord = (dir: string): ProfileRecord | undefined => {
@@ -271,7 +280,7 @@ export function trimDataDir(dir: string, bytes: (dir: string) => number = dirByt
 
 /** A profile by name, created if it isn't there yet. */
 export function openProfile(dirs: CliDirs, name: string): OpenedProfile {
-  const dir = profileDir(dirs, name);
+  const dir = resolveProfileDir(dirs, name);
   // **`created` is about the record, not the directory**, because the two are not the same question and
   // `--rm` turns on the answer: a caller may have made the dir for its own reasons before `dev` opens it —
   // `drive`'s spawn puts its log in there before the app starts — and an existing-*dir* test then reports
@@ -306,7 +315,7 @@ export interface ListedProfile {
   ephemeral: boolean;
   /** An app is running on it right now, whoever started it */
   inUse: boolean;
-  /** Ephemeral, with neither its `apack open --session` nor an app still going: a crash left it, and it can go */
+  /** Ephemeral, with neither its `apack dev open` nor an app still going: a crash left it, and it can go */
   leaked: boolean;
   bytes: number;
 }
@@ -323,7 +332,7 @@ export function listProfiles(dirs: CliDirs): ListedProfile[] {
       created: record?.created,
       ephemeral,
       inUse,
-      // Two holders, and both have to be gone. The pid is the `apack open --session` that made it; the app is the
+      // Two holders, and both have to be gone. The pid is the `apack dev open` that made it; the app is the
       // one that has the data open, and it outlives a killed run — measured, by killing a run and
       // watching its app rebuild the directory that had just been removed underneath it. `lockIsHeld` is
       // `processExists`, whose contract is the one this needs: never miss a live holder, because

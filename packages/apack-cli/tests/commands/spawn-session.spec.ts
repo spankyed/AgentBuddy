@@ -15,7 +15,7 @@ beforeEach(() => { dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-spawn-
 afterEach(() => { vi.clearAllMocks(); fs.rmSync(dataDir, { recursive: true, force: true }); });
 
 it.each([
-  ['app', ['open', '--session']],
+  ['app', ['dev', 'open']],
   ['pack', ['pack', 'dev']],
 ] as const)('spawns an explicit %s session without relying on cwd inference', async (scope, command) => {
   await spawnDevApp('/pack-directory', dataDir, ['--profile', 'review'], scope);

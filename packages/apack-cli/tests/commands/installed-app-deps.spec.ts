@@ -9,16 +9,16 @@ import { _appDirOf } from '@apackdev/sdk/env';
 import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 let tmp: string;
-const saved = { env: process.env.APACK_ENV, dir: process.env.APACK_USER_DATA_DIR, build: process.env.APACK_BUILD };
+const saved = { env: process.env.APACK_ENV, dir: process.env.APACK_USER_DATA_DIR, build: process.env.APACK_APP };
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'installed-app-deps-'));
   process.env.APACK_USER_DATA_DIR = path.join(tmp, 'userdata');
-  delete process.env.APACK_BUILD;
+  delete process.env.APACK_APP;
 });
 
 afterEach(() => {
-  for (const [key, value] of [['APACK_ENV', saved.env], ['APACK_USER_DATA_DIR', saved.dir], ['APACK_BUILD', saved.build]] as const) {
+  for (const [key, value] of [['APACK_ENV', saved.env], ['APACK_USER_DATA_DIR', saved.dir], ['APACK_APP', saved.build]] as const) {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
@@ -106,7 +106,7 @@ describe('dependency resolution from an installed app', () => {
     const checkout = path.join(tmp, 'apack');
     fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
     fs.renameSync(builtInPack(), path.join(checkout, 'packages', 'base-pack'));
-    process.env.APACK_BUILD = checkout;
+    process.env.APACK_APP = checkout;
 
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot, { recursive: true });
@@ -165,7 +165,7 @@ describe('dependency resolution from an installed app', () => {
       builtInPack(snapshotOf('3.0.0')),
       path.join(checkout, 'packages', 'base-pack'),
     );
-    process.env.APACK_BUILD = checkout;
+    process.env.APACK_APP = checkout;
 
     expect((await resolveDepFiles(authorPack(), 'base-pack', '*'))?.snapshot.manifest.version).toBe('3.0.0');
   });
@@ -195,7 +195,7 @@ describe('dependency resolution from an installed app', () => {
       const checkout = path.join(tmp, 'apack');
       fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
       fs.renameSync(builtInPack(snapshotOf('3.0.0', { format: undefined })), path.join(checkout, 'packages', 'base-pack'));
-      process.env.APACK_BUILD = checkout;
+      process.env.APACK_APP = checkout;
 
       expect((await resolveDepFiles(authorPack(), 'base-pack', '*'))?.snapshot.manifest.version).toBe('1.0.0');
     });

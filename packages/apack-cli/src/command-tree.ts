@@ -9,12 +9,18 @@ export interface Command {
 
 /** Routing and help share the same explicit app/pack command tree. */
 export const COMMANDS = {
-  'install': { usage: '[version] [--replace] [-b] [--relaunch]', description: 'Install the app; production by default', load: async () => (await import('./commands/install')).install, detailedHelp: true },
-  'upgrade': { usage: '[version] [-b] [--force] [--relaunch]', description: 'Upgrade an installed app', load: async () => (await import('./commands/upgrade')).upgrade, detailedHelp: true },
-  'uninstall': { usage: '[-b]', description: 'Uninstall the app; keep user data', load: async () => (await import('./commands/uninstall')).uninstall, detailedHelp: true },
-  'open': { usage: '[-b] | --session [--build <name|path>] [profile flags]', description: 'Open the installed app, or hold a development session', load: async () => (await import('./commands/open')).open, detailedHelp: true },
-  'doctor': { usage: '[-b]', description: 'Check the installed app; production by default', load: async () => (await import('./commands/doctor')).doctor, detailedHelp: true },
-  'drive': { usage: '[script|--eval <body>|--query <code>|--state] [options]', description: 'Query or automate an app without installing a pack', load: async () => (await import('./commands/drive')).drive, detailedHelp: true },
+  'install': { usage: '[version] [--replace] [--channel production|beta] [--relaunch]', description: 'Install the app; production by default', load: async () => (await import('./commands/install')).install, detailedHelp: true },
+  'upgrade': { usage: '[version] [--channel production|beta] [--force] [--relaunch]', description: 'Upgrade an installed app', load: async () => (await import('./commands/upgrade')).upgrade, detailedHelp: true },
+  'uninstall': { usage: '[--channel production|beta]', description: 'Uninstall the app; keep user data', load: async () => (await import('./commands/uninstall')).uninstall, detailedHelp: true },
+  'open': { usage: '[--channel production|beta|preview]', description: 'Open the installed app', load: async () => (await import('./commands/open')).open, detailedHelp: true },
+  'doctor': { usage: '[--channel production|beta|preview]', description: 'Check the installed app; production by default', load: async () => (await import('./commands/doctor')).doctor, detailedHelp: true },
+  dev: {
+    description: 'Launch and automate a development app',
+    children: {
+      open: { usage: '[--app <checkout>] [profile flags]', description: 'Hold an attachable development app session', load: async () => (await import('./commands/dev-open')).devOpen, detailedHelp: true },
+      drive: { usage: '[script|--eval <body>|--query <code>|--state] [options]', description: 'Inspect or automate a development app', load: async () => (await import('./commands/drive')).drive, detailedHelp: true },
+    },
+  },
   'db': { usage: '<command> [options]', description: 'Query, export, import, or reset app data', load: async () => (await import('./commands/db')).db, detailedHelp: true },
   'profiles': { usage: '[command] [options]', description: 'Manage app data directories and profiles', load: async () => (await import('./commands/profiles')).profiles, detailedHelp: true },
   pack: {
@@ -29,12 +35,12 @@ export const COMMANDS = {
       'release': { usage: '[patch|minor|major|publish] [options]', description: 'Release a pack', load: async () => (await import('./commands/release')).release, detailedHelp: true },
       'validate': { usage: '', description: 'Validate the manifest and types', load: async () => (await import('./commands/validate')).validate },
       'facade-report': { usage: '[--update] [--skip-generate]', description: 'Check or update the pack facade report', load: async () => (await import('./commands/facade-report')).facadeReport },
-      'install': { usage: '<source> [-d|-b]', description: 'Install a pack into an app', load: async () => (await import('./commands/pack-install')).install, detailedHelp: true },
-      'uninstall': { usage: '<id> [-d|-b]', description: 'Remove an installed pack', load: async () => (await import('./commands/pack-uninstall')).uninstall, detailedHelp: true },
-      'list': { usage: '[-d|-b]', description: 'List installed packs', load: async () => (await import('./commands/list')).list },
-      'dev': { usage: '[--build <name|path>] [profile flags]', description: 'Build, install, and watch this pack in an app', load: async () => (await import('./commands/dev')).dev, detailedHelp: true },
+      'install': { usage: '<source> [--data development|production|beta|preview]', description: 'Install a pack into an app', load: async () => (await import('./commands/pack-install')).install, detailedHelp: true },
+      'uninstall': { usage: '<id> [--data development|production|beta|preview]', description: 'Remove an installed pack', load: async () => (await import('./commands/pack-uninstall')).uninstall, detailedHelp: true },
+      'list': { usage: '[--data development|production|beta|preview]', description: 'List installed packs', load: async () => (await import('./commands/list')).list },
+      'dev': { usage: '[--app <path> | --channel beta] [profile flags]', description: 'Build, install, and watch this pack in an app', load: async () => (await import('./commands/dev')).dev, detailedHelp: true },
       'drive': { usage: '[script|--eval <body>|--query <code>|--state] [options]', description: 'Drive an app with this pack as the subject', load: async () => (await import('./commands/drive')).packDrive, detailedHelp: true },
-      'test': { usage: '[--build <name|path>] [--contract] [--release] [--prebuilt] [runner args...]', description: 'Run this pack’s tests', load: async () => (await import('./commands/test')).test, detailedHelp: true },
+      'test': { usage: '[--app <path> | --channel beta] [--contract] [--release] [--prebuilt] [runner args...]', description: 'Run this pack’s tests', load: async () => (await import('./commands/test')).test, detailedHelp: true },
       'init-tests': { usage: '', description: 'Scaffold pack test configurations', load: async () => (await import('./commands/init-tests')).initTests },
       'info': { usage: '', description: 'Show the pack manifest and build summary', load: async () => (await import('./commands/info')).info },
       'doctor': { usage: '', description: 'Check pack source and manifest health', load: async () => (await import('./commands/pack-doctor')).doctor },

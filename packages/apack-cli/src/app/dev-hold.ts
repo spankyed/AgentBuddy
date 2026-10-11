@@ -59,7 +59,7 @@ export function createDevHold(io: DevHoldIo): DevHold {
   let marker: string | undefined;
   let unpublish: (() => void) | undefined;
   let releasedNow = false;
-  let released = false;
+  let releasePromise: Promise<void> | undefined;
 
   // One-shot: `release` calls this and then the caller exits, which fires the `exit` handler and would
   // otherwise close the dev server and remove the marker a second time
@@ -81,12 +81,11 @@ export function createDevHold(io: DevHoldIo): DevHold {
     holdsMarker: packId => { marker = packId; },
     holdsSession: next => { unpublish = next; },
     releaseNow,
-    release: async () => {
-      if (released) return;
-      released = true;
+    // Signal handlers and child-exit handlers must wait for the same cleanup before exiting.
+    release: () => releasePromise ??= Promise.resolve().then(async () => {
       releaseNow();
       if (app) await awaitExit(app);
       io.removeProfile?.();
-    },
+    }),
   };
 }

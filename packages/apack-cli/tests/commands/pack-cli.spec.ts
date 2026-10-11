@@ -240,3 +240,12 @@ describe('pack CLI: security', () => {
     }
   });
 });
+
+it('pack installation refuses removed or misspelled target flags before changing data', async () => {
+  const { install } = await import('../../src/commands/pack-install');
+  const { uninstall } = await import('../../src/commands/pack-uninstall');
+  for (const flag of ['--dev', '-b', '--channel', '--typo']) {
+    await expect(install(['demo', flag])).rejects.toThrow('Usage');
+    await expect(uninstall(['demo', flag])).rejects.toThrow('Usage');
+  }
+});

@@ -113,7 +113,7 @@ describe('a live app on an environment row', () => {
 
     list(dirs, { sizes: false, all: false, resolve, bytes });
 
-    expect(printed()).toMatch(new RegExp(`development.*running, started by apack open --session — pid ${process.pid}`));
+    expect(printed()).toMatch(new RegExp(`development.*running, started by apack dev open — pid ${process.pid}`));
     expect(printed()).toMatch(new RegExp(`test.*running, started by a question — pid ${process.pid}`));
   });
 
@@ -151,7 +151,7 @@ describe('new', () => {
     const [made] = listProfiles(dirs);
     expect(made).toBeDefined();
     expect(printed()).toContain(made!.name);
-    expect(printed()).toContain(`apack open --session --profile ${made!.name}`);
+    expect(printed()).toContain(`apack dev open --profile ${made!.name}`);
   });
 
   /**

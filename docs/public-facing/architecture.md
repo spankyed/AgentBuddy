@@ -20,7 +20,7 @@ Every process resolves its environment and data paths through `resolveAppContext
 | `api-port` | The API's port (development only) |
 | `api-token` | The token the API requires, for local tools (development only, readable only by you) |
 
-CLI commands pass `{ env }` explicitly: `apack pack install`/`apack pack uninstall`/`apack pack list` target production unless given `-d` (development) or `-b` (beta).
+CLI commands pass `{ env }` explicitly: `apack pack install`/`apack pack uninstall`/`apack pack list` target production unless given `--data development` (development) or `--data beta` (beta).
 
 ## Layers
 
@@ -340,7 +340,7 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 
 1. **`file:` path** — the given directory (relative to the pack root or absolute), in any layout. Not cached. A missing snapshot is an error.
 2. **Workspace** — `../<id>`, `../../packages/<id>`, `../../<id>`.
-3. **The app the pack is built against** — the built-in packs of a named app (`APACK_BUILD`, `APACK_ROOT`) or of the apack checkout behind the pack.
+3. **The app the pack is built against** — the built-in packs of a named app (`APACK_APP`, `APACK_ROOT`) or of the apack checkout behind the pack.
 4. **Installed apps** — `packs/<id>` in each environment's data dir (production, beta, development, test), which is where every pack that app has is installed, the ones it ships included.
 5. **Cache** — `.apack/deps/<id>/`, used only when no source on this machine matches and the cached version satisfies the range. `fetch-deps` skips it.
 6. **GitHub releases** — for `github:owner/repo [range]` values: the newest release matching the range, whose `<id>-<version>.tgz` is downloaded with its `.sha256`, checksum-checked, extracted and verified.

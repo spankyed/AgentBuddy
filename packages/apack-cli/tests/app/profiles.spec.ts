@@ -189,8 +189,8 @@ describe('renaming a profile', () => {
 
 describe('the flags', () => {
   it('take the profile ones out and leave the rest for the app parser', () => {
-    expect(parseProfileFlags(['--profile', 'probe', '--build', '/repo']))
-      .toEqual({ mode: { kind: 'named', name: 'probe', rm: false }, withSecrets: false, rest: ['--build', '/repo'] });
+    expect(parseProfileFlags(['--profile', 'probe', '--app', '/repo']))
+      .toEqual({ mode: { kind: 'named', name: 'probe', rm: false }, withSecrets: false, rest: ['--app', '/repo'] });
     expect(parseProfileFlags(['--profile=probe']).mode).toEqual({ kind: 'named', name: 'probe', rm: false });
     expect(parseProfileFlags(['--fresh']).mode).toEqual({ kind: 'fresh', rm: false });
     expect(parseProfileFlags([]).mode).toEqual({ kind: 'shared' });
@@ -389,7 +389,7 @@ describe('--rm on a name', () => {
 
 /**
  * **A profile is never named after a build**, which is the one place this vocabulary could be put back
- * where it started: `--profile beta` and `--build beta` a letter apart, one a data dir and the other the
+ * where it started: `--profile beta` and `--channel beta` a letter apart, one a data dir and the other the
  * app that opens it. A name is the only input here a user picks freely, so it is the only way a build name
  * could reappear as storage.
  *
@@ -397,17 +397,17 @@ describe('--rm on a name', () => {
  * property as held. Derived from `APP_ENVS` rather than a list of its own, so a fifth build arrives
  * refused rather than nameable, which is what the `it.each` below holds.
  */
-describe('a name that is a build', () => {
+describe('a name that is an app data namespace', () => {
   it.each(APP_ENVS)('is refused, and says what each word names: %s', (build) => {
-    expect(profileNameProblem(build)).toMatch(/is a build/);
-    expect(profileNameProblem(build)).toMatch(/--build/);
+    expect(profileNameProblem(build)).toMatch(/data namespace/);
+    expect(profileNameProblem(build)).toMatch(/--data/);
     expect(profileNameProblem(build)).toMatch(/--profile/);
   });
 
   /** Every door goes through `profileDir`, so none of them has to remember the rule. */
   it.each(APP_ENVS)('cannot reach a directory either: %s', (build) => {
-    expect(() => profileDir(dirs, build)).toThrow(/is a build/);
-    expect(() => openProfile(dirs, build)).toThrow(/is a build/);
+    expect(() => profileDir(dirs, build)).toThrow(/data namespace/);
+    expect(() => openProfile(dirs, build)).toThrow(/data namespace/);
     expect(fs.existsSync(path.join(root(), build))).toBe(false);
   });
 
@@ -417,4 +417,14 @@ describe('a name that is a build', () => {
       expect(profileNameProblem(name), name).toBeUndefined();
     }
   });
+});
+
+it('a temporary profile is attachable by its printed name without transferring cleanup ownership', () => {
+  const owned = mintProfile(dirs, true);
+  const target = askTarget({ kind: 'named', name: owned.name, rm: false }, false, dirs);
+  expect(target.dir).toBe(owned.dir);
+  const reused = profileFor({ kind: 'named', name: owned.name, rm: false }, dirs);
+  expect(reused).toMatchObject({ dir: owned.dir, created: false, ephemeral: false });
+  expect(() => profileFor({ kind: 'named', name: owned.name, rm: true }, dirs)).toThrow('--rm won');
+  expect(fs.existsSync(owned.dir)).toBe(true);
 });

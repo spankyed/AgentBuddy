@@ -12,7 +12,7 @@ describe('explicit app and pack command routing', () => {
     expect(archive).not.toHaveBeenCalled();
   });
 
-  it.each(['dev', 'test', 'build', 'init', 'clean'])('rejects removed root %s', async name => {
+  it.each(['drive', 'test', 'build', 'init', 'clean'])('rejects removed root %s', async name => {
     await expect(runCommand([name])).rejects.toThrow('Unknown command');
   });
 
@@ -21,9 +21,9 @@ describe('explicit app and pack command routing', () => {
     const pack = vi.fn(async () => {});
     vi.spyOn(COMMANDS.doctor!, 'load').mockResolvedValue(app);
     vi.spyOn(COMMANDS.pack!.children!.doctor!, 'load').mockResolvedValue(pack);
-    await runCommand(['doctor', '-b']);
+    await runCommand(['doctor', '--channel', 'beta']);
     await runCommand(['pack', 'doctor']);
-    expect(app).toHaveBeenCalledWith(['-b']);
+    expect(app).toHaveBeenCalledWith(['--channel', 'beta']);
     expect(pack).toHaveBeenCalledWith([]);
   });
 
@@ -38,4 +38,12 @@ describe('explicit app and pack command routing', () => {
     await expect(runCommand(['pack', 'typo'])).rejects.toThrow('apack pack typo');
     await expect(runCommand(['cache', 'typo'])).rejects.toThrow('apack cache typo');
   });
+});
+
+it('development launch is explicit and separate from installed launch', async () => {
+  const launch = vi.fn(async () => {});
+  vi.spyOn(COMMANDS.dev.children.open, 'load').mockResolvedValue(launch);
+  await runCommand(['dev', 'open', '--fresh']);
+  expect(launch).toHaveBeenCalledWith(['--fresh']);
+  await expect(runCommand(['dev', 'typo'])).rejects.toThrow('apack dev typo');
 });

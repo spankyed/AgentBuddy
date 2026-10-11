@@ -1,5 +1,5 @@
 /**
- * `apack drive` — run the app and poke at it.
+ * `apack dev drive` — run the app and poke at it.
  *
  * Driving is looking at what you built: clicking through it, firing an event, taking a screenshot.
  *
@@ -16,7 +16,7 @@
  * **It is not `apack pack test`.** `test` is pinned, ephemeral and assertive on purpose. This is your app,
  * your profile, and state that is still there next session.
  *
- * `apack open --session` holds an app; `apack pack dev` also builds, installs, and watches a pack.
+ * `apack dev open` holds an app; `apack pack dev` also builds, installs, and watches a pack.
  * where this drives one and exits. The two halves meet it differently: a **question** attaches over the
  * debug port in `dev`'s session file, so it joins the app `dev` has rather than competing with it (one app
  * per data dir, which Electron's single-instance lock scopes), while a **script** launches its own app and
@@ -27,9 +27,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { findPackRoot, readManifest } from '../utils';
-import { cliDirs, parseAppFlags, resolveLaunchApp, type CliDirs } from '../app/app-target';
+import { cliDirs, parseAppFlags, resolveLaunchApp, resolveDevApp, type CliDirs } from '../app/app-target';
 import {
-  freshProfileName, profileDir, profileFor, dataDirInUse, parseProfileFlags, removeProfile, PROFILE_USAGE,
+  freshProfileName, resolveProfileDir, profileFor, dataDirInUse, parseProfileFlags, removeProfile, PROFILE_USAGE,
   type ProfileMode,
 } from '../app/profiles';
 import { askAttached, attachableApp, spawnOrAttach, type AttachableApp } from '../app/drive-attach.ts';
@@ -54,7 +54,7 @@ const DRIVE_DIR = 'drive';
  * precedent: exported for exactly this, and asserted in `tests/commands/test-contract.spec.ts`.
  */
 export const DRIVE_USAGE = `
-Usage: apack drive [script | --eval <body>] [--build <name|path>] [profile flags]
+Usage: apack dev drive [script | --eval <body>] [--app <checkout>] [profile flags]
 
 Launch apack and drive it from a script: navigate, send events, read state, screenshot.
 Mainly for an agent debugging or developing against the app; a person can watch, the windows are shown.
@@ -73,10 +73,10 @@ the answer and exit. One JSON object goes to stdout and
 nothing else there, so a program can read it; everything else goes to stderr. Headless, because nothing is
 watching one question.
 
-  apack drive --eval 'return document.title'  ->  {"value":"Agent X","state":"attached",...}
-  apack drive --state                         ->  {"value":{...},"state":"attached",...}
+  apack dev drive --eval 'return document.title'  ->  {"value":"Agent X","state":"attached",...}
+  apack dev drive --state                         ->  {"value":{...},"state":"attached",...}
 
-A question is asked of the app apack open --session (or npm run dev) is holding. One JSON object goes to stdout and
+A question is asked of the app apack dev open (or npm run dev) is holding. One JSON object goes to stdout and
 nothing else, so it pipes: "value" is the answer, "state" is attached or spawned, "startedBy" says whose
 app answered, and "supervisorPid" is what ends it. The exit code is the status — 0 with a value, 3 when
 no app is running, 1 when the verb failed.
@@ -85,7 +85,7 @@ With no app running it says so and exits 3 rather than starting one: a question 
 process nobody asked for. --spawn is how you ask, and the app it starts stays up, so a cold checkout
 costs one flag on the first question and an attach on every one after.
 
-An app a question started on your development data dir stays until apack open --session or npm run dev takes the
+An app a question started on your development data dir stays until apack dev open or npm run dev takes the
 directory back. One on a --profile closes itself after 10 minutes with no question attached, and each
 question resets that. apack profiles lists what is still running, and stops it.
 
@@ -97,7 +97,7 @@ Options:
   --query <code>      the same, for one EARS read over the bus
   --state             the same, for the app shell's state
   --spawn             with none of those running, start an app and keep it, rather than refusing
-  --build <name|path> a build by name (beta) or a local apack checkout by path
+  --app <checkout> a local checkout for scripts; live questions select --profile instead
 ${PROFILE_USAGE}
   --help, -h          Show this help
 `.trim();
@@ -125,10 +125,10 @@ drive('open notes and look at it', async ({ app, appPage }) => {
 });
 \`\`\`
 
-Run everything with \`apack drive\`, or one script with \`apack drive drive/notes.ts\`.
+Run everything with \`apack dev drive\`, or one script with \`apack dev drive drive/notes.ts\`.
 
-For one question, no script is needed — \`apack drive --eval 'return document.title'\` asks the app
-\`apack open --session\` is holding and prints one JSON object (\`value\`, \`state\`, \`startedBy\`,
+For one question, no script is needed — \`apack dev drive --eval 'return document.title'\` asks the app
+\`apack dev open\` is holding and prints one JSON object (\`value\`, \`state\`, \`startedBy\`,
 \`supervisorPid\`). It is a function *body*, so \`return\` is required. \`--query\` and \`--state\` ask the
 same way. With no app running it exits 3 and says so; \`--spawn\` starts one and keeps it.
 
@@ -262,7 +262,7 @@ export function scaffold(root: string, scope: 'app' | 'pack' = 'app'): DriveScaf
     return report;
   }
   fs.mkdirSync(dir, { recursive: true });
-  const readme = scope === 'pack' ? README.replaceAll('apack drive', 'apack pack drive') : README;
+  const readme = scope === 'pack' ? README.replaceAll('apack dev drive', 'apack pack drive') : README;
   for (const [name, body] of [['playwright.config.ts', CONFIG()], ['README.md', readme], ['.gitignore', GITIGNORE]] as const) {
     const file = path.join(dir, name);
     if (fs.existsSync(file)) continue;
@@ -337,11 +337,11 @@ export function askTarget(mode: ProfileMode, withSecrets: boolean, dirs: CliDirs
   const name = mode.kind === 'named' ? mode.name : freshProfileName();
   const rm = mode.rm ? ['--rm'] : [];
   return {
-    dir: resolveAppContext({ build: 'development', profile: profileDir(dirs, name) }).userDataDir,
+    dir: resolveAppContext({ build: 'development', profile: resolveProfileDir(dirs, name) }).userDataDir,
     spawnArgs: ['--profile', name, ...rm, ...secrets],
     ...(mode.kind === 'fresh' ? {
       note: `Fresh profile ${name}${mode.rm ? ' — removed when the app closes' : ''}.`
-        + ` \`apack drive --profile ${name}\` asks the next question of it.`,
+        + ` \`apack dev drive --profile ${name}\` asks the next question of it.`,
     } : {}),
   };
 }
@@ -384,7 +384,7 @@ async function answerAttached(
   // Prose only where something was left behind — a process still running, or a write to the user's data.
   // An attach that changed nothing says nothing, because the fields already said it
   if (state === 'spawned') {
-    notes.push(`Started the development app (pid ${live.session.supervisorPid}) and left it running — \`apack open --session\` takes the directory back.`);
+    notes.push(`Started the development app (pid ${live.session.supervisorPid}) and left it running — \`apack dev open\` takes the directory back.`);
   }
   try {
     const answer = await askAttached(live, root, screenshotDir, async (session) => {
@@ -434,7 +434,7 @@ function noAppHere(dataDir: string): OneShotOutput {
   return {
     notes: [
       `No app is running on ${dataDir}.`,
-      '  Start one with `apack open --session`, or add --spawn to have this start one and keep it.',
+      '  Start one with `apack dev open`, or add --spawn to have this start one and keep it.',
     ],
     code: MISS_EXIT_CODE,
   };
@@ -453,7 +453,7 @@ export async function packDrive(args: string[]) {
 
 export async function drive(args: string[], scope: 'app' | 'pack' = 'app') {
   if (args.includes('--help') || args.includes('-h')) {
-    console.log(scope === 'pack' ? HELP.replaceAll('apack drive', 'apack pack drive') : HELP);
+    console.log(scope === 'pack' ? HELP.replaceAll('apack dev drive', 'apack pack drive') : HELP);
     return;
   }
 
@@ -471,19 +471,9 @@ export async function drive(args: string[], scope: 'app' | 'pack' = 'app') {
    * `--spawn`, rather than acquiring a process nobody asked for.
    */
   if (ask !== undefined) {
-    // Advertised for the script half and meaningless here: a question attaches over a debug port, and only
-    // a `development` build gets one (`debugPortArgsFor`). Accepting it silently answered from the
-    // development app while naming another, which is the class of mistake `dev` refuses unknown options
-    // over — a flag that reads as having been obeyed
-    if (flags.build !== undefined) {
-      throw new Error(
-        `--build ${flags.build} names a build to launch, and a question launches nothing: it attaches to the `
-        + 'app `apack open --session` or `npm run dev` is holding, which only a development build can be — a packaged or '
-        + 'test app publishes no session. Drop it, or use `apack drive <script> --build` for a run that '
-        + 'launches its own app.',
-      );
-    }
     const root = scope === 'pack' ? findPackRoot(cwd) : checkoutFor(cwd) ?? cwd;
+    if (flags.channel || process.env.APACK_CHANNEL) throw new Error('Release channels are not attachable. Live questions require a development session.');
+    if (flags.app) throw new Error('--app selects an executable for scripts. Live questions select an existing development session with --profile.');
     const target = askTarget(mode, withSecrets);
     const live = attachableApp(target.dir);
     if (live) return report(await answerAttached(live, root, ask, argument, 'attached'));
@@ -491,7 +481,9 @@ export async function drive(args: string[], scope: 'app' | 'pack' = 'app') {
     // otherwise ask for a directory and then refuse to use it
     if (spawnFlag || mode.kind === 'fresh') {
       if (target.note !== undefined) console.error(target.note);
-      const { app, state } = await spawnOrAttach(root, target.dir, target.spawnArgs, { scope });
+      const source = resolveDevApp(flags, root);
+      if (source.kind !== 'source') throw new Error('Only a source development app is attachable.');
+      const { app, state } = await spawnOrAttach(root, target.dir, [...target.spawnArgs, '--app', source.root], { scope });
       return report(await answerAttached(app, root, ask, argument, state));
     }
     return report(noAppHere(target.dir));
@@ -519,7 +511,8 @@ export async function drive(args: string[], scope: 'app' | 'pack' = 'app') {
   // One policy whether or not a pack is being driven: `deriveApp` looks for the checkout behind
   // `from`, which is the pack when there is one and this directory when there is not — and in the second
   // case that *is* the checkout. It states what it resolved and why; the reasoning is in `app-target.ts`.
-  const app = await resolveLaunchApp({ flags, hostVersion: target.hostVersion, from: target.packDir ?? target.root });
+  const app = scope === 'app' ? resolveDevApp(flags, target.root)
+    : await resolveLaunchApp({ flags, hostVersion: target.hostVersion, from: target.packDir ?? target.root });
   const profile = profileFor(mode, cliDirs());
   if (profile?.created && withSecrets) {
     const { count, from } = copySecretsInto(profile, appEnv(app));

@@ -3,6 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import envPaths from 'env-paths';
 import semver from 'semver';
+import { parseAppEnv, type AppEnv } from '@apackdev/sdk/env';
 import { cachedBetaBuilds, ensureBetaApp, type PackagedApp } from './beta-app';
 import { checkoutFor } from '../build/checkout-packages';
 
@@ -16,7 +17,7 @@ export type AppChoice = { source: string } | { beta: true };
 
 export interface CliDirs {
   cache: string;
-  /** Machine state the CLI owns and the app does not: today, the profiles `apack open --session` creates */
+  /** Machine state the CLI owns and the app does not: today, the profiles `apack dev open` creates */
   data: string;
 }
 
@@ -41,7 +42,7 @@ export function sourceAppProblems(root: string): string[] {
   return problems;
 }
 
-function sourceTarget(root: string, from: string): AppTarget {
+export function sourceTarget(root: string, from: string): AppTarget {
   const resolved = path.resolve(expandHome(root));
   const problems = sourceAppProblems(resolved);
   if (problems.length > 0) {
@@ -70,20 +71,36 @@ function packagedAppVersion(executable: string): string | undefined {
   }
 }
 
-/**
- * `APACK_BUILD`, the environment's form of `--build`, holding either shape.
- *
- * **One variable for one axis**, holding either shape — a build's name or a checkout's path — because
- * which of the two you hand it is not a different question. Read before anything can outrank it, so a
- * value that names nothing is refused wherever it sits rather than only where it won.
- *
- * **It is the *selector*, and `APACK_ROOT`/`APACK_APP_EXECUTABLE` are not.** Those two are how this CLI
- * hands a *resolved* answer to a child process — the fixture takes a checkout at a path or a packaged
- * executable — so they are two kinds of answer rather than two spellings of one question, and they stay.
- */
-function buildFromEnv(env: NodeJS.ProcessEnv): string | undefined {
-  const given = env.APACK_BUILD;
-  return given === undefined || given === '' ? undefined : given;
+/** Reads the packaged app's authoritative channel; release tags and executable names can differ. */
+export function packagedAppEnv(executable: string): AppEnv {
+  const manifest = path.join(packagedAppDir(executable), 'build-manifest.json');
+  const build = parseAppEnv(JSON.parse(fs.readFileSync(manifest, 'utf-8')).channel);
+  if (build !== 'production' && build !== 'beta' && build !== 'preview') throw new Error(`Invalid packaged channel in ${manifest}`);
+  return build;
+}
+
+/** Select an explicit .app bundle, or a built source checkout. */
+function pathTarget(input: string, from: string): AppTarget {
+  const root = path.resolve(expandHome(input));
+  if (!root.endsWith('.app')) return sourceTarget(root, from);
+  const resources = path.join(root, 'Contents', 'Resources', 'app');
+  const metadata = JSON.parse(fs.readFileSync(path.join(resources, 'build-manifest.json'), 'utf-8'));
+  const executable = path.join(root, 'Contents', 'MacOS', metadata.productName);
+  packagedAppEnv(executable);
+  fs.accessSync(executable, fs.constants.X_OK);
+  return { kind: 'packaged', executable, version: metadata.version };
+}
+
+/** App development never falls back to a downloaded release. */
+export function resolveDevApp(flags: AppFlags, from: string, env: NodeJS.ProcessEnv = process.env): AppTarget {
+  const named = namedApp(flags, env);
+  if (named && 'beta' in named.choice) throw new Error('apack dev requires a source checkout; release channels are not attachable.');
+  const root = named && 'source' in named.choice ? named.choice.source : checkoutFor(from);
+  if (!root) throw new Error('No apack checkout found. Use --app <checkout> or run inside the app repository.');
+  const app = pathTarget(root, named?.from ?? 'the current checkout');
+  if (app.kind !== 'source') throw new Error('apack dev requires a source checkout; packaged apps are not attachable.');
+  announceApp(app, named?.from ?? 'the current checkout');
+  return app;
 }
 
 /** What every lookup here needs: where to look, and how to reach a beta when the answer is one. */
@@ -112,49 +129,24 @@ interface NamedApp {
   from: string;
 }
 
-/**
- * Where an app can be named, in precedence order — the one place that order is written. It used to be
- * written once per caller, and two of the three spelled the same rule differently: one ordered the
- * checks, the other kept beta out of the APACK_ROOT branch with a negative guard.
- *
- * `saved` is the caller's policy rather than something this reads, so a pinned run passes nothing. That
- * argument is what "consults no machine state" looks like at the call site, where it used to be the
- * absence of a line.
- */
-function namedApp(flags: AppFlags | undefined, env: NodeJS.ProcessEnv, saved?: NamedApp): NamedApp | undefined {
-  // Read before anything can outrank it, so a typo'd value is refused wherever it sits. It used to be
-  // short-circuited in the resolvers, which made `APACK_BUILD=nightly` an error during `build` and
-  // silence during `test` whenever --build won.
-  const envBuild = buildFromEnv(env);
-  if (flags?.build) return { choice: buildChoice(flags.build), from: `--build ${flags.build}` };
-  if (envBuild) return { choice: buildChoice(envBuild), from: `APACK_BUILD=${envBuild}` };
-  return saved;
+function namedApp(flags: AppFlags | undefined, env: NodeJS.ProcessEnv): NamedApp | undefined {
+  if (env.APACK_APP && env.APACK_CHANNEL) throw new Error('Use APACK_APP or APACK_CHANNEL, not both.');
+  if (env.APACK_CHANNEL && env.APACK_CHANNEL !== 'beta') throw new Error('APACK_CHANNEL must be beta for downloaded authoring hosts.');
+  if (flags?.app && flags.channel) throw new Error('Choose one --app or --channel.');
+  if (flags?.app) return { choice: { source: flags.app }, from: `--app ${flags.app}` };
+  if (flags?.channel) return { choice: { beta: true }, from: '--channel beta' };
+  if (env.APACK_APP) return { choice: { source: path.resolve(expandHome(env.APACK_APP)) }, from: `APACK_APP=${env.APACK_APP}` };
+  if (env.APACK_CHANNEL) return { choice: { beta: true }, from: 'APACK_CHANNEL=beta' };
+  return undefined;
 }
 
-/**
- * The built-in packs directory of the app `apack pack build` resolves dependencies through: APACK_BUILD=beta
- * (downloaded when needed), APACK_ROOT, or the apack checkout behind the pack. Lets a pack resolve
- * dependencies on built-in packs before the app has ever run, including in CI.
- *
- * **It derives the checkout where `resolveLaunchApp` does, and validates nothing where that one does.**
- * Both halves matter. The derivation is what retired the stored choice: this function used to read it,
- * on the argument that "pinning it would make every author's `build` download a beta, or set APACK_ROOT
- * on each invocation, to reach the checkout they already named once" — true, and answered by finding the
- * checkout instead of remembering it. The validation is what must *not* be shared: a build reads the
- * checkout's `packages/`, so failing it for want of `main/dist` would refuse a tree that is perfectly
- * readable.
- *
- * **It never downloads a Beta it was not asked for.** Named beta, yes; derived, no — `null` lets
- * `fetch-deps` fall through to an installed app, the `.apack` cache and GitHub, which is cheaper and more
- * predictable than a build that quietly reaches the network.
- */
 export async function configuredAppPackagesDir(options: ConfiguredAppOptions = {}): Promise<{ dir: string; label: string } | null> {
   const { dirs = cliDirs(), env = process.env, hostVersion = '*', from, checkout = checkoutFor } = options;
   const betaApp = betaAppFrom(options);
   const asPackages = (app: PackagedApp) =>
     ({ dir: packagedAppPackagesDir(app.executable), label: `apack Beta ${app.version}` });
 
-  const named = namedApp(undefined, env, undefined);
+  const named = namedApp(undefined, env);
   if (!named) {
     const found = from === undefined ? undefined : checkout(from);
     if (found === undefined) return null;
@@ -166,7 +158,9 @@ export async function configuredAppPackagesDir(options: ConfiguredAppOptions = {
     // checkout's `packages/`, where launching it needs main/dist, renderer/dist and electron. Validating
     // would fail `apack pack build` on a checkout nobody has run `npm run build:default-setup && npm run build:runtime` in.
     const root = path.resolve(expandHome(named.choice.source));
-    return { dir: path.join(root, 'packages'), label: `apack checkout ${root}` };
+    return root.endsWith('.app')
+      ? { dir: path.join(root, 'Contents', 'Resources', 'app', 'packages'), label: `apack bundle ${root}` }
+      : { dir: path.join(root, 'packages'), label: `apack checkout ${root}` };
   }
 
   // One rule, shared with `packagedTarget`: a downloaded build the range accepts wins, and the network is
@@ -178,20 +172,6 @@ export async function configuredAppPackagesDir(options: ConfiguredAppOptions = {
   return asPackages(cachedBetaApp(dirs, hostVersion) ?? await betaApp(hostVersion, dirs.cache));
 }
 
-/**
- * The newest already-downloaded beta the pack's range accepts, or nothing. The range check is the half
- * this lacked: it took the newest cached build whatever the pack asked for, so a pack pinned to an older
- * host resolved its dependency types from a newer one, silently.
- *
- * **It matches on the app's own version, not the directory's name**, because those differ by design. A
- * beta promoted from a production release is tagged `v0.4.2-beta.0` on the released commit
- * (`build/release/beta-tag.sh`) while the app inside is `0.4.2`, and the cache directory is named after
- * the tag where `pickBetaRelease` matched the range against the app. Matching the directory name would
- * reject that build for every pack whose floor is a released version, on every build.
- *
- * It answers a `PackagedApp`, the same shape `ensureBetaApp` returns and for the same reason — `version` is
- * the tag the directory carries — so every caller asks one question and maps one answer.
- */
 function cachedBetaApp(dirs: CliDirs, hostVersion: string): PackagedApp | null {
   for (const { tag, executable } of cachedBetaBuilds(dirs.cache)) {
     const version = packagedAppVersion(executable) ?? tag;
@@ -203,26 +183,11 @@ function cachedBetaApp(dirs: CliDirs, hostVersion: string): PackagedApp | null {
   return null;
 }
 
-/**
- * The builds a name can select. Everything else a `--build` is given is a path.
- *
- * **One flag, because the two it replaced were never two concepts.** They split on the *shape of the
- * value* — a name or a path — and the name half accepted exactly one word, so the disambiguation is one
- * line: a value in this set is a build, anything else is a path. `./beta` says "the directory" the way it
- * does in every other tool, which is the escape hatch for the day a checkout is named after a channel.
- *
- * `build`, because it is the only word that covers all of them: "channel" does not, since `development` and
- * `test` are not releases. And it keeps one meaning across the CLI — `apack pack build` *produces* one,
- * `--build` *selects* one.
- */
-export const BUILD_NAMES = ['beta'] as const;
-export type BuildName = (typeof BUILD_NAMES)[number];
-
-export const isBuildName = (value: string): value is BuildName => (BUILD_NAMES as readonly string[]).includes(value);
-
 export interface AppFlags {
-  /** A build by name, or a checkout by path. One flag, since the two were one axis all along */
-  build?: string;
+  /** Explicit checkout or .app bundle path. */
+  app?: string;
+  /** Downloaded pack authoring host channel. */
+  channel?: 'beta';
   /** Build the pack as a release before testing it, so the tests run what a release ships */
   release?: boolean;
   args: string[];
@@ -235,42 +200,27 @@ export interface AppFlags {
   prebuilt?: boolean;
 }
 
-/**
- * Pulls `--build <name|path>` and `--release` out of the args forwarded to Playwright.
- *
- * `-d`, `-b` and `--production` are shorthands for `--build development`, `--build beta` and
- * `--build production`, on every command that has them: they keep working and change what they *mean*, a
- * build rather than an environment.
- */
+/** Parse executable selection separately from release channels and pack build options. */
 export function parseAppFlags(argv: string[]): AppFlags {
   const flags: AppFlags = { args: [] };
+  let selected = false;
   for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    const [name, inline] = arg.startsWith('--') ? arg.split(/=(.*)/s, 2) : [arg];
-    if (name === '--build') {
+    const arg = argv[i]!;
+    const [name, inline] = arg.split(/=(.*)/s, 2);
+    if (name === '--app' || name === '--channel') {
+      if (selected) throw new Error('Choose one --app or --channel.');
       const value = inline ?? argv[++i];
-      if (!value) throw new Error('--build needs a value: a build name or a path to a checkout');
-      flags.build = value;
-    } else if (name === '--release') {
-      flags.release = true;
-    } else if (name === '--prebuilt') {
-      flags.prebuilt = true;
-    } else {
-      flags.args.push(arg);
-    }
+      if (!value || value.startsWith('--')) throw new Error(`${name} needs a value`);
+      if (name === '--channel' && value !== 'beta') throw new Error('Only --channel beta supplies a downloaded pack authoring host.');
+      if (name === '--app') flags.app = path.resolve(expandHome(value));
+      else flags.channel = 'beta';
+      selected = true;
+    } else if (name === '--release') flags.release = true;
+    else if (name === '--prebuilt') flags.prebuilt = true;
+    else flags.args.push(arg);
   }
   return flags;
 }
-
-/**
- * What a `--build` value selects: a named build, or a checkout at that path.
- *
- * A bare value that is also a known name is the name; `./beta` is the path. Nothing else needs deciding —
- * with one reserved name it cannot be ambiguous today, and a value that is neither a name nor an existing
- * path is reported by whoever tries to use it, which says more than a parse error could.
- */
-export const buildChoice = (value: string): AppChoice =>
-  (isBuildName(value) ? { beta: true } : { source: value });
 
 export interface ResolveAppOptions extends AppLookupOptions {
   flags: AppFlags;
@@ -296,46 +246,15 @@ async function packagedTarget(options: ResolveAppOptions): Promise<AppTarget> {
 
 
 /**
- * The app a run is *pinned* to: the flags, the environment, then the Beta build the pack's `hostVersion`
- * asks for. **It derives nothing and reads no machine state.**
- *
- * That separation is the point. `resolveTestApp` used to fall through to `~/.config/apack-cli/config.json`
- * and, in a terminal, to a question whose answer it then persisted — so a pack's test result depended on
- * what someone typed once on that machine, and two authors on one commit could be testing different app
- * builds. The data layer was never the problem: the fixture always takes a fresh `mkdtemp` and forces
- * `env: 'test'`, which is why this hid for so long — the isolation people check for is real, one layer
- * below where the leak was.
- *
- * Removing the config read leaves no hole, because the pinned answer already existed: `--build beta`
- * computes it from the manifest. The stored choice was shadowing a correct default, not supplying a
- * missing one — and it is gone now, so what this still refuses is the *derivation*: a pinned run must not
- * depend on which directory the pack happens to sit in either.
- *
- * `resolveDevelopmentApp` below is the other half, for the commands whose job *is* to hold a preference.
- */
-/**
  * What a command is running against, as one sentence fragment.
  *
  * One rendering, because three commands describing the same app differently is how a reader stops trusting
  * the line — and the line is the whole point of `announceApp`.
  */
 export function appLabel(app: AppTarget): string {
-  return app.kind === 'source' ? `apack from ${app.root}` : `apack Beta ${app.version}`;
+  return app.kind === 'source' ? `apack from ${app.root}` : `apack ${packagedAppEnv(app.executable)} ${app.version}`;
 }
 
-/**
- * Says which app was resolved and **where the answer came from**, on stderr.
- *
- * The provenance is the half that matters. Every source on the ladder but one was asked for on *this* run
- * — a flag, an environment variable — so the reader already knows about it. The **derived** answer is the
- * exception: nothing in the request mentions it, and being derived is exactly what makes it worth stating,
- * since a reader who disagrees with it needs to know which of the two rules fired before they can say so.
- * A derivation nobody can see is a preference by another name.
- *
- * **stderr, not stdout**, because it describes the run rather than being its output: `apack drive --eval`
- * prints one JSON envelope on stdout and a program reads it. `apack db` prints its target the same way
- * for the same reason.
- */
 function announceApp(app: AppTarget, from: string): void {
   console.error(`Using ${appLabel(app)} (${from})`);
 }
@@ -343,37 +262,17 @@ function announceApp(app: AppTarget, from: string): void {
 export async function resolvePinnedApp(options: ResolveAppOptions): Promise<AppTarget> {
   const { flags, env = process.env } = options;
 
-  const named = namedApp(flags, env, undefined);
-  if (named && 'source' in named.choice) return sourceTarget(named.choice.source, named.from);
-  // The default, not just the `--build beta` case: a pinned run always has an answer, from the manifest
+  const named = namedApp(flags, env);
+  if (named && 'source' in named.choice) return pathTarget(named.choice.source, named.from);
+  // The default, not just the `--channel beta` case: a pinned run always has an answer, from the manifest
   return packagedTarget(options);
 }
 
-/**
- * **Which app, derived rather than remembered.** Named on this run wins; else the apack checkout
- * behind the pack; else the newest Beta the pack's `hostVersion` accepts.
- *
- * This replaced a question asked once and stored in the user's config dir, which was wrong three ways: one
- * slot answered for every pack on the machine, so two packs with different `hostVersion` ranges shared an
- * app; a stale answer went on winning silently for as long as the file existed; and the prompt was the
- * worst thing to put in a CLI an agent drives, because it does not fail, it hangs.
- *
- * **The checkout rule is the correct pairing, not a convenience.** If a pack's `@apackdev/*` resolve into a
- * checkout — or the pack simply sits inside one, which `checkoutFor` also answers — then the pack is
- * compiled against that checkout's packages. Launching it inside a released Beta pairs a source-built pack
- * with a released host, which is a mismatch to report rather than a preference to hold.
- *
- * **`checkoutFor` says a checkout is there, never that it can be launched.** That is `sourceTarget`'s job
- * here (`electron`, `main/dist`, `renderer/dist`), and an unbuilt one fails naming `npm run build:default-setup && npm run build:runtime` rather
- * than quietly falling through to a Beta — falling through is how you end up with the mismatch above and
- * only a warning between you and a confusing runtime failure. `configuredAppPackagesDir` deliberately does
- * *not* validate, because a build reads `packages/` and launches nothing.
- */
 export async function deriveApp(options: DeriveAppOptions): Promise<NamedApp & { target: AppTarget }> {
   const { flags, env = process.env, from, checkout = checkoutFor } = options;
-  const named = namedApp(flags, env, undefined);
+  const named = namedApp(flags, env);
   if (named) {
-    const target = 'source' in named.choice ? sourceTarget(named.choice.source, named.from) : await packagedTarget(options);
+    const target = 'source' in named.choice ? pathTarget(named.choice.source, named.from) : await packagedTarget(options);
     return { ...named, target };
   }
   const found = checkout(from);
