@@ -6,6 +6,7 @@ import { sendToSystem } from '../../../events.ts';
 export interface PackInstallRequest {
   packSlug: string;
   source?: string;
+  sha256?: string;
 }
 
 /** The install a deep link's parameters ask for, or null when they name no pack */
@@ -15,12 +16,16 @@ export function packInstallRequest(params: Record<string, string>): PackInstallR
     console.warn('[pack-install] Missing pack parameter in install URL');
     return null;
   }
-  return { packSlug, source: params.source };
+  if (params.sha256 !== undefined && !/^[a-f\d]{64}$/i.test(params.sha256)) {
+    console.warn('[pack-install] Invalid sha256 parameter in install URL');
+    return null;
+  }
+  return { packSlug, source: params.source, ...(params.sha256 !== undefined ? { sha256: params.sha256.toLowerCase() } : {}) };
 }
 
 /** Asks the Packs system to install a pack; a send that fails is reported by the window's client */
 export function requestPackInstall(request: PackInstallRequest): void {
-  sendToSystem('packs', { type: 'INSTALL_PACK', packSlug: request.packSlug, source: request.source });
+  sendToSystem('packs', { type: 'INSTALL_PACK', ...request });
 }
 
 /** What a deep link asks for, installed: the one call a window makes when the platform hands it an install URL */

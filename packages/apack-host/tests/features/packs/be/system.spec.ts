@@ -129,6 +129,27 @@ describe('installing over a pack that is already running', () => {
   });
 });
 
+describe('a community release checksum pin', () => {
+  it('refuses changed release bytes before replacing the running pack, even when GitHub publishes their checksum', async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+    await stubRelease(packSource('2.0.0'));
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'INSTALL_PACK', packSlug: 'fixture/pack@v2.0.0', sha256: '0'.repeat(64) });
+      await vi.waitFor(() => expect(emitted(system.sent).map(event => event.type)).toContain('PACK_INSTALL_FAILED'));
+      expect(emitted(system.sent).find(event => event.type === 'PACK_INSTALL_FAILED')?.error).toContain('Checksum mismatch');
+      expect(emitted(system.sent).map(event => event.type)).not.toContain('PACK_INSTALL_COMPLETE');
+      const installed = JSON.parse(fs.readFileSync(path.join(resolveAppContext().packsDir, PACK_ID, 'apack.json'), 'utf8'));
+      expect(installed.version).toBe('1.0.0');
+      expect(registry.getPackExtensions(PACK_ID)).not.toBeNull();
+    } finally {
+      system.stop();
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
 // The host and the built-in packs come with the app: no uninstall removes them, and no installed pack takes their id
 describe('a pack that ships with the app', () => {
   const shipped = { id: PACK_ID, name: 'Shipped', version: '1.0.0', dir: 'packs/shipped', shipped: true };

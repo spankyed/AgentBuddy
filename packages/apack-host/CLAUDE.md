@@ -198,8 +198,10 @@ which is all that is left there.
   (`importModule`, `styles.add`/`remove`), so no browser global is reached here. Its failure log,
   `[pack-loader] Failed to load FE entry pack://<id>/…`, is matched by the E2E fixture to fail a pack under test
   fast: its text is a contract, not a message.
-- `install-url.ts` — `installFromProtocol(params)`, what `apack://install?pack=…&source=…` asks for; a window
-  subscribes to the protocol and passes on the parameters.
+- `install-url.ts` — `installFromProtocol(params)`, what `apack://install?pack=…&source=…&sha256=…` asks for; a window
+  subscribes to the protocol and passes on the parameters. An optional checksum is validated and carried through
+  `INSTALL_PACK` to the installer; malformed pins are refused rather than treated as absent. Checksum verification
+  happens before the running copy is torn down or its files replaced.
 
 ## App shell (`features/application/fe/`)
 

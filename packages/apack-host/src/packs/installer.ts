@@ -299,7 +299,14 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
   }
 }
 
+function validateExpectedChecksum(options: InstallOptions): void {
+  if (options.sha256 !== undefined && !/^[a-f\d]{64}$/i.test(options.sha256)) {
+    throw new Error('Expected archive checksum must be a 64-character SHA-256 hash');
+  }
+}
+
 export async function installPackFromLocal(source: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
+  validateExpectedChecksum(options);
   const expanded = source.startsWith('~') ? source.replace('~', os.homedir()) : source;
   const resolved = path.resolve(expanded);
   if (!fs.existsSync(resolved)) {
@@ -331,6 +338,7 @@ export async function installPackFromLocal(source: string, targetPacksDir?: stri
 }
 
 export async function installPackFromUrl(url: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
+  validateExpectedChecksum(options);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-install-'));
   try {
     const filename = new URL(url).pathname.split('/').pop() || 'pack.tgz';
@@ -355,6 +363,7 @@ export async function installPackFromUrl(url: string, targetPacksDir?: string, o
 }
 
 export async function installPackFromGitHub(slug: string, targetPacksDir?: string, options: InstallOptions = {}): Promise<InstallResult> {
+  validateExpectedChecksum(options);
   const [ownerRepo, tag] = slug.split('@');
   const [owner, repo] = ownerRepo.split('/');
   if (!owner || !repo) {

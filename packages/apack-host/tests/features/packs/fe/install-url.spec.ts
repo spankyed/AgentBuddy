@@ -27,9 +27,16 @@ describe('packInstallRequest', () => {
 
 describe('installFromProtocol', () => {
   it('asks the Packs system to install what the link names', () => {
-    installFromProtocol({ pack: 'my-pack', source: 'github' });
+    installFromProtocol({ pack: 'fixture/pack@v1.0.0', sha256: 'A'.repeat(64) });
 
-    expect(sent).toHaveBeenCalledWith({ to: 'host/packs', from: 'host', call: expect.any(String), event: { type: 'INSTALL_PACK', packSlug: 'my-pack', source: 'github' } });
+    expect(sent).toHaveBeenCalledWith({ to: 'host/packs', from: 'host', call: expect.any(String), event: { type: 'INSTALL_PACK', packSlug: 'fixture/pack@v1.0.0', source: undefined, sha256: 'a'.repeat(64) } });
+  });
+
+  it.each(['', 'invalid', 'a'.repeat(63)])('refuses an invalid checksum rather than installing without its pin: %s', sha256 => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    installFromProtocol({ pack: 'fixture/pack@v1.0.0', sha256 });
+    expect(sent).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
   });
 
   it('asks for nothing when the link names no pack', () => {

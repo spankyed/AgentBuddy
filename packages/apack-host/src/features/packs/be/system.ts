@@ -286,6 +286,7 @@ export function createPacksSystem(registry: PackRegistry) {
         let replacedId: string | undefined;
 
         runInstall(packSlug, ev.source, undefined, {
+          sha256: ev.sha256,
           hostVersion: getAppVersion(),
           packFormat: PACK_SNAPSHOT_FORMAT,
           // Installing over a pack that is already running is a reinstall, or the same pack from another

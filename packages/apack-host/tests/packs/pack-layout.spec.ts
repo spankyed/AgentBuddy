@@ -335,6 +335,13 @@ describe('installPackFromGitHub', () => {
     vi.unstubAllGlobals();
   });
 
+  it.each(['', 'invalid', 'a'.repeat(63)])('refuses a malformed explicit pin before any GitHub request: %s', async sha256 => {
+    const request = vi.fn();
+    vi.stubGlobal('fetch', request);
+    await expect(installPackFromGitHub('acme/pack@v1.2.3', path.join(tmp, 'packs'), { sha256 })).rejects.toThrow(/64-character SHA-256/);
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it('installs a release whose published checksum matches the archive', async () => {
     await mockRelease();
 
