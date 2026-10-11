@@ -37,6 +37,23 @@ afterEach(() => {
 });
 
 describe('two questions spawning at once', () => {
+  it('refuses reuse flags when another caller already holds the spawn lock', async () => {
+    const lock = holdExclusiveLock({ file: path.join(dataDir, 'spawn.lock'), what: 'other spawn', refuse: () => new Error('held') });
+    const waitFor = vi.fn();
+    try {
+      await expect(spawnOrAttach('/pack', dataDir, [], { spawn: spawner, waitFor, reuse: false })).rejects.toThrow('require a new session');
+      expect(waitFor).not.toHaveBeenCalled();
+      expect(spawns).toBe(0);
+    } finally { lock.release(); }
+  });
+
+  it('refuses reuse flags after a session appeared before acquiring the lock', async () => {
+    publishSession({ host: { kind: 'source', root: process.cwd() }, env: 'development', debugPort: 44444, dataDir, supervisorPid: process.pid, startedBy: 'drive' });
+    await expect(spawnOrAttach('/pack', dataDir, [], { spawn: spawner, reuse: false })).rejects.toThrow('require a new session');
+    expect(spawns).toBe(0);
+    expect(readSession(dataDir)).toBeDefined();
+  });
+
   it('starts one app, and the loser attaches to it', async () => {
     // The winner holds the lock and has not published yet — the state in which a loser without the lock
     // would spawn a second app. What the loser does *instead* is the claim, so the waiter is injected

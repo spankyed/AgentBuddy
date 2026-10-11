@@ -240,7 +240,12 @@ describe('the flags', () => {
     expect(() => parseProfileFlags(['--with-secrets'])).toThrow(/needs a profile/);
   });
 
+  it.each(['--fresh', '--rm', '--with-secrets'])('rejects an inline value for %s', flag => {
+    expect(() => parseProfileFlags(['--fresh', `${flag}=false`])).toThrow('does not take a value');
+  });
+
   it('needs a name for --profile', () => {
+    expect(() => parseProfileFlags(['--profile', '--fresh'])).toThrow(/needs a name/);
     expect(() => parseProfileFlags(['--profile'])).toThrow(/needs a name/);
   });
 

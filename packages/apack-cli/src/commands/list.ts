@@ -5,7 +5,7 @@ import { parseStorageProfile, targetDataContext, profileLabel } from '../utils';
 export async function list(args: string[]) {
   const { env, profile, args: rest } = parseStorageProfile(args);
   if (rest.length) throw new Error('Usage: apack pack list [--profile <name>]');
-  const { packsDir } = targetDataContext(env, args);
+  const { packsDir } = targetDataContext(env, profile);
   const label = profileLabel(env, profile);
 
   if (!fs.existsSync(packsDir)) {

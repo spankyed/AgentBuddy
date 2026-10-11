@@ -57,7 +57,7 @@ export function installedVersion(appPath: string): string | null {
 }
 
 /** Quit this bundle gracefully, including instances using nondefault profiles. Never kill it. */
-export async function quitApp(product: string, _channel: PublishedAppChannel, log: (message: string) => void,
+export async function quitApp(product: string, log: (message: string) => void,
   appPath = path.join('/Applications', `${product}.app`)): Promise<void> {
   const running = async () => {
     const { stdout } = await execFileAsync('ps', ['-axo', 'pid=,command='], { timeout: 5_000 });
@@ -153,7 +153,7 @@ export async function manageInstalledApp(options: AppCommandOptions, deps: AppCo
     if (action === 'upgrade' && !exists) throw new Error(`${product} is not installed. Run apack install first.`);
     if (action === 'uninstall') {
       if (!exists) { log(`${product} is not installed.`); return; }
-      await quit(product, channel, log, appPath);
+      await quit(product, log, appPath);
       fs.rmSync(appPath, { recursive: true });
       log(`Uninstalled ${product}. Your data and settings were kept.`);
       return;
@@ -180,7 +180,7 @@ export async function manageInstalledApp(options: AppCommandOptions, deps: AppCo
     staged = path.join(applications, stagingDirName(`${product}.app`, 'installing'));
     await run('ditto', [incoming, staged]);
     validateAppBundle(staged, channel, release.version);
-    if (exists) await quit(product, channel, log, appPath);
+    if (exists) await quit(product, log, appPath);
     // Recheck at the last moment: an app installed outside this CLI also needs explicit replacement.
     if (action === 'install' && !options.replace && bundleExists(appPath)) {
       throw new Error(`${appPath} appeared during installation. Run again with --replace.`);

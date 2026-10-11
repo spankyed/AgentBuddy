@@ -63,7 +63,7 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 | Prompt | `apack pack add prompt <name>` | `src/content/prompts/<name>.ts` |
 | Flow | `apack pack add flow <name>` | `src/content/flows/<name>.ts`. Needs a dependency that provides flow steps (e.g. `default-setup`) |
 | Service | `apack pack add service <name> [--feature <feature>]` | `src/extensions/services/<name>.ts` in `extensions.services`, or `src/features/<feature>/be/services/<name>.ts` in that feature's `services`. The key is the camelCased name, the value `path#<camelName>Service` |
-| Migration | `apack pack add migration [version] [--version <ver>]` | `src/migrations/<version>.ts` exporting a `PackMigration`, added to `src/migrations/index.ts`; sets `migrations` if unset. Version defaults to the manifest's |
+| Migration | `apack pack add migration [version] [--version <ver>]` | `src/migrations/<version>.ts` exporting a `DeclaredMigration`, declared under `migrations.pack` (or `migrations.app` with `--app`). Version defaults to the manifest's |
 
 `add feature`, `add service`, `add step`, `add artifact` and `add block` each declare what they add in `apack.json` and then run `generate-entries`, because the manifest entry is the whole declaration and codegen is what carries it into the pack's entries — there is no barrel to edit. `add migration` declares its own entry too. `add action`, `add prompt` and `add flow` only write files, their content being found by the directory `content.sources` already names. In a pack whose dependencies aren't installed yet, `generate-entries` can't read a system's events through `@apackdev/sdk`: the files and `apack.json` are still written, and `npm install` regenerates the entries (the pack's `prepare` script).
 
@@ -86,13 +86,16 @@ Read `apack.json` and generate all files in `src/__generated__/`. Uses input has
 
 Resolve every dependency and cache its snapshot, build code and backend runtime in `.apack/deps/<id>/`. Resolution order:
 
-1. `file:` path: read directly, never cached, no fallback
-2. The workspace: in each directory above the pack, nearest first, `packages/<id>` then `<id>`. A pack anywhere inside an apack checkout builds against that checkout's packages
-3. The app this pack is built against (`APACK_HOST=beta`, `APACK_HOST`, or the apack checkout behind the pack)
-4. Installed apack apps' built-in packs (production, beta, development, test data dirs)
-5. GitHub releases, for `github:owner/repo` values (the `<id>-<version>.tgz` asset and its `.sha256`)
+1. Explicit `file:` dependencies: read directly, with no fallback
+2. A selected host's own dependency artifacts, when `APACK_HOST` or the CLI's resolved host handoff is present
+3. The workspace: nearest ancestor first, `packages/<id>` then `<id>`
+4. The linked checkout when no host was explicitly selected
+5. Installed app packs, then cached artifacts or GitHub releases as applicable
 
-Sources 2–5 must satisfy the declared range, and every source must carry a snapshot in the format this CLI reads; a build in another format is passed over, and reported if nothing else resolves. `apack pack build` resolves the same way but uses the `.apack/deps` cache, while it satisfies the range, before going to GitHub. See [Manifest Reference — Dependencies](manifest.md#dependencies) for the value formats.
+Every source must satisfy the declared range and snapshot format. A selected host's unbuilt or
+incompatible dependency fails rather than being replaced by another workspace or app. Explicit
+`file:` dependencies remain authoritative. `apack pack build` uses the same resolution rules;
+see [Manifest Reference — Dependencies](manifest.md#dependencies).
 
 ### Building
 
@@ -370,6 +373,10 @@ two cases have different answers:
 
 `apack profiles` lists every data dir with a live app, who started it, and the pid that ends it — which is
 the answer when a terminal has been scrolled away and you want to know what is still up.
+
+Live questions require `--spawn` for `--fresh`, `--rm`, or `--with-secrets`. Cleanup and secret-copy
+flags require a new session and are refused when an existing session would be reused, including
+when another caller wins the spawn race. `--with-secrets` refuses an existing profile.
 
 ### Validation
 

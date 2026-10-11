@@ -11,7 +11,7 @@ export async function uninstall(args: string[]) {
     throw new Error('Usage: apack pack uninstall <pack-id> [--profile <name>]');
   }
 
-  const { packsDir } = targetDataContext(env, args);
+  const { packsDir } = targetDataContext(env, profile);
   const manifestPath = path.join(packsDir, packId, 'apack.json');
   let name = packId;
   if (fs.existsSync(manifestPath)) {

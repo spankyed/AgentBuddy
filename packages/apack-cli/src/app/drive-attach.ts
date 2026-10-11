@@ -142,11 +142,13 @@ const HELD = new Error('another spawn holds this data dir');
 export async function spawnOrAttach(
   from: string, dataDir: string, profileArgs: readonly string[],
   // Seams, because which of the two branches a loser took is the claim and nothing else observes it
-  { spawn, waitFor = waitForSession, scope = 'app', expectedRoot }: {
+  { spawn, waitFor = waitForSession, scope = 'app', expectedRoot, reuse = true }: {
     spawn?: (from: string, dataDir: string, profileArgs: readonly string[]) => Promise<AttachableApp>;
     waitFor?: (dataDir: string) => Promise<DevSession>;
     scope?: 'app' | 'pack';
     expectedRoot?: string;
+    /** Cleanup/copy flags require a new session, including when another caller wins the spawn race. */
+    reuse?: boolean;
   } = {},
 ): Promise<{ app: AttachableApp; state: 'spawned' | 'attached' }> {
   let lock: ExclusiveLock;
@@ -154,6 +156,7 @@ export async function spawnOrAttach(
     lock = holdExclusiveLock({ file: spawnLockFile(dataDir), what: 'development session spawn', refuse: () => HELD });
   } catch (error) {
     if (error !== HELD) throw error;
+    if (!reuse) throw new Error('--rm and --with-secrets require a new session; another caller is already starting one here.');
     // Another question is already starting an app here. What this one wants is an app, not a spawn
     const session = await waitFor(dataDir);
     verifySessionHost(session, expectedRoot);
@@ -161,7 +164,10 @@ export async function spawnOrAttach(
   }
   try {
     const live = attachableApp(dataDir, expectedRoot);
-    if (live) return { app: live, state: 'attached' };
+    if (live) {
+      if (!reuse) throw new Error('--rm and --with-secrets require a new session; this app is already running. Attach without those flags.');
+      return { app: live, state: 'attached' };
+    }
     if (dataDirInUse(dataDir)) throw new Error('An app occupies this profile without a verifiable development session. Close it before spawning.');
     const app = spawn ? await spawn(from, dataDir, profileArgs) : await spawnDevApp(from, dataDir, profileArgs, scope);
     verifySessionHost(app.session, expectedRoot);

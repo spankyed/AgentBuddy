@@ -122,6 +122,10 @@ describe('parseHostFlags', () => {
  * `checkout` is injected: the `makeCheckout` fixture is a launchable tree, not one the real resolver can
  * find, and the two seams are tested on their own sides.
  */
+it.each(['--release', '--prebuilt'])('rejects an inline value for %s', flag => {
+  expect(() => parseHostFlags([`${flag}=false`])).toThrow('does not take a value');
+});
+
 describe('deriveHost', () => {
   const derive = (overrides: Partial<Parameters<typeof deriveHost>[0]> = {}) =>
     deriveHost({ policy: 'development', flags: { args: [] }, hostVersion: '>=0.3.0', from: tmp, dirs, env: {}, betaApp: beta, checkout: finds(undefined), ...overrides });

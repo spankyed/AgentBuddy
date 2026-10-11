@@ -55,10 +55,12 @@ it('fails when a live API record has an unreachable listener', async () => {
 });
 
 it('pack doctor fails for missing source files and accepts warnings alone', async () => {
-  const manifest = { id: 'demo', hostVersion: '*', features: [] };
+  const manifest = { id: 'demo', name: 'Demo', version: '0.4.0', features: {} };
   fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify(manifest));
   process.chdir(root);
   await packDoctor([]);
+  fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify({ ...manifest, name: undefined }));
+  await expect(packDoctor([])).rejects.toThrow('health check failed');
   fs.writeFileSync(path.join(root, 'apack.json'), JSON.stringify({ ...manifest, migrations: { pack: { '0.4.0': 'src/missing.ts' } } }));
   await expect(packDoctor([])).rejects.toThrow('health check failed');
 });

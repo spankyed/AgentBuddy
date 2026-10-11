@@ -1,6 +1,6 @@
 # CLI selectors: consistent meaning across commands
 
-Status: implementation complete and verified; ready for review.
+Status: implementation and cleanup verified; final review complete; ready for commit.
 
 ## Purpose
 
@@ -262,3 +262,45 @@ the verified lifecycle fixes and adds no compatibility layer, data migration, or
 - Superseded selectors are rejected. Current help, scaffolds, scripts, documentation, and SDK API reports are migrated.
 - A disposable source app launched from outside the checkout with invalid inherited host selectors, attached through the same supervisor, and stopped with its profile removed.
 - Final `npm run chain -- --cores 1` passed all 30 steps (29 executed, one cached), including integration, packaged authoring, and app smoke tests. Both working-tree and staged whitespace checks passed.
+
+
+## Final branch review — 2026-10-11
+
+Reviewed the six commits in `master..b2b50fa10` and the cleanup working tree. No GitHub PR exists
+for this branch; this review covers the local branch diff. No remaining blocking findings were found.
+
+Cleanup removes duplicated storage parsing, redundant host-selection state and types, unused quit
+arguments, and obsolete implementation-history comments. Drive help and scaffolds now interpolate
+explicit app/pack command names rather than rewriting another command's prose. Test-host resolution
+lives in a small module that can be checked without initializing Playwright fixtures.
+
+Findings fixed during review:
+
+- Fixture host overrides could launch a different app from the CLI-selected dependency host. Conflicts
+  now fail; canonical paths and symlink aliases to the same artifact agree.
+- Packaged development could reuse an unidentified app occupying its profile. Reuse now requires a
+  verified source session; packaged hosts require an unused profile.
+- Session readers accepted process-group PIDs and invalid debug ports. Positive integer PIDs and
+  valid TCP ports are required before liveness checks.
+- A failed secret copy could bypass temporary-profile cleanup. Cleanup ownership is established first;
+  secret copying refuses existing profiles instead of silently ignoring the request.
+- Live questions ignored unused arguments or cleanup/copy flags during attachment. These now fail
+  clearly, including the losing side of a concurrent spawn. Boolean flags reject inline values.
+- Pack uninstall help invoked the error path. It now uses command-tree help without loading the handler.
+- Pack doctor duplicated incomplete required-field checks and rejected optional hostVersion omission.
+  It now uses the canonical manifest validator. Documentation matches dependency precedence and
+  profile/session ownership.
+
+Verification:
+
+- Full `npm run chain -- --cores 1` passed: 29 steps executed, one cached, including integration,
+  external-pack app tests, packaged authoring and app smoke checks.
+- After removing the final stale comment, the same chain passed again: eight steps executed,
+  22 reused their verified inputs.
+- Actual repository/pack help and refusal output were checked through the CLI entry points.
+- A real source app spawned from outside the checkout with invalid inherited host selectors,
+  attached through the same supervisor, stopped, and removed its disposable profile. Process exit
+  and absence of both regular and temporary profile paths were confirmed.
+- App install/upgrade/uninstall fixtures exercise temporary macOS bundles with injected release data;
+  packaged checks exercise the built app. The review ran on macOS Apple Silicon.
+- `git diff --check` passed.

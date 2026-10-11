@@ -283,10 +283,6 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   const env = developmentHostEnv(app, mode.kind !== 'shared' && !sharedDevelopment);
   setHostHandoff(app, process.env);
   const profile = sharedDevelopment ? undefined : profileFor(mode, cliDirs());
-  if (profile?.created && withSecrets) {
-    const { count, from } = copySecretsInto(profile, env);
-    console.log(`Copied ${count} secret${count === 1 ? '' : 's'} from ${from}`);
-  }
   const place: AppPlace = { env, ...(profile ? { userDataDir: profile.dir } : {}) };
   const { userDataDir, apiPortFile } = resolveAppContext(place);
 
@@ -375,6 +371,11 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
     process.on(signal, () => void hold.release().then(() => process.exit(0)));
   }
 
+  if (profile && withSecrets) {
+    const { count, from } = copySecretsInto(profile, env);
+    console.log(`Copied ${count} secret${count === 1 ? '' : 's'} from ${from}`);
+  }
+
   if (profile) {
     console.log(`Profile ${profile.name}${profile.ephemeral ? ' (removed on exit)' : ''}`);
     console.log(`  ${profile.dir}`);
@@ -403,7 +404,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
    * developer now has.
    */
   function verifyRunningSession(): void {
-    if (app.kind !== 'source') return;
+    if (app.kind !== 'source') throw new Error('A packaged host cannot verify the app already using this profile. Close it or choose another profile.');
     const session = readSession(userDataDir);
     if (!session) throw new Error('The running app has no development session. Close it and restart its development launcher.');
     verifySessionHost(session, app.root);

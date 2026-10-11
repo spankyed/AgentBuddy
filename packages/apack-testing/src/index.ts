@@ -8,6 +8,7 @@ import { createRequire } from 'module';
 import { resolveAppContext } from '@apackdev/sdk/env';
 import { resolveName } from '@apackdev/sdk/ids';
 import { installPackFromLocal, PACK_LOAD_MESSAGES, staleBuildOutput } from '@apackdev/host/packs';
+import { resolveTestHost, type AppLaunch, type TestHostOptions } from './test-host.ts';
 import { appVersion } from './app-version.ts';
 import { appLaunchEnv, pinsViewport } from './launch-env.ts';
 import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
@@ -32,72 +33,8 @@ export interface AppHelper {
   waitForPlugin: (pluginId: string, timeout?: number) => Promise<void>;
 }
 
-export interface CreateTestOptions {
-  /** A built apack checkout to launch from source */
-  appRoot?: string;
-  /** A packaged apack executable (e.g. apack Beta.app/Contents/MacOS/apack Beta) */
-  appExecutable?: string;
+export interface CreateTestOptions extends TestHostOptions {
   screenshotDir?: string;
-}
-
-
-
-/** How the fixture launches apack: from a checkout's sources, or a packaged build. */
-type AppLaunch = { kind: 'source'; root: string } | { kind: 'packaged'; executable: string };
-
-function isValidAppRoot(dir: string): boolean {
-  return fs.existsSync(path.join(dir, 'packages', 'entry-point.mjs'));
-}
-
-function validateAppRoot(dir: string): void {
-  const missing: string[] = [];
-  if (!isValidAppRoot(dir)) missing.push('packages/entry-point.mjs');
-  if (!fs.existsSync(path.join(dir, 'node_modules', 'electron'))) missing.push('node_modules/electron (run npm install)');
-  if (!fs.existsSync(path.join(dir, 'packages', 'main', 'dist'))) missing.push('packages/main/dist (run npm run build:default-setup && npm run build:runtime)');
-  if (!fs.existsSync(path.join(dir, 'packages', 'renderer', 'dist'))) missing.push('packages/renderer/dist (run npm run build:default-setup && npm run build:runtime)');
-  if (missing.length > 0) {
-    throw new Error(
-      `apack checkout ${dir} is missing required files:\n` +
-      missing.map(m => `  - ${m}`).join('\n') +
-      '\n\nThe apack monorepo must be cloned, installed, and built before E2E tests can run.',
-    );
-  }
-}
-
-function sourceApp(dir: string): AppLaunch {
-  const root = path.resolve(dir);
-  validateAppRoot(root);
-  return { kind: 'source', root };
-}
-
-function packagedApp(executable: string): AppLaunch {
-  if (!fs.existsSync(executable)) throw new Error(`apack executable not found: ${executable}`);
-  return { kind: 'packaged', executable };
-}
-
-function resolveApp(options: CreateTestOptions): AppLaunch {
-  if (options.appExecutable && options.appRoot) throw new Error('Choose one test host identity.');
-  if (process.env.APACK_HOST_ROOT && process.env.APACK_HOST_EXECUTABLE) throw new Error('Choose one resolved host identity.');
-  if (options.appExecutable) return packagedApp(options.appExecutable);
-  if (options.appRoot) return sourceApp(options.appRoot);
-  // Set by `apack pack test` for a downloaded app build
-  if (process.env.APACK_HOST_EXECUTABLE) return packagedApp(process.env.APACK_HOST_EXECUTABLE);
-  if (process.env.APACK_HOST_ROOT) return sourceApp(process.env.APACK_HOST_ROOT);
-
-  // Auto-detect: walk up from this package looking for packages/entry-point.mjs (inside the monorepo)
-  let dir = path.resolve(import.meta.dirname, '..', '..');
-  for (let i = 0; i < 10; i++) {
-    if (isValidAppRoot(dir)) return sourceApp(dir);
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-
-  throw new Error(
-    'Could not find an apack app to test against. Run the tests with `apack pack test`, which ' +
-    'resolves one (--host <path|beta>, or a release matching hostVersion), or set\n' +
-    'APACK_HOST_ROOT to a built apack checkout.',
-  );
 }
 
 function resolveScreenshotDir(override?: string): string {
@@ -472,7 +409,7 @@ export function appHelper(page: Page, screenshotDir: string): AppHelper {
 }
 
 export function createTest(options: CreateTestOptions = {}) {
-  const appLaunch = resolveApp(options);
+  const appLaunch = resolveTestHost(options);
   const screenshotDir = resolveScreenshotDir(options.screenshotDir);
 
   const test = base.extend<

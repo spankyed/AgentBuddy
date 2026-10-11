@@ -34,6 +34,14 @@ describe('explicit app and pack command routing', () => {
     expect(scaffold).not.toHaveBeenCalled();
   });
 
+  it('prints pack uninstall help without invoking the handler', async () => {
+    const output = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const handler = vi.spyOn(COMMANDS.pack.children.uninstall, 'load');
+    await runCommand(['pack', 'uninstall', '--help']);
+    expect(handler).not.toHaveBeenCalled();
+    expect(output.mock.calls.flat().join('\n')).toContain('Usage: apack pack uninstall');
+  });
+
   it('rejects unknown namespace operations rather than archiving', async () => {
     await expect(runCommand(['pack', 'typo'])).rejects.toThrow('apack pack typo');
     await expect(runCommand(['cache', 'typo'])).rejects.toThrow('apack cache typo');

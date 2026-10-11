@@ -1,26 +1,7 @@
 /**
- * Profiles: a data dir you can throw away.
- *
- * `npm run dev:open --` launches into the one shared `development` data dir, so every run inherits what the last
- * one left — applied content, half-migrated rows, settings from a pack you have since deleted. A profile
- * is that dir, somewhere else, created on demand and disposable.
- *
- * **It is a data dir and nothing more.** `appName` stays `APP_NAMES[env]`, so the environment, the
- * Electron app identity and the URL scheme are untouched, and `--host beta` works: a packaged build stamps
- * its own channel and ignores `APACK_ENV`, where `APACK_USER_DATA_DIR` reaches it. Nothing here is a new
- * concept the app has to learn — an empty directory is already a valid data dir, which is what the E2E
- * fixture has relied on all along.
- *
- * **The word is `profile` and not `instance` because an instance of an app is a running process**, which
- * is what Electron's own single-instance lock is about. A named, disposable user-data-dir that leaves the
- * application's identity alone is a browser profile, and that is the analogy anyone reaches for when
- * explaining one. The three terms this keeps apart: a **data dir** is the generic thing, one app per dir;
- * an **environment** is one of four fixed data dirs by name (`APP_NAMES`), which nobody creates; a
- * **profile** is an extra one, created by name, carrying no environment.
- *
- * A profile is not bound to the kind of app that opens it: `npm run dev:open -- --profile x` against a checkout and
- * against `--host beta` mean the same directory, because one layout puts both their stores in the same
- * places inside it.
+ * Built-in profiles use canonical environment storage. Custom profiles live under the CLI's data root.
+ * A profile selects storage independently of the executable host; only a profile this run creates may
+ * be removed automatically. Temporary profiles live separately so cleanup cannot delete a named one.
  */
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -449,7 +430,7 @@ export type ProfileMode =
 export const PROFILE_USAGE = [
   '  --profile <name>    a data dir of its own, created the first time you name it',
   '  --fresh             a new profile, whose name is printed so you can come back to it',
-  '  --fresh --rm        the same, removed when this command exits',
+  '  --fresh --rm        the same, removed when its app session ends',
   '  --profile <name> --rm  the same for a name you choose, and only if this run creates it',
   '  --with-secrets      copy the secrets this environment already holds into the new profile, so a',
   '                      throwaway run can use them without you entering anything again',
@@ -469,9 +450,12 @@ export function parseProfileFlags(argv: string[]): { mode: ProfileMode; withSecr
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     const [name, inline] = arg.startsWith('--') ? arg.split(/=(.*)/s, 2) : [arg];
+    if (inline !== undefined && ['--fresh', '--rm', '--with-secrets'].includes(name)) {
+      throw new Error(`${name} does not take a value.`);
+    }
     if (name === '--profile') {
       const value = inline ?? argv[++i];
-      if (!value) throw new Error('--profile needs a name');
+      if (!value || value.startsWith('-')) throw new Error('--profile needs a name');
       if (named !== undefined) throw new Error('Specify --profile once.');
       named = value;
     } else if (name === '--fresh') {

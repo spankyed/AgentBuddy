@@ -12,8 +12,8 @@ export type PackHost =
   | { kind: 'source'; root: string }
   | { kind: 'packaged'; executable: string; version: string };
 
-/** A kind of app, as a place that names one says it: a checkout at a path, or a Beta build. */
-export type HostSelection = { path: string } | { beta: true };
+/** A human host request, distinct from a resolved executable identity. */
+type HostSelection = { path: string } | { beta: true };
 
 export interface CliDirs {
   cache: string;
@@ -153,21 +153,14 @@ export async function configuredHostPackagesDir(options: HostPackagesOptions = {
   }
 
   if ('path' in named.choice) {
-    // No `sourceAppProblems` here, and that is the point of the branch being its own: a build reads the
-    // checkout's `packages/`, where launching it needs main/dist, renderer/dist and electron. Validating
-    // would fail `apack pack build` on a checkout nobody has run `npm run build:default-setup && npm run build:runtime` in.
+    // Dependency builds only need packages/, not the Electron and runtime outputs a launch requires.
     const root = path.resolve(expandHome(named.choice.path));
     return root.endsWith('.app')
       ? { dir: path.join(root, 'Contents', 'Resources', 'app', 'packages'), label: `apack bundle ${root}` }
       : { dir: path.join(root, 'packages'), label: `apack checkout ${root}` };
   }
 
-  // One rule, shared with `packagedTarget`: a downloaded build the range accepts wins, and the network is
-  // for when none does. This split on `named.stored` until 2026-10-02 — a beta asked for on this run was
-  // fetched, a remembered one answered from the cache — on the reading that naming beta means "the newest".
-  // It doesn't: neither `build` nor `test` is an upgrade command, and a cached build that satisfies
-  // `hostVersion` is a correct answer to "run against Beta". What the split cost was a GitHub round trip in
-  // every explicit run, offline included. A newer beta is now an explicit act: remove the cached one.
+  // Build/test are not upgrade commands: reuse a compatible cached beta before consulting the network.
   return asPackages(cachedBetaApp(dirs, hostVersion) ?? await betaApp(hostVersion, dirs.cache));
 }
 
@@ -200,32 +193,28 @@ export interface HostFlags {
 /** Parse executable selection separately from release channels and pack build options. */
 export function parseHostFlags(argv: string[]): HostFlags {
   const flags: HostFlags = { args: [] };
-  let selected = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     const [name, inline] = arg.split(/=(.*)/s, 2);
     if (name === '--host') {
-      if (selected) throw new Error('Specify --host once.');
+      if (flags.host !== undefined) throw new Error('Specify --host once.');
       const value = inline ?? argv[++i];
       if (!value || value.startsWith('-')) throw new Error('--host needs a path or beta');
       flags.host = value === 'beta' ? value : path.resolve(expandHome(value));
-      selected = true;
     } else if (name === '--app' || name === '--channel' || name === '--build') {
       throw new Error(`${name} is not a pack host selector. Use --host <path|beta>.`);
-    } else if (name === '--release') flags.release = true;
-    else if (name === '--prebuilt') flags.prebuilt = true;
-    else flags.args.push(arg);
+    } else if (name === '--release' || name === '--prebuilt') {
+      if (inline !== undefined) throw new Error(`${name} does not take a value.`);
+      if (name === '--release') flags.release = true;
+      else flags.prebuilt = true;
+    } else flags.args.push(arg);
   }
   return flags;
 }
 
-export interface ResolveHostOptions extends HostLookupOptions {
+export interface HostResolutionOptions extends HostLookupOptions {
   flags: HostFlags;
   hostVersion: string;
-}
-
-/** What a derivation needs beyond a lookup: where the pack is, so a checkout can be found behind it */
-export interface HostResolutionOptions extends ResolveHostOptions {
   /** The pack being worked on, or the directory a command was run from when there is no pack */
   from?: string;
   policy: 'development' | 'test';
@@ -234,21 +223,14 @@ export interface HostResolutionOptions extends ResolveHostOptions {
 }
 
 /** The Beta build the pack's `hostVersion` asks for, downloaded if it isn't cached. */
-async function packagedTarget(options: ResolveHostOptions): Promise<PackHost> {
+async function packagedTarget(options: HostResolutionOptions): Promise<PackHost> {
   const { hostVersion, dirs = cliDirs() } = options;
-  // Cached first, which is what the sentence above has always said and what this did not do: it listed
-  // releases every run and skipped only the download. See `configuredHostPackagesDir` for the one rule.
   const app = cachedBetaApp(dirs, hostVersion) ?? await betaAppFrom(options)(hostVersion, dirs.cache);
   return { kind: 'packaged', executable: app.executable, version: packagedAppVersion(app.executable) ?? app.version };
 }
 
 
-/**
- * What a command is running against, as one sentence fragment.
- *
- * One rendering, because three commands describing the same app differently is how a reader stops trusting
- * the line — and the line is the whole point of `announceHost`.
- */
+/** One description of the resolved host for command output. */
 export function hostLabel(app: PackHost): string {
   return app.kind === 'source' ? `apack from ${app.root}` : `apack ${packagedHostChannel(app.executable)} ${app.version}`;
 }
@@ -257,18 +239,18 @@ function announceHost(app: PackHost, from: string): void {
   console.error(`Using ${hostLabel(app)} (${from})`);
 }
 
-export async function deriveHost(options: HostResolutionOptions): Promise<NamedHost & { target: PackHost }> {
+export async function deriveHost(options: HostResolutionOptions): Promise<{ target: PackHost; from: string }> {
   const { flags, env = process.env, from, checkout = checkoutFor } = options;
   const named = namedHost(flags, env);
   if (named) {
     const target = 'path' in named.choice ? pathTarget(named.choice.path, named.from) : await packagedTarget(options);
-    return { ...named, target };
+    return { from: named.from, target };
   }
   const found = options.policy === 'test' ? undefined : checkout(from ?? process.cwd());
   if (found !== undefined) {
-    return { choice: { path: found }, from: 'the checkout this pack is built against', target: sourceTarget(found, 'The apack checkout behind this pack') };
+    return { from: 'the checkout this pack is built against', target: sourceTarget(found, 'The apack checkout behind this pack') };
   }
-  return { choice: { beta: true }, from: `hostVersion ${options.hostVersion}`, target: await packagedTarget(options) };
+  return { from: `hostVersion ${options.hostVersion}`, target: await packagedTarget(options) };
 }
 
 /** The app a command **launches**, derived and validated, and stated so the derivation is never silent. */

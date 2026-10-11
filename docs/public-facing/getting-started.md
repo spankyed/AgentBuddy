@@ -77,7 +77,7 @@ apack pack dev
 
 This launches apack with your pack installed and keeps it in step with your edits: frontend changes hot-reload through Vite HMR, `apack.json` changes regenerate `src/__generated__/`, and backend `.ts` changes rebuild, reinstall and reload the pack's backend in the running app.
 
-It works out which app to use rather than asking: the apack checkout your pack is built against if there is one, else a cached/downloaded Beta build your `hostVersion` accepts. `--host <path>` and `--host beta` name one outright, and it always says which it chose and why. If an app is already running on that data dir, `dev` uses it rather than starting a second.
+It works out which app to use rather than asking: the apack checkout your pack is built against if there is one, else a cached/downloaded Beta build your `hostVersion` accepts. `--host <path>` and `--host beta` name one outright, and it always says which it chose and why. A source app already using that data dir is reused only after its session verifies the selected checkout. Packaged hosts require an unused profile because their running app identity cannot be verified.
 
 The build pipeline (`apack pack build`):
 

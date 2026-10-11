@@ -72,6 +72,16 @@ describe('reading a session', () => {
     expect(readSession(dataDir)).toBeUndefined();
   });
 
+  it.each([0, -1, 1.5])('ignores unsafe supervisor pid %s before any liveness check', supervisorPid => {
+    publishSession(session({ supervisorPid }));
+    expect(readSession(dataDir)).toBeUndefined();
+  });
+
+  it.each([0, -1, 65_536, 1.5])('ignores invalid debug port %s', debugPort => {
+    publishSession(session({ debugPort }));
+    expect(readSession(dataDir)).toBeUndefined();
+  });
+
   it.each([
     ['not JSON at all', 'what?'],
     ['JSON that is not an object', '"a string"'],

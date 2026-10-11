@@ -60,6 +60,17 @@ describe('the driving scripts a pack has', () => {
  * directly — the flag, where the address is, and how to end a session — so they are the ones pinned.
  */
 describe('the help text', () => {
+  it('offers host selection only in pack help', async () => {
+    const output = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await drive(['--help'], 'pack');
+      const help = output.mock.calls.flat().join('\n');
+      expect(help).toContain('Usage: apack pack drive');
+      expect(help).toContain('--host <path|beta>');
+      expect(help).not.toContain('npm run');
+    } finally { output.mockRestore(); }
+  });
+
   /**
    * The claim a caller cannot guess and will otherwise discover by being refused: that a question is asked
    * of an app something else is holding, and what to do when there is none.
@@ -179,6 +190,7 @@ describe('takeOneShotFlags', () => {
     expect(() => takeOneShotFlags(['--eval', 'a', '--query', 'b'])).toThrow(/--query can't be combined with --eval/);
     expect(() => takeOneShotFlags(['--eval', 'a', '--eval', 'b'])).toThrow(/--eval was given twice/);
     expect(() => takeOneShotFlags(['--state=x'])).toThrow(/--state does not take a value/);
+    expect(() => takeOneShotFlags(['--spawn=false'])).toThrow(/--spawn does not take a value/);
     // The message names `return`, because a body without one answers `{"ok":true}` rather than failing
     expect(() => takeOneShotFlags(['--eval'])).toThrow(/`return` is required/);
   });
@@ -253,6 +265,14 @@ describe("a question's one line", () => {
 
 
 describe('explicit live launch', () => {
+  it.each(['--rm', '--with-secrets'])('requires a spawn for %s', async flag => {
+    await expect(drive(['--state', '--profile', 'work', flag])).rejects.toThrow(/require --spawn/);
+  });
+
+  it.each(['--session', '--evalute', 'drive/extra.ts'])('refuses unused live arguments: %s', async arg => {
+    await expect(drive(['--state', arg])).rejects.toThrow(/Unexpected live-question arguments/);
+  });
+
   it('requires --spawn for fresh state instead of silently opening an app', async () => {
     await expect(drive(['--state', '--fresh'])).rejects.toThrow(/requires --spawn/);
   });

@@ -83,7 +83,7 @@ The test infrastructure lives in `@apackdev/testing` (source: `packages/apack-te
 
 When a test worker starts, the fixture runs this sequence:
 
-1. **Resolve the app** — `resolveApp()` (when `createTest()` runs, at import) takes the first of: `createTest({ appExecutable })`, `createTest({ appRoot })`, `APACK_HOST_EXECUTABLE`, `APACK_HOST_ROOT`, then auto-detection, walking up from the `@apackdev/testing` package directory for `packages/entry-point.mjs` (always works inside the monorepo). An executable must exist. A checkout goes through `validateAppRoot()`, which checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist` and `packages/renderer/dist` and throws listing what's missing.
+1. **Resolve the app** — `resolveTestHost()` (when `createTest()` runs, at import) honors the CLI's resolved `APACK_HOST_EXECUTABLE` / `APACK_HOST_ROOT`; explicit fixture options must agree. Standalone fixtures may select `appExecutable` or `appRoot`, then fall back to the checkout enclosing `@apackdev/testing`. Executables must exist; source checkouts must have `packages/entry-point.mjs`, `node_modules/electron`, and main/renderer `dist` outputs.
 
 2. **Pack setup** (only when `PACK_DIR` is set):
    - Read `apack.json` from `PACK_DIR` to get the pack ID and plugin IDs

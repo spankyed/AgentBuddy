@@ -340,9 +340,9 @@ No monorepo checkout, `APACK_HOST_ROOT`, symlinks or PATH changes are needed.
 `apack pack test` (source: `packages/apack-cli/src/commands/test.ts`, `src/app/`) resolves the app, in order:
 
 1. `--host <path>` — a local apack checkout (installed and built)
-2. `--host beta` — the newest apack Beta release (from `spankyed/apack` releases) whose version satisfies the pack's `hostVersion`. The zip is verified against its published `.sha256` and cached per version in the CLI cache dir (`~/Library/Caches/apack-cli/apps/beta/<version>` on macOS). macOS arm64 only.
+2. `--host beta` — a compatible cached/downloaded apack Beta release (from `spankyed/apack` releases) whose version satisfies the pack's `hostVersion`. The zip is verified against its published `.sha256` and cached per version in the CLI cache dir (`~/Library/Caches/apack-cli/apps/beta/<version>` on macOS). macOS arm64 only.
 3. `APACK_HOST=beta` (the env form of `--host beta`, for CI), then `APACK_HOST` — a local checkout
-4. The newest Beta the pack's `hostVersion` accepts, as `--host beta` would
+4. A compatible cached/downloaded Beta, as `--host beta` would
 
 **It reads no machine state and never asks**, which is what makes a test run mean the same thing on a
 fresh machine as on one you have been developing on. It also derives nothing from where the pack sits,
@@ -359,7 +359,7 @@ Every non-Playwright arg is forwarded (`apack pack test -g "renders"`, `apack pa
 
 ## How the fixture finds apack
 
-The fixture launches, in priority order: `createTest({ appExecutable })`, `createTest({ appRoot })`, `APACK_HOST_EXECUTABLE`, `APACK_HOST_ROOT`, then the monorepo enclosing `@apackdev/testing` (auto-detected by walking up to `packages/entry-point.mjs`). A checkout is validated first (`packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, `packages/renderer/dist`) so a stale or unbuilt checkout gets a clear list of what's missing.
+The fixture honors the CLI's resolved `APACK_HOST_EXECUTABLE` or `APACK_HOST_ROOT`. Explicit `createTest({ appExecutable })` / `createTest({ appRoot })` options must identify that same host when a handoff is present. Standalone fixtures can select a host through those options, then fall back to the monorepo enclosing `@apackdev/testing` (auto-detected by walking up to `packages/entry-point.mjs`). A checkout is validated first (`packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, `packages/renderer/dist`) so a stale or unbuilt checkout gets a clear list of what's missing.
 
 ## Fixture lifecycle
 
@@ -433,7 +433,7 @@ Factory for when auto-detection isn't enough:
 import { createTest } from '@apackdev/testing';
 
 const { test, expect } = createTest({
-  appRoot: '/custom/path/to/apack',      // override app root resolution
+  appRoot: '/custom/path/to/apack',      // select a host for a standalone fixture
   screenshotDir: './my-screenshots',            // override screenshot output directory
 });
 ```

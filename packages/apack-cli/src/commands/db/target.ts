@@ -43,20 +43,7 @@ export type DbTarget = Pick<AppContext, 'env' | 'userDataDir' | 'apiPortFile'> &
   schemaFrom?: string;
 };
 
-/**
- * The command's options, its positionals and the data dir it targets. Unknown options throw, with the command's
- * usage.
- */
-/**
- * A profile's data dir, by the name `apack pack dev` and `apack pack clean` print.
- *
- * Looked up through `listProfiles` rather than built from the name, so an ephemeral profile is reachable
- * by the same name those commands show: it lives a level down, under `.ephemeral/`, and a name joined to the
- * profiles root would miss it and report a directory that is right there.
- *
- * A name that matches nothing lists what there is. The alternative — resolving to a path and letting the
- * open fail — reports a directory the user never typed, for a name they did.
- */
+/** Parse command options and resolve one explicit storage target, including temporary profile names. */
 export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(args: string[], options: O, usage: string) {
   let parsed;
   try {
@@ -75,12 +62,7 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
   const named = [profile !== undefined && '--profile', dataDir !== undefined && '--data-dir'].filter(Boolean) as string[];
   if (named.length > 1) throw new Error(`Name one data dir, not ${named.length}: ${named.join(', ')}\n\n${usage}`);
   const env: AppEnv = APP_ENVS.find(env => env === profile) ?? defaultDataEnv();
-  // A named app is that app's data dir, not the one APACK_USER_DATA_DIR points at: the flag says which app, and a
-  // command that changes data must name one. With no flag the variable still applies, which is how the repo's
-  // db:* scripts and tests read a temp data dir.
-  // `--profile` and `--data-dir` carry no environment, and need none: once a data dir is named, `env` reaches
-  // only `resolveAppContext`, whose every path here is joined onto that dir. That is why they are exclusive with
-  // the app flags rather than combining with them — there would be nothing for the combination to mean.
+  // Explicit targets override inherited data paths. Only an unnamed read honors APACK_USER_DATA_DIR.
   const userDataDir = dataDir !== undefined ? path.resolve(dataDir)
     : profile !== undefined ? resolveStoredProfile(cliDirs(), profile)
     : undefined;

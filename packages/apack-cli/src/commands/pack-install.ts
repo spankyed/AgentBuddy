@@ -41,7 +41,7 @@ Options:
     return;
   }
 
-  const { packsDir, userDataDir } = targetDataContext(env, args);
+  const { packsDir, userDataDir } = targetDataContext(env, profile);
   // Recorded by the app when it starts with this data dir
   const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
   const kind = detectSource(source);

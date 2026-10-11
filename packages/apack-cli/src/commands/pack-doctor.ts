@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { packFeatures, MIGRATION_LINES } from '@apackdev/sdk/build';
+import { packFeatures, parseManifest, MIGRATION_LINES } from '@apackdev/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
 
 type Status = 'pass' | 'warn' | 'fail';
@@ -26,8 +26,8 @@ function reportCheck(label: string, fn: () => Status | string): boolean {
   }
 }
 
-export async function doctor(_args: string[]) {
-  if (_args.length) throw new Error('Usage: apack pack doctor');
+export async function doctor(args: string[]) {
+  if (args.length) throw new Error('Usage: apack pack doctor');
   const root = findPackRoot(process.cwd());
   let failures = 0;
   const check = (label: string, fn: () => Status | string) => { if (!reportCheck(label, fn)) failures++; };
@@ -43,11 +43,7 @@ export async function doctor(_args: string[]) {
   if (!manifest) throw new Error('Pack health check failed: invalid manifest.');
   const parsed = manifest;
 
-  check('Manifest has required fields', () => {
-    if (!parsed.id) return 'missing "id"';
-    if (!parsed.hostVersion) return 'missing "hostVersion"';
-    return 'pass';
-  });
+  check('Manifest is valid', () => parseManifest(parsed).errors.join('; ') || 'pass');
 
   check('Generated files exist', () => {
     const genDir = path.join(root, 'src', '__generated__');

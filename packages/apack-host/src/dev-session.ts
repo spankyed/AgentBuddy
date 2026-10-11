@@ -214,7 +214,8 @@ export function readSession(dataDir: string): DevSession | undefined {
   }
   const session = parsed as Partial<DevSession> | null;
   if (session === null || typeof session !== 'object') return undefined;
-  if (typeof session.debugPort !== 'number' || typeof session.supervisorPid !== 'number') return undefined;
+  if (typeof session.debugPort !== 'number' || !Number.isInteger(session.debugPort) || session.debugPort < 1 || session.debugPort > 65_535) return undefined;
+  if (typeof session.supervisorPid !== 'number' || !Number.isSafeInteger(session.supervisorPid) || session.supervisorPid < 1) return undefined;
   if (typeof session.dataDir !== 'string' || !SESSION_STARTERS.includes(session.startedBy as SessionStarter)) return undefined;
   if (recordIsStale(file, session.supervisorPid)) return undefined;
   if (session.env !== 'development' || session.host?.kind !== 'source' || typeof session.host.root !== 'string' || !path.isAbsolute(session.host.root)) {

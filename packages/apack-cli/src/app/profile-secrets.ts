@@ -88,6 +88,7 @@ export interface SecretCopy {
  * credential store doing its job.
  */
 export function copySecretsInto(profile: OpenedProfile, env: AppEnv): SecretCopy {
+  if (!profile.created) throw new Error('--with-secrets copies into a new profile only. Use --fresh or choose a new profile name.');
   const from = sourceSecretsFile(env);
   const source = readFile(from);
   if (!source) throw new Error(`--with-secrets found no keys to copy: ${from} doesn't exist or can't be read.`);
