@@ -33,6 +33,25 @@ A migration that throws is logged (`[migration] FAILED ...`) and stops the rest:
 
 A migration never runs in both runners, because the map it was declared in is the one `packMigrationTargets` answers for. The Packs view's `migrationCount` counts both lines, being what the pack declares rather than what one runner reaches.
 
+**What the app line cannot say, and the edit that makes it matter.** `AppState.version` is one recorded
+version for every pack, so the app line cannot express *this pack is behind on it*. Two consequences, and
+only one of them is a gap:
+
+- **A pack installed or enabled at runtime needs nothing**, which is why activation and reload run
+  `runPackMigrations` alone. A pack arriving now has no data from before now, and its app-line migrations
+  become live at the next boot after AgentBuddy moves, which is exactly when an app-line migration should
+  fire.
+- **A pack disabled across an app upgrade and enabled afterwards never runs its app-line migrations.** The
+  boot that upgraded did not have it registered, and enabling it later reaches only the pack line; on a
+  release build `runAppMigrations` then returns at once, since the recorded version is already the app's.
+  The pack line has no such hole, because `AppState.packVersions[id]` is per pack and survives being
+  disabled.
+
+That second one **cannot happen today**: the only packs on the app line are ones the app ships, and those
+cannot be disabled (`features/packs/be/system.ts` refuses it). It becomes reachable the moment an external
+pack declares `migrations.app`, and the fix is a per-pack app-line record beside `packVersions` — a stored
+field, so a deliberate decision rather than something to add in passing.
+
 Resetting app data runs both again: `services.appData.reset()` (`../services/app-data.ts`) runs the packs' shutdown hooks, empties the stores, then `startPacks()`. The reset emptied `AppState`, so the data counts as new: nothing is pending and the app version is recorded. Importing a backup runs them after reloading the data.
 
 Specs: `packages/abuddy-host/tests/migrations/runner.spec.ts` (both runners, once each, versions recorded; which migrations a release, a beta and a development build run; a failure stops the rest), `tests/migrations/app-state-0.3.15.spec.ts` (the move, and the runners on data from before `AppState` on the release, a beta and a development build, and after a failed move), `tests/migrations/plugin-settings-0.3.15.spec.ts` (the app shell's state out of the settings' `_meta` into `AppState`, and the host's and an external pack's plugin settings, run twice; the packs installed on disk read from a data dir), `tests/services/host-runtime.spec.ts` (a reset's order; no pack migration or apply after a failed app migration) `packages/api/tests/runtime/app-reset.spec.ts` (a reset on the built-in packs) and `packages/api/tests/runtime/upgrade-from-0.3.14.spec.ts` (the host's and the built-in pack's 0.3.15 over a 0.3.14 settings row).

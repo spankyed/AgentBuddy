@@ -260,6 +260,11 @@ export interface PackRegistry extends PackRegistryView {
    * is not this. That order is read from the packs' manifests, so **a registered pack whose origin carries
    * no manifest is in neither answer** — the loader gives every origin one, and a fixture without one is a
    * pack whose migrations nothing runs.
+   *
+   * **The order survives for the `pack` line only**, where each pack is migrated against its own recorded
+   * version, so the packs stay distinguishable. `runAppMigrations` flattens the `app` line into one list
+   * and sorts it by target, because the app's line is one version for every pack — so on that line the
+   * order here buys nothing, and a pack cannot rely on being migrated after one it depends on.
    */
   packMigrationTargets(line: MigrationLine, packIds?: Iterable<string>): Array<{ manifest: PackManifest; migrations?: PackMigration[] }>;
   /**

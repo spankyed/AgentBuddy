@@ -250,9 +250,39 @@ describe('abuddy add migration', () => {
     expect(read('abuddy.json')).toBe(before);
 
     // The same version on the *other* line is a different migration, so it is not a collision — and it
-    // lands on a file that is already there, which is the one thing the two lines share
+    // lands on a file that is already there, which is the one thing the two lines share. So codegen
+    // imports that module twice under two locals, which is the case the typecheck below is here for
     await addMigration(['0.2.0', '--app'], pack);
     expect(readManifest().migrations?.app?.['0.2.0']).toBe('src/migrations/0.2.0.ts#migration');
+
+    await generateEntries([], pack);
+    const entry = read('src/__generated__/pack-entry.ts');
+    expect(entry).toContain("import { migration as __migration_app_0_2_0 } from '../migrations/0.2.0.ts';");
+    expect(entry).toContain("import { migration as __migration_pack_0_2_0 } from '../migrations/0.2.0.ts';");
+    const tsc = await typecheckPack(pack);
+    expect(tsc.code, tsc.output).toBe(0);
+  });
+
+  it('refuses a version that is not one a migration can target, before writing anything', async () => {
+    const before = read('abuddy.json');
+    await expect(addMigration(['banana'], pack)).rejects.toThrow('"banana" is not a version a migration can target');
+    expect(read('abuddy.json'), 'nothing was written').toBe(before);
+    expect(fs.existsSync(path.join(pack, 'src/migrations/banana.ts'))).toBe(false);
+
+    // The manifest's schema holds the same rule and is the backstop, but it only speaks on the next read —
+    // by which time the entry and an empty module are on disk and the command has said it worked
+    await expect(addMigration(['1.0'], pack)).rejects.toThrow('is not a version a migration can target');
+    expect(read('abuddy.json')).toBe(before);
+  });
+
+  it('takes the version from the first argument that is not a flag, so --app alone is not the version', async () => {
+    // `--app` as args[0] was read as the version, and the prerelease normalisation strips from the first
+    // `-`: the manifest gained a key of "" naming a file called `.ts`, and the command reported success
+    await addMigration(['--app'], pack);
+
+    const version = readManifest().version;
+    expect(readManifest().migrations?.app?.[version]).toBe(`src/migrations/${version}.ts#migration`);
+    expect(fs.existsSync(path.join(pack, 'src/migrations/.ts')), 'no file named for the empty version').toBe(false);
   });
 });
 

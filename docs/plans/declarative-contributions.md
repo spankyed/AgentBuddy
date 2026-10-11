@@ -13,9 +13,9 @@ system and plugin entries with their contracts, repositories, settings sections,
 relation kinds, the boot apply and its policy, dependencies and `hostVersion`.
 
 **Imperative**, in the `PackRegistration` object the pack's runtime module exports
-(`abuddy-sdk/src/framework/pack-registration.ts:64-80`): `steps`, `artifacts`, `blocks`, `content.writers`,
-`services`, `repositories`, `migrations`, `ears`, `boot`. These are only knowable by **loading and
-evaluating the pack's module**.
+(`abuddy-sdk/src/framework/pack-registration.ts`): `steps`, `artifacts`, `blocks`, `content.writers`,
+`services`, `repositories`, `ears`, `boot`. These are only knowable by **loading and evaluating the pack's
+module**.
 
 That split is not wrong — a step's implementation has to be code. The question is whether the *fact that a
 pack contributes a step of type X* is declared, when only its implementation needs to be imperative. VS
@@ -37,9 +37,15 @@ For each member of `PackRegistration`, one row: what it is, whether its *existen
 its implementation left as a path (the way `features[].system.entry` already is), and what reads it.
 
 The answer is likely to differ sharply by member. `steps` and `blocks` look declarable — a type name and an
-entry path, which is the shape `abuddy.json` already uses everywhere else. `migrations` is an ordered list
-whose `up()` is pure code. `ears` is already mirrored in the manifest. `boot.onInit` is a function by
-nature.
+entry path, which is the shape `abuddy.json` already uses everywhere else. `ears` is already mirrored in the
+manifest. `boot.onInit` is a function by nature.
+
+**`migrations` is the one already done, and is the worked example of the shape this plan proposes.** The
+manifest names each one under its version line and keyed by the version it targets
+(`migrations.app` / `migrations.pack`), codegen assembles the `PackMigration` the runners take from the key
+and the module, and the module itself declares only `description` and `up`. Two facts that were in code, or
+nowhere, are now readable without running anything — and the derivation is one-way, which is the risk named
+below answered rather than guarded.
 
 **Write the table before designing anything.** The plan's value is mostly in that table: it says how much of
 `lazy-activation.md` is reachable, and the two should be read together.

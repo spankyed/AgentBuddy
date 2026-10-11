@@ -2,7 +2,7 @@ import * as path from 'node:path';
 import { renderTemplate } from '../../templates.ts';
 import { regenerateAfterScaffold } from '../generate-entries';
 import { writeIfNotExists, logCreated, parseFlag, hasFlag } from './write';
-import type { MigrationLine } from '@abuddy/sdk/build';
+import { MIGRATION_TARGET_PATTERN, type MigrationLine } from '@abuddy/sdk/build';
 import { readManifest, writeManifest, addMigration as addMigrationToManifest } from './manifest';
 
 const HELP = `
@@ -33,12 +33,24 @@ export async function addMigration(args: string[], root: string) {
   // The pack's own line is the default, since a pack's data usually moves when the pack does — and because
   // the app's line is a third party putting code on AgentBuddy's versions, which should be asked for
   const line: MigrationLine = hasFlag(args, '--app') ? 'app' : 'pack';
-  const asked = parseFlag(args, '--version') || args[0] || manifest.version || '0.0.0';
+  // The positional is the first argument that is not a flag, so `add migration --app` falls through to the
+  // manifest's version. Reading `args[0]` instead takes `--app` as the version it targets, and the
+  // normalisation below strips from the first `-`: the manifest gains a key of `""` naming a file called
+  // `.ts`, and the only thing that objects is the next command to read the manifest
+  const positional = args.find((arg) => !arg.startsWith('-'));
+  const asked = parseFlag(args, '--version') || positional || manifest.version || '0.0.0';
   // A migration targets a *release*, on either line: the manifest key is three numbers and nothing else, and
   // the app's runner reads a prerelease as its release (`0.3.15-beta.2` runs the `0.3.15` migrations), so a
   // prerelease target is one nothing would ever match. The default is the manifest's version, which during
   // a beta is a prerelease, so it is normalised rather than refused
   const version = asked.replace(/[-+].*$/, '');
+  // Checked before anything is written. The manifest's schema holds the same rule and is the backstop, but
+  // it speaks on the next read of the manifest — too late to stop this command writing the entry and an
+  // empty module and reporting that it worked
+  if (!MIGRATION_TARGET_PATTERN.test(version)) {
+    const example = manifest.version?.replace(/[-+].*$/, '') || '0.1.0';
+    throw new Error(`"${asked}" is not a version a migration can target: give it as "major.minor.patch" (e.g. ${example})`);
+  }
   if (version !== asked) console.log(`  ${asked} targets its release, ${version}`);
   const filePath = path.join(root, 'src', 'migrations', `${version}.ts`);
 

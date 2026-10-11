@@ -69,7 +69,7 @@ export type { ManifestValidation } from './validate.ts';
 export {
   ManifestSchema, FeatureEntrySchema, FEATURE_ID_PATTERN,
   BootConfigSchema, ContentSourceSchema, ContentFormatSchema, StepEntrySchema, StepDSLMetaSchema,
-  DslEntrySchema, PackPermissionSchema, MigrationsSchema, MIGRATION_LINES,
+  DslEntrySchema, PackPermissionSchema, MigrationsSchema, MIGRATION_LINES, MIGRATION_TARGET_PATTERN,
 } from './manifest-schema.ts';
 export type { MigrationLine } from './manifest-schema.ts';
 

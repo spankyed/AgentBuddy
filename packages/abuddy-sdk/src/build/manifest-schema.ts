@@ -394,9 +394,15 @@ export const _MOVED_ROOT_KEYS: Readonly<Record<string, string>> = {
 
 // ── Main manifest schema ────────────────────────────────────────────
 
-/** A migration's key: the version it targets, which is the only place that version is written */
+/**
+ * A migration's key: the version it targets, which is the only place that version is written. Exported
+ * because `abuddy add migration` checks a version against it before writing one — the schema is what
+ * refuses a bad key, and it cannot do so until the manifest has already been written.
+ */
+export const MIGRATION_TARGET_PATTERN = /^\d+\.\d+\.\d+$/;
+
 const MIGRATION_TARGET_SCHEMA = z.string()
-  .regex(/^\d+\.\d+\.\d+$/, 'Must be the version the migration targets, as "major.minor.patch"');
+  .regex(MIGRATION_TARGET_PATTERN, 'Must be the version the migration targets, as "major.minor.patch"');
 
 /**
  * Migrations, keyed by the version each targets, under the **version line** that version belongs to.
@@ -440,12 +446,12 @@ export type MigrationLine = keyof typeof MigrationsSchema.shape;
  *
  * @internal
  */
-export type _MigrationLinesMatchRegistration =
+type _Asserted<T extends true> = T;
+export type _MigrationLinesMatchRegistration = _Asserted<
   MigrationLine extends keyof PackMigrations
     ? keyof PackMigrations extends MigrationLine ? true : ['the registration declares a line the manifest does not', Exclude<keyof PackMigrations, MigrationLine>]
-    : ['the manifest declares a line the registration does not', Exclude<MigrationLine, keyof PackMigrations>];
-const _linesMatch: _MigrationLinesMatchRegistration = true;
-void _linesMatch;
+    : ['the manifest declares a line the registration does not', Exclude<MigrationLine, keyof PackMigrations>]
+>;
 
 export const ManifestSchema = z.object({
   $schema: z.string().describe('JSON Schema reference for editor validation.').optional(),

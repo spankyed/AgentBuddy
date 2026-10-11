@@ -1822,6 +1822,9 @@ depProvenance?: Map<string, PackProvenance>): {
 export const MIGRATION_LINES: MigrationLine[];
 
 // @public
+export const MIGRATION_TARGET_PATTERN: RegExp;
+
+// @public
 export type MigrationLine = keyof typeof MigrationsSchema.shape;
 
 // @public
