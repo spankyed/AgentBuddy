@@ -474,7 +474,7 @@ The scaffolded `.github/workflows/release.yml` publishes the GitHub release from
 
 Verify the pack in `<dir>` (default `.apack/release`) and create the GitHub release `v<version>` (a prerelease for prerelease versions), uploading `<id>-<version>.tgz`, `.sha256` and `.integrity.json`. The release workflow runs it. Needs `GITHUB_TOKEN` (or `GH_TOKEN`), and `GITHUB_REPOSITORY` or a GitHub `origin` remote.
 
-#### `apack install <source> [-d|--dev] [-b|--beta]`
+#### `apack pack install <source> [-d|--dev] [-b|--beta]`
 
 Install a pack into the app's data dir (`<userDataDir>/packs/<id>`). `<source>` is one of:
 
@@ -486,14 +486,14 @@ Install a pack into the app's data dir (`<userDataDir>/packs/<id>`). `<source>` 
 | GitHub release: `owner/repo`, or `owner/repo@tag` (default: latest) | `user/my-pack@v0.1.0` |
 
 ```bash
-apack install ./my-pack-0.1.0.tgz
-apack install ../my-pack
-apack install user/my-pack
+apack pack install ./my-pack-0.1.0.tgz
+apack pack install ../my-pack
+apack pack install user/my-pack
 ```
 
 A GitHub release needs a `.tgz` asset and the `.sha256` asset published beside it (`apack release` writes both); a release without one is refused, since nothing would say the download is that release. A URL install is unverified, and says so. The pack is verified before it's placed, and `hostVersion` is checked against the version the app recorded in that data dir. A source directory must be built: one with neither a `integrity.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` is refused, with a note to run `apack build` first. Restart the app after installing.
 
-#### `apack uninstall <id> [-d|--dev] [-b|--beta]`
+#### `apack pack uninstall <id> [-d|--dev] [-b|--beta]`
 
 Remove an installed pack by ID. Restart the app after uninstalling.
 
@@ -501,7 +501,7 @@ Remove an installed pack by ID. Restart the app after uninstalling.
 
 Show installed packs.
 
-`install`, `uninstall` and `list` read the production build's data by default. `--build <name>` says which — `production`, `beta`, `development` or `test` — and `-d`, `-b` and `--production` are shorthands for the first three. They name a **build**, never a profile: a build keeps its own default storage, and `--profile` is the one override.
+`pack install`, `pack uninstall` and `list` read the production build's data by default. `--build <name>` says which — `production`, `beta`, `development` or `test` — and `-d`, `-b` and `--production` are shorthands for the first three. They name a **build**, never a profile: a build keeps its own default storage, and `--profile` is the one override.
 
 ### App
 
@@ -678,3 +678,19 @@ release tested against — and removes all but the newest, which is the one a la
 removes every build. It works outside a pack.
 
 Data dirs are `apack profiles`, below: what exists, and removing the ones you own.
+
+### Desktop app installation
+
+```bash
+apack install                       # Latest stable production release
+apack install 0.4.0                 # Specific production release (v0.4.0 also works)
+apack install --replace             # Explicitly replace an existing app
+apack upgrade                       # Update an installed app to the latest stable release
+apack upgrade 0.4.0 --force          # Explicit reinstall or downgrade
+apack uninstall                     # Remove the app bundle; keep data and settings
+apack install -b                    # Latest beta, installed separately
+```
+
+These commands manage `/Applications/apack.app` (or `apack Beta.app` with `-b`) on macOS Apple Silicon. App commands default to production even when invoked from the beta app. Pack installation is `apack pack install <source>`; pack removal is `apack pack uninstall <id>`.
+
+Downloads must have a matching published SHA-256 checksum. An incomplete latest release fails rather than silently installing an older version. The downloaded bundle's identity, executable and version are checked before the existing app is asked to quit. Replacement is staged on the destination filesystem and restores the previous bundle if the swap fails. A concurrent app operation is refused. `install` refuses any existing bundle without `--replace`; `upgrade` requires an existing app and skips a same-version or older release unless `--force` is supplied. `--relaunch` opens the installed app after install or upgrade. Uninstall never deletes databases, packs, profiles or settings.

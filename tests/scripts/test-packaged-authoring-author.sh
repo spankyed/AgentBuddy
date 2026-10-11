@@ -342,7 +342,7 @@ ARCHIVE="$(sed -n 's/^Pack: //p' "$WORK/release.log")"
 
 step "7. Install the packed archive into an isolated test data dir"
 DATA="$WORK/test-data"
-APACK_USER_DATA_DIR="$DATA" "$APACK" install "$ARCHIVE"
+APACK_USER_DATA_DIR="$DATA" "$APACK" pack install "$ARCHIVE"
 INSTALLED="$(find "$DATA" -path '*/demo-pack/integrity.json' | head -n 1)"
 [ -n "$INSTALLED" ] || fail "the pack was not installed"
 node -e '

@@ -8,7 +8,7 @@ on:
 jobs:
   checks:
     # ubuntu is enough while this pack declares no dependencies in apack.json: nothing has to resolve
-    # another pack, so no apack install is needed. Add one and this needs what the release workflow
+    # another pack, so no apack pack install is needed. Add one and this needs what the release workflow
     # uses — `runs-on: macos-14` with `APACK_BUILD: beta`, so the build can read it from an installed app.
     runs-on: ubuntu-latest
     steps:

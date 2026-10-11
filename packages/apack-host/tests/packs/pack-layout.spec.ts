@@ -185,7 +185,7 @@ describe('installPackFromLocal (pack layout path)', () => {
     expect(fs.existsSync(path.join(packsDir, 'demo-pack'))).toBe(false);
   });
 
-  // `apack install` and `apack dev` pass the format the app recorded, which need not be the one this process reads
+  // `apack pack install` and `apack dev` pass the format the app recorded, which need not be the one this process reads
   it("checks against the app's format, not this process's: refusing one only this process reads, installing one only the app reads", async () => {
     const packsDir = path.join(tmp, 'packs');
     const appFormat = PACK_SNAPSHOT_FORMAT + 1;

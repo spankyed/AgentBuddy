@@ -73,7 +73,7 @@ export function loadSingleExternalPack(
 
   const runtimeEntry = path.join(dir, PACK_LAYOUT.runtimeEntry);
   if (!isPackLayout(dir) || !fs.existsSync(runtimeEntry)) {
-    return skipped(manifest, `${dir} isn't an installed pack (no ${PACK_LAYOUT.integrity} or ${PACK_LAYOUT.runtimeEntry}). Install it with apack install or apack dev`);
+    return skipped(manifest, `${dir} isn't an installed pack (no ${PACK_LAYOUT.integrity} or ${PACK_LAYOUT.runtimeEntry}). Install it with apack pack install or apack dev`);
   }
   try {
     const integrity = readPackIntegrity(dir);

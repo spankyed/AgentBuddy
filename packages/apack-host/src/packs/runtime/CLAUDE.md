@@ -43,7 +43,7 @@ They are installed packs, so they have no loader of their own. `installShippedPa
 2. Drops what was recorded about packs it no longer finds (`forgetPacksExcept()`), then takes the ones the record doesn't disable (`enabledExternalPacks()`): the directory is the list, and the record only takes packs out of it
 3. Loads each enabled pack with `loadSingleExternalPack()`:
    - `hostVersion` check (`isHostCompatible`), pack layout format check, warning on an SDK major version mismatch
-   - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `apack install` or `apack dev`
+   - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `apack pack install` or `apack dev`
    - a pack it can't load comes back as `{ problem }`, which `loadExternalPacks` records in the registry it's given (`recordLoadProblem`), so the Packs view says why the pack isn't running
 
 `registerExternalPacks(registry, packs)` registers each pack (recording why as the pack's load problem when the registry refuses one), whose features the registry runs at `<packId>/<featureId>` (its appliers, commands and the rest of its registration with it), and returns the packs whose registration succeeded.
@@ -76,7 +76,7 @@ In `packages/apack-host/src/packs/` (`@apackdev/host/packs`):
 | `pack-installer.ts` | Install from a directory, archive, URL or GitHub release (stage, verify, place); `installShippedPacks`; uninstall; `checkDependencies` |
 | `staging.ts` | Staging dir names, `recoverStagingDirs`, `prepareHostDataDirs` |
 | `pack-updater.ts`, `github.ts` | Update checks against GitHub releases |
-| `host-info.ts` | Records the app version in the data dir for `apack install` |
+| `host-info.ts` | Records the app version in the data dir for `apack pack install` |
 
 The API's `transport/packs.ts` serves `packs.loaded` from `getLoadedPackEntries()`.
 

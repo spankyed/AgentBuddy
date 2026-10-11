@@ -26,7 +26,7 @@ function writeManifest(name: string, manifest: Record<string, unknown>): string 
 describe('enabledExternalPacks', () => {
   const external = (id: string) => writeManifest(id, { id, name: id, version: '1.0.0' });
 
-  // The directory is the list: an `apack install` outside the app, or an `apack dev` into a running
+  // The directory is the list: an `apack pack install` outside the app, or an `apack dev` into a running
   // one, leaves a pack the record has never heard of, and it is installed and enabled all the same
   it('takes every pack in the directory, including ones the record has never heard of', () => {
     external('memo-pack');
@@ -79,7 +79,7 @@ describe('installedPacks', () => {
     ]);
   });
 
-  // The version lives in the pack's manifest and nowhere else, so an `apack install` outside the app —
+  // The version lives in the pack's manifest and nowhere else, so an `apack pack install` outside the app —
   // which writes the directory and never the record — cannot cost the pack the slug its updates come
   // from. A record that copied the version had to be rewritten when it changed, and that rewrite is what
   // used to take `installedFrom` with it.

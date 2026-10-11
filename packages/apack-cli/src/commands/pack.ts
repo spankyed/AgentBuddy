@@ -7,6 +7,8 @@ import { holdPackBuildLock } from '../build/build-lock.ts';
 
 const HELP = `
 Usage: apack pack [--out <dir>]
+       apack pack install <source> [-d|-b]
+       apack pack uninstall <id> [-d|-b]
 
 Stage the built pack (dist/) into a verified pack layout and write
 <id>-<version>.tgz plus <id>-<version>.tgz.sha256. Run "apack build" first
@@ -70,6 +72,14 @@ export async function buildPackArchive(root: string, outDir: string): Promise<Pa
 }
 
 export async function pack(args: string[]) {
+  if (args[0] === 'install') {
+    const { install } = await import('./pack-install.ts');
+    return install(args.slice(1));
+  }
+  if (args[0] === 'uninstall') {
+    const { uninstall } = await import('./pack-uninstall.ts');
+    return uninstall(args.slice(1));
+  }
   if (args.includes('--help') || args.includes('-h')) {
     console.log(HELP);
     return;

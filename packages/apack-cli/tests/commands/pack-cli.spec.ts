@@ -97,7 +97,7 @@ describe('pack CLI: init', () => {
 
 describe('pack CLI: install', () => {
   it('install with no args returns without throwing (prints help)', async () => {
-    const { install } = await import('../../src/commands/install');
+    const { install } = await import('../../src/commands/pack-install');
     await expect(install([])).resolves.toBeUndefined();
   });
 
@@ -107,7 +107,7 @@ describe('pack CLI: install', () => {
   });
 
   it('rejects manifest with invalid id format', async () => {
-    const { install } = await import('../../src/commands/install');
+    const { install } = await import('../../src/commands/pack-install');
 
     const badPack = path.join(tmpDir, 'bad-id-pack');
     fs.mkdirSync(badPack, { recursive: true });
@@ -122,7 +122,7 @@ describe('pack CLI: install', () => {
   });
 
   it("rejects a pack that hasn't been built", async () => {
-    const { install } = await import('../../src/commands/install');
+    const { install } = await import('../../src/commands/pack-install');
 
     const unbuilt = path.join(tmpDir, 'unbuilt');
     fs.mkdirSync(unbuilt, { recursive: true });
@@ -136,7 +136,7 @@ describe('pack CLI: install', () => {
   });
 
   it('rejects pack without apack.json', async () => {
-    const { install } = await import('../../src/commands/install');
+    const { install } = await import('../../src/commands/pack-install');
 
     const noManifest = path.join(tmpDir, 'no-manifest');
     fs.mkdirSync(noManifest, { recursive: true });

@@ -4,7 +4,7 @@ import * as path from 'node:path';
 const pkg = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf-8'));
 
 const USAGE = `
-apack - apack Pack CLI
+apack - app and pack CLI
 
 Commands:
   init [name]         Scaffold a new pack
@@ -17,8 +17,8 @@ Commands:
   release [patch|minor|major] [--beta] [--dry-run] [--local]  Cut a release
   validate            Check manifest and types
   facade-report [--update]  Report the pack's facade types (etc/pack-types.api.md)
-  install <source> [-d] [-b]  Install a pack (path, URL, GitHub, or registry name)
-  uninstall <id> [-d] [-b]   Remove an installed pack
+  pack install <source> [-d] [-b]  Install a pack (path, URL, GitHub, or registry name)
+  pack uninstall <id> [-d] [-b]  Remove an installed pack
   list [-d] [-b]             Show installed packs
   dev [--build <name|path>] [--profile <name> | --fresh [--rm]]
                       Launch the app and hold it. With a pack in hand, reload it as you edit
@@ -27,7 +27,9 @@ Commands:
                         asked of the app apack dev is holding (not a test)
   test [args...]        Run E2E tests in apack (--build <name|path>)
   open [-b]           Open the installed apack app
-  upgrade [-b] [--relaunch]  Install the latest apack release into /Applications
+  install [version] [--replace] [-b]  Download and install the app (latest production by default)
+  uninstall [-b]      Remove the app; keep user data
+  upgrade [version] [-b] [--relaunch]  Update an installed app
   db <command>        Query, export, import or reset the app's database (apack closed)
   info                Show pack summary
   doctor              Run health checks

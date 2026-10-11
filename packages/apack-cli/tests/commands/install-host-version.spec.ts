@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { recordHostInfo } from '@apackdev/host/packs';
-import { install } from '../../src/commands/install';
+import { install } from '../../src/commands/pack-install';
 import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { _appDirOf } from '@apackdev/sdk/env';
 
@@ -34,7 +34,7 @@ function builtPack(hostVersion: string): string {
   return root;
 }
 
-describe('apack install', () => {
+describe('apack pack install', () => {
   it("refuses a pack whose hostVersion the data dir's apack doesn't satisfy", async () => {
     recordHostInfo(path.join(tmp, 'data'), { version: '0.3.14', packFormat: PACK_SNAPSHOT_FORMAT });
     await expect(install([builtPack('>=99.0.0'), '--dev'])).rejects.toThrow(/requires apack >=99\.0\.0/);
@@ -65,7 +65,7 @@ describe('apack install', () => {
 describe('the apack bin', () => {
   it('installs a pack, printing what @apackdev/host/packs logs', () => {
     const cli = path.resolve(__dirname, '..', '..', 'bin', 'apack.mjs');
-    const result = spawnSync(process.execPath, [cli, 'install', builtPack('>=0.3.0'), '--dev'], {
+    const result = spawnSync(process.execPath, [cli, 'pack', 'install', builtPack('>=0.3.0'), '--dev'], {
       cwd: tmp,
       encoding: 'utf-8',
       env: { ...process.env, APACK_USER_DATA_DIR: path.join(tmp, 'data'), NO_COLOR: '1', FORCE_COLOR: '0' },

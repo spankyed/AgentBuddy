@@ -98,7 +98,7 @@ describe('pack-loader', () => {
       });
       try {
         expect(loadExternalPacks()).toEqual([]);
-        expect(warnings).toEqual([expect.stringMatching(/^Skipping unbundled: .* isn't an installed pack \(no integrity\.json or runtime\/index\.cjs\)\. Install it with apack install or apack dev$/)]);
+        expect(warnings).toEqual([expect.stringMatching(/^Skipping unbundled: .* isn't an installed pack \(no integrity\.json or runtime\/index\.cjs\)\. Install it with apack pack install or apack dev$/)]);
       } finally {
         unsubscribe();
       }

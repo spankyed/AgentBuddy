@@ -105,18 +105,18 @@ apack pack
 # Creates my-pack-0.1.0.tgz and my-pack-0.1.0.tgz.sha256
 
 # Install into apack
-apack install ./my-pack-0.1.0.tgz
+apack pack install ./my-pack-0.1.0.tgz
 ```
 
 You can also install directly from a built pack directory, a `.zip` or `.tar.gz` archive, a URL to an archive, or a GitHub release:
 
 ```bash
-apack install ../my-pack          # local directory
-apack install my-pack.zip         # zip archive
-apack install user/repo           # latest GitHub release (user/repo@v0.1.0 for a tag)
+apack pack install ../my-pack          # local directory
+apack pack install my-pack.zip         # zip archive
+apack pack install user/repo           # latest GitHub release (user/repo@v0.1.0 for a tag)
 ```
 
-`apack install` targets the production app; add `-d` for the development data dir or `-b` for apack Beta.
+`apack pack install` targets the production app; add `-d` for the development data dir or `-b` for apack Beta.
 
 After installing, **restart the app** for the pack to load.
 

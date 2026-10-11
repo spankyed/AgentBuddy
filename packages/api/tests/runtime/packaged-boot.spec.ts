@@ -30,7 +30,7 @@ const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 beforeEach(() => fs.rmSync(resolveAppContext().packsDir, { recursive: true, force: true }));
 
-/** An installed pack that plays `role`, as `apack install` leaves one */
+/** An installed pack that plays `role`, as `apack pack install` leaves one */
 async function installPackPlaying(id: string, role: string): Promise<void> {
   const source = fs.mkdtempSync(path.join(os.tmpdir(), `${id}-`));
   fs.writeFileSync(path.join(source, 'apack.json'), JSON.stringify({ id, name: id, version: '1.0.0' }));

@@ -20,7 +20,7 @@ Every process resolves its environment and data paths through `resolveAppContext
 | `api-port` | The API's port (development only) |
 | `api-token` | The token the API requires, for local tools (development only, readable only by you) |
 
-CLI commands pass `{ env }` explicitly: `apack install`/`uninstall`/`list` target production unless given `-d` (development) or `-b` (beta).
+CLI commands pass `{ env }` explicitly: `apack pack install`/`apack pack uninstall`/`apack list` target production unless given `-d` (development) or `-b` (beta).
 
 ## Layers
 
@@ -40,7 +40,7 @@ Packs import `@apackdev/sdk`, `@apackdev/ears` and `@apackdev/ui`, never `@apack
 
 ### Install
 
-`apack install` (or the Packs view) installs into the data dir's `packs/<id>/`. An installed pack has the pack layout, the same layout as `apack build`'s `dist/` and the release archive:
+`apack pack install` (or the Packs view) installs into the data dir's `packs/<id>/`. An installed pack has the pack layout, the same layout as `apack build`'s `dist/` and the release archive:
 
 ```
 <id>/
@@ -70,7 +70,7 @@ The source directory must be built first: installing a directory with neither a 
 
 0. Opens the app's data and binds the app (`openAppStore()`): it creates the app's registered packs (`createPackRegistry()` from `@apackdev/host/packs`), which the SDK's lookups read once bound, and the rest of the steps register into it.
 1. Registers the host `packs` system.
-2. `prepareHostDataDirs`: records the app version in the data dir (for `apack install`) and recovers staging dirs in `packs/`.
+2. `prepareHostDataDirs`: records the app version in the data dir (for `apack pack install`) and recovers staging dirs in `packs/`.
 3. `forwardSecretsChanges` (`@apackdev/host/secrets`): every system that takes `SECRETS_CHANGED` hears that API key changes, never their values.
 4. Installs the packs the app ships into `packs/<id>`, each being a directory under `SHIPPED_PACKS_DIR` that holds an `apack.json`. It installs one only when its files differ from the installed copy's, so a first boot and a version bump write and every other boot writes nothing; a differing copy also covers one something changed on disk. This is before loading, not beside it: a pack is loaded from `packs/`, so it has to be there to be found.
 5. Loads packs — one path for all of them, the ones the app ships included. Discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed), the shipped ones ordered first so a pack depending on one finds it registered. For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, and `runtime/index.cjs` loaded from its own installed directory through the module bridge. A pack with no built runtime, or one whose load throws, has a load problem recorded and the rest load. Each pack's systems register as `<packId>/<featureId>`, and the registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.

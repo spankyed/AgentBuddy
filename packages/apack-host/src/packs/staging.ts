@@ -87,7 +87,7 @@ export function recoverStagingDirs(dir: string): StagingRecovery {
 
 /**
  * Boot-time data dir upkeep, before packs are discovered: records the apack version and the pack format it
- * reads for `apack install` and `apack dev`, and recovers staging in each packs dir. Failures are logged; boot continues.
+ * reads for `apack pack install` and `apack dev`, and recovers staging in each packs dir. Failures are logged; boot continues.
  */
 export function prepareHostDataDirs(
   options: { userDataDir: string; packsDir: string; version: string },

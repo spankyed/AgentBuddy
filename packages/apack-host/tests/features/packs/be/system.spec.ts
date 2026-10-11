@@ -242,7 +242,7 @@ describe('the packs system asked to publish', () => {
   });
 });
 
-// The packs directory is what makes a pack installed. `apack install` and `apack dev` write it and
+// The packs directory is what makes a pack installed. `apack pack install` and `apack dev` write it and
 // never installed-packs.json, so a pack with no row is the ordinary case, not a broken one.
 describe('a pack with nothing recorded about it', () => {
   it('is listed, enabled', async () => {
