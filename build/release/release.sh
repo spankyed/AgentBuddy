@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Release script for apack
-# Usage: npm run release [patch|minor|major] [--dry-run] [--skip-migration-check] [--beta]
+# Usage: npm run release [patch|minor|major] [--dry-run] [--beta]
 #
 # Version flow:
 #   0.3.14  + minor --beta  → 0.4.0-beta.0   (start beta cycle for next minor)
@@ -27,16 +27,14 @@ NC='\033[0m'
 # Parse arguments
 BUMP_TYPE="patch"
 DRY_RUN=false
-SKIP_MIGRATION_CHECK=false
 IS_BETA=false
 
 for arg in "$@"; do
   case "$arg" in
     patch|minor|major) BUMP_TYPE="$arg" ;;
     --dry-run) DRY_RUN=true ;;
-    --skip-migration-check) SKIP_MIGRATION_CHECK=true ;;
     --beta) IS_BETA=true ;;
-    *) echo -e "${RED}Unknown argument: $arg${NC}"; echo "Usage: release.sh [patch|minor|major] [--dry-run] [--skip-migration-check] [--beta]"; exit 1 ;;
+    *) echo -e "${RED}Unknown argument: $arg${NC}"; echo "Usage: release.sh [patch|minor|major] [--dry-run] [--beta]"; exit 1 ;;
   esac
 done
 
@@ -57,7 +55,7 @@ echo "=========================================="
 echo ""
 
 # Step 1: Ensure clean working tree
-echo -e "${BLUE}[1/6]${NC} Checking working tree..."
+echo -e "${BLUE}[1/5]${NC} Checking working tree..."
 if [ -n "$(git status --porcelain)" ]; then
   echo -e "${RED}✗ Working tree is dirty. Commit or stash changes first.${NC}"
   git status --short
@@ -69,13 +67,13 @@ git fetch --tags --quiet origin
 echo ""
 
 # Step 2: Run typecheck
-echo -e "${BLUE}[2/6]${NC} Running type checks..."
+echo -e "${BLUE}[2/5]${NC} Running type checks..."
 npm run typecheck
 echo -e "${GREEN}✓${NC} Type checks passed"
 echo ""
 
 # Step 3: Bump version
-echo -e "${BLUE}[3/6]${NC} Bumping version..."
+echo -e "${BLUE}[3/5]${NC} Bumping version..."
 
 if [ "$IS_BETA" = true ]; then
   if [ "$CURRENT_IS_PRERELEASE" = true ]; then
@@ -105,33 +103,11 @@ if [ -n "$BETA_TAG_NAME" ]; then
 fi
 
 if [ "$DRY_RUN" = true ]; then
-  # Check migration status for dry-run output
-  LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-  MIGRATION_STATUS="no settings changes"
-  if [[ "$NEW_VERSION" == *-beta* ]]; then
-    MIGRATION_STATUS="skipped (beta shares production migrations)"
-  elif [ -n "$LAST_TAG" ]; then
-    SETTINGS_CHANGED=$(git diff --name-only "$LAST_TAG"..HEAD -- packages/default-setup/src/content/default-settings.ts)
-    if [ -n "$SETTINGS_CHANGED" ]; then
-      # Extract the release version (strip prerelease suffix) for migration file lookup
-      RELEASE_VERSION="${NEW_VERSION%%-*}"
-      MIGRATION_FILE="packages/default-setup/src/migrations/$RELEASE_VERSION.ts"
-      if [ -f "$MIGRATION_FILE" ]; then
-        MIGRATION_STATUS="settings changed, migration found ✓"
-      elif [ "$SKIP_MIGRATION_CHECK" = true ]; then
-        MIGRATION_STATUS="settings changed, no migration (skipped)"
-      else
-        MIGRATION_STATUS="settings changed, NO migration ✗"
-      fi
-    fi
-  fi
-
   # Revert the version bump
   npm version "$CURRENT_VERSION" --no-git-tag-version --allow-same-version > /dev/null 2>&1
   echo ""
   echo -e "${YELLOW}[DRY RUN] Would create:${NC}"
   echo "  - Version bump: $CURRENT_VERSION → $NEW_VERSION"
-  echo "  - Migration check: $MIGRATION_STATUS"
   echo "  - Commit: chore(release): ${TAG_NAME}"
   echo "  - Tag: ${TAG_NAME}"
   if [ -n "$BETA_TAG_NAME" ]; then
@@ -139,10 +115,6 @@ if [ "$DRY_RUN" = true ]; then
   fi
   echo "  - Push to origin (triggers CI build)"
   echo ""
-  if [[ "$MIGRATION_STATUS" == *"NO migration"* ]]; then
-    echo -e "${RED}Release would fail: missing migration for v$NEW_VERSION${NC}"
-    exit 1
-  fi
   echo -e "${YELLOW}Run without --dry-run to execute.${NC}"
   exit 0
 fi
@@ -150,40 +122,8 @@ fi
 echo -e "${GREEN}✓${NC} Version bumped"
 echo ""
 
-# Step 4: Check if default-settings.ts changed and requires a migration
-echo -e "${BLUE}[4/6]${NC} Checking for settings migration..."
-if [[ "$NEW_VERSION" == *-beta* ]]; then
-  echo -e "${GREEN}✓${NC} Beta release — shares production migration chain, skipping check"
-elif [ "$SKIP_MIGRATION_CHECK" = true ]; then
-  echo -e "${YELLOW}⊘${NC} Migration check skipped (--skip-migration-check)"
-else
-  LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-  if [ -z "$LAST_TAG" ]; then
-    echo -e "${GREEN}✓${NC} No previous release tag found, skipping check"
-  else
-    SETTINGS_CHANGED=$(git diff --name-only "$LAST_TAG"..HEAD -- packages/default-setup/src/content/default-settings.ts)
-    if [ -n "$SETTINGS_CHANGED" ]; then
-      RELEASE_VERSION="${NEW_VERSION%%-*}"
-      MIGRATION_FILE="packages/default-setup/src/migrations/$RELEASE_VERSION.ts"
-      if [ ! -f "$MIGRATION_FILE" ]; then
-        echo -e "${RED}✗ default-settings.ts has changed since $LAST_TAG but no migration found at:${NC}"
-        echo "    $MIGRATION_FILE"
-        echo ""
-        echo -e "  Create a migration for v$RELEASE_VERSION or re-run with ${YELLOW}npm run release:no-migrate${NC}"
-        # Revert version bump
-        npm version "$CURRENT_VERSION" --no-git-tag-version --allow-same-version > /dev/null 2>&1
-        exit 1
-      fi
-      echo -e "${GREEN}✓${NC} Settings changed — migration found at $MIGRATION_FILE"
-    else
-      echo -e "${GREEN}✓${NC} No settings changes since $LAST_TAG"
-    fi
-  fi
-fi
-echo ""
-
-# Step 5: Generate changelog
-echo -e "${BLUE}[5/6]${NC} Generating changelog..."
+# Step 4: Generate changelog
+echo -e "${BLUE}[4/5]${NC} Generating changelog..."
 
 # Find the most recent tag (any channel)
 LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
@@ -226,8 +166,8 @@ fi
 echo -e "${GREEN}✓${NC} Changelog updated"
 echo ""
 
-# Step 6: Commit, tag, and push
-echo -e "${BLUE}[6/6]${NC} Creating release commit and tag..."
+# Step 5: Commit, tag, and push
+echo -e "${BLUE}[5/5]${NC} Creating release commit and tag..."
 
 git add package.json package-lock.json CHANGELOG.md
 git commit -m "chore(release): ${TAG_NAME}"

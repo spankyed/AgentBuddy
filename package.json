@@ -95,7 +95,6 @@
     "release": "sh build/release/release.sh",
     "release:minor": "sh build/release/release.sh minor",
     "release:major": "sh build/release/release.sh major",
-    "release:no-migrate": "sh build/release/release.sh --skip-migration-check",
     "unrelease": "bash build/release/unrelease.sh",
 
     "db:query": "apack db query -d",

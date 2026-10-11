@@ -53,7 +53,7 @@ This step is not needed once the app is signed and notarized (see [Code Signing 
 
 ```
 1. npm run release          (or: npm run release:minor)
-2. Typecheck → tests → version bump → changelog → tag → push
+2. Typecheck → version bump → changelog → tag → push
 3. GitHub Actions builds, signs, notarizes, publishes
 4. Users download from GitHub Releases
 ```
@@ -61,10 +61,12 @@ This step is not needed once the app is signed and notarized (see [Code Signing 
 The release script (`build/release/release.sh`) runs these steps:
 
 1. Checks for a clean git working tree
-2. Runs `npm run typecheck` and `npm test` — aborts on failure
+2. Runs `npm run typecheck` — aborts on failure
 3. Bumps the version in `package.json`
 4. Generates a changelog entry grouped by commit type
 5. Commits, tags, and pushes to origin
+
+Run `npm run chain` before releasing to validate changes, including migration tests. Settings-default changes do not automatically require a migration; stored-data changes are covered by upgrade tests. The release script does not infer migration requirements from changed files.
 
 ## Production Build Pipeline
 
