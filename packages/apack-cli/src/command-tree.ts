@@ -13,6 +13,7 @@ export const COMMANDS = {
   'upgrade': { usage: '[version] [--channel production|beta] [--force] [--relaunch]', description: 'Upgrade an installed app', load: async () => (await import('./commands/upgrade')).upgrade, detailedHelp: true },
   'uninstall': { usage: '[--channel production|beta]', description: 'Uninstall the app; keep user data', load: async () => (await import('./commands/uninstall')).uninstall, detailedHelp: true },
   'open': { usage: '[--channel production|beta|preview]', description: 'Open the installed app', load: async () => (await import('./commands/open')).open, detailedHelp: true },
+  'logs': { usage: '[--channel production|beta|preview] [--follow] [--lines <count>]', description: 'Read recent app logs or follow new output', load: async () => (await import('./commands/logs')).logs },
   'status': { usage: '[--channel production|beta|preview] [--json]', description: 'Show installed app version, state, and paths', load: async () => (await import('./commands/status')).status },
   'doctor': { usage: '[--channel production|beta|preview]', description: 'Check the installed app; production by default', load: async () => (await import('./commands/doctor')).doctor, detailedHelp: true },
   'db': { usage: '<command> [options]', description: 'Query, export, import, or reset app data', load: async () => (await import('./commands/db')).db, detailedHelp: true },

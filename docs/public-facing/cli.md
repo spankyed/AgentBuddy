@@ -727,3 +727,5 @@ These commands manage `/Applications/apack.app` (or `apack Beta.app` with `--cha
 Downloads must have a matching published SHA-256 checksum. An incomplete latest release fails rather than silently installing an older version. The downloaded bundle's identity, executable and version are checked before the existing app is asked to quit. Replacement is staged on the destination filesystem and restores the previous bundle if the swap fails. A concurrent app operation is refused. `install` refuses any existing bundle without `--replace`; `upgrade` requires an existing app and skips a same-version or older release unless `--force` is supplied. `--relaunch` opens the installed app after install or upgrade. Uninstall never deletes databases, packs, profiles or settings.
 
 `apack status [--channel production|beta|preview] [--json]` reports the installed app version, running state, and paths without launching it.
+
+`apack logs [--channel production|beta|preview] [--follow] [--lines <count>]` reads the installed app’s `main.log` (100 recent lines by default). Following waits for the file and follows rotation; Ctrl-C stops the reader.
