@@ -81,7 +81,7 @@ import {
   ContextMenuItem, ContextMenuPortal
 } from 'reka-ui'
 import { MENU_ITEM_CLASS, MENU_CONTENT_CLASS } from '#features/code/fe/features/explorer/constants.ts'
-import TrackedContextMenuRoot from '@apack/ui/design/TrackedContextMenuRoot'
+import TrackedContextMenuRoot from '@apackdev/ui/design/TrackedContextMenuRoot'
 import type { GitStatusFile } from '#features/code/fe/features/commit/state.ts'
 import type { TreeNode } from './types.ts'
 

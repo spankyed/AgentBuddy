@@ -1,7 +1,7 @@
 // The app's bus: the bus machine wired to the app's root event bus (the api's tRPC clients), which the
 // SDK reaches through the bound HostRuntime's transport.
-import { _rootEvents } from '@apack/sdk/runtime';
-import type { HostPluginEvents } from '@apack/sdk/events';
+import { _rootEvents } from '@apackdev/sdk/runtime';
+import type { HostPluginEvents } from '@apackdev/sdk/events';
 import { appState } from '../app-state/index.ts';
 import type { PackRegistry } from '../packs/registry.ts';
 import { getPacksWithClientLoadedFrontends } from '../packs/layout.ts';

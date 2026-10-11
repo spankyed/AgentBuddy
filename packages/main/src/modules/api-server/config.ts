@@ -119,6 +119,6 @@ export const getNodeExecutable = () => {
 export const getExecutionArgs = (apiPath: string, serverFile: string) => {
   // When using Electron's executable, we need to pass the full path
   const fullPath = path.join(apiPath, serverFile);
-  // From source, packs' requires of workspace @apack/* packages resolve to their source
-  return app.isPackaged ? [fullPath] : ['--conditions=@apack/source', serverFile];
+  // From source, packs' requires of workspace @apackdev/* packages resolve to their source
+  return app.isPackaged ? [fullPath] : ['--conditions=@apackdev/source', serverFile];
 };

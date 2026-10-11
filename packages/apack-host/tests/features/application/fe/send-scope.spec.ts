@@ -7,9 +7,9 @@
 // cheapest faithful way to say that: each shell is a window, and the bus delivers to both subscriptions.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup } from 'xstate';
-import type { Plugin } from '@apack/sdk/fe';
+import type { Plugin } from '@apackdev/sdk/fe';
 import { createShellMachine } from '../../../../src/fe/index.ts';
-import { _currentDelivery } from '@apack/sdk/events';
+import { _currentDelivery } from '@apackdev/sdk/events';
 import { fakeShell, settle } from './fakes.ts';
 
 /** What each window's copy of the plugin heard */

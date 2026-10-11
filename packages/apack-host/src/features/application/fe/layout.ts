@@ -1,6 +1,6 @@
 // How the window's panels are laid out, as pure changes to the sizes. Which of them are saved is the machine's call:
 // sizes the user chose are; the chat onboarding maximizes for the moment isn't.
-import type { ShellPanelSizes } from '@apack/sdk/fe';
+import type { ShellPanelSizes } from '@apackdev/sdk/fe';
 import type { ShellStorage } from './types.ts';
 
 const DEFAULT_SIZES: ShellPanelSizes = {

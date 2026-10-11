@@ -1,10 +1,10 @@
 // A content action run by the action step reaches the app through `services`: it sends through services.emitter, logs
 // through services.logger and writes through services.repository, all on the runtime the harness binds
 import { expect, it, vi } from 'vitest'
-import { mockService, startApp } from '@apack/testing/harness'
-import { testRootEvents } from '@apack/sdk/testing'
-import type { LogEvent } from '@apack/sdk/logger'
-import type { EARS } from '@apack/sdk'
+import { mockService, startApp } from '@apackdev/testing/harness'
+import { testRootEvents } from '@apackdev/sdk/testing'
+import type { LogEvent } from '@apackdev/sdk/logger'
+import type { EARS } from '@apackdev/sdk'
 import { repository } from '#generated/repository.ts'
 import type { Services } from '#generated/services.ts'
 import { actionLabel, writeDefaultFlows } from '../../_support/flows.ts'

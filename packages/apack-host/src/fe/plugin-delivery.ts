@@ -10,7 +10,7 @@
 // and the asked one takes an address that cannot be absent — so a caller holding a maybe-asker has to say what
 // it does when there is nobody, in the branch rather than in a sentinel the type could not check.
 import type { AnyActorRef, AnyEventObject } from 'xstate';
-import { _callOn, _runDelivery, type _Asker, type Message } from '@apack/sdk/events';
+import { _callOn, _runDelivery, type _Asker, type Message } from '@apackdev/sdk/events';
 
 /**
  * Hands an actor an event nobody asked for: a lifecycle event, a hotkey, a navigation, a pack coming or going.

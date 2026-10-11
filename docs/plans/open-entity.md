@@ -125,7 +125,7 @@ is reachable (does stored content round-trip through markdown, or through ProseM
 entity id, and resolving a short code to one is the reference system's job, on the side of the boundary that
 knows short codes exist.
 
-**Phase 1 — the primitive.** `entityTypeOf` promoted to `@apack/ears`' barrel; `OpenEntity` in
+**Phase 1 — the primitive.** `entityTypeOf` promoted to `@apackdev/ears`' barrel; `OpenEntity` in
 `PLUGIN_EVENT_TYPES`; `entityIs` beside `targetIs`; `openEntity` in `apack-sdk/src/fe/navigation.ts`;
 `opens` on the plugin contract type, read by codegen into both registrations and the snapshot; the lookup on
 the two registry views. No consumer yet — the specs below are what prove it.
@@ -156,8 +156,8 @@ the rule "a feature declares the entities it is the home of, not the entities it
   a reference clicked in a stored message opens the right plugin on the right row. Everything else here is a
   harness test.
 - **End-to-end by eye**: `npm run drive`, open a thread holding a note reference, click it.
-- **`npm run chain`** per phase. Phase 1 touches `@apack/sdk/src` and codegen, so expect a cold run;
-  `api:update` for `PackFERegistration`, the plugin contract types and `@apack/ears`' barrel.
+- **`npm run chain`** per phase. Phase 1 touches `@apackdev/sdk/src` and codegen, so expect a cold run;
+  `api:update` for `PackFERegistration`, the plugin contract types and `@apackdev/ears`' barrel.
 - **No `schema:update`** — no manifest key moves. **`PACK_SNAPSHOT_FORMAT`** bumps, because a dependent pack
   reads `opens` from the snapshot and an older CLI would misread it.
 

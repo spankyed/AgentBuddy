@@ -1,6 +1,6 @@
 import { EARS, findWhere } from '#generated/ears.ts';
-import { actionRepository } from '@apack/sdk/repositories';
-import type { ActionEntity } from '@apack/sdk';
+import { actionRepository } from '@apackdev/sdk/repositories';
+import type { ActionEntity } from '@apackdev/sdk';
 
 /**
  * Action Repository: the SDK's action repository (`actionRepository`), which owns their reads and writes, as the

@@ -20,7 +20,7 @@
  * that cannot go stale, or a scope in which it cannot"* — because it hashes the tree rather than the reads,
  * so a file nobody touched last time is still in it. The reads record is how the scopes below were checked
  * against reality rather than guessed: measured 2026-10-08, the frontend phase read 329 files under the
- * pack's `src/` and 84 in the `@apack` packages' `dist`, and no others.
+ * pack's `src/` and 84 in the `@apackdev` packages' `dist`, and no others.
  *
  * **What the hash must cover besides the inputs is the options that change the output.** A `--release`
  * build minifies and drops sourcemaps, so reusing a development build's bundle for it would publish the
@@ -74,7 +74,7 @@ export function writeStamps(root: string, stamps: PhaseStamps): void {
  * Why a phase's recorded output cannot be taken forward, or `null` when it can.
  *
  * Two questions rather than one, which is the shape of `generate-entries`' `staleReason` and
- * `unitStaleReason` (`@apack/host/build/packages-built`): recording only the hash let a deleted output
+ * `unitStaleReason` (`@apackdev/host/build/packages-built`): recording only the hash let a deleted output
  * read as current, there and here.
  *
  * **The order is the opposite of those two, deliberately.** They ask about missing output first because a
@@ -122,7 +122,7 @@ function bundlerSource(file: string): string {
 }
 
 /**
- * The `@apack` packages a pack's frontend compiles against, as the pack itself resolves them — workspace
+ * The `@apackdev` packages a pack's frontend compiles against, as the pack itself resolves them — workspace
  * source in a checkout, `node_modules` in an installed pack, which is the one layout a pack author has.
  *
  * **A package it cannot find is a refusal, not an omission.** Leaving one out of the scope would mean an
@@ -134,7 +134,7 @@ export function apackScope(packDir: string): { readonly dirs: readonly string[] 
   const require = createRequire(path.join(packDir, 'noop.js'));
   const dirs: string[] = [];
   const missing: string[] = [];
-  for (const pkg of ['@apack/ears', '@apack/sdk', '@apack/ui']) {
+  for (const pkg of ['@apackdev/ears', '@apackdev/sdk', '@apackdev/ui']) {
     try {
       dirs.push(path.join(path.dirname(require.resolve(`${pkg}/package.json`)), 'dist'));
     } catch {
@@ -179,7 +179,7 @@ const SOURCE = /\.(ts|tsx|js|mjs|cjs|vue|json|css)$/;
 /**
  * The frontend bundle's scope: the pack's own sources — `src/__generated__` included, since the entry it
  * bundles is generated — its build inputs, the DSL defs it resolves `?raw` from the real `dist`, and the
- * `@apack` packages it compiles against, which are what the recorded reads showed it reaching outside the
+ * `@apackdev` packages it compiles against, which are what the recorded reads showed it reaching outside the
  * pack.
  */
 export function feInputsHash(root: string, options: { readonly release: boolean }, apackDirs: readonly string[]): string {

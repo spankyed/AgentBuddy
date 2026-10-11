@@ -13,11 +13,11 @@ const logWrite = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
 const { bindRendererHost } = await import('@/runtime');
 const { fePacks } = await import('@/runtime/packs');
-const { resolveName } = await import('@apack/sdk/ids');
-const { secretsClient, untypedOpenPlugin, getDslTypes, getDesignated, tiptapPluginRegistry } = await import('@apack/sdk/fe');
-const { stepRegistry } = await import('@apack/sdk/steps');
-const { untypedSendToSystem } = await import('@apack/sdk/events');
-const { unbindFeHost } = await import('@apack/sdk/runtime/internals');
+const { resolveName } = await import('@apackdev/sdk/ids');
+const { secretsClient, untypedOpenPlugin, getDslTypes, getDesignated, tiptapPluginRegistry } = await import('@apackdev/sdk/fe');
+const { stepRegistry } = await import('@apackdev/sdk/steps');
+const { untypedSendToSystem } = await import('@apackdev/sdk/events');
+const { unbindFeHost } = await import('@apackdev/sdk/runtime/internals');
 
 const application = {
   getSnapshot: () => ({

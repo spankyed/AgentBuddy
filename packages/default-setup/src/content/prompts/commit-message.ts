@@ -1,4 +1,4 @@
-import type { PromptMeta } from '@apack/sdk/build';
+import type { PromptMeta } from '@apackdev/sdk/build';
 
 export const meta: PromptMeta = {
   label: 'Commit Message',

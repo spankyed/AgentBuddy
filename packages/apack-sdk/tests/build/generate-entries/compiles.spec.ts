@@ -20,7 +20,7 @@ setupPackFixture();
 /** Type-checks the generated files at `names` with `root` linked to this SDK's source, and returns the diagnostics */
 /**
  * One `ts.SourceFile` cache across the three programs this file builds, so the SDK and ears source is
- * parsed once instead of three times. Each program resolves `@apack/sdk` under the `@apack/source`
+ * parsed once instead of three times. Each program resolves `@apackdev/sdk` under the `@apackdev/source`
  * condition, so it type-checks ~165 files of real source; `skipLibCheck` skips the `.d.ts`, and the SDK is
  * `.ts`.
  *
@@ -55,7 +55,7 @@ function typecheck(files: Record<string, string>, names: string[]): string[] {
   const sdk = path.resolve(import.meta.dirname, '../../..');
   const fromSdk = (name: string) => path.dirname(createRequire(path.join(sdk, 'package.json')).resolve(`${name}/package.json`));
   // The generated facades import the engine too, which a pack installs with the SDK
-  const links = { '@apack/sdk': sdk, '@apack/ears': fromSdk('@apack/ears'), zod: fromSdk('zod') };
+  const links = { '@apackdev/sdk': sdk, '@apackdev/ears': fromSdk('@apackdev/ears'), zod: fromSdk('zod') };
   for (const [name, target] of Object.entries(links)) {
     const link = path.join(root, 'node_modules', name);
     fs.mkdirSync(path.dirname(link), { recursive: true });
@@ -65,7 +65,7 @@ function typecheck(files: Record<string, string>, names: string[]): string[] {
     target: ts.ScriptTarget.ES2022,
     module: ts.ModuleKind.NodeNext,
     moduleResolution: ts.ModuleResolutionKind.NodeNext,
-    customConditions: ['@apack/source'],
+    customConditions: ['@apackdev/source'],
     allowImportingTsExtensions: true,
     verbatimModuleSyntax: true,
     strict: true,

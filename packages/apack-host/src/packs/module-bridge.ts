@@ -1,8 +1,8 @@
-// Loads pack runtime code (CommonJS) so its `require('@apack/sdk/…')` gets the loader's own module
+// Loads pack runtime code (CommonJS) so its `require('@apackdev/sdk/…')` gets the loader's own module
 // instances. Without it, the runtime would load a separate copy of the SDK with empty registries and
 // an empty EARS store. The app bridges its bundled SDK; the pack test harness bridges the pack's.
 import Module, { createRequire } from 'node:module';
-import { hasOwn } from '@apack/sdk/utils/pure';
+import { hasOwn } from '@apackdev/sdk/utils/pure';
 
 export interface ModuleBridgeOptions {
   /** Specifier → the module the loaded code gets for `require(specifier)` */
@@ -93,16 +93,16 @@ let hostModulesKept = false;
  *
  * **Pack code requires a bridged module long after the load that produced it.** esbuild defers a module's
  * body into an `__init` the bundle calls on first use, so default-setup's `extensions/steps/action/runtime.ts`
- * runs its `require('@apack/sdk/logger')` when an action step first runs — any time, under any stack. A
+ * runs its `require('@apackdev/sdk/logger')` when an action step first runs — any time, under any stack. A
  * scoped patch is gone by then, and priming the cache cannot cover it: Node resolves before it looks in the
  * cache, and an installed pack has no `node_modules` for a bare specifier to resolve through. In a checkout
  * the workspace one sits above the pack and answers, which is why this is invisible until a pack is
- * installed — and then every action step fails with `Cannot find module '@apack/sdk/logger'`.
+ * installed — and then every action step fails with `Cannot find module '@apackdev/sdk/logger'`.
  *
  * **Resolution only, and it never throws.** `withModuleBridge`'s refusals are load-time diagnostics — they
  * tell a pack author to rebuild, at the moment the pack's runtime is being required — so they stay scoped to
  * that load. Keeping them installed would make them answer for host code too, and `appOnly` would then
- * refuse the app its own `@apack/ears/lmdb`.
+ * refuse the app its own `@apackdev/ears/lmdb`.
  *
  * Safe to leave installed because the only CJS `require` of a bridged specifier in this process is a pack's:
  * host code is ESM, which never consults `Module._resolveFilename`, and the API bundle inlines these packages
@@ -150,7 +150,7 @@ export function withModuleBridge<T>(options: ModuleBridgeOptions, fn: () => T): 
       throw new Error(`${request} is only for the app (${options.appOnly[request]}); pack code can't import it`);
     }
     if (options.bridgedPackages?.some(pkg => request === pkg || request.startsWith(`${pkg}/`))) {
-      throw new Error(`${request} isn't provided by this apack: rebuild the pack with the current @apack/cli`);
+      throw new Error(`${request} isn't provided by this apack: rebuild the pack with the current @apackdev/cli`);
     }
     const host = resolveFromHost(request);
     if (host) return host;

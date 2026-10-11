@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The half of the packaged-authoring check that needs no app: in a temp dir outside the monorepo, using only
-# the packed @apack/* tarballs, author a pack, build it, test it on the harness, and release it to a
+# the packed @apackdev/* tarballs, author a pack, build it, test it on the harness, and release it to a
 # verified archive. The app half runs that archive against a built app.
 #
 # Its own file rather than a mode, for `test-external-pack-contract.sh`'s reason: `check:tiers` reads a
@@ -8,13 +8,13 @@
 #
 # Phases, and the end state they establish for outside pack authors
 # (docs/archive/goals/goal-external-pack-authoring.md):
-#   1. install @apack/cli + @apack/sdk (with @apack/ears) from tarballs
+#   1. install @apackdev/cli + @apackdev/sdk (with @apackdev/ears) from tarballs
 #   2. apack init -> add feature -> a flow using keepAlive from default-setup -> content from a format with a
 #      .ts compiler module, default-setup's notes format, and its library format -> an llm flow and a
 #      service calling services.inference
 #   3. apack build
 #   4. unit tests on the harness, with inference mocked by mockInference
-#   5. @apack/testing's published declarations type-check on their own (skipLibCheck off)
+#   5. @apackdev/testing's published declarations type-check on their own (skipLibCheck off)
 #   6. apack release --local --dry-run produces a verified archive (--skip-e2e: the app half runs that)
 #   7. install that archive into an isolated test data dir
 # Requires a built checkout's packages (npm run packages:build), not a built app.
@@ -31,7 +31,7 @@ WORK="$(newWorkDir)"
 echo "Work dir: $WORK"
 useWorkDir "$WORK"
 
-step "Pack @apack/ears, @apack/sdk, @apack/ui, @apack/cli and @apack/testing"
+step "Pack @apackdev/ears, @apackdev/sdk, @apackdev/ui, @apackdev/cli and @apackdev/testing"
 # ensure, not build: it needs the tarballs to match the sources, which is what ensure guarantees, and it
 # rewrites nothing when they already do. packages:build rebuilt all five unconditionally, which deleted and
 # rewrote the dist/ that anything running beside this reads.
@@ -39,15 +39,15 @@ step "Pack @apack/ears, @apack/sdk, @apack/ui, @apack/cli and @apack/testing"
 for dir in apack-ears/publish apack-sdk/publish apack-ui/publish apack-cli/dist/package apack-testing/dist/package; do
   (cd "$ROOT/packages/$dir" && npm pack --silent --pack-destination "$WORK" >/dev/null)
 done
-EARS_TGZ="$(ls "$WORK"/apack-ears-*.tgz)"
-SDK_TGZ="$(ls "$WORK"/apack-sdk-*.tgz)"
-UI_TGZ="$(ls "$WORK"/apack-ui-*.tgz)"
-CLI_TGZ="$(ls "$WORK"/apack-cli-*.tgz)"
-TESTING_TGZ="$(ls "$WORK"/apack-testing-*.tgz)"
+EARS_TGZ="$(ls "$WORK"/apackdev-ears-*.tgz)"
+SDK_TGZ="$(ls "$WORK"/apackdev-sdk-*.tgz)"
+UI_TGZ="$(ls "$WORK"/apackdev-ui-*.tgz)"
+CLI_TGZ="$(ls "$WORK"/apackdev-cli-*.tgz)"
+TESTING_TGZ="$(ls "$WORK"/apackdev-testing-*.tgz)"
 
-step "1. Install @apack/cli + @apack/sdk from the tarballs"
+step "1. Install @apackdev/cli + @apackdev/sdk from the tarballs"
 mkdir "$WORK/tools"
-# The SDK's @apack/ears comes from its tarball too
+# The SDK's @apackdev/ears comes from its tarball too
 (cd "$WORK/tools" && npm init -y >/dev/null && npm install --silent --prefer-offline --no-audit --no-fund "$EARS_TGZ" "$SDK_TGZ" "$CLI_TGZ")
 APACK="$WORK/tools/node_modules/.bin/apack"
 "$APACK" --version
@@ -58,21 +58,21 @@ cd "$WORK"
 PACK="$WORK/demo-pack"
 cd "$PACK"
 # The tarballs stand in for the npm registry
-npm pkg set "dependencies.@apack/ears=file:$EARS_TGZ" "dependencies.@apack/sdk=file:$SDK_TGZ" "devDependencies.@apack/cli=file:$CLI_TGZ" "devDependencies.@apack/testing=file:$TESTING_TGZ"
+npm pkg set "dependencies.@apackdev/ears=file:$EARS_TGZ" "dependencies.@apackdev/sdk=file:$SDK_TGZ" "devDependencies.@apackdev/cli=file:$CLI_TGZ" "devDependencies.@apackdev/testing=file:$TESTING_TGZ"
 npm install --silent --prefer-offline --no-audit --no-fund
-# @apack/sdk carries the platform API only; the component library and its editors come with @apack/ui
+# @apackdev/sdk carries the platform API only; the component library and its editors come with @apackdev/ui
 for lib in @tiptap highlight.js lowlight @guolao/vue-monaco-editor; do
   [ ! -e "node_modules/$lib" ] || fail "a backend-only pack installed $lib"
 done
 # From here on, `apack` is the pack's own pinned CLI
 APACK="$PACK/node_modules/.bin/apack"
 "$APACK" add feature notes --label Notes >/dev/null
-# @apack/ui's heavier components must build in a pack, not only in the monorepo
-npm pkg set "dependencies.@apack/ui=file:$UI_TGZ"
+# @apackdev/ui's heavier components must build in a pack, not only in the monorepo
+npm pkg set "dependencies.@apackdev/ui=file:$UI_TGZ"
 npm install --silent --prefer-offline --no-audit --no-fund
 cat > src/features/notes/fe/editors.ts <<'TS'
-import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor';
-import SimpleMonacoEditor from '@apack/ui/components/SimpleMonacoEditor';
+import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor';
+import SimpleMonacoEditor from '@apackdev/ui/components/SimpleMonacoEditor';
 
 export const editors = { TiptapEditor, SimpleMonacoEditor };
 TS
@@ -82,7 +82,7 @@ node -e '
   fs.writeFileSync(file, "import { editors } from \"./editors.ts\";\nconsole.debug(Object.keys(editors));\n" + fs.readFileSync(file, "utf8"));
 '
 "$APACK" init-tests
-npm pkg set "devDependencies.@apack/testing=file:$TESTING_TGZ"
+npm pkg set "devDependencies.@apackdev/testing=file:$TESTING_TGZ"
 npm install --silent --prefer-offline --no-audit --no-fund
 
 step "Name the checkout the build resolves a shipped pack through"
@@ -123,7 +123,7 @@ mkdir -p src/content/glossary src/content/notes
 printf -- '---\nterm: Pack\n---\nA bundle of features.\n' > src/content/glossary/pack.md
 mkdir -p src/content/compilers
 cat > src/content/compilers/glossary.ts <<'TS'
-import { compileMarkdownTree, type ContentCompileContext, type ContentItem } from '@apack/sdk/build';
+import { compileMarkdownTree, type ContentCompileContext, type ContentItem } from '@apackdev/sdk/build';
 
 export default function compileGlossary({ path }: ContentCompileContext): ContentItem[] {
   return compileMarkdownTree(path).map((item) => ({ entity: 'DemoPack', term: String(item.frontmatter.term), definition: item.body.trim() }));
@@ -148,7 +148,7 @@ node -e '
 step "2. An llm flow on default-setup's brain, and a service calling services.inference"
 "$APACK" add prompt summarize-note >/dev/null
 cat > src/content/prompts/summarize-note.ts <<'TS'
-import type { PromptMeta } from '@apack/sdk/build';
+import type { PromptMeta } from '@apackdev/sdk/build';
 
 export const meta: PromptMeta = {
   label: 'Summarize Note',
@@ -225,9 +225,9 @@ step "4. Unit tests through the harness, with default-setup's runtime"
 mkdir -p tests/content/flows tests/features/notes/be/services
 cat > tests/content/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
-import { importContent } from '@apack/testing/harness';
+import { importContent } from '@apackdev/testing/harness';
 import { findAll } from '#generated/ears.ts';
-import { findRelations } from '@apack/ears';
+import { findRelations } from '@apackdev/ears';
 
 describe('demo notes', () => {
   it("content notes with default-setup's format and hooks", async () => {
@@ -249,7 +249,7 @@ describe('demo notes', () => {
 TS
 cat > tests/features/notes/be/services/digest.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
-import { mockInference } from '@apack/testing/harness';
+import { mockInference } from '@apackdev/testing/harness';
 import { services } from '#generated/services.ts';
 
 describe('digest service', () => {
@@ -262,7 +262,7 @@ describe('digest service', () => {
 TS
 cat > tests/content/flows/notes-summary.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
-import { importFlows, mockInference, importContent, startApp } from '@apack/testing/harness';
+import { importFlows, mockInference, importContent, startApp } from '@apackdev/testing/harness';
 import { entry, keepAlive, subflow } from '#generated/flow-helpers.ts';
 
 describe('notes summary flow', () => {
@@ -293,13 +293,13 @@ node -e '
 ' || fail "the keepAlive flow was not compiled"
 node_modules/.bin/tsc --noEmit
 
-step "5. @apack/testing's published types stand alone"
-# Its declarations may import only what a pack installs: an unpublished import (@apack/host) fails with lib checking
+step "5. @apackdev/testing's published types stand alone"
+# Its declarations may import only what a pack installs: an unpublished import (@apackdev/host) fails with lib checking
 # on, and is silently `any` under the scaffold's skipLibCheck. Errors in other packages' declarations aren't this check's.
 cat > tests/types-probe.ts <<'TS'
-import type { PluginEvent, TestApp, FlowRun } from '@apack/testing/harness';
-import type { IsolatedDataDir } from '@apack/testing/vitest';
-import type { AppHelper } from '@apack/testing';
+import type { PluginEvent, TestApp, FlowRun } from '@apackdev/testing/harness';
+import type { IsolatedDataDir } from '@apackdev/testing/vitest';
+import type { AppHelper } from '@apackdev/testing';
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 export const typed: [IsAny<PluginEvent>, IsAny<Awaited<ReturnType<TestApp['nextEmit']>>>, IsAny<FlowRun>, IsAny<IsolatedDataDir>, IsAny<AppHelper>] = [false, false, false, false, false];
@@ -320,8 +320,8 @@ grep -qxF "$(pwd -P)/tests/types-probe.ts" "$WORK/types-probe.log" || fail "tsc 
 if grep "error TS" "$WORK/types-probe.log" | grep -vE "^(node_modules|\.apack/deps)/" | grep .; then
   fail "the types probe didn't type-check"
 fi
-if grep -E "^node_modules/@apack/testing/" "$WORK/types-probe.log"; then
-  fail "@apack/testing's published declarations don't type-check on their own"
+if grep -E "^node_modules/@apackdev/testing/" "$WORK/types-probe.log"; then
+  fail "@apackdev/testing's published declarations don't type-check on their own"
 fi
 # A non-zero exit with no error in other packages' declarations is tsc failing some other way
 if [ "$TYPES_STATUS" -ne 0 ] && ! grep -qE "^(node_modules|\.apack/deps)/[^(]+\([0-9]+,[0-9]+\): error TS" "$WORK/types-probe.log"; then

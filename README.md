@@ -7,7 +7,7 @@ apack is an Electron desktop app for building and running AI agent workflows. It
 - **Actor-based runtime**: XState state machines coordinate frontend and backend behavior through a typed event bus.
 - **Packs**: Features (backend systems and frontend plugins), flow steps, content, artifacts and blocks ship as packs, built with the `apack` CLI. The app's own features are the built-in `default-setup` pack.
 - **Model integrations**: Anthropic, OpenAI, Google, Groq, Mistral and Cohere, through the Vercel AI SDK.
-- **Local graph store**: The EARS entity-attribute-relation store (`@apack/ears`) is backed by LMDB for fast local access.
+- **Local graph store**: The EARS entity-attribute-relation store (`@apackdev/ears`) is backed by LMDB for fast local access.
 - **Visual flow editor**: Vue Flow powers drag-and-drop authoring for agent flows.
 - **Embedded terminal**: xterm.js and node-pty provide command execution inside the app.
 - **Rich text editing**: Tiptap supports prompt and documentation authoring.
@@ -40,12 +40,12 @@ packages/
 │       ├── content/        # Actions, prompts, flows, library, notes, FAQs, settings
 │       ├── migrations/
 │       └── defs/         # Monaco DSL type definitions
-├── apack-ears/          # @apack/ears: the EARS engine (entity-attribute-relation store) and its LMDB store
-├── apack-sdk/           # @apack/sdk: pack-facing API (framework, events, services, steps, build pipeline, the HostRuntime port)
-├── apack-ui/            # @apack/ui: Vue components, editors and composables
-├── apack-cli/           # @apack/cli: the apack command
-├── apack-testing/       # @apack/testing: unit test harness and Playwright fixture
-├── apack-host/          # @apack/host (private): app runtime: registered packs, installer and pack runtime (loading, reload, applying), bus, migrations, app state, secrets, host services
+├── apack-ears/          # @apackdev/ears: the EARS engine (entity-attribute-relation store) and its LMDB store
+├── apack-sdk/           # @apackdev/sdk: pack-facing API (framework, events, services, steps, build pipeline, the HostRuntime port)
+├── apack-ui/            # @apackdev/ui: Vue components, editors and composables
+├── apack-cli/           # @apackdev/cli: the apack command
+├── apack-testing/       # @apackdev/testing: unit test harness and Playwright fixture
+├── apack-host/          # @apackdev/host (private): app runtime: registered packs, installer and pack runtime (loading, reload, applying), bus, migrations, app state, secrets, host services
 ├── main/                 # Electron main process
 │   └── src/modules/      # Window manager, API server launcher, pack:// and media protocols, etc.
 ├── preload/              # IPC bridge (contextBridge APIs)
@@ -53,7 +53,7 @@ packages/
 │   └── src/
 │       ├── core/         # Application actor, components, tRPC client
 │       └── packs/        # Pack frontend loading and the packs plugin
-├── typescript-floor/     # TypeScript 5.7, the oldest @apack/sdk and @apack/ui support, for type tests
+├── typescript-floor/     # TypeScript 5.7, the oldest @apackdev/sdk and @apackdev/ui support, for type tests
 └── electron-versions/    # Electron version management
 ```
 

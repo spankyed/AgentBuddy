@@ -4,7 +4,7 @@ This chapter covers how packs work under the hood: loading, dependency sharing, 
 
 ## App environment and data directory
 
-Every process resolves its environment and data paths through `resolveAppContext()` (`@apack/sdk/env`).
+Every process resolves its environment and data paths through `resolveAppContext()` (`@apackdev/sdk/env`).
 
 - **Environment:** `production`, `beta`, `development` or `test`. The Electron main process decides it once: Playwright runs are `test`, packaged builds use the channel stamped at build time, and source runs use `APACK_ENV` or default to `development`. It passes `APACK_ENV` and `APACK_USER_DATA_DIR` to the API process. A process that gets neither, and isn't given `{ env }`, throws; nothing falls back to production.
 - **Data directory:** `APACK_USER_DATA_DIR` if set, otherwise the platform's app data dir for the environment's app name (`apack`, `apack-beta`, `apack-dev`, `apack-test`). On macOS that is `~/Library/Application Support/<appName>`.
@@ -28,13 +28,13 @@ The app is built from packages whose imports point down only (`npm run check:spe
 
 | Package | Holds | Imports |
 |---|---|---|
-| `@apack/ears` | The EARS engine (`createEarsEngine`), its types, the persistence port; `@apack/ears/lmdb`, the LMDB store | No `@apack/*` package |
-| `@apack/sdk` | The pack contract and pack runtime: the lookups of what packs registered, service contracts, event sends, logging and error reports over the bound bus, the SDK entities and their repositories, the `HostRuntime` port | `@apack/ears` |
-| `@apack/host` (private) | The app runtime: the five app services (`/services`), the app's own state (`/app-state`), the registered packs and pack runtime (`/packs`, `/packs/runtime`), the bus (`/bus`), migrations (`/migrations`), API keys (`/secrets`) | `@apack/sdk`, `@apack/ears` |
+| `@apackdev/ears` | The EARS engine (`createEarsEngine`), its types, the persistence port; `@apackdev/ears/lmdb`, the LMDB store | No `@apackdev/*` package |
+| `@apackdev/sdk` | The pack contract and pack runtime: the lookups of what packs registered, service contracts, event sends, logging and error reports over the bound bus, the SDK entities and their repositories, the `HostRuntime` port | `@apackdev/ears` |
+| `@apackdev/host` (private) | The app runtime: the five app services (`/services`), the app's own state (`/app-state`), the registered packs and pack runtime (`/packs`, `/packs/runtime`), the bus (`/bus`), migrations (`/migrations`), API keys (`/secrets`) | `@apackdev/sdk`, `@apackdev/ears` |
 | `packages/api` | Transport (`node:http`, `ws`, tRPC routers, the log stream), process boot and composition | All of the above |
 | `packages/renderer` | The frontend composition: binds the frontend port | |
 
-Packs import `@apack/sdk`, `@apack/ears` and `@apack/ui`, never `@apack/host`. What an app owns is an instance its composition root creates and binds: the engine, the registered packs (`createPackRegistry()`, and in the renderer `createFePackRegistry()`) and the host services. No SDK, EARS or host module keeps them at module scope.
+Packs import `@apackdev/sdk`, `@apackdev/ears` and `@apackdev/ui`, never `@apackdev/host`. What an app owns is an instance its composition root creates and binds: the engine, the registered packs (`createPackRegistry()`, and in the renderer `createFePackRegistry()`) and the host services. No SDK, EARS or host module keeps them at module scope.
 
 ## Pack loading lifecycle
 
@@ -66,12 +66,12 @@ The source directory must be built first: installing a directory with neither a 
 
 ### Backend boot
 
-`setupBackend()` in `packages/api/src/setup/backend.ts` runs, in order. The API holds only transport, process boot and this composition: the app runtime it calls lives in `@apack/host` (pack loading, lifecycle, reload and writing in `@apack/host/packs/runtime`, the migrations runners in `@apack/host/migrations`, the bus in `@apack/host/bus`).
+`setupBackend()` in `packages/api/src/setup/backend.ts` runs, in order. The API holds only transport, process boot and this composition: the app runtime it calls lives in `@apackdev/host` (pack loading, lifecycle, reload and writing in `@apackdev/host/packs/runtime`, the migrations runners in `@apackdev/host/migrations`, the bus in `@apackdev/host/bus`).
 
-0. Opens the app's data and binds the app (`openAppStore()`): it creates the app's registered packs (`createPackRegistry()` from `@apack/host/packs`), which the SDK's lookups read once bound, and the rest of the steps register into it.
+0. Opens the app's data and binds the app (`openAppStore()`): it creates the app's registered packs (`createPackRegistry()` from `@apackdev/host/packs`), which the SDK's lookups read once bound, and the rest of the steps register into it.
 1. Registers the host `packs` system.
 2. `prepareHostDataDirs`: records the app version in the data dir (for `apack install`) and recovers staging dirs in `packs/`.
-3. `forwardSecretsChanges` (`@apack/host/secrets`): every system that takes `SECRETS_CHANGED` hears that API key changes, never their values.
+3. `forwardSecretsChanges` (`@apackdev/host/secrets`): every system that takes `SECRETS_CHANGED` hears that API key changes, never their values.
 4. Installs the packs the app ships into `packs/<id>`, each being a directory under `SHIPPED_PACKS_DIR` that holds an `apack.json`. It installs one only when its files differ from the installed copy's, so a first boot and a version bump write and every other boot writes nothing; a differing copy also covers one something changed on disk. This is before loading, not beside it: a pack is loaded from `packs/`, so it has to be there to be found.
 5. Loads packs — one path for all of them, the ones the app ships included. Discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed), the shipped ones ordered first so a pack depending on one finds it registered. For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, and `runtime/index.cjs` loaded from its own installed directory through the module bridge. A pack with no built runtime, or one whose load throws, has a load problem recorded and the rest load. Each pack's systems register as `<packId>/<featureId>`, and the registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.
 7. Wires each pack's `onShutdown` hook, keyed by pack id.
@@ -79,16 +79,16 @@ The source directory must be built first: installing a directory with neither a 
 9. Runs every pack's `onInit`.
 10. Runs app migrations (`runAppMigrations`: the host's own, then the built-in packs', against the app version), then external pack migrations (`runPackMigrations`, each against its own pack version).
 11. Content: each built-in pack's declarative `content.sources`, then external packs' compiled content, skipped when a pack's content revision hasn't changed.
-12. Starts the bus actor (`createAppBus(registry)` from `@apack/host/bus`), which spawns every registered system.
+12. Starts the bus actor (`createAppBus(registry)` from `@apackdev/host/bus`), which spawns every registered system.
 
 ### Frontend boot
 
 Every pack's frontend is loaded at runtime, the ones the app ships included. A dev server serves a local pack's from its source instead (`virtual:dev-pack-frontends`), which is what lets a component edit patch in place:
 
 1. Each time this window's bus subscription is established, the application actor queries the loaded packs (`trpc.packs.loaded`), which lists each loaded external pack's `feEntry` and `feStyles` — the pack's `runtime/fe.js` and `runtime/fe.css`, when it has them. It loads only the packs it hasn't loaded yet, so a query that fails leaves them to the next connection and a pack is never loaded twice.
-2. For each external pack, the shell loads its frontend (`createPackFrontends(io, packs).load` in `@apack/host/fe`, over the window's `importModule` and stylesheet I/O):
+2. For each external pack, the shell loads its frontend (`createPackFrontends(io, packs).load` in `@apackdev/host/fe`, over the window's `importModule` and stylesheet I/O):
    - loads `pack://<id>/runtime/fe.css` as a `<link>` when the pack has styles;
-   - imports `pack://<id>/runtime/fe.js` and registers its default export, a `PackFERegistration`, in the renderer's frontend registry (`createFePackRegistry()` from `@apack/host/fe`, bound with `bindFeHost`);
+   - imports `pack://<id>/runtime/fe.js` and registers its default export, a `PackFERegistration`, in the renderer's frontend registry (`createFePackRegistry()` from `@apackdev/host/fe`, bound with `bindFeHost`);
    - returns the plugins it exports, `[]` when the load failed, or `null` for a pack without frontend code.
 3. When it returns plugins (even none), the shell handles `PACK_FRONTEND_LOADED`, which spawns the plugins whose ids aren't taken and calls `trpc.bus.packClientReady({ packId })`.
 4. `packClientReady` sends the pack's systems `CLIENT_CONNECTED` and asks them to publish, so they send their startup data once the plugin actors exist.
@@ -101,7 +101,7 @@ The `packs` system handles install, uninstall, enable/disable and update from th
 
 - **Activate** (after install or update, or on enable): reads the pack's manifest, loads and registers it, registers `onShutdown`, runs `onInit`, then the pack's pending migrations and its content (skipped when its compiled content are unchanged), sends the bus `PACK_CHANGED` so running systems refresh what they read from packs, then `ACTIVATE_PACK` to spawn its systems. The renderer hears `PACK_ACTIVATED` and asks the application actor to load the frontends it hasn't, the new pack's included. The bus asks a pack's systems to publish right away only for a pack without frontend code; otherwise it waits for `packClientReady`. An install or update that activated but failed to apply reports the content error.
 - **Teardown** (before uninstall or update, or on disable): runs the pack's shutdown hooks, unregisters it (registration keeps the event types `bus.send` accepts current), clears its modules from the require cache, and sends the bus `TEARDOWN_PACK` to stop its systems. The renderer hears `PACK_DEACTIVATED`, unregisters the pack's FE extensions, removes its stylesheets and unloads its plugins.
-- **Reload** (development, `POST /dev/reload` on the API from `apack dev` or a built-in pack's watch build; a development or test app takes it only with the API token, handled by `reloadPackById` in `@apack/host/packs/runtime`, which asks the registry which directory the pack came from): loads and registers the rebuilt runtime before shutting the running one down. If the fresh runtime fails to load or register, the running pack is re-registered and stays as it was. Otherwise the old shutdown hooks run, the new `onShutdown` registers, `onInit` runs, external packs run their pending migrations and re-apply, and the bus `RELOAD_PACK` stops the old and new system ids and starts those still registered, then sends them `CLIENT_CONNECTED` and asks them to publish; `PACK_CHANGED` and its ask follow for every running system. Teardown (disable, uninstall) sends it too, after stopping the pack's systems.
+- **Reload** (development, `POST /dev/reload` on the API from `apack dev` or a built-in pack's watch build; a development or test app takes it only with the API token, handled by `reloadPackById` in `@apackdev/host/packs/runtime`, which asks the registry which directory the pack came from): loads and registers the rebuilt runtime before shutting the running one down. If the fresh runtime fails to load or register, the running pack is re-registered and stays as it was. Otherwise the old shutdown hooks run, the new `onShutdown` registers, `onInit` runs, external packs run their pending migrations and re-apply, and the bus `RELOAD_PACK` stops the old and new system ids and starts those still registered, then sends them `CLIENT_CONNECTED` and asks them to publish; `PACK_CHANGED` and its ask follow for every running system. Teardown (disable, uninstall) sends it too, after stopping the pack's systems.
 
 An external pack's migrations run at boot, on activation and on reload, each against the pack's own version; the app's run at boot and after a reset or backup import.
 
@@ -109,7 +109,7 @@ An external pack's migrations run at boot, on activation and on reload, each aga
 
 ### Backend entry (`PackRegistration`)
 
-Your `__generated__/pack-entry.ts` exports a registration object (`@apack/sdk/framework`):
+Your `__generated__/pack-entry.ts` exports a registration object (`@apackdev/sdk/framework`):
 
 ```typescript
 export const registration: PackRegistration = {
@@ -195,7 +195,7 @@ Packs share runtime dependencies with the host, which is critical for correctnes
 <script type="importmap">
 { "imports": {
   "vue": "./assets/shared-vue-CwIGn1C6.js",
-  "@apack/sdk/fe": "./assets/shared-apack-sdk-fe-DY7mM_D0.js",
+  "@apackdev/sdk/fe": "./assets/shared-apack-sdk-fe-DY7mM_D0.js",
   "@tiptap/pm/model": "./assets/shared-prosemirror-model-YOzlPTVh.js"
 } }
 </script>
@@ -218,27 +218,27 @@ Because the pack imports the real module rather than a copy of its names, what i
 
 #### Shared SDK modules
 
-`@apack/sdk/fe`, `@apack/sdk/runtime`, `@apack/sdk/steps`, `@apack/sdk/artifacts`, `@apack/sdk/blocks`, `@apack/sdk/designations`, `@apack/sdk/events` (`sdkEvents`), `@apack/sdk/helpers`, and every `@apack/ui` export
+`@apackdev/sdk/fe`, `@apackdev/sdk/runtime`, `@apackdev/sdk/steps`, `@apackdev/sdk/artifacts`, `@apackdev/sdk/blocks`, `@apackdev/sdk/designations`, `@apackdev/sdk/events` (`sdkEvents`), `@apackdev/sdk/helpers`, and every `@apackdev/ui` export
 
 #### Deep subpath imports
 
-Only registered barrel subpaths are externalized. Other SDK modules resolve and bundle: the file is compiled into your pack's `fe.js`. The FE build fails if a bundled SDK module needs the app's binding (`bindHost`/`bindFeHost` in `@apack/sdk/runtime`), since a bundled copy has nothing bound.
+Only registered barrel subpaths are externalized. Other SDK modules resolve and bundle: the file is compiled into your pack's `fe.js`. The FE build fails if a bundled SDK module needs the app's binding (`bindHost`/`bindFeHost` in `@apackdev/sdk/runtime`), since a bundled copy has nothing bound.
 
-#### `@apack/ui`
+#### `@apackdev/ui`
 
-Components, editors and UI composables (`@apack/ui/design/button`, `@apack/ui/components/tiptap/TiptapEditor`, `@apack/ui/composables/useDebounce`) come from the separate `@apack/ui` package. Add it to your pack's dependencies when your UI uses them; backend-only packs don't install it or its editor libraries. The package ships compiled JS with declarations, so component props typecheck with plain `tsc`.
+Components, editors and UI composables (`@apackdev/ui/design/button`, `@apackdev/ui/components/tiptap/TiptapEditor`, `@apackdev/ui/composables/useDebounce`) come from the separate `@apackdev/ui` package. Add it to your pack's dependencies when your UI uses them; backend-only packs don't install it or its editor libraries. The package ships compiled JS with declarations, so component props typecheck with plain `tsc`.
 
-At runtime your pack uses the app's copy: `apack build` turns `@apack/ui` imports into references to the modules the app exposes, the same way it handles the shared SDK modules. Your `fe.js` stays small, and stateful modules (the Monaco configuration, editor extensions) have one instance across the app. `@apack/ui` changes follow semver, and your pack's `hostVersion` states which apps it runs in.
+At runtime your pack uses the app's copy: `apack build` turns `@apackdev/ui` imports into references to the modules the app exposes, the same way it handles the shared SDK modules. Your `fe.js` stays small, and stateful modules (the Monaco configuration, editor extensions) have one instance across the app. `@apackdev/ui` changes follow semver, and your pack's `hostVersion` states which apps it runs in.
 
-To ship your own copy instead, set `build.bundleUi` in `apack.json`. All of `@apack/ui` is then bundled into `fe.js`, so the pack never mixes its copy with the app's.
+To ship your own copy instead, set `build.bundleUi` in `apack.json`. All of `@apackdev/ui` is then bundled into `fe.js`, so the pack never mixes its copy with the app's.
 
 ### Backend: the module bridge
 
-The API bundles its own copy of `@apack/sdk`, `@apack/ears` and `@apack/host`. Pack runtime code loaded from disk would otherwise get separate instances, with no app bound: no registered packs to look up and no installed EARS engine. `@apack/sdk` and `@apack/ears` are the shared-instance packages (`SHARED_INSTANCE_PACKAGES` in `@apack/host/build/shared-deps`): the bundler externals, this bridge and the test harness's all derive from that one list.
+The API bundles its own copy of `@apackdev/sdk`, `@apackdev/ears` and `@apackdev/host`. Pack runtime code loaded from disk would otherwise get separate instances, with no app bound: no registered packs to look up and no installed EARS engine. `@apackdev/sdk` and `@apackdev/ears` are the shared-instance packages (`SHARED_INSTANCE_PACKAGES` in `@apackdev/host/build/shared-deps`): the bundler externals, this bridge and the test harness's all derive from that one list.
 
-`withHostResolution(fn)` (`packages/apack-host/src/packs/runtime/bridge.ts`) runs a `require()` of pack code through `withModuleBridge()` (`@apack/host/packs`), which:
+`withHostResolution(fn)` (`packages/apack-host/src/packs/runtime/bridge.ts`) runs a `require()` of pack code through `withModuleBridge()` (`@apackdev/host/packs`), which:
 
-- puts the loader's instances (the API bundle's, in the app) of the bridged `@apack/sdk`, `@apack/ears` modules (every backend export of the shared-instance packages, except `@apack/ears/lmdb`, which only the app loads) in the require cache, and patches `Module._resolveFilename` so those specifiers resolve to them;
+- puts the loader's instances (the API bundle's, in the app) of the bridged `@apackdev/sdk`, `@apackdev/ears` modules (every backend export of the shared-instance packages, except `@apackdev/ears/lmdb`, which only the app loads) in the require cache, and patches `Module._resolveFilename` so those specifiers resolve to them;
 - resolves the shared backend packages (`xstate`, `zod`) from the API, since an installed pack has no `node_modules`;
 - restores the resolver afterwards. The bridged modules stay cached, so requires the pack makes later get them too.
 
@@ -246,7 +246,7 @@ The pack test harness uses the same bridge with the pack's own SDK instance.
 
 ## Host services
 
-The SDK reaches the running app through one typed port, `HostRuntime` (`@apack/sdk/runtime`), bound once per process with `bindHost`: the app's event bus (`transport.rootEvents`), its EARS engine, the registered packs, the app version, and the five services packs call that the app implements: `appData` (reset, backup export/import, onboarding), `traceStore` (the volatile trace store), `inference` (model calls), `secrets` (API key metadata) and `filesystem` (files and folders on disk). Their contracts live in `@apack/sdk/services`; the implementations live in `@apack/host/services`, whose `createHostRuntime(...)` assembles the runtime. `openAppStore()` in `packages/api/src/setup/backend.ts`, which `setupBackend()` calls first, opens the LMDB store and binds that runtime over it. `appData.reset()` resets the whole app as a fresh boot leaves it: it empties the stores and keys, then runs each pack's `onInit` and boot apply, then the app migrations.
+The SDK reaches the running app through one typed port, `HostRuntime` (`@apackdev/sdk/runtime`), bound once per process with `bindHost`: the app's event bus (`transport.rootEvents`), its EARS engine, the registered packs, the app version, and the five services packs call that the app implements: `appData` (reset, backup export/import, onboarding), `traceStore` (the volatile trace store), `inference` (model calls), `secrets` (API key metadata) and `filesystem` (files and folders on disk). Their contracts live in `@apackdev/sdk/services`; the implementations live in `@apackdev/host/services`, whose `createHostRuntime(...)` assembles the runtime. `openAppStore()` in `packages/api/src/setup/backend.ts`, which `setupBackend()` calls first, opens the LMDB store and binds that runtime over it. `appData.reset()` resets the whole app as a fresh boot leaves it: it empties the stores and keys, then runs each pack's `onInit` and boot apply, then the app migrations.
 
 Sends, logging and error reports are SDK code over the bound bus: `sendToSystem` emits an incoming event, `broadcastToPlugin` (and `services.emitter.broadcastToPlugin`) goes through the bus actor, which drops it until a client connects, like a system's `emit`, and `createLogger` emits log events, which the API prints once and streams to the logs plugin (with nothing bound, as in the CLI, a logger writes to the console). In the renderer, `bindFeHost` binds the application actor, the secrets client behind `secretsClient` (the Settings → Secrets procedures) and a transport that sends to systems over the API client. Using the port with nothing bound throws, naming `bindHost` or `bindFeHost`.
 
@@ -254,7 +254,7 @@ A pack can't register a service under a host service's name.
 
 ## Secrets store
 
-The user's API keys live in `@apack/host/secrets`, which is host-only and not part of `HostRuntime`.
+The user's API keys live in `@apackdev/host/secrets`, which is host-only and not part of `HostRuntime`.
 
 - `secrets.json` holds each key's metadata in plain text and its value encrypted with AES-256-GCM.
 - The data key is kept in a `KeyVault`: the OS credential store (`@napi-rs/keyring`), or a `secrets.key` file in the test environment, in development with `APACK_SECRETS_VAULT=file`, or after the user allows unprotected storage.
@@ -263,18 +263,18 @@ The user's API keys live in `@apack/host/secrets`, which is host-only and not pa
 
 ## Persistence partitions
 
-EARS persists through a sharded router (`makeShardedPersistence`, `@apack/ears`) over two LMDB environments. The app opens them with `openLmdbStore({ paths, policy })` from `@apack/ears/lmdb` and makes the store's sink the engine's persistence; `lmdb` is an optional peer of `@apack/ears` that only the app installs, so packs and pack tests never load it:
+EARS persists through a sharded router (`makeShardedPersistence`, `@apackdev/ears`) over two LMDB environments. The app opens them with `openLmdbStore({ paths, policy })` from `@apackdev/ears/lmdb` and makes the store's sink the engine's persistence; `lmdb` is an optional peer of `@apackdev/ears` that only the app installs, so packs and pack tests never load it:
 
 | Partition | Directory | Holds | Hydrated at boot |
 |---|---|---|---|
 | `primary` | `ears-db/` | Everything not excluded | Yes |
 | `volatileBackup` | `ears-trace/` | The SDK's volatile entity types (`TNode`), and relations touching them | No |
 
-The policy is `appPartitionPolicy()` (`@apack/host/database`), a constant over the SDK's volatile types. No pack contributes to it, so every pack's data goes to `primary`. `services.traceStore` reads `volatileBackup` directly.
+The policy is `appPartitionPolicy()` (`@apackdev/host/database`), a constant over the SDK's volatile types. No pack contributes to it, so every pack's data goes to `primary`. `services.traceStore` reads `volatileBackup` directly.
 
 ## Backups
 
-`@apack/host/backup`, reached by packs through `services.appData` (`@apack/host/services/app-data.ts`):
+`@apackdev/host/backup`, reached by packs through `services.appData` (`@apackdev/host/services/app-data.ts`):
 
 - **Export** (`exportBackup(targetPath, name?, databases?)`): copies the chosen databases (`lmdb`, `volatileLmdb`; default `lmdb`) into `<targetPath>/<name>` (default `apack-backup-<timestamp>`), with a `metadata.json` and, when `lmdb` is included, `media/`.
 - **Import** (`importBackup(path)`): requires `metadata.json`; restores only databases the app has. It copies the current files aside, closes persistence, replaces the files and media, reopens LMDB and reloads memory. On failure the previous files are put back and reloaded.

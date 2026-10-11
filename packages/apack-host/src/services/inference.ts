@@ -2,8 +2,8 @@
 // for that provider in Settings → Secrets (never the environment: each provider gets an explicit key), at the
 // provider's own URL (never the environment either: each provider gets an explicit `baseURL`, so
 // `ANTHROPIC_BASE_URL`/`OPENAI_BASE_URL` can't redirect a call). A provider's package loads on its first call.
-import { _createInferenceService, type _ResolveModel, type ProviderName } from '@apack/sdk/services';
-import { parseModelId, providerCapabilities, providerLabels, PROVIDER_BASE_URLS, type ModelKind } from '@apack/sdk/models';
+import { _createInferenceService, type _ResolveModel, type ProviderName } from '@apackdev/sdk/services';
+import { parseModelId, providerCapabilities, providerLabels, PROVIDER_BASE_URLS, type ModelKind } from '@apackdev/sdk/models';
 import { secretsStore } from '../secrets/index.ts';
 
 /** A provider package's factory: the provider it builds has a method per kind of model it gives */

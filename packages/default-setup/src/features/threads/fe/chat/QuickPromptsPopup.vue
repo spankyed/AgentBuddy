@@ -163,7 +163,7 @@ import { PopoverRoot, PopoverTrigger, PopoverAnchor, PopoverPortal, PopoverConte
 import type { ReferenceElement } from '@floating-ui/vue'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import type { QuickPrompt } from '#generated/types.ts'
-import { pasteIntoElement } from '@apack/sdk/fe'
+import { pasteIntoElement } from '@apackdev/sdk/fe'
 
 const props = defineProps<{
   prompts: QuickPrompt[]

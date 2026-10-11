@@ -8,9 +8,9 @@ import {appBuildOutput} from '../../build/build-metadata.ts';
 export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */ ({
   // Bundle SDK and host source into main: packaged builds strip .ts files, so they can't be imported at runtime
   ssr: {
-    noExternal: [/^@apack\/(sdk|host)/],
-    // Workspace @apack/* packages resolve to source (see their package.json exports)
-    resolve: {conditions: ['@apack/source', ...defaultServerConditions]},
+    noExternal: [/^@apackdev\/(sdk|host)/],
+    // Workspace @apackdev/* packages resolve to source (see their package.json exports)
+    resolve: {conditions: ['@apackdev/source', ...defaultServerConditions]},
   },
   build: {
     ssr: true,
@@ -114,8 +114,8 @@ function handleHotReload() {
        * `APACK_ENV=beta npm run dev` is a beta app. Reading this hook as "development by definition" is what
        * let it push an unauthenticated debug port onto one.
        */
-      const { _inferElectronAppEnv, resolveAppContext } = await import('@apack/sdk/env');
-      const { debugPortArgsFor, publishSession, readDevToolsPort } = await import('@apack/host/dev-session');
+      const { _inferElectronAppEnv, resolveAppContext } = await import('@apackdev/sdk/env');
+      const { debugPortArgsFor, publishSession, readDevToolsPort } = await import('@apackdev/host/dev-session');
       const build = _inferElectronAppEnv({
         playwrightTest: process.env.PLAYWRIGHT_TEST === 'true',
         isPackaged: false,

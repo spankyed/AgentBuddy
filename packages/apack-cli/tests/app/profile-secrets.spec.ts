@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { _appDataPaths } from '@apack/sdk/utils';
+import { _appDataPaths } from '@apackdev/sdk/utils';
 import type { OpenedProfile } from '../../src/app/profiles';
 
 /**
@@ -15,14 +15,14 @@ let srcDir: string;
 
 // The source is the environment's own data dir, which `appDataDirFor` resolves and which must not follow
 // APACK_USER_DATA_DIR. Pointing it at a temp dir is the only way to test without touching real keys.
-vi.mock('@apack/sdk/env', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@apack/sdk/env')>()),
+vi.mock('@apackdev/sdk/env', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@apackdev/sdk/env')>()),
   appDataDirFor: () => srcDir,
 }));
 
 const osEntries: Array<{ service: string; account: string }> = [];
-vi.mock('@apack/host/secrets', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@apack/host/secrets')>()),
+vi.mock('@apackdev/host/secrets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@apackdev/host/secrets')>()),
   // Records every reach for the credential store, so a test can assert it was never written
   osKeyVault: (service: string) => ({
     backend: 'fake', protection: 'os-keystore' as const,

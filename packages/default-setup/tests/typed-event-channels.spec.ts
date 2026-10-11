@@ -1,13 +1,13 @@
 // Compile-time checks, run by `vue-tsc` (npm run typecheck:pack). Exact type equality and expected
 // errors fail if the generated events regress to `any` or accept a wrong event.
-import { resolveName } from '@apack/sdk/ids';
-import { untypedOpenPlugin } from '@apack/sdk/fe';
+import { resolveName } from '@apackdev/sdk/ids';
+import { untypedOpenPlugin } from '@apackdev/sdk/fe';
 import { describe, expectTypeOf, it } from 'vitest';
-import type { HostPluginEvents } from '@apack/sdk/events';
-import type { ApplicationHotkeys } from '@apack/sdk/types';
+import type { HostPluginEvents } from '@apackdev/sdk/events';
+import type { ApplicationHotkeys } from '@apackdev/sdk/types';
 import type { EARS } from '#generated/ears.ts';
 import type { Services } from '#generated/services.ts';
-import type { PluginInboxOf } from '@apack/sdk/events';
+import type { PluginInboxOf } from '@apackdev/sdk/events';
 import { broadcastToPlugin, sendToSystem, type SendablePluginEvents } from '#generated/events.ts';
 import { openPlugin } from '#generated/fe.ts';
 import type { OutgoingActionEvents } from '#features/actions/be/types.ts';

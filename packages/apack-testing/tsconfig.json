@@ -6,10 +6,10 @@
     // is not project references (docs/goals/goal-test-tiers.md).
     "incremental": true,
     "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/apack-testing.tsbuildinfo",
-    // Workspace @apack/* sources import .ts files by name
+    // Workspace @apackdev/* sources import .ts files by name
     "allowImportingTsExtensions": true,
-    // Workspace @apack/* packages resolve to source (see their package.json exports)
-    "customConditions": ["@apack/source"],
+    // Workspace @apackdev/* packages resolve to source (see their package.json exports)
+    "customConditions": ["@apackdev/source"],
     "target": "ES2022",
     "module": "esnext",
     "moduleResolution": "bundler",

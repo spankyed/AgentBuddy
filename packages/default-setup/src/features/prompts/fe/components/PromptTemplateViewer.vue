@@ -8,7 +8,7 @@
 </template>
 
 <script setup lang="ts">
-import SimpleMonacoEditor from '@apack/ui/components/SimpleMonacoEditor';
+import SimpleMonacoEditor from '@apackdev/ui/components/SimpleMonacoEditor';
 
 defineProps<{
   value: string;

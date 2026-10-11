@@ -2,7 +2,7 @@
 //
 // Beside its callers, which are both this package's: `bundleDeclarations` (build/types-bundler.ts), which
 // writes every declaration bundle a pack build produces, and `apack facade-report`, which records one of
-// them. It lived in @apack/host for a while because the report was a repo script and a script and a
+// them. It lived in @apackdev/host for a while because the report was a repo script and a script and a
 // package's src cannot reach each other — the util moved rather than the thing that was in the wrong place.
 import ts from 'typescript';
 

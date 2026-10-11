@@ -26,7 +26,7 @@ Every pack gets this: `apack build` bundles each `apack.json` `extensions.dsl` e
 
 ## What is inlined
 
-The editor loads no `node_modules`, so a declaration Monaco can't resolve is a silently missing completion. The bundler inlines the pack's own modules and every `@apack/*` package, plus the packages listed in the entry's `inline` field; everything else stays an import. default-setup's `action` entry inlines `ai`, `@ai-sdk/provider`, `@ai-sdk/provider-utils`, `@ai-sdk/gateway` and `@standard-schema/spec`, the packages `services.inference`'s types reach into.
+The editor loads no `node_modules`, so a declaration Monaco can't resolve is a silently missing completion. The bundler inlines the pack's own modules and every `@apackdev/*` package, plus the packages listed in the entry's `inline` field; everything else stays an import. default-setup's `action` entry inlines `ai`, `@ai-sdk/provider`, `@ai-sdk/provider-utils`, `@ai-sdk/gateway` and `@standard-schema/spec`, the packages `services.inference`'s types reach into.
 
 ## When they are rebuilt
 

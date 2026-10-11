@@ -1,4 +1,4 @@
-import { FEATURE_ID_PATTERN } from '@apack/sdk/build';
+import { FEATURE_ID_PATTERN } from '@apackdev/sdk/build';
 import * as fs from 'node:fs';
 import { renderTemplate } from '../../templates.ts';
 import * as path from 'node:path';
@@ -111,9 +111,9 @@ export async function addFeature(args: string[], root: string) {
 }
 
 function logUnitTestSetup({ keptConfig, addedDependencies, upgrades }: UnitTestSetup): void {
-  console.log(`\nThe pack had no unit test setup, which the feature's system test runs on: added tests/setup.ts (@apack/testing/harness).`);
+  console.log(`\nThe pack had no unit test setup, which the feature's system test runs on: added tests/setup.ts (@apackdev/testing/harness).`);
   if (keptConfig) {
-    console.log(`  ${keptConfig} already exists: give its test options isolatedDataDir()'s env and globalSetup, and setupFiles: [...dataDir.setupFiles, './tests/setup.ts'] (@apack/testing/vitest)`);
+    console.log(`  ${keptConfig} already exists: give its test options isolatedDataDir()'s env and globalSetup, and setupFiles: [...dataDir.setupFiles, './tests/setup.ts'] (@apackdev/testing/vitest)`);
   }
   if (addedDependencies.length > 0) {
     console.log(`  Added ${addedDependencies.join(', ')} to devDependencies. Run: npm install`);

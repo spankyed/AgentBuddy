@@ -29,7 +29,7 @@ The goal's own record is its Outcome section. This is only what is left.
 | Eight unused imports, a dead helper and its constant | Left by deletions across three phases; `lint:check` runs inside `typecheck` on this branch and caught them all |
 | `install-host-version` pinned the app's version | Asserted `requires apack >=99.0.0; this is 0.3.14`. The second clause is this repo's current version and would have failed on the next release |
 | `facade:check` failing | Two changes predating this work (a dropped private `ensureGitRepository`, `PromptEntity` resolving through its import) plus one line this branch added. Re-recorded |
-| "One timeout blocks a third lane" | Wrong. With `@apack/sdk` at 20s the failure moves to `@apack/cli` at the same 5s default. Corrected in the runner's comment and the Outcome |
+| "One timeout blocks a third lane" | Wrong. With `@apackdev/sdk` at 20s the failure moves to `@apackdev/cli` at the same 5s default. Corrected in the runner's comment and the Outcome |
 | "Nothing catches a widened SDK exports map" | Wrong. `api:check` does — see item 2, which is the real finding |
 
 ---
@@ -40,7 +40,7 @@ Two `ensurePackagesBuilt` calls each check for a running build and find none, ea
 stale, and each spawn `npm run build:package`. The one that reaches the lock second throws:
 
 ```
-Error: another package build holds …/packages-build.lock: pid 34600 (@apack/testing, …)
+Error: another package build holds …/packages-build.lock: pid 34600 (@apackdev/testing, …)
     at withBuildLock (packages-built.ts:303)
 ```
 
@@ -98,7 +98,7 @@ has its own timeouts.
 the declarations API Extractor reads"* — and that is subtly wrong: a report is a pure function of the
 declarations **and the set of entries**, because there is one report per entry.
 
-Measured: add `./packs` to `@apack/sdk`'s exports map, rebuild, and `api:check` fails (no
+Measured: add `./packs` to `@apackdev/sdk`'s exports map, rebuild, and `api:check` fails (no
 `etc/packs.api.md`) while `api:stamp` passes, printing "API reports match its declarations". `api:check` is
 deliberately not a chain step, so between the two a widened map reaches a merge unreported. Root `CLAUDE.md`
 says a matching stamp means `api:check` cannot fail; this is a counterexample.
@@ -117,7 +117,7 @@ version, and a version for `apiSurfaceOf` itself.
 **Four layers, ordered by what each catches:**
 
 1. **Derive, don't enumerate**, wherever a source of truth exists — read the entry set from `exports`, as
-   `exports:check` already computes `@apack/ui`'s map from `src/`. An input derived from the thing itself
+   `exports:check` already computes `@apackdev/ui`'s map from `src/`. An input derived from the thing itself
    cannot drift.
 2. **Mutation-check each declared input** — change it, assert the stamp moves. The Phase 9 idiom. Catches
    *listed but not actually hashed*, and *the walk skips this file type*.
@@ -161,7 +161,7 @@ Phase 2's 25s Done-when is unmet and lane count will not close it. Two levers, b
 | | |
 |---|---|
 | Sum of the eight suites, each run alone | 52.6s |
-| `@app/default-setup` 14.7s + `@apack/sdk` 12.0s | **51% of that** |
+| `@app/default-setup` 14.7s + `@apackdev/sdk` 12.0s | **51% of that** |
 | Perfect packing over two lanes would be | 26.3s |
 | Measured wall at two lanes | **43s** |
 | Suite time at two lanes | ~86s, so each suite runs **1.63× slower** when two run at once |
@@ -181,14 +181,14 @@ workspace script — `test:integration` is now one — it inspects nothing and p
 step was established by reading the specs, not by the guard.
 
 **Done.** It follows `-w <ws>` / `--workspace <ws>` into that workspace's scripts, so a step that delegates
-is inspected instead of passing vacuously. Mutation-checked: an app marker in `@apack/cli`'s
+is inspected instead of passing vacuously. Mutation-checked: an app marker in `@apackdev/cli`'s
 `test:integration` script now fails the check, where before it read nothing at all.
 
 **Deliberately not followed: the workspace's spec files.** The markers are commands, and a spec's prose is
 not — two specs here say "the app configured for apack test" in a title, and scanning them would report
 them. That is the same false-positive class this checker was narrowed to avoid when it was written. So a
 spec that called `_electron.launch` directly would still not be caught; nothing does, and the E2E fixture
-that could lives in `@apack/testing`, which only steps that need the app use.
+that could lives in `@apackdev/testing`, which only steps that need the app use.
 
 ## 5. Correct one row in the goal's *Do not remove* — **done, 2026-09-25**
 

@@ -11,7 +11,7 @@ Four notes were dropped as already fixed, and are recorded here so they are not 
 | Built-in snapshots carry no type defs | `dist/snapshot.json` has `defs: { 'pack-types': … }` (161 KB). `DEFS_DIR` now only clears build output; the snapshot's facades come from `bundlePackTypes()` directly |
 | An empty `.sha256` installs unverified | `pack-installer.ts:308` requires `/^[0-9a-f]{64}$/i` |
 | Node floor `>=20.6` vs `import.meta.dirname` | Both CLI and testing are `engines: >=22` |
-| `@apack/sdk/build` re-exports host-only `discover`/`shared-deps` | Moved to `@apack/host` |
+| `@apackdev/sdk/build` re-exports host-only `discover`/`shared-deps` | Moved to `@apackdev/host` |
 | `verify-node-modules.mjs` passes when the bundled CLI directory is missing | Settled by reading it: it moved to `build/prod/`, and `apack-cli/tests/build/verify-node-modules.spec.ts:29` asserts it fails when the bundled CLI's dependencies or a platform binary are missing |
 
 `lookupRegistry` (`fetch-deps.ts:264`) is a deliberate placeholder until `api.apack.dev` exists, not a task.

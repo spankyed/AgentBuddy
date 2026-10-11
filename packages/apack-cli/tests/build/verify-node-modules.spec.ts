@@ -32,7 +32,7 @@ describe('verify-node-modules.mjs', () => {
     const workspace = path.join(tmp, 'workspace');
     pkg(app, { name: 'app' });
     pkg(path.join(app, 'node_modules', 'esbuild'), { name: 'esbuild', optionalDependencies: { '@esbuild/darwin-arm64': '1.0.0', '@esbuild/win32-x64': '1.0.0' } });
-    pkg(path.join(app, 'packages', 'apack-cli', 'dist', 'package'), { name: '@apack/cli', dependencies: { vite: '^7', esbuild: '^0.25' } });
+    pkg(path.join(app, 'packages', 'apack-cli', 'dist', 'package'), { name: '@apackdev/cli', dependencies: { vite: '^7', esbuild: '^0.25' } });
     pkg(path.join(workspace, 'node_modules', '@esbuild', 'darwin-arm64'), { name: '@esbuild/darwin-arm64' });
 
     const result = verify(app, workspace);

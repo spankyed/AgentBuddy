@@ -49,13 +49,13 @@ Never:
   APACK_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
 - delete or loosen a test to make a number move.
-- declare the `@apack/source` condition in a pack's config: `check:specifiers` refuses it, and the reason
+- declare the `@apackdev/source` condition in a pack's config: `check:specifiers` refuses it, and the reason
   is the whole point of the two pools.
 ```
 
 ## Background (surveyed 2026-09-26 at `232f85e78`)
 
-`@apack/testing/vitest` exports one thing, `isolatedDataDir()`. Everything else a pack's vitest config needs
+`@apackdev/testing/vitest` exports one thing, `isolatedDataDir()`. Everything else a pack's vitest config needs
 is copied, and the three copies have already drifted:
 
 | | plugins | `globals` | timeouts | `fileParallelism` | `exclude` |
@@ -122,7 +122,7 @@ no pack needs is rendering. That asymmetry is what makes the stub the default an
 
 Final.
 
-1. **One function defines a pack's vitest config**, exported from `@apack/testing/vitest` beside
+1. **One function defines a pack's vitest config**, exported from `@apackdev/testing/vitest` beside
    `isolatedDataDir`. That package is already every pack's test-time dependency and already owns the data-dir
    half of the config; the rest belongs with it. A pack's config becomes a call plus whatever that pack adds.
 2. **It stubs `.vue` to a generic component, and holds no alias handling at all.** The stub is what makes a
@@ -131,14 +131,14 @@ Final.
    `vite-tsconfig-paths`' `loose: true`. Measured: default-setup's existing config walks the graph with the
    stub and no other change. **The stub throws on mount**, naming `vue: true` as the fix, so a component test
    cannot silently assert against an empty component.
-3. **`vue: true` opts into `@vitejs/plugin-vue`, as an optional peer of `@apack/testing`.** Peer because a
+3. **`vue: true` opts into `@vitejs/plugin-vue`, as an optional peer of `@apackdev/testing`.** Peer because a
    vite plugin must match the vite instance vitest brings, and `vitest` is already a peer for that reason; a
    direct dependency invites two vites and a plugin bound to the wrong one. Optional because a pack that
    renders nothing needs nothing, and `peerDependenciesMeta` is how that is said. The helper imports it
    dynamically and, when it is missing, throws one sentence naming the install — rather than vitest's
    "Install @vitejs/plugin-vue" surfacing from inside a config file the author did not write. The scaffold
    adds it to no one.
-4. **It declares no `@apack/source` condition, ever.** A pack resolves the published `dist` because that is
+4. **It declares no `@apackdev/source` condition, ever.** A pack resolves the published `dist` because that is
    the one layout a pack author has, `check:specifiers` refuses a pack config that declares the condition, and
    this helper must not become the place that quietly does it. The two pools (`UnitSuite.kind`) depend on it.
 5. **The built-in pack, every fixture pack and the `apack init` template all call it.** A reference pack that
@@ -166,7 +166,7 @@ means no alias inside an SFC is ever resolved, so the question stops being asked
 So Decision 3 stands where three options were: an **optional peer** for `vue: true`, nothing for anyone else,
 and the scaffold unchanged. The reasoning, kept, because "why not simply depend on it" will be asked again:
 
-- **A dependency of `@apack/testing`** would give a pack author working frontend specs from one install, and
+- **A dependency of `@apackdev/testing`** would give a pack author working frontend specs from one install, and
   it breaks that package's own pattern — `vitest` and `@playwright/test` are peers precisely because a test
   framework must be the consumer's single copy, and a plugin *of* vite has the same constraint.
 - **A plain peer** would have every pack declare a package most of them never load.
@@ -178,7 +178,7 @@ and the scaffold unchanged. The reasoning, kept, because "why not simply depend 
 
 ### Phase 1 — the function, and the built-in pack calls it
 
-Add `definePackTestConfig` to `@apack/testing/vitest`: the `.vue` stub, `globals`, the include/exclude
+Add `definePackTestConfig` to `@apackdev/testing/vitest`: the `.vue` stub, `globals`, the include/exclude
 (`tests/**/*.spec.ts`, less `tests/e2e/**` and any `_support/**`), the tier-1 timeouts and the data-dir
 wiring. No alias handling — Decision 2. `packages/default-setup/vitest.config.ts` becomes a call plus its own
 `_support` exclusion and, until
@@ -247,7 +247,7 @@ does as text. Mutation-check it by restating `globals` in one config by hand.
   that stops being collected, and `include`/`exclude` is exactly what this moves.
 - **Measure on an idle machine, and say what you measured on.** The 2.6s figures above were taken with the
   plugin added by hand and reverted; re-take them on the real implementation.
-- **`@apack/testing` resolves its built bundle for everyone**, the repo's own E2E included
+- **`@apackdev/testing` resolves its built bundle for everyone**, the repo's own E2E included
   (`packages/apack-testing/CLAUDE.md`), so a change here needs that bundle rebuilt before any pack suite
   sees it — `npm run packages:ensure` does it, and every entry point that triggers it is listed in that file.
 - **Don't relitigate settled decisions.** The two pools and why they cannot be one, a pack resolving `dist`,
@@ -258,12 +258,12 @@ does as text. Mutation-check it by restating `globals` in one config by hand.
 | Phase | Status | Evidence |
 |---|---|---|
 | 1 — the function, and the built-in pack calls it | **done** | `c0f7b49de`. `related --run src/features/notes/be/system.ts` is 1 spec where it was `Install @vitejs/plugin-vue`; 87 files / 720 tests unchanged |
-| 2 — the fixture packs and the scaffold | **done** | `0bf5ec9ea`. `apack init` writes 4 lines where it wrote 18; external-pack 10 / 32 and 12 + 1 Playwright; `@apack/cli` 39 / 329 and 15 / 187; `test:packaged-authoring` green |
+| 2 — the fixture packs and the scaffold | **done** | `0bf5ec9ea`. `apack init` writes 4 lines where it wrote 18; external-pack 10 / 32 and 12 + 1 Playwright; `@apackdev/cli` 39 / 329 and 15 / 187; `test:packaged-authoring` green |
 | 3 — `spec` narrows inside a pack | **done** | `1fc522ed9`. 1–3 files in 2–6s against the whole suite's 87 and 18s |
 | 4 — the guard | **done** | `edd6ab382`. Three mutations, each caught |
 
 `npx vitest related` and `--changed` both work inside a pack now, which is what the whole thing turned on. No
-API report covers `@apack/testing`, so there was nothing to regenerate.
+API report covers `@apackdev/testing`, so there was nothing to regenerate.
 
 ### What the plan did not anticipate
 

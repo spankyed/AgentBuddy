@@ -1,4 +1,4 @@
-// The loader's lines are what `@apack/testing` reads to tell whether a pack came up — the only signal a
+// The loader's lines are what `@apackdev/testing` reads to tell whether a pack came up — the only signal a
 // backend-only pack leaves. A reword has to be a change to both sides, not a pack author's suite failing
 // later with the wrong reason, so the sentences live in one module and this pins that the loader uses it.
 import * as fs from 'node:fs';
@@ -9,8 +9,8 @@ import { registry } from './test-host.ts';
 import { PACK_LOAD_MESSAGES, packRegistered } from '../../../src/packs/load-messages.ts';
 import { loadSingleExternalPack, registerExternalPacks } from '../../../src/packs/runtime/loader.ts';
 import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
-import { testRootEvents } from '@apack/sdk/testing';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { testRootEvents } from '@apackdev/sdk/testing';
 
 const PACK_ID = 'load-messages-pack';
 let tmpDir: string;

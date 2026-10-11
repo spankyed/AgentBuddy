@@ -38,7 +38,7 @@ Finished when:
 - Mutation: reverting `declaredBy` in mergeRegistries to attribute a name to the dependency it arrived
   through fails the diamond test; removing a name from REQUIRED_FACADE_EXPORTS fails the missing-export
   test.
-- npm run typecheck passes, and npm test -w @apack/cli passes.
+- npm run typecheck passes, and npm test -w @apackdev/cli passes.
 - The new spec's wall-clock cost is recorded in the final summary, measured, not estimated.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
@@ -161,7 +161,7 @@ Final.
   import them. Keep `BASE_PACK`/`APP_PACK` where they are: they belong to that spec's scenario.
 - No behaviour change; this is so Phase 2 doesn't copy them.
 
-**Done when:** `npm test -w @apack/cli` passes unchanged, and `facade-typing.spec.ts` declares none of
+**Done when:** `npm test -w @apackdev/cli` passes unchanged, and `facade-typing.spec.ts` declares none of
 the four helpers itself.
 
 ### Phase 2 — The diamond builds

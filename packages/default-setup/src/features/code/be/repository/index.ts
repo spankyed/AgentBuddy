@@ -2,10 +2,10 @@ import { tx, findById, findAll } from '#generated/ears.ts';
 
 import { EARS } from '#generated/ears.ts'
 
-import { exists } from '@apack/ears';
-import { trash } from '@apack/sdk/repositories';
+import { exists } from '@apackdev/ears';
+import { trash } from '@apackdev/sdk/repositories';
 import type { TerminalInfo } from '../types.ts'
-import { createLogger } from '@apack/sdk/logger'
+import { createLogger } from '@apackdev/sdk/logger'
 
 const logger = createLogger('code')
 

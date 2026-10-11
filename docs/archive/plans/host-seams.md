@@ -96,7 +96,7 @@ Two things the steps below did not predict, both recorded where they were found:
   plan says to) would have broken the gate rather than freed it. What replaced it is a derived rule — a package
   may name its features' frontends from a module it publishes *and* that sits outside every feature, the
   hand-written counterpart of a pack's generated `pack-entry-fe.ts` — so nothing is blessed by path or by
-  filename, and a tree with no `exports` excepts nothing. The second half of that is not decoration: `@apack/host`
+  filename, and a tree with no `exports` excepts nothing. The second half of that is not decoration: `@apackdev/host`
   publishes `./settings` from `features/settings/be/index.ts`, and excepting a module by visibility alone handed
   that one feature a licence no other feature had (found in review, fixed in `29620c935`'s successor).
 - **Step 3's `via` is not only an action's.** Stamping a source rather than specifically an action costs nothing

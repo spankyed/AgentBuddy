@@ -35,7 +35,7 @@ Semantic search over library documents: documents are split into chunks (whole d
 4. Bring it onto the current pack structure before shipping it:
    - register the index's queries and commands as repositories in `apack.json` (`searchIndexQueries`/`searchIndexCommands`), used through `repository`, instead of the module functions `be/repository/commands.ts` and `be/system.ts` import directly;
    - decide whether local FastEmbed models stay, or every embedding goes through `services.inference`;
-   - unit-test indexing and search on the harness (`@apack/testing/harness`), with `mockInference` for the API models.
+   - unit-test indexing and search on the harness (`@apackdev/testing/harness`), with `mockInference` for the API models.
 5. Ship the native modules in the packaged app. `usearch` and FastEmbed's ONNX runtime load native binaries:
    - a pack's backend runtime bundle inlines its npm dependencies, so a package carrying a native binary has to be named in `RESOLVED_AT_RUNTIME` (`apack-cli/src/build/be-bundler.ts`) to stay external and resolve from `node_modules`. The app ships `node_modules` unpacked (`asar: false` in `electron-builder.mjs`); check that they're installed where the packaged runtime resolves them.
    - Check that their binaries load under Electron's Node. `build/build.sh` rebuilds only `node-pty` against Electron (`electron-rebuild --only node-pty`); add them there if their prebuilds don't load.

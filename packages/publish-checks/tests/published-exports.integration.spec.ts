@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { CONSUMER_MATRIX, PACKAGES_BUILT, TSC_VERSIONS, installPublishedPackages } from '../src/published-packages.ts';
 
-/** Every export of the packed @apack/ears, @apack/sdk and @apack/ui resolves to declarations for consumers. */
+/** Every export of the packed @apackdev/ears, @apackdev/sdk and @apackdev/ui resolves to declarations for consumers. */
 let consumer: string | undefined;
 beforeAll(() => {
   if (PACKAGES_BUILT) consumer = installPublishedPackages();
@@ -15,7 +15,7 @@ afterAll(() => {
 
 /** The packed package's exports, and whether each is code a consumer imports */
 function exportsOf(name: string): Array<{ key: string; code: boolean }> {
-  const manifest = JSON.parse(fs.readFileSync(path.join(consumer!, 'node_modules', '@apack', name, 'package.json'), 'utf-8'));
+  const manifest = JSON.parse(fs.readFileSync(path.join(consumer!, 'node_modules', '@apackdev', name, 'package.json'), 'utf-8'));
   return Object.entries(manifest.exports as Record<string, unknown>).map(([key, target]) => ({
     key,
     code: !key.endsWith('.json') && typeof target === 'object' && target !== null && 'types' in target,
@@ -24,7 +24,7 @@ function exportsOf(name: string): Array<{ key: string; code: boolean }> {
 
 /** Export subpaths a consumer imports as code: not metadata, and not a source-only host hook. */
 function codeExports(name: string): string[] {
-  return exportsOf(name).filter((entry) => entry.code).map(({ key }) => `@apack/${name}${key.slice(1)}`);
+  return exportsOf(name).filter((entry) => entry.code).map(({ key }) => `@apackdev/${name}${key.slice(1)}`);
 }
 
 function nonCodeExports(name: string): string[] {
@@ -60,8 +60,8 @@ describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
     expect(nonCodeExports('ears')).toEqual(['./package.json']);
     expect(nonCodeExports('sdk')).toEqual(['./package.json', './apack.schema.json']);
     expect(nonCodeExports('ui')).toEqual(['./package.json']);
-    expect(specifiers).toEqual(expect.arrayContaining(['@apack/ears', '@apack/ears/lmdb', '@apack/sdk/repositories', '@apack/sdk/events', '@apack/sdk/templates', '@apack/ui/components/tiptap/TiptapEditor']));
-    // Packs send with @apack/sdk/events; the host's transport and API client aren't an entry
+    expect(specifiers).toEqual(expect.arrayContaining(['@apackdev/ears', '@apackdev/ears/lmdb', '@apackdev/sdk/repositories', '@apackdev/sdk/events', '@apackdev/sdk/templates', '@apackdev/ui/components/tiptap/TiptapEditor']));
+    // Packs send with @apackdev/sdk/events; the host's transport and API client aren't an entry
     fs.writeFileSync(path.join(consumer!, 'package.json'), JSON.stringify({ name: 'consumer', type: 'module' }));
     fs.writeFileSync(path.join(consumer!, 'tsconfig.json'), JSON.stringify({
       compilerOptions: {

@@ -3,13 +3,13 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { repository } from '#generated/repository.ts';
 import { EARS } from '#generated/ears.ts'
-import { hasIdCollision } from '@apack/ears';
+import { hasIdCollision } from '@apackdev/ears';
 
-import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@apack/sdk/utils'
-import { toDisplayName } from '@apack/sdk/utils'
+import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@apackdev/sdk/utils'
+import { toDisplayName } from '@apackdev/sdk/utils'
 import type { ExportedNote } from '#features/notes/be/export-types.ts';
 import type { NoteEntity } from '#features/notes/be/types.ts';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 interface ImportResult {
   created: number

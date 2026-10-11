@@ -1,11 +1,11 @@
-import type { ExecutionContext, TNodeEntity } from '@apack/sdk/steps';
+import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
 import type { NodeEntity } from '#generated/types.ts';
-import { EARS } from '@apack/sdk';
+import { EARS } from '@apackdev/sdk';
 import { repository } from '#generated/repository.ts';
-import { createLogger, reportError } from '@apack/sdk/logger';
-import { executeTemplate, createTemplateResolver } from '@apack/sdk/templates';
-import { services } from '@apack/sdk/services';
-import { isModelId } from '@apack/sdk/models';
+import { createLogger, reportError } from '@apackdev/sdk/logger';
+import { executeTemplate, createTemplateResolver } from '@apackdev/sdk/templates';
+import { services } from '@apackdev/sdk/services';
+import { isModelId } from '@apackdev/sdk/models';
 import { DEFAULT_MODEL } from './model.ts';
 
 const brainLogger = createLogger('brain', { debug: true });

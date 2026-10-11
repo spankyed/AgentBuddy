@@ -1,7 +1,7 @@
 // services.filesystem: files and folders on the user's disk
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { FilesystemService } from '@apack/sdk/services';
+import type { FilesystemService } from '@apackdev/sdk/services';
 
 export const filesystem: FilesystemService = {
   async writeFile(filePath, content) {

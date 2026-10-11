@@ -24,12 +24,12 @@ if (typeof globalThis.localStorage === 'undefined') {
 }
 // The pack's runtime on the harness: in-memory EARS, systems, services and steps, no app host
 import * as path from 'path';
-import { setupPackTests } from '@apack/testing/harness';
+import { setupPackTests } from '@apackdev/testing/harness';
 import { contentRuntime } from '../src/__generated__/content-runtime.ts';
 import { registration } from '../src/__generated__/pack-entry.ts';
 import { setCompiledDir } from '../src/__generated__/appliers.ts';
 
 // Where `apack build` writes this pack's compiled content, as the app points the pack module at them. Spelled
-// out rather than taken from `PACK_LAYOUT`, which is `@apack/host`'s and no pack may import
+// out rather than taken from `PACK_LAYOUT`, which is `@apackdev/host`'s and no pack may import
 setCompiledDir(path.resolve(__dirname, '..', 'dist', 'runtime', 'content'));
 await setupPackTests({ contentRuntime, registration });

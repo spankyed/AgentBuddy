@@ -33,9 +33,9 @@ import {
   type ProfileMode,
 } from '../app/profiles';
 import { askAttached, attachableApp, spawnOrAttach, type AttachableApp } from '../app/drive-attach.ts';
-import type { DevSession } from '@apack/host/dev-session';
-import { resolveAppContext } from '@apack/sdk/env';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import type { DevSession } from '@apackdev/host/dev-session';
+import { resolveAppContext } from '@apackdev/sdk/env';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { fixtureEnv } from './test';
 import { appEnv } from './dev';
 import { copySecretsInto } from '../app/profile-secrets.ts';
@@ -116,7 +116,7 @@ can use it the same way — the app's windows are shown so you can watch.
 
 \`\`\`ts
 // drive/notes.ts
-import { drive } from '@apack/testing';
+import { drive } from '@apackdev/testing';
 
 drive('open notes and look at it', async ({ app, appPage }) => {
   await app.navigate('notes');
@@ -216,7 +216,7 @@ export function takeOneShotFlags(argv: string[]): { ask?: AskName; argument?: st
 export interface DriveScaffold {
   /** Files written, as paths relative to the pack */
   created: string[];
-  /** Configs kept that do not call their helper, so their settings no longer follow @apack/testing */
+  /** Configs kept that do not call their helper, so their settings no longer follow @apackdev/testing */
   keptStale: string[];
 }
 
@@ -275,8 +275,8 @@ export function scaffold(root: string): DriveScaffold {
 function reportStaleConfigs(stale: string[]): void {
   for (const file of stale) {
     const helper = CONFIG_HELPERS[path.basename(file)]![0]!;
-    console.error(`${file} does not call ${helper}(), so its settings no longer follow @apack/testing. Replace its body with:`);
-    console.error(`  import { ${helper} } from '@apack/testing/playwright';`);
+    console.error(`${file} does not call ${helper}(), so its settings no longer follow @apackdev/testing. Replace its body with:`);
+    console.error(`  import { ${helper} } from '@apackdev/testing/playwright';`);
     console.error(`  export default ${helper}();\n`);
   }
 }
@@ -509,7 +509,7 @@ export async function drive(args: string[]) {
   if (driveScripts(root).length === 0) {
     console.error(`No driving scripts yet. Write one in ${DRIVE_DIR}/ and run this again:\n`);
     console.error(`  // ${DRIVE_DIR}/look.ts`);
-    console.error("  import { drive } from '@apack/testing';\n");
+    console.error("  import { drive } from '@apackdev/testing';\n");
     console.error("  drive('look at it', async ({ app, appPage }) => {");
     console.error("    await app.screenshot('look');");
     console.error('  });');

@@ -2,11 +2,11 @@ import { defineConfig } from 'vitest/config';
 import { defaultServerConditions } from 'vite';
 
 // Vitest's own defaults: Vite's server conditions without 'module'
-const conditions = ['@apack/source', ...defaultServerConditions.filter((c) => c !== 'module')];
+const conditions = ['@apackdev/source', ...defaultServerConditions.filter((c) => c !== 'module')];
 
 export default defineConfig({
   // Every project here is a host package, as in `vitest.config.ts`: the expensive halves all resolve the
-  // workspace @apack packages to source. No pack suite has a second config, so the split that forces two
+  // workspace @apackdev packages to source. No pack suite has a second config, so the split that forces two
   // unit pools does not arise here.
   resolve: { conditions },
   ssr: { resolve: { conditions } },

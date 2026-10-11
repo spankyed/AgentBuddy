@@ -1,4 +1,4 @@
-// The harness fails early, naming both copies, when a pack's @apack/ears isn't the copy its @apack/sdk loads
+// The harness fails early, naming both copies, when a pack's @apackdev/ears isn't the copy its @apackdev/sdk loads
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -15,30 +15,30 @@ function writePackage(dir: string, name: string, version: string): void {
   fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name, version }));
 }
 
-/** A pack with @apack/sdk 0.2.0 installed, and `ears` placing @apack/ears copies */
+/** A pack with @apackdev/sdk 0.2.0 installed, and `ears` placing @apackdev/ears copies */
 function pack(ears: { top?: string; nested?: string }): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-shared-ears-'));
   dirs.push(root);
   writePackage(root, 'my-pack', '1.0.0');
-  const modules = path.join(root, 'node_modules', '@apack');
-  writePackage(path.join(modules, 'sdk'), '@apack/sdk', '0.2.0');
-  if (ears.top) writePackage(path.join(modules, 'ears'), '@apack/ears', ears.top);
-  if (ears.nested) writePackage(path.join(modules, 'sdk', 'node_modules', '@apack', 'ears'), '@apack/ears', ears.nested);
+  const modules = path.join(root, 'node_modules', '@apackdev');
+  writePackage(path.join(modules, 'sdk'), '@apackdev/sdk', '0.2.0');
+  if (ears.top) writePackage(path.join(modules, 'ears'), '@apackdev/ears', ears.top);
+  if (ears.nested) writePackage(path.join(modules, 'sdk', 'node_modules', '@apackdev', 'ears'), '@apackdev/ears', ears.nested);
   return root;
 }
 
 describe('assertSharedEars', () => {
-  it('accepts a pack whose @apack/sdk loads the pack\'s @apack/ears', () => {
+  it('accepts a pack whose @apackdev/sdk loads the pack\'s @apackdev/ears', () => {
     expect(() => assertSharedEars(pack({ top: '0.2.0' }))).not.toThrow();
   });
 
-  it('names both copies when npm nested another @apack/ears under @apack/sdk', () => {
+  it('names both copies when npm nested another @apackdev/ears under @apackdev/sdk', () => {
     expect(() => assertSharedEars(pack({ top: '0.1.0', nested: '0.2.0' })))
       .toThrow(/are different copies[\s\S]*install matching versions/);
   });
 
-  it('asks to install @apack/ears when the pack has none', () => {
-    expect(() => assertSharedEars(pack({ nested: '0.2.0' }))).toThrow(/@apack\/ears isn't installed in[\s\S]*add it to the pack's dependencies/);
+  it('asks to install @apackdev/ears when the pack has none', () => {
+    expect(() => assertSharedEars(pack({ nested: '0.2.0' }))).toThrow(/@apackdev\/ears isn't installed in[\s\S]*add it to the pack's dependencies/);
   });
 
   it('accepts the workspace layout the monorepo\'s fixture packs use', () => {

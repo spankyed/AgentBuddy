@@ -1,20 +1,20 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
-import { population } from '@apack/sdk/testing';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { population } from '@apackdev/sdk/testing';
 import { repoFiles } from './_support/repo-files.ts';
 
 /**
- * Environment identity and data paths are decided only by @apack/sdk/env (and the main
+ * Environment identity and data paths are decided only by @apackdev/sdk/env (and the main
  * process bootstrap that feeds it). This guard fails if the old, divergent resolution
  * patterns come back anywhere in the repo's code.
  *
- * Here and not in `@apack/sdk`, where it lived until 2026-10-01, because its subject is every tracked
+ * Here and not in `@apackdev/sdk`, where it lived until 2026-10-01, because its subject is every tracked
  * file and not that package — it imports nothing from it. A suite's project is re-run when that project's
  * inputs move, so a guard over the repo has to sit in a suite that declares the repo (`SUITE_READS`'
- * `repo`), and making `@apack/sdk`'s 573 tests repo-wide cost 11.6s on every change to protect this one
- * 0.4s check. It missed a forbidden path committed to `@apack/cli` for exactly that reason.
+ * `repo`), and making `@apackdev/sdk`'s 573 tests repo-wide cost 11.6s on every change to protect this one
+ * 0.4s check. It missed a forbidden path committed to `@apackdev/cli` for exactly that reason.
  */
 
 /**
@@ -50,7 +50,7 @@ const ALLOWED: Record<string, { patterns: readonly PatternId[]; why: string }> =
 type PatternId = 'data-dir' | 'env-read' | 'channel' | 'node-env';
 
 const FORBIDDEN: Array<{ id: PatternId; pattern: RegExp; why: string; allowInTests?: boolean }> = [
-  { id: 'data-dir', pattern: /Application Support/, why: 'platform data dirs are derived only in @apack/sdk/env' },
+  { id: 'data-dir', pattern: /Application Support/, why: 'platform data dirs are derived only in @apackdev/sdk/env' },
   { id: 'env-read', pattern: /process\.env\.APACK_ENV\b(?!\s*=)/, why: 'read the environment via resolveAppContext()', allowInTests: true },
   { id: 'channel', pattern: /__APACK_CHANNEL__/, why: 'the channel stamp is consumed only by the main bootstrap' },
   // Deliberately narrower than every NODE_ENV read: a bundler config asking what mode it builds in is not
@@ -119,7 +119,7 @@ describe('environment identity guard', () => {
         }
       });
     }
-    expect(violations, 'Resolve identity via @apack/sdk/env (resolveAppContext)').toEqual([]);
+    expect(violations, 'Resolve identity via @apackdev/sdk/env (resolveAppContext)').toEqual([]);
   });
 
   /**

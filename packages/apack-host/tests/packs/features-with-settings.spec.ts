@@ -7,7 +7,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
-import type { PackRegistration } from '@apack/sdk/framework';
+import type { PackRegistration } from '@apackdev/sdk/framework';
 import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const memoPack: PackRegistration = {

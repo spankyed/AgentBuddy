@@ -23,7 +23,7 @@
 - **Not removed**: the outgoing types in `OutgoingSettingsEvents`. Step 8 says to remove them, which contradicts
   step 6's choice to answer the settings plugin: a plugin declares what it receives, and it still receives these.
   They carry a comment naming the packs system as their sender instead.
-- **Unforeseen cost**: `@apack/testing`'s harness deliberately ran exactly one of the host's systems, settings.
+- **Unforeseen cost**: `@apackdev/testing`'s harness deliberately ran exactly one of the host's systems, settings.
   Content import moving means it runs two, since a pack's tests content their own compiled output constantly. That
   list is still hand-maintained and underived, and it is now longer.
 
@@ -34,7 +34,7 @@ Settings system (`features/settings/be/system.ts`) owned content data import, pr
 Three content-related concerns baked into the settings state machine:
 
 1. **`IMPORT_PACK_CONTENT`** — Calls `importCompiledContent()` with a user-chosen directory, include filters, and import mode, then syncs the root flow setting and sends the bus `PACK_CHANGED`. Emits `PACK_CONTENT_IMPORTED` / `PACK_CONTENT_IMPORT_FAILED`.
-2. **`PREVIEW_PACK_CONTENT`** — Calls `previewPackContent()` (`@apack/sdk/content`, generic over a compiled content directory) and reports what's available. Emits `PACK_CONTENT_PREVIEW` / `PACK_CONTENT_PREVIEW_FAILED`.
+2. **`PREVIEW_PACK_CONTENT`** — Calls `previewPackContent()` (`@apackdev/sdk/content`, generic over a compiled content directory) and reports what's available. Emits `PACK_CONTENT_PREVIEW` / `PACK_CONTENT_PREVIEW_FAILED`.
 3. **`toContentSelection()`** — Converts the FE's JSON-safe include shape (`null | string[]`) into `ContentSelectionSet` (`true | Set<string>`).
 
 These depend on `importCompiledContent` (from `#generated/appliers`) and `previewPackContent`.
@@ -66,8 +66,8 @@ The settings FE plugin sends `PREVIEW_PACK_CONTENT` / `IMPORT_PACK_CONTENT` / `R
 
 ### SDK / shared utilities
 
-- `toContentSelection()` moves to `@apack/sdk/utils` — it's a pure data conversion with no feature coupling.
-- `previewPackContent()` is already a generic SDK utility (`@apack/sdk/content`); the packs system can call it directly.
+- `toContentSelection()` moves to `@apackdev/sdk/utils` — it's a pure data conversion with no feature coupling.
+- `previewPackContent()` is already a generic SDK utility (`@apackdev/sdk/content`); the packs system can call it directly.
 
 ## Steps
 
@@ -77,7 +77,7 @@ The settings FE plugin sends `PREVIEW_PACK_CONTENT` / `IMPORT_PACK_CONTENT` / `R
 
 2. **Move action implementations.** Lift `previewPackContent`, `importPackContent`, `resetAppActor`, and `onResetComplete`/`onResetFailed` from settings into the packs system. Move `toContentSelection()` alongside or into SDK utils.
 
-3. **Wire packs system to apply infra.** The packs system is host code, not a pack — it needs access to `importCompiledContent`. Since it already imports from `@apack/sdk`, `importCompiledContent` from `@apack/sdk/utils` and `previewPackContent` from `@apack/sdk/content` work; the reset calls `services.appData.reset()`.
+3. **Wire packs system to apply infra.** The packs system is host code, not a pack — it needs access to `importCompiledContent`. Since it already imports from `@apackdev/sdk`, `importCompiledContent` from `@apackdev/sdk/utils` and `previewPackContent` from `@apackdev/sdk/content` work; the reset calls `services.appData.reset()`.
 
 4. **Update `packsEvents` set** with the new event types so the bus routes them to the packs system.
 
@@ -99,7 +99,7 @@ The settings FE plugin sends `PREVIEW_PACK_CONTENT` / `IMPORT_PACK_CONTENT` / `R
 
 ### Phase 4 — preview disposition
 
-9. *Done:* preview is the SDK's generic `previewPackContent()` (`@apack/sdk/content`).
+9. *Done:* preview is the SDK's generic `previewPackContent()` (`@apackdev/sdk/content`).
 
 ## Files Changed
 

@@ -1,5 +1,5 @@
 // The unit test setup `apack add feature` gives a pack without one: it keeps any config vitest already loads, and
-// adds or checks @apack/testing and vitest against what the harness runs on
+// adds or checks @apackdev/testing and vitest against what the harness runs on
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -44,44 +44,44 @@ describe('scaffoldUnitTestSetup', () => {
     expect(setup.created).toContain(path.join(root, 'vitest.config.ts'));
   });
 
-  it("adds @apack/testing at the pack's own @apack/sdk range, which its peer dependency matches", () => {
-    const root = pack({ 'package.json': packageJson({ dependencies: { '@apack/sdk': '^0.0.7' } }) });
+  it("adds @apackdev/testing at the pack's own @apackdev/sdk range, which its peer dependency matches", () => {
+    const root = pack({ 'package.json': packageJson({ dependencies: { '@apackdev/sdk': '^0.0.7' } }) });
 
     const setup = scaffoldUnitTestSetup(root);
 
-    expect(setup.addedDependencies).toEqual(['@apack/testing', 'vitest']);
+    expect(setup.addedDependencies).toEqual(['@apackdev/testing', 'vitest']);
     expect(setup.upgrades).toEqual([]);
-    expect(readPackageJson(root).devDependencies).toEqual({ '@apack/testing': '^0.0.7', vitest: '^3.2.1' });
+    expect(readPackageJson(root).devDependencies).toEqual({ '@apackdev/testing': '^0.0.7', vitest: '^3.2.1' });
   });
 
-  it('names the upgrade for an installed @apack/testing without the harness and a vitest before 3, keeping them', () => {
+  it('names the upgrade for an installed @apackdev/testing without the harness and a vitest before 3, keeping them', () => {
     const root = pack({
-      'package.json': packageJson({ dependencies: { '@apack/sdk': '^0.0.7' }, devDependencies: { '@apack/testing': '^0.0.7', vitest: '^2.1.0' } }),
-      'node_modules/@apack/testing/package.json': JSON.stringify({ name: '@apack/testing', version: '0.0.7', exports: { '.': './dist/index.js' } }),
+      'package.json': packageJson({ dependencies: { '@apackdev/sdk': '^0.0.7' }, devDependencies: { '@apackdev/testing': '^0.0.7', vitest: '^2.1.0' } }),
+      'node_modules/@apackdev/testing/package.json': JSON.stringify({ name: '@apackdev/testing', version: '0.0.7', exports: { '.': './dist/index.js' } }),
     });
 
     const setup = scaffoldUnitTestSetup(root);
 
     expect(setup.addedDependencies).toEqual([]);
     expect(setup.upgrades).toEqual([
-      { name: '@apack/testing', range: '^0.0.7', reason: 'the installed 0.0.7 has no @apack/testing/harness' },
+      { name: '@apackdev/testing', range: '^0.0.7', reason: 'the installed 0.0.7 has no @apackdev/testing/harness' },
       { name: 'vitest', range: '^3.2.1', reason: '^2.1.0 is before 3.0.0' },
     ]);
-    expect(readPackageJson(root).devDependencies).toEqual({ '@apack/testing': '^0.0.7', vitest: '^2.1.0' });
+    expect(readPackageJson(root).devDependencies).toEqual({ '@apackdev/testing': '^0.0.7', vitest: '^2.1.0' });
   });
 
-  it("names the upgrade for an @apack/testing range that doesn't match the pack's @apack/sdk", () => {
-    const root = pack({ 'package.json': packageJson({ dependencies: { '@apack/sdk': '^0.1.0' }, devDependencies: { '@apack/testing': '^0.2.0', vitest: '^3.2.4' } }) });
+  it("names the upgrade for an @apackdev/testing range that doesn't match the pack's @apackdev/sdk", () => {
+    const root = pack({ 'package.json': packageJson({ dependencies: { '@apackdev/sdk': '^0.1.0' }, devDependencies: { '@apackdev/testing': '^0.2.0', vitest: '^3.2.4' } }) });
 
     expect(scaffoldUnitTestSetup(root).upgrades).toEqual([
-      { name: '@apack/testing', range: '^0.1.0', reason: "^0.2.0 doesn't match the pack's @apack/sdk ^0.1.0" },
+      { name: '@apackdev/testing', range: '^0.1.0', reason: "^0.2.0 doesn't match the pack's @apackdev/sdk ^0.1.0" },
     ]);
   });
 
   it('checks the installed vitest when the declared range allows 3', () => {
     const root = pack({
-      'package.json': packageJson({ devDependencies: { '@apack/testing': '*', vitest: '*' } }),
-      'node_modules/@apack/testing/package.json': JSON.stringify({ name: '@apack/testing', version: '0.1.0', exports: { './harness': './dist/harness.js' } }),
+      'package.json': packageJson({ devDependencies: { '@apackdev/testing': '*', vitest: '*' } }),
+      'node_modules/@apackdev/testing/package.json': JSON.stringify({ name: '@apackdev/testing', version: '0.1.0', exports: { './harness': './dist/harness.js' } }),
       'node_modules/vitest/package.json': JSON.stringify({ name: 'vitest', version: '2.1.9' }),
     });
 

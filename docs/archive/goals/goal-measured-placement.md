@@ -12,7 +12,7 @@ Implement docs/goals/goal-measured-placement.md on `AS/chain-inputs`, at or afte
 **Not master:** the commits this builds on were moved off it.
 
 Before Phase 1, confirm the base: packages/apack-cli/etc/spec-cost.json exists and
-`npm run spec-cost:check -w @apack/cli` passes, scripts/lib/spec-cost.ts exports `halfFor` and
+`npm run spec-cost:check -w @apackdev/cli` passes, scripts/lib/spec-cost.ts exports `halfFor` and
 `INTEGRATION_ABOVE_MS`, scripts/lib/test-timeouts.ts exports `timeoutOverrides`, and
 `TIMEOUT_EXCEPTIONS` in packages/apack-cli/tests/build/suite-timeouts.spec.ts is empty. If they
 don't, stop and say so — this goal is the second half of work those pieces are the first half of.
@@ -109,7 +109,7 @@ So two of the three were one fact and are now unified. What is left is not a col
 
 ### What "inferred" costs
 
-`@apack/host`'s `write-lock.spec.ts` is that package's floor at 4.7s and holds the slowest test in the
+`@apackdev/host`'s `write-lock.spec.ts` is that package's floor at 4.7s and holds the slowest test in the
 repo. It carried a 90s override until Phase B removed it. Nothing measured it, nothing placed it, and
 nothing would have said if it had grown to 20s except a timeout failure — at which point the only lever
 available in a single-suite package is an exception, because there is no second half to move it into.
@@ -139,7 +139,7 @@ Two edges, and anything between stays where it is.
 
 ### Phase 1 — Record every suite's per-file costs
 
-Extend the cost artifact beyond `@apack/cli`. `measure-suites.ts` already parses per-file times for all
+Extend the cost artifact beyond `@apackdev/cli`. `measure-suites.ts` already parses per-file times for all
 eight suites; what is missing is writing them down and a `check`/`update` pair per the repo's convention for
 a recorded artifact.
 
@@ -192,17 +192,17 @@ survivor is not derivable.
 
 | suite | specs | recorded work | slowest spec |
 |---|---|---|---|
-| `@apack/cli` | 80 | 198.8s | 29.4s `facade-typing.integration.spec.ts` |
-| `@apack/host` | 77 | 19.3s | 4.7s `write-lock.spec.ts` |
-| `@apack/sdk` | 56 | 14.8s | 10.6s `generate-entries.spec.ts` |
+| `@apackdev/cli` | 80 | 198.8s | 29.4s `facade-typing.integration.spec.ts` |
+| `@apackdev/host` | 77 | 19.3s | 4.7s `write-lock.spec.ts` |
+| `@apackdev/sdk` | 56 | 14.8s | 10.6s `generate-entries.spec.ts` |
 | `@app/default-setup` | 86 | 13.8s | 3.9s `harness-app-stop.spec.ts` |
 | `@app/api` | 15 | 4.9s | 1.0s `secrets.spec.ts` |
-| `@apack/ears` | 9 | 2.6s | 2.0s `store.spec.ts` |
+| `@apackdev/ears` | 9 | 2.6s | 2.0s `store.spec.ts` |
 | `@app/renderer` | 8 | 0.1s | — |
 | `@app/main` | 2 | 0.1s | — |
 
 **Before: one package of eight, 80 specs. After: eight of eight, 334.** 25 specs cost more than the 2.5s a
-fast half allows; 20 are `@apack/cli`'s integration half, placed correctly by cost, and the other five are
+fast half allows; 20 are `@apackdev/cli`'s integration half, placed correctly by cost, and the other five are
 the findings below.
 
 Slowest single test 4.1s against a 15s budget; slowest single file 18.6s pooled and 10.6s alone, against a
@@ -250,7 +250,7 @@ Measured twice, back to back, nothing else running:
     drift on specs over 200ms       median 6%, p90 22%, max 45%
     placement decisions that changed    0 of 334
 
-The costs move a lot — three `@apack/cli` specs crossed 2.5s between the two runs — and **nothing moved
+The costs move a lot — three `@apackdev/cli` specs crossed 2.5s between the two runs — and **nothing moved
 half**, because those three are already in the integration half, where the return edge is 1.5s. This is the
 dead band doing the job it was added for, now demonstrated rather than argued: a single threshold would have
 churned three specs' filenames on a re-measure that changed nothing about the code.
@@ -261,7 +261,7 @@ should not be quoted as a measurement of anything finer.
 ### One clause of "Finished when" does not hold literally, and Decision 4 is why
 
 It asks that "no spec's placement is decided by which package it happens to live in". In a package with one
-suite, placement *is* the package: `write-lock.spec.ts` runs in `@apack/host`'s suite because it lives
+suite, placement *is* the package: `write-lock.spec.ts` runs in `@apackdev/host`'s suite because it lives
 there, and costing 4.7s does not change that. Decision 4 is the operative rule — that is a finding, recorded
 with what makes it expensive, and a package that collects findings is the evidence for splitting it later.
 The clause holds where a split exists and is an aspiration where one does not; pretending otherwise would
@@ -270,24 +270,24 @@ mean inventing a half for one spec, which Decision 4 forbids.
 ### What the findings do not mean, corrected
 
 The list was first called `EXPENSIVE_WITHOUT_A_SPLIT`, and both the name and the summary written beside it
-said a package collecting entries was a package wanting a split — with `@apack/sdk` "closest, at two
+said a package collecting entries was a package wanting a split — with `@apackdev/sdk` "closest, at two
 entries". Checked afterwards, that was wrong twice.
 
 **Count distinguishes nothing:** `@app/default-setup` also has two. What separates them is concentration.
 
 | suite | suite cost | over 2.5s | their cost | loop if split out |
 |---|---|---|---|---|
-| `@apack/sdk` | 15.1s | 2 | **13.6s (90%)** | 1.5s |
+| `@apackdev/sdk` | 15.1s | 2 | **13.6s (90%)** | 1.5s |
 | `@app/default-setup` | 14.2s | 2 | 7.0s (49%) | 7.3s |
-| `@apack/host` | 18.7s | 1 | 4.7s (25%) | 14.0s |
+| `@apackdev/host` | 18.7s | 1 | 4.7s (25%) | 14.0s |
 
 **And concentration is not the criterion either**, which is the part worth keeping. A split buys a different
-*tier* — a different timeout budget and a different worker cap. `@apack/cli` has two halves because its
+*tier* — a different timeout budget and a different worker cap. `@apackdev/cli` has two halves because its
 expensive specs spawn compilers: they need the 50% cap and tier 2's 60s, and the fast half needs neither.
 None of the five entries does. They build TypeScript programs in-process or wait on real timing — no spawn
 — and their slowest single tests are around a second against tier 1's 15s.
 
-Ninety percent of `@apack/sdk`'s suite in two files still looks like an open-and-shut case, and it is not:
+Ninety percent of `@apackdev/sdk`'s suite in two files still looks like an open-and-shut case, and it is not:
 what a split would buy there is a faster whole-suite run, which is not the dev loop. `npm run spec -- <file>`
 is file-targeted and the chain pools projects and runs only the stale ones, so the loop is already narrow.
 All three packages stay as they are.

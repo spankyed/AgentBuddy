@@ -8,14 +8,14 @@ let root: string;
 afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
 describe('checkContentRuntimeLoads', () => {
-  it("fails with a build error, and leaves no temp dir, when the pack's @apack/sdk doesn't resolve", async () => {
+  it("fails with a build error, and leaves no temp dir, when the pack's @apackdev/sdk doesn't resolve", async () => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-no-sdk-'));
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'no-sdk', type: 'module' }));
     // The check's own temp dir, so concurrent checks elsewhere don't show up in it
     const tmpDir = path.join(root, 'tmp');
     fs.mkdirSync(tmpDir);
     const result = await checkContentRuntimeLoads(root, path.join(root, 'dist/build/content-runtime.mjs'), { tmpDir });
-    expect(result).toEqual({ success: false, error: expect.stringContaining(`dist/build/content-runtime.mjs can't be checked: @apack/sdk doesn't resolve from ${root}`) });
+    expect(result).toEqual({ success: false, error: expect.stringContaining(`dist/build/content-runtime.mjs can't be checked: @apackdev/sdk doesn't resolve from ${root}`) });
     expect(fs.readdirSync(tmpDir)).toEqual([]);
   });
 });

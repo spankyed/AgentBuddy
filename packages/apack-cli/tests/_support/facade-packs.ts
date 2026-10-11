@@ -50,7 +50,7 @@ import ts from 'typescript';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '@app/publish-checks';
 import { callCli, packageJson, preparePack, tsconfig, typecheckPack, write } from './pack-builds';
-import { PACK_LAYOUT } from '@apack/host/packs';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 /**
  * A pack's typed facades (#generated/ears, events, services, repository) cover its own
@@ -88,14 +88,14 @@ const BASE_PACK = {
   ].join('\n') + '\n',
   'src/system.ts': [
     "import { setup } from 'xstate';",
-    "import { defineSystem } from '@apack/sdk/framework';",
+    "import { defineSystem } from '@apackdev/sdk/framework';",
     "import type { Contract } from './system.contract.ts';",
     'export const threadsSpec = defineSystem<Contract>();',
     'const entry = { spec: threadsSpec, machine: setup({ types: threadsSpec.types }).createMachine({ id: "calendar" }) };',
     'export default entry;',
   ].join('\n'),
   'src/plugin.ts': [
-    "import type { Plugin } from '@apack/sdk/fe';",
+    "import type { Plugin } from '@apackdev/sdk/fe';",
     "export default { id: 'calendar' } as unknown as Plugin;",
   ].join('\n') + '\n',
   // The plugin's contract: a declared type in a leaf the plugin's own module never imports, which is what the
@@ -107,13 +107,13 @@ const BASE_PACK = {
   ].join('\n') + '\n',
   'src/inbox.ts': [
     "import { setup } from 'xstate';",
-    "import { defineSystem } from '@apack/sdk/framework';",
+    "import { defineSystem } from '@apackdev/sdk/framework';",
     "import type { Contract } from './inbox.contract.ts';",
     'export const inboxSpec = defineSystem<Contract>();',
     'const entry = { spec: inboxSpec, machine: setup({ types: inboxSpec.types }).createMachine({ id: "inbox" }) };',
     'export default entry;',
   ].join('\n'),
-  'src/inbox-plugin.ts': "import type { Plugin } from '@apack/sdk/fe';\nexport default { id: 'inbox' } as unknown as Plugin;\n",
+  'src/inbox-plugin.ts': "import type { Plugin } from '@apackdev/sdk/fe';\nexport default { id: 'inbox' } as unknown as Plugin;\n",
   'src/search.ts': 'export const searchService = { query: (q: string): string[] => [q] };\n',
   'src/repository.ts': [
     "import { findAll, EARS } from '#generated/ears.ts';",
@@ -133,7 +133,7 @@ const APP_PACK = {
     features: { memos: { system: { entry: 'src/system.ts', contract: 'src/system.contract.ts#Contract' }, plugin: { entry: 'src/plugin.ts' } } },
   }),
   'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean }\n',
-  'src/plugin.ts': "import type { Plugin } from '@apack/sdk/fe';\nexport default { id: 'memos' } as unknown as Plugin;\n",
+  'src/plugin.ts': "import type { Plugin } from '@apackdev/sdk/fe';\nexport default { id: 'memos' } as unknown as Plugin;\n",
   'src/system.contract.ts': [
     "export type OutgoingMemosEvents = { type: 'MEMO_ADDED'; text: string };",
     "export type IncomingMemosEvents = { type: 'ADD_MEMO'; text: string } | { type: 'CLEAR_MEMOS' } | { type: 'PIN_MEMO' | 'UNPIN_MEMO'; id: string };",
@@ -141,7 +141,7 @@ const APP_PACK = {
   ].join('\n') + '\n',
   'src/system.ts': [
     "import { setup } from 'xstate';",
-    "import { defineSystem } from '@apack/sdk/framework';",
+    "import { defineSystem } from '@apackdev/sdk/framework';",
     "import type { Contract } from './system.contract.ts';",
     'export const memosSpec = defineSystem<Contract>();',
     'const entry = { spec: memosSpec, machine: setup({ types: memosSpec.types }).createMachine({ id: "memos" }) };',
@@ -154,7 +154,7 @@ import { EARS as PackEARS, qx, tx, findById, findAll, createEntity, type EntityS
 import { broadcastToPlugin, sendToSystem } from '#generated/events.ts';
 import { services } from '#generated/services.ts';
 import { repository } from '#generated/repository.ts';
-import type { EARS } from '@apack/sdk';
+import type { EARS } from '@apackdev/sdk';
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type Expect<T extends true> = T;
 type Equal<A, B> = (<X>() => X extends A ? 1 : 2) extends (<X>() => X extends B ? 1 : 2) ? true : false;
@@ -416,11 +416,11 @@ function writeTsconfig(app: string, moduleResolution: 'bundler' | 'node16', publ
       target: 'ES2022', module: moduleResolution === 'node16' ? 'node16' : 'esnext', moduleResolution,
       strict: true, skipLibCheck: true, noEmit: true, types: ['node'],
       // Every pack sets this, the scaffold included, and it is about the pack's *own* generated code rather
-      // than where @apack came from: codegen writes `./services.ts`, the file that is there
+      // than where @apackdev came from: codegen writes `./services.ts`, the file that is there
       // (`goal-pack-imports-name-the-file.md`), so typechecking a generated facade needs it either way. The
-      // `published` split below stays what it was about — which copy of @apack the consumer resolves.
+      // `published` split below stays what it was about — which copy of @apackdev the consumer resolves.
       allowImportingTsExtensions: true,
-      ...(published ? {} : { customConditions: ['@apack/source'] }),
+      ...(published ? {} : { customConditions: ['@apackdev/source'] }),
       ...(moduleResolution === 'bundler' ? { paths: { '#generated/*': ['./src/__generated__/*'] } } : {}),
     },
     // Every generated facade, not only the ones the consumer imports

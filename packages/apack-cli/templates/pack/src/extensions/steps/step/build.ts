@@ -1,5 +1,5 @@
-import type { StepBuildFacet, StepNodeFacet, StepCompileResult, StepValidationError } from '@apack/sdk/steps';
-import { EARS } from '@apack/sdk';
+import type { StepBuildFacet, StepNodeFacet, StepCompileResult, StepValidationError } from '@apackdev/sdk/steps';
+import { EARS } from '@apackdev/sdk';
 import type { DSL__PASCAL__Node } from './types.ts';
 
 export const __CAMEL__StepBuild: StepBuildFacet = {

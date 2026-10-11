@@ -3,9 +3,9 @@
 // and ignored, rather than stopping the settings plugin.
 import { afterAll, afterEach, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
-import { startFeTestRuntime } from '@apack/sdk/testing'
+import { startFeTestRuntime } from '@apackdev/sdk/testing'
 import { createSettingsMachine } from '../../../../src/features/settings/fe/machine.ts'
-import { resolveName } from '@apack/sdk/ids'
+import { resolveName } from '@apackdev/sdk/ids'
 
 afterAll(startFeTestRuntime({ client: { send() {} } }))
 afterEach(() => vi.restoreAllMocks())

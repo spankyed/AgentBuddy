@@ -4,8 +4,8 @@
 // codegen read the contract without resolving the machine, whose imports cycle back through `#generated/events`.
 // The tab shapes live here too, because the published state holds them and the child machines that used to declare
 // them reach `#generated/events`. `apack.json` names it at `features[].plugin.contract`.
-import type { HotkeysMap, NavHistory, PluginInbox, TabGroup } from '@apack/sdk/fe'
-import type { ActionEntity, PromptEntity } from '@apack/sdk'
+import type { HotkeysMap, NavHistory, PluginInbox, TabGroup } from '@apackdev/sdk/fe'
+import type { ActionEntity, PromptEntity } from '@apackdev/sdk'
 import type { EARS } from '#generated/ears.ts'
 import type { CodeSettings } from '#generated/types.ts'
 import type { GitDiff, GitStatusFile, TerminalInfo } from '../be/types.ts'

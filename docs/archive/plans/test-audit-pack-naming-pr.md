@@ -86,8 +86,8 @@ stops the fix from being "make every collision pass".
 | starts on a lock whose holder is gone | `KEEP` |
 | restores an interrupted install's only copy, with no record | `KEEP` |
 
-Deliberate duplication with the `@apack/host` unit tests, and the file says so: *"The unit tests for
-these live in @apack/host. This one boots the real composition, because what both regressions broke was
+Deliberate duplication with the `@apackdev/host` unit tests, and the file says so: *"The unit tests for
+these live in @apackdev/host. This one boots the real composition, because what both regressions broke was
 the boot: one refused to start at all, the other deleted a pack on the way up."* That sentence is what
 makes duplication defensible — it names the level and the reason. **Treat it as the template for any
 integration test that repeats a unit test.**
@@ -158,7 +158,7 @@ compares every file under `packages/api/src` against an allowlist, so it already
 ## What this changes about the goal
 
 1. **`AS/pack-naming-convention` needs no phase of its own.** 15 of 17 added tests are `KEEP`. The two
-   exceptions are one `MERGE` and one `TRIM`, both in `@apack/host`, both mine, and both small enough
+   exceptions are one `MERGE` and one `TRIM`, both in `@apackdev/host`, both mine, and both small enough
    to fold into Phase 2.
 2. **The added tests are mostly the good kind**, and the reason is visible: each came from a bug found
    in review — a prototype-chain fault, a boot that refused to start, a pack deleted on the way up.

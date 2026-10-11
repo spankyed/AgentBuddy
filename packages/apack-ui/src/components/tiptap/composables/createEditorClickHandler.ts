@@ -1,4 +1,4 @@
-import { openLink } from '@apack/sdk/fe'
+import { openLink } from '@apackdev/sdk/fe'
 
 type ClickEmit = {
   noteLinkClick: (noteId: string) => void

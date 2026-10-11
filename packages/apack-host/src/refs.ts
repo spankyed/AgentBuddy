@@ -1,6 +1,6 @@
 // The app's own features, as the pack `host`: every host module names them from here. Pack code writes them as
-// `'host/<feature>'`, which its generated types check. Frontend-safe: imports only `@apack/sdk/ids`.
-import { HOST_PACK_ID, resolveName } from '@apack/sdk/ids';
+// `'host/<feature>'`, which its generated types check. Frontend-safe: imports only `@apackdev/sdk/ids`.
+import { HOST_PACK_ID, resolveName } from '@apackdev/sdk/ids';
 
 export const HOST = {
   /** The root bus machine the app starts every system under: not a feature, but spelled as one */

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { freshnessSweep, INPUTS_CHANGED, stampedRun, unitStaleReason, type BuildUnit } from '@apack/host/build/packages-built';
+import { freshnessSweep, INPUTS_CHANGED, stampedRun, unitStaleReason, type BuildUnit } from '@apackdev/host/build/packages-built';
 
 /**
  * `freshnessSweep`'s `forget`: beside `package-freshness.spec.ts`, which covers the rest of the same module.

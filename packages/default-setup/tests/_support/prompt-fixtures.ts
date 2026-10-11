@@ -1,4 +1,4 @@
-import type { PromptInput } from '@apack/sdk/repositories';
+import type { PromptInput } from '@apackdev/sdk/repositories';
 
 /**
  * Reusable prompt definitions for applying tests.

@@ -1,5 +1,5 @@
-import type { TriggerFacet, StepNodeFacet } from '@apack/sdk/steps';
-import { EARS } from '@apack/sdk';
+import type { TriggerFacet, StepNodeFacet } from '@apackdev/sdk/steps';
+import { EARS } from '@apackdev/sdk';
 
 /** Build-time facets only (no runtime or FE imports); loaded by `apack build` in dependent packs. */
 export const listenerTriggerBuild: TriggerFacet = {

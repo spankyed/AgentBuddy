@@ -1,4 +1,4 @@
-import type { TNodeEntity, TrackTree } from '@apack/sdk/steps'
+import type { TNodeEntity, TrackTree } from '@apackdev/sdk/steps'
 
 export interface NormalizedTNodeTree {
   byId: Record<string, TNodeEntity>;

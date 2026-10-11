@@ -3,9 +3,9 @@ import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import type { InlineConfig, Plugin as VitePlugin } from 'vite';
-import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeModules, sharedFeModules, sharedInstancePackage } from '@apack/host/build/shared-deps';
+import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeModules, sharedFeModules, sharedInstancePackage } from '@apackdev/host/build/shared-deps';
 import type { RecordReads } from './build-reads';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 /**
  * The package names the pack declares opaque to the bundler (`build.opaqueDeps`). Unreadable is an error
@@ -53,10 +53,10 @@ function opaqueVendorPlugin(deps: readonly string[]): VitePlugin {
 }
 
 /**
- * Whether the pack's apack.json opts into bundling its own copy of @apack/ui (`build.bundleUi`).
+ * Whether the pack's apack.json opts into bundling its own copy of @apackdev/ui (`build.bundleUi`).
  * No manifest is fine — `bundleUi` is opt-in, and only a pack directory has one. A manifest that is
  * there but unreadable is not: it may be the one that opts in, and reading it as "no" would quietly
- * proxy @apack/ui to the host and skip its Tailwind classes.
+ * proxy @apackdev/ui to the host and skip its Tailwind classes.
  */
 function bundlesUi(packDir: string): boolean {
   const manifestPath = path.join(packDir, 'apack.json');
@@ -64,12 +64,12 @@ function bundlesUi(packDir: string): boolean {
   try {
     return JSON.parse(fs.readFileSync(manifestPath, 'utf-8')).build?.bundleUi === true;
   } catch (err) {
-    throw new Error(`Couldn't read ${manifestPath}, so the FE build can't tell whether this pack bundles @apack/ui (build.bundleUi): ${errorMessage(err)}`);
+    throw new Error(`Couldn't read ${manifestPath}, so the FE build can't tell whether this pack bundles @apackdev/ui (build.bundleUi): ${errorMessage(err)}`);
   }
 }
 
 /**
- * Tailwind content globs for the @apack/ui a pack bundles: its build, which is what a pack resolves.
+ * Tailwind content globs for the @apackdev/ui a pack bundles: its build, which is what a pack resolves.
  * Only reached for a pack that set `build.bundleUi`, so anything that leaves Tailwind nothing to read is a
  * build failure — its components are nothing but Tailwind classes, and empty globs would bundle every
  * one of them unstyled, with no error. An unresolvable package and a package whose build is missing are
@@ -85,10 +85,10 @@ function hasFile(dir: string, ext: string): boolean {
 function uiTailwindContent(packDir: string): string[] {
   let uiDir: string;
   try {
-    uiDir = path.dirname(fs.realpathSync(createRequire(path.join(packDir, 'package.json')).resolve('@apack/ui/package.json')));
+    uiDir = path.dirname(fs.realpathSync(createRequire(path.join(packDir, 'package.json')).resolve('@apackdev/ui/package.json')));
   } catch (err) {
     throw new Error(
-      `This pack sets build.bundleUi, but @apack/ui can't be resolved from ${packDir}, so Tailwind would generate none of its components' classes: ${errorMessage(err)}`,
+      `This pack sets build.bundleUi, but @apackdev/ui can't be resolved from ${packDir}, so Tailwind would generate none of its components' classes: ${errorMessage(err)}`,
     );
   }
   const built = path.join(uiDir, 'dist');
@@ -97,16 +97,16 @@ function uiTailwindContent(packDir: string): string[] {
   // file to read — so check for what the glob actually matches, not merely that the directory is non-empty
   if (!fs.existsSync(built) || !hasFile(built, '.js')) {
     throw new Error(
-      `This pack sets build.bundleUi, but @apack/ui has no built modules at ${content}, so Tailwind would generate none of its components' classes. Build the packages first: npm run packages:ensure`,
+      `This pack sets build.bundleUi, but @apackdev/ui has no built modules at ${content}, so Tailwind would generate none of its components' classes. Build the packages first: npm run packages:ensure`,
     );
   }
   return [content];
 }
 
-/** A pack's @apack/ui, which is what depends on tiptap and may hold its own nested copy */
+/** A pack's @apackdev/ui, which is what depends on tiptap and may hold its own nested copy */
 function uiPackageDir(packDir: string): string | undefined {
   try {
-    return path.dirname(fs.realpathSync(createRequire(path.join(packDir, 'package.json')).resolve('@apack/ui/package.json')));
+    return path.dirname(fs.realpathSync(createRequire(path.join(packDir, 'package.json')).resolve('@apackdev/ui/package.json')));
   } catch {
     return undefined;
   }
@@ -114,7 +114,7 @@ function uiPackageDir(packDir: string): string | undefined {
 
 /**
  * The directories whose installs own the shared packages, in the order they are tried: the pack, then its
- * `@apack/ui` — which is what actually depends on tiptap and may hold its own nested copy.
+ * `@apackdev/ui` — which is what actually depends on tiptap and may hold its own nested copy.
  *
  * **Every consumer of the shared list resolves from the same two.** They are what makes the tiptap and
  * ProseMirror subpaths resolvable at all for a pack that does not depend on tiptap directly, so a consumer
@@ -128,7 +128,7 @@ function sharedResolveDirs(packDir: string): string[] {
 /** Every specifier this pack leaves for the host to resolve, which is the shared list minus its opt-out */
 function packSharedSpecifiers(packDir: string): string[] {
   return Object.keys(sharedFeModules(...sharedResolveDirs(packDir))).filter(
-    (specifier) => !(bundlesUi(packDir) && /^@apack\/ui(\/|$)/.test(specifier)),
+    (specifier) => !(bundlesUi(packDir) && /^@apackdev\/ui(\/|$)/.test(specifier)),
   );
 }
 
@@ -147,7 +147,7 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
     }
   }
   const sdkModules = getSdkFeModules();
-  // @apack/ui comes from the host like the SDK modules, unless the pack bundles all of it
+  // @apackdev/ui comes from the host like the SDK modules, unless the pack bundles all of it
   const uiModules = bundlesUi(packDir) ? {} : getUiFeModules(packDir);
 
   // SDK modules resolve through Vite (this.resolve), so the build's conditions apply: a pack
@@ -164,7 +164,7 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
   // host's own copy, which has an app bound; an inlined copy has nothing bound, so any inlined module
   // reaching the app throws "No host is bound".
   async function resolveHostBindingPaths(ctx: ResolveContext): Promise<string[]> {
-    const runtimeIndex = await resolveSdkFile(ctx, '@apack/sdk/runtime');
+    const runtimeIndex = await resolveSdkFile(ctx, '@apackdev/sdk/runtime');
     if (!runtimeIndex) return [];
     // Workspace source, or the published package's compiled modules
     return ['host-runtime', 'fe-host'].flatMap((name) => {
@@ -179,7 +179,7 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
   let sharedModuleFiles: Promise<{ sdkRoot: string; bySpecifier: Map<string, string> } | null> | undefined;
   function getSharedModuleFiles(ctx: ResolveContext) {
     sharedModuleFiles ??= (async () => {
-      const manifest = await resolveSdkFile(ctx, '@apack/sdk/package.json');
+      const manifest = await resolveSdkFile(ctx, '@apackdev/sdk/package.json');
       if (!manifest) return null;
       const bySpecifier = new Map<string, string>();
       for (const specifier of Object.keys(sdkModules)) {
@@ -216,15 +216,15 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
       }
       const packRoot = fs.realpathSync(packDir);
       const rel = (id: string) => id.startsWith(sdkRoot)
-        ? `@apack/sdk/${path.relative(sdkRoot, id)}`
+        ? `@apackdev/sdk/${path.relative(sdkRoot, id)}`
         : path.relative(packRoot, id);
 
       this.error(
-        'Pack FE code inlines an @apack/sdk module that reaches the app through its host binding, ' +
+        'Pack FE code inlines an @apackdev/sdk module that reaches the app through its host binding, ' +
         'which would fail at runtime with "No host is bound".\n' +
         `  Import chain: ${chain.reverse().map(rel).join(' → ')}\n` +
         `  Only these SDK modules are shared with the host in the renderer: ${Object.keys(sdkModules).join(', ')}.\n` +
-        '  Import from one of those instead, or add the module to SDK_FE_MODULES in @apack/host/build/shared-deps.',
+        '  Import from one of those instead, or add the module to SDK_FE_MODULES in @apackdev/host/build/shared-deps.',
       );
     },
 
@@ -250,16 +250,16 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
       if (feDeps[source] || sdkModules[source] || uiModules[source]) {
         return { id: source, external: true };
       }
-      // A pack without @apack/ui installed gets an empty proxy list, which is right until it imports
+      // A pack without @apackdev/ui installed gets an empty proxy list, which is right until it imports
       // one: the import would be bundled instead of taken from the host, and every component in it
       // would fail at load with no sign of why. A pack that means to carry its own sets build.bundleUi.
-      if (!bundlesUi(packDir) && /^@apack\/ui(\/|$)/.test(source)) {
+      if (!bundlesUi(packDir) && /^@apackdev\/ui(\/|$)/.test(source)) {
         throw new Error(
-          `This pack imports ${source}, but @apack/ui can't be resolved from ${packDir}, so there is nothing to take from the host. Install @apack/ui in the pack, or set build.bundleUi to carry your own copy.`,
+          `This pack imports ${source}, but @apackdev/ui can't be resolved from ${packDir}, so there is nothing to take from the host. Install @apackdev/ui in the pack, or set build.bundleUi to carry your own copy.`,
         );
       }
-      // Reached only by what the host does *not* share: `@apack/ears`, which a pack frontend inlines
-      // because the renderer keeps no EARS data, and an `@apack/sdk` subpath outside SDK_FE_MODULES. From
+      // Reached only by what the host does *not* share: `@apackdev/ears`, which a pack frontend inlines
+      // because the renderer keeps no EARS data, and an `@apackdev/sdk` subpath outside SDK_FE_MODULES. From
       // the pack rather than the importing module, so those land on the pack's own copies.
       if (sharedInstancePackage(source)) {
         return this.resolve(source, packImporter, { ...options, skipSelf: true });
@@ -294,7 +294,7 @@ function keepExternalsBarePlugin(packDir: string): VitePlugin {
   // mapping after the edit on it claiming a column 5 to the right of where it now is. Whitespace before a
   // module specifier is legal wherever one appears, so the padding costs nothing and the map stays exact.
   //
-  // Longest first, so `@apack/ui/design/button` is unwrapped before a prefix of it could be.
+  // Longest first, so `@apackdev/ui/design/button` is unwrapped before a prefix of it could be.
   const wrapped = packSharedSpecifiers(packDir)
     .map((specifier) => [`"/@id/${specifier}"`, `${' '.repeat('/@id/'.length)}"${specifier}"`] as const)
     .sort((a, b) => b[0].length - a[0].length);
@@ -336,7 +336,7 @@ function keepExternalsBarePlugin(packDir: string): VitePlugin {
  * `optimizeDeps.exclude` is what keeps the host-shared packages out of the pre-bundle: this server leaves
  * them external for the document's import map, so the pack never loads one from here — pre-bundling them
  * would spend the work and, if anything did reach the pre-bundle, hand the pack a second copy. No
- * `resolve.conditions`, deliberately — a pack resolves the `@apack` packages the way its own author's
+ * `resolve.conditions`, deliberately — a pack resolves the `@apackdev` packages the way its own author's
  * install does, which is `dist` for an installed SDK and source for one linked to a checkout.
  */
 export async function packDevServerConfig(root: string, feEntry: string): Promise<InlineConfig> {
@@ -409,7 +409,7 @@ export function findFEEntry(packDir: string): string | null {
 
 /**
  * PostCSS plugins for the pack's CSS: Tailwind over the pack's own config if it has one, otherwise
- * over a generated one covering `src/`. A pack that bundles @apack/ui also generates the classes
+ * over a generated one covering `src/`. A pack that bundles @apackdev/ui also generates the classes
  * its components use.
  *
  * Nothing here fails quietly. The bundle it produces either has the pack's styles or it doesn't, and
@@ -417,7 +417,7 @@ export function findFEEntry(packDir: string): string | null {
  * cause is invisible at runtime. So:
  *
  * - **Hard failure** when the pack demonstrably relies on Tailwind: it ships a `tailwind.config`, or
- *   it sets `build.bundleUi` (every @apack/ui component is Tailwind classes, so without Tailwind that
+ *   it sets `build.bundleUi` (every @apackdev/ui component is Tailwind classes, so without Tailwind that
  *   bundle is *guaranteed* unstyled). A broken or unexpected config is always a hard failure — the
  *   pack wrote it, and reverting to the generated default would silently drop its theme.
  * - **Warning** when the pack gives no such signal and Tailwind can't load: it may use no Tailwind
@@ -425,9 +425,9 @@ export function findFEEntry(packDir: string): string | null {
  *   together with what the bundle is missing.
  */
 /**
- * @apack/ui's Tailwind preset, resolved from the pack, or none when its copy is too old to ship one.
+ * @apackdev/ui's Tailwind preset, resolved from the pack, or none when its copy is too old to ship one.
  *
- * A pack building against an older @apack/ui has no `./tailwind-preset` export. That is not worth
+ * A pack building against an older @apackdev/ui has no `./tailwind-preset` export. That is not worth
  * failing the build over — it is the behaviour every such pack already had — so it degrades to the
  * warning below and the pack can still ship.
  */
@@ -435,9 +435,9 @@ async function uiTailwindPresets(packDir: string): Promise<unknown[]> {
   const require = createRequire(path.join(packDir, 'package.json'));
   let resolved: string;
   try {
-    resolved = require.resolve('@apack/ui/tailwind-preset');
+    resolved = require.resolve('@apackdev/ui/tailwind-preset');
   } catch {
-    console.warn("! FE bundle: this @apack/ui has no tailwind-preset export, so @apack/ui's own theme (primary-*) gets no CSS. Upgrade @apack/ui, or define those colours in this pack's tailwind config.");
+    console.warn("! FE bundle: this @apackdev/ui has no tailwind-preset export, so @apackdev/ui's own theme (primary-*) gets no CSS. Upgrade @apackdev/ui, or define those colours in this pack's tailwind config.");
     return [];
   }
   const mod = await import(pathToFileURL(resolved).href) as { uiTailwindPreset?: unknown; default?: unknown };
@@ -453,7 +453,7 @@ async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
   const needsTailwind = packTwConfig
     ? `This pack has ${path.basename(packTwConfig)}`
     : bundleUi
-      ? 'This pack sets build.bundleUi, so it bundles @apack/ui, whose components are Tailwind classes'
+      ? 'This pack sets build.bundleUi, so it bundles @apackdev/ui, whose components are Tailwind classes'
       : undefined;
 
   let tailwindcss: (config: unknown) => unknown;
@@ -471,7 +471,7 @@ async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
   }
 
   const uiContent = bundleUi ? uiTailwindContent(packDir) : [];
-  // Scanning @apack/ui's files finds the class names; the theme behind them (primary-*) is defined
+  // Scanning @apackdev/ui's files finds the class names; the theme behind them (primary-*) is defined
   // only in a Tailwind config, so without its preset those classes match nothing and Tailwind emits
   // no CSS for them — the component renders with its accent silently missing.
   const uiPresets = bundleUi ? await uiTailwindPresets(packDir) : [];
@@ -480,7 +480,7 @@ async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
     ...(uiPresets.length > 0 && { presets: uiPresets }),
   };
   if (packTwConfig) {
-    // Tailwind loads a config path itself; only a pack that also needs @apack/ui's globs merged in
+    // Tailwind loads a config path itself; only a pack that also needs @apackdev/ui's globs merged in
     // has to be loaded here
     twConfig = packTwConfig;
     if (uiContent.length > 0) {
@@ -489,12 +489,12 @@ async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
       try {
         config = loadConfig(packTwConfig) as { content?: unknown };
       } catch (err) {
-        throw new Error(`${path.basename(packTwConfig)} couldn't be loaded, and build.bundleUi needs @apack/ui's files added to its \`content\`: ${errorMessage(err)}`);
+        throw new Error(`${path.basename(packTwConfig)} couldn't be loaded, and build.bundleUi needs @apackdev/ui's files added to its \`content\`: ${errorMessage(err)}`);
       }
       const content = Array.isArray(config.content) ? { files: config.content } : config.content as { files?: unknown } | undefined;
       if (!content || !Array.isArray(content.files)) {
         throw new Error(
-          `${path.basename(packTwConfig)} must set \`content\` to an array of globs or to { files: [...] }, so that build.bundleUi can add @apack/ui's files to it; got ${JSON.stringify(config.content)}`,
+          `${path.basename(packTwConfig)} must set \`content\` to an array of globs or to { files: [...] }, so that build.bundleUi can add @apackdev/ui's files to it; got ${JSON.stringify(config.content)}`,
         );
       }
       // The pack's own presets stay first, so it can still override the theme it inherits
@@ -543,12 +543,12 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
       configFile: false,
       plugins: [
         {
-          // The app's private host package isn't provided to packs; they import @apack/sdk
+          // The app's private host package isn't provided to packs; they import @apackdev/sdk
           name: 'reject-host-imports',
           enforce: 'pre',
           resolveId(id: string, importer?: string) {
-            if (/^@apack\/host(?:\/|$)/.test(id)) {
-              this.error(`${id} is the app's private host package; packs import @apack/sdk instead${importer ? ` (imported from ${importer})` : ''}`);
+            if (/^@apackdev\/host(?:\/|$)/.test(id)) {
+              this.error(`${id} is the app's private host package; packs import @apackdev/sdk instead${importer ? ` (imported from ${importer})` : ''}`);
             }
             return null;
           },

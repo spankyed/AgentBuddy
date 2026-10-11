@@ -107,8 +107,8 @@ that it found anything. Moving them would be churn, and would read as a populati
 
 **Home: `packages/apack-host/src/testing/`**, beside `packFixture`, exported as two entries in host's
 hand-written map. No new workspace: every one of those files is in a package that already depends on
-`@apack/host`. The one exception is `apack-sdk/tests/utils/import-is-the-verb.spec.ts`, which cannot import host
-— `findUpwardImports` reads each layer's `tests/` and refuses a non-permitted `@apack/*` in the manifest at all —
+`@apackdev/host`. The one exception is `apack-sdk/tests/utils/import-is-the-verb.spec.ts`, which cannot import host
+— `findUpwardImports` reads each layer's `tests/` and refuses a non-permitted `@apackdev/*` in the manifest at all —
 so it keeps its own three-line guard with a comment saying why. **One file duplicating three lines is cheaper than
 a workspace, its vitest project, its chain inputs and eleven devDependency lines**, which is what revision 1 spent
 to reach eight files.
@@ -140,7 +140,7 @@ Each is a mutation, per the repo's rule that breaking it on purpose proves more 
 | ~~the floor is preserved~~ | **This row was unrunnable, and the floor it defends was the wrong shape. See "As shipped" below.** |
 | `population` bites | call it on `[]`: throws naming the subject |
 | the merged table bites | delete a key from the `Record`: a compile error, not a test failure |
-| nothing else moved | `npm test -w @apack/cli`, `npm run test:integration -w @app/repo-checks -w @app/publish-checks`, expectations unedited |
+| nothing else moved | `npm test -w @apackdev/cli`, `npm run test:integration -w @app/repo-checks -w @app/publish-checks`, expectations unedited |
 | the gate | `npm run check:specifiers`, `npm run typecheck`, `npm run chain` |
 
 ## Risks
@@ -159,7 +159,7 @@ Each is a mutation, per the repo's rule that breaking it on purpose proves more 
 
 1. `packagesBuiltOrRefuse` refuses unless `APACK_ALLOW_UNBUILT`, and `published-packages.ts`' doc comment moves
    with it. The fourteen `skipIf` sites are untouched.
-2. `population` in `@apack/host/src/testing/`, the three private floors and `packaged-app-files`' helper onto it,
+2. `population` in `@apackdev/host/src/testing/`, the three private floors and `packaged-app-files`' helper onto it,
    the sdk spec's local copy commented.
 3. `packFixture` beside it, and the five variants in the two specs that collapse onto it.
 4. `pack-rules`' two firing tables merge into one `Record`.
@@ -230,7 +230,7 @@ was no duplication to explain.
 **Chunk 1 was one site wider than written.** The same hand-written CI-gated throw in
 `dependency-runtime.integration.spec.ts:12` moved to the same `APACK_ALLOW_UNBUILT` escape.
 
-Two obligations the plan did not anticipate, both enforced by checks that already existed: a new `@apack/host`
+Two obligations the plan did not anticipate, both enforced by checks that already existed: a new `@apackdev/host`
 export must be bridged or recorded in `UNBRIDGED_BY_DESIGN` (`sdk-bridge-drift`), and a new spec file needs
 `npm run spec-cost:update -- --suite <dir>` — the no-argument form re-records every suite and rewrote 570 lines
 across twelve files.

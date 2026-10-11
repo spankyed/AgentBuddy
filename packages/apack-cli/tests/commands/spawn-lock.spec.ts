@@ -14,8 +14,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { holdExclusiveLock } from '@apack/host/exclusive-lock';
-import { publishSession, readSession, type DevSession } from '@apack/host/dev-session';
+import { holdExclusiveLock } from '@apackdev/host/exclusive-lock';
+import { publishSession, readSession, type DevSession } from '@apackdev/host/dev-session';
 import { spawnOrAttach } from '../../src/app/drive-attach';
 
 let dataDir: string;

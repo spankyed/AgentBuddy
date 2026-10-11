@@ -1,11 +1,11 @@
-// A pack compiles and runs against the @apack packages' dist. When that dist belongs to a checkout it is
+// A pack compiles and runs against the @apackdev packages' dist. When that dist belongs to a checkout it is
 // built on demand, so the commands that load it (apack test, apack dev) ask the checkout to refresh it.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { checkoutFor } from '../../src/build/checkout-packages';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 
 const tmpDirs: string[] = [];
 afterEach(() => {
@@ -16,7 +16,7 @@ function pack(link: 'checkout' | 'installed' | 'none'): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-checkout-for-'));
   tmpDirs.push(dir);
   fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'link-pack', type: 'module' }));
-  const modules = path.join(dir, 'node_modules', '@apack');
+  const modules = path.join(dir, 'node_modules', '@apackdev');
   if (link === 'checkout') {
     fs.mkdirSync(modules, { recursive: true });
     fs.symlinkSync(path.join(REPO_ROOT, 'packages', 'apack-sdk'), path.join(modules, 'sdk'), 'dir');
@@ -24,13 +24,13 @@ function pack(link: 'checkout' | 'installed' | 'none'): string {
     // What npm delivers: a real directory under node_modules, with no checkout above it
     fs.mkdirSync(path.join(modules, 'sdk'), { recursive: true });
     fs.writeFileSync(path.join(modules, 'sdk', 'package.json'), JSON.stringify({
-      name: '@apack/sdk', version: '0.1.0', exports: { './package.json': './package.json' },
+      name: '@apackdev/sdk', version: '0.1.0', exports: { './package.json': './package.json' },
     }));
   }
   return dir;
 }
 
-describe('the checkout a pack\'s @apack packages come from', () => {
+describe('the checkout a pack\'s @apackdev packages come from', () => {
   it('is the apack checkout when the packages are linked to one', () => {
     expect(checkoutFor(pack('checkout'))).toBe(REPO_ROOT);
   });
@@ -39,7 +39,7 @@ describe('the checkout a pack\'s @apack packages come from', () => {
     expect(checkoutFor(pack('installed'))).toBeUndefined();
   });
 
-  it('is nothing when the pack has no @apack/sdk at all', () => {
+  it('is nothing when the pack has no @apackdev/sdk at all', () => {
     expect(checkoutFor(pack('none'))).toBeUndefined();
   });
 });
@@ -86,12 +86,12 @@ describe('the commands that refresh a checkout before loading its packages', () 
   });
 });
 
-describe('the checkout a pack\'s @apack packages come from', () => {
+describe('the checkout a pack\'s @apackdev packages come from', () => {
   // Asking only the SDK would miss this: the linked package's dist is built on demand and would be used
   // stale, with nothing saying so
-  it('is the checkout when any one package is linked to it, not only @apack/sdk', () => {
+  it('is the checkout when any one package is linked to it, not only @apackdev/sdk', () => {
     const dir = pack('installed');
-    const modules = path.join(dir, 'node_modules', '@apack');
+    const modules = path.join(dir, 'node_modules', '@apackdev');
     fs.symlinkSync(path.join(REPO_ROOT, 'packages', 'apack-ui'), path.join(modules, 'ui'), 'dir');
     expect(checkoutFor(dir)).toBe(REPO_ROOT);
   });

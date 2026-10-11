@@ -1,6 +1,6 @@
 // A pack's vitest config, and the isolated data dir under it.
 //
-//   import { definePackTestConfig } from '@apack/testing/vitest';
+//   import { definePackTestConfig } from '@apackdev/testing/vitest';
 //   export default definePackTestConfig();
 //
 // `isolatedDataDir` is the half a pack used to assemble by hand; it is still exported for a pack that needs
@@ -145,7 +145,7 @@ export interface PackTestConfig {
  * pack and the config `apack init` scaffolds each restated the same settings, and one of them ran without
  * `globals` while another set it. Nobody decided that; it is what three copies do.
  *
- * **No `resolve.conditions`, ever.** A pack resolves the `@apack` packages' published `dist`, which is the
+ * **No `resolve.conditions`, ever.** A pack resolves the `@apackdev` packages' published `dist`, which is the
  * one layout a pack author has, and `check:specifiers` refuses a pack config that declares the source
  * condition. A helper that quietly declared it would break that for every pack at once.
  */

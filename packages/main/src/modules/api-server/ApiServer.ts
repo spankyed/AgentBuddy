@@ -18,7 +18,7 @@ import {
 import { ProcessManager, broadcastEvent } from './process-manager.ts';
 import { logInfo, logError, logWarn, getLogger, logStartupBanner } from './logger.ts';
 import { getAppContext } from '../../app-context.ts';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 export class ApiServer implements AppModule {
   private processManager: ProcessManager;

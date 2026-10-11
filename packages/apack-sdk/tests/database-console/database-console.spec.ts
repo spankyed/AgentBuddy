@@ -1,7 +1,7 @@
 // The Database console's code runners, which the Database plugin and `apack db query`/`exec` share
 import * as os from 'node:os';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { untypedTx, untypedQx } from '@apack/ears';
+import { untypedTx, untypedQx } from '@apackdev/ears';
 import { consoleEars, getSchemaStats, installedEars, READ_HELPER_NAMES, runQueryCode, runTransactionCode, WRITE_HELPER_NAMES } from '../../src/database-console/index.ts';
 import { testPacks } from '../../src/testing/packs.ts';
 import { EARS } from '../../src/types/index.ts';

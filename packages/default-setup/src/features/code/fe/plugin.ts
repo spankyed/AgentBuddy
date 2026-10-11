@@ -1,5 +1,5 @@
 import { defineAsyncComponent } from 'vue';
-import { definePlugin } from '@apack/sdk/fe';
+import { definePlugin } from '@apackdev/sdk/fe';
 import { Code2 } from 'lucide-vue-next';
 import state from './state.ts';
 import settings from './settings.vue';

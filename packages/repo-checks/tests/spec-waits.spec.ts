@@ -2,7 +2,7 @@
 //
 // A sleep puts a guess about duration into every passing run, and when the guess is short the failure reads
 // exactly like the bug it was meant to catch — "no answer arrived" — which buys an investigation every time it
-// fires. `@apack/sdk/testing/waiting` is the alternative and its header carries the rule: a wait is driven by
+// fires. `@apackdev/sdk/testing/waiting` is the alternative and its header carries the rule: a wait is driven by
 // the thing it waits for and names what never happened. An event where there is one; a poll where there is none,
 // as `apack-host/tests/database/write-lock.spec.ts` does for a file lock. A bare duration is never the answer.
 //
@@ -19,8 +19,8 @@
 // that failed in both directions before it read the tree.
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
-import { population } from '@apack/sdk/testing';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { population } from '@apackdev/sdk/testing';
 import { UNIT_SUITES } from '../../../scripts/lib/unit-suites.ts';
 import { bareWaitKey, bareWaits, specFilesUnder, type BareWait } from '../../../scripts/lib/test-timeouts.ts';
 
@@ -89,7 +89,7 @@ describe('a spec waits for the thing it waits for', () => {
 
     expect(unaccounted, [
       'A spec may not sleep and then assert. Await the thing instead —',
-      '`_whenSatisfied` or `_byDeadline` from @apack/sdk/testing/waiting — or, if the elapsed time really is',
+      '`_whenSatisfied` or `_byDeadline` from @apackdev/sdk/testing/waiting — or, if the elapsed time really is',
       'the subject, add it to BARE_WAIT_BY_DESIGN with the reason.',
     ].join(' ')).toEqual([]);
   });

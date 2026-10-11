@@ -3,9 +3,9 @@
 // visibility defaults the host's application system reads.
 import { services } from '#generated/services.ts';
 import { afterEach, describe, expect, it } from 'vitest';
-import { getPackSettingsDefaults } from '@apack/sdk/framework';
-import { registerPack, resetTestData, unregisterPack } from '@apack/testing/harness';
-import { resolveName } from '@apack/sdk/ids';
+import { getPackSettingsDefaults } from '@apackdev/sdk/framework';
+import { registerPack, resetTestData, unregisterPack } from '@apackdev/testing/harness';
+import { resolveName } from '@apackdev/sdk/ids';
 
 /** A feature with a plugin and the given settings */
 const feature = (id: string, settings: Record<string, unknown>) => [id, { plugin: { receives: [] }, settings }] as const;

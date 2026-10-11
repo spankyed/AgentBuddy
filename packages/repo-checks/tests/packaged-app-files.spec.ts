@@ -1,12 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { packagesBuiltOrRefuse, REPO_ROOT } from '@apack/host/build/packages-built';
-import { population } from '@apack/sdk/testing';
+import { packagesBuiltOrRefuse, REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { population } from '@apackdev/sdk/testing';
 import { createBuildSession } from '../../../build/build-metadata.ts';
 import { completeBuildFixture } from './_support/app-build.ts';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
-import { PACK_WORK_DIR } from '@apack/host/build/pack-workdir';
+import { PACK_WORK_DIR } from '@apackdev/host/build/pack-workdir';
 import { FileMatcher } from 'app-builder-lib/out/fileMatcher.js';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -160,7 +160,7 @@ describe("the packaged app's file list", () => {
 
   /**
    * The trees `stagePublishTree` writes so `npm publish` has something to publish. The app never loads one — it
-   * resolves `@apack/sdk` through `node_modules` to `packages/apack-sdk/dist` — and the recursive include of
+   * resolves `@apackdev/sdk` through `node_modules` to `packages/apack-sdk/dist` — and the recursive include of
    * `packages` took all three until the publish exclusion was added, because electron-builder reads no
    * `.gitignore`.
    */
@@ -184,7 +184,7 @@ describe("the packaged app's file list", () => {
     });
 
     it("ships every file of a package's compiled output", () => {
-      expect(population("@apack/sdk's dist", filesUnder('packages/apack-sdk/dist')).filter((file) => !ships(file))).toEqual([]);
+      expect(population("@apackdev/sdk's dist", filesUnder('packages/apack-sdk/dist')).filter((file) => !ships(file))).toEqual([]);
     });
 
     /** The mapping the templates cases derive: what `bundle-package` copied is what they assumed it would */

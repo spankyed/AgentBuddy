@@ -4,11 +4,11 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { INTERRUPTS } from '@apack/host/exclusive-lock';
-import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, diffableStamp, ensurePackagesBuilt, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, packageWriter, PackagesWentStale, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit, type StaleUnit } from '@apack/host/build/packages-built';
+import { INTERRUPTS } from '@apackdev/host/exclusive-lock';
+import { ABSENT, ALLOW_UNBUILT, BUILD_UNITS, buildScriptFor, changedInputs, CHECKOUT_MARKER, covers, declaredPaths, diffableStamp, ensurePackagesBuilt, fingerprintInputs, fingerprintUnit, fingerprintWithDigests, freshnessSweep, inputFiles, INPUTS_CHANGED, PACKAGES_PREBUILT_ENV, packageWriter, PackagesWentStale, repoRelative, NOT_A_BUILD_INPUT, REPO_ROOT, staleMessage, stampRecord, stampedBuild, stampedRun, stampedRunAll, stampFile, unbuiltRefusal, unitStaleReason, withBuildLock, type BuildIntent, type BuildUnit, type StaleUnit } from '@apackdev/host/build/packages-built';
 
 /**
- * The freshness rule behind `npm test -w @apack/cli`'s pretest (@apack/host/build/packages-built):
+ * The freshness rule behind `npm test -w @apackdev/cli`'s pretest (@apackdev/host/build/packages-built):
  * a success stamp holding a content fingerprint of the build's inputs, so output that no successful
  * build produced never reads as built. Everything here runs on temporary fixtures — a spec must
  * never build the repo's packages (that is the pretest's job, in its own process).
@@ -85,21 +85,21 @@ describe('the watched input set', () => {
   });
 
   it('covers every source the CLI and testing bundles inline, not just the published packages', () => {
-    // scripts/bundle-package.ts inlines @apack/host into both bundles, and the published-* specs
-    // read @apack/testing's bundle: editing either left the bundles stale and the suite green.
-    // Checked per unit, not over the union: one bundle watching @apack/host does not cover the other.
-    for (const workspace of ['@apack/testing', '@apack/cli']) {
+    // scripts/bundle-package.ts inlines @apackdev/host into both bundles, and the published-* specs
+    // read @apackdev/testing's bundle: editing either left the bundles stale and the suite green.
+    // Checked per unit, not over the union: one bundle watching @apackdev/host does not cover the other.
+    for (const workspace of ['@apackdev/testing', '@apackdev/cli']) {
       const inputs = new Set(BUILD_UNITS[workspace].inputs);
       for (const input of ['packages/apack-host/src', 'packages/apack-host/package.json', 'scripts/bundle-package.ts']) {
         expect(inputs, workspace).toContain(path.join(REPO_ROOT, input));
       }
     }
-    expect(new Set(BUILD_UNITS['@apack/testing'].inputs)).toContain(path.join(REPO_ROOT, 'packages', 'apack-testing', 'src'));
-    expect(new Set(BUILD_UNITS['@apack/cli'].inputs)).toContain(path.join(REPO_ROOT, 'packages', 'apack-cli', 'src'));
+    expect(new Set(BUILD_UNITS['@apackdev/testing'].inputs)).toContain(path.join(REPO_ROOT, 'packages', 'apack-testing', 'src'));
+    expect(new Set(BUILD_UNITS['@apackdev/cli'].inputs)).toContain(path.join(REPO_ROOT, 'packages', 'apack-cli', 'src'));
   });
 
   it('covers each package build script and the configs it reads', () => {
-    for (const [pkg, unit] of [['apack-ears', '@apack/ears'], ['apack-sdk', '@apack/sdk'], ['apack-ui', '@apack/ui']] as const) {
+    for (const [pkg, unit] of [['apack-ears', '@apackdev/ears'], ['apack-sdk', '@apackdev/sdk'], ['apack-ui', '@apackdev/ui']] as const) {
       const inputs = new Set(BUILD_UNITS[unit].inputs);
       for (const input of ['src', 'package.json', 'tsconfig.json', 'tsconfig.package.json']) {
         expect(inputs, `${unit}: ${input}`).toContain(path.join(REPO_ROOT, 'packages', pkg, input));
@@ -107,10 +107,10 @@ describe('the watched input set', () => {
       // The build script is the repo's, not the package's: a package's own scripts are its other tooling
       expect(inputs, `${unit}: the build script`).toContain(path.join(REPO_ROOT, 'scripts', 'build-package.ts'));
     }
-    const ui = new Set(BUILD_UNITS['@apack/ui'].inputs);
+    const ui = new Set(BUILD_UNITS['@apackdev/ui'].inputs);
     expect(ui).toContain(path.join(REPO_ROOT, 'packages', 'apack-ui', 'tsdown.config.ts'));
     expect(ui).toContain(path.join(REPO_ROOT, 'scripts', 'build-ui-package.ts'));
-    // @apack/ui's build reads its exports helper, which stays with the package for exports:update
+    // @apackdev/ui's build reads its exports helper, which stays with the package for exports:update
     expect(ui).toContain(path.join(REPO_ROOT, 'packages', 'apack-ui', 'scripts', 'exports.ts'));
   });
 
@@ -247,7 +247,7 @@ describe('the stamp protocol', () => {
   // refusal and the guard demanding the same file coexisted for two commits. `inputFiles` carries the rule.
   it('does not watch the code that decides freshness', () => {
     expect(Object.keys(NOT_A_BUILD_INPUT).length, 'an empty list makes this case vacuous').toBeGreaterThan(0);
-    // A bundle that inlines @apack/host emits that source, so watching it is right — derived from the
+    // A bundle that inlines @apackdev/host emits that source, so watching it is right — derived from the
     // workspace's own `build:package` rather than naming the two units, which is a fact about how they build.
     // What `buildScriptFor` makes of a manifest is covered by `describe('buildScriptFor')` below, against a
     // fixture: editing a real `build:package` to test it makes that unit stale, and a stale unit used to stop
@@ -826,12 +826,12 @@ describe('diffableStamp', () => {
 describe('the stale message', () => {
   it('names every stale workspace with its own reason', () => {
     const message = staleMessage([
-      { workspace: '@apack/sdk', reason: 'its inputs changed since the last successful run' },
-      { workspace: '@apack/ui', reason: 'no stamp' },
+      { workspace: '@apackdev/sdk', reason: 'its inputs changed since the last successful run' },
+      { workspace: '@apackdev/ui', reason: 'no stamp' },
     ]);
     expect(message.split('\n')).toHaveLength(2);
-    expect(message).toContain('@apack/sdk: its inputs changed');
-    expect(message).toContain('@apack/ui: no stamp');
+    expect(message).toContain('@apackdev/sdk: its inputs changed');
+    expect(message).toContain('@apackdev/ui: no stamp');
   });
 
   /**
@@ -842,9 +842,9 @@ describe('the stale message', () => {
    */
   it('names what moved, after the reason that is the same for all of them', () => {
     const message = staleMessage([
-      { workspace: '@apack/sdk', reason: INPUTS_CHANGED, moved: 'changed src/types/entities.ts (and 2 more)' },
+      { workspace: '@apackdev/sdk', reason: INPUTS_CHANGED, moved: 'changed src/types/entities.ts (and 2 more)' },
     ]);
-    expect(message).toBe('  @apack/sdk: its inputs changed since the last successful run — changed src/types/entities.ts (and 2 more)');
+    expect(message).toBe('  @apackdev/sdk: its inputs changed since the last successful run — changed src/types/entities.ts (and 2 more)');
   });
 
   /**
@@ -853,12 +853,12 @@ describe('the stale message', () => {
    */
   it('keeps one line per unit whether or not it can say what moved', () => {
     const message = staleMessage([
-      { workspace: '@apack/sdk', reason: INPUTS_CHANGED, moved: 'changed src/a.ts' },
-      { workspace: '@apack/ui', reason: INPUTS_CHANGED },
+      { workspace: '@apackdev/sdk', reason: INPUTS_CHANGED, moved: 'changed src/a.ts' },
+      { workspace: '@apackdev/ui', reason: INPUTS_CHANGED },
     ]);
     expect(message.split('\n')).toHaveLength(2);
     expect(message.split('\n')[1], 'a stamp from before the digests existed still reads as it did')
-      .toBe('  @apack/ui: its inputs changed since the last successful run');
+      .toBe('  @apackdev/ui: its inputs changed since the last successful run');
   });
 });
 
@@ -867,7 +867,7 @@ describe('a stamped build', () => {
   // Pinned to `command` rather than left to `intentFromEnv()`, so a test reads the same whatever
   // APACK_BUILD_INTENT the run inherited
   const run = (f: Fixture, build: () => void | Promise<void>, intent: BuildIntent = 'command') =>
-    stampedBuild('@apack/fixture', f.unit, path.join(f.root, 'stamp.json'), build, { lock: path.join(f.root, 'build.lock'), intent });
+    stampedBuild('@apackdev/fixture', f.unit, path.join(f.root, 'stamp.json'), build, { lock: path.join(f.root, 'build.lock'), intent });
 
   it('leaves the unit fresh when the build returns', async () => {
     const f = fixture();
@@ -930,7 +930,7 @@ describe('a stamped build', () => {
     const f = fixture();
     const lock = path.join(f.root, 'build.lock');
     await run(f, async () => {
-      await expect(withBuildLock('@apack/other', () => 'never', lock)).rejects.toThrow(/another package build holds/);
+      await expect(withBuildLock('@apackdev/other', () => 'never', lock)).rejects.toThrow(/another package build holds/);
     });
     expect(fs.existsSync(lock)).toBe(false);
   });
@@ -957,7 +957,7 @@ describe('the build lock on the way out', () => {
     const before = listeners();
     let during: ReturnType<typeof listeners> | undefined;
 
-    await withBuildLock('@apack/sdk', () => { during = listeners(); }, file);
+    await withBuildLock('@apackdev/sdk', () => { during = listeners(); }, file);
 
     for (const [signal, count] of Object.entries(before)) {
       expect(during![signal as keyof typeof before], `${signal} while the lock was held`).toBe(count + 1);
@@ -970,7 +970,7 @@ describe('the build lock on the way out', () => {
     const file = path.join(tempDir(), 'packages-build.lock');
     const before = listeners();
 
-    await expect(withBuildLock('@apack/sdk', () => { throw new Error('boom'); }, file)).rejects.toThrow('boom');
+    await expect(withBuildLock('@apackdev/sdk', () => { throw new Error('boom'); }, file)).rejects.toThrow('boom');
 
     expect(listeners()).toEqual(before);
     expect(fs.existsSync(file), 'and the lock itself is gone').toBe(false);
@@ -982,8 +982,8 @@ describe('the build lock', () => {
 
   it('refuses a second build while one holds it', async () => {
     const file = lockFile();
-    await withBuildLock('@apack/sdk', async () => {
-      await expect(withBuildLock('@apack/ui', () => 'never', file)).rejects.toThrow(/another package build holds/);
+    await withBuildLock('@apackdev/sdk', async () => {
+      await expect(withBuildLock('@apackdev/ui', () => 'never', file)).rejects.toThrow(/another package build holds/);
     }, file);
   });
 
@@ -991,44 +991,44 @@ describe('the build lock', () => {
     const file = lockFile();
     // This process is the holder, so it is alive for certain and the test cannot race its exit
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify({ pid: process.pid, label: '@apack/other', startedAt: new Date().toISOString() }));
+    fs.writeFileSync(file, JSON.stringify({ pid: process.pid, label: '@apackdev/other', startedAt: new Date().toISOString() }));
 
     const started = Date.now();
-    await expect(withBuildLock('@apack/sdk', () => 'never', file, { intent: 'command' })).rejects.toThrow(/another package build holds/);
+    await expect(withBuildLock('@apackdev/sdk', () => 'never', file, { intent: 'command' })).rejects.toThrow(/another package build holds/);
     expect(Date.now() - started, 'a command waited instead of failing at once').toBeLessThan(500);
 
     // The wait is bounded, and says it waited — a holder that never goes is reported, not waited on forever
     const waited = Date.now();
-    await expect(withBuildLock('@apack/sdk', () => 'never', file, { intent: 'freshness', timeoutMs: 1_000 }))
+    await expect(withBuildLock('@apackdev/sdk', () => 'never', file, { intent: 'freshness', timeoutMs: 1_000 }))
       .rejects.toThrow(/after waiting 1s/);
     expect(Date.now() - waited, 'a freshness fix gave up without waiting').toBeGreaterThanOrEqual(900);
   });
 
   it('names the holder', async () => {
     const file = lockFile();
-    await withBuildLock('@apack/sdk', async () => {
-      await expect(withBuildLock('@apack/ui', () => 'never', file)).rejects.toThrow(new RegExp(`pid ${process.pid}.*@apack/sdk`));
+    await withBuildLock('@apackdev/sdk', async () => {
+      await expect(withBuildLock('@apackdev/ui', () => 'never', file)).rejects.toThrow(new RegExp(`pid ${process.pid}.*@apackdev/sdk`));
     }, file);
   });
 
   it('releases it afterwards, including when the build throws', async () => {
     const file = lockFile();
-    await expect(withBuildLock('@apack/sdk', () => { throw new Error('build failed'); }, file)).rejects.toThrow('build failed');
+    await expect(withBuildLock('@apackdev/sdk', () => { throw new Error('build failed'); }, file)).rejects.toThrow('build failed');
     expect(fs.existsSync(file)).toBe(false);
-    await expect(withBuildLock('@apack/ui', () => 'ok', file)).resolves.toBe('ok');
+    await expect(withBuildLock('@apackdev/ui', () => 'ok', file)).resolves.toBe('ok');
   });
 
   it('takes over a lock whose process is gone — a killed build must not block the next one', async () => {
     const file = lockFile();
     const dead = spawnSync(process.execPath, ['-e', '']).pid;
-    fs.writeFileSync(file, JSON.stringify({ pid: dead, label: '@apack/sdk', startedAt: new Date().toISOString() }));
-    await expect(withBuildLock('@apack/ui', () => 'ok', file)).resolves.toBe('ok');
+    fs.writeFileSync(file, JSON.stringify({ pid: dead, label: '@apackdev/sdk', startedAt: new Date().toISOString() }));
+    await expect(withBuildLock('@apackdev/ui', () => 'ok', file)).resolves.toBe('ok');
   });
 
   it('leaves a lock it no longer owns alone', async () => {
     const file = lockFile();
-    const other = JSON.stringify({ pid: process.pid + 1, label: '@apack/ui', startedAt: new Date().toISOString() });
-    await withBuildLock('@apack/sdk', () => fs.writeFileSync(file, other), file);
+    const other = JSON.stringify({ pid: process.pid + 1, label: '@apackdev/ui', startedAt: new Date().toISOString() });
+    await withBuildLock('@apackdev/sdk', () => fs.writeFileSync(file, other), file);
     expect(fs.readFileSync(file, 'utf-8')).toBe(other);
   });
 });
@@ -1107,9 +1107,9 @@ describe('recording that something ran', () => {
  * What a caller that has already built the packages does when one is stale anyway.
  *
  * The refusal exists because building here would race whatever is rewriting that dist, and the failure would
- * then be about the race — `building @apack/sdk failed` — rather than about the tree having moved. Both halves
+ * then be about the race — `building @apackdev/sdk failed` — rather than about the tree having moved. Both halves
  * were checked by hand when it was written (2026-09-24) and neither became a case, next to a flag nothing set,
- * so for eight days the branch could not run at all: the `@apack/source` condition, the chain, and every
+ * so for eight days the branch could not run at all: the `@apackdev/source` condition, the chain, and every
  * suite's pretest all went through the other side of it.
  *
  * Driven through `EnsurePackagesOptions` rather than by making a real package stale, which would mean deleting
@@ -1132,21 +1132,21 @@ describe('a lock still on disk when the packages went stale', () => {
 
   it('names a holder that is still running', () => {
     // This process: its pid exists and it started in this boot, which is what `holderIsRunning` asks
-    const file = lockAt({ pid: process.pid, label: '@apack/ui', startedAt: new Date().toISOString() });
+    const file = lockAt({ pid: process.pid, label: '@apackdev/ui', startedAt: new Date().toISOString() });
 
     const writer = packageWriter(undefined, file);
 
-    expect(writer).toContain(`pid ${process.pid} (@apack/ui`);
+    expect(writer).toContain(`pid ${process.pid} (@apackdev/ui`);
     expect(writer).toContain('is still running');
   });
 
   // A crashed writer's record outlives it, and before this nothing read it
   it('names a holder that is gone, and says its lock was left behind', () => {
-    const file = lockAt({ pid: process.pid, label: '@apack/sdk', startedAt: new Date(Date.now() - (os.uptime() + 3600) * 1000).toISOString() });
+    const file = lockAt({ pid: process.pid, label: '@apackdev/sdk', startedAt: new Date(Date.now() - (os.uptime() + 3600) * 1000).toISOString() });
 
     const writer = packageWriter(undefined, file);
 
-    expect(writer).toContain('@apack/sdk');
+    expect(writer).toContain('@apackdev/sdk');
     expect(writer).toContain('is gone, having left its lock behind');
   });
 
@@ -1161,14 +1161,14 @@ describe('a lock still on disk when the packages went stale', () => {
    * lock are two facts, and the one that moved these packages is the one this run waited for.
    */
   it('prefers what the wait saw over a lock taken since', () => {
-    const file = lockAt({ pid: process.pid, label: '@apack/ui', startedAt: new Date().toISOString() });
+    const file = lockAt({ pid: process.pid, label: '@apackdev/ui', startedAt: new Date().toISOString() });
 
-    expect(packageWriter('pid 99 (@apack/ears, started then)', file)).toContain('@apack/ears');
+    expect(packageWriter('pid 99 (@apackdev/ears, started then)', file)).toContain('@apackdev/ears');
   });
 });
 
 describe('ensurePackagesBuilt, where the caller says the packages are already built', () => {
-  const moved: StaleUnit[] = [{ workspace: '@apack/sdk', reason: INPUTS_CHANGED, moved: 'src/index.ts' }];
+  const moved: StaleUnit[] = [{ workspace: '@apackdev/sdk', reason: INPUTS_CHANGED, moved: 'src/index.ts' }];
 
   /** Restored rather than stubbed: this process is a test runner, and the flag changes what every later case sees */
   function withFlag<T>(value: string | undefined, body: () => T): T {
@@ -1206,7 +1206,7 @@ describe('ensurePackagesBuilt, where the caller says the packages are already bu
       .toThrow(PackagesWentStale);
     expect(built, 'it built under the flag, which is the race the refusal exists to avoid').toEqual([]);
     expect(reported, 'the refusal carries the message; printing one too says it twice').toEqual([]);
-    expect(refusal).toContain('@apack/sdk');
+    expect(refusal).toContain('@apackdev/sdk');
     expect(refusal, 'a reader has to be told which file moved, or the refusal names no suspect')
       .toContain('src/index.ts');
   });
@@ -1221,9 +1221,9 @@ describe('ensurePackagesBuilt, where the caller says the packages are already bu
    * returned is all there is.
    */
   it('names the build it waited for, which is the only evidence in the ordinary case', () => {
-    const { refusal } = refusalWith(() => 'pid 4821 (@apack/ui, started 2026-10-08T00:43:43.374Z)');
+    const { refusal } = refusalWith(() => 'pid 4821 (@apackdev/ui, started 2026-10-08T00:43:43.374Z)');
 
-    expect(refusal, 'the writer, named').toContain('pid 4821 (@apack/ui, started 2026-10-08T00:43:43.374Z)');
+    expect(refusal, 'the writer, named').toContain('pid 4821 (@apackdev/ui, started 2026-10-08T00:43:43.374Z)');
     expect(refusal).toContain('held the build lock during this run and released it');
     expect(refusal, 'the guess it replaces').not.toMatch(/usual cause/);
   });
@@ -1242,7 +1242,7 @@ describe('ensurePackagesBuilt, where the caller says the packages are already bu
   it('builds the stale workspace when no caller claims to have built it', () => {
     const built: string[] = [];
     withFlag(undefined, () => ensurePackagesBuilt({ wait: () => undefined, stale: () => moved, build: (w) => built.push(w), report: () => {} }));
-    expect(built).toEqual(['@apack/sdk']);
+    expect(built).toEqual(['@apackdev/sdk']);
   });
 
   /**

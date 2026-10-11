@@ -4,17 +4,17 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { startTestRuntime } from '@apack/sdk/testing';
-import { services } from '@apack/sdk/services';
-import { getDesignated, hasDesignation } from '@apack/sdk/designations';
-import { stepRegistry, type StepDefinition } from '@apack/sdk/steps';
-import { artifactRegistry } from '@apack/sdk/artifacts';
-import { blockRegistry } from '@apack/sdk/blocks';
-import { _contentWriterRegistry } from '@apack/sdk/content';
-import { getPackCommands, getPackSettingsDefaults, onPackSettingsDefaultsChanged, type PackRegistration } from '@apack/sdk/framework';
-import { importCompiledContent, type ContentApplier } from '@apack/sdk/utils';
+import { startTestRuntime } from '@apackdev/sdk/testing';
+import { services } from '@apackdev/sdk/services';
+import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
+import { stepRegistry, type StepDefinition } from '@apackdev/sdk/steps';
+import { artifactRegistry } from '@apackdev/sdk/artifacts';
+import { blockRegistry } from '@apackdev/sdk/blocks';
+import { _contentWriterRegistry } from '@apackdev/sdk/content';
+import { getPackCommands, getPackSettingsDefaults, onPackSettingsDefaultsChanged, type PackRegistration } from '@apackdev/sdk/framework';
+import { importCompiledContent, type ContentApplier } from '@apackdev/sdk/utils';
 import { createPackRegistry } from '../../src/packs/registry.ts';
-import { PLUGIN_EVENT_TYPES } from '@apack/sdk/events';
+import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
 const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);

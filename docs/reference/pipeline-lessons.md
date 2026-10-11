@@ -156,7 +156,7 @@ Rules that pay for themselves:
   fifth.** The rule above is about a check that looked at nothing; this is about one that looked at *some* of
   it and has to report the gap. Picking the right shape is picking what the caller can do about it:
   **refuse**, where the evidence is missing and running on anyway is worthless (`packagesBuiltOrRefuse`,
-  `@apack/host/build/packages-built`, with an `APACK_ALLOW_UNBUILT` hatch — it exists because thirteen spec
+  `@apackdev/host/build/packages-built`, with an `APACK_ALLOW_UNBUILT` hatch — it exists because thirteen spec
   files, nine of them a whole package, reported green having checked nothing); **a distinct exit code**, where
   "nothing covered this" and "everything covering it passed" are different answers a script has to tell apart
   (`npm run spec`'s 3); **a named bucket beside the total**, where some of the input was unpriceable and only
@@ -230,7 +230,7 @@ There are four such directories under `node_modules/.cache`, and as of 2026-10-0
 
 | directory | written by | guarded by |
 |---|---|---|
-| `apack-packages-build` | `packages:ensure`, `packages:build` | `withBuildLock` (`@apack/host/build/packages-built`) |
+| `apack-packages-build` | `packages:ensure`, `packages:build` | `withBuildLock` (`@apackdev/host/build/packages-built`) |
 | `apack-chain` | `npm run chain` | `holdChainLock` (`scripts/lib/chain-lock.ts`) |
 | `apack-unit-pool` | `test:unit:host`, `test:unit:pack`, `test:integration` | `holdPoolLock` (`scripts/lib/unit-pool.ts`), **per pool** |
 | `apack-spec-durations` | `npm run spec`, the pools' reporter | nothing, deliberately — see below |
@@ -248,7 +248,7 @@ field and two idle floors, to place a spec in one of two config files — is wha
 *decides* on those numbers, that is the moment to revisit, and the decision is the thing to question first.
 
 **The fix for an unguarded one is three lines**, and it is the same three: `holdExclusiveLock` from
-`@apack/host/exclusive-lock` with a lock file beside the stamps, a refusal naming the holder, and a release
+`@apackdev/host/exclusive-lock` with a lock file beside the stamps, a refusal naming the holder, and a release
 the mechanism already does for you on `exit` and on four interrupts. `scripts/lib/chain-lock.ts` is the
 worked example and is 90 lines including its prose. **Do not write a fourth lock**: that module's header is
 explicit that the mechanism is shared and only the policy — the file's name, the refusal's words — belongs to

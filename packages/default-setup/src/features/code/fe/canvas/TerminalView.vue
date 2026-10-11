@@ -44,11 +44,11 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apack/sdk/fe'
+import { usePlugin } from '@apackdev/sdk/fe'
 
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
-import ScrollToBottomFob from '@apack/ui/design/ScrollToBottomFob'
-import TrackedContextMenuRoot from '@apack/ui/design/TrackedContextMenuRoot'
+import ScrollToBottomFob from '@apackdev/ui/design/ScrollToBottomFob'
+import TrackedContextMenuRoot from '@apackdev/ui/design/TrackedContextMenuRoot'
 import {
   ContextMenuTrigger,
   ContextMenuContent,

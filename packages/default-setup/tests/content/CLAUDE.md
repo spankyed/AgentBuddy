@@ -61,7 +61,7 @@ fields — so a field added to an action later is covered without anyone remembe
 ### Why presence but not value
 
 A row with **no** `contentHash` is the user's for good: the merge reads an entity carrying none as `user-owned`
-(`@apack/sdk/src/content/merge.ts`). So whether a hash is there is the difference between "written by the pack"
+(`@apackdev/sdk/src/content/merge.ts`). So whether a hash is there is the difference between "written by the pack"
 and "hands off", which is parity. Which hash it is, is the compiler's business. One row in the goldens
 records `false` — `Action:Set Instructions` in the `untracked` scenario — and that row is the reason the field
 exists.

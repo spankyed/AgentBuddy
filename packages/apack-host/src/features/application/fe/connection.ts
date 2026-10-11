@@ -3,7 +3,7 @@
 // that plugin makes in answer carries its own ref (`notifyPluginActor`/`sendToPluginActor`). This is the path every backend
 // `broadcastToPlugin` takes, and it set no name until it was tested for one.
 import { fromCallback } from 'xstate';
-import { senderSuffix } from '@apack/sdk/events';
+import { senderSuffix } from '@apackdev/sdk/events';
 import type { ShellClient } from '../../../fe/client.ts';
 import { notifyPluginActor, sendToPluginActor } from '../../../fe/plugin-delivery.ts';
 import { HOST } from '../../../refs.ts';

@@ -1,12 +1,12 @@
-// What `@apack/host/fe` offers a frontend: the things a window needs that aren't a feature's — the registered pack
+// What `@apackdev/host/fe` offers a frontend: the things a window needs that aren't a feature's — the registered pack
 // frontends, the client's contract, a window's migrations, the ports the renderer implements — and, below, each
 // host feature's frontend. The features' halves are named here rather than each keeping a `public.ts` of its own:
 // this is the package's export surface, which is why naming a feature's frontend from here is not the crossing
 // `check:specifiers` refuses. A feature's modules are otherwise its own, exactly as a pack's are.
-export type { Plugin } from '@apack/sdk/fe';
+export type { Plugin } from '@apackdev/sdk/fe';
 export { createFePackRegistry, type FePackRegistry } from './pack-store.ts';
 export { HOST } from '../refs.ts';
-export type { PackFERegistration } from '@apack/sdk/fe';
+export type { PackFERegistration } from '@apackdev/sdk/fe';
 export { describeFailure, type ShellClient, type ShellConnection, type ShellFailure } from './client.ts';
 export type { LoadedPackEntry } from '../packs/layout.ts';
 export { runFrontendMigrations, type FrontendMigration, type WindowStorage } from './migrations/index.ts';

@@ -8,13 +8,13 @@
 //
 // Mutual assignability rather than two `extends` checks in one direction: a field dropped from `BusMessage` and
 // a field invented by it are different mistakes and both are mistakes. The specs here may import from
-// `@apack/sdk` even though the module under test may not, which is the whole reason this can be checked at all.
+// `@apackdev/sdk` even though the module under test may not, which is the whole reason this can be checked at all.
 //
 // The one deliberate difference is `client`, which the API stamps per connection rather than a sender setting,
 // and it is in both shapes because `bus.sub` delivers it. If a field is ever added that genuinely must not be
 // mirrored, it belongs in an `Omit` here with its reason beside it, the way the API's own envelope check does it.
 import { describe, expect, it } from 'vitest';
-import type { Message } from '@apack/sdk/events';
+import type { Message } from '@apackdev/sdk/events';
 import type { BusMessage } from '../../src/engine/api-client.ts';
 
 /** `true` only when `A` and `B` describe the same fields with the same types, in both directions. */

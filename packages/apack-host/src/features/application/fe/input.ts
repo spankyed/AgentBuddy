@@ -1,7 +1,7 @@
 // The keyboard and mouse, heard on the target the shell is given (the window): global hotkeys, and the mouse's back
 // and forward buttons. With no target, neither listens.
 import { fromCallback } from 'xstate';
-import type { HotkeyEvent } from '@apack/sdk/fe';
+import type { HotkeyEvent } from '@apackdev/sdk/fe';
 import { HOST } from '../../../refs.ts';
 
 /**

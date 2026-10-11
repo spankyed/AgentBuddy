@@ -1,15 +1,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { createLogger } from '@apack/sdk/logger';
+import { createLogger } from '@apackdev/sdk/logger';
 import { PACK_LAYOUT, packContentFiles } from '../layout.ts';
 import { recordApplyOutcomes } from '../installed.ts';
-import type { PackManifest } from '@apack/sdk/build';
+import type { PackManifest } from '@apackdev/sdk/build';
 import { appliedContent, appState } from '../../app-state/index.ts';
-import { applyRecord, importCompiledContent } from '@apack/sdk/utils';
-import { describeContentKey } from '@apack/sdk/content';
-import type { ContentOffer } from '@apack/sdk/utils';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { applyRecord, importCompiledContent } from '@apackdev/sdk/utils';
+import { describeContentKey } from '@apackdev/sdk/content';
+import type { ContentOffer } from '@apackdev/sdk/utils';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const logger = createLogger('pack-content');
 

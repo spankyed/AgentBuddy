@@ -78,7 +78,7 @@ Every `on*` subscription returns an unsubscribe function. Main also broadcasts `
 
 ## The type contract lives in the SDK
 
-The renderer and packs don't import this package's types. `Window.electronAPI` is declared in `packages/apack-sdk/src/fe/electron-api.ts`, a published contract re-exported by `@apack/sdk/fe`, so pack authors see it too (`packages/renderer/src/electron.d.ts` only points there). `SpeechEvent`, the event type that global's `speech.onEvent` hands back, is published from `@apack/sdk/fe` beside it, which is what this package and `@app/main` both import. When you change the surface here:
+The renderer and packs don't import this package's types. `Window.electronAPI` is declared in `packages/apack-sdk/src/fe/electron-api.ts`, a published contract re-exported by `@apackdev/sdk/fe`, so pack authors see it too (`packages/renderer/src/electron.d.ts` only points there). `SpeechEvent`, the event type that global's `speech.onEvent` hands back, is published from `@apackdev/sdk/fe` beside it, which is what this package and `@app/main` both import. When you change the surface here:
 
 1. Add the main handler (`ipcMain.handle` for `invoke`, `ipcMain.on` for `send`).
 2. Declare it on `_HostBridge` in `electron-api.ts`, and leave it out of `PackFacingBridge`'s `Omit`s unless pack authors should not be pointed at it.

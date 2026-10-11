@@ -8,20 +8,20 @@ A **pack** is a self-contained extension for apack. It can contribute backend sy
 - apack installed
 - The `apack` CLI, from any of:
   - the app: **apack → Install 'apack' command in PATH** (macOS; apack Beta installs `apack-beta`)
-  - npm: `npm i -g @apack/cli`
+  - npm: `npm i -g @apackdev/cli`
   - Homebrew: the formula in `build/homebrew/apack.rb`
 
-Whichever `apack` you run, inside a pack it hands off to the `@apack/cli` version the pack pins in its `devDependencies`, so every pack builds with the CLI it was written against.
+Whichever `apack` you run, inside a pack it hands off to the `@apackdev/cli` version the pack pins in its `devDependencies`, so every pack builds with the CLI it was written against.
 
 ## Packages
 
 | Package | What it is |
 |---|---|
-| `@apack/sdk` | Pack-facing API and types (`@apack/sdk/fe`, `/steps`, `/events`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod) and the AI SDK (`ai` 7, whose types `services.inference` uses) are peer dependencies, and so is TypeScript (5.7 or later). |
-| `@apack/ears` | The EARS data engine: what the generated `#generated/ears` and `#generated/repository` build on, and the untyped API packs import directly (`untypedQx`, `tx`, `findRelations`, graph and blueprint helpers, `RepositoryError`; `createEarsEngine` for tests and tooling). The app shares one instance with every pack, as it does `@apack/sdk`. A dependency of every pack. |
-| `@apack/ui` | Vue components, tiptap and Monaco editors and UI composables (`@apack/ui/design/button`, `@apack/ui/components/tiptap/TiptapEditor`). Add it when your pack's UI uses them; it brings the editor libraries, so backend-only packs leave it out. Packs use the app's copy at runtime (see `build.bundleUi` in the manifest docs). |
-| `@apack/cli` | The `apack` command and build toolchain. A devDependency of every pack. |
-| `@apack/testing` | Pack tests: `@apack/testing/harness` runs a pack's content, systems, services and flows in unit tests without the app, `@apack/testing/vitest` configures Vitest for it (`isolatedDataDir`), and `@apack/testing` is the Playwright fixture for E2E tests in the app (`@playwright/test` is a peer). |
+| `@apackdev/sdk` | Pack-facing API and types (`@apackdev/sdk/fe`, `/steps`, `/events`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod) and the AI SDK (`ai` 7, whose types `services.inference` uses) are peer dependencies, and so is TypeScript (5.7 or later). |
+| `@apackdev/ears` | The EARS data engine: what the generated `#generated/ears` and `#generated/repository` build on, and the untyped API packs import directly (`untypedQx`, `tx`, `findRelations`, graph and blueprint helpers, `RepositoryError`; `createEarsEngine` for tests and tooling). The app shares one instance with every pack, as it does `@apackdev/sdk`. A dependency of every pack. |
+| `@apackdev/ui` | Vue components, tiptap and Monaco editors and UI composables (`@apackdev/ui/design/button`, `@apackdev/ui/components/tiptap/TiptapEditor`). Add it when your pack's UI uses them; it brings the editor libraries, so backend-only packs leave it out. Packs use the app's copy at runtime (see `build.bundleUi` in the manifest docs). |
+| `@apackdev/cli` | The `apack` command and build toolchain. A devDependency of every pack. |
+| `@apackdev/testing` | Pack tests: `@apackdev/testing/harness` runs a pack's content, systems, services and flows in unit tests without the app, `@apackdev/testing/vitest` configures Vitest for it (`isolatedDataDir`), and `@apackdev/testing` is the Playwright fixture for E2E tests in the app (`@playwright/test` is a peer). |
 
 The five are released together with the same version.
 
@@ -40,7 +40,7 @@ apack build
 ```
 my-pack/
   apack.json              # Pack manifest — the single source of truth
-  package.json             # depends on @apack/sdk and @apack/ears, pins @apack/cli and @apack/testing
+  package.json             # depends on @apackdev/sdk and @apackdev/ears, pins @apackdev/cli and @apackdev/testing
   tsconfig.json
   vitest.config.ts         # unit tests: an isolated data dir per run, the harness setup
   .gitignore
@@ -86,9 +86,9 @@ The build pipeline (`apack build`):
 3. Checks each feature's settings file sets only its own plugin's settings
 4. Resolves dependencies, warning when the generated dependency types are from a different version
 5. Content compilation — compiles `content.sources` from `src/content/` to `dist/runtime/content/`, validating flows with the dependencies' step code
-6. Facade types — bundles `dist/types/pack-types.d.ts`, the types packs that depend on yours import, and fails unless it type-checks on its own and imports only `@apack/*` packages, `@apack/sdk`'s peers and Node built-ins. Warns if your committed `etc/pack-types.api.md` has fallen behind it
+6. Facade types — bundles `dist/types/pack-types.d.ts`, the types packs that depend on yours import, and fails unless it type-checks on its own and imports only `@apackdev/*` packages, `@apackdev/sdk`'s peers and Node built-ins. Warns if your committed `etc/pack-types.api.md` has fallen behind it
 7. Snapshot — writes `dist/types/snapshot.json` (types, facade types, flow helpers, manifest) for downstream packs
-8. Build code for dependents — `dist/build/steps.build.mjs` (step build code), `dist/build/content-runtime.mjs` (your entity types, repositories and content writers, for their unit tests) and `dist/build/content-compilers.mjs` (your content formats' compiler modules). The build loads the content runtime the way their tests do, and fails if it can't: repositories and content writers can't use native modules or optional `@apack/sdk` peers such as `@tiptap/pm`
+8. Build code for dependents — `dist/build/steps.build.mjs` (step build code), `dist/build/content-runtime.mjs` (your entity types, repositories and content writers, for their unit tests) and `dist/build/content-compilers.mjs` (your content formats' compiler modules). The build loads the content runtime the way their tests do, and fails if it can't: repositories and content writers can't use native modules or optional `@apackdev/sdk` peers such as `@tiptap/pm`
 9. Backend bundling — `dist/runtime/index.cjs` (systems, services, steps, boot hooks, migrations)
 10. FE bundling — bundles `src/__generated__/pack-entry-fe.ts` into `dist/runtime/fe.js` via Vite
 
@@ -128,7 +128,7 @@ To release a version, run `apack release [patch|minor|major] [--beta]`: it check
 npm test
 ```
 
-Unit tests run your pack without the app, through `@apack/testing/harness`: content and repositories against an in-memory database, systems under the app's bus, services with others mocked, and flows on the brain with `services.inference` mocked, including your dependencies' behaviour. The scaffold wires it up in `vitest.config.ts` and `tests/setup.ts`; run `apack build` once first, so dependencies are fetched. See [Testing](testing.md).
+Unit tests run your pack without the app, through `@apackdev/testing/harness`: content and repositories against an in-memory database, systems under the app's bus, services with others mocked, and flows on the brain with `services.inference` mocked, including your dependencies' behaviour. The scaffold wires it up in `vitest.config.ts` and `tests/setup.ts`; run `apack build` once first, so dependencies are fetched. See [Testing](testing.md).
 
 ## E2E tests
 
@@ -157,7 +157,7 @@ apack clean      # Remove dist/, .apack/, __generated__/
 
 - **Manifest (`apack.json`)** — declares everything: features, steps, services, content, entities. See [Manifest Reference](manifest.md).
 - **Generated files (`__generated__/`)** — auto-generated from the manifest. Never edit these. They are regenerated on every build. The generated `pack-entry.ts` and `pack-entry-fe.ts` are your pack's registrations: everything it contributes (systems, services, repositories, steps, appliers, DSL types, …) reaches the app through them, never by writing to a registry when a module is imported.
-- **Host dependencies** — packs share `vue`, `xstate`, tiptap, `lucide-vue-next` and other libraries, the SDK modules and `@apack/ui` with the host app. The build pipeline leaves those imports external and the app's document carries an import map naming its own copy of each, so your pack gets the app's instance.
+- **Host dependencies** — packs share `vue`, `xstate`, tiptap, `lucide-vue-next` and other libraries, the SDK modules and `@apackdev/ui` with the host app. The build pipeline leaves those imports external and the app's document carries an import map naming its own copy of each, so your pack gets the app's instance.
 - **Content** — actions, prompts, flows and entity rows are compiled at build time and written when the pack loads. See [Content](content.md) for what action code may import.
 - **`pack://` protocol** — the host loads your pack's FE bundle at runtime via `pack://<id>/runtime/fe.js`. This is handled automatically.
 

@@ -56,12 +56,12 @@ wrong**: it reports a green run of specs that do not cover the change.
 
 | Edited package | Specs covering it live in | Packages `npm run spec` runs |
 |---|---|---|
-| `@apack/ears` | 8 packages | **1** |
-| `@apack/sdk` | 7 | **1** |
-| `@apack/host` | 6 | **1** |
-| `@apack/ui` | 6 | **1** |
-| `@apack/testing` | 4 | **1** |
-| `@app/publish-checks`, `@apack/cli`, `@app/api` | 2 each | **1** |
+| `@apackdev/ears` | 8 packages | **1** |
+| `@apackdev/sdk` | 7 | **1** |
+| `@apackdev/host` | 6 | **1** |
+| `@apackdev/ui` | 6 | **1** |
+| `@apackdev/testing` | 4 | **1** |
+| `@app/publish-checks`, `@apackdev/cli`, `@app/api` | 2 each | **1** |
 
 **29 cross-package edges the command does not follow.** Editing the EARS engine — the module every pack's
 data goes through — runs one suite of the eight that cover it.
@@ -69,8 +69,8 @@ data goes through — runs one suite of the eight that cover it.
 ### The chain already disagrees with it
 
 `suiteInputs` (`scripts/lib/chain-steps.ts`) includes `workspaceDeps(dir).flatMap(dependencySource)`, so a
-dependency's `src` is an input to every dependent's suite: the chain re-runs `@apack/host`'s projects when
-`@apack/sdk`'s source moves. Two mechanisms in one repo hold different beliefs about what covers what, and
+dependency's `src` is an input to every dependent's suite: the chain re-runs `@apackdev/host`'s projects when
+`@apackdev/sdk`'s source moves. Two mechanisms in one repo hold different beliefs about what covers what, and
 the cheap one — the one run per change — holds the wrong one.
 
 ### The fix is already in the tree, unused
@@ -99,7 +99,7 @@ more to verify than a component nothing imports. A shallow edit stays a 1–3s l
 `@app/default-setup` is not in the root projects and cannot be: it resolves the published `dist` while the
 host projects resolve source, and Node conditions are per process (`UnitSuite.kind`). So `related` on a
 workspace source path finds nothing there — measured, 1.5s and zero matches for the same file — because
-that suite never imports the source at all. A change to `@apack/sdk` reaches it through the rebuilt `dist`,
+that suite never imports the source at all. A change to `@apackdev/sdk` reaches it through the rebuilt `dist`,
 which is what `SUITE_READS` and `packages:ensure` express in the chain and what a module graph cannot see.
 
 That is a limit of the mechanism, not a gap to close here. It is stated in the command's output rather than
@@ -150,13 +150,13 @@ With no arguments the command runs `--changed` per package. `--changed` resolves
 way `related` does, so the same root run answers it in one process. Keep the per-package path for a change
 set that touches only one package's tests, where a root run would be slower than what it replaces.
 
-**Done when:** an uncommitted edit to `@apack/sdk/src` runs the dependents' specs, and a change confined to
+**Done when:** an uncommitted edit to `@apackdev/sdk/src` runs the dependents' specs, and a change confined to
 one package's `tests/` still runs only that package.
 
 ### Phase 3 — the numbers
 
 Measure and record, idle: a shallow edit (`@app/renderer`, nothing depends on it),
-a mid one (`@app/api`), and a deep one (`@apack/sdk/src/types/sdk-entities.ts`) — before and after.
+a mid one (`@app/api`), and a deep one (`@apackdev/sdk/src/types/sdk-entities.ts`) — before and after.
 Update the root `CLAUDE.md`'s description of the command, which currently promises "the specs your
 uncommitted changes affect, in every package they touch" and does not deliver it.
 
@@ -224,7 +224,7 @@ Deferred said: *"Closing it in `spec` would mean rebuilding the packages and run
 most of `npm run test:unit`, and that command already exists."*
 
 Measured 2026-09-26: `packages:build` forced is **14s** and `test:unit:pack` forced is **18s**, so the whole
-of it is **33s** on a shallow `@apack/sdk` edit — against `test:unit`'s two full pools. `npm run spec:full`
+of it is **33s** on a shallow `@apackdev/sdk` edit — against `test:unit`'s two full pools. `npm run spec:full`
 closes it, and the pack pool re-reads its own stamp, so the 18s is only paid when something it reads moved.
 
 That is the second time in this repo a proposal was argued at length and settled by one command; the first

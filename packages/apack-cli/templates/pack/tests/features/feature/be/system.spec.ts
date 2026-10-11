@@ -1,6 +1,6 @@
-// The __NAME__ system under the app's bus, without the app (@apack/testing/harness)
+// The __NAME__ system under the app's bus, without the app (@apackdev/testing/harness)
 import { describe, expect, it } from 'vitest';
-import { startApp } from '@apack/testing/harness';
+import { startApp } from '@apackdev/testing/harness';
 
 describe('__NAME__ system', () => {
   it('sends its connected data when a client connects', async () => {

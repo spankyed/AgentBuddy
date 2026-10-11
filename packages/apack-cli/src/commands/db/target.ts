@@ -1,10 +1,10 @@
 // What every `apack db` command shares: the data dir it targets, and opening its database offline
 import * as path from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { appDataDirFor, resolveAppContext, type AppContext, type AppEnv } from '@apack/sdk/env';
-import { findRunningApp, holdDatabaseWriteLock, openAppDatabase, type AppDatabase } from '@apack/host/database';
-import { consoleEars, type ConsoleScope } from '@apack/sdk/database-console';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { appDataDirFor, resolveAppContext, type AppContext, type AppEnv } from '@apackdev/sdk/env';
+import { findRunningApp, holdDatabaseWriteLock, openAppDatabase, type AppDatabase } from '@apackdev/host/database';
+import { consoleEars, type ConsoleScope } from '@apackdev/sdk/database-console';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { cliDirs } from '../../app/app-target';
 import { listProfiles } from '../../app/profiles';
 import { defaultDataBuild } from '../../utils';

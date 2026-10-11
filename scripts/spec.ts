@@ -18,12 +18,12 @@
 //   npm run spec:full [...]                 and the pack suites a rebuilt `dist` would reach
 //
 // A **source file** is the case worth knowing about. It used to run the file's own package, which for
-// `@apack/sdk` was one of the seven suites that cover it: a green run of specs that could not fail for the
+// `@apackdev/sdk` was one of the seven suites that cover it: a green run of specs that could not fail for the
 // change. It now runs one vitest over every host project, which is what the root `vitest.config.ts` is for.
 // That costs what the blast radius costs — a component nothing imports is still 1-3s, a type every pack's
 // data flows through is 28s and 104 files. To go back to one spec while iterating, name it.
 //
-// Where it can, it delegates to the package's own `test` script, so @apack/cli's and @app/default-setup's
+// Where it can, it delegates to the package's own `test` script, so @apackdev/cli's and @app/default-setup's
 // pretest guard (`packages:ensure`) and each vitest config still apply. A root run has no such hook, so the
 // plan puts `packages:ensure` in front of it.
 //

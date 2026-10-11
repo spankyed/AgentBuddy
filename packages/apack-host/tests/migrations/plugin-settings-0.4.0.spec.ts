@@ -7,17 +7,17 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
-import { untypedTx, untypedQx } from '@apack/ears';
-import type { EARS } from '@apack/sdk';
-import type { PackFeature } from '@apack/sdk/framework';
-import { resetTestData } from '@apack/sdk/testing';
+import { untypedTx, untypedQx } from '@apackdev/ears';
+import type { EARS } from '@apackdev/sdk';
+import type { PackFeature } from '@apackdev/sdk/framework';
+import { resetTestData } from '@apackdev/sdk/testing';
 import { registry } from '../packs/runtime/test-host.ts';
 import { appState } from '../../src/app-state/index.ts';
 import { appMigrations } from '../../src/migrations/app/index.ts';
 import type { InstalledManifests } from '../../src/migrations/app/0.4.0.ts';
 import { hostRegistration } from '../../src/features/registration.ts';
 import { writeInstalledPacks } from '../../src/packs/installed.ts';
-import { _appDirOf } from '@apack/sdk/env';
+import { _appDirOf } from '@apackdev/sdk/env';
 
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
 

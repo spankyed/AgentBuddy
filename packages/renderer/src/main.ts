@@ -5,16 +5,16 @@ import type { Actor } from 'xstate';
 import App from './views/App.vue'
 import './style.css'
 // highlight.js's stylesheet is global (.hljs, pre code.hljs), so the app owns it: imported from
-// @apack/ui it would ship again inside every build.bundleUi pack and restyle code everywhere.
+// @apackdev/ui it would ship again inside every build.bundleUi pack and restyle code everywhere.
 import 'highlight.js/styles/github-dark.css'
 import { hostFrontend } from '@/views/packs/plugin';
 import { createAppShell } from '@/runtime/shell';
-import { HOST, installFromProtocol, runFrontendMigrations } from '@apack/host/fe';
+import { HOST, installFromProtocol, runFrontendMigrations } from '@apackdev/host/fe';
 import 'virtual:host-shared-modules';
 import { bindRendererHost } from '@/runtime';
 import { fePacks } from '@/runtime/packs';
 import { installGlobalErrorHandling, reportRendererError } from '@/boot/errors';
-import { untypedSendToSystem } from '@apack/sdk/events';
+import { untypedSendToSystem } from '@apackdev/sdk/events';
 
 declare const __APP_VERSION__: string;
 

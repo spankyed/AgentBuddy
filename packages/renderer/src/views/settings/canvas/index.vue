@@ -28,13 +28,13 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apack/sdk/fe'
+import { usePlugin } from '@apackdev/sdk/fe'
 
 import { useSelector } from '@xstate/vue'
 import GeneralTab from './tabs/GeneralTab.vue'
 import PluginsTab from './tabs/PluginsTab.vue'
 import HelpTab from './tabs/HelpTab.vue'
-import type { SettingsState } from '@apack/host/fe'
+import type { SettingsState } from '@apackdev/host/fe'
 
 const actor: SettingsState = usePlugin()
 

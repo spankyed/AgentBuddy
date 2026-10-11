@@ -11,8 +11,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   buildPackConfigFromManifest, compilePack, formatEntities, generatePackFiles, parseManifest, resolveContentSources,
   type PackManifest, type PackSnapshot, type ContentDependency,
-} from '@apack/sdk/build';
-import { createFormatApplier } from '@apack/sdk/content';
+} from '@apackdev/sdk/build';
+import { createFormatApplier } from '@apackdev/sdk/content';
 import { PACK_DIR, resetDatabase, snapshot } from './harness.ts';
 
 const FIXTURE = path.join(PACK_DIR, 'tests/_support/fixtures/dependent-pack');

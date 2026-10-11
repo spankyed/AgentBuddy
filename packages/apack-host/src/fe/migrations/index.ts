@@ -1,13 +1,13 @@
 /**
  * The window's own migrations: what a window keeps in its storage, moved forward when the app it belongs to is
  * newer than the data. They run before the shell is created, since the shell reads those keys as it starts, and
- * they are the frontend counterpart of the app's migrations (`@apack/host/migrations`) — separate versioned
+ * they are the frontend counterpart of the app's migrations (`@apackdev/host/migrations`) — separate versioned
  * files, listed here, run in version order, each idempotent because a window may run them again.
  *
  * The storage arrives as `WindowStorage` (a window passes its `localStorage`), so this decides what moves and the
  * window supplies where it is kept.
  */
-import { compareVersions } from '@apack/sdk/utils/compare-versions';
+import { compareVersions } from '@apackdev/sdk/utils/compare-versions';
 import { migration as m040 } from './0.4.0.ts';
 
 /** What a window keeps its own data in: `localStorage`'s shape, so a window passes it as it is */

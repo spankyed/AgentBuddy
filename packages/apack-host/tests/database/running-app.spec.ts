@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { appLockFile, findRunningApp, publishRunningApp } from '../../src/database/running.ts';
 import { removeTempDirs, tempDir } from './fixtures.ts';
-import { _appDirOf } from '@apack/sdk/env';
+import { _appDirOf } from '@apackdev/sdk/env';
 
 afterEach(removeTempDirs);
 

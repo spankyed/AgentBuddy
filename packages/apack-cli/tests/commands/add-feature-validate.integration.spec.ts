@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { init } from '../../src/commands/init';
 import { addFeature } from '../../src/commands/add/feature';
 import { validate } from '../../src/commands/validate';
-import { PACK_LAYOUT } from '@apack/host/packs';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 let tmp: string;
 let pack: string;
@@ -34,7 +34,7 @@ afterEach(() => {
 const readManifest = () => JSON.parse(fs.readFileSync(path.join(pack, 'apack.json'), 'utf-8'));
 
 /**
- * The workspace's modules, so the pack resolves `@apack/sdk` as an installed one does. A plugin's contract names
+ * The workspace's modules, so the pack resolves `@apackdev/sdk` as an installed one does. A plugin's contract names
  * `PluginInbox`, and validation runs code generation, which can't read an inbox whose type didn't resolve.
  */
 function installDependencies() {
@@ -73,7 +73,7 @@ describe('apack add feature', () => {
     expect(fs.readFileSync(path.join(feature, 'fe', 'plugin.ts'), 'utf-8')).toMatch(/= definePlugin\(\{\n  label:/);
   });
 
-  // A plugin's contract declares its inbox with `PluginInbox`, so reading one takes the pack's @apack/sdk. Without
+  // A plugin's contract declares its inbox with `PluginInbox`, so reading one takes the pack's @apackdev/sdk. Without
   // it the type collapses to `any`, which has no properties — codegen used to read that as an inbox open to nothing
   // and generate a pack whose plugin silently received none of what it declares. It stops and says so now, and
   // `init` puts `npm install` before `apack add feature` for exactly this reason.

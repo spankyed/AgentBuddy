@@ -8,10 +8,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { importCompiledContent, type AppliedItem, type ApplyRecord } from '@apack/sdk/utils';
-import { CONTENT_INDEX_FILE } from '@apack/sdk/build';
-import { contentEntity } from '@apack/sdk/content';
-import { untypedQx as qx, untypedTx, type EARS } from '@apack/ears';
+import { importCompiledContent, type AppliedItem, type ApplyRecord } from '@apackdev/sdk/utils';
+import { CONTENT_INDEX_FILE } from '@apackdev/sdk/build';
+import { contentEntity } from '@apackdev/sdk/content';
+import { untypedQx as qx, untypedTx, type EARS } from '@apackdev/ears';
 import { PACK_DIR, applyAfter } from './harness.ts';
 
 /** This pack's compiled content, as its build wrote them */

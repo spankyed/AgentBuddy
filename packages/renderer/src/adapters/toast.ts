@@ -1,4 +1,4 @@
-import type ToastNotification from '@apack/ui/design/ToastNotification';
+import type ToastNotification from '@apackdev/ui/design/ToastNotification';
 
 type ToastApi = InstanceType<typeof ToastNotification>;
 type QueuedToast = {

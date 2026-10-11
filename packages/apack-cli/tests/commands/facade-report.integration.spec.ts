@@ -14,12 +14,12 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { packagesBuiltOrRefuse, REPO_ROOT } from '@apack/host/build/packages-built';
-import { PACK_LAYOUT } from '@apack/host/packs';
+import { packagesBuiltOrRefuse, REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
 import { buildPack, callCli, packageJson, preparePack, tsconfig } from '../_support/pack-builds';
 
 /** Skips without built packages, and refuses rather than reading a stale `dist` */
-const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @apack/cli, which builds them)');
+const PACKAGES_BUILT = packagesBuiltOrRefuse('npm run packages:build (or npm test -w @apackdev/cli, which builds them)');
 
 const ID = 'report-pack';
 const CONTRACT = (extra = '') => [
@@ -53,7 +53,7 @@ beforeAll(async () => {
     'src/system.contract.ts': CONTRACT(),
     'src/system.ts': [
       "import { setup } from 'xstate';",
-      "import { defineSystem } from '@apack/sdk/framework';",
+      "import { defineSystem } from '@apackdev/sdk/framework';",
       "import type { Contract } from './system.contract.ts';",
       'export const notifierSpec = defineSystem<Contract>();',
       'const entry = { spec: notifierSpec, machine: setup({ types: notifierSpec.types }).createMachine({ id: "notifier" }) };',

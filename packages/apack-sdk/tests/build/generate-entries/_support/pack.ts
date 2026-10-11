@@ -144,7 +144,7 @@ export function generate(fields: Record<string, unknown>, deps: Record<string, P
  */
 /**
  * A plugin entry, and beside it the contract leaf when the plugin declares one. The contract is a plain declared
- * type: these fixtures are bare temp dirs with no `@apack/sdk` to resolve, and a declared type needs no import to
+ * type: these fixtures are bare temp dirs with no `@apackdev/sdk` to resolve, and a declared type needs no import to
  * read — which is the point of reading one rather than a value's phantom property.
  */
 export function writePluginEntry(file: string, inbox?: string): string {
@@ -169,7 +169,7 @@ export function writeSystemEntry(id: string, outgoing: string, incoming = `{ typ
   const entry = `src/features/${id}/be/system.ts`;
   // A real spec: the generated pack entry asserts the machine was built from the contract apack.json names
   write(entry, [
-    "import { defineSystem } from '@apack/sdk/framework';",
+    "import { defineSystem } from '@apackdev/sdk/framework';",
     "import type { Contract } from './contract.ts';",
     'export default { spec: defineSystem<Contract>(), machine: undefined as never };',
   ].join('\n') + '\n');
@@ -179,7 +179,7 @@ export function writeSystemEntry(id: string, outgoing: string, incoming = `{ typ
 
 /**
  * A system's contract, as `apack.json` names it. A plain declared type: these fixtures are bare temp dirs with no
- * `@apack/sdk` to resolve, and a declared type needs no import to read — which is the point of reading one rather
+ * `@apackdev/sdk` to resolve, and a declared type needs no import to read — which is the point of reading one rather
  * than a value's phantom property, and why the system module above can be empty.
  */
 export function writeSystemContract(id: string, outgoing: string, incoming = `{ type: '${id.toUpperCase()}_RUN' }`): string {

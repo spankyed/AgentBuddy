@@ -1,24 +1,24 @@
 // The API's boot and a tool opening the data dir (openAppDatabase, which apack db uses) hydrate the same entities,
-// relations and roles: both open the store through @apack/host/database, and the tool reads the installed packs'
+// relations and roles: both open the store through @apackdev/host/database, and the tool reads the installed packs'
 // manifests where the API registers their code. Runs the built-in packs' built runtimes (npm run build:default-setup).
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import type { EarsQuery } from '@apack/ears';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
-import { PACK_LAYOUT } from '@apack/host/packs';
+import type { EarsQuery } from '@apackdev/ears';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-database-parity-'));
 process.env.APACK_ENV = 'test';
 process.env.APACK_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
-const { loadAppPacks, startPacks } = await import('@apack/host/packs/runtime');
-const { installPackFromLocal, installShippedPacks } = await import('@apack/host/packs');
-const { openAppDatabase } = await import('@apack/host/database');
-const { resolveAppContext } = await import('@apack/sdk/env');
-const { unbindHost } = await import('@apack/sdk/runtime/internals');
-const { untypedTx } = await import('@apack/ears');
+const { loadAppPacks, startPacks } = await import('@apackdev/host/packs/runtime');
+const { installPackFromLocal, installShippedPacks } = await import('@apackdev/host/packs');
+const { openAppDatabase } = await import('@apackdev/host/database');
+const { resolveAppContext } = await import('@apackdev/sdk/env');
+const { unbindHost } = await import('@apackdev/sdk/runtime/internals');
+const { untypedTx } = await import('@apackdev/ears');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 

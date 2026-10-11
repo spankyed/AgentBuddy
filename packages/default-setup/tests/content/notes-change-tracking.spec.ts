@@ -7,12 +7,12 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { compileBuiltinFormat, type ContentFormatConfig, type ContentItem } from '@apack/sdk/build';
-import { createFormatApplier } from '@apack/sdk/content';
-import type { ApplyRecord, ImportMode, ApplyResult, ContentSelection } from '@apack/sdk/utils';
-import { untypedQx as qx, untypedTx as tx } from '@apack/ears';
-import { trash } from '@apack/sdk/repositories';
-import { dropAttribute, entityIds } from '@apack/sdk/testing';
+import { compileBuiltinFormat, type ContentFormatConfig, type ContentItem } from '@apackdev/sdk/build';
+import { createFormatApplier } from '@apackdev/sdk/content';
+import type { ApplyRecord, ImportMode, ApplyResult, ContentSelection } from '@apackdev/sdk/utils';
+import { untypedQx as qx, untypedTx as tx } from '@apackdev/ears';
+import { trash } from '@apackdev/sdk/repositories';
+import { dropAttribute, entityIds } from '@apackdev/sdk/testing';
 import { createEntityWithDefaults, type EARS } from '#generated/ears.ts';
 import { FIXTURES, PACK_DIR, applyAfter, resetDatabase, snapshot, type Snapshot } from './harness.ts';
 

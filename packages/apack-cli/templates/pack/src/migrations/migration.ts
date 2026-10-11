@@ -2,7 +2,7 @@
 // manifest files it under, and the map it goes in says what that version is a version of — this pack's own
 // by default (`"migrations": { "pack": { "__VERSION__": "…" } }`), or `"app"` for data whose shape follows
 // apack's releases rather than this pack's. Neither is repeated here.
-import type { DeclaredMigration } from '@apack/sdk/framework';
+import type { DeclaredMigration } from '@apackdev/sdk/framework';
 
 export const migration: DeclaredMigration = {
   description: 'Describe what this migration changes',

@@ -58,7 +58,7 @@ The items below are what's left from the reviews and audits of that work.
 **Do:**
 1. Delete both fields from `BootConfigSchema`, and `boot.earlySystem` from `packages/default-setup/apack.json`.
 2. Add a schema issue for `!builtIn && features.some(f => f.earlySystem)`.
-3. Run `npm run generate:schema -w @apack/sdk` and `npm run api:update` in packages/apack-sdk.
+3. Run `npm run generate:schema -w @apackdev/sdk` and `npm run api:update` in packages/apack-sdk.
 4. Update the docs:
    - `docs/public-facing/manifest.md`: drop the rows, and use `hooks` in the example, documenting `onInit` and `onShutdown`.
    - `docs/public-facing/architecture.md` ~57.
@@ -183,7 +183,7 @@ Fix what would make a reader fail first. Every item is verified against the code
   - `packages/default-setup/src/features/library/fe/components/search-index/README.md` names components that don't exist, with a wrong model list.
   - `packages/default-setup/tests/unit/_hybrid/README.md` lists specs that aren't there, and a separation plan that's already done.
 - **Content `CLAUDE.md` imports:** `packages/default-setup/src/content/CLAUDE.md` gives the wrong import paths:
-  - `ActionMeta` and `PromptMeta` come from `@apack/sdk/build`;
+  - `ActionMeta` and `PromptMeta` come from `@apackdev/sdk/build`;
   - `Services` and `Z` come from `@/__generated__/services`.
 
   It also links `WRITING-ACTIONS.md`/`WRITING-PROMPTS.md`, which don't exist.
@@ -196,7 +196,7 @@ Fix what would make a reader fail first. Every item is verified against the code
   - a stale project structure;
   - only three of six providers.
 - **`.changeset/README.md`:**
-  - The fixed group also includes `@apack/ui`.
+  - The fixed group also includes `@apackdev/ui`.
   - Only cli and testing publish `dist/package`; sdk and ui publish their workspace package.
 
 ### Missing
@@ -226,7 +226,7 @@ Fix what would make a reader fail first. Every item is verified against the code
   - **Unexplained:** `$.event`/`$.steps`/`$.lastStep` mappings, the switch operators, and `FlowConfig` (`root`, `final`, `next`).
   - **Misstated action rules:**
     - `_` prefixes skip only flows;
-    - only `@apack/sdk/actions` is importable;
+    - only `@apackdev/sdk/actions` is importable;
     - Node globals only warn;
     - `z`/`flowId` are passed only by the flow action step.
   - **The applier module contract** (`ContentApplierContext` → `ContentCounts`), `contentPolicy`, and include sets.
@@ -242,7 +242,7 @@ Fix what would make a reader fail first. Every item is verified against the code
   - roles: `grantRole`/`revokeRole`/`getRoles`/`findWithRole`/`EARS.RoleKind`;
   - relation and entity helpers: `createRelation`/`removeRelation`/`destroyEntity`/`exists`/`countEntities`;
   - blueprints (`bp`, `spawn`) and graph helpers (`descendants`, `ancestors`, `topoSort`, `shortestPath`, `wouldCreateCycle`);
-  - the rest of `@apack/sdk/models`;
+  - the rest of `@apackdev/sdk/models`;
   - `logger`/`emitter` members;
   - a correction: TNode rows go to the trace store; they aren't "never persisted".
 - **`testing.md`:**

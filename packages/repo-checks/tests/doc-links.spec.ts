@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { repoFiles } from './_support/repo-files.ts';
 
 /**
@@ -158,7 +158,7 @@ describe('a command a document tells you to run exists', () => {
 
   // The population is text, so the check is proved on a copy rather than by breaking a doc
   it('would report one that does not', () => {
-    expect(unrunnable(new Map([['made-up.md', 'run `npm run no-such-script -w @apack/sdk` first']])))
-      .toEqual(['made-up.md: npm run no-such-script -w @apack/sdk']);
+    expect(unrunnable(new Map([['made-up.md', 'run `npm run no-such-script -w @apackdev/sdk` first']])))
+      .toEqual(['made-up.md: npm run no-such-script -w @apackdev/sdk']);
   });
 });

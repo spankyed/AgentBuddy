@@ -5,10 +5,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { builtinModules } from 'node:module';
 import ts from 'typescript';
-import { SHARED_INSTANCE_PACKAGES } from '@apack/host/build/shared-deps';
-import { packageName } from '@apack/host/build/specifiers';
-import { SOURCE_CONDITION } from '@apack/host/build/source-resolution';
-import { ownModuleFindings } from '@apack/host/build/own-module-specifiers';
+import { SHARED_INSTANCE_PACKAGES } from '@apackdev/host/build/shared-deps';
+import { packageName } from '@apackdev/host/build/specifiers';
+import { SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
+import { ownModuleFindings } from '@apackdev/host/build/own-module-specifiers';
 import { packRuleProblems, type PackRuleKey } from '../packages/apack-cli/src/build/pack-rules.ts';
 import { moduleOf, readSource, sourceFiles } from '../packages/apack-cli/src/build/pack-sources.ts';
 import type { Fix } from './lib/specifier-fixes.ts';
@@ -46,7 +46,7 @@ function findSpecifiers(files: string[], root: string, matches: (text: string) =
  * `file:line: specifier` for each relative emitted-extension specifier that names a TypeScript module.
  * An import of hand-written declarations (`./speech-event.js` → speech-event.d.ts) has no source and is fine.
  *
- * The `@apack` packages only. A pack's sources are covered by `own-modules` instead — the pack rule that
+ * The `@apackdev` packages only. A pack's sources are covered by `own-modules` instead — the pack rule that
  * resolves a specifier against the pack's files and so reports the file to write rather than only the offence,
  * and the one `apack build` already runs for every pack. Two rules claiming one relative `.js` is what let the
  * double-claim hide before (`docs/goals/goal-one-rule-set.md`): whichever ran first was the only one reported.
@@ -93,7 +93,7 @@ export const repoRootDir = (): string => repoRoot;
 /**
  * Every own-module specifier in this repo's packs that names no file, with the file it should name.
  *
- * The rule is `@apack/cli`'s `own-modules`; this is its findings before they become sentences, which is what
+ * The rule is `@apackdev/cli`'s `own-modules`; this is its findings before they become sentences, which is what
  * `specifiers:fix` splices. A pack's own `apack build` gets the same repair through the same function.
  */
 export function packOwnModuleFixes(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): Fix[] {
@@ -155,8 +155,8 @@ export function findInternalPackageImports(dirs: readonly string[] = PACK_CODE_D
 }
 
 /**
- * `file:line: specifier` for each `@apack/host` module a pack source loads. The host package is
- * private to the app; packs use @apack/sdk (`services.appData`, `services.traceStore`, …).
+ * `file:line: specifier` for each `@apackdev/host` module a pack source loads. The host package is
+ * private to the app; packs use @apackdev/sdk (`services.appData`, `services.traceStore`, …).
  */
 export function findHostImports(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): string[] {
   return packRule('host-imports', dirs, root);
@@ -169,7 +169,7 @@ export function findRawTransport(dirs: readonly string[] = PACK_SOURCE_DIRS, roo
 
 /**
  * `file:line: console.<method>` for each console use in pack backend code, which logs with
- * `createLogger` from `@apack/sdk/logger`. Only pack `src` directories are checked: not the CLI's
+ * `createLogger` from `@apackdev/sdk/logger`. Only pack `src` directories are checked: not the CLI's
  * template sources (their console output is the CLI's) or single files.
  */
 export function findPackBackendConsole(dirs: readonly string[] = PACK_SOURCE_DIRS, root = repoRoot): string[] {
@@ -185,7 +185,7 @@ export function findPackBackendConsole(dirs: readonly string[] = PACK_SOURCE_DIR
  *
  * **Over `PACK_CODE_DIRS`, tests included, because a test is where the key is reached for.** A pack's own
  * code has the two verbs and no reason to name the key; a spec driving a machine with no delivery door in
- * front of it has to synthesise what a door would write, and `answerTo` (`@apack/sdk/testing`) is that.
+ * front of it has to synthesise what a door would write, and `answerTo` (`@apackdev/sdk/testing`) is that.
  * `apack test` runs this rule over a pack's `tests` for the same reason, so the two entry points agree.
  */
 export function findReservedEventKeys(dirs: readonly string[] = PACK_CODE_DIRS, root = repoRoot): string[] {
@@ -212,7 +212,7 @@ export function findPackOwnAliases(dirs: readonly string[] = PACK_CODE_DIRS, roo
 /**
  * `file:line: specifier -> what it should say` for each of a pack's own-module specifiers naming no file.
  *
- * The rule is `@apack/cli`'s `own-modules`, which `apack build`, `apack validate` and `apack test` run for
+ * The rule is `@apackdev/cli`'s `own-modules`, which `apack build`, `apack validate` and `apack test` run for
  * every pack outside this checkout. This applies it to the packs in it.
  */
 export function findExtensionlessOwnModules(
@@ -225,7 +225,7 @@ export function findExtensionlessOwnModules(
 /**
  * The app's sources by relative path, which is the one shape only a pack *inside this repo* can name.
  *
- * It used to match `@apack/host` and the API's `@/core`/`@/setup` aliases too, and both belong elsewhere:
+ * It used to match `@apackdev/host` and the API's `@/core`/`@/setup` aliases too, and both belong elsewhere:
  * `host-imports` owns the package wherever a pack names it, and `pack-own-aliases` owns every `@/` specifier —
  * each over a pack's tests as well as its sources, here and through `apack test` for every other pack. Three
  * rules claiming one import is how only the first to run gets read.
@@ -234,14 +234,14 @@ const APP_SPECIFIER = /^(?:\.\.?\/)+(?:[\w.-]+\/)*(?:api|apack-host|apack-cli)\/
 
 /**
  * `file:line: specifier` for each app module a pack's unit tests load. Tests of app code belong to
- * that package; pack tests use @apack/sdk and @apack/testing.
+ * that package; pack tests use @apackdev/sdk and @apackdev/testing.
  */
 export function findAppImportsInPackTests(dirs: readonly string[] = PACK_TEST_DIRS, root = repoRoot): string[] {
   return findSpecifierText(filesUnder(dirs, root), root, (text) => APP_SPECIFIER.test(text));
 }
 
 /**
- * The layered packages, lowest first (docs/goals/goal-package-boundaries.md, Decision 1): the `@apack/*`
+ * The layered packages, lowest first (docs/goals/goal-package-boundaries.md, Decision 1): the `@apackdev/*`
  * packages each may import, and path patterns it must never load.
  */
 export const LAYERS: {
@@ -250,41 +250,41 @@ export const LAYERS: {
   allowed: string[];
   forbidden?: RegExp;
 }[] = [
-  { name: '@apack/ears', dir: 'packages/apack-ears', allowed: [] },
-  { name: '@apack/sdk', dir: 'packages/apack-sdk', allowed: ['@apack/ears'] },
+  { name: '@apackdev/ears', dir: 'packages/apack-ears', allowed: [] },
+  { name: '@apackdev/sdk', dir: 'packages/apack-sdk', allowed: ['@apackdev/ears'] },
   {
-    name: '@apack/host',
+    name: '@apackdev/host',
     dir: 'packages/apack-host',
-    allowed: ['@apack/sdk', '@apack/ears'],
+    allowed: ['@apackdev/sdk', '@apackdev/ears'],
     // The API: its package, its `@/` alias, or its sources by relative path
     forbidden: /^(?:@app\/api(?:\/|$)|@\/|(?:\.\.?\/)+(?:[\w.-]+\/)*api\/(?:src|scripts)(?:\/|$))/,
   },
-  { name: '@app/api', dir: 'packages/api', allowed: ['@apack/ears', '@apack/sdk', '@apack/host'] },
-  { name: '@app/renderer', dir: 'packages/renderer', allowed: ['@apack/sdk', '@apack/host', '@apack/ui'] },
+  { name: '@app/api', dir: 'packages/api', allowed: ['@apackdev/ears', '@apackdev/sdk', '@apackdev/host'] },
+  { name: '@app/renderer', dir: 'packages/renderer', allowed: ['@apackdev/sdk', '@apackdev/host', '@apackdev/ui'] },
   // Published alongside the SDK rather than above it: a component takes its contracts and host-shared state
-  // from `@apack/sdk/fe`, and the other direction is already refused by the SDK's own row
-  { name: '@apack/ui', dir: 'packages/apack-ui', allowed: ['@apack/sdk'] },
+  // from `@apackdev/sdk/fe`, and the other direction is already refused by the SDK's own row
+  { name: '@apackdev/ui', dir: 'packages/apack-ui', allowed: ['@apackdev/sdk'] },
   // The harness binds a test runtime, so it reaches the host; it may not reach the component library or the
   // CLI, which are above it
-  { name: '@apack/testing', dir: 'packages/apack-testing', allowed: ['@apack/ears', '@apack/sdk', '@apack/host'] },
+  { name: '@apackdev/testing', dir: 'packages/apack-testing', allowed: ['@apackdev/ears', '@apackdev/sdk', '@apackdev/host'] },
   // Tooling at the top, so `allowed` forbids nothing — what this row is for is the other half, the manifest:
-  // it imported `@apack/ears` and `@apack/testing` and declared neither until this row existed.
+  // it imported `@apackdev/ears` and `@apackdev/testing` and declared neither until this row existed.
   //
-  // `@apack/ui` is here as the pack FE bundler's *subject* rather than as a dependency of this code: `src`
+  // `@apackdev/ui` is here as the pack FE bundler's *subject* rather than as a dependency of this code: `src`
   // only ever resolves it by name — the Tailwind content globs, the host-proxy decision (`build.bundleUi`),
   // `CHECKOUT_PACKAGES` — and the one real import is a test checking that proxying against the real module.
-  { name: '@apack/cli', dir: 'packages/apack-cli',
-    allowed: ['@apack/ears', '@apack/sdk', '@apack/host', '@apack/ui', '@apack/testing'] },
-  // `@apack/cli` is allowed because the manifest declares it, and unused because that declaration is a
+  { name: '@apackdev/cli', dir: 'packages/apack-cli',
+    allowed: ['@apackdev/ears', '@apackdev/sdk', '@apackdev/host', '@apackdev/ui', '@apackdev/testing'] },
+  // `@apackdev/cli` is allowed because the manifest declares it, and unused because that declaration is a
   // process dependency — `RUNTIME_ONLY_DEPS` is where it says so, and this row reads that rather than
   // keeping a second copy of the reason
-  { name: '@app/main', dir: 'packages/main', allowed: ['@apack/sdk', '@apack/host', '@apack/cli'] },
+  { name: '@app/main', dir: 'packages/main', allowed: ['@apackdev/sdk', '@apackdev/host', '@apackdev/cli'] },
   // The narrowest row, and the one worth having: a sandboxed IPC bridge has no business in the app runtime,
-  // so `@apack/host` here would be a finding
-  { name: '@app/preload', dir: 'packages/preload', allowed: ['@apack/sdk'] },
+  // so `@apackdev/host` here would be a finding
+  { name: '@app/preload', dir: 'packages/preload', allowed: ['@apackdev/sdk'] },
   // Both check the repo rather than run in it, and reach the host for the build and freshness primitives
-  { name: '@app/repo-checks', dir: 'packages/repo-checks', allowed: ['@apack/sdk', '@apack/host'] },
-  { name: '@app/publish-checks', dir: 'packages/publish-checks', allowed: ['@apack/sdk', '@apack/host'] },
+  { name: '@app/repo-checks', dir: 'packages/repo-checks', allowed: ['@apackdev/sdk', '@apackdev/host'] },
+  { name: '@app/publish-checks', dir: 'packages/publish-checks', allowed: ['@apackdev/sdk', '@apackdev/host'] },
 ];
 
 /**
@@ -293,13 +293,13 @@ export const LAYERS: {
  *
  * A pack's imports are governed by the pack rules instead (`findInternalPackageImports`, `findHostImports`),
  * which is a stricter answer than a layer row: a pack may reach only the three published packages, and that
- * `@app/default-setup` imports no `@apack/host` is those rules working rather than a coincidence.
+ * `@app/default-setup` imports no `@apackdev/host` is those rules working rather than a coincidence.
  */
 export const UNLAYERED_BY_DESIGN = new Map<string, string>([
   ['packages/default-setup', 'a pack: the pack rules govern what it may import, more narrowly than a layer'],
 ]);
 
-const apackPackage = (specifier: string) => specifier.match(/^@apack\/[^/]+/)?.[0];
+const apackPackage = (specifier: string) => specifier.match(/^@apackdev\/[^/]+/)?.[0];
 
 /**
  * Every workspace with something for the layer rule to read, by the same three directories it reads.
@@ -325,7 +325,7 @@ export const MANIFEST_FIELDS = ['dependencies', 'peerDependencies', 'optionalDep
 
 /**
  * For each layered package, over its sources, tests and scripts: `file:line: specifier` for an import
- * it makes upward, `package.json: <field>: name` for an `@apack/*` dependency beyond the allowed
+ * it makes upward, `package.json: <field>: name` for an `@apackdev/*` dependency beyond the allowed
  * ones, and `package.json: undeclared: name` for an allowed one it imports without declaring.
  */
 export function findUpwardImports(layers = LAYERS, root = repoRoot, unlayered = UNLAYERED_BY_DESIGN, runtimeOnly = RUNTIME_ONLY_DEPS): string[] {
@@ -338,7 +338,7 @@ export function findUpwardImports(layers = LAYERS, root = repoRoot, unlayered = 
   const withCode = new Set(workspacesWithCode(root));
   for (const dir of withCode) {
     if (!unlayered.has(dir) && !layered.has(dir)) {
-      problems.push(`${dir}: holds code and has no layer, so nothing says which @apack packages it may import`);
+      problems.push(`${dir}: holds code and has no layer, so nothing says which @apackdev packages it may import`);
     }
   }
   for (const [dir, reason] of unlayered) {
@@ -364,7 +364,7 @@ export function findUpwardImports(layers = LAYERS, root = repoRoot, unlayered = 
     const declared = new Set(MANIFEST_FIELDS.flatMap((field) => Object.keys(manifest[field] ?? {})));
     for (const field of MANIFEST_FIELDS) {
       for (const dep of Object.keys(manifest[field] ?? {})) {
-        if (dep.startsWith('@apack/') && !permitted.has(dep)) problems.push(`${path.relative(root, manifestFile)}: ${field}: ${dep}`);
+        if (dep.startsWith('@apackdev/') && !permitted.has(dep)) problems.push(`${path.relative(root, manifestFile)}: ${field}: ${dep}`);
       }
     }
     for (const pkg of [...imported].sort()) {
@@ -393,7 +393,7 @@ export function findUpwardImports(layers = LAYERS, root = repoRoot, unlayered = 
  * package compile", which is a guess about someone else's code, and this repo's rule for a proxy is that it
  * needs one (root `CLAUDE.md`, "Three kinds of recorded artifact"). The other direction has been checked
  * for a while — an import
- * with no declaration is `findUpwardImports`' `undeclared:` clause, and it is what caught `@apack/ui`'s peer
+ * with no declaration is `findUpwardImports`' `undeclared:` clause, and it is what caught `@apackdev/ui`'s peer
  * dependency. This is the direction nothing asked: a declaration no import needs, which silently widens every
  * cache key derived from it.
  *
@@ -435,11 +435,11 @@ export function findUnimportedDependencies(root = repoRoot, runtimeOnly = RUNTIM
 }
 
 /**
- * Who may load LMDB (docs/goals/goal-package-boundaries.md, Decision 3): only `@apack/ears/lmdb` imports
+ * Who may load LMDB (docs/goals/goal-package-boundaries.md, Decision 3): only `@apackdev/ears/lmdb` imports
  * `lmdb`. `dirs` may not import what `forbidden` matches; `except` is a directory inside them that may.
  */
 export const LMDB_RULES: { dirs: string[]; except?: string; forbidden?: RegExp; rule?: PackRuleKey }[] = [
-  // The host and the API open the store through @apack/ears/lmdb
+  // The host and the API open the store through @apackdev/ears/lmdb
   {
     dirs: ['packages/apack-host/src', 'packages/apack-host/tests', 'packages/apack-host/scripts', 'packages/api/src', 'packages/api/tests', 'packages/api/scripts'],
     forbidden: /^lmdb(?:\/|$)/,
@@ -447,7 +447,7 @@ export const LMDB_RULES: { dirs: string[]; except?: string; forbidden?: RegExp; 
   // The engine's root never loads the store
   { dirs: ['packages/apack-ears/src'], except: 'packages/apack-ears/src/lmdb', forbidden: /^(?:lmdb(?:\/|$)|(?:\.\.?\/)+(?:[\w.-]+\/)*lmdb(?:\/|$))/ },
   // Packs and their tests don't use the app's store. Named rather than spelled: this population is a pack's, so
-  // the rule is `@apack/cli`'s, the one `apack build` already runs for every pack. The two above are the host's
+  // the rule is `@apackdev/cli`'s, the one `apack build` already runs for every pack. The two above are the host's
   // and the engine's own trees, which no pack rule can have, so they keep a pattern here.
   { dirs: PACK_CODE_DIRS, rule: 'lmdb-imports' },
 ];
@@ -506,7 +506,7 @@ export function findRawGitListings(dirs: readonly string[] = CHECKED_DIRS, root 
   return problems.sort();
 }
 
-/** The consumers of SHARED_INSTANCE_PACKAGES (@apack/host/build/shared-deps), which must not list the packages themselves */
+/** The consumers of SHARED_INSTANCE_PACKAGES (@apackdev/host/build/shared-deps), which must not list the packages themselves */
 export const SHARED_LIST_CONSUMERS = [
   'packages/apack-cli/src/build/be-bundler.ts',
   'packages/apack-cli/src/build/fe-bundler.ts',
@@ -519,8 +519,8 @@ export const SHARED_LIST_CONSUMERS = [
 
 /**
  * `file:line: "text"` for each string in a consumer of the shared-instance list that names one of the
- * packages (`'@apack/sdk'`, `'@apack/ears/*'`) outside an import. Specific modules
- * (`'@apack/sdk/runtime'`) are fine: they aren't a list of what must be loaded once.
+ * packages (`'@apackdev/sdk'`, `'@apackdev/ears/*'`) outside an import. Specific modules
+ * (`'@apackdev/sdk/runtime'`) are fine: they aren't a list of what must be loaded once.
  */
 export function findSharedPackageLists(files = SHARED_LIST_CONSUMERS, root = repoRoot, packages: readonly string[] = SHARED_INSTANCE_PACKAGES): string[] {
   const listed = new Set(packages.flatMap((pkg) => [pkg, `${pkg}/`, `${pkg}/*`]));
@@ -545,8 +545,8 @@ export function findRepositoryCasts(dirs: readonly string[] = packageSourceDirs(
   return packRule('repository-casts', dirs, root);
 }
 
-/** The export condition under which @apack/* workspace packages resolve their TypeScript source */
-// Re-exported rather than declared: `@apack/host/build/source-resolution` owns it beside the packages it
+/** The export condition under which @apackdev/* workspace packages resolve their TypeScript source */
+// Re-exported rather than declared: `@apackdev/host/build/source-resolution` owns it beside the packages it
 // applies to, and repo-checks' integration spec imports the name from here
 export { SOURCE_CONDITION };
 
@@ -559,9 +559,9 @@ export { packRuleProblems };
 /**
  * `file:line: specifier` for each import of another feature's frontend, in the packs of this checkout.
  *
- * The rule is `@apack/cli`'s `cross-feature-imports` (`build/pack-features.ts`), which `apack build`,
+ * The rule is `@apackdev/cli`'s `cross-feature-imports` (`build/pack-features.ts`), which `apack build`,
  * `apack validate` and `apack test` run for every pack outside this checkout. `PACK_SRC_ROOTS` adds
- * `@apack/host`, which is the pack `host` and has the same feature layout without being a pack the CLI builds.
+ * `@apackdev/host`, which is the pack `host` and has the same feature layout without being a pack the CLI builds.
  */
 export function findCrossFeatureImports(srcRoots: readonly string[] = PACK_SRC_ROOTS, root = repoRoot): string[] {
   return packRule('cross-feature-imports', srcRoots, root);
@@ -571,7 +571,7 @@ export function findCrossFeatureImports(srcRoots: readonly string[] = PACK_SRC_R
  * `file:line: specifier` for each import a contract leaf makes that would put the machine back in front of codegen,
  * in the packs of this checkout.
  *
- * The rule is `@apack/cli`'s `contract-leaves` (`build/pack-features.ts`), which `apack build`, `apack validate`
+ * The rule is `@apackdev/cli`'s `contract-leaves` (`build/pack-features.ts`), which `apack build`, `apack validate`
  * and `apack test` run for every pack outside this checkout — where the whole reasoning, and what the two harms
  * were measured to be, is recorded.
  */
@@ -698,17 +698,17 @@ const RULE_LIST = [
   {
     id: 'findAppImportsInPackTests',
     over: PACK_TEST_DIRS,
-    repoOnly: { kind: 'inapplicable', note: "Its subject is a relative import into this repo's api, host or CLI sources, which only a pack inside this monorepo can write; `@apack/host` and every `@/` specifier belong to `host-imports` and `pack-own-aliases`, which the CLI's pack-test command runs over a pack's tests" },
+    repoOnly: { kind: 'inapplicable', note: "Its subject is a relative import into this repo's api, host or CLI sources, which only a pack inside this monorepo can write; `@apackdev/host` and every `@/` specifier belong to `host-imports` and `pack-own-aliases`, which the CLI's pack-test command runs over a pack's tests" },
     find: () => findAppImportsInPackTests(PACK_TEST_DIRS),
     // Dirs-shaped, so a per-file run can answer for it too, which is also what lets the sweeps call it
     overPaths: (paths, root = repoRoot) => findAppImportsInPackTests(paths, root),
-    rule: 'Pack unit tests run on the harness (@apack/testing) without the app; test host, API and CLI code in its own package',
+    rule: 'Pack unit tests run on the harness (@apackdev/testing) without the app; test host, API and CLI code in its own package',
   },
   {
     id: 'findUpwardImports',
-    repoOnly: { kind: 'inapplicable', note: "The `@apack/*` layer rule, which is about this repo's packages and their manifests" },
+    repoOnly: { kind: 'inapplicable', note: "The `@apackdev/*` layer rule, which is about this repo's packages and their manifests" },
     find: findUpwardImports,
-    rule: "Every workspace holding code has a layer (or is a pack, which the pack rules govern), packages import only downward (@apack/ears imports no @apack package, @apack/sdk only @apack/ears, @apack/host only those two and never the API, the API and the renderer only the packages below them), each lists every @apack package it imports in its package.json, and every package a layer allows is one it imports or says why not",
+    rule: "Every workspace holding code has a layer (or is a pack, which the pack rules govern), packages import only downward (@apackdev/ears imports no @apackdev package, @apackdev/sdk only @apackdev/ears, @apackdev/host only those two and never the API, the API and the renderer only the packages below them), each lists every @apackdev package it imports in its package.json, and every package a layer allows is one it imports or says why not",
   },
   {
     id: 'findUnimportedDependencies',
@@ -720,7 +720,7 @@ const RULE_LIST = [
     id: 'findLmdbImports',
     repoOnly: { kind: 'covered', by: 'lmdb-imports', note: "What is left here is the API, the host and the engine's own root" },
     find: findLmdbImports,
-    rule: "Only @apack/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it",
+    rule: "Only @apackdev/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it",
   },
   {
     id: 'findRawGitListings',
@@ -733,7 +733,7 @@ const RULE_LIST = [
     id: 'findSharedPackageLists',
     repoOnly: { kind: 'inapplicable', note: 'Its subject is the host, CLI and testing consumers of `SHARED_INSTANCE_PACKAGES`, none of which is a pack' },
     find: findSharedPackageLists,
-    rule: 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@apack/host/build/shared-deps) instead of naming them',
+    rule: 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@apackdev/host/build/shared-deps) instead of naming them',
   },
   backed('findRepositoryCasts', 'repository-casts', findRepositoryCasts, packageSourceDirs()),
   backed('findReservedEventKeys', 'reserved-event-keys', findReservedEventKeys, PACK_CODE_DIRS),
@@ -755,7 +755,7 @@ const RULE_LIST = [
     id: 'findMissingSourceConditions',
     repoOnly: { kind: 'covered', by: 'source-resolution', note: "What is left here is the repo's own configs, which declare the condition where a pack's must not" },
     find: findMissingSourceConditions,
-    rule: "The repo's own configs declare the @apack/source condition when they compile or bundle code importing @apack/ears, @apack/sdk or @apack/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist",
+    rule: "The repo's own configs declare the @apackdev/source condition when they compile or bundle code importing @apackdev/ears, @apackdev/sdk or @apackdev/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist",
   },
 ] as const satisfies readonly ImportRule[];
 

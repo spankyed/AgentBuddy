@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
-import { createEarsEngine, untypedQx, untypedTx } from '@apack/ears';
+import { createEarsEngine, untypedQx, untypedTx } from '@apackdev/ears';
 import { bindHost, unbindHost, type HostRuntime } from '../../src/runtime/host-runtime.ts';
 import { _rootEvents } from '../../src/runtime/root-events.ts';
 import { onConnected, onIncoming, untypedBroadcastToPlugin, untypedSendToSystem } from '../../src/events/index.ts';
@@ -125,7 +125,7 @@ describe('bindHost', () => {
     expect(() => bindHost(runtime)).toThrow('already bound');
   });
 
-  it("installs the app's engine for @apack/ears's free functions, until unbound", () => {
+  it("installs the app's engine for @apackdev/ears's free functions, until unbound", () => {
     bindHost(runtime);
     const id = untypedTx('Memo').put('title', 'bound').id();
     expect(engine.query.findById(id)).toMatchObject({ title: 'bound' });

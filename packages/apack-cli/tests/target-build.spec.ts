@@ -6,7 +6,7 @@
 // the vocabulary change with an open question in it, where the same word selecting a different axis per
 // command was the symptom.
 import { describe, expect, it, vi } from 'vitest';
-import { APP_ENVS } from '@apack/sdk/env';
+import { APP_ENVS } from '@apackdev/sdk/env';
 import { parseTargetEnv } from '../src/utils';
 
 describe('which build a command reads', () => {

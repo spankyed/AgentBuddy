@@ -4,7 +4,7 @@ import { fromCallback } from 'xstate';
 import type { ShellClient } from '../../../fe/client.ts';
 import type { ShellEvent } from './types.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 export const PACK_FRONTEND_LOADER_ID = 'packFrontendLoader';
 

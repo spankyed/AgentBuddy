@@ -1,12 +1,12 @@
 // The LLM step's DSL surface is provisional — see the note on DSLLLMNode in ./types.ts before building
 // on it: the helper has no call site in this repo, so its shape has never been exercised by an author.
-import type { StepBuildFacet, StepNodeFacet } from '@apack/sdk/steps';
-import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@apack/sdk/steps';
-import { EARS } from '@apack/sdk';
-import { expandRecord, collapseRecord, mapProblems } from '@apack/sdk/steps';
+import type { StepBuildFacet, StepNodeFacet } from '@apackdev/sdk/steps';
+import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@apackdev/sdk/steps';
+import { EARS } from '@apackdev/sdk';
+import { expandRecord, collapseRecord, mapProblems } from '@apackdev/sdk/steps';
 import { DEFAULT_MODEL } from './model.ts';
-import type { FieldMapping, MapEntry } from '@apack/sdk/steps';
-import { isModelId } from '@apack/sdk/models';
+import type { FieldMapping, MapEntry } from '@apackdev/sdk/steps';
+import { isModelId } from '@apackdev/sdk/models';
 
 export function compile(
   node: Record<string, unknown>,

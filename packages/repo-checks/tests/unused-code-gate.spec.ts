@@ -2,15 +2,15 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
-import { population } from '@apack/sdk/testing';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { population } from '@apackdev/sdk/testing';
 import { PACKAGE_DIRS } from '../../../scripts/lib/workspace-deps.ts';
 
 /**
  * The compiler reports unused code, in every package, and nothing has to opt in.
  *
  * `noUnusedLocals` catches a class the linter structurally cannot. Measured the day this landed: `oxlint`
- * reads 114 files in `@apack/ui` and reports zero, where `vue-tsc --noUnusedLocals` reports ten — it does
+ * reads 114 files in `@apackdev/ui` and reports zero, where `vue-tsc --noUnusedLocals` reports ten — it does
  * not analyse bindings inside an SFC's script block. Twenty-seven findings survived a fully green lint run,
  * in `.vue` scripts and in generated code, which is why this gate is the compiler's rather than the linter's.
  *

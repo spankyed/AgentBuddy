@@ -1,6 +1,6 @@
 // The one port between the SDK and the app it runs in: the resources a running app owns, bound once per
 // process. Behaviour over them (sends, logging, error reports, `services`) is SDK code.
-import { installEngine, type EarsQuery } from '@apack/ears';
+import { installEngine, type EarsQuery } from '@apackdev/ears';
 import { setSecretValueMatcher } from '../utils/redact.ts';
 import type { RootEvents } from './root-events.ts';
 import type { AppDataService } from '../services/app-data.ts';
@@ -11,8 +11,8 @@ import type { FilesystemService } from '../services/filesystem.ts';
 import type { SettingsService } from '../services/settings.ts';
 import type { PackRegistryView } from './packs-view.ts';
 
-/** The app's EARS engine, as packs query it: its query face (`createEarsEngine` from `@apack/ears`) */
-export type { EarsQuery } from '@apack/ears';
+/** The app's EARS engine, as packs query it: its query face (`createEarsEngine` from `@apackdev/ears`) */
+export type { EarsQuery } from '@apackdev/ears';
 
 /** What the app implements and packs call through `services` */
 export interface HostRuntimeServices {
@@ -43,7 +43,7 @@ export interface SecretRedaction {
 export interface HostRuntime {
   /** The app's event bus */
   transport: { rootEvents: RootEvents };
-  /** The app's engine, its query face: binding installs it for `@apack/ears`'s free functions */
+  /** The app's engine, its query face: binding installs it for `@apackdev/ears`'s free functions */
   ears: EarsQuery;
   /** The registered packs, read-only: their services and everything else they registered */
   packs: PackRegistryView;
@@ -80,7 +80,7 @@ export function _isHostBound(): boolean {
 /** @internal The bound app; throws, naming bindHost, when none is */
 export function boundHost(): HostRuntime {
   if (!bound) {
-    throw new Error('No host is bound: the app binds one at boot with bindHost(runtime) from @apack/sdk/runtime, and unit tests with startTestRuntime() from @apack/sdk/testing');
+    throw new Error('No host is bound: the app binds one at boot with bindHost(runtime) from @apackdev/sdk/runtime, and unit tests with startTestRuntime() from @apackdev/sdk/testing');
   }
   return bound;
 }

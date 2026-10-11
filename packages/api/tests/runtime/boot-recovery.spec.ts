@@ -2,14 +2,14 @@
 // any pack loads — the write lock gates the store opening, and `prepareHostDataDirs` runs just after — and
 // both are answered by a pid, which is why each carries a record of the boot it was written in.
 //
-// The unit tests for these live in @apack/host. This one boots the real composition, because what both
+// The unit tests for these live in @apackdev/host. This one boots the real composition, because what both
 // regressions broke was the boot: one refused to start at all, the other deleted a pack on the way up.
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { _appDirOf } from '@apack/sdk/env';
+import { _appDirOf } from '@apackdev/sdk/env';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-boot-recovery-'));
 process.env.APACK_ENV = 'test';

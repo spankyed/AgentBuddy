@@ -1,5 +1,5 @@
 // Tiptap editor extension points: packs contribute plugins through PackFERegistration and
-// provide extra block items. Pack FE code gets the host's copy through @apack/sdk/fe.
+// provide extra block items. Pack FE code gets the host's copy through @apackdev/sdk/fe.
 import type { InjectionKey, Component } from 'vue'
 import type { AnyExtension, Editor } from '@tiptap/vue-3'
 import type { EditorState } from '@tiptap/pm/state'

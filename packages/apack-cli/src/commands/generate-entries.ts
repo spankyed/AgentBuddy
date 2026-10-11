@@ -1,9 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import type { PackManifest, PackTypeManifest, PackSnapshot } from '@apack/sdk/build';
-import { _depTypesFile, _depTypesVersion, generatePackFiles } from '@apack/sdk/build';
-import { holdExclusiveLock } from '@apack/host/exclusive-lock';
+import type { PackManifest, PackTypeManifest, PackSnapshot } from '@apackdev/sdk/build';
+import { _depTypesFile, _depTypesVersion, generatePackFiles } from '@apackdev/sdk/build';
+import { holdExclusiveLock } from '@apackdev/host/exclusive-lock';
 import { findPackRoot, readValidManifest, sdkPackageDir, sdkVersion } from '../utils';
 import { resolveDeps } from './generate';
 
@@ -84,7 +84,7 @@ function readStamp(hashPath: string): InputsStamp | null {
  * **The missing-output check comes first, and it is the point.** The stamp used to record only the inputs,
  * so deleting a generated file left the hash matching and the command reported "inputs unchanged, skipping"
  * over a tree it had not made — measured: `rm src/__generated__/paths.ts` left the pack unbuildable until
- * someone thought to pass `--force`. Shape taken from `unitStaleReason` (`@apack/host/build/packages-built`),
+ * someone thought to pass `--force`. Shape taken from `unitStaleReason` (`@apackdev/host/build/packages-built`),
  * which asks the same two questions in the same order.
  *
  * The file list is *recorded* rather than fixed because codegen's output set depends on the manifest: a pack
@@ -185,7 +185,7 @@ function writeGenerated(
 }
 
 /**
- * Regenerates the entries after `apack add` wrote new files. Reading a system's events takes the pack's `@apack/sdk`,
+ * Regenerates the entries after `apack add` wrote new files. Reading a system's events takes the pack's `@apackdev/sdk`,
  * which a pack scaffolded moments ago may not have installed yet: then the scaffold stands, and the pack's `prepare`
  * script regenerates the entries when `npm install` runs.
  */

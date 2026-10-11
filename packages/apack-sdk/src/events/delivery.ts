@@ -8,7 +8,7 @@
  * **This header used to argue there was nowhere else to put it** — that an XState action is handed
  * `{ context, event, self, system }`, that `context` is per-actor and `self` and `system` fixed, and so the
  * event was the only alternative. The premise was true and the conclusion was not: what a handler is handed is
- * ours, not XState's. `defineHandlers` (`@apack/sdk/framework`) wraps a machine's action record and adds a
+ * ours, not XState's. `defineHandlers` (`@apackdev/sdk/framework`) wraps a machine's action record and adds a
  * fifth member, `reply`, bound to the delivery the handler was entered in. Pack code receives an answer now
  * rather than reading one from here, which is why `reply()` is gone from this module: the two things it did
  * badly were leaving "is there anybody to answer?" invisible in a signature, and losing the sender for any
@@ -22,10 +22,10 @@
  * it: a handler is *handed* its answer, and the wrapper builds that answer synchronously as the handler is
  * entered, before any `await` can have happened. The backend installed an `AsyncLocalStorage` over this until
  * `reply` stopped being ambient, which is the change that made the store unnecessary — see
- * `@apack/host/bus`'s `delivery.ts` for what removing it cost and what it bought.
+ * `@apackdev/host/bus`'s `delivery.ts` for what removing it cost and what it bought.
  *
  * **Four doors set it, and that they are doors rather than call sites is the point.** On the backend,
- * `@apack/host/bus`'s `deliverAs`: the bus routing a message to a system, and the host handing one to an early
+ * `@apackdev/host/bus`'s `deliverAs`: the bus routing a message to a system, and the host handing one to an early
  * system. In a window, `notifyPluginActor` and `sendToPluginActor` — the two functions every send to a plugin's actor goes through — and
  * `usePlugin`, which wraps the actor it gives a component rather than any one send.
  *
@@ -40,12 +40,12 @@
  * 1. **After an `await`, or from a timer or callback the handler created.** This paragraph said the opposite
  *    until 2026-10-06 — that an `await` was fine and so was a timer, because both inherit the scope. That was
  *    true of the `AsyncLocalStorage` this replaced and is false of a plain variable, which is restored when the
- *    delivering call returns. `@apack/host`'s `tests/bus/delivery-is-synchronous.spec.ts` pins the real
- *    behaviour, and it is a decision rather than a limitation: see that file and `@apack/host/bus`'s
+ *    delivering call returns. `@apackdev/host`'s `tests/bus/delivery-is-synchronous.spec.ts` pins the real
+ *    behaviour, and it is a decision rather than a limitation: see that file and `@apackdev/host/bus`'s
  *    `delivery.ts` for what the store cost and what dropping it bought.
  * 2. **A lifecycle or publish path, which opens no delivery at all** — no `await` need be involved. The bus
  *    pushes `CLIENT_CONNECTED`, `SEND_STATE`, `PACK_CHANGED` and `DATA_REPLACED` with a bare `actor.send`
- *    (`sendToRunning` and `askToPublish`, `@apack/host/bus`'s `machine.ts`), as the host does for an early
+ *    (`sendToRunning` and `askToPublish`, `@apackdev/host/bus`'s `machine.ts`), as the host does for an early
  *    system's pair. That is right rather than missed: those are facts with nobody waiting on them, and
  *    `SEND_STATE` wants a broadcast and not an answer. A handler of one is handed no `reply`, which is what
  *    "nobody asked" is supposed to look like.
@@ -89,7 +89,7 @@
  * **`connection` covering two kinds of participant is a decision, not an oversight**, and splitting it is the
  * obvious tidy-up to refuse. A plugin in another window and a claimed participant (`host/drive`) share that
  * variant, and the one place the difference matters already asks the authority rather than the asker:
- * `routeOutgoing` (`@apack/host/bus`'s `machine.ts`) looks the ref up in the participant claims and, for a
+ * `routeOutgoing` (`@apackdev/host/bus`'s `machine.ts`) looks the ref up in the participant claims and, for a
  * claimed name, delivers to the connection holding it instead of checking the event against a plugin's
  * declared list. Tested, not merely intended — `participants.spec.ts`'s *"leaves an answer addressed to the
  * connection that asked"* is that path.

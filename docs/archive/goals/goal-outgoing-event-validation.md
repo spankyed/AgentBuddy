@@ -22,7 +22,7 @@ Finished when:
   event is dropped, named with the system, the plugin and the type.
 - The declared types are runtime data generated from the manifest, not a list maintained by hand, and a
   pack that adds an event to a plugin gets it by rebuilding.
-- `npm run typecheck`; `npm test -w @apack/host`; `npm test -w @apack/sdk`; `npm test -w @apack/cli`;
+- `npm run typecheck`; `npm test -w @apackdev/host`; `npm test -w @apackdev/sdk`; `npm test -w @apackdev/cli`;
   `npm test -w @app/default-setup`; `npm run test:external-pack`.
 ```
 
@@ -30,7 +30,7 @@ Finished when:
 
 The app checks events **into** systems and nothing checks events **out** to plugins.
 
-Incoming: the API's `bus.send` delegates to `receiveClientEvent` (`@apack/host/bus/client-events.ts`),
+Incoming: the API's `bus.send` delegates to `receiveClientEvent` (`@apackdev/host/bus/client-events.ts`),
 which looks the event's `systemId` up in `registry.getEventValidationMap()` and throws
 `UnknownClientEventError` when the type isn't one that system accepts. The map is built in
 `pack-registration.ts`'s `buildEventValidationMap()` from what each registered system declares.

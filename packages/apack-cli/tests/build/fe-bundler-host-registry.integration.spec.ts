@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { packFixture } from '@apack/sdk/testing/pack-fixture';
-import { population } from '@apack/sdk/testing';
+import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
+import { population } from '@apackdev/sdk/testing';
 import { bundlePackFE } from '../../src/build/fe-bundler';
 import { bundleExternals } from '../_support/pack-builds';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '@app/publish-checks';
@@ -17,9 +17,9 @@ const LAYOUTS = [
   { name: 'workspace install', earsDir: () => EARS_SOURCE, sdkDir: () => SDK_SOURCE, uiDir: () => UI_SOURCE, ext: 'js' },
   ...(PACKAGES_BUILT ? [{
     name: 'published package',
-    earsDir: () => path.join(installed!, 'node_modules', '@apack', 'ears'),
-    sdkDir: () => path.join(installed!, 'node_modules', '@apack', 'sdk'),
-    uiDir: () => path.join(installed!, 'node_modules', '@apack', 'ui'),
+    earsDir: () => path.join(installed!, 'node_modules', '@apackdev', 'ears'),
+    sdkDir: () => path.join(installed!, 'node_modules', '@apackdev', 'sdk'),
+    uiDir: () => path.join(installed!, 'node_modules', '@apackdev', 'ui'),
     ext: 'js',
   }] : []),
 ];
@@ -35,13 +35,13 @@ afterAll(() => {
 const tmpDirs: string[] = [];
 
 function makePack(layout: { earsDir: () => string; sdkDir: () => string; uiDir: () => string }, entrySource: string, manifest: Record<string, unknown> = {}): { packDir: string; entry: string } {
-  // Its own `node_modules/@apack/*` link tree, so the fixture writes the pack and this links the packages
+  // Its own `node_modules/@apackdev/*` link tree, so the fixture writes the pack and this links the packages
   const packDir = packFixture({ manifest: { id: 'fixture-pack', name: 'Fixture', ...manifest } });
   tmpDirs.push(packDir);
-  fs.mkdirSync(path.join(packDir, 'node_modules', '@apack'), { recursive: true });
-  fs.symlinkSync(layout.earsDir(), path.join(packDir, 'node_modules', '@apack', 'ears'), 'dir');
-  fs.symlinkSync(layout.sdkDir(), path.join(packDir, 'node_modules', '@apack', 'sdk'), 'dir');
-  fs.symlinkSync(layout.uiDir(), path.join(packDir, 'node_modules', '@apack', 'ui'), 'dir');
+  fs.mkdirSync(path.join(packDir, 'node_modules', '@apackdev'), { recursive: true });
+  fs.symlinkSync(layout.earsDir(), path.join(packDir, 'node_modules', '@apackdev', 'ears'), 'dir');
+  fs.symlinkSync(layout.sdkDir(), path.join(packDir, 'node_modules', '@apackdev', 'sdk'), 'dir');
+  fs.symlinkSync(layout.uiDir(), path.join(packDir, 'node_modules', '@apackdev', 'ui'), 'dir');
   const entry = path.join(packDir, 'src', 'entry.ts');
   fs.writeFileSync(entry, entrySource);
   return { packDir, entry };
@@ -55,20 +55,20 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
   it('fails when pack FE code inlines an SDK module that needs the host binding', async () => {
     const { packDir, entry } = makePack(layout,
       // onLog needs the bound app (createLogger alone doesn't: unbound, it writes to the console)
-      `import { onLog } from '@apack/sdk/logger';\nexport const subscribe = onLog;\n`,
+      `import { onLog } from '@apackdev/sdk/logger';\nexport const subscribe = onLog;\n`,
     );
 
     const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('No host is bound');
-    expect(result.error).toContain('Import chain: src/entry.ts → @apack/sdk/logger');
+    expect(result.error).toContain('Import chain: src/entry.ts → @apackdev/sdk/logger');
   });
 
-  it('uses the host\'s @apack/ui instead of bundling it', async () => {
+  it('uses the host\'s @apackdev/ui instead of bundling it', async () => {
     const { packDir, entry } = makePack(layout, [
-      "import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor';",
-      "import { useDebounce } from '@apack/ui/composables/useDebounce';",
+      "import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor';",
+      "import { useDebounce } from '@apackdev/ui/composables/useDebounce';",
       'export const ui = { TiptapEditor, useDebounce };',
     ].join('\n'));
 
@@ -78,14 +78,14 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
     // Left for the host to resolve, which is what gives the pack the app's instance
     expect(await bundleExternals(path.join(packDir, 'dist', 'fe.js'))).toEqual(
-      expect.arrayContaining(['@apack/ui/components/tiptap/TiptapEditor', '@apack/ui/composables/useDebounce']));
+      expect.arrayContaining(['@apackdev/ui/components/tiptap/TiptapEditor', '@apackdev/ui/composables/useDebounce']));
     // No UI code: the editor's extensions, its styles or the debounce implementation
     expect(output).not.toMatch(/createExtensions|ProseMirror|clearTimeout/);
   });
 
-  it('bundles @apack/ui with build.bundleUi and still leaves the shared SDK modules it imports to the host', async () => {
+  it('bundles @apackdev/ui with build.bundleUi and still leaves the shared SDK modules it imports to the host', async () => {
     const { packDir, entry } = makePack(layout,
-      `import { createEditorClickHandler } from '@apack/ui/components/tiptap/composables/createEditorClickHandler';\n` +
+      `import { createEditorClickHandler } from '@apackdev/ui/components/tiptap/composables/createEditorClickHandler';\n` +
       `export const handler = createEditorClickHandler({ noteLinkClick() {}, imageClick() {} });\n`,
       { build: { bundleUi: true } },
     );
@@ -95,13 +95,13 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     expect(result.error).toBeUndefined();
     expect(result.success).toBe(true);
     const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
-    expect(await bundleExternals(path.join(packDir, 'dist', 'fe.js'))).toContain('@apack/sdk/fe');
+    expect(await bundleExternals(path.join(packDir, 'dist', 'fe.js'))).toContain('@apackdev/sdk/fe');
     expect(output).toContain('createEditorClickHandler');
   });
 
-  it("uses the host's ProseMirror and tiptap menus when a pack bundles @apack/ui", async () => {
+  it("uses the host's ProseMirror and tiptap menus when a pack bundles @apackdev/ui", async () => {
     const { packDir, entry } = makePack(layout,
-      "import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor';\nexport default TiptapEditor;\n",
+      "import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor';\nexport default TiptapEditor;\n",
       { build: { bundleUi: true } },
     );
 
@@ -119,9 +119,9 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     { bundleUi: true, packConfig: false, generated: true },
     { bundleUi: true, packConfig: true, generated: true },
     { bundleUi: false, packConfig: false, generated: false },
-  ])('generates the Tailwind classes @apack/ui components use (bundleUi: $bundleUi, own tailwind config: $packConfig)', async ({ bundleUi, packConfig, generated }) => {
+  ])('generates the Tailwind classes @apackdev/ui components use (bundleUi: $bundleUi, own tailwind config: $packConfig)', async ({ bundleUi, packConfig, generated }) => {
     const { packDir, entry } = makePack(layout,
-      "import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor';\nexport default TiptapEditor;\n",
+      "import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor';\nexport default TiptapEditor;\n",
       { build: { bundleUi } },
     );
     if (packConfig) {
@@ -133,13 +133,13 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     expect(result.error).toBeUndefined();
     const css = fs.readdirSync(path.join(packDir, 'dist')).filter((f) => f.endsWith('.css'))
       .map((f) => fs.readFileSync(path.join(packDir, 'dist', f), 'utf-8')).join('\n');
-    // A class only @apack/ui templates use (TiptapSearchBar's input), not the pack's
+    // A class only @apackdev/ui templates use (TiptapSearchBar's input), not the pack's
     expect(css.includes('.placeholder-neutral-500::')).toBe(generated);
   });
 
-  it('compiles no @apack/ui SFC when a pack bundles @apack/ui', async () => {
+  it('compiles no @apackdev/ui SFC when a pack bundles @apackdev/ui', async () => {
     const { packDir, entry } = makePack(layout,
-      "import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor';\nexport default TiptapEditor;\n",
+      "import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor';\nexport default TiptapEditor;\n",
       { build: { bundleUi: true } },
     );
 
@@ -147,9 +147,9 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
 
     expect(result.error).toBeUndefined();
     const { sources } = JSON.parse(fs.readFileSync(path.join(packDir, 'dist', 'fe.js.map'), 'utf-8')) as { sources: string[] };
-    const uiSources = sources.filter((source) => source.includes('@apack/ui/') || source.includes('apack-ui/'));
-    population('@apack/ui sources in the pack bundle', uiSources);
-    // @apack/ui ships compiled components, and a pack reads those whichever way it has the package
+    const uiSources = sources.filter((source) => source.includes('@apackdev/ui/') || source.includes('apack-ui/'));
+    population('@apackdev/ui sources in the pack bundle', uiSources);
+    // @apackdev/ui ships compiled components, and a pack reads those whichever way it has the package
     expect(uiSources.filter((source) => /\.vue(\?|$)/.test(source))).toEqual([]);
   });
 
@@ -158,7 +158,7 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     // Shape of #generated/ears: the EARS namespace plus the pure typed-helpers factory call
     fs.writeFileSync(path.join(packDir, 'src', 'ears.ts'), [
       "export namespace EARS { export namespace Entity { export const Memo = 'Memo'; } }",
-      "import { defineEars } from '@apack/ears';",
+      "import { defineEars } from '@apackdev/ears';",
       "export const { qx, findById, findAll } = /*#__PURE__*/ defineEars<{ Memo: { text: string } }>();",
     ].join('\n'));
 
@@ -172,9 +172,9 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
 
   it('builds when SDK imports are left to the host', async () => {
     const { packDir, entry } = makePack(layout,
-      `import { bindFeHost } from '@apack/sdk/runtime';\nimport { compareVersions } from '@apack/sdk/utils/pure';\n` +
+      `import { bindFeHost } from '@apackdev/sdk/runtime';\nimport { compareVersions } from '@apackdev/sdk/utils/pure';\n` +
       // What #generated/events imports: a pack's frontend sends through the host's transport
-      `import { defineEvents } from '@apack/sdk/events';\n` +
+      `import { defineEvents } from '@apackdev/sdk/events';\n` +
       `export const x = [bindFeHost, compareVersions, defineEvents({})];\n`,
     );
 
@@ -183,6 +183,6 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     expect(result.error).toBeUndefined();
     expect(result.success).toBe(true);
     expect(await bundleExternals(path.join(packDir, 'dist', 'fe.js'))).toEqual(
-      expect.arrayContaining(['@apack/sdk/runtime', '@apack/sdk/events']));
+      expect.arrayContaining(['@apackdev/sdk/runtime', '@apackdev/sdk/events']));
   });
 });

@@ -88,7 +88,7 @@ echo ""
 echo -e "${BLUE}[4/7]${NC} Building packages..."
 npm run build:runtime
 # The CLI the app bundles (Resources/cli/apack runs it)
-npm run build:package -w @apack/cli
+npm run build:package -w @apackdev/cli
 echo -e "${GREEN}✓${NC} Packages built"
 echo ""
 

@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
-import { resolveAppContext } from '@apack/sdk/env';
-import type { AppBuild } from '@apack/sdk/env';
-import { readApiEndpoint } from '@apack/host/process-liveness';
-import { API_HOST, API_TOKEN_HEADER, errorMessage } from '@apack/sdk/utils/pure';
+import { resolveAppContext } from '@apackdev/sdk/env';
+import type { AppBuild } from '@apackdev/sdk/env';
+import { readApiEndpoint } from '@apackdev/host/process-liveness';
+import { API_HOST, API_TOKEN_HEADER, errorMessage } from '@apackdev/sdk/utils/pure';
 
 /**
  * Asking a running app to reload a pack's backend: the `/dev/reload` client, and what one came to.

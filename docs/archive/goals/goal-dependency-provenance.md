@@ -30,7 +30,7 @@ Finished when:
 - Mutations: dropping the own-manifest pass in `_mergeProvenance` fails the nearer-wins test; reverting
   `declaredBy` in mergeRegistries fails the diamond test while leaving the genuine-collision test
   passing; removing a name from REQUIRED_FACADE_EXPORTS fails the missing-export test.
-- npm run typecheck, npm run api:check, and npm test -w @apack/cli and -w @apack/sdk all pass.
+- npm run typecheck, npm run api:check, and npm test -w @apackdev/cli and -w @apackdev/sdk all pass.
 - npm run compile and npm run test:external-pack pass (both rebuild snapshots in the new shape).
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
@@ -77,7 +77,7 @@ for (const [depId, snapshot] of snapshots) {
 `_dependencyPlugins` is that function with `name` renamed to `id`. `ownerOf` is that function written as
 `Object.assign` over records, in a different package, and additionally folding in the pack's own names.
 
-**The cost today:** 6 entries in `@apack/sdk/build`'s public API (`etc/build.api.md:219–253`), 5 field
+**The cost today:** 6 entries in `@apackdev/sdk/build`'s public API (`etc/build.api.md:219–253`), 5 field
 declarations in `manifest.ts`, 14 call sites across `build.ts`, `generate-entries.ts` and `index.ts`,
 and three test suites that each re-pin the same nearer-wins rule. The cost of the next kind that needs
 to travel — services, steps, artifacts — is another type pair, another reader, another suite.
@@ -248,8 +248,8 @@ budget.
 |---|---|
 | `npm run typecheck` | passes |
 | `npm run api:check` | passes (reports regenerated for the six removed and five added entries) |
-| `npm test -w @apack/sdk` | 439 passed |
-| `npm test -w @apack/cli` | 718 passed |
+| `npm test -w @apackdev/sdk` | 439 passed |
+| `npm test -w @apackdev/cli` | 718 passed |
 | `npm run compile` | passes; generated `ears.ts` byte-identical to before the change |
 | `npm run test:external-pack` | passes; fixture snapshots rewritten in the new shape |
 | `default-setup` snapshot | `provenance` with all four kinds, no `typeOwners`/`dependencyCommands`/`dependencyPlugins` |

@@ -1,20 +1,20 @@
 import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
-import breadcrumb, { breadcrumbWithParams } from '@apack/sdk/fe'
-import { safeEvents } from '@apack/sdk/fe'
+import breadcrumb, { breadcrumbWithParams } from '@apackdev/sdk/fe'
+import { safeEvents } from '@apackdev/sdk/fe'
 import {
   targetIs,
   TRAIL_CLICK,
   type TrailClickEvent,
-} from '@apack/sdk/fe'
+} from '@apackdev/sdk/fe'
 import type { ActionsSettings } from '#generated/types.ts'
 import type { ActionsContext, ActionsInboxEvent } from './contract.ts'
 import type { OutgoingActionEvents } from '#features/actions/be/types.ts'
-import type { ActionParameter } from '@apack/sdk'
+import type { ActionParameter } from '@apackdev/sdk'
 import { sendToSystem } from '#generated/events.ts'
-import { answersCall, newCall } from '@apack/sdk/events'
+import { answersCall, newCall } from '@apackdev/sdk/events'
 import { Trash2 } from 'lucide-vue-next'
-import { contextMenuFn } from '@apack/sdk/fe'
-import type { ActionEntity } from '@apack/sdk'
+import { contextMenuFn } from '@apackdev/sdk/fe'
+import type { ActionEntity } from '@apackdev/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */

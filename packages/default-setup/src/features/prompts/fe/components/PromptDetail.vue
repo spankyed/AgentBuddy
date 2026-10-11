@@ -104,20 +104,20 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apack/sdk/fe'
+import { usePlugin } from '@apackdev/sdk/fe'
 import { computed } from 'vue';
 import { ExternalLink } from 'lucide-vue-next';
-import NameSaveHeader from '@apack/ui/design/NameSaveHeader';
-import CollapsibleSection from '@apack/ui/design/CollapsibleSection';
+import NameSaveHeader from '@apackdev/ui/design/NameSaveHeader';
+import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection';
 import type { Category } from '#generated/types.ts';
 import PromptInputsEditor from './PromptInputsEditor.vue';
 import PromptTemplateEditor from './PromptTemplateEditor.vue';
-import JsonSchemaEditor from '@apack/ui/components/JsonSchemaEditor';
-import { useCollapsibleState } from '@apack/ui/composables/useCollapsibleState';
+import JsonSchemaEditor from '@apackdev/ui/components/JsonSchemaEditor';
+import { useCollapsibleState } from '@apackdev/ui/composables/useCollapsibleState';
 import { openPlugin } from '#generated/fe.ts'
 import type { PromptsState } from '#features/prompts/fe/state.ts';
-import type { PromptEntity } from '@apack/sdk';
-import type { TemplateInput } from '@apack/sdk';
+import type { PromptEntity } from '@apackdev/sdk';
+import type { TemplateInput } from '@apackdev/sdk';
 
 const props = defineProps<{
   prompt?: PromptEntity;

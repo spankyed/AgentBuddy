@@ -3,7 +3,7 @@
 // unloads it, so a pack that comes back is loaded once and taken out once.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, type Actor } from 'xstate';
-import type { Plugin } from '@apack/sdk/fe';
+import type { Plugin } from '@apackdev/sdk/fe';
 import { createShellMachine, type ShellMachine } from '../../../../src/fe/index.ts';
 import packsMachine from '../../../../src/features/packs/fe/machine.ts';
 import { fakeShell, plugin } from '../../application/fe/fakes.ts';

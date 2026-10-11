@@ -269,8 +269,8 @@ import {
   DropdownMenuItem,
 } from 'reka-ui'
 import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop.ts'
-import type { MenuItem } from '@apack/ui/composables/useContextMenu'
-import { useTrackedMenuOpen, usePlugin } from '@apack/sdk/fe'
+import type { MenuItem } from '@apackdev/ui/composables/useContextMenu'
+import { useTrackedMenuOpen, usePlugin } from '@apackdev/sdk/fe'
 
 const actor: NotesState = usePlugin()
 

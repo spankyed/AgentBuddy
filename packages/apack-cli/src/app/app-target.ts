@@ -358,7 +358,7 @@ export async function resolvePinnedApp(options: ResolveAppOptions): Promise<AppT
  * app; a stale answer went on winning silently for as long as the file existed; and the prompt was the
  * worst thing to put in a CLI an agent drives, because it does not fail, it hangs.
  *
- * **The checkout rule is the correct pairing, not a convenience.** If a pack's `@apack/*` resolve into a
+ * **The checkout rule is the correct pairing, not a convenience.** If a pack's `@apackdev/*` resolve into a
  * checkout — or the pack simply sits inside one, which `checkoutFor` also answers — then the pack is
  * compiled against that checkout's packages. Launching it inside a released Beta pairs a source-built pack
  * with a released host, which is a mismatch to report rather than a preference to hold.

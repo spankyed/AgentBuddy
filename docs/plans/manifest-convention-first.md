@@ -156,7 +156,7 @@ Against [`goal-manifest-redesign.md`](../goals/goal-manifest-redesign.md):
 ## The work
 
 1. **Settle the fork above.** Everything else is mechanical once it is answered.
-2. **One layout table per contribution kind**, in `@apack/sdk/build`, read by codegen, `validate`,
+2. **One layout table per contribution kind**, in `@apackdev/sdk/build`, read by codegen, `validate`,
    `doctor` and `apack add` — the `FEATURE_LAYOUT` Decision 7 asks for, generalised to steps, blocks,
    artifacts, services, repositories and content. A spec fails when the documented table and the constant
    disagree.

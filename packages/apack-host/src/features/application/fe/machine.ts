@@ -2,11 +2,11 @@
 // lays out the panels and loads every pack's frontend. Its I/O arrives as options (types.ts); the renderer
 // composes it with the API client and the window, a pack's tests with fakes.
 import { assign, enqueueActions, setup, spawnChild } from 'xstate';
-import { getDesignated, processHotkeys, safeEvents } from '@apack/sdk/fe';
-import { splitRef } from '@apack/sdk/ids';
-import { senderSuffix } from '@apack/sdk/events';
-import { isPlainObject } from '@apack/sdk/utils/pure';
-import type { HostShellEvent, HostShellState, PluginEvent, ShellPanelSizes } from '@apack/sdk/fe';
+import { getDesignated, processHotkeys, safeEvents } from '@apackdev/sdk/fe';
+import { splitRef } from '@apackdev/sdk/ids';
+import { senderSuffix } from '@apackdev/sdk/events';
+import { isPlainObject } from '@apackdev/sdk/utils/pure';
+import type { HostShellEvent, HostShellState, PluginEvent, ShellPanelSizes } from '@apackdev/sdk/fe';
 import { HOST } from '../../../refs.ts';
 import { connectionListener } from './connection.ts';
 import { hotkeyListener, mouseListener } from './input.ts';

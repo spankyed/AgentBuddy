@@ -100,7 +100,7 @@ gives tier 2 per-check caching. So this work does not make a cached run faster �
 
 **3.4 — The 5s default is a 374-test problem, and it is what caps `test:unit` at two lanes.**
 
-`test-unit.ts` already names the symptom: lanes 3 fails on `@apack/sdk`'s *"generated sends compile"*,
+`test-unit.ts` already names the symptom: lanes 3 fails on `@apackdev/sdk`'s *"generated sends compile"*,
 which takes 5.2s against vitest's 5s default. I hit that same test, and `apack-cli`'s
 `import-specifiers > findInternalPackageImports > holds for the repo`, which takes **2445ms on an idle
 machine** — half its budget spent, so any 2× slowdown fails it.
@@ -146,7 +146,7 @@ light.
 Phase 8 already has *"Reap the process group on exit"*, scoped to `tests/scripts/`. **This orphan was not a
 shell test script** — it was `npm exec apack generate-entries`, a CLI invocation whose parent shell died.
 So the bound Phase 8 describes would not have caught it, and the scope wants widening to any long-running
-`apack` invocation, or an `apack doctor` that reaps what `@apack/host/process-liveness` can already
+`apack` invocation, or an `apack doctor` that reaps what `@apackdev/host/process-liveness` can already
 identify (`lockIsHeld`, `recordIsStale`).
 
 ## 4. Merge state

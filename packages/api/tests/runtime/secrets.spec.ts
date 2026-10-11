@@ -1,7 +1,7 @@
 // API keys in the API: the secrets procedures (the only way a value reaches the backend), and logs and error reports
 // that redact keys.
 //
-// The vault-failure cases repeat a condition `@apack/host` already covers, on purpose, and the level they add is
+// The vault-failure cases repeat a condition `@apackdev/host` already covers, on purpose, and the level they add is
 // the procedure boundary. `apack-host/tests/secrets/store.spec.ts` drives a failing vault straight into
 // `createSecretsStore` (which takes `osVault`/`fileVault`) and asserts the store's own status and transitions. What
 // it cannot assert is what a renderer learns: that `secrets.add` rejects naming the backend, that a CHANGED event
@@ -10,20 +10,20 @@
 // two host unit tests through the real boot.
 //
 // It mocks the vault module rather than injecting one because the procedures use the module-level `secretsStore`
-// singleton, which builds its own vaults; injection is reachable from host's suite and not from here. `@apack/host`
+// singleton, which builds its own vaults; injection is reachable from host's suite and not from here. `@apackdev/host`
 // publishes `./secrets/vault` so this names it as a specifier instead of reaching into another package's `src/`
 // (`repo-checks/tests/spec-placement.spec.ts`).
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Message } from '@apack/sdk/events';
+import type { Message } from '@apackdev/sdk/events';
 
 // The test environment keeps the data key in a file vault; `vaultDown` swaps it for an OS credential store that fails,
 // the way a system without one (or a locked keyring) does
 const vaultDown = vi.hoisted(() => ({ value: false }));
-vi.mock('@apack/host/secrets/vault', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@apack/host/secrets/vault')>();
+vi.mock('@apackdev/host/secrets/vault', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@apackdev/host/secrets/vault')>();
   const fail = () => { throw new actual.KeyVaultUnavailableError('Secret Service', new Error('no dbus')); };
   const down = { backend: 'Secret Service', protection: 'os-keystore' as const, get: fail, set: fail, delete: fail };
   return { ...actual, fileKeyVault: (file: string) => vaultDown.value ? down : actual.fileKeyVault(file) };
@@ -39,11 +39,11 @@ const { openAppStore } = await import('@/runtime');
 const { store, packs } = openAppStore();
 const { secretsRouter } = await import('@/transport/secrets');
 const { rootEvents } = await import('@/transport/emitter');
-const { createLogger, reportError } = await import('@apack/sdk/logger');
+const { createLogger, reportError } = await import('@apackdev/sdk/logger');
 const { originalConsole, initializeLogCapture, restoreConsole } = await import('@/adapters/logging');
-const { secretsStore, forwardSecretsChanges } = await import('@apack/host/secrets');
-const { services } = await import('@apack/sdk/services');
-const { _getSecretsFilePath } = await import('@apack/sdk/utils');
+const { secretsStore, forwardSecretsChanges } = await import('@apackdev/host/secrets');
+const { services } = await import('@apackdev/sdk/services');
+const { _getSecretsFilePath } = await import('@apackdev/sdk/utils');
 const { setup } = await import('xstate');
 
 const KEY = 'sk-proj-SPECKEY1234567890abcdefghij';

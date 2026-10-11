@@ -5,7 +5,7 @@
 > was found by Phase 5's guard and done then. The Outcome says so. For the convention now, see
 > `packages/default-setup/CLAUDE.md`; for what refuses a specifier that names no file,
 > `findExtensionlessOwnModules` in `scripts/check-import-specifiers.ts` and
-> `@apack/host/build/own-module-specifiers`, which `apack build` runs for every other pack.
+> `@apackdev/host/build/own-module-specifiers`, which `apack build` runs for every other pack.
 
 > **Written in session** `1d53eb9c-d886-49f8-bc5a-90793d43315e` (Claude Code, 2026-09-26). Resume it with `claude -r 1d53eb9c-d886-49f8-bc5a-90793d43315e`.
 
@@ -66,7 +66,7 @@ A specifier in pack code can name its target three ways, and **this repo uses al
 
 | Convention | Where | Evidence |
 |---|---|---|
-| names the `.ts` source | `@apack/ears`, `/sdk`, `/host`, `/ui`, `/testing` | root `CLAUDE.md:441`; `check:specifiers` **rejects** a relative `.js` there (`findJsSpecifiers`) |
+| names the `.ts` source | `@apackdev/ears`, `/sdk`, `/host`, `/ui`, `/testing` | root `CLAUDE.md:441`; `check:specifiers` **rejects** a relative `.js` there (`findJsSpecifiers`) |
 | names `.js` | generated pack code | 234 specifiers in `default-setup/src/__generated__`, 41 in the fixture's — `from '../features/threads/be/repository/index.js'`, pointing at `.ts` files |
 | names nothing | hand-written pack code | 776 in `default-setup`, 25 in `tests/fixtures/external-pack` |
 
@@ -99,7 +99,7 @@ why generated code chose it, and a pack is never emitted that way — it ships a
 
 `allowImportingTsExtensions: true` is set in `packages/default-setup/tsconfig.json` **and** in the scaffold
 (`apack-cli/src/commands/init.ts`, `PACK_TSCONFIG`), where its comment reads: *"A pack typechecks the
-@apack packages' published declarations … Their declarations name .ts files."* The reason is recorded; only
+@apackdev packages' published declarations … Their declarations name .ts files."* The reason is recorded; only
 the pack's own imports have not followed it.
 
 ## Order
@@ -111,8 +111,8 @@ is not load-bearing — but the suffix rule and its guard are much simpler to st
 
 Two things depend on that goal having run:
 
-- **`resolveWithExtensions` need not move to `@apack/host/build/`.** That goal's Decision 4 moves it so
-  `packages/api` and `@apack/cli` can share it. If this goal runs after, nothing needs it at all and it is
+- **`resolveWithExtensions` need not move to `@apackdev/host/build/`.** That goal's Decision 4 moves it so
+  `packages/api` and `@apackdev/cli` can share it. If this goal runs after, nothing needs it at all and it is
   deleted instead — so if both are planned, skip the move and delete it here.
 - **`packages/api`'s `resolve-at-aliases` plugin** is deleted by that goal, not this one.
 
@@ -132,7 +132,7 @@ Final.
    (`apack-sdk/tests/build/generate-entries.spec.ts:97`, `:297`, `:325`, `:427`), which is the right
    coupling: those expectations move with the change rather than being loosened.
 4. **The check is the existing one, widened.** `check:specifiers` already has `findJsSpecifiers`, which
-   rejects a relative `.js` specifier that names a TypeScript module in the `@apack` packages. Pack sources
+   rejects a relative `.js` specifier that names a TypeScript module in the `@apackdev` packages. Pack sources
    join its scope, and a companion refuses an *extensionless* own-module specifier. One mechanism, one place.
 5. **The extension-supplying machinery goes when nothing needs it.** `resolveWithExtensions` and the
    subpath plugin's suffix-guessing exist only for extensionless specifiers. Deleting them is the point of
@@ -223,7 +223,7 @@ to `.js` and watch that named too.
   about which regime a pack runs under, it moves the scaffold, and `nodenext` *requires* the `.js` form
   (spiked: `.ts` is rejected there) — so it would reverse Decision 1. Worth revisiting only if a pack ever
   needs to run unbundled.
-- **`@apack/*` packages' own specifiers**, which already name `.ts` and are already checked. Nothing to do.
+- **`@apackdev/*` packages' own specifiers**, which already name `.ts` and are already checked. Nothing to do.
 
 ## Constraints
 
@@ -252,9 +252,9 @@ to `.js` and watch that named too.
 
 **1,537 specifiers across some 600 files.** Counts: default-setup 87 files / 720 tests unchanged, the fixture
 pack 10 / 32 unchanged, E2E 21 unchanged, `test:packaged-authoring` and `test:external-pack` green,
-`npm run chain` green. Three suites grew, all of them checks this goal added: `@apack/host` 77 / 697 to
+`npm run chain` green. Three suites grew, all of them checks this goal added: `@apackdev/host` 77 / 697 to
 78 / 706 (`own-module-specifiers.spec.ts`), repo-checks' `import-specifiers` to 192 cases (the two rules that
-had none, and this one), and `@apack/cli`'s integration half from 1 failed / 167 passed / 20 skipped to 188
+had none, and this one), and `@apackdev/cli`'s integration half from 1 failed / 167 passed / 20 skipped to 188
 passed — the skips were everything downstream of a fixture pack that had stopped building, which is how the
 last four failures of this goal were found.
 
@@ -319,6 +319,6 @@ A principal-engineer review of these commits found five defects and they are fix
 
 Nothing resolves an extensionless own-module specifier any more. One place still looks for a file: the
 diagnostic, so that it can name the one the author meant. Deferred as written: `moduleResolution: nodenext`,
-which would reverse Decision 1, and the `@apack` packages' own specifiers, which already name `.ts`. Not
+which would reverse Decision 1, and the `@apackdev` packages' own specifiers, which already name `.ts`. Not
 deferred but noted: `packages/apack-cli/src` is not in scope for this rule — it is bundled, is not a pack,
 and names its own modules extensionlessly throughout.

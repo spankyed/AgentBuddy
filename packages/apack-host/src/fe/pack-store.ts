@@ -1,11 +1,11 @@
 // The packs whose frontends the renderer registered, as an instance: the renderer creates one and binds its read
 // face for the SDK's frontend lookups (`bindFeHost({ packs })`). It holds the only writes to it.
-import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig } from '@apack/sdk/fe';
-import type { FePackRegistryView } from '@apack/sdk/runtime';
-import type { ArtifactDefinition } from '@apack/sdk/artifacts';
-import type { BlockDefinition } from '@apack/sdk/blocks';
+import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig } from '@apackdev/sdk/fe';
+import type { FePackRegistryView } from '@apackdev/sdk/runtime';
+import type { ArtifactDefinition } from '@apackdev/sdk/artifacts';
+import type { BlockDefinition } from '@apackdev/sdk/blocks';
 import { addContributions, createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore, definitions, type Contribution } from '../packs/extensions.ts';
-import { resolveName, type FeatureRef } from '@apack/sdk/ids';
+import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 import { createAppExtensionSlots } from './app-extensions.ts';
 import { checkFeatureIds } from '../packs/feature-ids.ts';
 
@@ -69,7 +69,7 @@ function listed<T>(list: T[], items: readonly T[] | undefined, undo: (fn: () => 
  * A list of contributions kept with the pack that made each, for a kind whose items have no key to collide
  * on — which is every kind `createOwnedStore` cannot hold.
  *
- * Removal is by **contribution**, not by value. Two packs can contribute the same object: `@apack/sdk` is
+ * Removal is by **contribution**, not by value. Two packs can contribute the same object: `@apackdev/sdk` is
  * a shared instance, so a tiptap plugin a dependency exports is the same reference in both packs, and
  * removing it by `indexOf` takes the first occurrence — which may be the other pack's, leaving the
  * unregistered pack's behind.

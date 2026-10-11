@@ -2,7 +2,7 @@
 // it was trashed (`deletedAt`); the engine's finders (findById, findAll, findWhere, …) leave it out, and
 // findByIdRaw still reads it. Restoring removes both marks. What trashing an entity means beyond that (its
 // children, emptying the trash) is its feature's.
-import { installedEngine as ears } from '@apack/ears';
+import { installedEngine as ears } from '@apackdev/ears';
 import type { EARS } from '../types/entities.ts';
 
 /** The marks a trashed entity carries */

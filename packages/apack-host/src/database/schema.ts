@@ -2,9 +2,9 @@
 // running pack code: what a tool opening the data dir's database needs to hydrate and query it as the app does
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { AppContext } from '@apack/sdk/env';
-import type { PackManifest, PackSnapshot } from '@apack/sdk/build';
-import { SDK_ENTITIES, SDK_REL_KINDS } from '@apack/sdk/types';
+import type { AppContext } from '@apackdev/sdk/env';
+import type { PackManifest, PackSnapshot } from '@apackdev/sdk/build';
+import { SDK_ENTITIES, SDK_REL_KINDS } from '@apackdev/sdk/types';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { PACK_LAYOUT } from '../packs/layout.ts';
 import { discoverPacks, enabledExternalPacks } from '../packs/discovery.ts';

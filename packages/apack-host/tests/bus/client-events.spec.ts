@@ -2,8 +2,8 @@
 // with long arrays summarized
 import { afterAll, describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
-import { testRootEvents } from '@apack/sdk/testing';
-import type { LogEvent } from '@apack/sdk/logger';
+import { testRootEvents } from '@apackdev/sdk/testing';
+import type { LogEvent } from '@apackdev/sdk/logger';
 import '../packs/runtime/test-host.ts';
 import { receiveClientEvent, UnknownClientEventError } from '../../src/bus/client-events.ts';
 import { createPackRegistry } from '../../src/packs/registry.ts';

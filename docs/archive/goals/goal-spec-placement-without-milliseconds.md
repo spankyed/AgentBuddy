@@ -99,7 +99,7 @@ That was measured on `@app/repo-checks`' fast half. Measured 2026-10-05 across a
 | `apack-testing` | 10 | 64% |
 | `repo-checks` | 46 | 12% — where the threshold was measured |
 
-`measure.ts:120-131`'s own table records the worst single spec moving 74% between two *quiet* runs. At 93% concentration that is ~69% body movement from noise, four and a half times `DRIFT_SHARE`: the report cannot avoid false-firing on those suites. Observed on 2026-10-05 — `@apack/testing` reported +16% and `@app/repo-checks` −14% on one run, opposite directions, which is the signature of jitter rather than the correlated drift the report exists to catch.
+`measure.ts:120-131`'s own table records the worst single spec moving 74% between two *quiet* runs. At 93% concentration that is ~69% body movement from noise, four and a half times `DRIFT_SHARE`: the report cannot avoid false-firing on those suites. Observed on 2026-10-05 — `@apackdev/testing` reported +16% and `@app/repo-checks` −14% on one run, opposite directions, which is the signature of jitter rather than the correlated drift the report exists to catch.
 
 **The remedy it prints does not fit the case that fires.** `spec-cost.ts:327` prints `--all --forget` on every branch, while that flag's own documentation calls it *"for a change you know about — a bundler bump, a policy change — and not to chase a drift you do not"*. For spec costs the report only prints: `drifted()` there is a `console.log`, and `spec-cost.ts:1100` records that a drift **gate** on the write already existed and was already removed (*"It replaced `rewritesEveryRow`, which was `all && drifted(body)` — a drift gate on a write"*). So the standing cost is a misleading sentence, not a blocked workflow.
 
@@ -148,7 +148,7 @@ What the data does support is a **margin against the edge rather than repetition
 - a package with two vitest configs gets **`misplaced`** — the spec is in the wrong half and a rename is the remedy;
 - a package with one config gets **`outgrown`** — the spec costs more than a fast half allows and there is nowhere to move it, so the entry records *what makes it expensive* instead. Explicitly "not a queue of packages to split".
 
-Only three packages have a split (`@apack/cli`, `@app/repo-checks`, `@app/publish-checks`), so nine of twelve suites can only ever produce `outgrown`. `generate-entries.spec.ts` at 17.7 s passes because it is `outgrown` with a recorded reason, not a misplacement.
+Only three packages have a split (`@apackdev/cli`, `@app/repo-checks`, `@app/publish-checks`), so nine of twelve suites can only ever produce `outgrown`. `generate-entries.spec.ts` at 17.7 s passes because it is `outgrown` with a recorded reason, not a misplacement.
 
 A second effect Q4 exposes: the recorded costs were measured by `measure()` running one `npx vitest` **per package**, while specs actually run pooled across eleven projects. `generate-entries` is recorded at 11 308 ms and reads 17 745 ms pooled. Decision 2 already says a spec should be timed in the pool it runs in; the gap is larger than the doc assumed.
 

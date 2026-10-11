@@ -1,4 +1,4 @@
-import { definePlugin } from '@apack/sdk/fe';
+import { definePlugin } from '@apackdev/sdk/fe';
 import { NotebookText } from 'lucide-vue-next';
 import state from './state.ts';
 import canvas from './canvas.vue';

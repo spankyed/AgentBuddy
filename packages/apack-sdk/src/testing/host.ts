@@ -7,7 +7,7 @@ import type { PackRegistryView } from '../runtime/packs-view.ts';
 import { testPacksView } from './packs.ts';
 import type { RootEvents } from '../runtime/root-events.ts';
 import type { Message } from '../events/index.ts';
-import type { EarsEngine } from '@apack/ears';
+import type { EarsEngine } from '@apackdev/ears';
 import type { EARS } from '../types/entities.ts';
 import type { LogEvent, SystemErrorEvent } from '../logger/index.ts';
 import type { TraceStore } from '../services/trace-store.ts';
@@ -97,21 +97,21 @@ export function takeSystemErrors(): SystemErrorEvent[] {
 }
 
 const unmockedInference = () => Promise.reject(new Error(
-  "No models in unit tests: mock inference with mockInference(reply) from @apack/testing/harness",
+  "No models in unit tests: mock inference with mockInference(reply) from @apackdev/testing/harness",
 ));
 
 const unmockedFilesystem = () => Promise.reject(new Error(
-  "No disk access through services in unit tests: mock it with mockService('filesystem', { ... }) from @apack/testing/harness",
+  "No disk access through services in unit tests: mock it with mockService('filesystem', { ... }) from @apackdev/testing/harness",
 ));
 
 /**
- * The app's settings need the host's store, which the SDK doesn't have: `@apack/testing/harness` supplies the real
- * one (it inlines @apack/host), so a test running on the SDK's runtime alone says so rather than reading a fake
+ * The app's settings need the host's store, which the SDK doesn't have: `@apackdev/testing/harness` supplies the real
+ * one (it inlines @apackdev/host), so a test running on the SDK's runtime alone says so rather than reading a fake
  * document that behaves almost like the app's.
  */
 const unmockedSettings = () => {
   throw new Error(
-    "The app's settings aren't available on the SDK's test runtime: run the test on @apack/testing/harness, which " +
+    "The app's settings aren't available on the SDK's test runtime: run the test on @apackdev/testing/harness, which " +
     "binds the host's settings store, or mock it with mockService('settings', { ... })",
   );
 };

@@ -27,7 +27,7 @@ eval "$(node -e '
 APACK="$PACK/node_modules/.bin/apack"
 useWorkDir "$WORK"
 # `apack test` finds the pack from the working directory, and from the checkout it would find the repo —
-# whose own `vitest.config.ts` declares `@apack/source`, which the pack rules then fail the pack for.
+# whose own `vitest.config.ts` declares `@apackdev/source`, which the pack rules then fail the pack for.
 cd "$PACK"
 
 step "8. apack test on the packed archive (the app named on the command line)"

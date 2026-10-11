@@ -5,8 +5,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { ALLOW_UNBUILT } from '@apack/host/build/packages-built';
-import { PACK_LAYOUT } from '@apack/host/packs';
+import { ALLOW_UNBUILT } from '@apackdev/host/build/packages-built';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
 const DEFAULT_SETUP_DIST = path.join(REPO_ROOT, 'packages', 'default-setup', 'dist');
@@ -39,10 +39,10 @@ function dependentPack(spec: string): string {
   fs.cpSync(path.join(DEFAULT_SETUP_DIST, PACK_LAYOUT.contentDir), path.join(dep, PACK_LAYOUT.contentDir), { recursive: true });
   // As `apack init` scaffolds it: one call, so this fixture stays what a real pack has
   write(root, 'vitest.config.ts', `
-import { definePackTestConfig } from '@apack/testing/vitest';
+import { definePackTestConfig } from '@apackdev/testing/vitest';
 export default definePackTestConfig({ dataDirPrefix: 'dependent-runtime-' });`);
   write(root, 'tests/setup.ts', `
-import { setupPackTests } from '@apack/testing/harness';
+import { setupPackTests } from '@apackdev/testing/harness';
 import { memos } from './memos-system';
 await setupPackTests({
   contentRuntime: { id: 'dependent-pack', entities: {}, relKinds: {}, repositories: {}, contentWriters: {} },
@@ -61,8 +61,8 @@ await setupPackTests({
   // under; a built pack writes `untypedBroadcastToPlugin('memos', …)` and its `#generated/events` resolves it.
   write(root, 'tests/memos-system.ts', `
 import { setup } from 'xstate';
-import { untypedBroadcastToPlugin } from '@apack/sdk/events';
-import { reportError } from '@apack/sdk/logger';
+import { untypedBroadcastToPlugin } from '@apackdev/sdk/events';
+import { reportError } from '@apackdev/sdk/logger';
 export const memos = setup({}).createMachine({
   entry: () => untypedBroadcastToPlugin('dependent-pack/memos', { type: 'MEMOS_STARTED' }),
   on: {
@@ -84,9 +84,9 @@ describe.skipIf(!built)("a dependent pack's unit tests on the harness runtime ti
   it("runs default-setup's systems and the app's settings beside them", () => {
     const root = dependentPack(`
 import { expect, it } from 'vitest';
-import { repository } from '@apack/ears';
-import { services } from '@apack/sdk/services';
-import { startApp } from '@apack/testing/harness';
+import { repository } from '@apackdev/ears';
+import { services } from '@apackdev/sdk/services';
+import { startApp } from '@apackdev/testing/harness';
 it("connects to default-setup's notes and the app's settings", async () => {
   const app = await startApp({ systems: ['default-setup/notes', 'host/settings'] });
   await app.connect();
@@ -97,7 +97,7 @@ it("connects to default-setup's notes and the app's settings", async () => {
   expect(app.emitted('host/application').map((e) => e.type)).toContain('APPLICATION_HOTKEYS');
   // One SDK and one engine: this pack's feature settings (registered by the harness) reach the app's
   // settings, and the repositories default-setup's runtime registered are the test's, through
-  // @apack/ears and services.repository alike
+  // @apackdev/ears and services.repository alike
   expect((loaded.data as { plugins: Record<string, unknown> }).plugins['dependent-pack/widgets']).toEqual({ size: 3 });
   const noteQueries = Reflect.get(repository, 'noteQueries');
   expect(noteQueries).toBeDefined();
@@ -110,7 +110,7 @@ it("connects to default-setup's notes and the app's settings", async () => {
   it("drops a system's sends to its plugin until a client connects", () => {
     const root = dependentPack(`
 import { expect, it } from 'vitest';
-import { startApp } from '@apack/testing/harness';
+import { startApp } from '@apackdev/testing/harness';
 it('delivers only what the system sends once connected', async () => {
   const app = await startApp({ systems: ['memos'] });
   expect(app.emitted('memos')).toEqual([]);
@@ -125,7 +125,7 @@ it('delivers only what the system sends once connected', async () => {
   it("fails a test when a system reports an error the test didn't take", () => {
     const root = dependentPack(`
 import { expect, it } from 'vitest';
-import { startApp, takeSystemErrors } from '@apack/testing/harness';
+import { startApp, takeSystemErrors } from '@apackdev/testing/harness';
 async function save() {
   const app = await startApp({ systems: ['memos'] });
   await app.connect();

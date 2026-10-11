@@ -1,13 +1,13 @@
 import type { Contract } from './contract.ts';
 import * as path from 'path';
 import { setup } from 'xstate';
-import { defineSystem } from '@apack/sdk/framework';
+import { defineSystem } from '@apackdev/sdk/framework';
 import { broadcastToPlugin, sendToSystem } from '../../../events.ts';
-import { getAppVersion } from '@apack/sdk/env';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
-import { HOST_PACK_ID, PACK_ID_PATTERN } from '@apack/sdk/ids';
+import { getAppVersion } from '@apackdev/sdk/env';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { HOST_PACK_ID, PACK_ID_PATTERN } from '@apackdev/sdk/ids';
 import { forgetPack, packRecord, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../../../packs/installed.ts';
-import { reportError } from '@apack/sdk/logger';
+import { reportError } from '@apackdev/sdk/logger';
 import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub } from '../../../packs/installer.ts';
 import type { PackExtensions, PackInfo, PackRegistry } from '../../../packs/registry.ts';
 import { packFrontendFiles, PACK_LAYOUT } from '../../../packs/layout.ts';
@@ -16,10 +16,10 @@ import { checkForUpdates } from '../../../packs/updater.ts';
 import { teardownPack, activatePack } from '../../../packs/runtime/lifecycle.ts';
 import { activationProblem } from '../../../packs/runtime/activation-outcome.ts';
 import { HOST } from '../../../refs.ts';
-import { errorMessage } from '@apack/sdk/utils/pure';
-import { applyRecord, importCompiledContent, registeredContentKeys, type ContentSelection } from '@apack/sdk/utils';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
+import { applyRecord, importCompiledContent, registeredContentKeys, type ContentSelection } from '@apackdev/sdk/utils';
 import { appliedContent } from '../../../app-state/index.ts';
-import { contentEntity, contentKeySelection, describeContentKey, previewPackContent, removeContentEntity } from '@apack/sdk/content';
+import { contentEntity, contentKeySelection, describeContentKey, previewPackContent, removeContentEntity } from '@apackdev/sdk/content';
 
 export type { PackInfo };
 

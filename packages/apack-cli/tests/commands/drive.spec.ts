@@ -117,7 +117,7 @@ describe('a config that has stopped delegating', () => {
   });
 
   it('is silent about one that delegates', () => {
-    writeConfig('playwright.config.ts', "import { defineDriveConfig } from '@apack/testing/playwright';\nexport default defineDriveConfig();\n");
+    writeConfig('playwright.config.ts', "import { defineDriveConfig } from '@apackdev/testing/playwright';\nexport default defineDriveConfig();\n");
 
     expect(scaffold(root).keptStale).toEqual([]);
   });

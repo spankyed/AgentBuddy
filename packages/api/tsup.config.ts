@@ -32,8 +32,8 @@ export default defineConfig((options) => {
     // `dist/types.d.ts` is what the renderer's typecheck resolves `@app/api` to.
     clean: !isDev,
     // **What to watch is on the command line, not here, and that is not a preference.** tsup watches a
-    // *directory* rather than the module graph, so `@apack/host` and `@apack/sdk` — both inlined into
-    // this bundle by the `@apack/source` condition below — have to be named or an edit to either rebuilds
+    // *directory* rather than the module graph, so `@apackdev/host` and `@apackdev/sdk` — both inlined into
+    // this bundle by the `@apackdev/source` condition below — have to be named or an edit to either rebuilds
     // nothing: measured 2026-10-10, no rebuild in two and a half minutes. Naming them here does not work,
     // because a `--watch` flag *overrides* a `watch` in the config rather than merging with it (measured
     // the same day: the config's paths were ignored). So they live in `build:dev:watch`, which is the one
@@ -49,9 +49,9 @@ export default defineConfig((options) => {
       ? { js: "import { createRequire as __apackCreateRequire } from 'node:module'; const require = __apackCreateRequire(import.meta.url);" }
       : {}),
     esbuildOptions(esbuildOptions) {
-      // Workspace @apack/* packages bundle from source (see their package.json exports).
+      // Workspace @apackdev/* packages bundle from source (see their package.json exports).
       // Custom conditions replace esbuild's implicit 'module' condition, so keep it.
-      esbuildOptions.conditions = ['@apack/source', 'module'];
+      esbuildOptions.conditions = ['@apackdev/source', 'module'];
     },
     esbuildPlugins: [
     {

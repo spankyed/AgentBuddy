@@ -1,5 +1,5 @@
 // How the step is drawn. Its label and field defaults are in `build.ts`, where the backend can read them.
-import type { StepFEFacet } from '@apack/sdk/steps';
+import type { StepFEFacet } from '@apackdev/sdk/steps';
 import { Stamp } from 'lucide-vue-next';
 
 export const stampStepFE: StepFEFacet = {

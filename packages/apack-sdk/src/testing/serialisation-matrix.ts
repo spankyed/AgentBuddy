@@ -4,13 +4,13 @@
 // purpose. `docs/reference/value-serialisation.md` explains why; this is the same answers in a form the specs
 // can check, so a cell cannot drift from the code it describes.
 //
-// **Why it is data here rather than one spec somewhere.** The passes live in `@app/api`, `@apack/cli` and
-// `@apack/sdk`, and no package may import all three: `@app/repo-checks` is allowed `@apack/sdk` and
-// `@apack/host` only. So the matrix is declared once and asserted from the three suites that can each reach
+// **Why it is data here rather than one spec somewhere.** The passes live in `@app/api`, `@apackdev/cli` and
+// `@apackdev/sdk`, and no package may import all three: `@app/repo-checks` is allowed `@apackdev/sdk` and
+// `@apackdev/host` only. So the matrix is declared once and asserted from the three suites that can each reach
 // their own, which between them cover all five rows.
 //
 // **Source-only export**, the shape `./testing/pack-fixture` uses: the `exports` entry names a path under
-// `@apack/source` and nothing else, so `publishedManifest` drops it and no pack can resolve it. This is
+// `@apackdev/source` and nothing else, so `publishedManifest` drops it and no pack can resolve it. This is
 // repo-internal test data, not something a pack author materialises.
 //
 // Depth is deliberately not a column. The caps are 10 (`truncateResult`), 50 (`redactSecrets`) and none (the

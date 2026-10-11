@@ -14,7 +14,7 @@
  *
  * The extension is `.ts` rather than `.js` because that is the file that exists: a pack is bundled rather
  * than emitted as individual modules, its tsconfig sets `allowImportingTsExtensions`, and `tsc`, `vue-tsc`,
- * Vite and esbuild all resolve it. The `@apack` packages have named their `.ts` sources for as long
+ * Vite and esbuild all resolve it. The `@apackdev` packages have named their `.ts` sources for as long
  * (`check:specifiers`, `findJsSpecifiers`).
  *
  * **The rule is here; finding the specifiers is the caller's.** `npm run check:specifiers` applies this to
@@ -79,7 +79,7 @@ export interface OwnModuleSpecifier {
 /**
  * `file:line: specifier -> what it should say`, one per specifier in `found` that names no file.
  *
- * Every specifier a reader found may be passed, `@apack/sdk` and `vue` included: what counts as one of the
+ * Every specifier a reader found may be passed, `@apackdev/sdk` and `vue` included: what counts as one of the
  * pack's own modules is this rule's to know, not the reader's.
  *
  * Two forms fail the same way and get the same message: nothing (`#generated/events`), and the emitted

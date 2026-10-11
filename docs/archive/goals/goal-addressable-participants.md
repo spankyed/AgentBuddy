@@ -27,12 +27,12 @@ Finished when:
 - A backend system can answer only the connection that asked it: `Message` carries an optional `client`,
   absent still means every window, and `send-scope.spec.ts` holds both halves.
 - Pack code never names a connection: a handler replies with `replyTo(incoming)` from
-  `@apack/sdk/events` and no pack source mentions `_origin` or a client id.
+  `@apackdev/sdk/events` and no pack source mentions `_origin` or a client id.
 - `host/drive` resolves as a participant, and `packages/apack-testing/src/engine/session.ts` contains no
   request-id minting, no reply-id matching and no seen-events buffer.
 - Checks: `npm run typecheck`; `npm run spec -- bus` and `npm run spec -- transport`; `npm run compile`;
   `npm run packages:build` then `npm run packages:check`; `npm run chain` at the end of each phase.
-- `npm run api:update` for `@apack/sdk` once `replyTo` exists, with `etc/` committed. Report what moved
+- `npm run api:update` for `@apackdev/sdk` once `replyTo` exists, with `etc/` committed. Report what moved
   in the public surface rather than rewriting a recorded artifact to make a check pass.
 - Phase 5 is driven, not only unit-tested: `apack drive --serve` with three concurrent `/qx` calls
   returning three correct answers.
@@ -134,7 +134,7 @@ stays tracked where it is.
 Final.
 
 1. **The client id is minted server-side, once per connection.** `createContext` keeps the adapter's
-   argument and mints `client` with `randomId` (`@apack/sdk/utils/random-id.ts`). `bus.sub` reads
+   argument and mints `client` with `randomId` (`@apackdev/sdk/utils/random-id.ts`). `bus.sub` reads
    `ctx.client`; it gains **no input**. `bus.send` stamps `ctx.client` onto what it passes
    `receiveClientEvent`, and the zod input schema does **not** accept it — so a return address cannot be
    forged, and the id dies with the socket, which is why the absent disconnect signal does not matter.
@@ -157,7 +157,7 @@ Final.
    system, under a framework-reserved `_origin`, overwriting whatever was there. It does **not** stamp
    outbound events, which is what keeps `outgoing-events.spec.ts:58` intact. A plugin replying to a driver
    is therefore out of scope; the driver talks to systems and systems answer.
-5. **`replyTo(incoming)` is the pack-facing API**, exported from `@apack/sdk/events`, returning a send
+5. **`replyTo(incoming)` is the pack-facing API**, exported from `@apackdev/sdk/events`, returning a send
    bound to that message's origin. Pack code never names an address, never reads `_origin`, and keeps
    working unchanged if it does not reply. `_origin` takes the `_` prefix that is already this repo's mark
    for a host-stamped internal (`_rootEvents`, `_sendToLocalPlugin`), so `check:specifiers` can keep packs
@@ -186,7 +186,7 @@ zod input and send a forged one — the stamped-from-context case fails.
 
 ### Phase 2 — An envelope may name one connection
 
-- `Message` gains `client?: string` (Decision 2) wherever it is declared in `@apack/sdk/events`.
+- `Message` gains `client?: string` (Decision 2) wherever it is declared in `@apackdev/sdk/events`.
 - Carry it through `bus/machine.ts:184`. Read `bus/app.ts:76` and confirm it needs nothing, since early
   systems are backend-only; leave a comment saying so only if the code does not already make it obvious.
 - Name `client` in `bus.send`'s **outgoing** path, not its input schema.
@@ -202,11 +202,11 @@ every-window still passes. Invert the absent-means-all branch — every-window f
 
 - The bus stamps `_origin` on the event delivered to a system, overwriting any incoming value
   (Decisions 4, 5).
-- `replyTo(incoming)` in `@apack/sdk/events` returns a send that sets `client` from `_origin`. A reply
+- `replyTo(incoming)` in `@apackdev/sdk/events` returns a send that sets `client` from `_origin`. A reply
   sent for a message with no origin (a backend-to-backend send) must behave as today's broadcast rather
   than throw.
 - `check:specifiers` gains `_origin` to the host-only list it already enforces by underscore.
-- `npm run api:update` for `@apack/sdk`; commit `etc/`. Report what moved.
+- `npm run api:update` for `@apackdev/sdk`; commit `etc/`. Report what moved.
 
 **Done when:** a system handler calling `replyTo(event)({ type: 'X' })` reaches only the asking
 connection; a pack source importing `_origin` fails `check:specifiers`;
@@ -270,7 +270,7 @@ is no `_origin`.
 `Message.sender` rather than from the handler naming a plugin. Both were settled with the user mid-implementation
 after the original shape was found to need something the envelope does not carry. The mechanism is
 `AsyncLocalStorage` on the backend and a synchronous holder in the renderer, behind one SDK interface
-(`events/delivery.ts`), because `@apack/sdk/events` is bundled into pack frontends and a browser has no
+(`events/delivery.ts`), because `@apackdev/sdk/events` is bundled into pack frontends and a browser has no
 equivalent.
 
 **`sender` is accepted from the wire; `client` is not.** This looks like an inconsistency and is not. Every caller
@@ -304,7 +304,7 @@ also invalidates Phase 5's own criteria.
 **Two further obstacles, found by reading the engine rather than by reasoning about it:**
 
 - **The driver is not a bus client.** `/qx` runs `page.evaluateWith` → the *renderer's* `untypedSendToSystem`, so
-  the send comes from the window. Making the driver a participant in its own right means giving `@apack/testing`
+  the send comes from the window. Making the driver a participant in its own right means giving `@apackdev/testing`
   a tRPC/ws client — new dependency surface in a package every pack's tests load.
 - **A plugin's own sends are not stamped.** `deliverPluginEvents` wraps only what the *shell* routes. A UI-triggered
   send (`usePlugin().send(…)` → an action → `sendToSystem`) runs outside any delivery, so it carries no `sender`
@@ -317,7 +317,7 @@ also invalidates Phase 5's own criteria.
    replies arrive *addressed*, so a person using the Database plugin no longer collides with a driving session and
    the engine stops reading a firehose of unrelated events. Worth doing; needs the criterion rewritten first.
 
-   **The blocker is one thing, and it is smaller than it looks.** Checked rather than assumed: `@apack/sdk/events`
+   **The blocker is one thing, and it is smaller than it looks.** Checked rather than assumed: `@apackdev/sdk/events`
    is shared to the page wholesale (`SDK_FE_MODULES`, `globalKey: 'sdkEvents'`), so `reply`, `_runDelivery` and
    `_currentDelivery` are all reachable at `window.__apack.sdkEvents`. A driving script can therefore stamp a
    sender today, with no new dependency, by wrapping its send:
@@ -330,7 +330,7 @@ also invalidates Phase 5's own criteria.
    That message carries `sender: 'host/drive'`, so the system's `reply` addresses its answer there. What is still
    missing is the **claim**: with nothing holding `host/drive`, `notify` drops the answer, because no pack declares
    it as a plugin. `bus.claim` is a tRPC procedure over the WebSocket, and the driver has no client — it drives the
-   page. So Phase 5 needs either a ws client in `@apack/testing` (a new dependency in a package every pack's tests
+   page. So Phase 5 needs either a ws client in `@apackdev/testing` (a new dependency in a package every pack's tests
    load) or the claim made from the page, which needs the window's client reachable there and today it is not.
 
    **And the connection costs no dependency**, which was asserted the other way here first and then measured.
@@ -378,7 +378,7 @@ also invalidates Phase 5's own criteria.
 | `npm run spec -- bus`, `-- transport` | passed |
 | `npm run compile` | passed (`facade:check` included) |
 | `npm run packages:build` + `packages:check` | passed |
-| `npm run api:update` (`@apack/sdk`, `@apack/ui`) | `etc/` committed; the published surface gained `reply`, `Message.sender`, `Message.client` and four `@internal` `_`-prefixed delivery members, and nothing else |
+| `npm run api:update` (`@apackdev/sdk`, `@apackdev/ui`) | `etc/` committed; the published surface gained `reply`, `Message.sender`, `Message.client` and four `@internal` `_`-prefixed delivery members, and nothing else |
 | `send-scope.spec.ts`, `outgoing-events.spec.ts` | pass **unmodified** — neither was loosened, and `outgoing-events` needed no new case |
 | `npm run spec-cost:update` | 11 specs recorded, 4 of them this goal's |
 

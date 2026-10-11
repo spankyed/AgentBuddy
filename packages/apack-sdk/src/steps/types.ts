@@ -91,7 +91,7 @@ export interface StepBuildFacet {
  *─────────────────────────────────────────────────────────────────*/
 
 import type { AnyActorRef } from 'xstate';
-import type { BaseEntity } from '@apack/ears';
+import type { BaseEntity } from '@apackdev/ears';
 import type { EARS } from '../types/entities.ts';
 
 export type TimestampMs = number;
@@ -118,7 +118,7 @@ export interface TNodeEntity extends BaseEntity {
   };
 }
 
-// Kept here for packs whose built types import it from @apack/sdk/steps
+// Kept here for packs whose built types import it from @apackdev/sdk/steps
 export type { SdkEntityShapes } from '../types/sdk-entities.ts';
 
 /**
@@ -245,7 +245,7 @@ export interface StepLayoutDescriptor {
 export interface StepFEFacet {
   nodeConfig: StepNodeConfig;
   colorKey?: string;
-  /** Vue component refs: the renderer's pack store (`@apack/host/fe`) fills them from `loadComponents` when the pack registers. */
+  /** Vue component refs: the renderer's pack store (`@apackdev/host/fe`) fills them from `loadComponents` when the pack registers. */
   components?: { node?: unknown; form?: unknown };
   /** Lazy factory that returns Vue components. Runs in FE context only. */
   loadComponents?: () => { node?: unknown; form?: unknown };

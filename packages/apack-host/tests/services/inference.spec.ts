@@ -8,8 +8,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JSONSchema7 } from 'ai';
-import { availableModels, parseModelId, providerCapabilities, providerLabels, PROVIDER_BASE_URLS, type ModelKind, type ProviderName } from '@apack/sdk/models';
-import { _createInferenceService, type InferenceService } from '@apack/sdk/services';
+import { availableModels, parseModelId, providerCapabilities, providerLabels, PROVIDER_BASE_URLS, type ModelKind, type ProviderName } from '@apackdev/sdk/models';
+import { _createInferenceService, type InferenceService } from '@apackdev/sdk/services';
 
 // The app's store, on a temporary file with keys in memory
 const secretsDir = vi.hoisted(() => ({ path: '' }));

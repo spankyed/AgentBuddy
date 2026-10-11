@@ -10,10 +10,10 @@
 // handler that awaits before answering is the ordinary shape of backend work and two of them overlap constantly.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, fromPromise, setup, type AnyActorRef, type AnyEventObject, type MachineContext } from 'xstate';
-import { startTestRuntime, takeSystemErrors, testRootEvents } from '@apack/sdk/testing';
-import { _currentDelivery, _replyTo, _runDelivery, untypedBroadcastToPlugin, untypedSendToSystem, type Message, type Reply } from '@apack/sdk/events';
-import { defineHandlers } from '@apack/sdk/framework';
-import { _whenSatisfied } from '@apack/sdk/testing/waiting';
+import { startTestRuntime, takeSystemErrors, testRootEvents } from '@apackdev/sdk/testing';
+import { _currentDelivery, _replyTo, _runDelivery, untypedBroadcastToPlugin, untypedSendToSystem, type Message, type Reply } from '@apackdev/sdk/events';
+import { defineHandlers } from '@apackdev/sdk/framework';
+import { _whenSatisfied } from '@apackdev/sdk/testing/waiting';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/registry.ts';
@@ -25,7 +25,7 @@ startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
 /**
  * A delay inside a *handler*, which is the shape under test rather than a test waiting for anything: a backend
  * system's work is I/O, so it awaits before it answers, and that is what makes the delivery scope load-bearing.
- * The cases themselves await the answer (`untilBus`); see `@apack/sdk/testing/waiting` for why.
+ * The cases themselves await the answer (`untilBus`); see `@apackdev/sdk/testing/waiting` for why.
  */
 const after = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

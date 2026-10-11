@@ -1,9 +1,9 @@
-// The host's implementations of the services packs reach through `services` (contracts in @apack/sdk/services),
+// The host's implementations of the services packs reach through `services` (contracts in @apackdev/sdk/services),
 // and the one place the app's HostRuntime is assembled.
 import { secretRedaction } from '../secrets/redaction.ts';
-import type { HostRuntime, RootEvents } from '@apack/sdk/runtime';
-import type { EarsEngine } from '@apack/ears';
-import type { LmdbStore } from '@apack/ears/lmdb';
+import type { HostRuntime, RootEvents } from '@apackdev/sdk/runtime';
+import type { EarsEngine } from '@apackdev/ears';
+import type { LmdbStore } from '@apackdev/ears/lmdb';
 import type { PackRegistry } from '../packs/registry.ts';
 import { createAppData } from './app-data.ts';
 import { HOST } from '../refs.ts';
@@ -11,7 +11,7 @@ import { filesystem } from './filesystem.ts';
 import { createSettingsService } from './settings.ts';
 import { createSettingsStore, type SettingsDocument } from '../features/settings/be/store.ts';
 
-import { getPackSettingsDefaults } from '@apack/sdk/framework';
+import { getPackSettingsDefaults } from '@apackdev/sdk/framework';
 import { inference } from './inference.ts';
 import { secrets } from './secrets.ts';
 import { createTraceStore } from './trace-store.ts';

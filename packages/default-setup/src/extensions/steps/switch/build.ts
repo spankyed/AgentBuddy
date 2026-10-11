@@ -1,7 +1,7 @@
-import type { StepBuildFacet, StepNodeFacet } from '@apack/sdk/steps';
-import type { StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepBranch } from '@apack/sdk/steps';
-import { BinaryOperator, BinaryOperator as Op } from '@apack/sdk/utils';
-import { EARS } from '@apack/sdk';
+import type { StepBuildFacet, StepNodeFacet } from '@apackdev/sdk/steps';
+import type { StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepBranch } from '@apackdev/sdk/steps';
+import { BinaryOperator, BinaryOperator as Op } from '@apackdev/sdk/utils';
+import { EARS } from '@apackdev/sdk';
 
 function parseExpressionToPredicate(expr: string): { key: string; operator: BinaryOperator; value?: any } | undefined {
   if (!expr || expr.trim() === '') return undefined;

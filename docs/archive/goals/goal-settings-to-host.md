@@ -1,7 +1,7 @@
 > **Written in session** `c9f31de2-e94c-46ea-a2ac-2898390dc27d` (Claude Code, 2026-09-22). Resume it with `claude -r c9f31de2-e94c-46ea-a2ac-2898390dc27d`.
 
 ```
-# Goal: settings is the app's, not a pack's — the store and system in @apack/host, the views in the renderer
+# Goal: settings is the app's, not a pack's — the store and system in @apackdev/host, the views in the renderer
 
 Implement docs/goals/goal-settings-to-host.md, at or after 6d0633ad4 — the
 base its Background was surveyed at.
@@ -51,7 +51,7 @@ Never:
 - add backward-compat shims or loosen a failing assertion instead of investigating.
 - move a per-feature settings form (features/<id>/fe/settings.vue) or a feature's own settings.ts
   defaults out of default-setup — those are the pack's content (Decision 3).
-- teach @apack/host the shape of `general` or `assistant` (Decision 2: sections are opaque to the host).
+- teach @apackdev/host the shape of `general` or `assistant` (Decision 2: sections are opaque to the host).
 - leave the settings system's non-settings jobs in it (Decision 5).
 ```
 
@@ -123,11 +123,11 @@ from. Settings adds a third feature beside `application` and `packs`.
 | `settings.ts`, `plugin-settings.ts`, `constants.ts` | — | the feature's own defaults; reading a slice by name; UI URLs |
 | `fe/**` | — | the plugin, its machine, and the canvas/tabs/components |
 
-**`document.ts` depends only on `@apack/sdk/ids` and `@apack/sdk/utils/pure`** — it moves as-is.
+**`document.ts` depends only on `@apackdev/sdk/ids` and `@apackdev/sdk/utils/pure`** — it moves as-is.
 
 **The store depends on** `@/__generated__/ears` (`tx`, `qx`, `EARS`), `../types`, `../defaults`,
-`@apack/sdk/utils/pure`, `@apack/sdk/ids` and `@apack/sdk/framework`'s `getFeaturesWithSettings`. The
-host's equivalent of the first is `import { tx, untypedQx } from '@apack/ears'`, as
+`@apackdev/sdk/utils/pure`, `@apackdev/sdk/ids` and `@apackdev/sdk/framework`'s `getFeaturesWithSettings`. The
+host's equivalent of the first is `import { tx, untypedQx } from '@apackdev/ears'`, as
 `packages/apack-host/src/app-state/index.ts` does.
 
 ### The settings system is four jobs, not one
@@ -137,7 +137,7 @@ host's equivalent of the first is `import { tx, untypedQx } from '@apack/ears'`,
 - **settings** — `GET_SETTINGS`, `UPDATE_SETTINGS`, `RESET_SETTINGS`, `REPLACE_SETTINGS`
 - **CLI provider testing** — `TEST_CLI_PROVIDER`, importing `testCli`/`isCliName`/`clearCliPathCache` from
   `@/features/code/be/utils/resolve-cli`. default-setup's `code` feature.
-- **pack content** — `PREVIEW_PACK_CONTENT`, `IMPORT_PACK_CONTENT` (`previewPackContent` from `@apack/sdk/content`)
+- **pack content** — `PREVIEW_PACK_CONTENT`, `IMPORT_PACK_CONTENT` (`previewPackContent` from `@apackdev/sdk/content`)
 - **app reset** — `RESET_APP` (`services.appData.reset()`)
 
 plus `SECRETS_CHANGED`/`SECRETS_UPDATED` forwarding (host's `forwardSecretsChanges`) and `loadFaqs()` for
@@ -174,7 +174,7 @@ What actually has to move, and what it drags:
   `services.appData.importBackup` with it. It must be on the host service's contract.
 - **`document.ts` is shared BE *and* FE** — the store and system use it, and so does
   `fe/canvas/components/GeneralSettings/SettingsJsonEditor.vue:42`. Since the views move to the renderer
-  and the renderer may import `@apack/host`, one host copy serves both.
+  and the renderer may import `@apackdev/host`, one host copy serves both.
 - **`constants.ts` is shared and partly the pack's**: `be/system.ts:18` takes `REQUIRED_PROVIDERS`,
   `fe/.../Secrets.vue:113` takes both, `HelpTab.vue:60` takes the URLs — and
   `src/extensions/app/Welcome.vue:28` (default-setup's, staying) takes `DISCORD_URL`. It splits rather
@@ -225,8 +225,8 @@ Final.
    The per-plugin interfaces in `be/types.ts` move to the feature that owns each.
 
 4. **`services.settings` becomes a host service** — `HOST_SERVICE_NAMES`, contract in
-   `@apack/sdk/services/settings.ts`, implementation in `@apack/host/services/settings.ts`, test double
-   in `@apack/sdk/testing`. Its surface gains the thing this goal exists for: a feature's **own**
+   `@apackdev/sdk/services/settings.ts`, implementation in `@apackdev/host/services/settings.ts`, test double
+   in `@apackdev/sdk/testing`. Its surface gains the thing this goal exists for: a feature's **own**
    settings, read and written without naming itself.
 
 5. **The system's non-settings jobs go where they belong**, in the same phase that moves the system:
@@ -310,25 +310,25 @@ was open, and what it was weighed against, survives with the answer.
 
 ### Phase 1 — `document.ts` to the host
 
-The pure core, which nothing else has to wait for. It depends only on `@apack/sdk/ids` and
-`@apack/sdk/utils/pure`.
+The pure core, which nothing else has to wait for. It depends only on `@apackdev/sdk/ids` and
+`@apackdev/sdk/utils/pure`.
 
 - Move to `packages/apack-host/src/features/settings/be/document.ts`, unchanged except that `SECTIONS`
   becomes a parameter (Decision 2): `settingsProblems(next, { before, sections, keyProblem })`.
-- default-setup imports it from `@apack/host` — temporarily, until Phase 3 removes the last caller.
-  This is the one phase where a pack import of `@apack/host` exists; `check:specifiers` will reject it,
+- default-setup imports it from `@apackdev/host` — temporarily, until Phase 3 removes the last caller.
+  This is the one phase where a pack import of `@apackdev/host` exists; `check:specifiers` will reject it,
   so Phase 1 and Phase 2 land together or Phase 1 keeps the file in place and only adds the host copy's
   tests. Prefer the latter: **copy the module, add its specs, and delete the pack's copy in Phase 3.**
 
 **Done when:** `packages/apack-host/tests/features/settings/document.spec.ts` covers `setIn`/`removeIn`
 prototype safety, `changesFrom`, `isEqual` and `settingsProblems` with a caller-supplied section list;
-`npm test -w @apack/host` and `npm run typecheck:host` pass. Mutation: allowing an unknown section fails
+`npm test -w @apackdev/host` and `npm run typecheck:host` pass. Mutation: allowing an unknown section fails
 the spec.
 
 ### Phase 2 — The store and the entity
 
 - `packages/apack-host/src/features/settings/be/store.ts` from `be/repository/index.ts` (170 lines), with
-  `import { tx, untypedQx } from '@apack/ears'` in place of the pack's generated EARS, and the sections
+  `import { tx, untypedQx } from '@apackdev/ears'` in place of the pack's generated EARS, and the sections
   of Decision 2.
 - `Settings` into `HOST_ENTITY_TYPES` (`app-state/index.ts` or a sibling), out of default-setup's
   `apack.json` (Decision 6).
@@ -336,13 +336,13 @@ the spec.
   registered them.
 
 **Done when:** specs cover stored-vs-effective merging, the one `write()` refusing a bad document,
-listeners firing in order, and `whileReplacingData` bracketing; `npm test -w @apack/host`,
+listeners firing in order, and `whileReplacingData` bracketing; `npm test -w @apackdev/host`,
 `npm run typecheck:host`. Mutation: writing without the check fails the refusal spec.
 
 ### Phase 3 — `services.settings` as a host service
 
 > **Done, 2026-09-22.** `services.settings` is a host service end to end — contract, implementation,
-> `HOST_SERVICE_NAMES`, `HostRuntimeServices`, `createHostRuntime`, the `@apack/host/settings` export and
+> `HOST_SERVICE_NAMES`, `HostRuntimeServices`, `createHostRuntime`, the `@apackdev/host/settings` export and
 > the harness binding the real store — and default-setup's own `settings` service is gone.
 >
 > **No pack code reads or writes the settings row any more**: `git grep 'repository.settings'` in
@@ -365,15 +365,15 @@ listeners firing in order, and `whileReplacingData` bracketing; `npm test -w @ap
 > `unknown`, so ~25 reads now name their type (`ThreadsSettings`, `CodeSettings`, `GeneralSettings`, …).
 > `getAll` and `getStored` are generic for the same reason. Nobody could see those reads were untyped.
 
-- Contract in `@apack/sdk/services/settings.ts`, implementation in
+- Contract in `@apackdev/sdk/services/settings.ts`, implementation in
   `packages/apack-host/src/services/settings.ts`, `HOST_SERVICE_NAMES`, `createHostRuntime`'s services,
-  `HOST_SERVICE_KEYS` in `tests/boundaries.spec.ts`, and the in-memory double in `@apack/sdk/testing`.
+  `HOST_SERVICE_KEYS` in `tests/boundaries.spec.ts`, and the in-memory double in `@apackdev/sdk/testing`.
 - Add the own-settings surface (Decision 4) and delete default-setup's `be/services/settings.ts`,
   `be/repository/`, `be/defaults.ts` and `document.ts`.
 - Migrate every `services.settings` caller.
 
 **Done when:** `tests/boundaries.spec.ts` passes with the new key; `npm run api:update` in
-`packages/apack-sdk` with `etc/` committed; `npm test -w @apack/host`, `npm test -w @app/default-setup`,
+`packages/apack-sdk` with `etc/` committed; `npm test -w @apackdev/host`, `npm test -w @app/default-setup`,
 `npm run typecheck`.
 
 ### Phase 4 — The system
@@ -383,7 +383,7 @@ listeners firing in order, and `whileReplacingData` bracketing; `npm test -w @ap
 - Split out the non-settings jobs (Decision 5).
 - `forwardSecretsChanges(registry)` keeps targeting the `settings` designation — confirm with a spec.
 
-**Done when:** `npm test -w @apack/host`, `packages/api/tests/unit/` pass; a spec pins that
+**Done when:** `npm test -w @apackdev/host`, `packages/api/tests/unit/` pass; a spec pins that
 `getDesignated('settings')` resolves to `host/settings`.
 
 ### Phase 5 — The plugin and its views
@@ -437,7 +437,7 @@ Done, in eight commits on `AS/shell-owned-plugins`, ending with the atomic move
 |---|---|
 | 1 — `document.ts` to the host | `packages/apack-host/src/features/settings/be/document.ts`, with sections a `SettingsCheck` parameter rather than a fixed list |
 | 2 — the store and the entity | `be/store.ts`: `createSettingsStore({ defaults })`, one `write()`, `whileReplacingData`. `Settings` joins `AppState` in `HOST_ENTITY_TYPES` |
-| 3 — `services.settings` as a host service | `@apack/sdk/services/settings.ts` + `@apack/host/services/settings.ts`, in `HOST_SERVICE_NAMES`; `PackRegistration.settingsSections` and the manifest field for a pack's own sections |
+| 3 — `services.settings` as a host service | `@apackdev/sdk/services/settings.ts` + `@apackdev/host/services/settings.ts`, in `HOST_SERVICE_NAMES`; `PackRegistration.settingsSections` and the manifest field for a pack's own sections |
 | 4 — the system | `features/settings/be/system.ts` at `host/settings`. Its three non-settings jobs left first: CLI testing to `code`, the assistant's birth flow to `threads`, and the FAQ tab to the `help` contribution any pack can make |
 | 5 — the plugin and its views | `features/settings/fe/machine.ts` in the host, `packages/renderer/src/views/settings/` in the renderer, registered through `hostFrontend`. Frontend code reaches the settings through the SDK's `SettingsPort`, never the view's actor |
 | 6 — delete the feature | `packages/default-setup/src/features/settings/` is gone; its 28 per-feature settings types went to the features that own them, and its `general`/`assistant` sections to `src/app-settings/` |

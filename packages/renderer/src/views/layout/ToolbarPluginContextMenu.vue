@@ -12,10 +12,10 @@
 import { computed, ref } from 'vue';
 import { ExternalLink, EyeOff, Settings as SettingsIcon } from 'lucide-vue-next';
 import type { Plugin } from '@/types';
-import ContextMenuPopup from '@apack/ui/design/ContextMenuPopup';
-import { useShell, untypedOpenPlugin } from '@apack/sdk/fe';
-import { HOST } from '@apack/host/fe';
-import { useContextMenu, type MenuItem } from '@apack/ui/composables/useContextMenu';
+import ContextMenuPopup from '@apackdev/ui/design/ContextMenuPopup';
+import { useShell, untypedOpenPlugin } from '@apackdev/sdk/fe';
+import { HOST } from '@apackdev/host/fe';
+import { useContextMenu, type MenuItem } from '@apackdev/ui/composables/useContextMenu';
 
 const { showMenu, menuPos, open: openMenu } = useContextMenu();
 const shell = useShell();

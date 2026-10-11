@@ -2,7 +2,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import type { Config } from 'tailwindcss';
 import containerQueries from '@tailwindcss/container-queries';
-import { uiTailwindPreset } from '@apack/ui/tailwind-preset';
+import { uiTailwindPreset } from '@apackdev/ui/tailwind-preset';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packagesDir = path.join(__dirname, '..');
@@ -36,8 +36,8 @@ export default {
     'text-neutral-100',
     'block'
   ],
-  // @apack/ui's components name primary-*, so its theme comes from the package rather than being
-  // repeated here — a pack that bundles @apack/ui applies the same preset
+  // @apackdev/ui's components name primary-*, so its theme comes from the package rather than being
+  // repeated here — a pack that bundles @apackdev/ui applies the same preset
   presets: [uiTailwindPreset],
   theme: {
     extend: {

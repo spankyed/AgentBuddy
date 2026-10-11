@@ -48,8 +48,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ArtifactItem } from '@apack/sdk/artifacts';
-import CopyButton from '@apack/ui/design/CopyButton';
+import type { ArtifactItem } from '@apackdev/sdk/artifacts';
+import CopyButton from '@apackdev/ui/design/CopyButton';
 
 /**
  * A table artifact's content is either a list of row objects, or an explicit

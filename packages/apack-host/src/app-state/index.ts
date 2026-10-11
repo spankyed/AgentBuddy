@@ -2,8 +2,8 @@
 // it; they learn whether the user onboarded through services.appData, and the renderer through the
 // application plugin's CLIENT_CONNECTED. Resetting the user's settings doesn't touch it; resetting the
 // app (appData.reset()) empties it with everything else.
-import { untypedTx, untypedQx } from '@apack/ears';
-import type { EARS } from '@apack/sdk';
+import { untypedTx, untypedQx } from '@apackdev/ears';
+import type { EARS } from '@apackdev/sdk';
 import { SETTINGS_ENTITY } from '../features/settings/be/store.ts';
 import { APPLIED_CONTENT_ENTITY } from './applied-content.ts';
 

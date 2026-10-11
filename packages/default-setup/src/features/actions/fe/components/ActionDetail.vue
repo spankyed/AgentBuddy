@@ -111,20 +111,20 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apack/sdk/fe'
+import { usePlugin } from '@apackdev/sdk/fe'
 import { computed } from 'vue';
 import type { Category } from '#generated/types.ts';
 import { ExternalLink } from 'lucide-vue-next';
-import NameSaveHeader from '@apack/ui/design/NameSaveHeader';
-import CollapsibleSection from '@apack/ui/design/CollapsibleSection';
+import NameSaveHeader from '@apackdev/ui/design/NameSaveHeader';
+import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection';
 import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
-import JsonSchemaEditor from '@apack/ui/components/JsonSchemaEditor';
+import JsonSchemaEditor from '@apackdev/ui/components/JsonSchemaEditor';
 import { openPlugin } from '#generated/fe.ts'
-import { useCollapsibleState } from '@apack/ui/composables/useCollapsibleState';
+import { useCollapsibleState } from '@apackdev/ui/composables/useCollapsibleState';
 import type { ActionsState } from '#features/actions/fe/state.ts';
-import type { ActionEntity } from '@apack/sdk';
-import type { ActionParameter } from '@apack/sdk';
+import type { ActionEntity } from '@apackdev/sdk';
+import type { ActionParameter } from '@apackdev/sdk';
 
 const props = defineProps<{
   action?: ActionEntity;

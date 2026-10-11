@@ -1,6 +1,6 @@
 // Actions (Action rows), which action steps run: the SDK declares Action, and its flow compiler and
 // appliers resolve actions by label
-import { RepositoryError, RepositoryErrorCode, installedEngine as ears } from '@apack/ears';
+import { RepositoryError, RepositoryErrorCode, installedEngine as ears } from '@apackdev/ears';
 import { EARS } from '../types/entities.ts';
 import { trash } from './trash.ts';
 import type { ActionEntity, ActionParameter } from '../types/sdk-entities.ts';

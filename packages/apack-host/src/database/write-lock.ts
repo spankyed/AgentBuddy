@@ -5,7 +5,7 @@
 // The mechanism is `../exclusive-lock.ts`, shared with the CLI's code generation. What is this module's own is the
 // policy: where the file lives, what the refusal says, and that the app asserts on it before opening a store.
 import * as path from 'node:path';
-import { _appDirOf } from '@apack/sdk/env';
+import { _appDirOf } from '@apackdev/sdk/env';
 import { findLockHolder, holdExclusiveLock } from '../exclusive-lock.ts';
 
 

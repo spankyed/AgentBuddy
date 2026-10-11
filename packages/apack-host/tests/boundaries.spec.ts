@@ -3,7 +3,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { HostRuntime } from '@apack/sdk/runtime';
+import type { HostRuntime } from '@apackdev/sdk/runtime';
 
 const HOST_ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(HOST_ROOT, 'src');
@@ -82,21 +82,21 @@ describe('host package boundaries', () => {
     expect(offending, 'Transport belongs in packages/api; host is also run by the CLI and the pack test harness').toEqual([]);
   });
 
-  it('imports itself by relative path, never as @apack/host/*', () => {
+  it('imports itself by relative path, never as @apackdev/host/*', () => {
     const offending = sourceFiles(SRC).flatMap((file) =>
-      importsOf(file).filter(({ specifier }) => /^@apack\/host(\/|$)/.test(specifier)).map(({ specifier }) => `${rel(file)}: ${specifier}`));
+      importsOf(file).filter(({ specifier }) => /^@apackdev\/host(\/|$)/.test(specifier)).map(({ specifier }) => `${rel(file)}: ${specifier}`));
     expect(offending).toEqual([]);
   });
 
-  it('keeps the @apack/host/packs barrel clear of the pack runtime', () => {
+  it('keeps the @apackdev/host/packs barrel clear of the pack runtime', () => {
     const reached = [...runtimeClosure(path.join(SRC, 'packs', 'index.ts'))].filter(inRuntime).map(rel);
-    expect(reached, 'The CLI imports @apack/host/packs: importing packs/runtime from it bundles the loader into @apack/cli').toEqual([]);
+    expect(reached, 'The CLI imports @apackdev/host/packs: importing packs/runtime from it bundles the loader into @apackdev/cli').toEqual([]);
   });
 
   it('keeps the bus clear of the pack runtime', () => {
     const busFiles = sourceFiles(path.join(SRC, 'bus'));
     const reached = new Set(busFiles.flatMap((file) => [...runtimeClosure(file)]).filter(inRuntime));
-    expect([...reached].map(rel), 'The pack test harness imports @apack/host/bus: it must not load the pack loader').toEqual([]);
+    expect([...reached].map(rel), 'The pack test harness imports @apackdev/host/bus: it must not load the pack loader').toEqual([]);
   });
 
   // The shell and the frontend registry run in the renderer and in a pack's tests alike, so what differs between

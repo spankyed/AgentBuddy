@@ -1,6 +1,6 @@
-// Compiles @apack/ui's components and modules to ESM in dist/. Each export is an entry, and
+// Compiles @apackdev/ui's components and modules to ESM in dist/. Each export is an entry, and
 // modules several entries use are emitted once as shared chunks. Dependencies and peers stay
-// external: packs get vue, @apack/sdk and the host-shared libraries from the host.
+// external: packs get vue, @apackdev/sdk and the host-shared libraries from the host.
 import { defineConfig } from 'tsdown';
 import Vue from 'unplugin-vue/rolldown';
 import { readFileSync } from 'node:fs';

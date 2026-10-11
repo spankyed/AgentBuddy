@@ -2,10 +2,10 @@ import { defineConfig } from 'vitest/config';
 import { defaultServerConditions } from 'vite';
 
 // Vitest's own defaults: Vite's server conditions without 'module'
-const conditions = ['@apack/source', ...defaultServerConditions.filter((c) => c !== 'module')];
+const conditions = ['@apackdev/source', ...defaultServerConditions.filter((c) => c !== 'module')];
 
 export default defineConfig({
-  // Workspace @apack/* packages resolve to source (see their package.json exports)
+  // Workspace @apackdev/* packages resolve to source (see their package.json exports)
   resolve: { conditions },
   ssr: { resolve: { conditions } },
   test: {

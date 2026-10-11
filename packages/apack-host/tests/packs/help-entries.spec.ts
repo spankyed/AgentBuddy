@@ -2,7 +2,7 @@
 // answers with, so any pack can add help. They are read the first time the list is read, not at registration,
 // because a pack's may come from its compiled content — which exist only after it is built.
 import { describe, expect, it, vi } from 'vitest';
-import type { HelpEntry, PackRegistration } from '@apack/sdk/framework';
+import type { HelpEntry, PackRegistration } from '@apackdev/sdk/framework';
 import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const entry = (id: string): HelpEntry => ({ id, question: `q-${id}`, answer: `a-${id}` });

@@ -114,12 +114,12 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apack/sdk/fe'
+import { usePlugin } from '@apackdev/sdk/fe'
 
 import { ref, computed, watch } from 'vue'
 import { Search, Filter, List, Columns3, PanelLeft, History, Archive, X } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
-import Button from '@apack/ui/design/button'
+import Button from '@apackdev/ui/design/button'
 import FilterPopover from './FilterPopover.vue'
 import { type ThreadsState } from '#features/threads/fe/state.ts'
 import type { ThreadTagOption } from '#generated/types.ts'

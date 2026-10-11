@@ -5,11 +5,11 @@ import { execFileSync } from 'child_process';
 import { parse, satisfies } from 'semver';
 import { replaceDir } from '../replace-dir.ts';
 import { DOWNLOAD_TIMEOUT_MS, fetchReleaseAsset, githubFetch, type GitHubReleaseAsset } from './github.ts';
-import { resolveAppContext } from '@apack/sdk/env';
-import { PACK_ID_PATTERN } from '@apack/sdk/ids';
-import { PACK_SNAPSHOT_FORMAT, parseManifest } from '@apack/sdk/build';
-import { createLogger } from '@apack/sdk/logger';
-import type { PackManifest } from '@apack/sdk/build';
+import { resolveAppContext } from '@apackdev/sdk/env';
+import { PACK_ID_PATTERN } from '@apackdev/sdk/ids';
+import { PACK_SNAPSHOT_FORMAT, parseManifest } from '@apackdev/sdk/build';
+import { createLogger } from '@apackdev/sdk/logger';
+import type { PackManifest } from '@apackdev/sdk/build';
 import {
   PACK_LAYOUT,
   assertChecksum,
@@ -23,7 +23,7 @@ import {
   stagedFileHashes,
   type PackIntegrity,
 } from './layout.ts';
-import { errorMessage as reason } from '@apack/sdk/utils/pure';
+import { errorMessage as reason } from '@apackdev/sdk/utils/pure';
 
 // The CLI installs without an app bound: its entries go to the console then
 const log = createLogger('pack-installer');

@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
-import { parseManifest, type PackManifest } from '@apack/sdk/build';
-import { APP_ENVS, parseAppEnv, type AppEnv } from '@apack/sdk/env';
+import { parseManifest, type PackManifest } from '@apackdev/sdk/build';
+import { APP_ENVS, parseAppEnv, type AppEnv } from '@apackdev/sdk/env';
 
 const ENV_FLAGS = ['-d', '--dev', '-b', '--beta', '--production'] as const;
 
@@ -89,9 +89,9 @@ export function readValidManifest(root: string): PackManifest {
 
 const cliRequire = createRequire(import.meta.url);
 
-/** The @apack/sdk package this CLI runs against. */
+/** The @apackdev/sdk package this CLI runs against. */
 export function sdkPackageDir(): string {
-  return path.dirname(cliRequire.resolve('@apack/sdk/package.json'));
+  return path.dirname(cliRequire.resolve('@apackdev/sdk/package.json'));
 }
 
 export function sdkVersion(): string | undefined {

@@ -1,7 +1,7 @@
 /**
  * Answering a question from the app something else is holding: read its session, attach, ask, let go.
  *
- * **`@apack/testing` is resolved at runtime, never imported.** It is a devDependency of this package, so a
+ * **`@apackdev/testing` is resolved at runtime, never imported.** It is a devDependency of this package, so a
  * static import would make `bundle-package.ts` refuse the bundle outright, and a real dependency would put
  * the whole Playwright harness in every install of someone who only runs `apack build`. The CLI already
  * reaches it this way for the Playwright binary (`resolvePlaywrightCli`), from the pack's own
@@ -12,17 +12,17 @@ import * as path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
-import type { AttachedSession, AttachedSessionOptions } from '@apack/testing';
-import { readSession, touchSession, waitForSession, STARTED_BY_ENV, type DevSession } from '@apack/host/dev-session';
-import { holdExclusiveLock, type ExclusiveLock } from '@apack/host/exclusive-lock';
+import type { AttachedSession, AttachedSessionOptions } from '@apackdev/testing';
+import { readSession, touchSession, waitForSession, STARTED_BY_ENV, type DevSession } from '@apackdev/host/dev-session';
+import { holdExclusiveLock, type ExclusiveLock } from '@apackdev/host/exclusive-lock';
 
-/** Just the part of `@apack/testing` this needs, so a wrong resolve fails on the name rather than later. */
+/** Just the part of `@apackdev/testing` this needs, so a wrong resolve fails on the name rather than later. */
 interface TestingModule {
   attachedSession: (options: AttachedSessionOptions) => Promise<AttachedSession>;
 }
 
 /**
- * The pack's own `@apack/testing`, as a module.
+ * The pack's own `@apackdev/testing`, as a module.
  *
  * The install hint rather than a module-not-found from inside a bundle: a pack that has never run
  * `init-tests` has no harness, and the fix is one command.
@@ -31,14 +31,14 @@ async function testingModule(from: string): Promise<TestingModule> {
   const require = createRequire(path.join(from, 'package.json'));
   let entry: string;
   try {
-    entry = require.resolve('@apack/testing');
+    entry = require.resolve('@apackdev/testing');
   } catch {
-    throw new Error('@apack/testing is not installed here. Run: npm i -D @apack/testing @playwright/test');
+    throw new Error('@apackdev/testing is not installed here. Run: npm i -D @apackdev/testing @playwright/test');
   }
   const loaded = await import(pathToFileURL(entry).href) as Partial<TestingModule>;
   if (typeof loaded.attachedSession !== 'function') {
     throw new Error(
-      `The @apack/testing at ${entry} has no \`attachedSession\`, so it is older than this CLI. Update it: npm i -D @apack/testing@latest`,
+      `The @apackdev/testing at ${entry} has no \`attachedSession\`, so it is older than this CLI. Update it: npm i -D @apackdev/testing@latest`,
     );
   }
   return loaded as TestingModule;

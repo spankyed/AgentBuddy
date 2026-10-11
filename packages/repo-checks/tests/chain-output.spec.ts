@@ -3,7 +3,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { firstChange, REPO_ROOT } from '@apack/host/build/packages-built';
+import { firstChange, REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { CHAIN_STEPS, orderedSteps } from '../../../scripts/lib/chain-steps.ts';
 import { machineText, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { briefly, classifyLine, criticalPathLine, pathSavingsLine, outgrownReport, declaredAt, dim, driftReport, DRY_REASON_COLUMN, howLong, identicalRewrites, marker, movedWhileItRan, oneLine, REASON_COLUMN, shouldClassify, staleLines, STEP_NAME_WIDTH, TIME_COLUMN, voidedLine, whenChanged, wrapAt, writerOf } from '../../../scripts/lib/chain-output.ts';
@@ -106,7 +106,7 @@ describe('voidedLine', () => {
     expect(voidedLine(['typecheck'], true), 'it already did').not.toContain('--strict');
   });
 
-  // One defect can void many steps at once: api:check rebuilding @apack/testing mid-chain once left twenty
+  // One defect can void many steps at once: api:check rebuilding @apackdev/testing mid-chain once left twenty
   it('counts them rather than listing twenty names in a sentence', () => {
     const line = voidedLine(['a', 'b', 'c'], true);
 

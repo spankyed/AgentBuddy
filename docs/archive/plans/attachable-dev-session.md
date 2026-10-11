@@ -4,8 +4,8 @@
 > Phase 3 `5176a75a2`/`1a2ce7938`, Phase 4 `fd621dddf`. The deletion went ahead on the measurement it was
 > conditional on: 0.7s for the engine's attach against 1.0s for the CDP one, end to end, median of 7 — so
 > 0.3s a question against 851 lines and a second long-lived app. Four things the work settled that this text
-> only anticipated: the session module belongs to `@apack/host` because two launchers publish one; `dev`
-> had to stop requiring a pack; `@apack/testing` is resolved at runtime by `drive` rather than imported;
+> only anticipated: the session module belongs to `@apackdev/host` because two launchers publish one; `dev`
+> had to stop requiring a pack; `@apackdev/testing` is resolved at runtime by `drive` rather than imported;
 > and a question **refuses** rather than starting an app, with `--spawn` to ask. The goal doc's Outcome has
 > the measurements. For the commands as they are now, see `docs/public-facing/cli.md`.
 Compiled 2026-10-09. The spike below is run and green, so this is work that can start, after
@@ -150,7 +150,7 @@ loops, and only one of them has none:
 | pack frontend | HMR, `dev`'s Vite server |
 | pack backend | `apack build --watch` → ~40ms rebuild → `POST /dev/reload`, the pack reloaded in place |
 | host renderer | HMR, but only under `npm start` — `dev` launches a built app |
-| **host backend** (`@apack/host`, SDK, API) | **none**: `npm start` builds it once and awaits it before Electron spawns |
+| **host backend** (`@apackdev/host`, SDK, API) | **none**: `npm start` builds it once and awaits it before Electron spawns |
 
 Attaching changes none of these. What it removes is the *second app* and the relaunch per question; a host
 backend change still needs `npm run build:be` and a restarted app, and a `/reload` verb reloads a renderer,
@@ -287,7 +287,7 @@ undefined and the built-in pack is compiled into the API — but in a pack repo 
 a spawn that reproduced dev's *environment* would attach a pack author to an app without their pack,
 or with the copy from before their last edit. `dev` already does it: `installToApp` (`run.ts:61`, called
 at `:259`) is the pack install, and `ensureCheckoutPackages` beside it is a different job — building the
-`@apack` packages' `dist` that a pack compiles against (`checkout-packages.ts`' header) — so spawning
+`@apackdev` packages' `dist` that a pack compiles against (`checkout-packages.ts`' header) — so spawning
 `dev` gets both for nothing. Naming the second where the first does the work is the mistake this sentence
 used to make.
 
@@ -382,11 +382,11 @@ design, so the two ways out are `apack dev`, which reclaims it, and the `supervi
 carries. The reclaim answers correctness — the developer's `npm start` cannot be blocked by it — and the
 line answers the other question, which is who closes it.
 
-Under contention it takes `holdExclusiveLock` (`@apack/host/exclusive-lock`) and **re-reads the session
+Under contention it takes `holdExclusiveLock` (`@apackdev/host/exclusive-lock`) and **re-reads the session
 file after acquiring**, because two agents asking at once is the ordinary case here and both would
 otherwise launch — the same rule, and the same mechanism, as the chain's one writer per stamp directory.
 
-**Liveness is already solved.** `recordIsStale(file, pid)` (`@apack/host/process-liveness`) exists for
+**Liveness is already solved.** `recordIsStale(file, pid)` (`@apackdev/host/process-liveness`) exists for
 exactly "is the process that wrote this record still there", errs toward stale, and is what the
 `pack-dev-servers` marker and the API port file already use. A session file whose app has gone is a miss,
 not an error.
@@ -404,7 +404,7 @@ cost booked as a saving. **Per-script isolation is not on that list**, deliberat
 of the script path launching its own app rather than a reason to keep the runner, and it would survive a
 runner that did nothing else. "What stays" is where it is argued. `_electron.launch` is what attach replaces, not `@playwright/test`.
 
-**Neither is a dependency of `@apack/cli`; both are optional peers, imported lazily.** The runner is
+**Neither is a dependency of `@apackdev/cli`; both are optional peers, imported lazily.** The runner is
 nearly free beside the attach path it sits next to: measured 2026-10-09 on this checkout, `playwright-core`
 is 11M and `@playwright/test`'s own files are ~24K, the 12M beside it being a *duplicated*
 `playwright-core` 1.54.1 under its `node_modules` (version skew here — root pins 1.54.1, the hoisted core
@@ -413,10 +413,10 @@ decides where they are declared is that a published CLI should not drag either i
 who only runs `apack build` — and `dev` and `drive` are one binary, so a module-level rule that `dev`
 never imports the session decides runtime and not install weight.
 
-So both sit on `@apack/testing`, where `@playwright/test` already is (`peerDependencies`,
+So both sit on `@apackdev/testing`, where `@playwright/test` already is (`peerDependencies`,
 `peerDependenciesMeta.optional`) and where `SessionPage` and the new `cdp-page.ts` live, and the attach
 path imports `playwright-core` lazily and throws with an install hint when it is absent — the pattern
-`@apack/sdk` already uses for `typescript` and `esbuild`. `apack build`, `validate`, `pack` and `dev`
+`@apackdev/sdk` already uses for `typescript` and `esbuild`. `apack build`, `validate`, `pack` and `dev`
 gain nothing to install; `drive` needs what it needs and says so. A pack that ran `init-tests` has both
 already, and `resolvePlaywrightCli` continues to resolve the pack's copy rather than a bundled one.
 
@@ -502,7 +502,7 @@ is in "Security" below, and it is a condition of the design rather than a mitiga
 | `apack-testing/src/engine/cdp-page.ts` | new: `SessionPage` over a connected `Page` — the same body the fixture's uses |
 | `apack-testing/src/engine/{server,marker}.ts` | delete |
 | `apack-cli/src/app/drive-{engine,one-shot}.ts` | delete |
-| `apack-testing/package.json` | `playwright-core` as an optional peer beside `@playwright/test`; `@apack/cli`'s dependencies are unchanged |
+| `apack-testing/package.json` | `playwright-core` as an optional peer beside `@playwright/test`; `@apackdev/cli`'s dependencies are unchanged |
 | root `package.json` | `drive:serve` → `dev`; `drive:eval`/`:query`/`:state` keep their names. **The new `dev` script carries `tsx scripts/drive-preflight.ts &&` like the five `drive*` scripts already do** — see "The stale-build nudge" |
 | `drive/` scaffold | drop the two generated `.mts` files; the Playwright config stays, since scripts still run on the runner |
 | `apack-cli/src/commands/profiles.ts` | a **running** column: `supervisorPid`, `startedBy`, uptime and debug port per data dir, read from the session files, with the four environments' dirs listed beside the profiles. See "Telling the user" |
@@ -566,7 +566,7 @@ caller it is often read by nothing at all, since the one-shot's stdout goes to a
 profiles` gains a **running** column — `supervisorPid`, `startedBy`, uptime, debug port — read from the session files,
 with the four environments' data dirs listed beside the profiles, because a profile and a build's default
 dir are both data dirs ([`profiles-not-instances.md`](profiles-not-instances.md)'s three-term table). It
-needs no new mechanism: `profileInUse` and `recordIsStale` (`@apack/host/process-liveness`) already
+needs no new mechanism: `profileInUse` and `recordIsStale` (`@apackdev/host/process-liveness`) already
 answer liveness, and this is the `docker ps` to the start line's `docker run`.
 
 That pair is the whole answer to "who closes this": the run says it, and the listing finds it later. An
@@ -588,7 +588,7 @@ set that had the prefix and whose replacement would lose it. So **`dev` gets the
 closes.
 
 **It cannot move into the CLI, and that is the reason it is a script.** `drive-preflight.ts` imports
-`chain-steps.ts`; `@apack/cli` ships to pack authors, who have no chain and no such declaration, so a
+`chain-steps.ts`; `@apackdev/cli` ships to pack authors, who have no chain and no such declaration, so a
 check over it has nothing to read there. A developer in this checkout who calls the bin directly is
 choosing to, which is the same bargain every other repo script makes.
 
@@ -725,7 +725,7 @@ risk to note but a condition to meet:
   never from a session file's contents. `development` only: not `test`, and not a packaged app a user installed.
   One call site, one gate, and the firing case above is what holds it.
 - **`127.0.0.1` only.** Chromium binds the debug port locally by default and nothing may widen it.
-- **The session file is mode-0600**, through `writePrivateFile` (`@apack/host/private-file`, moved there
+- **The session file is mode-0600**, through `writePrivateFile` (`@apackdev/host/private-file`, moved there
   from `secrets/`, where it was never exported and never belonged) — the posture the app's
   own `api-token` file already has. The port is discoverable by the user and by nothing else, which is the
   same answer Chrome gives with `DevToolsActivePort` and the honest limit of it: any process running as the

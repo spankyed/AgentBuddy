@@ -683,16 +683,16 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apack/sdk/fe'
-import type { SettingUpdate } from '@apack/sdk/fe'
+import { usePlugin } from '@apackdev/sdk/fe'
+import type { SettingUpdate } from '@apackdev/sdk/fe'
 
 import { ref, reactive, computed, nextTick, type Directive } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-vue-next'
-import CollapsibleSection from '@apack/ui/design/CollapsibleSection'
-import KeyboardShortcutInput from '@apack/ui/components/KeyboardShortcutInput'
-import ColorPicker, { DEFAULT_COLORS } from '@apack/ui/design/ColorPicker'
+import CollapsibleSection from '@apackdev/ui/design/CollapsibleSection'
+import KeyboardShortcutInput from '@apackdev/ui/components/KeyboardShortcutInput'
+import ColorPicker, { DEFAULT_COLORS } from '@apackdev/ui/design/ColorPicker'
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
-import { useDebounce } from '@apack/ui/composables/useDebounce'
+import { useDebounce } from '@apackdev/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import type { ThreadsState } from './state.ts'
 import type {

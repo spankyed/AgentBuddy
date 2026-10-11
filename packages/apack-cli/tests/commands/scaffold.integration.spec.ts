@@ -8,7 +8,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { extractPackArchive, verifyPack } from '@apack/host/packs';
+import { extractPackArchive, verifyPack } from '@apackdev/host/packs';
 import { parse as parseYaml } from 'yaml';
 import { callCli, typecheckPack } from '../_support/pack-builds';
 

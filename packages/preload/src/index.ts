@@ -1,5 +1,5 @@
 import {ipcRenderer, contextBridge, webFrame, webUtils} from 'electron';
-import type {_HostBridge, SpeechEvent} from '@apack/sdk/fe';
+import type {_HostBridge, SpeechEvent} from '@apackdev/sdk/fe';
 
 const DEFAULT_API_PORT = 3001;
 

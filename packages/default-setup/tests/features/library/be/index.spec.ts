@@ -2,8 +2,8 @@
 // read it, so the system sends it when a client connects and whenever one asks for it again
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { startApp, type TestApp } from '@apack/testing/harness'
-import { importCompiledContent } from '@apack/sdk/utils'
+import { startApp, type TestApp } from '@apackdev/testing/harness'
+import { importCompiledContent } from '@apackdev/sdk/utils'
 import { repository } from '#generated/repository.ts'
 import type { LibraryIndex } from '#features/library/be/types.ts'
 

@@ -45,7 +45,7 @@ export interface CompileResult {
  * SDK source and are inlined into the compiled function body by esbuild; the
  * bundled output is still checked for Node-only global references.
  */
-const INLINABLE_PACKAGE_IMPORTS = [/^@apack\/sdk\/actions(\/|$)/];
+const INLINABLE_PACKAGE_IMPORTS = [/^@apackdev\/sdk\/actions(\/|$)/];
 
 function createValidatorPlugin(): esbuild.Plugin {
   return {

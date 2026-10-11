@@ -39,7 +39,7 @@ export interface PackFixtureOptions {
    */
   readonly manifest?: Record<string, unknown>;
   /**
-   * Symlinked as the pack's `node_modules`, which is what makes `@apack/*` resolve from inside the fixture —
+   * Symlinked as the pack's `node_modules`, which is what makes `@apackdev/*` resolve from inside the fixture —
    * every spec that builds or bundles one needs it.
    *
    * Here because it repeated: four specs wrote the same `mkdtemp` + manifest + `symlinkSync(REPO_ROOT/
@@ -76,8 +76,8 @@ export interface PackFixtureOptions {
  * and is deleted (`487a8c115`); if a thin fixture is ever the worry again, the answer is an assertion in the
  * spec that would be wrong, not a rule about how other specs write files.
  *
- * **It sits in a published package and is unreachable from outside it**, as `@apack/sdk/testing/pack-fixture`:
- * an entry whose only branch is `@apack/source`, which `publishedManifest` drops from the published manifest
+ * **It sits in a published package and is unreachable from outside it**, as `@apackdev/sdk/testing/pack-fixture`:
+ * an entry whose only branch is `@apackdev/source`, which `publishedManifest` drops from the published manifest
  * outright. So nothing can resolve the specifier — not a consumer of the tarball, which has no such entry, and
  * not a pack, whose config may not declare that condition (`check:specifiers`). It appears in no `etc/*.api.md`
  * either, so `api:check` does not review it. `./runtime/internals` is the same shape.
@@ -88,9 +88,9 @@ export interface PackFixtureOptions {
  * Deliberately not exported from `testing/index.ts`, which is published.
  *
  * **The condition that would make it public API: a published pack-reading API.** Today every consumer of a pack
- * directory is private — the pack rules and the source parser are `@apack/cli`'s, which publishes no
+ * directory is private — the pack rules and the source parser are `@apackdev/cli`'s, which publishes no
  * declarations, and the layout, subpath-imports and own-module-specifier readers are the private
- * `@apack/host`'s. A fixture for tooling nobody outside can import has no user outside, and a pack author
+ * `@apackdev/host`'s. A fixture for tooling nobody outside can import has no user outside, and a pack author
  * tests their own pack, which is already a directory (`PACK_DIR`), or their pack's code through
  * `setupPackTests`, which takes a registration rather than a tree. Publish any of that pack-reading surface and
  * this should go public in the same change; until then publishing it would fix the default manifest's shape,
@@ -101,7 +101,7 @@ export interface PackFixtureOptions {
  * the installer's own helper: composition, not options, because both already take a directory. A `built: true`
  * option was considered and dropped for that reason — it would own a second way to call something that works.
  * The *installed* shape (a manifest beside `integrity.json`, a snapshot and `dist/runtime`) is a different
- * artifact whose layout `@apack/host` owns (`PACK_LAYOUT`), and host's own tests build it in host, where the
+ * artifact whose layout `@apackdev/host` owns (`PACK_LAYOUT`), and host's own tests build it in host, where the
  * layer rule keeps it.
  */
 export function packFixture({ at, files = {}, manifest, rawManifest, nodeModules }: PackFixtureOptions = {}): string {

@@ -31,14 +31,14 @@
  * **What it guards is fourteen annotations, in one direction, and its failure mode is a stale comment.**
  * What it is *for* is the decision underneath: whether a spec should move between halves — and **that
  * decision is live.** `f2a003bb2` moved two specs on this evidence: `fe-bundler-proxy-exports` into
- * `@apack/cli`'s integration half, and `published-manifest-paths` against a recorded placement whose
+ * `@apackdev/cli`'s integration half, and `published-manifest-paths` against a recorded placement whose
  * justifying figure had gone 2.5x stale. A marker that has quietly stopped being true is what makes the
  * next such reading untrustworthy, which is why the one direction load cannot fabricate is the one gated.
  *
  * **Eleven of the fourteen are in packages with a single vitest config**, where the move the remedy names
  * costs a new config and a root project entry rather than a rename — `hasSplit` (`spec-halves.ts`) holds
  * that fact and `markerReachLines` (`unit-pool.ts`) prints the count on a passing run. The three in
- * `@apack/cli` have both halves, so for those the decision is *available* and not merely nameable.
+ * `@apackdev/cli` have both halves, so for those the decision is *available* and not merely nameable.
  *
  * So: **a year of silence is not the condition, because the wait was answered in the other direction.**
  * What would justify deleting the gate is a settled judgement that keeping these markers true is not worth

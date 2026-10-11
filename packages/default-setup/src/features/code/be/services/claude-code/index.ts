@@ -6,7 +6,7 @@
  * exposing a clean, typed Node API to the rest of apack.
  *
  * Shape:
- *   import { claudeCode } from '@apack/sdk/services'
+ *   import { claudeCode } from '@apackdev/sdk/services'
  *
  *   // Streaming conversation
  *   const conv = await claudeCode.query({ cwd, prompt: 'hi' })

@@ -8,14 +8,14 @@
 // installed feature with settings keyed by its ref, and takes every other section as opaque. Which sections exist,
 // and what they default to, come from `defaults` — whoever composes the app supplies it, so no pack's shape reaches
 // this module.
-import { untypedTx, untypedQx } from '@apack/ears';
-import type { EARS } from '@apack/sdk';
-import { deepMerge } from '@apack/sdk/utils/pure';
-import { refProblem, resolveName, type FeatureRef, type RefLookup } from '@apack/sdk/ids';
-import { getFeaturesWithSettings } from '@apack/sdk/framework';
+import { untypedTx, untypedQx } from '@apackdev/ears';
+import type { EARS } from '@apackdev/sdk';
+import { deepMerge } from '@apackdev/sdk/utils/pure';
+import { refProblem, resolveName, type FeatureRef, type RefLookup } from '@apackdev/sdk/ids';
+import { getFeaturesWithSettings } from '@apackdev/sdk/framework';
 import { changesFrom, PLUGINS_SECTION, removeIn, SETTINGS_KIND, settingsProblems, SettingsRefusedError, setIn } from './document.ts';
 // The contract's own, not a copy of it: `services.settings.onChange` and this store's must be the same type
-import type { SettingsChange } from '@apack/sdk/services';
+import type { SettingsChange } from '@apackdev/sdk/services';
 export type { SettingsChange };
 
 /** The entity type the host declares for the settings row */

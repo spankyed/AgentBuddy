@@ -2,7 +2,7 @@
 // union member and an object literal — a placeholder in either would stop the template typechecking, and a
 // template is ordinary pack code an author reads. Its label and the fields a new node starts with are not
 // here: they are what both the backend and the canvas read, so they live in the `node` facet in `trigger.ts`.
-import type { StepFEFacet } from '@apack/sdk/steps';
+import type { StepFEFacet } from '@apackdev/sdk/steps';
 import { defineAsyncComponent } from 'vue';
 import { Radio } from 'lucide-vue-next';
 

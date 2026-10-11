@@ -13,10 +13,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
-import { ownModuleFindings, type OwnModuleSpecifier } from '@apack/host/build/own-module-specifiers';
-import { readSubpathImports } from '@apack/host/build/subpath-imports';
+import { ownModuleFindings, type OwnModuleSpecifier } from '@apackdev/host/build/own-module-specifiers';
+import { readSubpathImports } from '@apackdev/host/build/subpath-imports';
 // The key itself, not a copy of it: one declaration, so a rename there renames what this refuses
-import { _CALL_KEY } from '@apack/sdk/events';
+import { _CALL_KEY } from '@apackdev/sdk/events';
 import { moduleOf, readSource, sourceFiles, type SourceView } from './pack-sources.ts';
 import { contractLeafFindings, crossFeatureFindings } from './pack-features.ts';
 import { configsNamingSourceCondition, packResolvesSource } from './pack-resolution.ts';
@@ -45,7 +45,7 @@ export interface PackPlace {
 /**
  * One finding, with the span of the code it is about.
  *
- * The span is what lets the set report one message per offence. `import { _rootEvents } from '@apack/host/bus'`
+ * The span is what lets the set report one message per offence. `import { _rootEvents } from '@apackdev/host/bus'`
  * breaks three rules — the package is not installed, the name is `@internal`, and `_rootEvents` is the raw
  * transport — and a pack author who has to delete one line should be told once, by the rule whose cause is the
  * most fundamental. Without spans the only way to tell "three rules, one site" from "three rules, one line"
@@ -75,7 +75,7 @@ export interface PackFinding {
  * relative to the pack, as its author reads it, and `check:specifiers` relative to the repo, so a finding in one of
  * five packs says which — and free-form strings gave them no way to tell a path from prose. The repo's runner used
  * to prefix the whole string and substitute inside `(reached from …)`, which knew one rule's wording and would have
- * mangled another's: `source-resolution` reports `@apack/sdk -> ../apack-sdk/src/index.ts`, whose path points
+ * mangled another's: `source-resolution` reports `@apackdev/sdk -> ../apack-sdk/src/index.ts`, whose path points
  * outside the pack and must not be rewritten at all.
  *
  * So `what` is the rule's wording, `at` the place in the pack it is about when it is about one, and `from` a second
@@ -117,7 +117,7 @@ export interface PackRule {
    *
    * A finding that names an `at` takes part in the one-offence-one-message dedupe below, on that site: it has a
    * place another rule can be right about, even though it has no byte span. One that names none does not, and
-   * that is the case the exemption was written for — `source-resolution` reports `@apack/sdk -> …/src/index.ts`,
+   * that is the case the exemption was written for — `source-resolution` reports `@apackdev/sdk -> …/src/index.ts`,
    * where the path is evidence and not a location, so there is no site to claim.
    */
   checkPack?(packDir: string): PackWideFinding[];
@@ -143,7 +143,7 @@ const FEATURE_COMPONENT = /^features\/[^/]+\/fe\/.*\.vue$/;
 const BACKEND_PATH = /^(features\/[^/]+\/be\/|features\/hooks\.ts$|migrations\/|extensions\/)/;
 const FRONTEND_OR_TEST_PATH = /\.vue$|(^|\/)(fe|register-fe)\.ts$|^extensions\/(tiptap|artifacts\/viewers|blocks\/[^/]+)\/|(^|\/)__tests__\/|\.(spec|test)\.ts$/;
 
-/** The names one node imports from an `@apack` package, by their imported rather than local name */
+/** The names one node imports from an `@apackdev` package, by their imported rather than local name */
 function importedFrom(node: ts.Node): { module: string; names: string[] } | undefined {
   if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
     const module = moduleOf(node);
@@ -152,7 +152,7 @@ function importedFrom(node: ts.Node): { module: string; names: string[] } | unde
     if (!bindings || ts.isNamespaceImport(bindings) || ts.isNamespaceExport(bindings)) return { module, names: [] };
     return { module, names: bindings.elements.map((el) => (el.propertyName ?? el.name).text) };
   }
-  // `const { _x } = await import('@apack/…')`
+  // `const { _x } = await import('@apackdev/…')`
   if (ts.isVariableDeclaration(node) && node.initializer && ts.isObjectBindingPattern(node.name)) {
     const call = ts.isAwaitExpression(node.initializer) ? node.initializer.expression : node.initializer;
     const module = moduleOf(call);
@@ -212,9 +212,9 @@ const RULE_LIST = [
   {
     key: 'source-resolution',
     switchable: false,
-    rule: "A pack compiles against the @apack packages' published dist, the one layout a pack author has, so "
+    rule: "A pack compiles against the @apackdev packages' published dist, the one layout a pack author has, so "
       + "neither its tsconfig nor its Vitest config may resolve a checkout's source: esbuild and Vite's pack "
-      + 'bundler ignore the @apack/source condition, so a pack that declares it typechecks and tests against '
+      + 'bundler ignore the @apackdev/source condition, so a pack that declares it typechecks and tests against '
       + 'source while both its bundles are built from dist',
     // The finding is the site, not the advice: the sentence above is printed once per rule by
     // `refusePackRuleViolations` and appended to each finding by `apack validate`, so advice carried here too
@@ -241,20 +241,20 @@ const RULE_LIST = [
   {
     key: 'host-imports',
     switchable: false,
-    rule: "A pack doesn't import the host's private @apack/host package, which is not installed for a pack; "
-      + 'use @apack/sdk',
+    rule: "A pack doesn't import the host's private @apackdev/host package, which is not installed for a pack; "
+      + 'use @apackdev/sdk',
     check(view, _place) {
-      return view.specifiers.filter(({ text }) => /^@apack\/host(\/|$)/.test(text))
+      return view.specifiers.filter(({ text }) => /^@apackdev\/host(\/|$)/.test(text))
         .map(({ text, line, start, end }) => ({ line, what: text, start, end }));
     },
   },
   {
     key: 'lmdb-imports',
     switchable: false,
-    rule: 'A pack reaches its data through the engine the app installs: neither lmdb nor @apack/ears/lmdb is '
+    rule: 'A pack reaches its data through the engine the app installs: neither lmdb nor @apackdev/ears/lmdb is '
       + 'provided to a pack, so importing one fails at load',
     check(view, _place) {
-      return view.specifiers.filter(({ text }) => /^lmdb(\/|$)/.test(text) || /^@apack\/ears\/lmdb(\/|$)/.test(text))
+      return view.specifiers.filter(({ text }) => /^lmdb(\/|$)/.test(text) || /^@apackdev\/ears\/lmdb(\/|$)/.test(text))
         .map(({ text, line, start, end }) => ({ line, what: text, start, end }));
     },
   },
@@ -291,13 +291,13 @@ const RULE_LIST = [
   {
     key: 'internal-package-imports',
     switchable: false,
-    rule: "A pack imports only the @apack packages' public API: an export named `_x` is @internal, the app's "
+    rule: "A pack imports only the @apackdev packages' public API: an export named `_x` is @internal, the app's "
       + 'alone, and an app update is free to rename it',
     check(view, place) {
-      if (place.generated || !view.code.includes('@apack/')) return [];
+      if (place.generated || !view.code.includes('@apackdev/')) return [];
       return view.visit((node) => {
         const imported = importedFrom(node);
-        if (!imported?.module.startsWith('@apack/')) return undefined;
+        if (!imported?.module.startsWith('@apackdev/')) return undefined;
         return imported.names.filter((name) => name.startsWith('_')).map((name) => `${name} from ${imported.module}`);
       });
     },
@@ -312,15 +312,15 @@ const RULE_LIST = [
       return view.visit((node) => {
         if (!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) return undefined;
         const imported = importedFrom(node);
-        if (!imported?.module.startsWith('@apack/')) return undefined;
+        if (!imported?.module.startsWith('@apackdev/')) return undefined;
         const bindings = ts.isImportDeclaration(node) ? node.importClause?.namedBindings : node.exportClause;
         if (!bindings || ts.isNamespaceImport(bindings) || ts.isNamespaceExport(bindings)) {
           // `import * as x from`, `export * from`, `export * as x from` (a default import has no bindings)
           const namespace = bindings !== undefined || ts.isExportDeclaration(node);
-          return namespace && imported.module === '@apack/sdk/events'
-            ? ['* from @apack/sdk/events (import the names)'] : undefined;
+          return namespace && imported.module === '@apackdev/sdk/events'
+            ? ['* from @apackdev/sdk/events (import the names)'] : undefined;
         }
-        const raw = imported.module === '@apack/ears'
+        const raw = imported.module === '@apackdev/ears'
           ? [...EVENT_SENDS, 'registerRepository', 'unregisterRepository'] : EVENT_SENDS;
         return imported.names.filter((name) => raw.includes(name)).map((name) => `${name} from ${imported.module}`);
       });
@@ -342,11 +342,11 @@ const RULE_LIST = [
     key: 'raw-transport',
     switchable: true,
     rule: 'Pack code sends with broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, and '
-      + 'subscribes with onConnected and onIncoming from @apack/sdk/events',
+      + 'subscribes with onConnected and onIncoming from @apackdev/sdk/events',
     check(view, _place) {
       return view.visit((node) => {
         const module = moduleOf(node);
-        if (module && /^@apack\/sdk\/rpc(\/|$)/.test(module)) return [module];
+        if (module && /^@apackdev\/sdk\/rpc(\/|$)/.test(module)) return [module];
         if (ts.isIdentifier(node) && node.text === '_rootEvents') return ['_rootEvents'];
         if (ts.isPropertyAccessExpression(node) && node.name.text === 'bus'
           && ts.isIdentifier(node.expression) && node.expression.text === 'trpc') return ['trpc.bus'];
@@ -357,7 +357,7 @@ const RULE_LIST = [
   {
     key: 'backend-console',
     switchable: true,
-    rule: 'Pack backend code logs with createLogger from @apack/sdk/logger',
+    rule: 'Pack backend code logs with createLogger from @apackdev/sdk/logger',
     check(view, place) {
       if (!BACKEND_PATH.test(place.inRoot) || FRONTEND_OR_TEST_PATH.test(place.inRoot)) return [];
       return view.visit((node) => {
@@ -387,8 +387,8 @@ const RULE_LIST = [
     switchable: false,
     rule: "`_call` is the app's key on a delivered event: the delivery doors write the call an answer "
       + 'answers under it, so a property a pack writes under that name is overwritten on the way in and read '
-      + 'as a correlation on the way out — ask answersCall or settleCall from @apack/sdk/events rather than '
-      + 'reading the key, build an answer in a test with answerTo from @apack/sdk/testing, and rename any '
+      + 'as a correlation on the way out — ask answersCall or settleCall from @apackdev/sdk/events rather than '
+      + 'reading the key, build an answer in a test with answerTo from @apackdev/sdk/testing, and rename any '
       + 'field of your own that collides',
     check(view, place) {
       // The generated facades never write the key, so there is nothing to exempt; a generated file that
@@ -496,7 +496,7 @@ export function packPlaces(packDir: string, within: readonly string[]): { view: 
  * running nine rules cost about what running one used to.
  *
  * **One offence, one message.** Several rules can be right about one line —
- * `import { _rootEvents } from '@apack/host/bus'` breaks three — and a pack author deleting one import should
+ * `import { _rootEvents } from '@apackdev/host/bus'` breaks three — and a pack author deleting one import should
  * be told once, by the rule whose cause comes first: the package is not installed for a pack, so whether the
  * name is `@internal` and whether it is the raw transport are beside the point. So a finding whose span sits
  * inside one an earlier rule already claimed is dropped, and `PACK_RULES`' order *is* that precedence —

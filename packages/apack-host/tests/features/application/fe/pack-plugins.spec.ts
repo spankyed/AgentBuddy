@@ -4,7 +4,7 @@
 // subscription, so its systems send their startup data.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, type Actor } from 'xstate';
-import type { Plugin } from '@apack/sdk/fe';
+import type { Plugin } from '@apackdev/sdk/fe';
 import { createShellMachine, type ShellMachine } from '../../../../src/fe/index.ts';
 import { fakeShell, plugin } from './fakes.ts';
 

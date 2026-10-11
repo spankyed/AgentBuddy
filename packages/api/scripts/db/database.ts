@@ -5,7 +5,7 @@
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openAppStore } from '@/runtime';
-import { loadAppPacks } from '@apack/host/packs/runtime';
+import { loadAppPacks } from '@apackdev/host/packs/runtime';
 
 export const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 

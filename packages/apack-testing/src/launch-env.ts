@@ -1,9 +1,9 @@
-import { withoutSourceCondition } from '@apack/host/build/source-resolution';
+import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
 
 /**
  * Env for the Electron app under test. The app-bundled `apack` runs on the app's own
  * runtime with ELECTRON_RUN_AS_NODE=1; inherited here it would start Electron as plain Node.
- * The runner's @apack/source condition isn't passed on: a checkout's app sets its own.
+ * The runner's @apackdev/source condition isn't passed on: a checkout's app sets its own.
  */
 export function appLaunchEnv(base: NodeJS.ProcessEnv, userDataDir: string): Record<string, string> {
   const env: Record<string, string> = {};

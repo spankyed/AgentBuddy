@@ -1,12 +1,12 @@
-// @apack/ui's exports map lists every public module with its types (no wildcards). This computes
+// @apackdev/ui's exports map lists every public module with its types (no wildcards). This computes
 // it from src/; run directly to write it into package.json. build-package fails when it's stale.
 // Public modules are the .ts files, except specs and tests (*.spec.ts, *.test.ts) and modules under
 // an internal/ directory. A component is public through its entry module (design/button.ts
 // re-exporting ./button.vue), so its export resolves to a TypeScript file in the monorepo too;
 // SFCs without one are internal.
 //
-//   npm run exports:update -w @apack/ui   (writes the exports map)
-//   npm run exports:check -w @apack/ui    (--check: fails on a stale map or a component without an entry)
+//   npm run exports:update -w @apackdev/ui   (writes the exports map)
+//   npm run exports:check -w @apackdev/ui    (--check: fails on a stale map or a component without an entry)
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 /**
@@ -19,11 +19,11 @@ import * as path from 'node:path';
  * by design (root `CLAUDE.md`: "A host config declares that condition outright"), and the walk is five
  * lines that at least four files in this repo each keep their own copy of.
  */
-// The one copy of this string that stays a copy. `@apack/host/build/source-resolution` owns it for every
-// other caller, and @apack/ui does not depend on @apack/host — `check:specifiers` holds a package's own
+// The one copy of this string that stays a copy. `@apackdev/host/build/source-resolution` owns it for every
+// other caller, and @apackdev/ui does not depend on @apackdev/host — `check:specifiers` holds a package's own
 // scripts/ to that package's source and its declared dependencies, so reaching for the owner is the thing
 // that is not allowed here.
-const SOURCE_CONDITION = '@apack/source';
+const SOURCE_CONDITION = '@apackdev/source';
 
 const walk = (dir: string): string[] =>
   fs.readdirSync(dir, { withFileTypes: true })
@@ -70,7 +70,7 @@ function* consumerFiles(dir: string): Generator<string> {
 
 /**
  * `file: specifier` for each import of a component that has no entry module. The monorepo's
- * packages (other than @apack/ui) and tests are scanned; without an entry the import fails with
+ * packages (other than @apackdev/ui) and tests are scanned; without an entry the import fails with
  * TypeScript's "Cannot find module" and the published package doesn't export the component.
  */
 export function findComponentsWithoutEntry(
@@ -83,13 +83,13 @@ export function findComponentsWithoutEntry(
   const problems: string[] = [];
   for (const root of roots.filter((dir) => fs.statSync(dir, { throwIfNoEntry: false })?.isDirectory())) {
     for (const file of consumerFiles(root)) {
-      for (const [, subpath] of fs.readFileSync(file, 'utf-8').matchAll(/@apack\/ui\/([A-Za-z0-9_./-]+?)(?=['"`\s;)])/g)) {
-        // `@apack/ui/design/button` names an entry module; `…/button.vue` names the component itself
+      for (const [, subpath] of fs.readFileSync(file, 'utf-8').matchAll(/@apackdev\/ui\/([A-Za-z0-9_./-]+?)(?=['"`\s;)])/g)) {
+        // `@apackdev/ui/design/button` names an entry module; `…/button.vue` names the component itself
         const component = subpath.endsWith('.vue') ? subpath.slice(0, -'.vue'.length) : subpath;
         const entry = `${component}.ts`.split('/').join(path.sep);
         const published = fs.existsSync(path.join(src, entry)) && isPublicModule(entry);
         if (fs.existsSync(path.join(src, `${component}.vue`)) && !published) {
-          problems.push(`${path.relative(repoRoot, file)}: @apack/ui/${subpath}`);
+          problems.push(`${path.relative(repoRoot, file)}: @apackdev/ui/${subpath}`);
         }
       }
     }
@@ -99,8 +99,8 @@ export function findComponentsWithoutEntry(
 
 /** The message for components imported without an entry module */
 export function missingEntriesMessage(missing: string[]): string {
-  const subpaths = [...new Set(missing.map((line) => line.split('@apack/ui/')[1]))];
-  return `These @apack/ui components are imported but have no entry module, so @apack/ui doesn't export them:\n  ${missing.join('\n  ')}\n` +
+  const subpaths = [...new Set(missing.map((line) => line.split('@apackdev/ui/')[1]))];
+  return `These @apackdev/ui components are imported but have no entry module, so @apackdev/ui doesn't export them:\n  ${missing.join('\n  ')}\n` +
     `Publish each with an entry next to it, e.g. src/${subpaths[0]}.ts:\n` +
     `  export { default } from './${path.basename(subpaths[0])}.vue';\n  export * from './${path.basename(subpaths[0])}.vue';`;
 }
@@ -116,10 +116,10 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
   const pkg = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
   if (process.argv.includes('--check')) {
     if (JSON.stringify(pkg.exports) !== JSON.stringify(computeExports())) {
-      console.error('packages/apack-ui/package.json exports are out of date with src/. Run: npm run exports:update -w @apack/ui');
+      console.error('packages/apack-ui/package.json exports are out of date with src/. Run: npm run exports:update -w @apackdev/ui');
       process.exit(1);
     }
-    console.log('@apack/ui exports and component entry modules are up to date');
+    console.log('@apackdev/ui exports and component entry modules are up to date');
   } else {
     pkg.exports = computeExports();
     fs.writeFileSync(manifestPath, JSON.stringify(pkg, null, 2) + '\n');

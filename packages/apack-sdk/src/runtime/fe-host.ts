@@ -11,7 +11,7 @@ import type { PackExtensionsView } from './packs-view.ts';
 
 /**
  * The window's client to the API, as SDK code uses it: sending to backend systems. The host's shell extends it with
- * what only the host reads (the bus subscription, the loaded packs), in `@apack/host/fe`.
+ * what only the host reads (the bus subscription, the loaded packs), in `@apackdev/host/fe`.
  */
 export interface FeClient {
   /** Delivers a message to a backend system */
@@ -65,6 +65,6 @@ export function _isFeHostBound(): boolean {
 
 /** @internal The bound frontend host; throws, naming bindFeHost, when none is */
 export function boundFeHost(): FeHostRuntime {
-  if (!bound) throw new Error('No frontend host is bound: the renderer binds one at boot with bindFeHost(runtime) from @apack/sdk/runtime');
+  if (!bound) throw new Error('No frontend host is bound: the renderer binds one at boot with bindFeHost(runtime) from @apackdev/sdk/runtime');
   return bound;
 }

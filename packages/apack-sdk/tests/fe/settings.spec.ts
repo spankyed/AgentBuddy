@@ -95,7 +95,7 @@ it('names fakeSettings when a test reaches for settings it did not pass', () => 
   const stopRuntime = startFeTestRuntime()
 
   expect(() => inScope(() => useSettingsSection('general')))
-    .toThrow('pass settings: fakeSettings({ … }) from @apack/sdk/testing to startFeTestRuntime')
+    .toThrow('pass settings: fakeSettings({ … }) from @apackdev/sdk/testing to startFeTestRuntime')
 
   stopRuntime()
 })

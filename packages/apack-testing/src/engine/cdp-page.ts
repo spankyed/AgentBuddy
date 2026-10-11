@@ -47,10 +47,10 @@ interface ChromiumConnect {
 /**
  * What a reader is told when the optional peer is absent — the install, rather than a module-not-found
  * from inside a bundle, which is what a missing optional peer otherwise looks like to whoever hits it.
- * `@apack/sdk` uses this pattern for `typescript` and `esbuild`.
+ * `@apackdev/sdk` uses this pattern for `typescript` and `esbuild`.
  */
 export const INSTALL_PLAYWRIGHT_CORE = 'Attaching to a running app needs `playwright-core`, which is an'
-  + ' optional peer of @apack/testing.\n  Install it: npm i -D playwright-core';
+  + ' optional peer of @apackdev/testing.\n  Install it: npm i -D playwright-core';
 
 /**
  * Chromium's connect, loaded only when something attaches.
@@ -58,7 +58,7 @@ export const INSTALL_PLAYWRIGHT_CORE = 'Attaching to a running app needs `playwr
  * **The loader is a parameter because nothing else can make this path run.** In any checkout or install
  * that can attach at all, `playwright-core` resolves — so the absent-peer branch is unreachable from a
  * test that does not hand it a loader, and an unreachable remedy is one nobody finds out has stopped
- * being the right one. `_chromium` is host-side only (`@apack/testing`'s own spec); the default is the
+ * being the right one. `_chromium` is host-side only (`@apackdev/testing`'s own spec); the default is the
  * import every caller gets.
  *
  * @internal

@@ -14,7 +14,7 @@ import {
   verifyPack,
 } from '../../src/packs/layout.ts';
 import { installPackFromGitHub, installPackFromLocal, installPackFromUrl, uninstallPack } from '../../src/packs/installer.ts';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 
 let tmp: string;
 

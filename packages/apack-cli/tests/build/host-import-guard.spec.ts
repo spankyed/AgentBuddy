@@ -1,12 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { packFixture } from '@apack/sdk/testing/pack-fixture';
+import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { bundlePackRuntime, bundlePackContentCompilers, bundlePackStepBuild } from '../../src/build/be-bundler';
 import { bundlePackFE } from '../../src/build/fe-bundler';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 
-/** Pack code that imports the app's private @apack/host fails `apack build`, not the app at load */
+/** Pack code that imports the app's private @apackdev/host fails `apack build`, not the app at load */
 const tmpDirs: string[] = [];
 afterEach(() => {
   for (const dir of tmpDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
@@ -18,10 +18,10 @@ function pack(files: Record<string, string>): string {
   return dir;
 }
 
-const HOST_IMPORT = "import { edgeStore } from '@apack/host/ears';\nexport const registration = { edgeStore };\n";
-const HOST_ERROR = /@apack\/host\/ears is the app's private host package; packs import @apack\/sdk instead/;
+const HOST_IMPORT = "import { edgeStore } from '@apackdev/host/ears';\nexport const registration = { edgeStore };\n";
+const HOST_ERROR = /@apackdev\/host\/ears is the app's private host package; packs import @apackdev\/sdk instead/;
 
-describe('apack build rejects @apack/host imports', () => {
+describe('apack build rejects @apackdev/host imports', () => {
   it('in the backend runtime', async () => {
     const dir = pack({ 'src/__generated__/pack-entry.ts': HOST_IMPORT });
     const result = await bundlePackRuntime(dir, path.join(dir, 'dist'));
@@ -36,21 +36,21 @@ describe('apack build rejects @apack/host imports', () => {
   });
 
   it('in the frontend bundle', async () => {
-    const dir = pack({ 'src/entry.ts': "import { registerPackFE } from '@apack/host/fe';\nexport default registerPackFE;\n" });
+    const dir = pack({ 'src/entry.ts': "import { registerPackFE } from '@apackdev/host/fe';\nexport default registerPackFE;\n" });
     const result = await bundlePackFE({ packDir: dir, outputDir: path.join(dir, 'dist'), entryPoint: path.join(dir, 'src', 'entry.ts') });
     expect(result.success).toBe(false);
-    expect(result.error).toMatch(/@apack\/host\/fe is the app's private host package/);
+    expect(result.error).toMatch(/@apackdev\/host\/fe is the app's private host package/);
   });
 
   it('rejects an export only the app loads, the LMDB store', async () => {
-    const dir = pack({ 'src/__generated__/pack-entry.ts': "import { openLmdbStore } from '@apack/ears/lmdb';\nexport const registration = { openLmdbStore };\n" });
+    const dir = pack({ 'src/__generated__/pack-entry.ts': "import { openLmdbStore } from '@apackdev/ears/lmdb';\nexport const registration = { openLmdbStore };\n" });
     const result = await bundlePackRuntime(dir, path.join(dir, 'dist'));
     expect(result.success).toBe(false);
-    expect(result.error).toMatch(/@apack\/ears\/lmdb is only for the app[\s\S]*packs can't import it/);
+    expect(result.error).toMatch(/@apackdev\/ears\/lmdb is only for the app[\s\S]*packs can't import it/);
   });
 
-  it('still bundles pack code that imports @apack/sdk', async () => {
-    const dir = pack({ 'src/__generated__/pack-entry.ts': "import { findRelations } from '@apack/ears';\nexport const registration = { findRelations };\n" });
+  it('still bundles pack code that imports @apackdev/sdk', async () => {
+    const dir = pack({ 'src/__generated__/pack-entry.ts': "import { findRelations } from '@apackdev/ears';\nexport const registration = { findRelations };\n" });
     expect(await bundlePackRuntime(dir, path.join(dir, 'dist'))).toEqual({ success: true });
   });
 });

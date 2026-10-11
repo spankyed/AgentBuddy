@@ -10,7 +10,7 @@
 // "no" is a check that passes for the wrong reason.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 
 /**
  * Comments are prose, and prose about a command is not the command — a script explaining why it does *not* run
@@ -61,7 +61,7 @@ export const workspaceScripts = (name: string): Record<string, string> | undefin
  * work the step does not do and omitted work it does.
  *
  * Every flag in the tail is read, not the first: `typecheck:cli` names two workspaces and only
- * `@apack/cli` was seen.
+ * `@apackdev/cli` was seen.
  */
 const NPM_CALL = /npm\s+(?:run\s+)?([\w:-]+)([^\n&|;]*)/g;
 const WORKSPACE_FLAG = /(?:--workspace[= ]|-w\s+)(\S+)/g;

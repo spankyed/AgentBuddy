@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { resolveAppContext } from '@apack/sdk/env';
-import { uninstallPack } from '@apack/host/packs';
+import { resolveAppContext } from '@apackdev/sdk/env';
+import { uninstallPack } from '@apackdev/host/packs';
 import { parseTargetEnv, envLabel } from '../utils';
 
 export async function uninstall(args: string[]) {

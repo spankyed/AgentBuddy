@@ -6,13 +6,13 @@ import { describe, expect, it } from 'vitest';
 
 
 /**
- * The app imports every @apack/ui module at startup to share it with packs (virtual:host-shared-modules),
+ * The app imports every @apackdev/ui module at startup to share it with packs (virtual:host-shared-modules),
  * so a module must not act when imported: no top-level statements that run code (listeners,
  * registrations). Declarations, including objects built from calls, are fine; `<script setup>`
  * runs per component instance and isn't checked.
  */
-// Its subject is this package's own source, which is why it lives here now rather than in @apack/cli.
-// One level up, not a repo root: @apack/ui is a leaf package and importing @apack/host for a path
+// Its subject is this package's own source, which is why it lives here now rather than in @apackdev/cli.
+// One level up, not a repo root: @apackdev/ui is a leaf package and importing @apackdev/host for a path
 // would be an upward dependency (`check:specifiers`, findUpwardImports).
 const UI_SRC = path.resolve(import.meta.dirname, '..', 'src');
 
@@ -46,7 +46,7 @@ function importTimeStatements(file: string): string[] {
 
 /**
  * A stylesheet from another package is global: its selectors are written for whoever installs it,
- * not namespaced to a component. @apack/ui ships inside every pack that sets `build.bundleUi`, so such
+ * not namespaced to a component. @apackdev/ui ships inside every pack that sets `build.bundleUi`, so such
  * an import would inject a second copy of those rules into the running app and restyle it. The app
  * imports those stylesheets itself (`packages/renderer/src/main.ts`), which keeps one copy, owned by
  * the host. A component's own `./x.css` is fine: it is namespaced by the component's root class.
@@ -63,7 +63,7 @@ function foreignStylesheetImports(file: string): string[] {
   });
 }
 
-describe('@apack/ui modules', () => {
+describe('@apackdev/ui modules', () => {
   it('do nothing when imported', () => {
     expect(modules(UI_SRC).flatMap(importTimeStatements)).toEqual([]);
   });

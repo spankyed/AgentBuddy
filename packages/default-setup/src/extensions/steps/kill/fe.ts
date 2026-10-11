@@ -1,4 +1,4 @@
-import type { StepFEFacet } from '@apack/sdk/steps';
+import type { StepFEFacet } from '@apackdev/sdk/steps';
 import { Plug } from 'lucide-vue-next';
 
 export const killStepFE: StepFEFacet = {

@@ -1,15 +1,15 @@
 // A test app: the pack's registered systems under the app's bus core, with a client the test drives.
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
-import { createBusMachine, HOST } from '@apack/host/bus';
-import { resolveRegistered } from '@apack/sdk/ids';
-import type { PackBootHooks } from '@apack/sdk/framework';
-import { newCall, type Message } from '@apack/sdk/events';
-import { testRootEvents } from '@apack/sdk/testing';
-import { untypedQx } from '@apack/ears';
-import { getDesignated, hasDesignation } from '@apack/sdk/designations';
-import { ROOT_FLOW_ROLE } from '@apack/sdk/types';
-import { stepRegistry } from '@apack/sdk/steps';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { createBusMachine, HOST } from '@apackdev/host/bus';
+import { resolveRegistered } from '@apackdev/sdk/ids';
+import type { PackBootHooks } from '@apackdev/sdk/framework';
+import { newCall, type Message } from '@apackdev/sdk/events';
+import { testRootEvents } from '@apackdev/sdk/testing';
+import { untypedQx } from '@apackdev/ears';
+import { getDesignated, hasDesignation } from '@apackdev/sdk/designations';
+import { ROOT_FLOW_ROLE } from '@apackdev/sdk/types';
+import { stepRegistry } from '@apackdev/sdk/steps';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 export type { Message };
 

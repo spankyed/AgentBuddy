@@ -2,7 +2,7 @@
 // the renderer, which pairs it with the view's components, and lives here beside that system and the shell for the
 // same reason the system doesn't live in the API — it decides things, and deciding isn't rendering.
 import { assign, setup, type ActorRefFrom } from 'xstate';
-import { breadcrumb, safeEvents } from '@apack/sdk/fe';
+import { breadcrumb, safeEvents } from '@apackdev/sdk/fe';
 import { sendToSystem } from '../../../events.ts';
 import type { PackInfo } from '../../../packs/registry.ts';
 import { HOST } from '../../../refs.ts';

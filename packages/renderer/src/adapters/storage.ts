@@ -1,5 +1,5 @@
 // Where this window keeps what the shell saves: the panel sizes the user set, so the next window opens with them.
-import type { ShellStorage } from '@apack/host/fe';
+import type { ShellStorage } from '@apackdev/host/fe';
 
 const PANEL_SIZES_KEY = 'apack-panel-sizes';
 

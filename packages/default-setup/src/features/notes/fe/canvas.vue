@@ -292,21 +292,21 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
-import { useExternalFileDrag } from '@apack/ui/composables/useExternalFileDrag'
+import { useExternalFileDrag } from '@apackdev/ui/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
 import type { NoteDTO } from '#generated/types.ts'
 import { type NotesState } from './state.ts'
-import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor'
-import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem, usePlugin } from '@apack/sdk/fe'
+import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor'
+import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem, usePlugin } from '@apackdev/sdk/fe'
 import { NotebookText, FileText, ListChecks, CircleCheck, Search, Clock, ChevronLeft, ChevronRight, Star, Plus } from 'lucide-vue-next'
-import EmojiPicker from '@apack/ui/design/EmojiPicker'
-import { useDebounce } from '@apack/ui/composables/useDebounce'
+import EmojiPicker from '@apackdev/ui/design/EmojiPicker'
+import { useDebounce } from '@apackdev/ui/composables/useDebounce'
 import { useNoteFocus } from './composables/useNoteFocus.ts'
 import { useNoteScroll } from './composables/useNoteScroll.ts'
 import { useSubDocumentInsert } from './composables/useSubDocumentInsert.ts'
 import TaskListPanel from './components/TaskListPanel.vue'
-import ImageLightbox from '@apack/ui/design/ImageLightbox'
-import TiptapSearchBar from '@apack/ui/components/tiptap/TiptapSearchBar'
+import ImageLightbox from '@apackdev/ui/design/ImageLightbox'
+import TiptapSearchBar from '@apackdev/ui/components/tiptap/TiptapSearchBar'
 
 const actor: NotesState = usePlugin()
 const state = useSelector(actor, (s) => s)

@@ -4,7 +4,7 @@ Packs can extend the host's flow editor, artifact system, message UI, rich-text 
 
 ## Steps
 
-A step definition adds a new node type to the visual flow editor. A `StepDefinition` (`@apack/sdk/steps`) has these fields:
+A step definition adds a new node type to the visual flow editor. A `StepDefinition` (`@apackdev/sdk/steps`) has these fields:
 
 | Field | Type | Description |
 |---|---|---|
@@ -40,8 +40,8 @@ declares is refused.
 ### Build facet (build.ts)
 
 ```typescript
-import type { StepBuildFacet, StepCompileResult, StepValidationError } from '@apack/sdk/steps';
-import { EARS } from '@apack/sdk';
+import type { StepBuildFacet, StepCompileResult, StepValidationError } from '@apackdev/sdk/steps';
+import { EARS } from '@apackdev/sdk';
 import type { DSLMyStepNode } from './types.ts';
 
 export const myStepStepBuild: StepBuildFacet = {
@@ -74,7 +74,7 @@ export const myStepStepBuild: StepBuildFacet = {
 
 ```typescript
 // runtime.ts
-import type { ExecutionContext, TNodeEntity } from '@apack/sdk/steps';
+import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
 
 export async function handler(tNode: TNodeEntity, node: unknown, ctx: ExecutionContext, actor: unknown) {
   const a = actor as { send(event: unknown): void };
@@ -92,11 +92,11 @@ brain reads them before it decides how to run the step; `sync` is the one that c
 
 | Member | Description |
 |---|---|
-| `handler(tNode, node, executionContext, actor)` | Runs the step. `tNode` is its trace node, `node` the compiled entity, `executionContext` has `flowTNodeId`, `event`, `steps` (earlier runs), `lastStep` and `runtime` (`getFlowActor`, `getAppServices`). Finish with `actor.send({ type: 'COMPLETE', result })`, or `actor.send({ type: 'ERROR', error })` with the error `reportError({ error, source, step: { phase, tNodeId, … } })` (`@apack/sdk/logger`) returns. A type without a handler completes with `{ executed: true }` |
+| `handler(tNode, node, executionContext, actor)` | Runs the step. `tNode` is its trace node, `node` the compiled entity, `executionContext` has `flowTNodeId`, `event`, `steps` (earlier runs), `lastStep` and `runtime` (`getFlowActor`, `getAppServices`). Finish with `actor.send({ type: 'COMPLETE', result })`, or `actor.send({ type: 'ERROR', error })` with the error `reportError({ error, source, step: { phase, tNodeId, … } })` (`@apackdev/sdk/logger`) returns. A type without a handler completes with `{ executed: true }` |
 | `isAsync` | The handler returns a promise; a rejection is reported and sent as `ERROR` |
 | `sync` | The handler's module is imported with the pack entry rather than on the step's first run, so its sends land in the brain's own dispatch. For a handler whose sends have to be ordered with the transition that called it — `kill` ends the flow *and* completes itself, and a tick's delay leaves the step reading as still running. Exclusive with `isAsync` |
 | `spawnsSubflow` | The brain spawns a sub-flow machine for the node instead of a step machine (the `subflow` step) |
-| `waits` | The step never completes on its own (keep-alive). `runFlow` in `@apack/testing` treats such a step as settled |
+| `waits` | The step never completes on its own (keep-alive). `runFlow` in `@apackdev/testing` treats such a step as settled |
 
 Conventions the brain reads from a `COMPLETE` result and the node:
 
@@ -130,7 +130,7 @@ whose module is loaded when the trigger is first registered.
 ### Frontend facet (fe.ts)
 
 ```typescript
-import type { StepFEFacet } from '@apack/sdk/steps';
+import type { StepFEFacet } from '@apackdev/sdk/steps';
 import { defineAsyncComponent } from 'vue';
 import { Box } from 'lucide-vue-next';
 
@@ -161,7 +161,7 @@ export const myStepStepFE: StepFEFacet = {
 | `handlePrefix?` | Multi-output steps: new outgoing handles are `<prefix>-0`, `<prefix>-1`, … (`'branch'` pairs with `sourceHandle: 'branch-N'`) |
 | `layout?` | ELK layout: `getHeight(node, { exitCount })`, `getPorts(node, { exitCount })`, `hasInput`, `usesExitCount`. Omitted → one input, one output |
 
-The form component receives `node` and `resources` (`{ actions, flows, models, prompts }`) and emits `update-node` (the changed fields), `reindex-branches` (`{ type: 'inserted' \| 'removed', index }`) and `close`. The scaffolded `form.vue` declares `node` and `resources` and wraps `BaseForm` (`@apack/ui/components/BaseForm`), re-emitting its `update-node` and `close`.
+The form component receives `node` and `resources` (`{ actions, flows, models, prompts }`) and emits `update-node` (the changed fields), `reindex-branches` (`{ type: 'inserted' \| 'removed', index }`) and `close`. The scaffolded `form.vue` declares `node` and `resources` and wraps `BaseForm` (`@apackdev/ui/components/BaseForm`), re-emitting its `update-node` and `close`.
 
 #### Node config fields
 
@@ -181,8 +181,8 @@ The form component receives `node` and `resources` (`{ actions, flows, models, p
 ### Types (types.ts)
 
 ```typescript
-import type { NodeBase } from '@apack/sdk';
-import type { DSLNodeBase } from '@apack/sdk/build';
+import type { NodeBase } from '@apackdev/sdk';
+import type { DSLNodeBase } from '@apackdev/sdk/build';
 
 export interface DSLMyStepNode extends DSLNodeBase {
   type: 'my-step';
@@ -261,7 +261,7 @@ The helper is named after `type` in camelCase, with `-` and `_` separating words
 
 ## Artifacts
 
-An artifact is a typed content item (code, image, markdown, …) shown in a thread's artifact panel. An `ArtifactDefinition` (`@apack/sdk/artifacts`) is `{ type, fe? }`:
+An artifact is a typed content item (code, image, markdown, …) shown in a thread's artifact panel. An `ArtifactDefinition` (`@apackdev/sdk/artifacts`) is `{ type, fe? }`:
 
 | `fe` field | Required | Description |
 |---|---|---|
@@ -282,7 +282,7 @@ The viewer receives `artifact: ArtifactItem`:
 
 ```vue
 <script setup lang="ts">
-import type { ArtifactItem } from '@apack/sdk/artifacts';
+import type { ArtifactItem } from '@apackdev/sdk/artifacts';
 
 defineProps<{ artifact: ArtifactItem<{ points: number[] }> }>();
 </script>
@@ -341,7 +341,7 @@ default-setup's threads feature provides `services.artifact` (declare `default-s
 
 ## Blocks
 
-A block is an inline UI widget inside a chat message. A `BlockDefinition` (`@apack/sdk/blocks`) is `{ type, kind?, fe?, be? }`:
+A block is an inline UI widget inside a chat message. A `BlockDefinition` (`@apackdev/sdk/blocks`) is `{ type, kind?, fe?, be? }`:
 
 - **Display blocks** (`kind` omitted or `'display'`) render data (markdown, code, tool activity).
 - **Input blocks** (`kind: 'input'`) collect a response (text, choices, approvals).
@@ -466,7 +466,7 @@ services.chat.sendBlockMessage({
 - **`toggleStates`** — an on/off pair. The backend flips `state` between the two itself.
 - **`states`** — a map of named states, where a flow decides which one comes next.
 
-Each `ButtonConfig` (`@apack/sdk/blocks`) is `{ id, label, state }` plus one of those two maps; every state entry carries its own `label`, optional `variant` and optional `disabled`. Pass `keepInteractive: true` to leave the buttons live after a response instead of disabling them.
+Each `ButtonConfig` (`@apackdev/sdk/blocks`) is `{ id, label, state }` plus one of those two maps; every state entry carries its own `label`, optional `variant` and optional `disabled`. Pass `keepInteractive: true` to leave the buttons live after a response instead of disabling them.
 
 ```typescript
 services.chat.sendBlockMessage({
@@ -519,7 +519,7 @@ The block answers with a `ButtonGroupResponse` — `{ buttonId, state }`. Respon
 
 ### Tiptap plugins
 
-`fe.tiptapPlugins` in the manifest names a module exporting `tiptapPlugins: TiptapPlugin[]` (`@apack/sdk/fe`). Every `TiptapEditor` created afterwards uses them:
+`fe.tiptapPlugins` in the manifest names a module exporting `tiptapPlugins: TiptapPlugin[]` (`@apackdev/sdk/fe`). Every `TiptapEditor` created afterwards uses them:
 
 | Field | Description |
 |---|---|
@@ -545,4 +545,4 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 
 The renderer registers it for your pack; nothing in your frontend registers anything itself.
 
-`features.<id>.references` (`ReferenceTypeConfig`s from `@apack/sdk/fe/references`: how an entity type appears and navigates when referenced in the UI) is read only for built-in packs.
+`features.<id>.references` (`ReferenceTypeConfig`s from `@apackdev/sdk/fe/references`: how an entity type appears and navigates when referenced in the UI) is read only for built-in packs.

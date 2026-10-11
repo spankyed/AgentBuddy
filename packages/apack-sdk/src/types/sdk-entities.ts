@@ -6,7 +6,7 @@
  *
  * The shapes here are part of the typed EARS contract (packages/apack-sdk/TYPED-EARS.md).
  */
-import type { BaseEntity } from '@apack/ears';
+import type { BaseEntity } from '@apackdev/ears';
 import type { EARS } from './entities.ts';
 import type { TNodeEntity } from '../steps/types.ts';
 

@@ -1,6 +1,6 @@
 # @app/renderer
 
-The Vue 3 app every apack window runs. It hosts plugins; it doesn't implement them. Built-in plugins come from `packages/default-setup` (compiled in), and external packs' plugins load at runtime from `pack://`. The renderer owns the window: the tRPC client, the shared-dependency globals packs import through, the layout and Packs views, and the composition that ties them to the host's machines. What decides anything — the app shell, the Packs plugin's machine, pack-frontend loading, the install a deep link asks for — is `@apack/host/fe`, as the app runtime behind the API is `@apack/host`. The root `CLAUDE.md` covers the plugin model; `docs/public-facing/architecture.md` ("Frontend boot", "Host dependency sharing") covers pack loading from a pack author's side, and `packages/apack-host/src/packs/runtime/CLAUDE.md` covers the backend half.
+The Vue 3 app every apack window runs. It hosts plugins; it doesn't implement them. Built-in plugins come from `packages/default-setup` (compiled in), and external packs' plugins load at runtime from `pack://`. The renderer owns the window: the tRPC client, the shared-dependency globals packs import through, the layout and Packs views, and the composition that ties them to the host's machines. What decides anything — the app shell, the Packs plugin's machine, pack-frontend loading, the install a deep link asks for — is `@apackdev/host/fe`, as the app runtime behind the API is `@apackdev/host`. The root `CLAUDE.md` covers the plugin model; `docs/public-facing/architecture.md` ("Frontend boot", "Host dependency sharing") covers pack loading from a pack author's side, and `packages/apack-host/src/packs/runtime/CLAUDE.md` covers the backend half.
 
 ## Layout
 
@@ -25,32 +25,32 @@ Tests live in `tests/`, mirroring `src/`, as in every other package.
 Its static imports are evaluated first, `virtual:host-shared-modules` among them — which has no runtime effect and is imported for the two side effects of its modules being in this window's graph (see the Vite section). The body then runs with a top-level `await`, in this order:
 
 1. `installGlobalErrorHandling()` (`src/boot/errors.ts`): the Monaco error filter, then this window's `window.error` / `unhandledrejection` reporters (`electronAPI.rendererLog.write`, `fatal: true`). One call, because the filter only works when it is registered first. Reads `?popout=plugin&pluginId=…` (set by main's `plugin:popout`).
-2. Sets `window.appVersion` (`__APP_VERSION__`, the root `package.json` version) and runs `runFrontendMigrations(localStorage, __APP_VERSION__)` (`@apack/host/fe`), which moves what this window keeps in its storage forward before the shell reads those keys. The migrations are the host's (`src/fe/migrations/`); the window only says where its storage is and which version it is.
-3. The host's own frontend: `fePacks.registerPackFE(hostFrontend)`, without a pack id, so it can't be unregistered. **No pack's frontend is registered here** — every one, the app's own included, is loaded by the shell once the bus says which packs are running. `fePacks` (`src/runtime/packs.ts`) is this window's registered pack frontends, `createFePackRegistry()` from `@apack/host/fe`: the pack loader registers each pack's in it, `App.vue` reads the `welcome` app extension from it, and the SDK's frontend registries (steps, designations, tiptap plugins, DSL types) read it once bound.
+2. Sets `window.appVersion` (`__APP_VERSION__`, the root `package.json` version) and runs `runFrontendMigrations(localStorage, __APP_VERSION__)` (`@apackdev/host/fe`), which moves what this window keeps in its storage forward before the shell reads those keys. The migrations are the host's (`src/fe/migrations/`); the window only says where its storage is and which version it is.
+3. The host's own frontend: `fePacks.registerPackFE(hostFrontend)`, without a pack id, so it can't be unregistered. **No pack's frontend is registered here** — every one, the app's own included, is loaded by the shell once the bus says which packs are running. `fePacks` (`src/runtime/packs.ts`) is this window's registered pack frontends, `createFePackRegistry()` from `@apackdev/host/fe`: the pack loader registers each pack's in it, `App.vue` reads the `welcome` app extension from it, and the SDK's frontend registries (steps, designations, tiptap plugins, DSL types) read it once bound.
 4. Creates the app shell, `createAppShell()` (`src/runtime/shell.ts`), with `systemId: 'host/application'` (its machine id stays `application`, which its `#application.…` targets name) and input `{ initialPluginId, ownsLastActivePlugin: !popout }` (a main window opens on the plugin last open and records the one it opens; a popout does neither). It starts with the plugins registered in `fePacks` and the default a pack claims. It is exported as `applicationState`.
 5. Binds the SDK's frontend port, `bindRendererHost(applicationState)` (`src/runtime/index.ts`: `bindFeHost({ application, secrets, client: feClient, packs: fePacks })`), then starts the actor, so the binding is in place before any plugin runs or any external pack frontend loads:
-   - `application` backs `@apack/sdk/fe`'s `untypedOpenPlugin` and its neighbours;
+   - `application` backs `@apackdev/sdk/fe`'s `untypedOpenPlugin` and its neighbours;
    - `secrets` is `src/transport/secrets.ts`, the API's secrets procedures behind `secretsClient` (the only ones pack frontends call directly);
-   - `settings` is `src/runtime/settings.ts`, the `SettingsPort` behind `@apack/sdk/fe`'s settings composables. It reads the running Settings view's actor, found by the `settings` role rather than by name, so what a feature reads of its own settings doesn't name the view that draws them;
-   - `client` is `feClient` (`src/transport/client.ts`), the window's one client to the API: the `ShellClient` from `@apack/host/fe`. Its `send` is how `@apack/sdk/events`' `sendToSystem` sends here, over `bus.send`, reporting a rejected send to the console, the app's log (`fe-client` source) and a toast, without the payload. The shell (`createAppShell()`) subscribes through it, and reads the loaded packs and asks for packs' startup data through it; it follows the API across a restart on a new port (Electron's API status). No other renderer module calls `trpc.bus` or `trpc.packs`. Plugin sends and subscriptions throw (no backend app is bound in the renderer).
+   - `settings` is `src/runtime/settings.ts`, the `SettingsPort` behind `@apackdev/sdk/fe`'s settings composables. It reads the running Settings view's actor, found by the `settings` role rather than by name, so what a feature reads of its own settings doesn't name the view that draws them;
+   - `client` is `feClient` (`src/transport/client.ts`), the window's one client to the API: the `ShellClient` from `@apackdev/host/fe`. Its `send` is how `@apackdev/sdk/events`' `sendToSystem` sends here, over `bus.send`, reporting a rejected send to the console, the app's log (`fe-client` source) and a toast, without the payload. The shell (`createAppShell()`) subscribes through it, and reads the loaded packs and asks for packs' startup data through it; it follows the API across a restart on a new port (Electron's API status). No other renderer module calls `trpc.bus` or `trpc.packs`. Plugin sends and subscriptions throw (no backend app is bound in the renderer).
 6. Sets the globals:
-   - `window.applicationState` is the actor. The E2E fixture (`@apack/testing`) finds the main window by it and drives it.
+   - `window.applicationState` is the actor. The E2E fixture (`@apackdev/testing`) finds the main window by it and drives it.
    - `window.__disableOnboardingUI()` sends `ONBOARDING_COMPLETE`.
    - `window.__sendToSystem` is `untypedSendToSystem`, for the E2E suite: a send to a backend system is otherwise only reachable over the API's tRPC WebSocket, which is a client to stand up rather than a call to make.
-7. Subscribes to `protocolAction`: `apack://install?pack=…&source=…` → `installFromProtocol` (`@apack/host/fe`), which reads the parameters and sends `INSTALL_PACK` to the `packs` system.
+7. Subscribes to `protocolAction`: `apack://install?pack=…&source=…` → `installFromProtocol` (`@apackdev/host/fe`), which reads the parameters and sends `INSTALL_PACK` to the `packs` system.
 8. Mounts `views/App.vue`, sets a Vue `errorHandler`, then calls `electronAPI.rendererReady()`, which tells main to show the window.
 
 `App.vue` renders `PluginPopoutApp.vue` (one plugin, `PopoutTitlebar`) for popouts, else `WebApp.vue` (toolbar, canvas and chat areas, inspection panel), plus the `welcome` app extension while the actor has the `welcome` tag, and an overlay while it has `connecting`. `index.html` defines `window.__showErrorPage(title, detail)`, the static error page, whose buttons call `electronAPI.apiStatus.reload/relaunch/openLogFile`.
 
 ## Vite (`vite.config.ts`)
 
-- **`devPackFrontendsPlugin(command === 'serve')`**, over `discoverDevPackFrontends` (`@apack/host/build/discover`):
+- **`devPackFrontendsPlugin(command === 'serve')`**, over `discoverDevPackFrontends` (`@apackdev/host/build/discover`):
   - `virtual:dev-pack-frontends` exports `{ [packId]: () => import('<abs path to pack-entry-fe.ts>') }` for each local pack whose codegen wrote that file — the packs under `packages/`, plus any directory `APACK_DEV_PACK_DIRS` names. **Serving a pack's frontend from source is the whole of what the dev server adds, and the only reason a `.vue` edit patches the component**: the pack's modules are in this graph, so Vite has an accepting importer to stop the update at. The map is empty for `vite build`, where each pack's frontend is fetched over `pack://` from the bundle its own `apack build` wrote. It asks nothing about `builtIn` — a pack is in it because its source is on this disk.
   - `@/…` resolves into `renderer/src/`, whoever imports it — the renderer's own alias and nothing else's (`tsconfig.app.json` maps it the same way). A pack names its own modules with `#` subpath imports, which Node, Vite and esbuild resolve from the pack's own `package.json` without this hook, so the alias is not per-importer and no other bundler config implements it; `check:specifiers`' `pack-own-aliases` refuses a `@/` in pack code, which would resolve for `tsc` and for nothing else.
 - **`hostSharedModulesPlugin`** is how a pack gets *this app's* Vue, XState and SDK instance (with the
   frontend host it binds): **by resolution**, not through a global. `sharedFeModules()`
-  (`@apack/host/build/shared-deps`) maps every specifier a pack may leave external to the module the host
-  loads for it — the shared deps, `getSdkFeModules()`, and every `@apack/ui` export. The plugin then:
+  (`@apackdev/host/build/shared-deps`) maps every specifier a pack may leave external to the module the host
+  loads for it — the shared deps, `getSdkFeModules()`, and every `@apackdev/ui` export. The plugin then:
   - serves each distinct module. In `vite build` each is an extra `rollupOptions.input` entry with
     `preserveEntrySignatures: 'exports-only'`; **only when building**, because naming `input` also makes the
     dev server crawl those entries for dependency discovery in place of `index.html`, and a bare specifier
@@ -67,7 +67,7 @@ Its static imports are evaluated first, `virtual:host-shared-modules` among them
   `sharedFeModules()` is *derived* from the three lists the bundler checks against rather than written
   beside them — and `fe-bundler-externals.spec.ts` asks the question directly, that every specifier a
   bundle leaves bare is one this map names.
-- **Resolution:** conditions include `@apack/source`. The API's router type comes from `@app/api` (a type-only import, a dev dependency).
+- **Resolution:** conditions include `@apackdev/source`. The API's router type comes from `@app/api` (a type-only import, a dev dependency).
 - `base: './'` (loaded from `file://` in builds), `modulePreload: false`, and a long `optimizeDeps.include` list (Monaco, xterm, tiptap, vidstack, …) for the dev server.
 - `tsconfig.app.json` includes `../apack-sdk/src/fe/**/*` (the `Window.electronAPI` declaration, see `packages/preload/CLAUDE.md`) and maps `@/*` → `src/*`.
 
@@ -79,22 +79,22 @@ Its static imports are evaluated first, `virtual:host-shared-modules` among them
 
 ## App shell (`src/runtime/shell.ts`)
 
-The shell's machine is the host's: `createShellMachine` in `@apack/host/fe` (`packages/apack-host/src/fe/shell/`, described in `packages/apack-host/CLAUDE.md`). This file only composes it with the window's I/O, as `createAppShell()`:
+The shell's machine is the host's: `createShellMachine` in `@apackdev/host/fe` (`packages/apack-host/src/fe/shell/`, described in `packages/apack-host/CLAUDE.md`). This file only composes it with the window's I/O, as `createAppShell()`:
 
 | Option | The renderer's |
 |---|---|
 | `packs` | `fePacks` (`src/runtime/packs.ts`): the plugins the shell starts with, and its default |
 | `client` | `feClient` (`src/transport/client.ts`): the bus subscription, sends, the loaded packs, `packClientReady`, and the connection's description for the error page (Electron's `apiStatus`) |
-| `packFrontends` | `createPackFrontends(packFrontendIO, fePacks)` (`@apack/host/fe`), over this window's `import()` and stylesheets (`src/adapters/pack-frontends.ts`) |
+| `packFrontends` | `createPackFrontends(packFrontendIO, fePacks)` (`@apackdev/host/fe`), over this window's `import()` and stylesheets (`src/adapters/pack-frontends.ts`) |
 | `storage` | `windowStorage` (`src/adapters/storage.ts`): `localStorage`, under `apack-panel-sizes` |
 | `notify` | `windowNotify` (`src/adapters/notify.ts`), over `globalToast` (`src/adapters/toast.ts`, which queues until `WebApp` registers the toast component) and `window.__showErrorPage` |
 | `target` | `window`, which the hotkey and mouse listeners attach to |
 
-It re-exports nothing: `WebApp.vue` takes `visiblePluginsOf` from `@apack/host/fe`. Saved panel sizes that aren't JSON fall back to the defaults rather than failing the window's shell (`tests/runtime/shell.spec.ts`).
+It re-exports nothing: `WebApp.vue` takes `visiblePluginsOf` from `@apackdev/host/fe`. Saved panel sizes that aren't JSON fall back to the defaults rather than failing the window's shell (`tests/runtime/shell.spec.ts`).
 
 ## External pack frontends
 
-The shell owns loading (see the host doc), and the rules are the host's too (`@apack/host/fe`, `fe/packs/frontends.ts`):
+The shell owns loading (see the host doc), and the rules are the host's too (`@apackdev/host/fe`, `fe/packs/frontends.ts`):
 a pack's file URLs, what counts as a registration, and what unloading undoes. This window supplies the two things only
 a browser can do, as `PackFrontendIO` (`src/adapters/pack-frontends.ts`):
 
@@ -108,7 +108,7 @@ frontend and drops its plugins — it loads them, so it takes them out.
 ## Packs view (`src/views/packs/`)
 
 The Packs tab's components, and the one module that composes them: `plugin.ts` pairs the host's `packsMachine`
-(`@apack/host/fe`) with the view (`index.vue`, the list, and `PackDetail.vue`) and registers it as the `host` pack's frontend.
+(`@apackdev/host/fe`) with the view (`index.vue`, the list, and `PackDetail.vue`) and registers it as the `host` pack's frontend.
 Nothing here decides anything about packs: what would is the host's, and `tests/source-layout.spec.ts` keeps the
 view and its one composition module the only things here. `plugin.ts` is where `hostFrontend` lives, so the Settings
 view registers there too.
@@ -116,7 +116,7 @@ view registers there too.
 ## Settings view (`src/views/settings/`)
 
 The Settings tab, laid out as the Packs view is: the canvas, its three tabs (General, Plugins, Help) and the General
-components, over the host's `createSettingsMachine` (`@apack/host/fe`). The settings themselves are the app's
+components, over the host's `createSettingsMachine` (`@apackdev/host/fe`). The settings themselves are the app's
 (`packages/apack-host/src/features/settings/`) — this is only what draws them. Two sections a pack contributes,
 `general` and `assistant`, are default-setup's content; the components read them as data and the host stores them
 opaquely. `plugin-settings.ts` reads a slice by name from settings in hand, `save.ts` is the composable the forms

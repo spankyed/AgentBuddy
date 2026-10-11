@@ -1,4 +1,4 @@
-import type { PluginInbox } from '@apack/sdk/fe';
+import type { PluginInbox } from '@apackdev/sdk/fe';
 
 // This plugin's contract: the state it publishes, and what another plugin may send it. A leaf — it imports no
 // machine, no other feature and nothing from #generated/* but `types` and `ears`, which is what lets codegen read

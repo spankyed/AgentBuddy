@@ -1,7 +1,7 @@
 import log from 'electron-log/main';
 import { app } from 'electron';
 import * as path from 'path';
-import { appendCappedLine, LOG_FILE_MAX_BYTES } from '@apack/host/logs';
+import { appendCappedLine, LOG_FILE_MAX_BYTES } from '@apackdev/host/logs';
 import { getAppContext } from '../../app-context.ts';
 
 // Asking for the context is what decides it, so electron-log is configured from the app's answer rather

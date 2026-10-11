@@ -12,7 +12,7 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..');
  * beside it — a fourth shared package would otherwise be checked by nothing here, in the spec that exists to
  * notice exactly that kind of gap.
  */
-const ACCOUNTED_FOR: readonly string[] = [...SHARED_INSTANCE_PACKAGES, '@apack/host'];
+const ACCOUNTED_FOR: readonly string[] = [...SHARED_INSTANCE_PACKAGES, '@apackdev/host'];
 const SDK_MODULES_FILE = path.join(REPO_ROOT, 'packages', 'apack-host', 'src', 'packs', 'runtime', 'sdk-modules.ts');
 const RUNTIME_ENTRY = path.join(REPO_ROOT, 'packages', 'default-setup', 'dist', 'runtime', 'index.cjs');
 
@@ -28,97 +28,97 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ...Object.entries(APP_ONLY_EXPORTS),
   // Redaction's host side: only the secrets store registers the values logs must mask, and a pack must not
   // The bound runtimes and unbinding: a pack could otherwise unbind the app or reach its raw services
-  ['@apack/sdk/runtime/internals', 'host-only — a pack could otherwise unbind the app or take over its services'],
+  ['@apackdev/sdk/runtime/internals', 'host-only — a pack could otherwise unbind the app or take over its services'],
   // The app's settings store: one row with one writer, reached by packs through `services.settings`. A pack
   // loading the store would be a second writer, past the checks and the listeners the first one tells.
-  ['@apack/host/settings', 'host-only — packs reach the settings through services.settings, which is the one writer'],
+  ['@apackdev/host/settings', 'host-only — packs reach the settings through services.settings, which is the one writer'],
   // The key vault: the OS credential store, or a file when there is none. Values reach the backend only
   // through the API's secrets procedures and never over the bus, so a pack that could open the vault would
   // read every key the user has stored. Published as a subpath so the api's spec can mock it by specifier
   // rather than by a path into this package's src/ (`repo-checks/tests/spec-placement.spec.ts`).
-  ['@apack/host/secrets/vault', 'host-only — a pack that could open the vault would read every stored key'],
+  ['@apackdev/host/secrets/vault', 'host-only — a pack that could open the vault would read every stored key'],
   // A 0600 atomic write. A pack has `services.filesystem` for files the user asked it to touch; this one
   // writes the app's own private records — the API's token, the secrets store, the dev session — and a pack
   // that could call it could write them.
-  ['@apack/host/private-file', 'host-only — it writes the app\'s own private records, not a pack\'s files'],
+  ['@apackdev/host/private-file', 'host-only — it writes the app\'s own private records, not a pack\'s files'],
   // The dev session file: what a launcher publishes so something can attach to the app it holds, including
   // the debug port. Only a launcher writes one and only a driver reads one, and a pack is neither; a pack
   // that could read it would have the port that controls the renderer.
-  ['@apack/host/dev-session', 'host-only — only a launcher publishes one and only a driver reads one'],
+  ['@apackdev/host/dev-session', 'host-only — only a launcher publishes one and only a driver reads one'],
   // Build-time only: consumed by vite configs and the apack CLI, never by a
   // loaded pack's runtime code.
-  ['@apack/host/build/shared-deps', 'build-time only'],
-  ['@apack/host/build/discover', 'build-time only'],
-  ['@apack/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],
-  ['@apack/host/build/published-manifest', 'build-time only: what a published tarball may say, for the scripts that stage it and the specs that check it'],
-  ['@apack/host/build/specifiers', 'build-time only: what a module specifier names, for the scripts that pack the published packages and the packages that check them'],
-  ['@apack/host/build/subpath-imports', "build-time only: a pack's package.json `imports`, read by the rule "
+  ['@apackdev/host/build/shared-deps', 'build-time only'],
+  ['@apackdev/host/build/discover', 'build-time only'],
+  ['@apackdev/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],
+  ['@apackdev/host/build/published-manifest', 'build-time only: what a published tarball may say, for the scripts that stage it and the specs that check it'],
+  ['@apackdev/host/build/specifiers', 'build-time only: what a module specifier names, for the scripts that pack the published packages and the packages that check them'],
+  ['@apackdev/host/build/subpath-imports', "build-time only: a pack's package.json `imports`, read by the rule "
     + 'below and by the pack rules apack build runs'],
-  ['@apack/host/build/own-module-specifiers', "build-time only: the rule that a pack's own-module specifier "
+  ['@apackdev/host/build/own-module-specifiers', "build-time only: the rule that a pack's own-module specifier "
     + 'names the file that is there, applied by check:specifiers here and by apack build to every other pack'],
-  ['@apack/host/build/packages-built', 'checkout build tooling: the freshness rule behind npm run packages:ensure'],
-  ['@apack/host/build/pack-workdir', "build-time only: where a build keeps what it does not publish, declared "
+  ['@apackdev/host/build/packages-built', 'checkout build tooling: the freshness rule behind npm run packages:ensure'],
+  ['@apackdev/host/build/pack-workdir', "build-time only: where a build keeps what it does not publish, declared "
     + 'once because the writer (apack build) and the reader (the repo\'s chain checks) cannot import each other'],
   // Test machinery: what a spec asserted over, confirmed to be there. It throws rather than asserting, so it
   // needs no test framework — which is also why it must not reach a pack, whose code has no business
   // refusing on the size of something it read.
   // Test machinery, in a runtime package deliberately: these resolve from source, cost nothing to publish
-  // (host is private) and are reachable by every spec that builds a pack. @apack/testing would not do —
-  // it resolves dist, so a rebuild per edit, and the layer rule refuses it in @apack/sdk and /ears exactly
-  // as it refuses this. Move them to an @app/* package the day a spec in @apack/sdk, /ears, /ui or
-  // default-setup needs one: the layer rule polices @apack/* only, so that is the one home they can reach.
+  // (host is private) and are reachable by every spec that builds a pack. @apackdev/testing would not do —
+  // it resolves dist, so a rebuild per edit, and the layer rule refuses it in @apackdev/sdk and /ears exactly
+  // as it refuses this. Move them to an @app/* package the day a spec in @apackdev/sdk, /ears, /ui or
+  // default-setup needs one: the layer rule polices @apackdev/* only, so that is the one home they can reach.
   // What a running process published and whether it is still there: the app's own plumbing, which is why
-  // it moved out of @apack/sdk/env. A pack reaches a running API through the app, never by reading its
+  // it moved out of @apackdev/sdk/env. A pack reaches a running API through the app, never by reading its
   // port file.
-  ['@apack/host/process-liveness', 'app plumbing: the locks, staging dirs and port file the app itself writes'],
+  ['@apackdev/host/process-liveness', 'app plumbing: the locks, staging dirs and port file the app itself writes'],
   // The user's API keys with their values: only the API and host services use it, packs get services.secrets (no values)
-  ['@apack/host/secrets', 'host store of API key values, never handed to packs'],
+  ['@apackdev/host/secrets', 'host store of API key values, never handed to packs'],
   // The app's HostRuntime, which the API binds; packs reach its services through services (appData, traceStore, inference, secrets)
-  ['@apack/host/services', 'host implementations of SDK services, bound by the API'],
+  ['@apackdev/host/services', 'host implementations of SDK services, bound by the API'],
   // The app's migrations runners: the API's boot and appData.reset() run them; packs declare migrations, never run them
-  ['@apack/host/migrations', 'the app migrations runners, run by the host'],
+  ['@apackdev/host/migrations', 'the app migrations runners, run by the host'],
   // The app's own state (AppState): the host alone reads and writes it; packs learn of onboarding through services.appData
-  ['@apack/host/app-state', "the app's state, read and written only by the host"],
+  ['@apackdev/host/app-state', "the app's state, read and written only by the host"],
   // The bus core: the API composes its bus from it, and the pack test harness runs it; packs don't require it
-  ['@apack/host/bus', 'host bus core, composed by the API and the test harness'],
-  ['@apack/host/features', "the app's own features (the pack `host`), registered by the API and the harness"],
+  ['@apackdev/host/bus', 'host bus core, composed by the API and the test harness'],
+  ['@apackdev/host/features', "the app's own features (the pack `host`), registered by the API and the harness"],
   // The pack runtime itself: the app loads packs with it; pack code never requires it
-  ['@apack/host/packs/runtime', 'the pack loader and lifecycle, run by the app'],
+  ['@apackdev/host/packs/runtime', 'the pack loader and lifecycle, run by the app'],
   // Pack discovery, registration, install and bundles: the app and the CLI use them; packs never require them
-  ['@apack/host/packs', 'installed packs, installer and pack layout, used by the app and the CLI'],
+  ['@apackdev/host/packs', 'installed packs, installer and pack layout, used by the app and the CLI'],
   // The app's database opened outside the app: the API's composition and apack db use it; packs get the engine the app installs
-  ['@apack/host/database', "the app's database opened by the host and apack db"],
+  ['@apackdev/host/database', "the app's database opened by the host and apack db"],
   // Backups: packs reach export and import through services.appData
-  ['@apack/host/backup', 'host backups, reached by packs through services.appData'],
+  ['@apackdev/host/backup', 'host backups, reached by packs through services.appData'],
   // The apack dev server marker: the CLI writes it and Electron main's pack:// handler reads it; packs never require it
-  ['@apack/host/packs/dev-server', 'dev server marker for the CLI and the pack:// handler'],
+  ['@apackdev/host/packs/dev-server', 'dev server marker for the CLI and the pack:// handler'],
   // One writer at a time for a file the app and its tooling share: the CLI's codegen and `apack db` take it, and
   // the API's boot checks it. Pack code has nothing of the app's to serialise, so it never requires this.
-  ['@apack/host/exclusive-lock', "the app's single-writer file locks, taken by the host and the CLI"],
+  ['@apackdev/host/exclusive-lock', "the app's single-writer file locks, taken by the host and the CLI"],
   // Putting a built tree in place of the one before it: the installer's and the builds', never a pack's — a
   // pack has no derived tree of the app's to publish
-  ['@apack/host/replace-dir', 'how a build or an install swaps a directory into place'],
+  ['@apackdev/host/replace-dir', 'how a build or an install swaps a directory into place'],
   // The app's log files: Electron main and the API append to them; a pack logs through createLogger, which
   // reaches the same files as a log event, redacted and capped like everything else the app writes
-  ['@apack/host/logs', "the app's log files, appended to by main and the API"],
+  ['@apackdev/host/logs', "the app's log files, appended to by main and the API"],
   // Metadata: tooling reads them, code never requires them.
-  ['@apack/sdk/package.json', 'package metadata, not code'],
-  ['@apack/ears/package.json', 'package metadata, not code'],
-  ['@apack/sdk/apack.schema.json', 'manifest JSON schema, not code'],
+  ['@apackdev/sdk/package.json', 'package metadata, not code'],
+  ['@apackdev/ears/package.json', 'package metadata, not code'],
+  ['@apackdev/sdk/apack.schema.json', 'manifest JSON schema, not code'],
 ]);
 
 const UNBRIDGED_BY_DESIGN = new Map(UNBRIDGED_BY_POLICY);
 
 /** Renderer-only subpaths reach pack FE code through the document's import map, never the CJS bridge. */
 function isFeSpecifier(s: string): boolean {
-  return /^@apack\/(sdk|ears|host)\/fe(\/|$)/.test(s);
+  return /^@apackdev\/(sdk|ears|host)\/fe(\/|$)/.test(s);
 }
 
 function exportsMap(pkg: string): Record<string, unknown> {
   // The shared-instance packages resolve their own manifest by specifier, which is how every other consumer
   // of their exports map reads it. The host is private and exports no `./package.json`, so nothing can
   // resolve it that way and its manifest is read from the tree — the one package here that differs.
-  if (pkg === '@apack/host') {
+  if (pkg === '@apackdev/host') {
     return (JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', 'apack-host', 'package.json'), 'utf8')) as
       { exports: Record<string, unknown> }).exports;
   }
@@ -143,7 +143,7 @@ function concreteExports(): string[] {
 
 describe('SDK bridge drift', () => {
   /**
-   * Two of the three come from `SHARED_INSTANCE_PACKAGES` and move with it; `@apack/host` is written here,
+   * Two of the three come from `SHARED_INSTANCE_PACKAGES` and move with it; `@apackdev/host` is written here,
    * and its manifest is read from the tree by path rather than resolved, because the host is private.
    *
    * So a rename or a move does not report a stale entry — it throws inside `exportsMap`, and every case
@@ -170,7 +170,7 @@ describe('SDK bridge drift', () => {
   });
 
   it('has an up-to-date sdk-modules.ts', () => {
-    expect(fs.readFileSync(SDK_MODULES_FILE, 'utf8'), 'Run npm run sdk-modules:update -w @apack/host')
+    expect(fs.readFileSync(SDK_MODULES_FILE, 'utf8'), 'Run npm run sdk-modules:update -w @apackdev/host')
       .toBe(renderSharedModules(SDK_MODULES_FILE));
   });
 
@@ -190,7 +190,7 @@ describe('SDK bridge drift', () => {
     );
 
     expect(unaccounted, [
-      'These shared-instance or @apack/host exports are neither bridged nor listed as',
+      'These shared-instance or @apackdev/host exports are neither bridged nor listed as',
       'unbridged-by-design. If pack code can require it at runtime, add it to',
       'SDK_BRIDGE in packages/apack-host/src/packs/runtime/bridge.ts. If it cannot, add',
       'it to UNBRIDGED_BY_DESIGN in this file with the reason.',
@@ -216,9 +216,9 @@ describe('SDK bridge drift', () => {
     }
 
     const source = fs.readFileSync(RUNTIME_ENTRY, 'utf8');
-    const required = [...source.matchAll(/['"](@apack\/(?:sdk|ears|host)(?:\/[a-zA-Z0-9._/-]+)?)['"]/g)]
+    const required = [...source.matchAll(/['"](@apackdev\/(?:sdk|ears|host)(?:\/[a-zA-Z0-9._/-]+)?)['"]/g)]
       .map((m) => m[1]);
-    expect(required.length, 'found no @apack/sdk specifiers — regex or bundle shape changed')
+    expect(required.length, 'found no @apackdev/sdk specifiers — regex or bundle shape changed')
       .toBeGreaterThan(0);
 
     const bridged = new Set(getBridgedSdkSpecifiers());

@@ -1,9 +1,9 @@
 // The lookups only the backend's registry (createPackRegistry) keeps of what registered packs contributed
-import type { ContentWriter } from '@apack/sdk/content';
-import type { ContentApplier } from '@apack/sdk/utils';
-import { checkFeatureSettings, type FeatureSettings, type PackCommand, type HelpEntry, type PackSettingsDefaults } from '@apack/sdk/framework';
-import { resolveName } from '@apack/sdk/ids';
-import { createLogger } from '@apack/sdk/logger';
+import type { ContentWriter } from '@apackdev/sdk/content';
+import type { ContentApplier } from '@apackdev/sdk/utils';
+import { checkFeatureSettings, type FeatureSettings, type PackCommand, type HelpEntry, type PackSettingsDefaults } from '@apackdev/sdk/framework';
+import { resolveName } from '@apackdev/sdk/ids';
+import { createLogger } from '@apackdev/sdk/logger';
 
 /** Content writers per entity type, each type's owned by the pack that registered it */
 export function createContentWriterStore() {

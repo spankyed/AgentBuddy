@@ -8,13 +8,13 @@ import { SOURCE_CONDITION } from './source-resolution.ts';
  * instance of each (the SDK's registries, the EARS engine's data). Every bundler external list, the
  * host pack loader's bridge, the pack test harness's bridge and bundle-package derive from this list.
  * The frontend shares only the SDK modules below (SDK_FE_MODULES): it keeps no EARS data, so a pack
- * frontend inlines what it imports from @apack/ears (constants and pure helpers). What a pack's
+ * frontend inlines what it imports from @apackdev/ears (constants and pure helpers). What a pack's
  * frontend may leave to the host is `sharedFeModules` below, which is those plus the shared deps and
- * @apack/ui's exports.
+ * @apackdev/ui's exports.
  */
-export const SHARED_INSTANCE_PACKAGES = ['@apack/sdk', '@apack/ears'] as const;
+export const SHARED_INSTANCE_PACKAGES = ['@apackdev/sdk', '@apackdev/ears'] as const;
 
-/** The shared-instance package a specifier belongs to (`@apack/sdk/repositories` → `@apack/sdk`), if any */
+/** The shared-instance package a specifier belongs to (`@apackdev/sdk/repositories` → `@apackdev/sdk`), if any */
 export function sharedInstancePackage(specifier: string): string | undefined {
   return SHARED_INSTANCE_PACKAGES.find((pkg) => specifier === pkg || specifier.startsWith(`${pkg}/`));
 }
@@ -29,13 +29,13 @@ export function sharedInstanceExternals(): string[] {
  * requires them, so neither the pack loader's bridge nor the test harness's provides them.
  */
 export const APP_ONLY_EXPORTS: Readonly<Record<string, string>> = {
-  '@apack/ears/lmdb': "the app's LMDB store; it loads lmdb, which only the app installs",
+  '@apackdev/ears/lmdb': "the app's LMDB store; it loads lmdb, which only the app installs",
 };
 
 /**
  * The specifiers of a shared-instance package that backend code can require, read from its exports
  * map: every code export except the frontend's (`./fe`, `./fe/*`), metadata (`.json`), wildcards,
- * `APP_ONLY_EXPORTS` and exports only the monorepo resolves (an `@apack/source` target without a published one).
+ * `APP_ONLY_EXPORTS` and exports only the monorepo resolves (an `@apackdev/source` target without a published one).
  */
 export function sharedInstanceSpecifiers(pkg: string, exportsMap: Record<string, unknown>): string[] {
   const specifier = (key: string) => (key === '.' ? pkg : `${pkg}/${key.slice(2)}`);
@@ -51,7 +51,7 @@ export function sharedInstanceSpecifiers(pkg: string, exportsMap: Record<string,
 
 /**
  * The exports map of a shared-instance package as `fromFile` (a path or file URL) resolves it. A pack
- * that doesn't depend on one directly gets the copy its @apack/sdk resolves.
+ * that doesn't depend on one directly gets the copy its @apackdev/sdk resolves.
  */
 export function sharedInstanceExports(pkg: string, fromFile: string): Record<string, unknown> {
   const require = createRequire(fromFile);
@@ -76,7 +76,7 @@ export function sharedInstanceExports(pkg: string, fromFile: string): Record<str
  * - a **shipped executable**. `@vscode/ripgrep` computes `rgPath` from its own `__dirname`, which inside a
  *   bundle is the bundle's directory and not the package's.
  *
- * So a pack bundle leaves them external (`@apack/cli`'s `be-bundler.ts`) and the bridge resolves them from
+ * So a pack bundle leaves them external (`@apackdev/cli`'s `be-bundler.ts`) and the bridge resolves them from
  * the loader (`withModuleBridge`'s `hostPackages`, `packs/runtime/bridge.ts`). Resolving from the loader is
  * the half that has to be here: `stagePack` copies a pack's `dist/{runtime,build,types}` and nothing else, so
  * an installed pack has no `node_modules` for an external specifier to come from, wherever it was installed
@@ -119,7 +119,7 @@ export const SHARED_DEPS: Record<string, SharedDep> = {
 
 /**
  * Packages the host shares with every subpath they export, keyed by specifier. A pack that bundles
- * @apack/ui (build.bundleUi) imports ProseMirror and tiptap's Vue menus through these; sharing them
+ * @apackdev/ui (build.bundleUi) imports ProseMirror and tiptap's Vue menus through these; sharing them
  * keeps one ProseMirror in the app, the host's.
  */
 const SHARED_SUBPATH_PACKAGES = ['@tiptap/pm', '@tiptap/vue-3'];
@@ -152,7 +152,7 @@ export function unresolvedSubpathPackages(...fromDirs: string[]): string[] {
 
 /**
  * @param fromDirs the directories whose installs own the shared packages, tried in order: the pack
- * being built and its `@apack/ui` (which is what actually depends on tiptap, and may hold its own
+ * being built and its `@apackdev/ui` (which is what actually depends on tiptap, and may hold its own
  * nested copy), or the renderer.
  */
 export function getSharedFeDeps(...fromDirs: string[]): Record<string, SharedDep & { globalKey: string }> {
@@ -178,7 +178,7 @@ export function getSharedFeDeps(...fromDirs: string[]): Record<string, SharedDep
  * each key external. A specifier the host does not serve is one a pack's bundle cannot link against.
  *
  * `fromDirs` are the directories whose installs own these packages, as `getSharedFeDeps` takes them; the
- * first also decides which `@apack/ui` is read, since that is the one whose exports a pack compiles
+ * first also decides which `@apackdev/ui` is read, since that is the one whose exports a pack compiles
  * against.
  */
 export function sharedFeModules(...fromDirs: string[]): Readonly<Record<string, string>> {
@@ -196,14 +196,14 @@ export interface SdkFeModule {
 }
 
 export const SDK_FE_MODULES: Record<string, SdkFeModule> = {
-  '@apack/sdk/fe':           { globalKey: 'sdkFe' },
-  '@apack/sdk/runtime':      { globalKey: 'sdkRuntime' },
-  '@apack/sdk/steps':        { globalKey: 'sdkSteps' },
-  '@apack/sdk/artifacts':    { globalKey: 'sdkArtifacts' },
-  '@apack/sdk/blocks':       { globalKey: 'sdkBlocks' },
-  '@apack/sdk/designations': { globalKey: 'sdkDesignations' },
-  '@apack/sdk/events':       { globalKey: 'sdkEvents' },
-  '@apack/sdk/helpers':      { globalKey: 'sdkHelpers' },
+  '@apackdev/sdk/fe':           { globalKey: 'sdkFe' },
+  '@apackdev/sdk/runtime':      { globalKey: 'sdkRuntime' },
+  '@apackdev/sdk/steps':        { globalKey: 'sdkSteps' },
+  '@apackdev/sdk/artifacts':    { globalKey: 'sdkArtifacts' },
+  '@apackdev/sdk/blocks':       { globalKey: 'sdkBlocks' },
+  '@apackdev/sdk/designations': { globalKey: 'sdkDesignations' },
+  '@apackdev/sdk/events':       { globalKey: 'sdkEvents' },
+  '@apackdev/sdk/helpers':      { globalKey: 'sdkHelpers' },
 };
 
 export function getSdkFeModules(): Record<string, SdkFeModule> {
@@ -211,14 +211,14 @@ export function getSdkFeModules(): Record<string, SdkFeModule> {
 }
 
 /**
- * Every @apack/ui export, shared with pack FE code like the SDK modules: the host serves each and names
- * it in the document's import map under its specifier. Read from the exports map of the @apack/ui that
+ * Every @apackdev/ui export, shared with pack FE code like the SDK modules: the host serves each and names
+ * it in the document's import map under its specifier. Read from the exports map of the @apackdev/ui that
  * `fromDir` resolves (the host's own, or a pack's).
  */
 export function getUiFeModules(fromDir: string): Record<string, SdkFeModule> {
   let manifestPath: string;
   try {
-    manifestPath = createRequire(path.join(fromDir, 'package.json')).resolve('@apack/ui/package.json');
+    manifestPath = createRequire(path.join(fromDir, 'package.json')).resolve('@apackdev/ui/package.json');
   } catch {
     return {};
   }
@@ -227,7 +227,7 @@ export function getUiFeModules(fromDir: string): Record<string, SdkFeModule> {
     Object.keys(exports)
       .filter((key) => key !== './package.json')
       .map((key) => {
-        const specifier = `@apack/ui${key.slice(1)}`;
+        const specifier = `@apackdev/ui${key.slice(1)}`;
         return [specifier, { globalKey: specifier }];
       }),
   );
@@ -249,7 +249,7 @@ export function findSdkVersion(startDir: string): string | undefined {
     if (fs.existsSync(pkgPath)) {
       try {
         const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-        if (pkg.name === '@apack/sdk') return pkg.version;
+        if (pkg.name === '@apackdev/sdk') return pkg.version;
       } catch {}
     }
     dir = path.dirname(dir);

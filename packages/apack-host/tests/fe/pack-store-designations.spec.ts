@@ -1,9 +1,9 @@
 // The renderer resolves each role to the plugin that plays it; a pack claiming a role another plays is refused, as
 // the backend registry refuses it.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { PluginDefinition } from '@apack/sdk/fe';
-import { getDesignated } from '@apack/sdk/designations';
-import { bindFeHost } from '@apack/sdk/runtime';
+import type { PluginDefinition } from '@apackdev/sdk/fe';
+import { getDesignated } from '@apackdev/sdk/designations';
+import { bindFeHost } from '@apackdev/sdk/runtime';
 import { createFePackRegistry } from '../../src/fe/pack-store.ts';
 
 const { registerPackFE, unregisterPackFE, ...registry } = createFePackRegistry();

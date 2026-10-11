@@ -5,7 +5,7 @@
  * the fact, which is the only check in this repo that can catch a step declaring *too little*. The
  * typecheck legs are observed through TypeScript's `tsBuildInfoFile`; the two steps that run `apack build`
  * were observed by nothing until that command started recording its bundlers' module graphs
- * (`@apack/cli`'s `build/build-reads.ts`, which writes the file this reads).
+ * (`@apackdev/cli`'s `build/build-reads.ts`, which writes the file this reads).
  *
  * **A separate module rather than a shape inside `dep-files.ts`**, because that one is tsc-shaped
  * throughout: one hard-coded cache directory, a `.tsbuildinfo` suffix, a TypeScript version resolved per
@@ -22,8 +22,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
-import { PACK_READS_FILE } from '@apack/host/build/pack-workdir';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { PACK_READS_FILE } from '@apackdev/host/build/pack-workdir';
 
 /** What a pack's record holds. Paths are relative to the pack directory. */
 export interface BuildReads {

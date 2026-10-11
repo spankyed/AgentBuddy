@@ -7,9 +7,9 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { untypedTx, untypedQx } from '@apack/ears';
-import { resetTestData } from '@apack/sdk/testing';
-import type { EARS } from '@apack/sdk';
+import { untypedTx, untypedQx } from '@apackdev/ears';
+import { resetTestData } from '@apackdev/sdk/testing';
+import type { EARS } from '@apackdev/sdk';
 import { registry, TEST_APP_VERSION } from '../packs/runtime/test-host.ts';
 
 // The migrations runner reads the app environment; a test build runs release rules
@@ -17,8 +17,8 @@ process.env.APACK_ENV = 'test';
 
 /** The app version the runners read; the test host's unless a test sets one */
 const version = vi.hoisted(() => ({ current: undefined as string | undefined }));
-vi.mock('@apack/sdk/env', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@apack/sdk/env')>();
+vi.mock('@apackdev/sdk/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@apackdev/sdk/env')>();
   return { ...actual, getAppVersion: () => version.current ?? actual.getAppVersion() };
 });
 

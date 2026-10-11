@@ -1,47 +1,47 @@
-import { withoutSourceCondition } from '@apack/host/build/source-resolution';
+import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
 import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const LOAD_TIMEOUT_MS = 60_000;
 /**
- * Optional @apack/sdk peers every dependent's unit tests have: @apack/testing/harness compiles
- * content with @apack/sdk/build, which needs them (the scaffold installs typescript; @apack/testing's
+ * Optional @apackdev/sdk peers every dependent's unit tests have: @apackdev/testing/harness compiles
+ * content with @apackdev/sdk/build, which needs them (the scaffold installs typescript; @apackdev/testing's
  * tsx brings esbuild).
  */
 const HARNESS_PEERS = ['typescript', 'esbuild'];
 
-// Resolve hook for the check: @apack/sdk's optional peers aren't installed for every dependent
+// Resolve hook for the check: @apackdev/sdk's optional peers aren't installed for every dependent
 const BLOCK_OPTIONAL_PEERS_HOOK = `
 let blocked = [];
 export function initialize(data) { blocked = data.blocked; }
 export async function resolve(specifier, context, next) {
   const name = specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0];
   if (blocked.includes(name)) {
-    throw new Error(\`\${context.parentURL} imports "\${specifier}", an optional peer of @apack/sdk that packs depending on this one may not have installed\`);
+    throw new Error(\`\${context.parentURL} imports "\${specifier}", an optional peer of @apackdev/sdk that packs depending on this one may not have installed\`);
   }
   return next(specifier, context);
 }
 `;
 
-// What a dependent's unit tests do with the bundle (@apack/testing/harness setupPackTests)
+// What a dependent's unit tests do with the bundle (@apackdev/testing/harness setupPackTests)
 const LOAD_SCRIPT = `
 import { register } from 'node:module';
 const [hook, bundle, blocked] = JSON.parse(process.env.APACK_CONTENT_RUNTIME_CHECK);
 register(hook, { data: { blocked } });
-const { registerContentRuntime, startTestRuntime } = await import('@apack/sdk/testing');
+const { registerContentRuntime, startTestRuntime } = await import('@apackdev/sdk/testing');
 startTestRuntime();
 const { contentRuntime } = await import(bundle);
 registerContentRuntime(contentRuntime);
 `;
 
-/** @apack/sdk's optional peer dependencies a dependent's unit tests may not have, as the pack resolves the SDK */
+/** @apackdev/sdk's optional peer dependencies a dependent's unit tests may not have, as the pack resolves the SDK */
 function missingSdkPeers(packDir: string): string[] {
-  const manifest = createRequire(path.join(packDir, 'package.json')).resolve('@apack/sdk/package.json');
+  const manifest = createRequire(path.join(packDir, 'package.json')).resolve('@apackdev/sdk/package.json');
   const { peerDependenciesMeta = {} } = JSON.parse(fs.readFileSync(manifest, 'utf-8')) as {
     peerDependenciesMeta?: Record<string, { optional?: boolean }>;
   };
@@ -52,7 +52,7 @@ function missingSdkPeers(packDir: string): string[] {
 
 /**
  * Loads a built content runtime the way a dependent's unit tests do: in a fresh Node process, with
- * only the pack's @apack/sdk and none of the SDK's optional peers the harness doesn't need. A bundle that can't load there
+ * only the pack's @apackdev/sdk and none of the SDK's optional peers the harness doesn't need. A bundle that can't load there
  * (a native module, an optional peer, code that needs the app) fails the build instead of a
  * dependent's tests.
  */
@@ -76,7 +76,7 @@ export async function checkContentRuntimeLoads(
     } catch (err) {
       return {
         success: false,
-        error: `${path.relative(packDir, bundleFile)} can't be checked: @apack/sdk doesn't resolve from ${packDir} (install the pack's dependencies).\n${errorMessage(err)}`,
+        error: `${path.relative(packDir, bundleFile)} can't be checked: @apackdev/sdk doesn't resolve from ${packDir} (install the pack's dependencies).\n${errorMessage(err)}`,
       };
     }
     const check = JSON.stringify([`data:text/javascript,${encodeURIComponent(BLOCK_OPTIONAL_PEERS_HOOK)}`, pathToFileURL(bundleFile).href, blocked]);
@@ -106,7 +106,7 @@ export async function checkContentRuntimeLoads(
     const reason = output.trim() || `the load exited with code ${code} (timed out after ${LOAD_TIMEOUT_MS / 1000}s?)`;
     return {
       success: false,
-      error: `${path.relative(packDir, bundleFile)} doesn't load outside the app. Packs depending on this one load it in their unit tests with only @apack/sdk installed, so repositories and content writers can't use native modules or @apack/sdk's optional peers (${blocked.join(', ')}).\n${reason}`,
+      error: `${path.relative(packDir, bundleFile)} doesn't load outside the app. Packs depending on this one load it in their unit tests with only @apackdev/sdk installed, so repositories and content writers can't use native modules or @apackdev/sdk's optional peers (${blocked.join(', ')}).\n${reason}`,
     };
   } finally {
     fs.rmSync(dataDir, { recursive: true, force: true });

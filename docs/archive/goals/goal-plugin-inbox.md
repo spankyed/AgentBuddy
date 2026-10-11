@@ -40,7 +40,7 @@ Finished when:
 - A generated `events.ts` spells its dependency plugins `Qualified<'<dep>', __dep_<dep>_PackPluginEvents>`
   with no `Pick<>`, matching the systems line; `SendablePluginEvents` is gone from the facade barrel.
 - `broadcastToPlugin` is the backend send and `sendToPlugin` the renderer one; no module exports both
-  meanings under one name; the delivery-scope difference is documented in @apack/sdk and pinned by a spec.
+  meanings under one name; the delivery-scope difference is documented in @apackdev/sdk and pinned by a spec.
 - The renderer send is typed from the target's declared inbox, and so is `navigateToPlugin`, which hands its
   events to the same actor. It is not runtime-checked: the trimmed scope dropped the FE validation map, and
   `Message` carries no sender, so a map could not tell one audience from the other anyway.
@@ -48,7 +48,7 @@ Finished when:
 - packages/default-setup/src/features/plugin-handle.ts is deleted, or the doc records under Outcome why
   it survived and what still binds it.
 - `npm start` boots the dev app clean — the acceptance test for the manifest change (Decision 15).
-- npm run typecheck, npm run schema:check, npm run generate:schema -w @apack/sdk (clean), api:check
+- npm run typecheck, npm run schema:check, npm run generate:schema -w @apackdev/sdk (clean), api:check
   (sdk), facade:check -w @app/default-setup, packages:build + packages:check.
 - npm run test:unit, npm run compile, npm run build, npm test (E2E), npm run test:external-pack,
   npm run test:packaged-authoring.
@@ -352,7 +352,7 @@ send it" — Decision 18 says so where it specifies the check.
 - The facade (`generatePackTypes()` in `generate-entries.ts`) is a five-line barrel exporting exactly six
   things — `PackEntityShapes`, `PackStepNodes`, `PackSystemEvents`, `SendablePluginEvents`, `Repositories`,
   `Services`. All backend. `facadeProblems` (`packages/apack-cli/src/build/facade-gate.ts`) requires the
-  bundled facade to type-check standalone importing only `@apack/*`, SDK peers and Node builtins.
+  bundled facade to type-check standalone importing only `@apackdev/*`, SDK peers and Node builtins.
   default-setup's is already 5273 lines.
 - `tests/fixtures/external-pack` does no cross-pack frontend access today; its plugins use `usePlugin()`
   for their own actor only. The cross-pack half is greenfield.
@@ -403,7 +403,7 @@ Final.
    (`UnifiedArg`, which `ActionArgs` extends), so any pack has always been able to write
 
    ```ts
-   const mine = usePlugin()                        // @apack/sdk/fe
+   const mine = usePlugin()                        // @apackdev/sdk/fe
    const ref  = useShell().plugins[0].id           // every registered plugin, by ref
    mine.system.get(ref)?.send({ type: 'ANYTHING' })
    ```
@@ -469,7 +469,7 @@ Final.
    `usePluginSettings` and `currentPluginSettings` no longer exist as pack API; `browser` handles
    `FEATURE_SETTINGS_UPDATED` like the other nine features; writes go through `services.settings`.
 
-   A machine needs no API; a component does, and `goal-settings-to-host` shipped one — `@apack/sdk/fe`'s
+   A machine needs no API; a component does, and `goal-settings-to-host` shipped one — `@apackdev/sdk/fe`'s
    settings composables, documented there. Neither is this goal's to build or change.
 
    **One residue, which Phase 2 verifies rather than fixes.** That goal's Decision 7 — typing
@@ -557,7 +557,7 @@ Final.
     same types. Today its payload is the SDK's open `PluginEvent` (`{ type: string; [key: string]: unknown }`),
     which leaves a typed channel beside an untyped one doing the same thing.
 
-    `openPlugin(ref, event?)` (`@apack/sdk/fe`) keeps `PluginEvent`: its target arrives as data — a link
+    `openPlugin(ref, event?)` (`@apackdev/sdk/fe`) keeps `PluginEvent`: its target arrives as data — a link
     block's, a registered plugin's `id` — so there is no name to type against. It is the escape hatch, the
     way `untypedQx` is for a query whose entity isn't known at compile time.
 
@@ -691,7 +691,7 @@ The root change. After Phase 1.
   `QualifiedPluginEvents` (Decision 3); swap `SendablePluginEvents` for `PackPluginEvents` in
   `generatePackTypes()` (Decision 4).
 - `manifest-schema.ts`: delete `sendsTo` from `SystemSchema` and its `superRefine` checks; regenerate
-  `apack.schema.json` (`npm run generate:schema -w @apack/sdk`). No format bump (Decision 15).
+  `apack.schema.json` (`npm run generate:schema -w @apackdev/sdk`). No format bump (Decision 15).
 - Remove `sendsTo` from its **four** users and declare the inbox on the plugins that needed one. Two of the
   four target host plugins, so the `hostTargets` branch is live code:
   ```
@@ -719,8 +719,8 @@ The root change. After Phase 1.
 - `packages/apack-host/src/packs/registry.ts` and `bus/machine.ts` are unchanged — they read
   `plugin.receives`, which is now precise. Confirm with a spec rather than by inspection.
 
-**Done when:** `npm run typecheck`, `npm run schema:check`, `npm test -w @apack/sdk`,
-`npm test -w @apack/host`, `npm run compile`, `npm run test:external-pack` pass; a generated `events.ts`
+**Done when:** `npm run typecheck`, `npm run schema:check`, `npm test -w @apackdev/sdk`,
+`npm test -w @apackdev/host`, `npm run compile`, `npm run test:external-pack` pass; a generated `events.ts`
 for the fixture pack spells its dependency plugins with no `Pick<>`; `facade:check -w @app/default-setup`
 and `api:check` updated and committed; `git grep sendsTo` returns nothing outside `docs/archive/` and
 `docs/goals/goal-manifest-redesign.md`'s dated note; `npm start` boots the dev app clean (Decision 15's

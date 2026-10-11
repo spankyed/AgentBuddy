@@ -1,7 +1,7 @@
 // Bounds what a step records on its TNode, so a large result can't grow memory without limit. A
 // truncated value becomes `{ value, _truncated: true, ... }` describing what was cut.
 //
-// What it produces is written to the TNode (`@apack/sdk/repositories`' `tnodeRepository`), so it has to be a
+// What it produces is written to the TNode (`@apackdev/sdk/repositories`' `tnodeRepository`), so it has to be a
 // value JSON can hold: a BigInt becomes its digits and a loop is cut where it closes. Neither may fail the
 // result — a step's row is the only record of what it returned.
 

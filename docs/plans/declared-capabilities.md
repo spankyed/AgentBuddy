@@ -37,7 +37,7 @@ manifest has no bearing on what is reachable. Making it a *constructed* object c
 host services is a content change to codegen, not a new mechanism.
 
 **The ambient path has to close with it.** Pack sources also import `services` straight from
-`@apack/sdk/services` — both forms are present in `packages/default-setup/src` today — so the facade is
+`@apackdev/sdk/services` — both forms are present in `packages/default-setup/src` today — so the facade is
 not exclusive. `check:specifiers` already rejects raw `broadcastToPlugin`/`sendToPlugin`/`sendToSystem`
 imports in pack sources for exactly this reason; this is the same rule for the same kind of escape hatch,
 and `apack validate`/`apack build` are where it binds for an external pack.
@@ -75,7 +75,7 @@ looks like a service:
 
 1. **`services.repository`** — the typed repositories, which an earlier draft of this plan called "the
    floor". It is not; it is data access.
-2. **`untypedQx` / `untypedTx` from `@apack/ears`** — and this one is *documented as a pack affordance*:
+2. **`untypedQx` / `untypedTx` from `@apackdev/ears`** — and this one is *documented as a pack affordance*:
    the root guide says pack code "queries untyped with `untypedQx`". Gating the repository while this stays
    open locks the front door and leaves the side door in the manual.
 3. **Content**, which touch `services` not at all. An applier calls

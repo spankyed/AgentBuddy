@@ -1,8 +1,8 @@
 // The lookups the backend's and the renderer's registries both keep of what registered packs contributed, each
 // owned by the registry that creates it (createPackRegistry, createFePackRegistry)
-import { splitRef, type FeatureRef } from '@apack/sdk/ids';
-import { _mergeStepDefinitions, type StepDefinition } from '@apack/sdk/steps';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { splitRef, type FeatureRef } from '@apackdev/sdk/ids';
+import { _mergeStepDefinitions, type StepDefinition } from '@apackdev/sdk/steps';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 /**
  * Values packs contribute per key, folded in registration order.

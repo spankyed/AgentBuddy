@@ -11,19 +11,19 @@ function tryResolve(from: string, specifier: string): string | undefined {
 }
 
 /**
- * The Playwright CLI that belongs to the pack's @apack/testing, so the runner and the fixture
+ * The Playwright CLI that belongs to the pack's @apackdev/testing, so the runner and the fixture
  * share one @playwright/test (two copies make Playwright refuse to run the tests).
  */
 export function resolvePlaywrightCli(packDir: string): string {
   const fromPack = path.join(packDir, 'package.json');
-  const testing = tryResolve(fromPack, '@apack/testing');
+  const testing = tryResolve(fromPack, '@apackdev/testing');
   if (!testing) {
-    throw new Error('@apack/testing is not installed in this pack. Run: npm i -D @apack/testing @playwright/test');
+    throw new Error('@apackdev/testing is not installed in this pack. Run: npm i -D @apackdev/testing @playwright/test');
   }
 
   const playwrightPkg = tryResolve(testing, '@playwright/test/package.json');
   if (!playwrightPkg) {
-    throw new Error('@playwright/test is not installed next to @apack/testing. Run: npm i -D @playwright/test');
+    throw new Error('@playwright/test is not installed next to @apackdev/testing. Run: npm i -D @playwright/test');
   }
   const cli = path.join(path.dirname(playwrightPkg), JSON.parse(fs.readFileSync(playwrightPkg, 'utf-8')).bin.playwright);
   return fs.realpathSync(cli);

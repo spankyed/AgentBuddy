@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { WORTH_NAMING_MS,
   asDuration, asLocalTime, durationCacheDir, durationsOf, markedSpecs, placementOf, pruneDurationCache,
   cachedDurations, halfBound, halfTotal, KEPT_RUNS, outlierIn, quantileOf, readDurationRuns, readDurations,
@@ -57,8 +57,8 @@ const reported = (...modules: ReturnType<typeof mod>[]): ReportedRun =>
 describe('durationsOf', () => {
   it('attributes a module to the suite whose project reported it', () => {
     const run = reported(
-      mod('@apack/host', 'tests/database/write-lock.spec.ts', 4890),
-      mod('@apack/sdk', 'tests/build/generate-entries.spec.ts', 17745),
+      mod('@apackdev/host', 'tests/database/write-lock.spec.ts', 4890),
+      mod('@apackdev/sdk', 'tests/build/generate-entries.spec.ts', 17745),
     );
     expect(durationsOf(run, HOST)).toEqual([
       row('apack-host', 'tests/database/write-lock.spec.ts', 4890),
@@ -95,8 +95,8 @@ describe('durationsOf', () => {
    */
   it('drops a module that did not run, which reports 0 rather than nothing', () => {
     const run = reported(
-      mod('@apack/host', 'tests/database/write-lock.spec.ts', 4890),
-      mod('@apack/host', 'tests/skipped-entirely.spec.ts', 0, true),
+      mod('@apackdev/host', 'tests/database/write-lock.spec.ts', 4890),
+      mod('@apackdev/host', 'tests/skipped-entirely.spec.ts', 0, true),
     );
     expect(durationsOf(run, ONE)).toEqual([row('apack-host', 'tests/database/write-lock.spec.ts', 4890)]);
   });
@@ -104,21 +104,21 @@ describe('durationsOf', () => {
   it('takes a half from the filename, as every other consumer of a spec path does', () => {
     const covered = UNIT_SUITES.filter((suite) => suite.dir === 'apack-cli');
     const run = reported(
-      mod('@apack/cli', 'tests/build/facade-typing.integration.spec.ts', 39800),
-      mod('@apack/cli', 'tests/commands/run-install.spec.ts', 3234),
+      mod('@apackdev/cli', 'tests/build/facade-typing.integration.spec.ts', 39800),
+      mod('@apackdev/cli', 'tests/commands/run-install.spec.ts', 3234),
     );
     expect(durationsOf(run, covered).map((found) => found.half)).toEqual(['integration', 'fast']);
   });
 
   it('says nothing about a run that reported no modules', () => {
-    expect(durationsOf({ projects: ['@apack/host'], modules: [] }, ONE)).toEqual([]);
+    expect(durationsOf({ projects: ['@apackdev/host'], modules: [] }, ONE)).toEqual([]);
   });
 
   // Named rather than dropped: a silent drop takes the file out of the ranking, the gate and the cache at
   // once. The cause is narrower than it was — a workspace name and its vitest project name having
   // diverged — and it is the same divergence `projectsThatDidNotRun` refuses on
   it('refuses a module whose project is none of the covered suites', () => {
-    const run = reported(mod('@apack/no-such-project', 'tests/a.spec.ts', 10));
+    const run = reported(mod('@apackdev/no-such-project', 'tests/a.spec.ts', 10));
     expect(() => durationsOf(run, ONE)).toThrow(/is none of the 1 suite/);
   });
 });

@@ -2,7 +2,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '../types/entities.ts';
-import { destroyEntity, findRelations, installedEngine as ears, untypedTx, untypedQx as qx } from '@apack/ears';
+import { destroyEntity, findRelations, installedEngine as ears, untypedTx, untypedQx as qx } from '@apackdev/ears';
 import { _getMediaPath, loadJSON, selectsAll, type ContentApplier, type ApplyContext, type ApplyResult, type AppliedItem } from '../utils/index.ts';
 import { resolve, resolveRemoval, type LiveEntity } from './merge.ts';
 import { contentPath } from '../build/manifest.ts';
@@ -48,7 +48,7 @@ export function hashValues(values: unknown[]): string {
 }
 
 /**
- * A hash per field, read from the entity (`AppliedItem.parts`, `@apack/sdk/utils`). The path of a field's
+ * A hash per field, read from the entity (`AppliedItem.parts`, `@apackdev/sdk/utils`). The path of a field's
  * part is the field's name.
  *
  * **Only the fields the applier wrote**, which is why this takes the list rather than reading the entity's
@@ -141,7 +141,7 @@ export interface ContentEntity {
  * an item nothing recorded one for, and names no entity.
  *
  * **The keyed lookup sees deleted rows, and that is the whole of how an apply knows the user removed one.**
- * `qx` carries no filter where the finders do (`@apack/ears`' `query-helpers.ts`, `!isDeleted`), and a
+ * `qx` carries no filter where the finders do (`@apackdev/ears`' `query-helpers.ts`, `!isDeleted`), and a
  * soft-deleted row keeps the `contentKey` being searched for. Hide it and `findByIdentity` misses too, on the
  * same filter, so the record is created again: a fresh copy beside the one in the trash, every time the
  * pack's compiled content changes.
@@ -156,7 +156,7 @@ export function contentEntity(entityType: string | undefined, key: string): Cont
 }
 
 /**
- * Records that this run's content declares `key` (`ApplyRecord.defined`, `@apack/sdk/utils`).
+ * Records that this run's content declares `key` (`ApplyRecord.defined`, `@apackdev/sdk/utils`).
  *
  * **It is the content that declares a key, never the walk.** A writer calls this over everything its
  * compiled file holds, before it writes anything, because what the removals are computed from is the

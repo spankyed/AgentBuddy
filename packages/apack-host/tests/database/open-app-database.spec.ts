@@ -3,13 +3,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createEarsEngine, getEntitiesOfType, installEngine, installedEngine, untypedQx, type EARS } from '@apack/ears';
-import { _appDataPaths } from '@apack/sdk/utils';
+import { createEarsEngine, getEntitiesOfType, installEngine, installedEngine, untypedQx, type EARS } from '@apackdev/ears';
+import { _appDataPaths } from '@apackdev/sdk/utils';
 import { openAppDatabase } from '../../src/database/open.ts';
 import { findAppDataPaths } from '../../src/database/layout.ts';
 import { readInstalledSchema } from '../../src/database/schema.ts';
 import { dataDirWithPacks, removeTempDirs, schemaContext, tempDir, untypedTx, writeData } from './fixtures.ts';
-import { _appDirOf } from '@apack/sdk/env';
+import { _appDirOf } from '@apackdev/sdk/env';
 
 afterEach(removeTempDirs);
 

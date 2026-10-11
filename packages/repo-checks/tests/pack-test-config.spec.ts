@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { callsHelper, declaresKey } from './_support/config-code.ts';
 import { repoFiles } from './_support/repo-files.ts';
 
@@ -51,7 +51,7 @@ describe("a pack's vitest config calls definePackTestConfig", () => {
 
   it('leaves none of them assembling their own', () => {
     const copies = packConfigs().filter((config) => !calls(read(config)));
-    expect(copies, `these restate what ${HELPER} (@apack/testing/vitest) holds. Call it instead: what a pack `
+    expect(copies, `these restate what ${HELPER} (@apackdev/testing/vitest) holds. Call it instead: what a pack `
       + 'needs on top is an option').toEqual([]);
   });
 

@@ -4,14 +4,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { loadAppPacks, loadExternalPacks, type LoadedPack } from '../../../src/packs/runtime/loader.ts';
-import type { PackRegistration } from '@apack/sdk/framework';
+import type { PackRegistration } from '@apackdev/sdk/framework';
 import { applyPacks, contentRevision, type PackContentTarget } from '../../../src/packs/runtime/apply.ts';
 import { appliedContent, appState } from '../../../src/app-state/index.ts';
 import { getLoadedPackEntries } from '../../../src/packs/layout.ts';
-import { resetTestData, testRootEvents as rootEvents } from '@apack/sdk/testing';
-import { PACK_SNAPSHOT_FORMAT, contentFile } from '@apack/sdk/build';
-import type { ApplyRecord } from '@apack/sdk/utils';
-import { _appDirOf } from '@apack/sdk/env';
+import { resetTestData, testRootEvents as rootEvents } from '@apackdev/sdk/testing';
+import { PACK_SNAPSHOT_FORMAT, contentFile } from '@apackdev/sdk/build';
+import type { ApplyRecord } from '@apackdev/sdk/utils';
+import { _appDirOf } from '@apackdev/sdk/env';
 import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
 
 
@@ -278,8 +278,8 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
 
   it("registers the runtime's content writers and feature settings with the pack", async () => {
     const { registerExternalPacks } = await import('../../../src/packs/runtime/loader.ts');
-    const { getPackSettingsDefaults } = await import('@apack/sdk/framework');
-    const { _contentWriterRegistry } = await import('@apack/sdk/content');
+    const { getPackSettingsDefaults } = await import('@apackdev/sdk/framework');
+    const { _contentWriterRegistry } = await import('@apackdev/sdk/content');
     makeBundledPack('settings-pack', registration('settings-pack', `
       contentWriters: { Widget: { find() { return undefined; } } },
       features: { widget: { system: { machine, receives: ['PING'] }, settings: { visible: false, plugins: { widget: { size: 3 } } } } },
@@ -333,16 +333,16 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     }
   });
 
-  it('refuses a runtime built against an @apack/sdk module this app no longer provides, saying to rebuild it', async () => {
-    const { onLog } = await import('@apack/sdk/logger');
+  it('refuses a runtime built against an @apackdev/sdk module this app no longer provides, saying to rebuild it', async () => {
+    const { onLog } = await import('@apackdev/sdk/logger');
     const errors: string[] = [];
     const stop = onLog((entry) => { if (entry.level === 'error') errors.push(entry.message); });
     try {
-      makeBundledPack('stale-pack', `require('@apack/sdk/rpc');\n${registration('stale-pack')}`);
+      makeBundledPack('stale-pack', `require('@apackdev/sdk/rpc');\n${registration('stale-pack')}`);
       makeBundledPack('current-pack', registration('current-pack'));
 
       expect(loadExternalPacks().map(p => p.origin.id)).toEqual(['current-pack']);
-      expect(errors).toEqual([expect.stringContaining("@apack/sdk/rpc isn't provided by this apack: rebuild the pack with the current @apack/cli")]);
+      expect(errors).toEqual([expect.stringContaining("@apackdev/sdk/rpc isn't provided by this apack: rebuild the pack with the current @apackdev/cli")]);
     } finally {
       stop();
     }
@@ -518,8 +518,8 @@ describe('applyPacks: failures', () => {
 
   // No content key is the host's: a pack's `settings` content is its own data, like any other key
   it('runs every applier the pack registered, a settings applier included', async () => {
-    const { importCompiledContent } = await import('@apack/sdk/utils');
-    const { testPacks } = await import('@apack/sdk/testing');
+    const { importCompiledContent } = await import('@apackdev/sdk/utils');
+    const { testPacks } = await import('@apackdev/sdk/testing');
     const pack = installedPack('with-settings');
     writeRegistry(['with-settings']);
     fs.writeFileSync(path.join(pack.dir, 'runtime', 'content', 'settings.content.json'), '{"plugins": {}}');
@@ -668,7 +668,7 @@ describe('applyPacks: failures', () => {
    * one. Named rather than keyed — a content key is `%5B%22Action%22...`, which nobody reads.
    */
   it('logs the items with the user’s edits, named, and the keys in the meta', async () => {
-    const { onLog } = await import('@apack/sdk/logger');
+    const { onLog } = await import('@apackdev/sdk/logger');
     const pack = installedPack('conflicted');
     writeRegistry(['conflicted']);
     const key = `${'conflicted'}:actions/${encodeURIComponent(JSON.stringify(['Action', 'Echo']))}`;

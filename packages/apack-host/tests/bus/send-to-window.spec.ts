@@ -11,8 +11,8 @@
 // Which window a handler is *handed* is `apack-sdk`'s `define-system-actions.spec.ts`; this file is what
 // the send does with one.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { untypedBroadcastToPlugin, untypedSendToWindow, type Message } from '@apack/sdk/events';
-import { startTestRuntime, testRootEvents } from '@apack/sdk/testing';
+import { untypedBroadcastToPlugin, untypedSendToWindow, type Message } from '@apackdev/sdk/events';
+import { startTestRuntime, testRootEvents } from '@apackdev/sdk/testing';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/registry.ts';
 import { deliverAs } from '../../src/bus/delivery.ts';

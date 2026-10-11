@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { parse as parseSfc } from 'vue/compiler-sfc';
-import type { OwnModuleSpecifier } from '@apack/host/build/own-module-specifiers';
+import type { OwnModuleSpecifier } from '@apackdev/host/build/own-module-specifiers';
 
 /**
  * A pack's source: TypeScript, JavaScript and SFCs. `.d.ts` declares, and imports nothing of the pack's.

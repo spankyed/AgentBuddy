@@ -2,12 +2,12 @@
 // entries (a notes markdown tree and the library compiler module), previewed from its content.json,
 // imported with an item deselected, then imported again in keep-existing mode. The imported document's image,
 // which the API copies into its media folder, loads through main's media:// protocol.
-import type { PackContentPreview } from '@apack/sdk/content';
+import type { PackContentPreview } from '@apackdev/sdk/content';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { buildPackConfigFromManifest, compilePack, type PackManifest } from '@apack/sdk/build';
-import { test, expect } from '@apack/testing';
+import { buildPackConfigFromManifest, compilePack, type PackManifest } from '@apackdev/sdk/build';
+import { test, expect } from '@apackdev/testing';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 const PACK_DIR = path.join(ROOT, 'packages/default-setup');

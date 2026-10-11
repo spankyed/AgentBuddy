@@ -8,11 +8,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 import { CHAIN_STEPS, chainSteps, conflictsOf, dependsOn, orderedSteps, STEP_TABLES, type ChainStep } from '../../../scripts/lib/chain-steps.ts';
 import { declaredAt } from '../../../scripts/lib/chain-output.ts';
 import { reachableText, rootScripts, withoutComments } from '../../../scripts/lib/npm-scripts.ts';
-import { population } from '@apack/sdk/testing';
+import { population } from '@apackdev/sdk/testing';
 import { machineText, POOL_WIDTH, thisMachine } from '../../../scripts/lib/core-budget.ts';
 import { ASSUMED_RUNGS, declaredShare, rungForKind, timedOutBecause, TIMEOUT_CLASSES, TIMEOUT_MS, type TimeoutClass } from '../../../scripts/lib/step-timeouts.ts';
 

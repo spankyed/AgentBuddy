@@ -20,7 +20,7 @@ This is exactly how the BE's `withHostResolution()` works -- patching require re
 **Changes:**
 
 - `pack-loader.ts` -- rewrite `loadPackFEEntry()` to fetch-as-text + CJS execution with require shim
-- `host-deps.ts` -- add `@apack/sdk/fe` to shared deps list
+- `host-deps.ts` -- add `@apackdev/sdk/fe` to shared deps list
 - SDK -- provide a pack build preset (Vite config) that outputs CJS with shared deps externalized
 
 **Pros:** Minimal code change, proven pattern (mirrors BE), no protocol changes, no IPC.

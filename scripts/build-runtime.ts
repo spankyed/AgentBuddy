@@ -19,7 +19,7 @@ import { sealBuildSession } from '../build/build-metadata.ts';
  *
  * WHAT THE FOUR BUILDS OWE EACH OTHER: NOTHING
  *
- * Each resolves workspace code through the `@apack/source` condition to **source** — the renderer's
+ * Each resolves workspace code through the `@apackdev/source` condition to **source** — the renderer's
  * `resolve.conditions`, the api's `esbuildOptions.conditions`, main's `ssr.resolve.conditions` — so none
  * reads another's `dist`. Their outputs are the four disjoint directories `APP_OUTPUTS` names, and the one
  * directory two of them share (`node_modules/.cache/tsbuildinfo/`) takes a distinct filename each.

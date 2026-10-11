@@ -8,7 +8,7 @@ note it in the final summary, and keep going.
 Finished when:
 - The spike result (pass/fail per check, with evidence) is recorded in this doc.
 - If it passed:
-  - @apack/sdk, @apack/ui and @apack/host use `.ts` relative specifiers.
+  - @apackdev/sdk, @apackdev/ui and @apackdev/host use `.ts` relative specifiers.
   - A guard rejects `.js` relative specifiers in them (mutation-checked).
   - Docs are updated.
 - If it failed: the doc says why, `.js` stays, and nothing else changed.
@@ -79,14 +79,14 @@ Run on a throwaway branch (`spike/ts-specifiers`, deleted afterwards) with TypeS
 | 2. Published | ✅ SDK / ❌ UI | **SDK:** `attw` exit 0, `publint --strict` "All good!", CLI `published-sdk-types` 5/5 and `published-exports` 2/2. Declarations with `.ts` specifiers resolve under node16 and bundler (with `noImplicitAny`) with no consumer flags. **UI:** `attw`, `published-ui-types` and `fe-bundler-host-registry` pass (none of them builds a shipped SFC); fails through check 5. |
 | 3. SFCs | ❌ | `typecheck:ui` fails with `rewriteRelativeImportExtensions` enabled: 16× TS2876 ("This relative import path is unsafe to rewrite because it looks like a file name, but actually resolves to "./SimpleMonacoEditor.vue""), because vue-tsc resolves `X.vue` to a virtual TS file. It passes with `allowImportingTsExtensions` alone and the rewrite flag passed only to the tsc JS-emit run. In the monorepo the renderer's `vue-tsc --build`, Vite build and Vitest pass. A pack's Vite build of the shipped SFCs fails (check 5). |
 | 4. Consumers | ✅ (fixable within Decision 1) | TS5097 counts without flags: api 191, host 161, cli 129, testing 129, ui 59. renderer, main and default-setup had 0 (their configs already allow `.ts` imports). Fixes: api `tsconfig.json` needs `allowImportingTsExtensions` + `rewriteRelativeImportExtensions` (it emits); cli, testing, host and ui need `allowImportingTsExtensions`; the `facade-typing` test tsconfig needs it; `scripts/bundle-package.ts` (the testing package's declaration emit) needs `--allowImportingTsExtensions`; the UI build's JS emit needs `--rewriteRelativeImportExtensions` on its tsc run. With these, `npm run typecheck` passed and `packages:build` built all four packages. |
-| 5. End to end | ❌ | `npm run test:packaged-authoring` exit 1: `FE bundle failed: Could not resolve "./extensions.ts" from "node_modules/@apack/ui/dist/components/tiptap/TiptapEditor.vue?vue&type=script&setup=true&lang.ts"` (the second run hit `./editor-config.ts` in the same file). The remaining suites weren't run on the spike, since this settles it. |
+| 5. End to end | ❌ | `npm run test:packaged-authoring` exit 1: `FE bundle failed: Could not resolve "./extensions.ts" from "node_modules/@apackdev/ui/dist/components/tiptap/TiptapEditor.vue?vue&type=script&setup=true&lang.ts"` (the second run hit `./editor-config.ts` in the same file). The remaining suites weren't run on the spike, since this settles it. |
 
-**Why it can't be fixed within the decisions.** `@apack/ui` ships `.vue` files as source for the pack's Vite build, and tsc never emits them. Their `.ts` specifiers can only resolve in `dist/` if one of these happens:
-- a script rewrites them while copying, or the pack's bundler maps `.ts` to `.js` inside `@apack/ui`. Decision 1 rules out both, and the bundler variant would also break authors building with their own Vite config;
+**Why it can't be fixed within the decisions.** `@apackdev/ui` ships `.vue` files as source for the pack's Vite build, and tsc never emits them. Their `.ts` specifiers can only resolve in `dist/` if one of these happens:
+- a script rewrites them while copying, or the pack's bundler maps `.ts` to `.js` inside `@apackdev/ui`. Decision 1 rules out both, and the bundler variant would also break authors building with their own Vite config;
 - `.ts` sources ship beside the emitted `.js`. SFCs would then load a second instance of those modules alongside the one other `.ts` modules and exports reach through `.js`, and the package would stop being dist-only;
 - SFCs keep `.js` specifiers while `.ts` modules switch, which is two conventions (Decision 2);
 - the UI build compiles SFCs to JS. That's a different packaging decision (packs would no longer compile the SFCs, or scan them for Tailwind classes) and outside this goal.
 
-**Decision:** per Decision 2, all three packages keep `.js` specifiers. Nothing else changed. Revisit if `@apack/ui` stops shipping `.vue` source, or TypeScript and vue-tsc gain a supported way to rewrite specifiers in SFCs.
+**Decision:** per Decision 2, all three packages keep `.js` specifiers. Nothing else changed. Revisit if `@apackdev/ui` stops shipping `.vue` source, or TypeScript and vue-tsc gain a supported way to rewrite specifiers in SFCs.
 
-**Update:** `goal-compiled-ui-host-shared.md` removed the blocker. `@apack/ui` now publishes compiled JS, so no `.vue` source ships, and all three packages use `.ts` specifiers.
+**Update:** `goal-compiled-ui-host-shared.md` removed the blocker. `@apackdev/ui` now publishes compiled JS, so no `.vue` source ships, and all three packages use `.ts` specifiers.

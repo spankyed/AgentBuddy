@@ -23,8 +23,8 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue';
-import { useShell } from '@apack/sdk/fe';
-import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor';
+import { useShell } from '@apackdev/sdk/fe';
+import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor';
 // The app's Settings view shows this too; a copy here rather than an import across the boundary
 const DISCORD_URL = 'https://discord.gg/JvbHRXcYp6';
 

@@ -21,7 +21,7 @@ const HEADER = `// @generated from apack.json — do not edit by hand
 interface RegistryEntry { value: string; source: string }
 
 /** The registry source of the entities the SDK owns */
-const SDK_SOURCE = '@apack/sdk';
+const SDK_SOURCE = '@apackdev/sdk';
 
 export function mergeRegistries(
   ownId: string,
@@ -149,7 +149,7 @@ export namespace EARS {
 ${entityValue}
   export type Entity = ${entityUnion};
 
-  export type EntityId<E extends string = string> = import('@apack/ears').EARS.EntityId<E>;
+  export type EntityId<E extends string = string> = import('@apackdev/ears').EARS.EntityId<E>;
 
   export namespace RelKind {
 ${relKindMembers.join('\n')}
@@ -160,7 +160,7 @@ ${relKindMembers.join('\n')}
   export namespace RoleKind {
     export const Custom = <T extends string>(k: T) => k as T & RoleKind;
   }
-  export type RoleKind = import('@apack/ears').EARS.RoleKind;
+  export type RoleKind = import('@apackdev/ears').EARS.RoleKind;
 
   export const AttrKindValues = { Role: 'role', RelationDetails: 'relationDetails' } as const;
   export namespace AttrKind {
@@ -170,17 +170,17 @@ ${relKindMembers.join('\n')}
     export type RelationDetails = typeof RelationDetails;
     export const Custom = <T extends string>(k: T) => k as T & AttrKind;
   }
-  export type AttrKind = import('@apack/ears').EARS.AttrKind;
+  export type AttrKind = import('@apackdev/ears').EARS.AttrKind;
 
-  export type Blueprint = import('@apack/ears').EARS.Blueprint;
-  export type RelationDetail = import('@apack/ears').EARS.RelationDetail;
-  export type AttributePayloads = import('@apack/ears').EARS.AttributePayloads;
-  export type AttributeValue<K extends AttrKind = AttrKind> = import('@apack/ears').EARS.AttributeValue<K>;
-  export type AttributeTypeMap = import('@apack/ears').EARS.AttributeTypeMap;
-  export type AttributeStore = import('@apack/ears').EARS.AttributeStore;
+  export type Blueprint = import('@apackdev/ears').EARS.Blueprint;
+  export type RelationDetail = import('@apackdev/ears').EARS.RelationDetail;
+  export type AttributePayloads = import('@apackdev/ears').EARS.AttributePayloads;
+  export type AttributeValue<K extends AttrKind = AttrKind> = import('@apackdev/ears').EARS.AttributeValue<K>;
+  export type AttributeTypeMap = import('@apackdev/ears').EARS.AttributeTypeMap;
+  export type AttributeStore = import('@apackdev/ears').EARS.AttributeStore;
 }
 
-export type BaseEntity = import('@apack/ears').BaseEntity;
+export type BaseEntity = import('@apackdev/ears').BaseEntity;
 
 export const AllEntities = EARS.Entity;
 export type AllEntities = EARS.Entity;
@@ -274,7 +274,7 @@ const TS_SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts']);
  * *has*, rather than the `.js` this used to write for a `.ts` file. A pack is bundled rather than emitted as
  * individual modules, its tsconfig sets `allowImportingTsExtensions`, and every tool in its toolchain
  * resolves `.ts`: `tsc` and `vue-tsc` under `bundler` resolution, Vite, and esbuild. So `.js` bought nothing
- * here and cost the pack a second convention — its hand-written code names `.ts`, as the `@apack` packages'
+ * here and cost the pack a second convention — its hand-written code names `.ts`, as the `@apackdev` packages'
  * own source does (`check:specifiers`, `findJsSpecifiers`).
  */
 function toImportPath(root: string, manifestPath: string): string {
@@ -783,7 +783,7 @@ export function generatePackFiles(
     if (stepDefinitions.length === 0) return '';
     const { imports, items } = stepLiterals('buildModule', '  ');
     return `${HEADER}
-import type { StepDefinition } from '@apack/sdk/steps';
+import type { StepDefinition } from '@apackdev/sdk/steps';
 ${imports.join('\n')}
 
 export const steps: StepDefinition[] = [
@@ -981,8 +981,8 @@ ${contracted.map(f => `  '${f.id}': __ContractMatches<MachineMatchesContract<typ
 `;
 
     return `${HEADER}
-import type { PackRegistration } from '@apack/sdk/framework';
-${contracted.length ? "import type { MachineMatchesContract } from '@apack/sdk/framework';\nimport type { SystemContracts as __SystemContracts } from './system-specs.ts';\n" : ''}${systemFeatures.length ? "import { packSystem } from '@apack/sdk/framework';\n" : ''}${hasRepositories() ? "import { repositories } from './repositories.ts';\n" : ''}
+import type { PackRegistration } from '@apackdev/sdk/framework';
+${contracted.length ? "import type { MachineMatchesContract } from '@apackdev/sdk/framework';\nimport type { SystemContracts as __SystemContracts } from './system-specs.ts';\n" : ''}${systemFeatures.length ? "import { packSystem } from '@apackdev/sdk/framework';\n" : ''}${hasRepositories() ? "import { repositories } from './repositories.ts';\n" : ''}
 ${systemImports}
 import { featureServices } from './services.ts';
 ${hooksImport}
@@ -1082,7 +1082,7 @@ ${contractCheck}`;
     }
 
     return `${HEADER}
-import type { PackFERegistration } from '@apack/sdk/fe';
+import type { PackFERegistration } from '@apackdev/sdk/fe';
 ${pluginImports}
 ${extraImports.join('\n')}
 
@@ -1124,8 +1124,8 @@ ${regProps.join('\n')}
 // dependencies'). The call is pure, so bundles that only use the EARS constants above
 // drop it.
 
-import { defineEars, type ShapeOf } from '@apack/ears';
-import type { SdkEntityShapes } from '@apack/sdk';
+import { defineEars, type ShapeOf } from '@apackdev/ears';
+import type { SdkEntityShapes } from '@apackdev/sdk';
 ${ownNodes ? "import type { NodeEntity } from './types.ts';\n" : ''}${shapeImports.join('\n')}
 
 ${[...depShapes.imports, ...depNodes.imports].join('\n')}
@@ -1165,7 +1165,7 @@ export const {
 
   // `ref(name)`, the ref a name in this pack's code stands for, bound to the pack as the generated sends are, so
   // pack code never supplies its own pack id. It takes only the names the pack can write, so a misspelled one doesn't
-  // compile (a FeatureRef is accepted wherever a send takes one). Frontend-safe: it imports only `@apack/sdk/ids`.
+  // compile (a FeatureRef is accepted wherever a send takes one). Frontend-safe: it imports only `@apackdev/sdk/ids`.
   function generateRef(): string {
     const names = [...new Set([
       ...packFeatures(manifest).map((f) => f.id),
@@ -1175,7 +1175,7 @@ export const {
       ...Object.keys(HOST_SYSTEM_EVENT_TYPES),
     ])];
     return `${HEADER}
-import { resolveName, type FeatureRef } from '@apack/sdk/ids';
+import { resolveName, type FeatureRef } from '@apackdev/sdk/ids';
 
 /** A feature this pack's code can name: its own by feature id, its dependencies' and the host's as \`<packId>/<featureId>\` */
 export type FeatureName = ${names.map((name) => `'${name}'`).join(' | ')};
@@ -1192,7 +1192,7 @@ export const ref = (name: FeatureName): FeatureRef => resolveName(name, packId);
   // events.ts, so a pack never writes its own id and never reaches another pack's data.
   function generatePaths(): string {
     return `${HEADER}
-import { _packDataDir } from '@apack/sdk/utils';
+import { _packDataDir } from '@apackdev/sdk/utils';
 
 /**
  * A directory this pack keeps data in, under its own namespace (\`pack-data/${manifest.id}/<name>\`).
@@ -1227,8 +1227,8 @@ export const getDataDirPath = (name: string): string => _packDataDir('${manifest
     const qualifiedState = depsWithPlugins.map((depId) => `Qualified<'${depId}', ${depAlias(depId, 'PackPluginState')}>`);
 
     return `${HEADER}
-import { pluginIsRunning, readUntypedPluginState, untypedOpenPlugin, useUntypedPluginState, type PluginStateOf } from '@apack/sdk/fe';
-${qualifiedState.length > 0 ? "import type { Qualified } from '@apack/sdk/events';\n" : ''}import type { Ref } from 'vue';
+import { pluginIsRunning, readUntypedPluginState, untypedOpenPlugin, useUntypedPluginState, type PluginStateOf } from '@apackdev/sdk/fe';
+${qualifiedState.length > 0 ? "import type { Qualified } from '@apackdev/sdk/events';\n" : ''}import type { Ref } from 'vue';
 import type { SendablePluginEvents } from './events.ts';
 import { ref } from './ref.ts';
 ${stateImports}
@@ -1237,7 +1237,7 @@ ${depState.imports.join('\n')}
 /**
  * A plugin as this pack's code names it: its own by feature id, a dependency's as \`<packId>/<featureId>\`.
  * A plugin named by data (a link's target, a registered plugin's \`id\`) opens through \`untypedOpenPlugin\`
- * from \`@apack/sdk/fe\`, which checks it at runtime instead.
+ * from \`@apackdev/sdk/fe\`, which checks it at runtime instead.
  */
 export type PluginName = ${plugins.join(' | ')};
 
@@ -1293,7 +1293,7 @@ function ownPlugin(name: PluginName): string {
  * value is never \`undefined\`. A dependency's frontend may still be loading, so reading one of its plugins gives
  * \`undefined\` until it arrives — that is a state to render, not an error.
  *
- * \`useUntypedPluginState\` from \`@apack/sdk/fe\` is the escape hatch, for a ref that arrives as data.
+ * \`useUntypedPluginState\` from \`@apackdev/sdk/fe\` is the escape hatch, for a ref that arrives as data.
  */
 export function usePluginState<Name extends OwnPluginName, TSelected>(name: Name, selector: (state: PackPluginState[Name]) => TSelected): Readonly<Ref<TSelected>>;${qualifiedState.length > 0 ? `
 export function usePluginState<Name extends DependencyPluginName, TSelected>(name: Name, selector: (state: DependencyPluginState[Name]) => TSelected): Readonly<Ref<TSelected | undefined>>;` : ''}
@@ -1363,7 +1363,7 @@ export function readPluginState(name: PluginName, selector: (state: never) => un
       'HostSystemEvents',
     ].join(' & ');
     return `${HEADER}
-import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type OutgoingEventsOf' : ''}${contracts.size > 0 ? ', type PluginInboxOf, type PublicPluginInboxOf' : ''}, type Qualified, type WithOwnNames } from '@apack/sdk/events';
+import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type OutgoingEventsOf' : ''}${contracts.size > 0 ? ', type PluginInboxOf, type PublicPluginInboxOf' : ''}, type Qualified, type WithOwnNames } from '@apackdev/sdk/events';
 ${hasSystems ? `import type { SystemContracts as __SystemContracts } from './system-specs.ts';\n` : ''}${acceptsImports ? `${acceptsImports}\n` : ''}${[...depPlugins.imports, ...depSystems.imports].join('\n')}
 ${[outgoingAliases, acceptsAliases].filter(Boolean).join('\n')}
 
@@ -1505,9 +1505,9 @@ ${nodeEntity}`;
 
     return `${HEADER}
 import type { z } from 'zod';
-import type { EARS } from '@apack/ears';
-import { services as sdkServices, type HostServices } from '@apack/sdk/services';
-import type { TypedSendToPlugin, TypedSendToWindow, TypedSendToSystem } from '@apack/sdk/events';
+import type { EARS } from '@apackdev/ears';
+import { services as sdkServices, type HostServices } from '@apackdev/sdk/services';
+import type { TypedSendToPlugin, TypedSendToWindow, TypedSendToSystem } from '@apackdev/sdk/events';
 import type { Repositories } from './repository.ts';
 import type { QualifiedPluginEvents, QualifiedSystemEvents } from './events.ts';
 ${imports.join('\n')}
@@ -1569,7 +1569,7 @@ export type EntityId = EARS.EntityId;
     const entries = repositoryEntries();
     const deps = depTypeImports('Repositories');
     return `${HEADER}
-import { repository as earsRepository } from '@apack/ears';
+import { repository as earsRepository } from '@apackdev/ears';
 ${entries.map(([name, path, exportName]) => `import type { ${exportName} as __repo_${name} } from '${path}';`).join('\n')}
 ${deps.imports.join('\n')}
 
@@ -1607,7 +1607,7 @@ ${entries.map(([name]) => `  ${name}: __repo_${name},`).join('\n')}
     const repositories = repositoryEntries();
     const hooks = contentWriterEntries();
     return `${HEADER}
-import type { ContentRuntime } from '@apack/sdk/testing';
+import type { ContentRuntime } from '@apackdev/sdk/testing';
 ${repositories.map(([name, path, exportName]) => `import { ${exportName} as __repo_${name} } from '${path}';`).join('\n')}
 ${hooks.map(([, path, exportName], i) => `import { ${exportName} as __contentWriter_${i} } from '${path}';`).join('\n')}
 
@@ -1648,7 +1648,7 @@ export type { Repositories } from './repository.ts';
     const providersEntries = referenceFeatures.map((_, i) => `  itemsProvider${i},`).join('\n');
 
     return `${HEADER}
-import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apack/sdk/fe/references';
+import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apackdev/sdk/fe/references';
 ${imports}
 
 export const REFERENCE_TYPES: Record<string, ReferenceTypeConfig> = {
@@ -1665,7 +1665,7 @@ ${providersEntries}
 
 export const ALL_PROTOCOLS: string[] = Object.values(REFERENCE_TYPES).map((cfg) => cfg.protocol);
 
-export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apack/sdk/fe/references';
+export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@apackdev/sdk/fe/references';
 `;
   }
 
@@ -1730,12 +1730,12 @@ export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from 
     }
 
     if (registrations.length === 0) {
-      return `${HEADER}\nimport type { ContentApplier } from '@apack/sdk/utils';\n\n${COMPILED_DIR_ACCESSORS}\n/** The pack's appliers, which its registration carries */\nexport const appliers: ContentApplier[] = [];\n`;
+      return `${HEADER}\nimport type { ContentApplier } from '@apackdev/sdk/utils';\n\n${COMPILED_DIR_ACCESSORS}\n/** The pack's appliers, which its registration carries */\nexport const appliers: ContentApplier[] = [];\n`;
     }
 
     return `${HEADER}
-${applierImports.size > 0 ? `import { ${Array.from(applierImports).join(', ')} } from '@apack/sdk/content';` : ''}
-import { importCompiledContent, type ContentApplier, type ApplyResult, type ContentSelection } from '@apack/sdk/utils';
+${applierImports.size > 0 ? `import { ${Array.from(applierImports).join(', ')} } from '@apackdev/sdk/content';` : ''}
+import { importCompiledContent, type ContentApplier, type ApplyResult, type ContentSelection } from '@apackdev/sdk/utils';
 ${packImports.join('\n')}
 
 ${COMPILED_DIR_ACCESSORS}
@@ -1746,7 +1746,7 @@ ${registrations.map((registration) => `  ${registration},`).join('\n')}
 
 export { importCompiledContent };
 export type { ApplyResult, ContentSelection };
-export type { ImportMode } from '@apack/sdk/utils';
+export type { ImportMode } from '@apackdev/sdk/utils';
 `;
   }
 
@@ -1892,7 +1892,7 @@ export type { ImportMode } from '@apack/sdk/utils';
     }
 
     const sections = [
-      ["import type { DSLStepNode, Track } from '@apack/sdk/build';", "export { entry, on } from '@apack/sdk/build';", ...imports].join('\n'),
+      ["import type { DSLStepNode, Track } from '@apackdev/sdk/build';", "export { entry, on } from '@apackdev/sdk/build';", ...imports].join('\n'),
       ...helpers,
       customReExports.join('\n'),
       ...depReExports,
@@ -1935,7 +1935,7 @@ export type { ImportMode } from '@apack/sdk/utils';
     });
 
     return `${HEADER}
-import type { DslTypeConfig } from '@apack/sdk/fe';
+import type { DslTypeConfig } from '@apackdev/sdk/fe';
 ${imports.join('\n')}
 
 /** The pack's DSL types for the host's code editors, which its frontend registration carries */

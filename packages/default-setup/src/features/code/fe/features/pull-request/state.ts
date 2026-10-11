@@ -3,8 +3,8 @@ import { sendToSystem } from '#generated/events.ts';
 import type { GitStatusFile, GitDiff } from '../commit/state.ts';
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '#generated/types.ts';
 import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication.ts';
-import { untypedOpenPlugin } from '@apack/sdk/fe'
-import { resolveName } from '@apack/sdk/ids'
+import { untypedOpenPlugin } from '@apackdev/sdk/fe'
+import { resolveName } from '@apackdev/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host');
 import { getCommentDatabaseId } from './comment-id.ts';

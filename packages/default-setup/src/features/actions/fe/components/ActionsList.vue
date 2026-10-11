@@ -116,10 +116,10 @@
 <script setup lang="ts">
 import type { Category } from '#generated/types.ts'
 import { Play, Trash2, Plus } from 'lucide-vue-next'
-import Button from '@apack/ui/design/button'
-import CategoryFilter from '@apack/ui/design/CategoryFilter'
-import { useInfiniteScroll } from '@apack/ui/composables/useInfiniteScroll'
-import type { ActionEntity, EARS } from '@apack/sdk'
+import Button from '@apackdev/ui/design/button'
+import CategoryFilter from '@apackdev/ui/design/CategoryFilter'
+import { useInfiniteScroll } from '@apackdev/ui/composables/useInfiniteScroll'
+import type { ActionEntity, EARS } from '@apackdev/sdk'
 
 interface Props {
   actions: ActionEntity[]

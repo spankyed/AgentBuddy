@@ -6,8 +6,8 @@
  */
 
 import { repository } from '#generated/repository.ts';
-import { createExportDir } from '@apack/sdk/utils';
-import { stripInternalFields, writeExportJson } from '@apack/sdk/utils';
+import { createExportDir } from '@apackdev/sdk/utils';
+import { stripInternalFields, writeExportJson } from '@apackdev/sdk/utils';
 
 export function exportPrompts(outputDir: string): { filePath: string; promptCount: number } {
   outputDir = createExportDir(outputDir, 'prompts');

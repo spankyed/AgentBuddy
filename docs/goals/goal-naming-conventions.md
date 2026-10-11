@@ -25,7 +25,7 @@ Finished when:
 - `Context` names an XState machine's context and nothing else, and no module exports a bare `Context`.
 - No exported type ends in `Info`, `Manager`, `Helper` or `Util`. `Data` ends only the payload types of a
   plugin's CLIENT_CONNECTED event, and every plugin that sends one uses it.
-- `npm run typecheck`, `npm run test:unit`, `npm run schema:check -w @apack/sdk`, `npm run api:update`
+- `npm run typecheck`, `npm run test:unit`, `npm run schema:check -w @apackdev/sdk`, `npm run api:update`
   (and the committed `etc/`), `npm run facade:check -w @app/default-setup`, `npm run build`,
   `npm run test:external-pack`, `npm run test:packaged-authoring`.
 - A final summary: phase -> done/deferred, evidence, and the conventional choices made.
@@ -50,7 +50,7 @@ Never:
 - write a check that bans a retired word. Every check here is an invariant over new code (a `get*` that
   can return nothing, a bare exported `Context`), never a list of names nobody may type. The pack-naming
   goal's ban-list guards were deleted for that reason.
-- rename `qx`, `tx`, `EARS`, `fe`/`be`, `sourceHandle` (Vue Flow's own term) or the `@apack/source`
+- rename `qx`, `tx`, `EARS`, `fe`/`be`, `sourceHandle` (Vue Flow's own term) or the `@apackdev/source`
   condition. See Deferred.
 ```
 
@@ -163,7 +163,7 @@ Final.
 
 8. **Pack-facing types are renamed like everything else.** `StepCompileContext`, `StepValidationContext`,
    `StepDecompileContext`, `ExecutionContext`, `ContentWriteContext`, `ApplyContext` and `CompilationContext`
-   are exported from `@apack/sdk` and appear in `etc/*.api.md` and default-setup's facade. No release has
+   are exported from `@apackdev/sdk` and appear in `etc/*.api.md` and default-setup's facade. No release has
    shipped them to anyone, so there is no surface to preserve: rename them, run `api:update` and
    `facade:update`, and follow the rename into the CLI's scaffold templates and the fixture packs. Carving
    out the published surface would leave `Context` meaning two things, which is the defect this goal
@@ -295,7 +295,7 @@ exported interface fails the spec.
   changing them is every file and every pack author's memory, against no ambiguity.
 - **`sourceHandle`.** Vue Flow's own API term. Renaming it would make our code disagree with the library's
   documentation.
-- **The `@apack/source` condition.** A resolution contract named in every host config, in `package.json`
+- **The `@apackdev/source` condition.** A resolution contract named in every host config, in `package.json`
   exports maps, in `node --conditions` flags and in the CLI's resolve hooks. Out of scope here and recorded
   as deferred by the pack-naming goal.
 - **Replacing the database write lock with an OS advisory lock.** A design change, not a naming one, and

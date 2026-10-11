@@ -7,7 +7,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { installShippedPacks } from '../../src/packs/installer.ts';
 import { PACK_LAYOUT, readPackIntegrity } from '../../src/packs/layout.ts';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 
 let tmp: string;
 let shipped: string;

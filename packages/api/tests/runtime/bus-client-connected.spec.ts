@@ -7,25 +7,25 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
-import type { Message } from '@apack/sdk/events';
+import type { Message } from '@apackdev/sdk/events';
 
-vi.mock('@apack/host/app-state', () => ({
+vi.mock('@apackdev/host/app-state', () => ({
   appState: { get: () => ({ hasOnboarded: true }) },
   HOST_ENTITY_TYPES: ['AppState'],
 }));
 
-const { createPackRegistry } = await import('@apack/host/packs');
+const { createPackRegistry } = await import('@apackdev/host/packs');
 const registry = createPackRegistry();
 const { registerPack, unregisterPack } = registry;
-const { createAppBus, createBusMachine } = await import('@apack/host/bus');
+const { createAppBus, createBusMachine } = await import('@apackdev/host/bus');
 const { rootEvents } = await import('@/transport/emitter');
 
 // The app's bus on the api's transport, as setup/backend.ts binds it (the services reach the store only when called)
-const { bindHost } = await import('@apack/sdk/runtime');
-const { createHostRuntime } = await import('@apack/host/services');
-const { createEarsEngine } = await import('@apack/ears');
-const { untypedBroadcastToPlugin } = await import('@apack/sdk/events');
-type LmdbStore = import('@apack/ears/lmdb').LmdbStore;
+const { bindHost } = await import('@apackdev/sdk/runtime');
+const { createHostRuntime } = await import('@apackdev/host/services');
+const { createEarsEngine } = await import('@apackdev/ears');
+const { untypedBroadcastToPlugin } = await import('@apackdev/sdk/events');
+type LmdbStore = import('@apackdev/ears/lmdb').LmdbStore;
 bindHost(createHostRuntime({ store: {} as LmdbStore, engine: createEarsEngine({ isEntityType: () => false }), transport: { rootEvents }, appVersion: '1.0.0', packs: registry }));
 const backendSystem = createAppBus(registry);
 

@@ -21,7 +21,7 @@ function packRuleFor(key: PackRuleKey) {
 const ruleSentence = (key: PackRuleKey): string => packRuleFor(key).rule;
 
 /**
- * A pack rule from `@apack/cli`'s `build/pack-rules.ts`, applied to this repo's packs.
+ * A pack rule from `@apackdev/cli`'s `build/pack-rules.ts`, applied to this repo's packs.
  *
  * The rule is the same rule wherever it runs — `apack build`, `apack validate` and `apack test` run these
  * for every pack outside this checkout, and running a second implementation here is how two copies of one rule
@@ -105,7 +105,7 @@ interface RuleShape {
 }
 
 /**
- * A rule, which says who owns it: `@apack/cli`, or this repo.
+ * A rule, which says who owns it: `@apackdev/cli`, or this repo.
  *
  * A union rather than two optional fields, so a rule that says both or neither does not compile. Two pack-subject
  * rules sat in this script for months while an external pack was held to neither, and the reasons they had not
@@ -115,7 +115,7 @@ interface RuleShape {
 export type PackParity =
   /** The pack-facing half is a named pack rule, so an external pack is held to the same thing by another name */
   | { readonly kind: 'covered'; readonly by: PackRuleKey; readonly note: string }
-  /** A pack cannot commit this offence: it has no `scripts/` of its own, is not an `@apack/*` package, and so on */
+  /** A pack cannot commit this offence: it has no `scripts/` of its own, is not an `@apackdev/*` package, and so on */
   | { readonly kind: 'inapplicable'; readonly note: string }
   /**
    * A pack *can* commit it and nothing outside this repo refuses it.
@@ -134,7 +134,7 @@ export type ImportRule = RuleShape & (
 );
 
 /**
- * A rule `@apack/cli` owns, applied to the packs in this checkout: one body of code, one sentence, two entry
+ * A rule `@apackdev/cli` owns, applied to the packs in this checkout: one body of code, one sentence, two entry
  * points. `find` takes the rule's own population and `overPaths` the paths a caller named, both through the same
  * function.
  *

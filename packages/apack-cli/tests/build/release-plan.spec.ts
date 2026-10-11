@@ -4,10 +4,10 @@ import * as path from 'node:path';
 import getReleasePlan from '@changesets/get-release-plan';
 import { satisfies } from 'semver';
 import { afterEach, describe, expect, it } from 'vitest';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 
 /** The versions Changesets assigns the published packages, from the repo's manifests and config. */
-const PUBLISHED = { 'apack-ears': '@apack/ears', 'apack-sdk': '@apack/sdk', 'apack-ui': '@apack/ui', 'apack-cli': '@apack/cli', 'apack-testing': '@apack/testing' };
+const PUBLISHED = { 'apack-ears': '@apackdev/ears', 'apack-sdk': '@apackdev/sdk', 'apack-ui': '@apackdev/ui', 'apack-cli': '@apackdev/cli', 'apack-testing': '@apackdev/testing' };
 
 let scratch: string | undefined;
 afterEach(() => {
@@ -37,7 +37,7 @@ async function releasePlan(changeset: string): Promise<Record<string, string>> {
     }
   }
   const plan = await getReleasePlan(scratch);
-  return Object.fromEntries(plan.releases.filter((r) => r.name.startsWith('@apack/') && r.name !== '@apack/host').map((r) => [r.name, r.newVersion]));
+  return Object.fromEntries(plan.releases.filter((r) => r.name.startsWith('@apackdev/') && r.name !== '@apackdev/host').map((r) => [r.name, r.newVersion]));
 }
 
 describe('release plan', () => {
@@ -65,7 +65,7 @@ describe('release plan', () => {
     const current = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', 'apack-sdk', 'package.json'), 'utf-8')).version as string;
     const [major, minor] = current.split('.').map(Number);
     const next = `${major}.${minor + 1}.0`;
-    const versions = await releasePlan(`---\n'@apack/sdk': minor\n---\n\nA change\n`);
+    const versions = await releasePlan(`---\n'@apackdev/sdk': minor\n---\n\nA change\n`);
     expect(versions).toEqual(Object.fromEntries(Object.values(PUBLISHED).map((name) => [name, next])));
   });
 });

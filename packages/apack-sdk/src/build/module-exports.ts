@@ -43,7 +43,7 @@ export interface ModuleExports {
 
 /**
  * The audiences a plugin's inbox may open to, in the order an error lists them. Constrained by the type packs
- * write against (`PluginInboxAudiences`, `@apack/sdk/fe`), so a new audience there is a compile error here
+ * write against (`PluginInboxAudiences`, `@apackdev/sdk/fe`), so a new audience there is a compile error here
  * rather than a contract codegen rejects as "not an audience".
  */
 const INBOX_AUDIENCES = ['pack', 'public'] as const satisfies readonly (keyof PluginInboxAudiences)[];
@@ -53,7 +53,7 @@ function loadTypeScript(): typeof TS {
     return createRequire(import.meta.url)('typescript') as typeof TS;
   } catch (err) {
     if ((err as { code?: string }).code !== 'MODULE_NOT_FOUND') throw err;
-    throw new Error('Generating pack entries reads module exports with the TypeScript compiler, and "typescript" is not installed. Install it next to @apack/sdk (npm install --save-dev typescript).');
+    throw new Error('Generating pack entries reads module exports with the TypeScript compiler, and "typescript" is not installed. Install it next to @apackdev/sdk (npm install --save-dev typescript).');
   }
 }
 

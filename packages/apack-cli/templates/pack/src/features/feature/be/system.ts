@@ -1,5 +1,5 @@
 import { setup } from 'xstate';
-import { defineSystem } from '@apack/sdk/framework';
+import { defineSystem } from '@apackdev/sdk/framework';
 // broadcastToPlugin is typed with the events each of this pack's plugins receives
 import { broadcastToPlugin } from '#generated/events.ts';
 import type { Contract } from './contract.ts';

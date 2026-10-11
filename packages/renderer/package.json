@@ -17,9 +17,9 @@
     "lint:fix": "oxlint . -D correctness --ignore-path .gitignore --fix && eslint . --fix"
   },
   "dependencies": {
-    "@apack/host": "*",
-    "@apack/sdk": "*",
-    "@apack/ui": "*",
+    "@apackdev/host": "*",
+    "@apackdev/sdk": "*",
+    "@apackdev/ui": "*",
     "@guolao/vue-monaco-editor": "^1.5.5",
     "@statelyai/inspect": "^0.4.0",
     "@tiptap/extension-code-block-lowlight": "^3.20.1",

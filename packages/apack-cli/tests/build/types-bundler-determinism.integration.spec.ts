@@ -6,7 +6,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '@app/publish-checks';
 
 /**
- * A pack's facade bundle (dist/types/pack-types.d.ts) is the same whether its @apack/* packages come
+ * A pack's facade bundle (dist/types/pack-types.d.ts) is the same whether its @apackdev/* packages come
  * from this checkout's workspace links or from the tarballs npm would publish: what the repo builds
  * against is what a pack author installs. A package whose `files` or `exports` ship something other
  * than the workspace has, as a private package with no `files` field does, shows up here as a
@@ -35,14 +35,14 @@ const PACK: Record<string, string> = {
       },
     },
   }),
-  'src/types.ts': "import type { EARS } from '@apack/sdk';\nexport interface TagEntity { name: string; parent?: EARS.EntityId<'Tag'> }\n",
+  'src/types.ts': "import type { EARS } from '@apackdev/sdk';\nexport interface TagEntity { name: string; parent?: EARS.EntityId<'Tag'> }\n",
   'src/system.contract.ts': [
     "export type OutgoingTagsEvents = { type: 'TAG_ADDED'; name: string };",
     "export type Contract = { incoming: { type: 'ADD_TAG' }; outgoing: OutgoingTagsEvents };",
   ].join('\n') + '\n',
   'src/system.ts': [
     "import { setup } from 'xstate';",
-    "import { defineSystem } from '@apack/sdk/framework';",
+    "import { defineSystem } from '@apackdev/sdk/framework';",
     "import type { Contract } from './system.contract.ts';",
     'export const tagsSpec = defineSystem<Contract>();',
     'const entry = { spec: tagsSpec, machine: setup({ types: tagsSpec.types }).createMachine({ id: "tags" }) };',

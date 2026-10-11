@@ -9,7 +9,7 @@
 
 Implement docs/goals/goal-reproducible-builds.md on master, at or after 7617ba990 — the base its Spike
 results were measured at.
-Before Phase 1, confirm the base: BUILD_UNITS is exported from @apack/host/build/packages-built,
+Before Phase 1, confirm the base: BUILD_UNITS is exported from @apackdev/host/build/packages-built,
 PACK_OUTPUTS is in scripts/lib/chain-steps.ts, and packages/default-setup/dev-build.mjs exists. If any
 is false, stop and say so — the plan was surveyed somewhere else.
 Read Background, Spike results, Decisions, Phases and Constraints first. Decisions are final:
@@ -70,7 +70,7 @@ onto its own 0.25.x rather than move it.
 
 **One artifact was measured; three families feed the chain's cache.** Beside `PACK_OUTPUTS` there are
 `PACKAGE_BUILD_OUTPUTS` (derived from `BUILD_UNITS`, `chain-steps.ts:224`) and `APP_OUTPUTS`. The CLI and
-`@apack/testing` bundles come off the same esbuild. Whether those are reproducible has never been measured.
+`@apackdev/testing` bundles come off the same esbuild. Whether those are reproducible has never been measured.
 
 **Prior art for the check.** `api:*`, `facade:*`, `schema:*`, `exports:*`, `content-parity:*` are the
 `<artifact>:check` / `<artifact>:update` shape this repo uses for something recorded that can go stale.

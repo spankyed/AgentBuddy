@@ -3,9 +3,9 @@
 import { services } from '#generated/services.ts';
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { compileFlowDSL } from '@apack/sdk/build'
-import { flowRepository } from '@apack/sdk/repositories'
-import { startApp } from '@apack/testing/harness'
+import { compileFlowDSL } from '@apackdev/sdk/build'
+import { flowRepository } from '@apackdev/sdk/repositories'
+import { startApp } from '@apackdev/testing/harness'
 import { repository } from '#generated/repository.ts'
 import { ref } from '#generated/ref.ts'
 

@@ -43,8 +43,8 @@ Never:
 **How external pack frontends run today.**
 - The renderer loads an installed pack's frontend with a dynamic `import()` of `pack://<packId>/runtime/fe.js` (`packages/apack-host/src/features/packs/fe/frontends.ts`, over the window's `importModule` in `packages/renderer/src/adapters/pack-frontends.ts`).
   - The code runs in the app window's own JavaScript realm, with the same globals as the host.
-  - It shares the host's `@apack/sdk` and `@apack/ui` by resolution — the bundle leaves those specifiers bare and the document's import map names the host's module — and renders its plugins (Vue components) into the app's DOM.
-- A pack's plugins are XState machines the app shell spawns (`packages/apack-host/src/features/application/fe/`). They talk to the backend through `@apack/sdk/events`: `sendToSystem` goes over the frontend port's transport (the host's tRPC client, `bus.send`).
+  - It shares the host's `@apackdev/sdk` and `@apackdev/ui` by resolution — the bundle leaves those specifiers bare and the document's import map names the host's module — and renders its plugins (Vue components) into the app's DOM.
+- A pack's plugins are XState machines the app shell spawns (`packages/apack-host/src/features/application/fe/`). They talk to the backend through `@apackdev/sdk/events`: `sendToSystem` goes over the frontend port's transport (the host's tRPC client, `bus.send`).
 
 **What that code can reach.** Anything the app window can, because the host and the pack share one realm:
 - **`window.electronAPI`**, the whole preload surface (`packages/preload/src/index.ts`):
@@ -64,10 +64,10 @@ Never:
 So installing an external pack today means trusting it as much as the app itself. The token work closed the API to web pages and other local processes, but not to pack frontends.
 
 **What depends on the shared realm.**
-- `@apack/ui` components render inside the host's DOM and styles; with `build.bundleUi` a pack bundles its own copy.
-- Host-shared frontend state lives in `@apack/sdk/fe`: `usePlugin`/`PluginScope` and `useShell`, menu state, the tiptap plugin and DSL type lookups (`FePackRegistryView`).
+- `@apackdev/ui` components render inside the host's DOM and styles; with `build.bundleUi` a pack bundles its own copy.
+- Host-shared frontend state lives in `@apackdev/sdk/fe`: `usePlugin`/`PluginScope` and `useShell`, menu state, the tiptap plugin and DSL type lookups (`FePackRegistryView`).
 - Pack extensions the host renders directly: app extensions (`getAppExtension`), tiptap plugins, blocks and artifact viewers (`fe` facets of `BlockDefinition` / `ArtifactDefinition`), step forms.
-- The E2E fixture (`@apack/testing`) finds pack plugins through `window.applicationState` and matches the `pack://` URL.
+- The E2E fixture (`@apackdev/testing`) finds pack plugins through `window.applicationState` and matches the `pack://` URL.
 
 ## Open decisions (settle with the user before Phase 1)
 
@@ -78,7 +78,7 @@ So installing an external pack today means trusting it as much as the app itself
 2. **The isolation mechanism.** — *open*
    - **A. A sandboxed iframe per pack** inside the app window, on its own origin (a `pack://<id>` page with `sandbox="allow-scripts"`, no `allow-same-origin`). The host talks to it through `postMessage`.
      - **Pros:** it renders inline where plugins render today, and has no preload, so no `electronAPI`.
-     - **Cons:** `@apack/ui` and styles load inside each frame; host-rendered extensions (tiptap plugins, blocks, step forms) can't be plain components shared across the boundary.
+     - **Cons:** `@apackdev/ui` and styles load inside each frame; host-rendered extensions (tiptap plugins, blocks, step forms) can't be plain components shared across the boundary.
    - **B. A `WebContentsView` per pack**, like browser tabs: its own process, with a minimal preload that exposes only the SDK bridge.
      - **Pros:** the strongest isolation (a separate renderer process).
      - **Cons:** positioning views over the app layout (as the browser plugin does), more memory per pack, and the same limit on shared components.
@@ -107,9 +107,9 @@ So installing an external pack today means trusting it as much as the app itself
 
 ### Phase 2 — the SDK bridge
 
-- A message bridge carries what Open decision 3 allows, in both directions. The pack side implements `@apack/sdk/events`, the frontend lookups and `secretsClient` over it; the host side answers from its registry and transport. Pack code keeps importing `@apack/sdk` unchanged.
+- A message bridge carries what Open decision 3 allows, in both directions. The pack side implements `@apackdev/sdk/events`, the frontend lookups and `secretsClient` over it; the host side answers from its registry and transport. Pack code keeps importing `@apackdev/sdk` unchanged.
 - The host validates every message: a pack can only send to systems it may address (`resolveName` rules), and only the calls the bridge defines.
-- `@apack/ui` and styles load inside the isolated context. What the FE bundler leaves external has to be answered there instead: an isolated pack bundles UI, or its own document carries a map naming a host-provided copy inside that context.
+- `@apackdev/ui` and styles load inside the isolated context. What the FE bundler leaves external has to be answered there instead: an isolated pack bundles UI, or its own document carries a map naming a host-provided copy inside that context.
 
 **Done when:**
 - a fixture pack's plugin sends and receives events, reads lookups and lists secrets through the bridge;
@@ -119,7 +119,7 @@ So installing an external pack today means trusting it as much as the app itself
 ### Phase 3 — extensions and testing support
 
 - Implement Open decision 4 for tiptap plugins, blocks, artifact viewers, step forms and app extensions.
-- `@apack/testing` finds isolated plugins, and `apack test` / `apack init-tests` scaffolds keep working for pack authors (`packages/apack-testing/CLAUDE.md`).
+- `@apackdev/testing` finds isolated plugins, and `apack test` / `apack init-tests` scaffolds keep working for pack authors (`packages/apack-testing/CLAUDE.md`).
 - `apack dev`'s frontend hot reload (the `pack://` dev server proxy) works inside the isolated context.
 
 **Done when:** the fixture packs, the example pack and `test:packaged-authoring` pass; `apack dev` reloads an isolated pack's frontend in an E2E spec.

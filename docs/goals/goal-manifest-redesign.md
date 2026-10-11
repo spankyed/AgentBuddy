@@ -150,7 +150,7 @@ Manifest consumers: `apack-sdk/src/build/generate-entries.ts` (most of it), `man
 `build/pack-features.ts`, `apack-host/src/packs/runtime/loader.ts`,
 `features/packs/be/system.ts` (two `PackInfo` builders, over an untyped `readManifest`),
 `apack-host/src/database/schema.ts`, `migrations/app/0.4.0.ts` (`declaredFeatureRefs`) and
-`@apack/testing`'s `harness.ts` (`declareFeatures`) and `index.ts` (the fixture's plugin ids).
+`@apackdev/testing`'s `harness.ts` (`declareFeatures`) and `index.ts` (the fixture's plugin ids).
 
 Two of those read a manifest through a type that is **not** `PackManifest` — `ProvenanceManifest`'s own
 optional fields and the packs system's `Record<string, any>` — so they do not fail to compile when a
@@ -168,7 +168,7 @@ Every other manifest a phase has to change — **four hand-maintained, two gener
 | `tests/packs/external-pack/.apack/bundle/e2e-fixture/apack.json` | — | a build artifact; regenerated, never edited |
 
 Besides those, two in-process fixtures stand in for a manifest and move with the shape:
-`@apack/sdk/testing`'s `packFixture` (`DEFAULT_MANIFEST`) and the `manifest()` helper in
+`@apackdev/sdk/testing`'s `packFixture` (`DEFAULT_MANIFEST`) and the `manifest()` helper in
 `generate-entries`' own spec support, which keys `features` and groups the contribution keys so a case
 can write either flat.
 
@@ -384,8 +384,8 @@ provenance builder, `manifest-schema.ts`'s `content.writers` refinement, `build.
 `apack-host`'s `database/schema.ts` (two), `packs/runtime/loader.ts` and `features/packs/be/system.ts` (two, which
 feed the Packs view's `entityCount` and entity list). Every one must see the same set, or the build and
 the running app disagree about what a pack declared. So the phase adds one exported helper —
-`packEntities(manifest)`, returning the merged map — and every reader calls it; `@apack/host` already
-imports `@apack/sdk/build` at runtime in three modules, so nothing new is dragged in.
+`packEntities(manifest)`, returning the merged map — and every reader calls it; `@apackdev/host` already
+imports `@apackdev/sdk/build` at runtime in three modules, so nothing new is dragged in.
 
 Deleting the root `entities` key makes ten of the twelve a compile error, which finds them for you.
 **The other two keep compiling and return nothing, and they are the two that matter most:**
@@ -493,7 +493,7 @@ loaded at boot. That is deliberate, not a gap, and `sharded-router.ts:173-188` g
 run record's link to the node it ran belongs to the run, so deleting the node must not erase it. Keep
 the routing as it is, and cite that comment in the schema description so the next reader does not take
 it for an oversight. Making such a link primary instead would leave a dangling relation after a boot
-that does not hydrate volatile: nothing in `@apack/ears` validates relation endpoints, and nothing
+that does not hydrate volatile: nothing in `@apackdev/ears` validates relation endpoints, and nothing
 would ever remove it, because the entity it points at never returns to trigger a removal.
 
 **6. `features.<id>.designation` stays a string, and stops being required to equal the feature id.**
@@ -574,7 +574,7 @@ strings in `apack add feature`'s scaffold (`add/feature.ts:203-205`, which does 
 supposed to remove. So the table ships with it:
 
 ```ts
-// @apack/sdk/build — the one definition of what a feature may provide and where it lives
+// @apackdev/sdk/build — the one definition of what a feature may provide and where it lives
 export const FEATURE_LAYOUT = {
   system:     'be/system.ts',
   plugin:     'fe/plugin.ts',
@@ -645,7 +645,7 @@ feature to scaffold a test for with `(manifest.features ?? []).find((f: any) => 
 `any`-typed predicate, so after this change it compiles, finds nothing, and `apack init-tests`
 scaffolds against no plugin. It becomes `f.provides?.includes('plugin')`. Together with
 `ProvenanceManifest` and `features/packs/be/system.ts`, that is **every loosely-typed manifest read in the repo**:
-`apack-cli/src/utils.ts:34` returns a real `PackManifest`, and `@apack/testing`'s
+`apack-cli/src/utils.ts:34` returns a real `PackManifest`, and `@apackdev/testing`'s
 `harness.ts:228` casts to one, so both fail to compile like everything else. Three, and the compiler
 names none of them. Measured again on 2026-09-22, the annotations are rarer still — of default-setup's
 24 `system` and `plugin` declarations, **three carry anything beyond the entry**: `threads.plugin`
@@ -915,7 +915,7 @@ By that test `build` has exactly two residents and will stay small:
 | key | why |
 |---|---|
 | `opaqueDeps` | dependencies the frontend bundle includes whole instead of walking. Landed 2026-10-08 |
-| `bundleUi` | out of `fe`. A packaging choice: it declares no contribution, it decides which copy of `@apack/ui` the bundle carries. The borderline case, since that choice has a runtime consequence — but nothing reads it as a declaration. **Landed** in `a6aad1e4a` |
+| `bundleUi` | out of `fe`. A packaging choice: it declares no contribution, it decides which copy of `@apackdev/ui` the bundle carries. The borderline case, since that choice has a runtime consequence — but nothing reads it as a declaration. **Landed** in `a6aad1e4a` |
 
 > **Half landed**: `build` holds both residents. `checks` is open, and `apack.checks.json` is still a
 > sidecar — `apack-cli/src/build/pack-rules.ts` reads it and `docs/public-facing/cli.md` documents it.
@@ -1046,7 +1046,7 @@ byte-identical (`dist/*.content.json`, `dist/content.json`); `tests/content` pas
 
 - Nothing to do for designations: Decision 6 already landed (`validate.ts`, its spec, the CLI spec,
   and the three docs that stated the old rule). Keep a feature's `designation` as the string it is.
-- Add `FEATURE_LAYOUT` to `@apack/sdk/build` as the one definition of the feature layout, derive
+- Add `FEATURE_LAYOUT` to `@apackdev/sdk/build` as the one definition of the feature layout, derive
   `provides`' schema enum from its keys, and route `validateFeatures`, `generate-entries`' import
   paths, `doctor` and `apack add feature`'s scaffold through it — `add/feature.ts:203-205` keeps its
   own copy of three of the five today (Decision 7).
@@ -1169,7 +1169,7 @@ moving keys within the manifest. **Its first bullet is done**; what is left is `
 
 **Done when:** `apack.checks.json` appears in no source, doc, scaffold or fixture, and
 `loadPackChecks` touches no filesystem; `tests/packs/bundled-ui-pack` still bundles its own
-`@apack/ui` and its Playwright suite passes; a pack
+`@apackdev/ui` and its Playwright suite passes; a pack
 allowing a non-switchable rule still fails naming the switchable set; `npm run schema:check` passes with
 the regenerated schema committed, `npm run api:update` has been run, and the chain is green.
 
@@ -1218,7 +1218,7 @@ the regenerated schema committed, `npm run api:update` has been run, and the cha
 - Every phase leaves `npm run typecheck` and `npm run test:unit` green before the next one starts.
 - **Every phase that touches `manifest-schema.ts` ends with `npm run api:update` and commits
   `etc/*.api.md` with the rest of the phase.** `PackManifest` is `z.infer<typeof ManifestSchema>`, a
-  published export of `@apack/sdk/build`, so the report inlines the whole manifest type —
+  published export of `@apackdev/sdk/build`, so the report inlines the whole manifest type —
   `packages/apack-sdk/etc/build.api.md` names the keys this goal retires 35 times. `npm run typecheck`
   runs `api:check` and fails on a stale report, so a phase that skips this cannot meet its own
   "Done when". Budget ~46s for the three reports.

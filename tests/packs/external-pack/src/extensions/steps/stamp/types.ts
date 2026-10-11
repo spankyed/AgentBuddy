@@ -1,5 +1,5 @@
-import type { NodeBase } from '@apack/sdk';
-import type { DSLNodeBase } from '@apack/sdk/build';
+import type { NodeBase } from '@apackdev/sdk';
+import type { DSLNodeBase } from '@apackdev/sdk/build';
 
 export interface DSLStampNode extends DSLNodeBase {
   type: 'stamp';

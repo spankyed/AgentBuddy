@@ -1,8 +1,8 @@
 // The app shell's state, events and the I/O it's given. Its machine (machine.ts) reads the rest of the app only
 // through these ports, so it runs the same in the renderer, over the API and the window, and in a pack's tests.
-import type { ContextMenuItem, HotkeyEvent, Plugin, PluginEvent, ShellPanelSizes } from '@apack/sdk/fe';
-import type { HostPluginEvents, Message, _Asker } from '@apack/sdk/events';
-import type { ApplicationHotkeys } from '@apack/sdk/types';
+import type { ContextMenuItem, HotkeyEvent, Plugin, PluginEvent, ShellPanelSizes } from '@apackdev/sdk/fe';
+import type { HostPluginEvents, Message, _Asker } from '@apackdev/sdk/events';
+import type { ApplicationHotkeys } from '@apackdev/sdk/types';
 import type { ShellClient, ShellFailure } from '../../../fe/client.ts';
 import type { ShellPackFrontends } from '../../../fe/pack-frontends.ts';
 import type { FePackRegistry } from '../../../fe/pack-store.ts';
@@ -78,7 +78,7 @@ export interface PluginRequest {
    * request because the wait is what makes it matter: a reply to a plugin whose pack is still loading sits in
    * the queue, and what tells the user about it when loading settles would be a toast nobody could act on.
    *
-   * Set only by `reply` (`deliverInWindow`, `@apack/sdk/events`). Not a property of the asker: a send *to* an
+   * Set only by `reply` (`deliverInWindow`, `@apackdev/sdk/events`). Not a property of the asker: a send *to* an
    * asker is an answer, a send *from* one is not, and both carry the same `sender`.
    */
   answering?: string;

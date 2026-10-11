@@ -1,5 +1,5 @@
 /**
- * The source-condition rule: which workspace configs must declare `@apack/source`, and which must not.
+ * The source-condition rule: which workspace configs must declare `@apackdev/source`, and which must not.
  *
  * The definition, not the command — `scripts/check-import-specifiers.ts` is the command over it, the same
  * split as `scripts/spec.ts` over `scripts/lib/spec-plan.ts`. It is one rule with private machinery no other
@@ -9,7 +9,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
-import { SOURCE_CONDITION } from '@apack/host/build/source-resolution';
+import { SOURCE_CONDITION } from '@apackdev/host/build/source-resolution';
 import { readSource } from '../../packages/apack-cli/src/build/pack-sources.ts';
 import { CLI_TEMPLATE_PACK, readJsonFile, repoRelative, repoRoot, SKIPPED_DIRS } from './import-populations.ts';
 
@@ -30,9 +30,9 @@ const CONFIG_EXTENSIONS = ['', '.ts', '.mts', '.cts', '.js', '.mjs', '.cjs'];
 const TEST_FILE_OPTIONS = ['include', 'includeSource', 'dir', 'root', 'setupFiles', 'globalSetup', 'benchmark', 'typecheck'];
 
 /**
- * Pack configs that declare the `@apack/source` condition on purpose, with the reason each does.
+ * Pack configs that declare the `@apackdev/source` condition on purpose, with the reason each does.
  *
- * The rule this excepts: a pack resolves the `@apack` packages' published `dist`, the one layout a pack
+ * The rule this excepts: a pack resolves the `@apackdev` packages' published `dist`, the one layout a pack
  * author ever has. A pack config that declares the condition compiles against this checkout's source
  * instead, so it builds something no pack author can reproduce.
  *
@@ -76,11 +76,11 @@ export const RESOLVES_DIST_BY_DESIGN = new Map<string, string>([
   // API Extractor reads the .d.ts rollup of a package's dependencies, so they must resolve to built
   // declarations; with the source condition tsc would analyse the dependency's .ts instead and report
   // diagnostics for source the report never covers.
-  ['packages/apack-sdk/tsconfig.api-extractor.json', 'API Extractor analyses .d.ts: @apack/ears resolves to its built declarations'],
-  ['packages/apack-ui/tsconfig.api-extractor.json', 'API Extractor analyses .d.ts: @apack/sdk resolves to its built declarations'],
+  ['packages/apack-sdk/tsconfig.api-extractor.json', 'API Extractor analyses .d.ts: @apackdev/ears resolves to its built declarations'],
+  ['packages/apack-ui/tsconfig.api-extractor.json', 'API Extractor analyses .d.ts: @apackdev/sdk resolves to its built declarations'],
   // tsdown keeps every dependency and peer external (deps.neverBundle), so it never resolves
-  // @apack/sdk at all; vue-tsc emits the declarations under tsconfig.package.json, which declares it.
-  ['packages/apack-ui/tsdown.config.ts', 'every @apack dependency stays external (deps.neverBundle), so nothing is resolved'],
+  // @apackdev/sdk at all; vue-tsc emits the declarations under tsconfig.package.json, which declares it.
+  ['packages/apack-ui/tsdown.config.ts', 'every @apackdev dependency stays external (deps.neverBundle), so nothing is resolved'],
 ]);
 
 function conditionOption(file: string): string {
@@ -455,7 +455,7 @@ function declaresCondition(file: string, scan: ConditionScan, seen = new Set<str
  *
  * - **Nothing would be gained.** Of 29 tsconfigs, every one that reaches a source package's `src` does it
  *   through `customConditions` — none through a `paths` entry, an `extends` chain or a project reference.
- *   (A probe saying otherwise counted `@apack/sdk` resolved from inside `packages/apack-sdk`, which lands
+ *   (A probe saying otherwise counted `@apackdev/sdk` resolved from inside `packages/apack-sdk`, which lands
  *   in its own `src` whatever the conditions say: a package resolved from within itself is not this rule's
  *   subject.)
  * - **Something would be lost.** Resolution only answers against the filesystem as it is. On a checkout
@@ -499,7 +499,7 @@ export function findMissingSourceConditions(
     if (inPack(file)) {
       if (verdict === false) continue;
       if (packExceptions.has(relative)) { packApplied.add(relative); continue; }
-      problems.push(`${relative}: a pack resolves the @apack packages' published dist, so it must not declare "${SOURCE_CONDITION}" in ${conditionOption(file)}`
+      problems.push(`${relative}: a pack resolves the @apackdev packages' published dist, so it must not declare "${SOURCE_CONDITION}" in ${conditionOption(file)}`
         + '; move a host-side config out of the pack tree, or add it to DECLARES_SOURCE_BY_DESIGN saying why it belongs there');
       continue;
     }

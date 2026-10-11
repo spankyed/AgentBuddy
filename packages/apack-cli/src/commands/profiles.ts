@@ -19,11 +19,11 @@
  * is the one thing that is safe to do to an environment nothing may remove.
  */
 import * as fs from 'node:fs';
-import { _appDirOf, APP_ENVS, appDataDirFor, resolveAppContext, type AppEnv } from '@apack/sdk/env';
-import { readHostInfo } from '@apack/host/packs';
-import { readSession } from '@apack/host/dev-session';
-import { findRunningApp } from '@apack/host/database';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { _appDirOf, APP_ENVS, appDataDirFor, resolveAppContext, type AppEnv } from '@apackdev/sdk/env';
+import { readHostInfo } from '@apackdev/host/packs';
+import { readSession } from '@apackdev/host/dev-session';
+import { findRunningApp } from '@apackdev/host/database';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { cliDirs, type CliDirs } from '../app/app-target';
 import {
   REGENERABLE_DIRS, chromiumLockHeld, dirBytes, dataDirInUse, profileNameProblem, listProfiles, mintProfile, openProfile,
@@ -314,7 +314,7 @@ export async function stop(
 /**
  * The one process to signal to end whatever holds a data dir, or nothing.
  *
- * A session is preferred over the app lock for the reason `@apack/host/dev-session` records: its pid is
+ * A session is preferred over the app lock for the reason `@apackdev/host/dev-session` records: its pid is
  * the *holder*, which closes the app as part of going, where the lock's is the app alone.
  */
 export function pidHolding(dir: string): number | undefined {

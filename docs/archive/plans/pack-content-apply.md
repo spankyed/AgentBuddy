@@ -498,7 +498,7 @@ the import path; `drive/` exercises the banner and the diff in the running app.
 ## Verification
 
 Each phase runs the narrow checks in its "Done when" during the work, and `npm run chain` once at the end.
-Phases 1 and 2 touch `@apack/sdk/src`, which the CLI and testing bundles inline, so expect a near-cold
+Phases 1 and 2 touch `@apackdev/sdk/src`, which the CLI and testing bundles inline, so expect a near-cold
 chain (~170s) rather than a warm one. Phase 3 rewrites the manifest of every pack in the tree, so
 `test:external-pack` and `test:packaged-authoring` are part of its own checks rather than an afterthought.
 

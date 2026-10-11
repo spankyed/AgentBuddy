@@ -27,7 +27,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { PACK_READS_FILE } from '@apack/host/build/pack-workdir';
+import { PACK_READS_FILE } from '@apackdev/host/build/pack-workdir';
 
 /**
  * The one way to turn the record off, and it is environmental: a read-only filesystem, or a sandbox that

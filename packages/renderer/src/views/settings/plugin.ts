@@ -1,5 +1,5 @@
-import type { PluginDefinition } from '@apack/sdk/fe';
-import { createSettingsMachine } from '@apack/host/fe';
+import type { PluginDefinition } from '@apackdev/sdk/fe';
+import { createSettingsMachine } from '@apackdev/host/fe';
 import { Settings } from 'lucide-vue-next';
 import canvas from './canvas/index.vue';
 

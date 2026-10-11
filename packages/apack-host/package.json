@@ -1,5 +1,5 @@
 {
-  "name": "@apack/host",
+  "name": "@apackdev/host",
   "version": "0.1.0",
   "private": true,
   "description": "Host-only modules shared by the apack app, CLI and test fixture",
@@ -43,8 +43,8 @@
     "./settings": "./src/features/settings/be/index.ts"
   },
   "dependencies": {
-    "@apack/ears": "*",
-    "@apack/sdk": "*",
+    "@apackdev/ears": "*",
+    "@apackdev/sdk": "*",
     "@ai-sdk/anthropic": "^4.0.53",
     "@ai-sdk/cohere": "^4.0.41",
     "@ai-sdk/google": "^4.0.69",

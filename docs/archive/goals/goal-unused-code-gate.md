@@ -30,10 +30,10 @@
 >
 > | package | the table below | 2026-09-28 |
 > |---|---|---|
-> | `@apack/host` | 44 | **0** |
+> | `@apackdev/host` | 44 | **0** |
 > | `@app/api` | 21 | **0** |
-> | `@apack/sdk` | 10 | **0** |
-> | `@apack/ears` | 1 | **0** |
+> | `@apackdev/sdk` | 10 | **0** |
+> | `@apackdev/ears` | 1 | **0** |
 >
 > **What still justifies the goal is narrower than 2.5×, and structural: the compiler reads files the linter
 > cannot parse at all.** Measured while this landed, `oxlint` reported zero on
@@ -43,7 +43,7 @@
 > does not. **Those two are the case for the gate; the arithmetic above is not.**
 >
 > Do not expect to reproduce a count: the remainder — a handful of hand-written `.vue` declarations across
-> `@apack/ui` and `@app/default-setup`, generated code aside — was cleared as the gate went on, which is the
+> `@apackdev/ui` and `@app/default-setup`, generated code aside — was cleared as the gate went on, which is the
 > goal working rather than evidence going missing.
 >
 > **Two properties to design for, both visible on the first run.** The gate fires on generated code — 13 of
@@ -126,7 +126,7 @@ reading, not by a check. Asking why turned up two independent gaps.
 
 | has `lint:check` | does not |
 |---|---|
-| `@app/default-setup`, `@app/renderer` | `@apack/host`, `@apack/sdk`, `@apack/ears`, `@apack/cli`, `@apack/testing`, `@apack/ui`, `@app/api`, `@app/main`, `@app/preload`, `@app/electron-versions`, `@app/typescript-floor` |
+| `@app/default-setup`, `@app/renderer` | `@apackdev/host`, `@apackdev/sdk`, `@apackdev/ears`, `@apackdev/cli`, `@apackdev/testing`, `@apackdev/ui`, `@app/api`, `@app/main`, `@app/preload`, `@app/electron-versions`, `@app/typescript-floor` |
 
 The root script is `npm run lint:check -ws --if-present && oxlint scripts tests -D correctness`
 (`package.json`), and `--if-present` makes a missing script a pass. `lint:check` is the last step of the
@@ -149,9 +149,9 @@ What oxlint reports today in packages nothing lints (`npx oxlint packages/<p>/sr
 
 | package | findings | of which `no-unused-vars` |
 |---|---|---|
-| `@apack/host` | 30 | 27 |
-| `@apack/sdk` | 4 | — |
-| `@apack/ears` | 2 | — |
+| `@apackdev/host` | 30 | 27 |
+| `@apackdev/sdk` | 4 | — |
+| `@apackdev/ears` | 2 | — |
 
 `-D correctness` reports the same 30 as a bare run, so the flag default-setup uses is not what hides
 them: nothing runs at all. The two linted packages report 0, which is what being linted looks like.
@@ -167,10 +167,10 @@ renderer via `vue-tsc -p tsconfig.app.json`):
 
 | package | unused symbols | package | unused symbols |
 |---|---|---|---|
-| `@apack/host` | 32 | `@app/api` | 17 |
-| `@apack/testing` | 23 | `@app/default-setup` | 14 |
-| `@apack/cli` | 11 | `@app/main` | 5 |
-| `@apack/sdk` | 6 | `@apack/ears` | 0 |
+| `@apackdev/host` | 32 | `@app/api` | 17 |
+| `@apackdev/testing` | 23 | `@app/default-setup` | 14 |
+| `@apackdev/cli` | 11 | `@app/main` | 5 |
+| `@apackdev/sdk` | 6 | `@apackdev/ears` | 0 |
 | `@app/renderer` | 22 | `@app/preload` | 0 |
 
 **110 across nine packages.** The number that matters most for the design: `@app/default-setup` has
@@ -243,28 +243,28 @@ The options as surveyed, kept for the reasoning:
 ### Phase 1 — The guard, and the packages that are already clean
 
 - Add the spec from Decision 5 over every `packages/*/tsconfig.json`, with the two packages that measure
-  0 (`@apack/ears`, `@app/preload`) turned on, and every other package listed in the spec as a known
+  0 (`@apackdev/ears`, `@app/preload`) turned on, and every other package listed in the spec as a known
   exemption with its current count.
 - Report what `@app/electron-versions` and `@app/typescript-floor` contain (Open decision 2).
 - Do not touch `packages/preload` with a bare `tsc`: use `npm run build -w @app/preload`.
 
 **Done when:** `npm run typecheck` passes; the spec passes; the exemption list matches the measured
-counts. Mutation: removing `noUnusedLocals` from `@apack/ears`'s tsconfig fails the spec, and adding a
+counts. Mutation: removing `noUnusedLocals` from `@apackdev/ears`'s tsconfig fails the spec, and adding a
 package to the exemption list that is already clean fails it too.
 
 ### Phase 2 — The small packages
 
-- Clean and enable, in this order: `@apack/sdk` (6), `@app/main` (5), `@apack/cli` (11).
+- Clean and enable, in this order: `@apackdev/sdk` (6), `@app/main` (5), `@apackdev/cli` (11).
 - Remove each package's entry from the Phase 1 exemption list as it lands.
 
 **Done when:** each package's own typecheck and unit suite pass; the exemption list no longer names
-them. `@apack/sdk` also needs `npm run api:check` if any removed symbol was exported.
+them. `@apackdev/sdk` also needs `npm run api:check` if any removed symbol was exported.
 
 ### Phase 3 — The large packages
 
-- Clean and enable: `@app/default-setup` (14), `@app/api` (17), `@app/renderer` (22), `@apack/testing`
-  (23), `@apack/host` (32).
-- `@apack/testing` is bundled into other packages' test runs, so `npm run packages:build` before the
+- Clean and enable: `@app/default-setup` (14), `@app/api` (17), `@app/renderer` (22), `@apackdev/testing`
+  (23), `@apackdev/host` (32).
+- `@apackdev/testing` is bundled into other packages' test runs, so `npm run packages:build` before the
   suites that read it.
 - After Open decision 1 is settled.
 
@@ -311,9 +311,9 @@ workspace with source has no lint script.
 Landed 2026-09-28. Three of the Background's measurements were wrong, and each changed the work.
 
 **The per-package counts were program counts, not ownership counts.** Every workspace compiles its
-dependencies' source under `@apack/source`, so one unused symbol in `@apack/host` was reported by host,
+dependencies' source under `@apackdev/source`, so one unused symbol in `@apackdev/host` was reported by host,
 api, testing and renderer alike. 187 raw diagnostics across the 14 configs were **87 unique**, owned by 8
-packages. `@app/api`, `@apack/testing` and `@app/renderer` owned **none** — every finding their configs
+packages. `@app/api`, `@apackdev/testing` and `@app/renderer` owned **none** — every finding their configs
 reported lived somewhere else. Phase 2 and 3's ordering by size was therefore ordering by the wrong number;
 the order that matters is the dependency layer, because enabling the flag on a consumer before its
 dependencies are clean fails that consumer's typecheck on another package's files.
@@ -326,7 +326,7 @@ not" — 13 of those were in gitignored generated code and 11 were `__contract_c
 be unused*. default-setup's real count was 1.
 
 The corrected evidence for Decision 1 is stronger than the original. Measured the day this landed, with the
-lint gate fully green over `packages/`: `oxlint` reads 114 files in `@apack/ui` and reports **zero**, where
+lint gate fully green over `packages/`: `oxlint` reads 114 files in `@apackdev/ui` and reports **zero**, where
 `vue-tsc --noUnusedLocals` reports **ten**. It does not analyse bindings inside an SFC's script block. 27
 findings survived a green lint run — 13 in `.vue` scripts, 13 in generated code, 1 an exhaustiveness binding.
 

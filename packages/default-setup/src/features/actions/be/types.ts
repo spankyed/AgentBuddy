@@ -1,6 +1,6 @@
 import { EARS } from '#generated/ears.ts';
 
-import type { ActionEntity } from '@apack/sdk';
+import type { ActionEntity } from '@apackdev/sdk';
 
 export interface ActionsStartupData {
   actions: ActionEntity[];

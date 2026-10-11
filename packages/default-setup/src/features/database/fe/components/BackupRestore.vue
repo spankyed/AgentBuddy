@@ -283,7 +283,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apack/sdk/fe'
+import { usePlugin } from '@apackdev/sdk/fe'
 
 import { ref, computed, watch, onMounted } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -308,7 +308,7 @@ import {
 } from 'lucide-vue-next';
 import { id, type DatabaseState } from '../state.ts';
 import { sendToSystem } from '#generated/events.ts';
-import ToastNotification from '@apack/ui/design/ToastNotification';
+import ToastNotification from '@apackdev/ui/design/ToastNotification';
 
 const actor: DatabaseState = usePlugin();
 

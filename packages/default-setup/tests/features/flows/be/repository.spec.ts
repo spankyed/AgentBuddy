@@ -1,5 +1,5 @@
-import { RepositoryErrorCode } from '@apack/ears';
-import { resetTestData } from '@apack/sdk/testing';
+import { RepositoryErrorCode } from '@apackdev/ears';
+import { resetTestData } from '@apackdev/sdk/testing';
 import { repository } from '#generated/repository.ts';
 
 describe('flows repository', () => {

@@ -59,10 +59,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { FilePlus2, FileMinus2, FilePenLine, ArrowRightLeft } from 'lucide-vue-next'
-import type { ArtifactItem } from '@apack/sdk/artifacts'
+import type { ArtifactItem } from '@apackdev/sdk/artifacts'
 import type { DiffArtifactContent } from '#features/threads/be/types.ts'
-import UnifiedMonacoEditor from '@apack/ui/components/UnifiedMonacoEditor'
-import { getLanguageFromPath } from '@apack/ui/components/monaco-config'
+import UnifiedMonacoEditor from '@apackdev/ui/components/UnifiedMonacoEditor'
+import { getLanguageFromPath } from '@apackdev/ui/components/monaco-config'
 
 type DiffFile = DiffArtifactContent['files'][number]
 

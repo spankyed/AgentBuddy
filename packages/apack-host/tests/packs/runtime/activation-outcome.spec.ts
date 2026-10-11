@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { activationProblem } from '../../../src/packs/runtime/activation-outcome.ts';
-import { _appDirOf } from '@apack/sdk/env';
+import { _appDirOf } from '@apackdev/sdk/env';
 
 let tmpDir: string;
 const saved = { env: process.env.APACK_ENV, dir: process.env.APACK_USER_DATA_DIR };

@@ -1,4 +1,4 @@
-import { definePackE2EConfig } from '@apack/testing/playwright';
+import { definePackE2EConfig } from '@apackdev/testing/playwright';
 
 /**
  * The repo's own E2E suite. Every setting but the diagnostics below is `definePackE2EConfig`'s, so this

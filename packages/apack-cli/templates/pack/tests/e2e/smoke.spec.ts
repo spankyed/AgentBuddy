@@ -1,4 +1,4 @@
-import { test, expect } from '@apack/testing';
+import { test, expect } from '@apackdev/testing';
 
 test('pack loads and renders', async ({ app }) => {
   await app.waitForPlugin('__PLUGIN_ID__');

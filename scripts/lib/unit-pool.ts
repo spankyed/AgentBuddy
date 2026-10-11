@@ -2,7 +2,7 @@
  * A unit pool's per-project cache: where a project's stamp lives and what it is a fingerprint of.
  *
  * The definition, not the command — `scripts/test-unit-pool.ts` is the command over it, the same split as
- * `scripts/ensure-packages-built.ts` over `@apack/host/build/packages-built`. It is a module of its own for
+ * `scripts/ensure-packages-built.ts` over `@apackdev/host/build/packages-built`. It is a module of its own for
  * one reason: the guard in `chain-inputs.spec.ts` has to read what the pool actually fingerprints, and the
  * pool script runs its `main()` on import, so a spec cannot ask it.
  *
@@ -11,8 +11,8 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { holdExclusiveLock, type ExclusiveLock } from '@apack/host/exclusive-lock';
-import { diffableStamp, REPO_ROOT, stampedRunAll, type BuildUnit, type StampedUnit } from '@apack/host/build/packages-built';
+import { holdExclusiveLock, type ExclusiveLock } from '@apackdev/host/exclusive-lock';
+import { diffableStamp, REPO_ROOT, stampedRunAll, type BuildUnit, type StampedUnit } from '@apackdev/host/build/packages-built';
 import { INTEGRATION_SUITES, poolStepName, suiteInputs } from './chain-steps.ts';
 import { CONFIG_BY_HALF, hasSplit, type Half } from './spec-halves.ts';
 import { coresFor } from './core-budget.ts';
@@ -162,7 +162,7 @@ export const POOLS = {
   host: {
     half: 'fast' as Half,
     suites: () => UNIT_SUITES.filter((suite) => suite.kind === 'host'),
-    // with-source supplies the @apack/source condition the host suites resolve under
+    // with-source supplies the @apackdev/source condition the host suites resolve under
     run: (stale: readonly UnitSuite[]) => [{ suites: stale, command: 'node', args: ['scripts/with-source.mjs', 'npx', 'vitest', 'run', ...projectArgs(stale), ...reporterArgs()] }],
   },
   pack: {
@@ -311,7 +311,7 @@ export const poolUnitFor = (suite: UnitSuite, pool: Pool, provenance: Provenance
  * The projects a run was asked for and did not report.
  *
  * **A `--project` filter that matches nothing is silently dropped**, as long as one other filter matched:
- * measured, `--project @apack/ears --project @apack/no-such-project` runs ears, ignores the second and
+ * measured, `--project @apackdev/ears --project @apackdev/no-such-project` runs ears, ignores the second and
  * exits 0 with no warning. Only a filter matching *nothing at all* is an error. So a suite whose workspace
  * stopped matching its vitest project name would be stamped as having passed a run it was excluded from,
  * and would then stay cached — "recorded fresh having never run", through a different door.
@@ -422,7 +422,7 @@ const placementLines = (rows: readonly FileDuration[], marked: ReadonlyMap<strin
  * what makes that available: *"a package with one config has nowhere to move a spec to."* Nothing counted
  * the markers against it, and the count is the finding — **eleven of the fourteen are in such a package**,
  * so for those the remedy the gate points at costs a new vitest config and a root project entry rather
- * than a rename. The three in `@apack/cli` have both halves and so could move today.
+ * than a rename. The three in `@apackdev/cli` have both halves and so could move today.
  *
  * That is what this line is for: the gap between the markers that could act on this evidence and the ones
  * that could not. `f2a003bb2` moved two specs on it, so the question is no longer whether the gate is ever

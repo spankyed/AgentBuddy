@@ -2,11 +2,11 @@
 // change unless given --force
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { EARS } from '@apack/ears';
-import { importDatabase, readBackup, type BackupLog } from '@apack/host/backup';
-import type { AppDatabase } from '@apack/host/database';
-import { createSecretsStore } from '@apack/host/secrets';
-import { _secretProviderLabel } from '@apack/sdk/services';
+import type { EARS } from '@apackdev/ears';
+import { importDatabase, readBackup, type BackupLog } from '@apackdev/host/backup';
+import type { AppDatabase } from '@apackdev/host/database';
+import { createSecretsStore } from '@apackdev/host/secrets';
+import { _secretProviderLabel } from '@apackdev/sdk/services';
 import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 
 const FORCE = { force: { type: 'boolean', default: false } } as const;

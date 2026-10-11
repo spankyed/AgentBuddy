@@ -2,7 +2,7 @@
 // cache), what a default export has to declare to count as a registration, and what unloading takes back. The
 // window's part — the import and the stylesheet — is a fake here, so these are the rules alone.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PackFERegistration, Plugin } from '@apack/sdk/fe';
+import type { PackFERegistration, Plugin } from '@apackdev/sdk/fe';
 import { createPackFrontends, loadPackFEEntry, type PackFrontendIO } from '../../../../src/fe/index.ts';
 import type { FePackRegistry } from '../../../../src/fe/pack-store.ts';
 

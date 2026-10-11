@@ -37,15 +37,15 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
 - **Scripts:** `cli/run-db-cli.ts` (REPL, `-e` exec, `-s` script), `reset.ts`, `apply.ts`, `import-backup.ts`, `export-json.ts`/`export-data.ts`/`export.sh`, `destroy-settings.ts` (dry run by default, `--force`), `inspect-relations.ts`, `cleanup-settings.ts`, and a one-off (`fix-prod-upgrade.ts`).
 - **Env:** every script needs `APACK_ENV` and `APACK_USER_DATA_DIR`.
 
-**Why they can't move to `@apack/cli` today:** they boot the app's database through `scripts/db/database.ts`, which uses the API's composition root, `openAppStore()` (`@/setup/backend`: the pack registry, the LMDB store, the engine and the `bindHost` binding), and loads the built-in packs with `loadBuiltInPacks` (`@apack/host/packs/runtime`). The CLI ships as a bundled `dist/package` used outside the monorepo, so it can't depend on `@app/api`.
+**Why they can't move to `@apackdev/cli` today:** they boot the app's database through `scripts/db/database.ts`, which uses the API's composition root, `openAppStore()` (`@/setup/backend`: the pack registry, the LMDB store, the engine and the `bindHost` binding), and loads the built-in packs with `loadBuiltInPacks` (`@apackdev/host/packs/runtime`). The CLI ships as a bundled `dist/package` used outside the monorepo, so it can't depend on `@app/api`.
 
 **What `goal-package-boundaries.md` already gave this goal** (it absorbed `goal-ears-engine-instance.md`):
-- The engine is an instance: `createEarsEngine({ persistence, isEntityType })` (`@apack/ears`), with a `query` face packs use and an `admin` face for hydration, clearing and direct writes.
-- The LMDB store is public: `openLmdbStore({ paths, policy, engine })` (`@apack/ears/lmdb`) opens, hydrates, queries and resets it, with no import side effect. The partition policy comes from a pack registry (`createPackRegistry()`, `@apack/host/packs`).
-- So a process can open an app's database with published `@apack/ears` exports and host modules; what's missing is the composition outside the API (Decision 3).
+- The engine is an instance: `createEarsEngine({ persistence, isEntityType })` (`@apackdev/ears`), with a `query` face packs use and an `admin` face for hydration, clearing and direct writes.
+- The LMDB store is public: `openLmdbStore({ paths, policy, engine })` (`@apackdev/ears/lmdb`) opens, hydrates, queries and resets it, with no import side effect. The partition policy comes from a pack registry (`createPackRegistry()`, `@apackdev/host/packs`).
+- So a process can open an app's database with published `@apackdev/ears` exports and host modules; what's missing is the composition outside the API (Decision 3).
 
 **What exists to build on:**
-- **Data folders:** `resolveAppContext({ env })` (`@apack/sdk/env`) gives each environment's `userDataDir`, `packsDir`, `hostPacksDir` and `apiPortFile`. The CLI's `install`/`uninstall`/`list`/`open` already select production by default, with `-d`/`-b` for development/beta.
+- **Data folders:** `resolveAppContext({ env })` (`@apackdev/sdk/env`) gives each environment's `userDataDir`, `packsDir`, `hostPacksDir` and `apiPortFile`. The CLI's `install`/`uninstall`/`list`/`open` already select production by default, with `-d`/`-b` for development/beta.
 - **Running app detection:**
   - The API writes its port to `apiPortFile` while it runs and removes it on shutdown (`packages/api/src/setup/websocket.ts`).
   - `apack dev` reads the file to call the running API (`POST /dev/reload`, `packages/apack-cli/src/commands/dev.ts`).
@@ -57,7 +57,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
   - Built-in packs are published to `hostPacksDir` with their snapshot.
   - External packs sit in `packsDir` with `apack.json` and `types/snapshot.json`.
   - Their manifests give the entity types, relation kinds and partition policy that hydration needs, without running pack code.
-- **Version:** the data records the app version it was migrated to (`AppState.version`, `@apack/host/app-state`), and `readHostVersion(userDataDir)` (`@apack/host/packs`) reads the version of the app that last ran on the data dir (`host.json`).
+- **Version:** the data records the app version it was migrated to (`AppState.version`, `@apackdev/host/app-state`), and `readHostVersion(userDataDir)` (`@apackdev/host/packs`) reads the version of the app that last ran on the data dir (`host.json`).
 
 ## Decisions
 
@@ -77,7 +77,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
      - If the Electron lock is held but no API port is published (starting, or crashed), writes refuse.
      - Needs authenticated local endpoints (Decision 5).
 3. **Offline access is a host module.**
-   - **`openAppDatabase({ userDataDir, readOnly })`** in `@apack/host`, built on `createEarsEngine` and `openLmdbStore` (`@apack/ears/lmdb`):
+   - **`openAppDatabase({ userDataDir, readOnly })`** in `@apackdev/host`, built on `createEarsEngine` and `openLmdbStore` (`@apackdev/ears/lmdb`):
      - reads the installed packs' manifests for entity types, relation kinds and partition policy;
      - hydrates exactly as the API boots;
      - returns `{ query, admin, close }`, where `close` flushes and reports a failed flush as an error, not a log line.
@@ -104,7 +104,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
 
 ## Phases
 
-### Phase 1 — Offline database access in `@apack/host`
+### Phase 1 — Offline database access in `@apackdev/host`
 - `openAppDatabase` (Decision 3), plus the helpers for installed packs' EARS policy (from `hostPacksDir` snapshots and `packsDir` manifests), the version check (Decision 4) and running-app detection (`apiPortFile` liveness plus the `SingletonLock` pid, where ESRCH means not running).
 - **The API boots through `openAppDatabase`'s hydration path.** Its own boot keeps its order: hydrate, then `onInit`, migrations and content.
 - **Tests on temp data dirs:**
@@ -141,7 +141,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
   - `-d`/`-b`/`--data-dir` and `--ignore-version` (reads only).
 - **Routing** follows Decision 2. Each command prints the target data dir and whether it went through the app or offline.
 - **Packaging:**
-  - add `lmdb` to `@apack/cli`'s published dependencies;
+  - add `lmdb` to `@apackdev/cli`'s published dependencies;
   - keep it external in the CLI bundle;
   - `packages:check` passes.
 - **Tests:**
@@ -180,7 +180,7 @@ it records what is checkable now and leaves out what would be guessed.
 
 | Phase | Status | Evidence |
 |---|---|---|
-| 1 — offline database access in `@apack/host` | done | `packages/apack-host/src/database/` (`open`, `schema`, `layout`, `running`, `write-lock`), with `tests/database/` covering `open-app-database`, `installed-schema`, `running-app` and `write-lock` |
+| 1 — offline database access in `@apackdev/host` | done | `packages/apack-host/src/database/` (`open`, `schema`, `layout`, `running`, `write-lock`), with `tests/database/` covering `open-app-database`, `installed-schema`, `running-app` and `write-lock` |
 | 2 — app endpoints | **not applicable** | conditional on Decision 2 choosing B; it chose offline-only (`f9c25135b`), so no `db.*` tRPC endpoints were added |
 | 3 — `apack db` commands | done | `packages/apack-cli/src/commands/db/` (`code`, `destructive`, `export`, `inspect`, `repl`, `script`, `target`, `output`), spec `tests/cli/db.spec.ts` |
 | 4 — retire `packages/api/scripts/db` | done | every root `db:*` script delegates to `apack db`; the directory is down to `database.ts` and the one-off `fix-prod-upgrade.ts` |

@@ -1,15 +1,15 @@
 // apack db script: a script file run against the data dir's database, for work a console one-liner can't do (it
 // imports what it likes, and keeps its own helpers). The database is handed to it, rather than left for it to open:
-// the published CLI carries its own copy of the engine, so a script importing @apack/ears would get a second one.
+// the published CLI carries its own copy of the engine, so a script importing @apackdev/ears would get a second one.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { builtinModules, createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import type { AppDatabase } from '@apack/host/database';
+import type { AppDatabase } from '@apackdev/host/database';
 import { consoleScope, openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 import { flushOutput, outputFormat, writeResult } from './output';
-import { errorMessage } from '@apack/sdk/utils/pure';
+import { errorMessage } from '@apackdev/sdk/utils/pure';
 
 const OPTIONS = {
   'read-only': { type: 'boolean', default: false },

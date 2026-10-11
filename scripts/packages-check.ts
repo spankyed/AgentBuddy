@@ -11,7 +11,7 @@
  * and `attw` is given the path.
  *
  * **Both populations are derived**, because a shell chain cannot derive one: it would name every tree once per
- * tool, and `attw`'s skipping of `@apack/cli` would be implicit in the shape of the command, where a further
+ * tool, and `attw`'s skipping of `@apackdev/cli` would be implicit in the shape of the command, where a further
  * package shipping no declarations goes silently unchecked. The trees come from `publishedTreeDirs()`, and
  * attw's subset is *a tree whose manifest declares types* — the reason the CLI is skipped rather than the fact.
  *
@@ -27,8 +27,8 @@ import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { REPO_ROOT, packagesBuiltOrRefuse, publishedTreeDirs } from '@apack/host/build/packages-built';
-import { packTree } from '@apack/host/build/published-manifest';
+import { REPO_ROOT, packagesBuiltOrRefuse, publishedTreeDirs } from '@apackdev/host/build/packages-built';
+import { packTree } from '@apackdev/host/build/published-manifest';
 import { checksFor, type PublishedTree } from './lib/packages-check-plan.ts';
 import { exitOnEpipe } from './lib/exit-on-epipe.ts';
 

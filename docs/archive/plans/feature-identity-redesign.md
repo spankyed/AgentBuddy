@@ -83,7 +83,7 @@ system with `actorOf(system, 'brain').send(ev)`, 24 times in default-setup.
 ### T1. `<pack>/<feature>` is the only spelling
 
 ```ts
-// @apack/sdk/ids — the whole module
+// @apackdev/sdk/ids — the whole module
 export type FeatureRef = `${string}/${string}` & { readonly [ref]: true };
 
 /** A name pack code writes → its feature. A bare name is the writing pack's own feature. */

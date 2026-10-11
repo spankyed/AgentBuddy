@@ -60,7 +60,7 @@ jobs:
         run: tests/scripts/release-beta-rule.test.sh
 
       - name: Schema drift check
-        run: npm run schema:check --workspace @apack/sdk
+        run: npm run schema:check --workspace @apackdev/sdk
 
       # Compiled content, snapshot, build/ (content compilers, content runtime) and the backend runtime: read by the
       # content parity, dependent-pack, SDK bridge drift and content runtime tests
@@ -80,15 +80,15 @@ jobs:
         run: npm test --workspace @app/default-setup -- --reporter=verbose
 
       - name: Unit tests (sdk)
-        run: npm test --workspace @apack/sdk -- --reporter=verbose
+        run: npm test --workspace @apackdev/sdk -- --reporter=verbose
         env:
           REQUIRE_CONTENT_RUNTIME: '1'
 
       - name: Unit tests (ears)
-        run: npm test --workspace @apack/ears -- --reporter=verbose
+        run: npm test --workspace @apackdev/ears -- --reporter=verbose
 
       - name: Unit tests (host)
-        run: npm test --workspace @apack/host -- --reporter=verbose
+        run: npm test --workspace @apackdev/host -- --reporter=verbose
         env:
           REQUIRE_RUNTIME_ENTRY: '1'
 
@@ -98,9 +98,9 @@ jobs:
 
       # After the build: a package's reports read its dependencies' published declarations
       - name: API reports
-        run: npm run api:check --workspace @apack/ears --workspace @apack/sdk --workspace @apack/ui
+        run: npm run api:check --workspace @apackdev/ears --workspace @apackdev/sdk --workspace @apackdev/ui
 
-      # publint and arethetypeswrong on every packed package (@apack/cli ships no types, so attw skips it)
+      # publint and arethetypeswrong on every packed package (@apackdev/cli ships no types, so attw skips it)
       - name: Validate packed packages
         run: npm run packages:check
 
@@ -108,10 +108,10 @@ jobs:
         run: npm run packages:publish -- --dry-run
 
       - name: Unit tests (cli)
-        run: npm test --workspace @apack/cli -- --reporter=verbose
+        run: npm test --workspace @apackdev/cli -- --reporter=verbose
 
       - name: Integration tests (cli)
-        run: npm run test:integration --workspace @apack/cli -- --reporter=verbose
+        run: npm run test:integration --workspace @apackdev/cli -- --reporter=verbose
 
       - name: Unit tests (repo checks)
         run: npm test --workspace @app/repo-checks -- --reporter=verbose
@@ -147,7 +147,7 @@ jobs:
       - name: External pack E2E
         run: npm run test:external-pack
 
-      # Outside-author end state: packed @apack/* tarballs only, in a temp dir outside the repo
+      # Outside-author end state: packed @apackdev/* tarballs only, in a temp dir outside the repo
       - name: Packaged pack authoring E2E
         run: npm run test:packaged-authoring
 

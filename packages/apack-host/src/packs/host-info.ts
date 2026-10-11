@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { _appDirOf } from '@apack/sdk/env';
+import { _appDirOf } from '@apackdev/sdk/env';
 
 const hostInfoFile = (userDataDir: string) => path.join(_appDirOf(userDataDir), 'host.json');
 

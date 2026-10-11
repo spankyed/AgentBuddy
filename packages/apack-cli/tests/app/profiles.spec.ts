@@ -14,7 +14,7 @@ import {
   renameProfile,
 } from '../../src/app/profiles';
 import type { CliDirs } from '../../src/app/app-target';
-import { APP_ENVS, resolveAppContext } from '@apack/sdk/env';
+import { APP_ENVS, resolveAppContext } from '@apackdev/sdk/env';
 import { askTarget } from '../../src/commands/drive';
 
 let tmp: string;

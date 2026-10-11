@@ -1,7 +1,7 @@
 // Flow compiling and decompiling use a private engine and the step definitions they're given: they work with no
 // engine installed and no app bound, and leave an installed one (the app's, a test's) as it was
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createEarsEngine, installEngine, installedEngine, untypedQx } from '@apack/ears';
+import { createEarsEngine, installEngine, installedEngine, untypedQx } from '@apackdev/ears';
 import { ROOT_FLOW_ROLE } from '../../src/types/sdk-entities.ts';
 import { EARS } from '../../src/types/entities.ts';
 import { _isHostBound } from '../../src/runtime/host-runtime.ts';

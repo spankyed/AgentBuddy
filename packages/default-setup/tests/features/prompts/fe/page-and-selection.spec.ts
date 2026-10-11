@@ -6,9 +6,9 @@
 // same page twice, and two quick selections are decided by arrival order.
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
-import { answerTo } from '@apack/sdk/testing';
+import { answerTo } from '@apackdev/sdk/testing';
 import { sentCall } from '../../../_support/calls.ts';
-import type { PromptEntity } from '@apack/sdk';
+import type { PromptEntity } from '@apackdev/sdk';
 
 const sendToSystem = vi.hoisted(() => vi.fn());
 vi.mock('#generated/events.ts', () => ({ sendToSystem }));

@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { createLogger } from '@apack/sdk/logger';
-import { resolveAppContext } from '@apack/sdk/env';
+import { createLogger } from '@apackdev/sdk/logger';
+import { resolveAppContext } from '@apackdev/sdk/env';
 import type { PackRegistry } from '../registry.ts';
 import type { PackManifest } from '../discovery.ts';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';

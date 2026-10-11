@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import type { AppModule } from '../../AppModule.ts';
 import type { ModuleContext } from '../../ModuleContext.ts';
 import { getAppContext, shippedPacksDir } from '../../app-context.ts';
-import { devServerUrl } from '@apack/host/packs/dev-server';
+import { devServerUrl } from '@apackdev/host/packs/dev-server';
 
 /** A pack id, as the manifest schema defines it (`apack-sdk/src/build/manifest-schema.ts`) */
 const PACK_ID = /^[a-z][a-z0-9-]*$/;

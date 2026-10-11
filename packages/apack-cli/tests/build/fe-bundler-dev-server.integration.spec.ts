@@ -18,12 +18,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { packFixture } from '@apack/sdk/testing/pack-fixture';
+import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { packDevServerConfig } from '../../src/build/fe-bundler';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 
 /** A host-shared module: the pack must get the app's instance, so the server leaves it for the import map */
-const SHARED = '@apack/sdk/fe';
+const SHARED = '@apackdev/sdk/fe';
 /** A name it really exports, so the import under test is one a pack could actually write */
 const EXPORTED = 'usePlugin';
 

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
-import { createPackArchive, stagePack, staleBuildOutput, verifyPack, type PackIntegrity } from '@apack/host/packs';
+import { createPackArchive, stagePack, staleBuildOutput, verifyPack, type PackIntegrity } from '@apackdev/host/packs';
 import { holdPackBuildLock } from '../build/build-lock.ts';
 
 const HELP = `

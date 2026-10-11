@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { computeEntries, findComponentsWithoutEntry } from '../scripts/exports.ts';
 
-/** packages/apack-ui/scripts/exports.ts: which modules @apack/ui publishes */
+/** packages/apack-ui/scripts/exports.ts: which modules @apackdev/ui publishes */
 let root: string;
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-ui-exports-'));
@@ -33,21 +33,21 @@ describe('computeEntries', () => {
 });
 
 describe('findComponentsWithoutEntry', () => {
-  it('reports components imported from outside @apack/ui without a published entry', () => {
+  it('reports components imported from outside @apackdev/ui without a published entry', () => {
     write('src/design/button.vue');
     write('src/design/button.ts');
     write('src/design/dialog.vue');
     write('src/internal/Panel.vue');
     write('src/internal/Panel.ts');
     write('consumer/app.ts', [
-      "import Button from '@apack/ui/design/button';",
-      "import Dialog from '@apack/ui/design/dialog';",
-      "import Panel from '@apack/ui/internal/Panel';",
+      "import Button from '@apackdev/ui/design/button';",
+      "import Dialog from '@apackdev/ui/design/dialog';",
+      "import Panel from '@apackdev/ui/internal/Panel';",
       // The component itself, not its entry module
-      "import Dialog2 from '@apack/ui/design/dialog.vue';",
-      "import Button2 from '@apack/ui/design/button.vue';",
+      "import Dialog2 from '@apackdev/ui/design/dialog.vue';",
+      "import Button2 from '@apackdev/ui/design/button.vue';",
     ].join('\n'));
     expect(findComponentsWithoutEntry([path.join(root, 'consumer')], path.join(root, 'src')).map((line) => line.split(': ')[1]))
-      .toEqual(['@apack/ui/design/dialog', '@apack/ui/internal/Panel', '@apack/ui/design/dialog.vue']);
+      .toEqual(['@apackdev/ui/design/dialog', '@apackdev/ui/internal/Panel', '@apackdev/ui/design/dialog.vue']);
   });
 });

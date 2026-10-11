@@ -5,20 +5,20 @@ Content sources `apack build` compiles to JSON, as `apack.json` `content.formats
 ## Actions
 
 - Export `meta: ActionMeta` and `async function action(params, services, z, flowId)`. Both the flow action step and `services.action` run it with `runActionCode` (`extensions/steps/action/sandbox.ts`), which passes all four (`flowId` only from a flow step) and gives `services.logger` the name `action:<label>`
-- Import types: `import type { ActionMeta } from '@apack/sdk/build'` and `import type { Services, Z } from '#generated/services'`
-- Bare package imports fail the build, except `@apack/sdk/actions`, an allowlisted sandbox-safe module whose source is inlined into the compiled body (`INLINABLE_PACKAGE_IMPORTS` in `apack-sdk/src/build/compile-utils.ts`). Type-only imports (`import type`) are erased before bundling and are always fine. References to Node-only globals in the bundle are reported as warnings, not errors
+- Import types: `import type { ActionMeta } from '@apackdev/sdk/build'` and `import type { Services, Z } from '#generated/services'`
+- Bare package imports fail the build, except `@apackdev/sdk/actions`, an allowlisted sandbox-safe module whose source is inlined into the compiled body (`INLINABLE_PACKAGE_IMPORTS` in `apack-sdk/src/build/compile-utils.ts`). Type-only imports (`import type`) are erased before bundling and are always fine. References to Node-only globals in the bundle are reported as warnings, not errors
 - Relative imports (`./_helpers/...`) are bundled in. A `.ts` file without `export const meta` is a helper, not an action, whatever its name; `.example.ts` files are skipped
 - Reference: `docs/public-facing/content.md`
 
 ## Prompts
 
 - Export `meta: PromptMeta` and `function template(params, usePrompt)` (synchronous, returns string)
-- Import types: `import type { PromptMeta } from '@apack/sdk/build'`
+- Import types: `import type { PromptMeta } from '@apackdev/sdk/build'`
 - Helper detection is the same as for actions (no `export const meta`)
 
 ## Flows
 
-- Default export a `FlowDSL` object (`export default { ... } satisfies FlowDSL`), `import type { FlowDSL } from '@apack/sdk/build'`
+- Default export a `FlowDSL` object (`export default { ... } satisfies FlowDSL`), `import type { FlowDSL } from '@apackdev/sdk/build'`
 - Import helpers from `#generated/flow-helpers` (generated from the step definitions in `apack.json`)
 - Files prefixed with `_` (and `.example.ts` files) aren't compiled; the `_` rule applies only to flows
 
@@ -32,7 +32,7 @@ Each feature has a `settings.ts` (`src/features/<name>/settings.ts`, `features[]
 
 **`faqs` is the one entry that fails that test and stays**, so read it as the exception rather than the pattern: its format declares no `entity`, nothing is written, and `src/app-settings/index.ts` reads the `faqs.content.json` the build wrote. Its source is markdown, so an import is not open to it the way it is to `default-settings.ts` — it needs a compiler, and `content.sources` is the only thing in the manifest that runs one. Honouring the rule for it means a manifest key for compiled artifacts that nothing imports, which is a design decision and not a move.
 
-The settings hold the user's settings only: the app's own state (onboarding, versions, content hashes) is the host's `AppState`. At runtime `settings/be/defaults.ts` adds every registered pack's feature settings (`getPackSettingsDefaults` from `@apack/sdk/framework`; the app's own win), and the settings entity stores only the user's changes over those defaults, so a pack's defaults come and go with the pack. The settings system resends settings (`SETTINGS_UPDATED`) when a pack's feature settings register or unregister.
+The settings hold the user's settings only: the app's own state (onboarding, versions, content hashes) is the host's `AppState`. At runtime `settings/be/defaults.ts` adds every registered pack's feature settings (`getPackSettingsDefaults` from `@apackdev/sdk/framework`; the app's own win), and the settings entity stores only the user's changes over those defaults, so a pack's defaults come and go with the pack. The settings system resends settings (`SETTINGS_UPDATED`) when a pack's feature settings register or unregister.
 
 Every feature settings file follows this shape:
 
@@ -63,7 +63,7 @@ Markdown under `faqs/`, compiled with the `faqs` format (`_compilers/faqs.ts`) f
 
 ## Content writers
 
-`hooks/notes.ts` (`noteContentWriter`) and `hooks/library.ts` (`documentContentWriter`, `collectionContentWriter`) are `ContentWriter` from `@apack/sdk/content`, registered per entity through `apack.json` `content.writers` (`"Note": "src/content/writers/notes.ts#noteContentWriter"`). An entity type's hooks can be registered by one pack only. Collection sets `container: true`, so a folder this pack written is written into by other packs, not copied; both library `find`s match a name within `parentId`. Every member is optional; without one the format applier does it directly:
+`hooks/notes.ts` (`noteContentWriter`) and `hooks/library.ts` (`documentContentWriter`, `collectionContentWriter`) are `ContentWriter` from `@apackdev/sdk/content`, registered per entity through `apack.json` `content.writers` (`"Note": "src/content/writers/notes.ts#noteContentWriter"`). An entity type's hooks can be registered by one pack only. Collection sets `container: true`, so a folder this pack written is written into by other packs, not copied; both library `find`s match a name within `parentId`. Every member is optional; without one the format applier does it directly:
 
 - `find(record, ctx)` — the existing row for a record (`{ id, contentHash }`), replacing the entry's `identity` match. The applier first looks up the row by its content key and only falls back to `find` for rows no apply has claimed
 - `create(record, ctx)` — creates the row, returns its id (call the feature's repository commands, so written entities match app-created ones)

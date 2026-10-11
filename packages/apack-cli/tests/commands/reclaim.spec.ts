@@ -6,7 +6,7 @@
 // itself" and nothing else. Both halves, because reclaiming unconditionally is the failure.
 import { describe, expect, it } from 'vitest';
 import { mayReclaim } from '../../src/commands/dev';
-import type { DevSession } from '@apack/host/dev-session';
+import type { DevSession } from '@apackdev/host/dev-session';
 
 const session = (startedBy: DevSession['startedBy']): DevSession => ({
   debugPort: 51873, dataDir: '/tmp/whatever', supervisorPid: process.pid, startedBy,

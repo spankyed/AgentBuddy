@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkForUpdates, findLatestRelease } from '../../src/packs/updater.ts';
 import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed.ts';
-import { _appDirOf } from '@apack/sdk/env';
+import { _appDirOf } from '@apackdev/sdk/env';
 
 const recordedPacks = () => readInstalledPacks();
 

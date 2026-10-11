@@ -138,12 +138,12 @@ import {
   ComboboxViewport,
   useFilter
 } from 'reka-ui'
-import BaseForm from '@apack/ui/components/BaseForm'
-import TipSection from '@apack/ui/components/TipSection'
+import BaseForm from '@apackdev/ui/components/BaseForm'
+import TipSection from '@apackdev/ui/components/TipSection'
 import type { NodeEntity } from '#generated/types.ts'
 import type { FormResources } from '../form-props.ts'
 import { sendToPlugin } from '#generated/events.ts'
-import type { FlowEntity } from '@apack/sdk'
+import type { FlowEntity } from '@apackdev/sdk'
 
 const props = defineProps<{
   node: NodeEntity

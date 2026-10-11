@@ -6,8 +6,8 @@
 // The host owns the document's structure, not its content: it knows `plugins`, one slice per installed feature with
 // settings keyed by its ref, and takes every other section as opaque — whoever registered a section knows its shape.
 // So the sections a document may hold are the caller's to name, not a list here.
-import { splitRef } from '@apack/sdk/ids';
-import { hasOwn, isPlainObject } from '@apack/sdk/utils/pure';
+import { splitRef } from '@apackdev/sdk/ids';
+import { hasOwn, isPlainObject } from '@apackdev/sdk/utils/pure';
 
 /** The section every settings document has: one slice per installed feature with settings, keyed by ref */
 export const PLUGINS_SECTION = 'plugins';

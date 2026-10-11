@@ -52,10 +52,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { ClipboardList } from 'lucide-vue-next'
-import type { ArtifactItem } from '@apack/sdk/artifacts'
+import type { ArtifactItem } from '@apackdev/sdk/artifacts'
 import type { PlanArtifactContent, PlanStatus } from '#features/threads/be/types.ts'
-import TiptapEditor from '@apack/ui/components/tiptap/TiptapEditor'
-import CopyButton from '@apack/ui/design/CopyButton'
+import TiptapEditor from '@apackdev/ui/components/tiptap/TiptapEditor'
+import CopyButton from '@apackdev/ui/design/CopyButton'
 
 
 const props = defineProps<{

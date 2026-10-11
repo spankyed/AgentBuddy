@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { bundleDslDefs, monacoDefsFile, withoutRenameSuffixes } from '../../src/build/dsl-defs';
-import type { PackManifest } from '@apack/sdk/build';
+import type { PackManifest } from '@apackdev/sdk/build';
 
 /**
  * The DSL editors load the declarations `apack build` writes, with no node_modules behind them: a
@@ -13,13 +13,13 @@ let dir: string;
 
 beforeEach(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsl-defs-'));
-  // The pack resolves @apack/* as an installed pack does
-  fs.mkdirSync(path.join(dir, 'node_modules', '@apack'), { recursive: true });
-  fs.symlinkSync(path.resolve(__dirname, '..', '..', '..', 'apack-sdk'), path.join(dir, 'node_modules', '@apack', 'sdk'));
+  // The pack resolves @apackdev/* as an installed pack does
+  fs.mkdirSync(path.join(dir, 'node_modules', '@apackdev'), { recursive: true });
+  fs.symlinkSync(path.resolve(__dirname, '..', '..', '..', 'apack-sdk'), path.join(dir, 'node_modules', '@apackdev', 'sdk'));
   write('tsconfig.json', JSON.stringify({
     compilerOptions: {
       target: 'ES2022', module: 'esnext', moduleResolution: 'bundler', strict: true, skipLibCheck: true, noEmit: true,
-      customConditions: ['@apack/source'], allowImportingTsExtensions: true,
+      customConditions: ['@apackdev/source'], allowImportingTsExtensions: true,
     },
     include: ['src/**/*.ts'],
   }));
@@ -45,7 +45,7 @@ describe('bundleDslDefs', () => {
     write('src/local.ts', 'export interface Row { id: string }\n');
     write('src/defs/console.ts', [
       "export type { Row } from '../local.ts';",
-      "export type { ArtifactItem } from '@apack/sdk/artifacts';",
+      "export type { ArtifactItem } from '@apackdev/sdk/artifacts';",
     ].join('\n'));
 
     const result = await bundleDslDefs(dir, manifest({}));
@@ -55,7 +55,7 @@ describe('bundleDslDefs', () => {
     expect(defs().trimEnd()).toMatch(/\}$/);
     expect(defs()).toMatch(/interface Row \{/);
     expect(defs()).toMatch(/interface ArtifactItem</);
-    expect(defs()).not.toMatch(/from '@apack\//);
+    expect(defs()).not.toMatch(/from '@apackdev\//);
   });
 
   it('leaves other packages imports until the entry inlines them', async () => {

@@ -2,11 +2,11 @@
 // clients. The app composes it with its event sources and client sink (createAppBus, app-bus.ts); the pack
 // test harness runs the same machine with a recording sink.
 import { enqueueActions, fromCallback, setup, spawnChild, type AnyActorRef, type AnyStateMachine } from 'xstate';
-import { reportError } from '@apack/sdk/logger';
+import { reportError } from '@apackdev/sdk/logger';
 import { HOST } from '../refs.ts';
 import { deliverAs } from './delivery.ts';
-import { SYSTEM_EVENT_TYPES } from '@apack/sdk/framework';
-import { PLUGIN_EVENT_TYPES, _callOn, senderSuffix, type Message } from '@apack/sdk/events';
+import { SYSTEM_EVENT_TYPES } from '@apackdev/sdk/framework';
+import { PLUGIN_EVENT_TYPES, _callOn, senderSuffix, type Message } from '@apackdev/sdk/events';
 import type { PackRegistry } from '../packs/registry.ts';
 
 
@@ -184,7 +184,7 @@ export function createBusMachine(options: BusOptions) {
         //
         // **Not as a third `operation` value, which was tried and regressed.** `operation` says which verb,
         // and two readers filter on it to mean *direction*: `undeclared-incoming.spec.ts` separates this
-        // function's reports from `routeIncoming`'s, and `@apack/testing`'s fixture collects these to fail a
+        // function's reports from `routeIncoming`'s, and `@apackdev/testing`'s fixture collects these to fail a
         // test on a dropped send. Making it `answering ? 'reply' : 'broadcastToPlugin'` left that fixture
         // filtering for one value while this sent two, so a dropped answer stopped failing any Playwright
         // test — silently, there being no case over the fixture. Two facts, two fields.

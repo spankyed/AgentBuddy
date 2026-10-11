@@ -1,6 +1,6 @@
 // The environment the fixture hands the app under test: what it must strip from the runner's own.
 //
-// It lived in @apack/cli's app-target spec, which tests the CLI's `apack test` target resolution and
+// It lived in @apackdev/cli's app-target spec, which tests the CLI's `apack test` target resolution and
 // imported this from here to cover the two together. `appLaunchEnv` is this package's, and a pure function,
 // so it is checked here and the CLI's spec keeps only what is the CLI's.
 import { describe, expect, it } from 'vitest';
@@ -15,10 +15,10 @@ describe('appLaunchEnv', () => {
     });
   });
 
-  it("doesn't pass the runner's @apack/source condition to the app", () => {
-    expect(appLaunchEnv({ NODE_OPTIONS: '--max-old-space-size=4096 --conditions=@apack/source' }, '/tmp/data').NODE_OPTIONS)
+  it("doesn't pass the runner's @apackdev/source condition to the app", () => {
+    expect(appLaunchEnv({ NODE_OPTIONS: '--max-old-space-size=4096 --conditions=@apackdev/source' }, '/tmp/data').NODE_OPTIONS)
       .toBe('--max-old-space-size=4096');
-    expect(appLaunchEnv({ NODE_OPTIONS: '--conditions=@apack/source' }, '/tmp/data')).not.toHaveProperty('NODE_OPTIONS');
+    expect(appLaunchEnv({ NODE_OPTIONS: '--conditions=@apackdev/source' }, '/tmp/data')).not.toHaveProperty('NODE_OPTIONS');
   });
 });
 

@@ -3,8 +3,8 @@
 // the app's settings port — which is for every *other* feature.
 import { onUnmounted, ref, watch } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { usePlugin } from '@apack/sdk/fe';
-import type { SettingsState, SettingsSave, SettingsTarget } from '@apack/host/fe';
+import { usePlugin } from '@apackdev/sdk/fe';
+import type { SettingsState, SettingsSave, SettingsTarget } from '@apackdev/host/fe';
 
 /** How long a form shows "Saved" after the store stored a change */
 const SAVED_SHOWN_MS = 2000;

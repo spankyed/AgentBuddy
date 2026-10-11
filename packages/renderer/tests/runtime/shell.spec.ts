@@ -17,7 +17,7 @@ vi.mock('@/adapters/pack-frontends', () => ({ packFrontendIO: { importModule: vi
 
 const { createAppShell } = await import('@/runtime/shell');
 const { fePacks } = await import('@/runtime/packs');
-const { HOST } = await import('@apack/host/fe');
+const { HOST } = await import('@apackdev/host/fe');
 
 fePacks.registerPackFE({
   id: 'memo-pack',

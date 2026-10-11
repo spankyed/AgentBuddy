@@ -1,6 +1,6 @@
 // apack db repl: console code line by line, on the data dir's database
 import * as readline from 'node:readline/promises';
-import { runQueryCode, runTransactionCode } from '@apack/sdk/database-console';
+import { runQueryCode, runTransactionCode } from '@apackdev/sdk/database-console';
 import { consoleScope, openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 import { toPretty } from './output';
 

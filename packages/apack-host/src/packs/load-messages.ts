@@ -1,7 +1,7 @@
 /**
  * What the loader says about a pack, as sentences rather than string literals at the point of logging.
  *
- * `@apack/testing` reads these out of the app's output to tell whether the pack under test came up: it
+ * `@apackdev/testing` reads these out of the app's output to tell whether the pack under test came up: it
  * is the only signal a backend-only pack leaves, since it registers no plugin and is left out of the
  * loaded packs the renderer is served. Importing the same builders on both sides makes a reword a change
  * to both, instead of a pack author's suite failing thirty seconds later with the wrong reason.

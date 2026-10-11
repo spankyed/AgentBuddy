@@ -124,7 +124,7 @@ describe('ownModuleProblems', () => {
   });
 
   /** What counts as one of the pack's own modules is the rule's to know, so a reader hands over everything */
-  it.each(['@apack/sdk', 'vue', 'node:fs', '#3B82F6', '#generated/nothing-here'])('is silent about %s', (specifier) => {
+  it.each(['@apackdev/sdk', 'vue', 'node:fs', '#3B82F6', '#generated/nothing-here'])('is silent about %s', (specifier) => {
     pack();
     expect(problems(specifier)).toEqual([]);
   });

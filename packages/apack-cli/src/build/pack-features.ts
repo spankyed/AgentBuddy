@@ -4,8 +4,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
-import { packTargetOf } from '@apack/host/build/own-module-specifiers';
-import { readSubpathImports } from '@apack/host/build/subpath-imports';
+import { packTargetOf } from '@apackdev/host/build/own-module-specifiers';
+import { readSubpathImports } from '@apackdev/host/build/subpath-imports';
 import { readSource, type SourceView } from './pack-sources.ts';
 import type { PackFinding, PackPlace, PackWideFinding } from './pack-rules.ts';
 
@@ -13,11 +13,11 @@ import type { PackFinding, PackPlace, PackWideFinding } from './pack-rules.ts';
  * The source files a package publishes, from its `package.json` `exports`.
  *
  * A package's entry is where it assembles what it offers, so naming its own features' frontends there is that
- * module's job rather than a crossing: `@apack/host`'s `./fe` barrel is exactly that, and a pack's generated
+ * module's job rather than a crossing: `@apackdev/host`'s `./fe` barrel is exactly that, and a pack's generated
  * `pack-entry-fe.ts` is the same module written by codegen (excluded below with the rest of `__generated__`).
  *
  * **Being published is not enough; the caller must also be outside every feature.** A package may publish a
- * feature's own module — `@apack/host` publishes `./settings` from `features/settings/be/index.ts` — and that is
+ * feature's own module — `@apackdev/host` publishes `./settings` from `features/settings/be/index.ts` — and that is
  * a feature's barrel, not the package's assembly. What says a module is assembling the pack is where it sits,
  * not whether anyone can see it; excepting it by visibility alone hands that one feature a licence no other has.
  *
@@ -107,7 +107,7 @@ function doorSpans(view: SourceView): { start: number; end: number }[] {
  * Two modules are exempt, and both are the pack's own assembly rather than one feature reaching another: generated
  * code, which registers every feature's plugin, and what the package publishes (`publishedEntryPoints`).
  *
- * Which specifiers it can follow at all is `packTargetOf` (`@apack/host/build/own-module-specifiers`), not
+ * Which specifiers it can follow at all is `packTargetOf` (`@apackdev/host/build/own-module-specifiers`), not
  * restated here: a pack-internal one, relative or a `#` subpath of the pack's own.
  *
  * It reads a syntax tree, as every rule here does bar none. It used to match regexes over the repo's packs, where
@@ -206,7 +206,7 @@ export const GENERATED_BEHIND_A_CONTRACT = ['system-specs', 'events', 'fe', 'pac
  * the other ships the machine to every dependent, and nothing else tells the author either.
  *
  * Not a *disallowed* import, though, and that is worth knowing before deriving it again: `apack-cli`'s
- * `build/facade-gate.ts` allows a facade to import `@apack/*`, Node built-ins and `@apack/sdk`'s peers, `xstate`
+ * `build/facade-gate.ts` allows a facade to import `@apackdev/*`, Node built-ins and `@apackdev/sdk`'s peers, `xstate`
  * and `zod` among them, because every dependent has them. The leak is size and coupling, not resolution.
  *
  * **Codegen's own refusal is not a second guard for this.** `checkResolved`

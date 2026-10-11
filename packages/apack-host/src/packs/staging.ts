@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
 import { recordHostInfo } from './host-info.ts';
 import { recordIsStale } from '../process-liveness.ts';
 // The naming convention lives with the module that makes one of these directories; this is its reader

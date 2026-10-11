@@ -1,7 +1,7 @@
-import type { StepBuildFacet, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext, StepNodeFacet } from '@apack/sdk/steps';
-import { EARS } from '@apack/sdk';
-import { expandRecord, collapseRecord, mapProblems } from '@apack/sdk/steps';
-import type { FieldMapping, MapEntry } from '@apack/sdk/steps';
+import type { StepBuildFacet, StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext, StepNodeFacet } from '@apackdev/sdk/steps';
+import { EARS } from '@apackdev/sdk';
+import { expandRecord, collapseRecord, mapProblems } from '@apackdev/sdk/steps';
+import type { FieldMapping, MapEntry } from '@apackdev/sdk/steps';
 
 function compile(
   node: Record<string, unknown>,

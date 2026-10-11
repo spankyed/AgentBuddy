@@ -9,11 +9,11 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { spawn } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { _appDirOf, type AppEnv } from '@apack/sdk/env';
+import { _appDirOf, type AppEnv } from '@apackdev/sdk/env';
 import { create, environmentRows, list, pidHolding, remove, stop, trim } from '../../src/commands/profiles';
 import { chromiumHolding, chromiumLockHeld, dataDirInUse, listProfiles, openProfile, REGENERABLE_DIRS } from '../../src/app/profiles';
-import { publishSession } from '@apack/host/dev-session';
-import { appLockFile } from '@apack/host/database';
+import { publishSession } from '@apackdev/host/dev-session';
+import { appLockFile } from '@apackdev/host/database';
 import type { CliDirs } from '../../src/app/app-target';
 
 let tmp: string;
@@ -358,7 +358,7 @@ describe('stop', () => {
   };
 
   /**
-   * The session's pid wins, and the reason is in `@apack/host/dev-session`: it names the *holder*, whose
+   * The session's pid wins, and the reason is in `@apackdev/host/dev-session`: it names the *holder*, whose
    * teardown closes the app and cleans up after it, where the lock names the Electron alone. Ending the app
    * would free the dir and leave a watcher and a dev server running with nothing to serve.
    *

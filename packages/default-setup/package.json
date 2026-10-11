@@ -25,9 +25,9 @@
     "content-parity:update": "UPDATE_CONTENT_GOLDEN=1 npm test -- tests/content"
   },
   "dependencies": {
-    "@apack/ears": "*",
-    "@apack/sdk": "*",
-    "@apack/ui": "*",
+    "@apackdev/ears": "*",
+    "@apackdev/sdk": "*",
+    "@apackdev/ui": "*",
     "@antv/g6": "^5.0.48",
     "@floating-ui/vue": "^1.1.11",
     "@leeoniya/ufuzzy": "^1.0.18",
@@ -49,7 +49,7 @@
     "vue-arrange": "^1.5.0"
   },
   "devDependencies": {
-    "@apack/testing": "*",
+    "@apackdev/testing": "*",
     "@types/node": "^25.5.0",
     "esbuild": "^0.25.0",
     "tsx": "^4.19.4",

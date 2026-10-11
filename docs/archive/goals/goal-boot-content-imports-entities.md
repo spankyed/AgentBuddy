@@ -40,7 +40,7 @@ Finished when:
   (`grep -rn "contentManifest\|PackContentManifest\|contentPolicy" packages scripts --include='*.ts'` is empty
   apart from archived docs).
 - npm run typecheck, npm run spec over the touched packages, and npm run chain pass; api:update was run
-  for the @apack/sdk surface change in Phase 3 and etc/framework.api.md is committed.
+  for the @apackdev/sdk surface change in Phase 3 and etc/framework.api.md is committed.
 - npm run compile and npm run test:external-pack pass (the content pipeline and a dependent pack's content).
 - A final summary: phase -> done/deferred, evidence, and the conventional choices made.
 - The doc is in docs/archive/goals/, with its status blockquote and an Outcome section, committed.
@@ -81,7 +81,7 @@ keys. A renamed content key silently stops being skipped.
 default-setup content demo notes. Without the skip, an apply-hash change (any edit under its content directory)
 re-imports them — including ones the user deleted. Traced:
 
-1. Notes delete **softly**: `trash.move` (`@apack/sdk/repositories`' `trash.ts`) sets `deleted: true` and
+1. Notes delete **softly**: `trash.move` (`@apackdev/sdk/repositories`' `trash.ts`) sets `deleted: true` and
    `deletedAt`, and keeps the row's `contentKey`.
 2. The applier looks for its own row with `ears().findWhere(entity, CONTENT_KEY, contentKey)`
    (`packages/apack-sdk/src/content/applier.ts:137`).
@@ -110,7 +110,7 @@ The `settings` entry in `content.sources` is three unrelated things in one manif
 3. **A policy to stop (2) firing at boot** — `skipAtBoot`.
 
 It is pre-0.4.0 shape. Settings are now the host's (`packages/apack-host/src/features/settings/`,
-`@apack/host/settings`): **the row holds only what the user changed**, and the store composes the
+`@apackdev/host/settings`): **the row holds only what the user changed**, and the store composes the
 registration's defaults underneath it, keyed by feature ref (`plugins['default-setup/threads']`). So there
 is nothing to write at boot, and `services.settings.reset()` is all-or-nothing where the document's shape
 would support per-feature.
@@ -126,7 +126,7 @@ would support per-feature.
 | `packs/registry.ts:623` | its **presence**, as a `bootHooks` string in `getPackExtensions` (the Packs view) |
 | `migrations/app/0.4.0.ts:46` (`bootApplyPacks`) | its **presence**, to list the shipped packs a pre-0.4.0 single `contentRevision` stood for. That migration's own comment says to *"delete it with the other migrations once 0.4.0 is below the oldest version upgrades are supported from"* |
 
-`PackContentManifest` is exported from `@apack/sdk/framework` and reported in
+`PackContentManifest` is exported from `@apackdev/sdk/framework` and reported in
 `packages/apack-sdk/etc/framework.api.md`.
 
 ## Decisions
@@ -197,7 +197,7 @@ Independent of Phase 2; land it first because Phase 3 needs both.
 
 Independent of Phase 1.
 
-- **The capability.** `@apack/host/settings`' store and `services.settings` gain a reset narrower than
+- **The capability.** `@apackdev/host/settings`' store and `services.settings` gain a reset narrower than
   today's: one feature's slice by ref, or one section by name (Decision 5). Removing the user's slice is
   the whole of it — the defaults come from registration on the next read.
 - **The UI.** The app's Settings view (`packages/renderer/src/views/settings/`) offers it per feature and
@@ -245,7 +245,7 @@ After Phases 1 and 2.
 - Migrate the fixtures that construct a `contentManifest` (host's `tests/packs/registration.spec.ts`,
   `tests/packs/runtime/{loader,reload}.spec.ts`, `tests/services/host-runtime.spec.ts`,
   `tests/migrations/app-state-0.4.0.spec.ts`) and the codegen specs that assert the emitted block.
-- `npm run api:update -w @apack/sdk`; commit `etc/framework.api.md`.
+- `npm run api:update -w @apackdev/sdk`; commit `etc/framework.api.md`.
 - Regenerate default-setup (`npm run compile`) so `src/__generated__/pack-entry.ts` loses the block.
 - Docs: `packages/default-setup/CLAUDE.md`'s boot-hooks list, `packages/apack-host/src/packs/runtime/CLAUDE.md`'s
   pack-entry contract and content row, `docs/public-facing/manifest.md` and `content.md`.

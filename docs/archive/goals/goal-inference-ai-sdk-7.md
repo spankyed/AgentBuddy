@@ -14,9 +14,9 @@ Finished when:
   or test is mutation-checked.
 - Packs call models only through `services.inference` with `provider:model` ids, and
   import only pure pieces (`tool`, `Output`, `isStepCount`, types) from `ai` 7.
-- No test outside `@apack/sdk` builds a model, imports `ai/test` or registers a model
+- No test outside `@apackdev/sdk` builds a model, imports `ai/test` or registers a model
   host module; tests mock `inference` with `fakeInference` through `mockService`.
-- `@apack/sdk` and `@apack/ui` declare TypeScript >=5.7, and the published-types
+- `@apackdev/sdk` and `@apackdev/ui` declare TypeScript >=5.7, and the published-types
   specs run at 5.7, including a library-checked case for `ai`'s types.
 - `npm run typecheck`, `schema:check` and `api:check` (sdk), `packages:build` +
   `packages:check`, and the api, sdk, host, cli, default-setup and renderer unit
@@ -44,17 +44,17 @@ Never:
 
 ## Background
 
-Pack code gets models from an `@apack/sdk/inference` module on AI SDK 4, through a global host-module seam. That seam mixes three concerns: credentials and providers, inference calls, and the AI SDK's pure pieces.
+Pack code gets models from an `@apackdev/sdk/inference` module on AI SDK 4, through a global host-module seam. That seam mixes three concerns: credentials and providers, inference calls, and the AI SDK's pure pieces.
 
 - **The current seam** (from `7e240b02c`):
-  - `@apack/sdk/inference` (`apack-sdk/src/services/inference.ts`) wraps `ai` 4's `generateText`/`streamText`/`generateObject`/`streamObject`. It resolves `{ provider, model }` through `getHostModule('model-provider')` and re-exports `tool`, `webSearchTool` and `CoreMessage`.
+  - `@apackdev/sdk/inference` (`apack-sdk/src/services/inference.ts`) wraps `ai` 4's `generateText`/`streamText`/`generateObject`/`streamObject`. It resolves `{ provider, model }` through `getHostModule('model-provider')` and re-exports `tool`, `webSearchTool` and `CoreMessage`.
   - The app registers `api/src/core/inference/model-provider.ts` (`api/src/setup/sdk-host-init.ts:41`). It holds the provider table and the key lookup (since replaced: keys now come only from the host's encrypted store, entered in Settings → Secrets; see step 6). Cohere throws "not implemented".
   - Unit tests swap that host module globally. `fakeModel` (`apack-sdk/src/testing/fake-model.ts`) hand-implements the model spec, the test host re-registers a throwing `noModel` (`testing/host.ts:126`), and the harness restores it after each test.
 - **The callers are prototype code.**
   - The only in-repo model call that runs is the `llm` step (`default-setup/src/extensions/steps/llm/runtime.ts:69-81`).
   - default-setup's `llm` service (`features/brain/be/services/llm.ts`) only re-exports the inference module.
   - The model client (`extensions/services/model-client/`, about 1,200 lines) and ChatGPT OAuth (`extensions/services/openai-auth/`, `extensions/services/auth.ts`) have no callers: nothing reaches them through `services`, imports them, or references them from a content action or the UI.
-  - The model catalog (`@apack/sdk/models`, `apack-sdk/src/services/models.ts`) has ids like `gpt-4-turbo`, which the `llm` form stores as the node's `model` (`steps/llm/form.vue:357-360`). The runtime splits it on `:` and defaults to `anthropic:claude-3-haiku-20240307`, so a model picked in the editor doesn't resolve.
+  - The model catalog (`@apackdev/sdk/models`, `apack-sdk/src/services/models.ts`) has ids like `gpt-4-turbo`, which the `llm` form stores as the node's `model` (`steps/llm/form.vue:357-360`). The runtime splits it on `:` and defaults to `anthropic:claude-3-haiku-20240307`, so a model picked in the editor doesn't resolve.
 - **AI SDK 7** (`ai@7.0.100`; providers `@ai-sdk/{anthropic,openai,google,groq,mistral,cohere}` 4.x):
   - `generateObject`/`streamObject` are deprecated in favour of `generateText({ output: Output.object({ schema }) })`.
   - `maxSteps` became `stopWhen: isStepCount(n)`; `ToolLoopAgent` exists.
@@ -67,18 +67,18 @@ Pack code gets models from an `@apack/sdk/inference` module on AI SDK 4, through
   - Requires Node ≥22 and zod `^3.25.76 || ^4.1.8`. ESM only.
   - Sources: the migration guides shipped in the package (`docs/08-migration-guides/`), and its `dist/index.d.ts`.
 - **The TypeScript floor.**
-  - `@apack/sdk` and `@apack/ui` declare `typescript: ">=5.3"`. `goal-review-fixes.md` Decision 2 chose 5.3 as the lowest version that compiles `@apack/ui`'s vue-tsc declarations (`import("vue", { with: { "resolution-mode": "import" } })`).
+  - `@apackdev/sdk` and `@apackdev/ui` declare `typescript: ">=5.3"`. `goal-review-fixes.md` Decision 2 chose 5.3 as the lowest version that compiles `@apackdev/ui`'s vue-tsc declarations (`import("vue", { with: { "resolution-mode": "import" } })`).
   - `packages/typescript-floor` pins 5.3.3, and `apack-cli/tests/helpers/published-packages.ts:15` runs the published-types specs with it.
   - The published-types specs compile with `skipLibCheck: true` (`published-sdk-types.spec.ts:22`, `published-ui-types.spec.ts:19`).
   - The rule appears in `CLAUDE.md` and `apack-sdk/TYPED-EARS.md:53`. `ears/runtime.ts:60` keeps a `NoInfer` workaround for 5.3.
 - **Zod and Node.**
   - The workspace has zod 3.25.76, but `apack-sdk` and `default-setup` declare `^3.24.0` and `api` `^3.24.4`.
-  - Packs are documented as Node ≥20.6 (`docs/public-facing/getting-started.md`), and `@apack/testing` declares `engines.node >=20.6.0`.
+  - Packs are documented as Node ≥20.6 (`docs/public-facing/getting-started.md`), and `@apackdev/testing` declares `engines.node >=20.6.0`.
 
 ## Spike results (2026-09-14)
 
 **TypeScript floor.**
-- **Published types pass at every candidate floor.** The published-types, no-`any` and facade-typing specs (26 tests) pass with the floor pointed at 5.3.3, 5.4.5 and 5.7.3. That covers `@apack/ui`'s Vue component props, emits, slots and composables under `node16` and `bundler`.
+- **Published types pass at every candidate floor.** The published-types, no-`any` and facade-typing specs (26 tests) pass with the floor pointed at 5.3.3, 5.4.5 and 5.7.3. That covers `@apackdev/ui`'s Vue component props, emits, slots and composables under `node16` and `bundler`.
 - **No tool in the pipeline needs an older TypeScript:**
   - Monaco bundles 5.9.3, vue-tsc 3.2 needs ≥5.0, and API Extractor uses the workspace 5.9.3.
   - `@vue/compiler-sfc` and `@vitejs/plugin-vue` state no requirement.
@@ -109,19 +109,19 @@ Findings that shape the implementation:
 Final.
 
 1. **TypeScript floor 5.7.**
-   - `@apack/sdk` and `@apack/ui` declare `typescript: ">=5.7"`, and `packages/typescript-floor` pins 5.7.3.
+   - `@apackdev/sdk` and `@apackdev/ui` declare `typescript: ">=5.7"`, and `packages/typescript-floor` pins 5.7.3.
    - The published-types specs name the floor `'5.7'`.
    - `CLAUDE.md`, `TYPED-EARS.md`'s compatibility line and `getting-started.md` say 5.7.
    - The typed EARS `NoInferType` workaround stays: those types are change-controlled.
 2. **Node 22 and zod 3.25.76 for packs.**
-   - `@apack/sdk`, `@apack/cli` and `@apack/testing` declare `engines.node >=22`, and `getting-started.md` says Node 22. Node 20 is past end-of-life, and `ai` 7 needs 22.
+   - `@apackdev/sdk`, `@apackdev/cli` and `@apackdev/testing` declare `engines.node >=22`, and `getting-started.md` says Node 22. Node 20 is past end-of-life, and `ai` 7 needs 22.
    - Every workspace declaring zod uses `^3.25.76`, as does the SDK's zod peer.
 3. **AI SDK 7, owned by the app.**
    - The API depends on `ai@^7` and `@ai-sdk/{anthropic,openai,google,groq,mistral,cohere}@^4`.
-   - `@apack/sdk` keeps `ai` as an optional peer (`^7`) for the contract's types and `fakeInference`.
+   - `@apackdev/sdk` keeps `ai` as an optional peer (`^7`) for the contract's types and `fakeInference`.
    - default-setup depends on neither `ai` nor any `@ai-sdk/*` package.
    - Nothing sets `globalThis.AI_SDK_DEFAULT_PROVIDER` or uses the AI Gateway.
-   - *Amended after implementation:* the provider packages are `@apack/host` dependencies (Decision 6), and `ai` is a required peer of `@apack/sdk`: an optional peer a pack hasn't installed turns the contract's types into `any` (`published-sdk-peers.spec.ts`).
+   - *Amended after implementation:* the provider packages are `@apackdev/host` dependencies (Decision 6), and `ai` is a required peer of `@apackdev/sdk`: an optional peer a pack hasn't installed turns the contract's types into `any` (`published-sdk-peers.spec.ts`).
 4. **One service: `services.inference`.** In `HostServices`, next to `appData` and `traceStore`, delegating to host module `inference`.
    ```ts
    import type { generateText, streamText, ToolSet, OutputInterface } from 'ai';
@@ -141,33 +141,33 @@ Final.
    - **No overrides.** Options take no `apiKey`, `baseURL` or `headers`: keys belong to the app.
    - **The host service names include `inference`** (`apack-host/src/packs/pack-registration.ts:21`), so no pack can register a service with that name.
 5. **Model ids.**
-   - `@apack/sdk/models` exports `ProviderName` (`'anthropic' | 'openai' | 'google' | 'groq' | 'mistral' | 'cohere'`, the SDK's `SecretProvider` without `custom`) and `ModelId = \`${ProviderName}:${string}\``.
+   - `@apackdev/sdk/models` exports `ProviderName` (`'anthropic' | 'openai' | 'google' | 'groq' | 'mistral' | 'cohere'`, the SDK's `SecretProvider` without `custom`) and `ModelId = \`${ProviderName}:${string}\``.
    - Catalog entries carry `id: ModelId` and `provider: ProviderName`, so the `llm` form stores ids the runtime resolves.
    - *Amended after implementation:* entries carry only `id`; the provider comes from `parseModelId(id)`.
-   - `@apack/sdk/services` imports the types from there.
+   - `@apackdev/sdk/services` imports the types from there.
 6. **The app's implementation** (`api/src/core/inference/inference.ts`, registered as host module `inference`):
-   - *Amended after implementation:* it moved to `@apack/host/services/inference.ts`, next to `appData` and `traceStore`, with the settings view in `@apack/host/settings` and the provider packages as `@apack/host` dependencies. The API registers all three with `registerHostServices()`.
+   - *Amended after implementation:* it moved to `@apackdev/host/services/inference.ts`, next to `appData` and `traceStore`, with the settings view in `@apackdev/host/settings` and the provider packages as `@apackdev/host` dependencies. The API registers all three with `registerHostServices()`.
    ```ts
    const PROVIDERS = { anthropic: createAnthropic, openai: createOpenAI, google: createGoogle,
                        groq: createGroq, mistral: createMistral, cohere: createCohere } satisfies Record<ProviderName, …>;
    ```
-   - It splits the id at the first `:` and builds the provider with the key selected for it at call time: keys come only from Settings → Secrets, where each provider holds several labelled keys with one selected, in the host's encrypted store (`@apack/host/secrets`, read with `secretsStore.keyFor(provider)`), never from environment variables. It returns `.languageModel(modelId)` and calls `ai`'s `generateText`/`streamText` with it.
+   - It splits the id at the first `:` and builds the provider with the key selected for it at call time: keys come only from Settings → Secrets, where each provider holds several labelled keys with one selected, in the host's encrypted store (`@apackdev/host/secrets`, read with `secretsStore.keyFor(provider)`), never from environment variables. It returns `.languageModel(modelId)` and calls `ai`'s `generateText`/`streamText` with it.
    - An unknown provider or a missing key throws, naming the provider (and, for a key, where to set it).
    - `openai.responses` and `model-provider.ts` are removed.
-7. **Pure pieces come from `ai` directly.** Packs import `tool`, `Output`, `isStepCount`, `ModelMessage` and result types from `ai`. The SDK re-exports none of them, and `@apack/sdk/inference` is removed.
+7. **Pure pieces come from `ai` directly.** Packs import `tool`, `Output`, `isStepCount`, `ModelMessage` and result types from `ai`. The SDK re-exports none of them, and `@apackdev/sdk/inference` is removed.
    - *Amended after implementation:* `output` also takes plain data (`OutputSpec`: `{ type: 'text' | 'json' | 'object' | 'array' | 'choice', … }`), translated to the matching `Output.*` by the SDK's `_createInferenceService`, which the host's implementation and `fakeInference` share. Sandboxed actions can't import `ai`, and a data form can be stored. An `Output` instance still passes through unchanged, so nothing from `ai` is lost.
 8. **Tests mock the service; only the SDK fakes a model.**
-   - **Default:** the test host (`@apack/sdk/testing`) registers an `inference` whose calls throw, naming `mockService('inference', fakeInference(…))`.
-   - **`fakeInference(reply)`** (`@apack/sdk/testing`) returns an `InferenceService & { calls: FakeInferenceCall[] }`:
+   - **Default:** the test host (`@apackdev/sdk/testing`) registers an `inference` whose calls throw, naming `mockService('inference', fakeInference(…))`.
+   - **`fakeInference(reply)`** (`@apackdev/sdk/testing`) returns an `InferenceService & { calls: FakeInferenceCall[] }`:
      - It runs `ai`'s real `generateText`/`streamText` on `MockLanguageModelV4`, so steps, `output` parsing, tool execution and stream parts behave as in the app.
      - `reply` is a string, `{ text?, toolCalls?: [{ toolName, input }] }`, or a function of the call returning either. A function sees every step, so a tool loop can reply with tool calls and then text.
      - Each call records `{ model: ModelId, prompt, tools: string[], stream: boolean }`, where `prompt` is the messages the model received.
      - *Amended after implementation:* calls record `{ kind: 'text', model, instructions, messages, tools, stream }`, and the fake answers every kind (`kind: 'embedding' | 'image' | 'speech' | 'transcription' | 'reranking'`) from per-kind replies with defaults.
-     - It loads `ai` and `ai/test` lazily, so `@apack/sdk/testing` still loads in a pack without `ai`.
-   - **The harness** (`@apack/testing/harness`) has no inference code. Tests call `mockService<Services, 'inference'>('inference', fakeInference(…))`, or mock a single function.
+     - It loads `ai` and `ai/test` lazily, so `@apackdev/sdk/testing` still loads in a pack without `ai`.
+   - **The harness** (`@apackdev/testing/harness`) has no inference code. Tests call `mockService<Services, 'inference'>('inference', fakeInference(…))`, or mock a single function.
      - *Amended after implementation:* the harness has `mockInference(reply, replies?)`, that call in one line.
 9. **Deleted.**
-   - `@apack/sdk/inference` (`services/inference.ts`, the export, `etc/inference.api.md`, the API's `SDK_BRIDGE` entry).
+   - `@apackdev/sdk/inference` (`services/inference.ts`, the export, `etc/inference.api.md`, the API's `SDK_BRIDGE` entry).
    - `testing/fake-model.ts` and its spec, and `noModel`/`restoreModelProvider`.
    - `api/src/core/inference/model-provider.ts` and its spec.
    - default-setup's `llm` service and manifest entry, `extensions/services/model-client/`, `extensions/services/openai-auth/` and `extensions/services/auth.ts`, with their manifest entries and registry specs.
@@ -201,9 +201,9 @@ The contract, the app implementation and the callers depend on each other. They 
   - The `llm` step calls `services.inference.generateText({ model: node.model, instructions: node.systemPrompt, prompt, temperature, maxOutputTokens })`.
   - The node's `model` defaults to a `ModelId`, and a model that isn't one fails the step naming the node.
 - Delete everything in Decision 9, regenerate default-setup's entries, and run `api:update`.
-- Add a published-types case that compiles a consumer of `@apack/sdk/services` at the floor with `skipLibCheck: false`.
+- Add a published-types case that compiles a consumer of `@apackdev/sdk/services` at the floor with `skipLibCheck: false`.
 - Tests:
-  - `@apack/sdk/testing` spec for `fakeInference`:
+  - `@apackdev/sdk/testing` spec for `fakeInference`:
     - text
     - `Output.object`
     - a tool call that runs `execute`, then text
@@ -252,7 +252,7 @@ The contract, the app implementation and the callers depend on each other. They 
 - `docs/public-facing/getting-started.md`: Node 22 and TypeScript 5.7, and `ai` for packs that write tools or structured output.
 - The CLAUDE.md files: root (services, floor), `apack-sdk/TYPED-EARS.md`, default-setup (services list, no model client), `apack-testing`.
 
-**Done when:** no doc, template or CLAUDE.md mentions `@apack/sdk/inference`, `services.llm`, `services.models`, `fakeModel`, `modelClient` or TypeScript 5.3.
+**Done when:** no doc, template or CLAUDE.md mentions `@apackdev/sdk/inference`, `services.llm`, `services.models`, `fakeModel`, `modelClient` or TypeScript 5.3.
 
 ## Deferred
 
@@ -263,13 +263,13 @@ The contract, the app implementation and the callers depend on each other. They 
 ## Constraints
 
 - Commit as you go in logical chunks, with conventional messages and no Co-Authored-By or Claude-Session lines. Check `git diff --cached` before each commit and commit with `git commit -- <paths>`. Never push or tag.
-- Cut the branch from `AS/test-harness-system-deps`. The uncommitted `AS/models-service` work (`services.models`, `@apack/testing/mock-model`) is superseded. Don't carry it over; read it only for reference.
+- Cut the branch from `AS/test-harness-system-deps`. The uncommitted `AS/models-service` work (`services.models`, `@apackdev/testing/mock-model`) is superseded. Don't carry it over; read it only for reference.
 - Never publish externally: no `npm publish` (use `npm pack` and `--dry-run`), no real GitHub releases. CI workflows may be written, not triggered.
 - Never use broad pkill/killall on Electron or node. E2E runs alongside the user's dev and prod apps in the `apack-test` namespace.
 - Don't launch the app outside the test environment without isolating `APACK_USER_DATA_DIR`.
 - Never run bare tsc on `packages/preload`. Don't run `npm install` in the example pack. Don't edit monorepo version/release metadata.
-- Pack code and pack tests import only `@apack/sdk`, `@apack/ui`, `@apack/testing` and pure `ai` pieces; `@apack/host` stays host-only. The typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
-- `@apack/sdk/services`, `@apack/sdk/models` and `@apack/sdk/testing` are published: no `any` (`published-sdk-any.spec.ts`), TypeScript 5.7 (`packages/typescript-floor`), `api:update` after export changes.
+- Pack code and pack tests import only `@apackdev/sdk`, `@apackdev/ui`, `@apackdev/testing` and pure `ai` pieces; `@apackdev/host` stays host-only. The typed EARS types are change-controlled (`packages/apack-sdk/TYPED-EARS.md`).
+- `@apackdev/sdk/services`, `@apackdev/sdk/models` and `@apackdev/sdk/testing` are published: no `any` (`published-sdk-any.spec.ts`), TypeScript 5.7 (`packages/typescript-floor`), `api:update` after export changes.
 - The CLI suite requires `npm run packages:build` after SDK source changes. default-setup's runtime (`node packages/default-setup/dev-build.mjs`) must be rebuilt before the API suites and E2E.
 - Investigate failing tests before changing assertions; mutation-check every new guard, helper and test.
 - No tests reach a real provider: no API keys in test environments. The app spec uses a local HTTP server.

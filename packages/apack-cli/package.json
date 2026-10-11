@@ -1,5 +1,5 @@
 {
-  "name": "@apack/cli",
+  "name": "@apackdev/cli",
   "version": "0.1.0",
   "private": true,
   "description": "apack pack CLI: scaffold, build, test, pack and release packs",
@@ -24,8 +24,8 @@
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
-    "@apack/host": "*",
-    "@apack/sdk": "*",
+    "@apackdev/host": "*",
+    "@apackdev/sdk": "*",
     "@octokit/rest": "^21.1.1",
     "@vitejs/plugin-vue": "^6.0.1",
     "autoprefixer": "^10.4.14",
@@ -43,9 +43,9 @@
   },
   "devDependencies": {
     "es-module-lexer": "^1.7.0",
-    "@apack/ears": "*",
-    "@apack/testing": "*",
-    "@apack/ui": "*",
+    "@apackdev/ears": "*",
+    "@apackdev/testing": "*",
+    "@apackdev/ui": "*",
     "@app/publish-checks": "*",
     "@types/semver": "^7.8.0",
     "vitest": "^3.2.4",

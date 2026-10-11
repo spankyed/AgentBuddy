@@ -3,8 +3,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { execFileSync } from 'node:child_process';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
-import { PACK_LAYOUT } from '@apack/host/packs';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 let tmpDir: string;
 
@@ -102,7 +102,7 @@ describe('pack CLI: install', () => {
   });
 
   it('installPackFromLocal throws on nonexistent path', async () => {
-    const { installPackFromLocal } = await import('@apack/host/packs');
+    const { installPackFromLocal } = await import('@apackdev/host/packs');
     await expect(installPackFromLocal('/nonexistent/path')).rejects.toThrow(/Path not found/);
   });
 
@@ -145,7 +145,7 @@ describe('pack CLI: install', () => {
   });
 
   it('symlinks in source directory are skipped during copy', async () => {
-    const { installPackFromLocal } = await import('@apack/host/packs');
+    const { installPackFromLocal } = await import('@apackdev/host/packs');
 
     const sourceDir = path.join(tmpDir, 'symlink-pack');
     fs.mkdirSync(sourceDir, { recursive: true });
@@ -171,7 +171,7 @@ describe('pack CLI: install', () => {
   });
 
   it('installs from a zip file', async () => {
-    const { installPackFromLocal } = await import('@apack/host/packs');
+    const { installPackFromLocal } = await import('@apackdev/host/packs');
 
     const sourceDir = path.join(tmpDir, 'zip-source');
     fs.mkdirSync(sourceDir, { recursive: true });

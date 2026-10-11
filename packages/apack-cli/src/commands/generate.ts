@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import type { PackSnapshot, PackTypeManifest } from '@apack/sdk/build';
+import type { PackSnapshot, PackTypeManifest } from '@apackdev/sdk/build';
 import { resolveDepFiles } from './fetch-deps';
 
 async function loadDepSnapshots(root: string, deps: Record<string, string>): Promise<Map<string, PackSnapshot>> {

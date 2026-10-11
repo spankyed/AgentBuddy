@@ -54,7 +54,7 @@ metadata, typed EARS, shims and loosened assertions — plus this goal's own):
   an ephemeral instance; `apack drive` defaults to one, and `--instance` is the only way to keep state.
 - pkill/killall Electron or node. A session ends with POST /close, which is what runs the fixture's
   teardown; killing it skips the data-dir policy.
-- add a verb to @apack/testing that belongs to one app's vocabulary. The engine ships primitives; a
+- add a verb to @apackdev/testing that belongs to one app's vocabulary. The engine ships primitives; a
   domain verb goes in the scaffold, which is the point of Phase 1.
 ```
 
@@ -75,7 +75,7 @@ fs.writeFileSync(path.join(dir, ENGINE_SESSION_FILE), ENGINE_SESSION);
 Eleven lines below, `scaffold()` writes every *other* generated file the right way — `if (!fs.existsSync(file))`.
 So the one file an agent would naturally extend is the one that cannot be. There is no extension point
 either: `driveEngineBody` takes the fixture's `{ app, appPage }` and nothing else, so a verb this app wants
-has to be added to `@apack/testing` and shipped to every pack, or not added at all.
+has to be added to `@apackdev/testing` and shipped to every pack, or not added at all.
 
 **The vocabulary is not guessable.** Taken from `engine/server.ts`:
 
@@ -99,7 +99,7 @@ backend's own log has no verb, so `packages/apack-testing/CLAUDE.md` tells a rea
 
 ## Decisions
 
-**D1. The engine ships primitives; the scaffold owns domain verbs.** `@apack/testing` gets verbs that are
+**D1. The engine ships primitives; the scaffold owns domain verbs.** `@apackdev/testing` gets verbs that are
 true of any apack app. A verb built out of this app's nouns — "create a thread", "approve the pending
 tool call" — belongs in the session file, which its owner edits. That is what makes the scaffold worth
 keeping across runs, and what keeps the engine from growing one app's vocabulary.

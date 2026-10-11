@@ -1,6 +1,6 @@
 import {AppModule} from '../AppModule.ts';
 import * as Electron from 'electron';
-import {publishRunningApp} from '@apack/host/database';
+import {publishRunningApp} from '@apackdev/host/database';
 import {getAppContext} from '../app-context.ts';
 
 class SingleInstanceApp implements AppModule {

@@ -12,8 +12,8 @@
 </template>
 
 <script setup lang="ts">
-import SimpleMonacoEditor from '@apack/ui/components/SimpleMonacoEditor';
-import type { ActionParameter } from '@apack/sdk';
+import SimpleMonacoEditor from '@apackdev/ui/components/SimpleMonacoEditor';
+import type { ActionParameter } from '@apackdev/sdk';
 
 defineProps<{
   value: string;

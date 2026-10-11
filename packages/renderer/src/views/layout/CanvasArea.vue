@@ -82,9 +82,9 @@ import {
   DropdownMenuSeparator,
 } from 'reka-ui'
 import PluginMenuItems from './PluginMenuItems.vue'
-import { useTrackedMenuOpen } from '@apack/sdk/fe'
-import type { ContextMenuItem as ContextMenuItemType } from '@apack/sdk/fe'
-import type { BreadcrumbItem } from '@apack/host/fe'
+import { useTrackedMenuOpen } from '@apackdev/sdk/fe'
+import type { ContextMenuItem as ContextMenuItemType } from '@apackdev/sdk/fe'
+import type { BreadcrumbItem } from '@apackdev/host/fe'
 
 const menuOpen = ref(false)
 useTrackedMenuOpen(menuOpen)

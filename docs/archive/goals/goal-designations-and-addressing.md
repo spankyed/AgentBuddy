@@ -101,7 +101,7 @@ fallback.
 
 ### The frontend has the same duplication, as a hidden binding
 
-`Plugin.designation` is a **public, optional, author-settable field** of `@apack/sdk/fe`
+`Plugin.designation` is a **public, optional, author-settable field** of `@apackdev/sdk/fe`
 (`fe/plugin.ts:11-12`). Codegen spreads over it on every build:
 
 ```js
@@ -227,7 +227,7 @@ Final.
    legitimate manifest.
 6. **`getDesignated(role)` returns the id that addresses the feature in this process**: its system on the
    backend, its own feature id when it has none (a plugin-only feature), its plugin on the frontend. Stated
-   once, in `@apack/sdk/designations`, and reflected in `apack-host/CLAUDE.md`.
+   once, in `@apackdev/sdk/designations`, and reflected in `apack-host/CLAUDE.md`.
 7. **One `systemIdFor(systemIds, packId, featureId)` resolver**, shared by `designationsOf` and
    `resolveSystemAddress`. `designationsOf` uses `flatMap`, so the `!` assertions go.
 8. **A duplicate plugin id is refused at registration**, by name, like services, commands, repositories and
@@ -309,7 +309,7 @@ a pack that has left. Each must fail a test.
 
 `systemIdFor` shared by `designationsOf` and `resolveSystemAddress`. Correct the root `CLAUDE.md:165`,
 `apack-sdk/CLAUDE.md:57`, and remove the CLI's `--designation` ≠ name rejection with its usage line.
-State Decision 6's rule in `@apack/sdk/designations` and `apack-host/CLAUDE.md`.
+State Decision 6's rule in `@apackdev/sdk/designations` and `apack-host/CLAUDE.md`.
 
 **Done when:** one bare-or-prefixed find in the file; `apack add feature --designation` accepts a role
 that differs from the feature name, covered by a CLI spec; no doc claims a designation must equal the
@@ -360,7 +360,7 @@ addressed through the designations rather than by a bare name.
 Two things ended up different from the plan:
 
 - **A feature is addressed `<packId>/<featureId>`, not `<packId>.<featureId>`.** The separator became a slash when the
-  ref grew a grammar of its own (`resolveName`, `splitRef`, `FEATURE_ID_PATTERN` in `@apack/sdk/ids`), so that neither
+  ref grew a grammar of its own (`resolveName`, `splitRef`, `FEATURE_ID_PATTERN` in `@apackdev/sdk/ids`), so that neither
   half can contain it and a ref splits one way.
 - **Plugin id collisions are no longer refused at registration, because they can no longer happen.** The plan wanted
   registration to reject a second pack declaring a plugin id another had registered. Ownership became structural
@@ -369,7 +369,7 @@ Two things ended up different from the plan:
 
 ## Deferred
 
-- **A role-addressed send** (`sendToRole(role, event)` on `@apack/sdk/events` and `services.emitter`,
+- **A role-addressed send** (`sendToRole(role, event)` on `@apackdev/sdk/events` and `services.emitter`,
   replacing `sendToBrainSystem`). It is what issue A asks for. Decision 12 settles its signature — one id
   in, no list — so what is left is the migration: 175 potential call sites and only 5 roles to aim at,
   which is worth its own change rather than a sweep inside this one.
@@ -384,7 +384,7 @@ Two things ended up different from the plan:
   All three are one `api:update`, in that phase's commit.
 - Phases 1–4 must not change any persisted key. Only Phase 5 migrates user data, and only through
   `0.4.0`.
-- `@apack/sdk` contract changes in Phases 1, 2 and 5 each need `npm run api:update` with `etc/` committed
+- `@apackdev/sdk` contract changes in Phases 1, 2 and 5 each need `npm run api:update` with `etc/` committed
   in the same commit; `npm run typecheck` fails until they are.
 - Every phase regenerating pack entries runs `npm run compile` for default-setup and rebuilds the fixtures,
   and commits the regenerated files.

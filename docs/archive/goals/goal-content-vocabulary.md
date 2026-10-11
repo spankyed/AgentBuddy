@@ -1,5 +1,5 @@
 > **Done** (master, `d3ff1a950`..`5a7717ff2`). The text below is the plan as written; the Outcome records where
-> it went further — the packaged-authoring template and the last of `@apack/ears`'s third sense of the word.
+> it went further — the packaged-authoring template and the last of `@apackdev/ears`'s third sense of the word.
 > For the vocabulary as it now stands, see `docs/public-facing/content.md`, "The four stages".
 
 > **Written in session** `bc6d43e0-1c60-4cad-8237-15508a9e6649` (Claude Code, 2026-09-24). Resume it with `claude -r bc6d43e0-1c60-4cad-8237-15508a9e6649`.
@@ -31,7 +31,7 @@ Finished when:
 - docs/public-facing/content.md and packages/apack-sdk/CLAUDE.md name the four stages and say which
   vocabulary belongs to each, and separate runtime content data from the parity golden.
 - `content-golden:check` and `content-golden:update` are named `content-parity:check` and `content-parity:update`.
-- npm run typecheck; npm run schema:check -w @apack/sdk; npm run api:check; npm run compile;
+- npm run typecheck; npm run schema:check -w @apackdev/sdk; npm run api:check; npm run compile;
   npm run test:unit; npm run content-golden:check -w @app/default-setup.
 - npm run build, npm test (E2E), npm run test:external-pack and npm run test:packaged-authoring, since
   codegen output, the pack manifest schema and the scaffolded test template all change.
@@ -130,7 +130,7 @@ built-in only and `externalContentDeps` is external only, neither of which its n
   (`packages/apack-testing/src/harness.ts:354,364`) are the most visible verb in the vocabulary — the
   CLI scaffolds a call to it into every new pack (`apack-cli/src/commands/init.ts:259,269`) and
   `docs/public-facing/testing.md` uses it seven times.
-- **A homonym in another package.** `@apack/ears` uses `content` for the starting set of a query chain:
+- **A homonym in another package.** `@apackdev/ears` uses `content` for the starting set of a query chain:
   `QxStart` (`src/query.ts:26`, published in `etc/index.api.md:602`), the parameter in
   `untypedQx(content?: QxStart)`, and "Written …" in the doc comments of `query.ts:280`, `runtime.ts:166`
   and `typed.ts:37`. Unrelated to pack content data, in a layer that has no such concept — but it is the
@@ -165,9 +165,9 @@ Three functions import content, in a caller relationship, and they must not coll
 
 | Name | Package | What it does |
 |---|---|---|
-| `importCompiledContent({ compiledDir, … })` | `@apack/sdk/utils` | runs the registered appliers over one already-compiled directory |
-| `importPackContent(packs, …)` | `@apack/host` | orchestrates that across packs at boot |
-| `importContent({ keys?, mode? })` | `@apack/testing/harness` | compiles the pack's content entries, then imports them |
+| `importCompiledContent({ compiledDir, … })` | `@apackdev/sdk/utils` | runs the registered appliers over one already-compiled directory |
+| `importPackContent(packs, …)` | `@apackdev/host` | orchestrates that across packs at boot |
+| `importContent({ keys?, mode? })` | `@apackdev/testing/harness` | compiles the pack's content entries, then imports them |
 
 The harness takes the plain name: it is the one pack authors call, `apack init` scaffolds it, and it
 sits beside the harness's existing `importFlows`. The SDK primitive says `Compiled` because that is the
@@ -223,7 +223,7 @@ failing spec (`tests/unit/content-parity/content-parity.spec.ts`) names its own 
 This is also the distinction the docs in Decision 6 have to draw. Re-recording the golden rewrites a
 test expectation and changes no user data; what changes user data is a new `sourceHash`, from compile.
 
-**8. The `@apack/ears` homonym goes too.**
+**8. The `@apackdev/ears` homonym goes too.**
 `QxStart` names the starting set of a query — a real and separate meaning, in a package that sits below
 the SDK and has no pack-content concept. "It is a different package" is exactly the reasoning that let
 `content` mean four things, so it is not a reason to keep a second meaning after this goal. Rename to
@@ -244,14 +244,14 @@ the SDK and has no pack-content concept. "It is a different package" is exactly 
   default-setup's hand-written settings applier (`src/content/settings/applier.ts:9`), and the `Applier`
   object literals in the host and SDK specs.
 - `manifest-schema.ts:100`: the `applier` field's description names `apply(ctx)`, not `apply(ctx)`. Run
-  `npm run schema:update -w @apack/sdk`.
+  `npm run schema:update -w @apackdev/sdk`.
 - `generate-entries.ts:1377,1386-1388`: the emitted import and re-exports in `appliers.ts` follow the new
   names. Run `npm run compile` to regenerate default-setup.
-- `@apack/testing`: `importContent()` → `importContent()` (Decision 1), `ImportOptions` → `ImportOptions`
+- `@apackdev/testing`: `importContent()` → `importContent()` (Decision 1), `ImportOptions` → `ImportOptions`
   (`src/harness.ts:354,364`), the CLI's `init` template (`commands/init.ts:259,269`),
   `docs/public-facing/testing.md` and `packages/apack-testing/CLAUDE.md`. This is the name pack authors
   see first, so it moves with the rest rather than later.
-- `@apack/host`: `PackImportFailure` → `PackImportFailure` and `importErrors()` → `importErrors()`
+- `@apackdev/host`: `PackImportFailure` → `PackImportFailure` and `importErrors()` → `importErrors()`
   (`src/packs/runtime/apply.ts:49,54`, re-exported from `runtime/index.ts:14`); the `content` parameter of
   `importPackContent(packs, content)` becomes `importCompiledContent`.
 - Test-local verb forms follow the rule rather than being left as the one place it does not hold:
@@ -260,8 +260,8 @@ the SDK and has no pack-content concept. "It is a different package" is exactly 
   (`apack-host/src/packs/runtime/apply.ts:119`) reads "Importing content for pack: …".
 - `npm run api:update` and commit `etc/`.
 
-**Done when:** `npm run typecheck`; `npm test -w @apack/sdk`, `-w @apack/host`, `-w @app/default-setup`;
-`npm run schema:check -w @apack/sdk` and `npm run api:check` clean; `grep -rn` finds none of the six
+**Done when:** `npm run typecheck`; `npm test -w @apackdev/sdk`, `-w @apackdev/host`, `-w @app/default-setup`;
+`npm run schema:check -w @apackdev/sdk` and `npm run api:check` clean; `grep -rn` finds none of the six
 renamed identifiers or `Applier.content` outside `docs/archive/`.
 
 ### Phase 2 — Make the split checkable
@@ -284,7 +284,7 @@ a new `writeFoo(): ImportCounts` fails it.
   idempotent: the migration runs again on every development boot, on each beta of its release, and after
   a reset.
 
-**Done when:** `npm test -w @apack/host` and `-w @app/api` pass; a row written with the old field names
+**Done when:** `npm test -w @apackdev/host` and `-w @app/api` pass; a row written with the old field names
 is moved by the migration and reads back under the new ones; running the migration twice changes nothing
 the second time. **Mutation:** dropping the guard makes the idempotence case fail.
 
@@ -308,16 +308,16 @@ the sentence separating the parity golden from user data appears in `content.md`
 content-parity:check -w @app/default-setup` runs and `grep -rn content-golden` finds nothing outside
 `docs/archive/`.
 
-### Phase 5 — The query content in `@apack/ears`
+### Phase 5 — The query content in `@apackdev/ears`
 
 - Per Decision 8: `QxStart` → `QxStart` (`src/query.ts:26`), exported from `src/index.ts:11`; the
   parameter of `untypedQx(content?: QxStart)` becomes `start`; the "Written …" doc comments in
   `query.ts:280`, `runtime.ts:166` and `typed.ts:37` say "Starting from …".
-- `npm run api:update -w @apack/ears` and commit `etc/index.api.md`.
+- `npm run api:update -w @apackdev/ears` and commit `etc/index.api.md`.
 
 Lands independently of Phases 1–4: it is a different package and shares no file with them.
 
-**Done when:** `npm run typecheck:ears`; `npm test -w @apack/ears`; `npm run api:check -w @apack/ears`
+**Done when:** `npm run typecheck:ears`; `npm test -w @apackdev/ears`; `npm run api:check -w @apackdev/ears`
 clean; `grep -rn QxStart` finds nothing outside `docs/archive/`; the typed-EARS completions checklist in
 `packages/apack-sdk/TYPED-EARS.md` is run, since `runtime.ts` and `typed.ts` were touched.
 
@@ -337,7 +337,7 @@ rewritten mid-plan to do that rename and Phase 4 did it — so it was removed ra
 | 2 — make the split checkable | done `27573c9e9` | `apack-sdk/tests/utils/import-is-the-verb.spec.ts`; finds 5 importers; both mutations fail it |
 | 3 — name the axis in `AppState` | done `bfe2a34e1` | four fields renamed, move added to `migrations/app/0.4.0.ts`; 39 migration specs; idempotence mutation-checked |
 | 4 — write the stages down | done `847fa0799` | "The four stages" in `content.md`; the split in `apack-sdk/CLAUDE.md` and the root table; `content-parity:check`/`:update` |
-| 5 — the query content in `@apack/ears` | done `74654df72`, `5a7717ff2` | `QxStart` → `QxStart`, `qx(start)`; TYPED-EARS checklist run |
+| 5 — the query content in `@apackdev/ears` | done `74654df72`, `5a7717ff2` | `QxStart` → `QxStart`, `qx(start)`; TYPED-EARS checklist run |
 
 ### Conventional choices
 
@@ -346,7 +346,7 @@ rewritten mid-plan to do that rename and Phase 4 did it — so it was removed ra
 - **Phase 1** — `writingPackId` became `contentPackId`: it reads a pack id *from* the content, so the `-ing` was the verb
   leaking into a noun.
 - **Phase 3** — the migration addresses the `AppState` row by the literal `'AppState-app'`, as the file already does
-  for `SETTINGS_ID`. Importing `APP_STATE_ENTITY` instead broke an api spec that mocks `@apack/host/app-state`.
+  for `SETTINGS_ID`. Importing `APP_STATE_ENTITY` instead broke an api spec that mocks `@apackdev/host/app-state`.
 - **Phase 5** — the three "Written …" doc comments read "Started from …".
 
 ### What the plan did not list
@@ -354,10 +354,10 @@ rewritten mid-plan to do that rename and Phase 4 did it — so it was removed ra
 - **The packaged-authoring template** (`1a8f0e856`). `tests/scripts/test-packaged-authoring.sh` writes the example
   pack's specs itself, so they were the last callers of `applyPack`, and `test:packaged-authoring` was the check that
   found them. They are what a pack author copies, which is the reason the harness took the plain name.
-- **`hydrateRelationMetadata`** (then `seedRelationMetadata`) (`5a7717ff2`). A third sense of the word, in `@apack/ears`'s sharded router: not content
+- **`hydrateRelationMetadata`** (then `seedRelationMetadata`) (`5a7717ff2`). A third sense of the word, in `@apackdev/ears`'s sharded router: not content
   and not a query's start, but what hydration tells the router about a relation it has just read off disk. Renamed
   `hydrateRelationMetadata`, the word this repo already uses for loading persisted data into memory, and the last
-  `content` mentions in `query.ts` and `typed.ts` prose went with it. `@apack/ears/src` now holds one occurrence of the
+  `content` mentions in `query.ts` and `typed.ts` prose went with it. `@apackdev/ears/src` now holds one occurrence of the
   word, `index.ts:33`'s "a applier", which is the pack-applier noun and correct.
 
 ### Invariants and milestones

@@ -1,5 +1,5 @@
-import type { StepBuildFacet, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepNodeFacet } from '@apack/sdk/steps';
-import { EARS } from '@apack/sdk';
+import type { StepBuildFacet, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext, StepNodeFacet } from '@apackdev/sdk/steps';
+import { EARS } from '@apackdev/sdk';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {

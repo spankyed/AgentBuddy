@@ -1,6 +1,6 @@
-import type { ExecutionContext, TNodeEntity } from '@apack/sdk/steps';
-import { reportError, createLogger } from '@apack/sdk/logger';
-import { isEntityType } from '@apack/ears';
+import type { ExecutionContext, TNodeEntity } from '@apackdev/sdk/steps';
+import { reportError, createLogger } from '@apackdev/sdk/logger';
+import { isEntityType } from '@apackdev/ears';
 import { EARS, createEntityWithDefaults } from '#generated/ears.ts';
 import type { CreateNode } from './types.ts';
 

@@ -57,7 +57,7 @@ describe('packFixture', () => {
     expect(read(packFixture({ rawManifest: { id: 'only-this' } }), 'apack.json')).toEqual({ id: 'only-this' });
   });
 
-  /** What makes `@apack/*` resolve from inside the fixture, which every spec that builds one needs */
+  /** What makes `@apackdev/*` resolve from inside the fixture, which every spec that builds one needs */
   it('links node_modules where it is asked to, and nowhere else', () => {
     const modules = fs.mkdtempSync(path.join(os.tmpdir(), 'apack-fixture-modules-'));
     expect(fs.realpathSync(path.join(packFixture({ nodeModules: modules }), 'node_modules')))
@@ -69,11 +69,11 @@ describe('packFixture', () => {
    * The two ways this could become public API, which is the property the home rests on.
    *
    * It is repo test tooling: a fixture for the tools that *read* a pack directory, all of which are private
-   * (`@apack/cli` publishes no declarations; the layout and specifier readers are `@apack/host`'s). Published,
+   * (`@apackdev/cli` publishes no declarations; the layout and specifier readers are `@apackdev/host`'s). Published,
    * its default manifest, its two manifest options and its stub files would be contract — and that default is
    * chosen to make this repo's pack rules fire.
    *
-   * Only `@apack/source` on the entry is what keeps it out: `publishedManifest` drops an entry that condition
+   * Only `@apackdev/source` on the entry is what keeps it out: `publishedManifest` drops an entry that condition
    * was the whole of, so it reaches no tarball and no `etc/*.api.md`, and a pack cannot resolve it because a
    * pack's config may not declare the condition. Adding a `types` branch would at least surface as a new
    * report file; adding only a `default` one, or re-exporting it from the published `./testing`, would not.
@@ -81,7 +81,7 @@ describe('packFixture', () => {
    */
   it('is reachable only under the source condition, so it reaches no tarball', () => {
     // Read off the typed manifest, so removing the entry fails to compile rather than passing vacuously
-    expect(Object.keys(manifest.exports['./testing/pack-fixture'])).toEqual(['@apack/source']);
+    expect(Object.keys(manifest.exports['./testing/pack-fixture'])).toEqual(['@apackdev/source']);
   });
 
   it('is not exported from ./testing, which is published', () => {

@@ -4,9 +4,9 @@
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { packFixture } from '@apack/sdk/testing/pack-fixture';
+import { packFixture } from '@apackdev/sdk/testing/pack-fixture';
 import { PACK_TSCONFIG } from '../../src/commands/init';
-import { REPO_ROOT } from '@apack/host/build/packages-built';
+import { REPO_ROOT } from '@apackdev/host/build/packages-built';
 
 /** The CLI these specs build with: the repo's own bin, run from source */
 export const CLI = path.join(REPO_ROOT, 'packages', 'apack-cli', 'bin', 'apack.mjs');
@@ -132,7 +132,7 @@ export const packageJson = (name: string) =>
 /**
  * A pack's tsconfig: the scaffold's, unchanged, so a test pack compiles the same way a scaffolded one does.
  *
- * It used to add `customConditions: ['@apack/source']`, on the stated grounds that these packs sit inside the
+ * It used to add `customConditions: ['@apackdev/source']`, on the stated grounds that these packs sit inside the
  * checkout and resolve the workspace packages. They do sit inside it, but they never needed to read its source:
  * dropping the condition left all 15 integration specs and their 191 cases green (2026-09-27). What it bought
  * was the asymmetry the root CLAUDE.md warns about — these packs typechecked against workspace `src/` while

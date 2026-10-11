@@ -9,9 +9,9 @@
 // against and whatever it is sent reaches it.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, type AnyActorRef } from 'xstate';
-import { startTestRuntime, takeSystemErrors, testRootEvents } from '@apack/sdk/testing';
-import { untypedBroadcastToPlugin, type Message } from '@apack/sdk/events';
-import { onLog } from '@apack/sdk/logger';
+import { startTestRuntime, takeSystemErrors, testRootEvents } from '@apackdev/sdk/testing';
+import { untypedBroadcastToPlugin, type Message } from '@apackdev/sdk/events';
+import { onLog } from '@apackdev/sdk/logger';
 import { createAppBus } from '../../src/bus/index.ts';
 import { createParticipantClaims } from '../../src/bus/participants.ts';
 import { HOST } from '../../src/refs.ts';

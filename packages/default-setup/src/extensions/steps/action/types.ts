@@ -1,6 +1,6 @@
-import type { NodeBase } from '@apack/sdk';
-import type { DSLNodeBase } from '@apack/sdk/build';
-import type { FieldMapping, MapEntry } from '@apack/sdk/steps';
+import type { NodeBase } from '@apackdev/sdk';
+import type { DSLNodeBase } from '@apackdev/sdk/build';
+import type { FieldMapping, MapEntry } from '@apackdev/sdk/steps';
 
 /** What either shape of action step carries */
 interface DSLActionCommon extends DSLNodeBase {

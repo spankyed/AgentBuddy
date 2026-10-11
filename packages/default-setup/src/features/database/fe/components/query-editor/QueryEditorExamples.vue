@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import { usePlugin } from '@apack/sdk/fe'
+import { usePlugin } from '@apackdev/sdk/fe'
 
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';

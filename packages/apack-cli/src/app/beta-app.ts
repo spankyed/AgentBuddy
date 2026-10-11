@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { replaceDir } from '@apack/host/replace-dir';
+import { replaceDir } from '@apackdev/host/replace-dir';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import semver from 'semver';

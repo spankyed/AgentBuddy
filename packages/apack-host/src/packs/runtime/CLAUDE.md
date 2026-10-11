@@ -1,14 +1,14 @@
-# Pack runtime (`@apack/host/packs/runtime`)
+# Pack runtime (`@apackdev/host/packs/runtime`)
 
-The pack runtime the app runs: loading built-in and external packs, the SDK bridge, activation and teardown, reload, writing, and the host `packs` system. It works on the registry it's given (`PackRegistry`, `createPackRegistry()` from `../pack-registration.ts`): every function that registers, unregisters or reads packs takes it as its first argument, and the host `packs` system is `createPacksSystem(registry)`. Discovery, the registered packs (`createPackRegistry()`, with the shutdown hooks), the install registry, the installer and the pack layout live one level up in `@apack/host/packs` (`packages/apack-host/src/packs/`). That barrel, which the CLI imports, never imports this folder, and neither does `@apack/host/bus` (`tests/boundaries.spec.ts`).
+The pack runtime the app runs: loading built-in and external packs, the SDK bridge, activation and teardown, reload, writing, and the host `packs` system. It works on the registry it's given (`PackRegistry`, `createPackRegistry()` from `../pack-registration.ts`): every function that registers, unregisters or reads packs takes it as its first argument, and the host `packs` system is `createPacksSystem(registry)`. Discovery, the registered packs (`createPackRegistry()`, with the shutdown hooks), the install registry, the installer and the pack layout live one level up in `@apackdev/host/packs` (`packages/apack-host/src/packs/`). That barrel, which the CLI imports, never imports this folder, and neither does `@apackdev/host/bus` (`tests/boundaries.spec.ts`).
 
-The API calls this runtime (`packages/api/src/runtime/index.ts`, `setup/websocket.ts`, `transport/packs.ts`), and so do the db scripts. What only the API has, it reaches through the SDK's bound runtime: logging through `createLogger` (`@apack/sdk/logger`) and the app version through `getAppVersion()` (`@apack/sdk/env`). Unbound (the CLI), loggers write to the console. The partition policy the app's store routes by is a constant (`appPartitionPolicy()`), so nothing here touches it. Modules here import each other and the rest of host by relative `.ts` path.
+The API calls this runtime (`packages/api/src/runtime/index.ts`, `setup/websocket.ts`, `transport/packs.ts`), and so do the db scripts. What only the API has, it reaches through the SDK's bound runtime: logging through `createLogger` (`@apackdev/sdk/logger`) and the app version through `getAppVersion()` (`@apackdev/sdk/env`). Unbound (the CLI), loggers write to the console. The partition policy the app's store routes by is a constant (`appPartitionPolicy()`), so nothing here touches it. Modules here import each other and the rest of host by relative `.ts` path.
 
 ## Architecture
 
 ### Install locations
 
-All paths come from `resolveAppContext()` (`@apack/sdk/env`), under `userDataDir`:
+All paths come from `resolveAppContext()` (`@apackdev/sdk/env`), under `userDataDir`:
 
 | Path | Contents |
 |------|----------|
@@ -56,14 +56,14 @@ In this folder (all exported from `index.ts`):
 |------|---------|
 | `loader.ts` | Built-in and external loading, `registerExternalPacks`, `clearPackRequireCache` |
 | `bridge.ts` | The SDK bridge map (`SDK_BRIDGE`: `sdk-modules.ts`), `withHostResolution()`, `getBridgedSdkSpecifiers()` |
-|  `sdk-modules.ts` | Generated (`npm run sdk-modules:update -w @apack/host`, from `../../build/render-sdk-modules.ts`): a static import of every export of the `SHARED_INSTANCE_PACKAGES` (`@apack/sdk`, `@apack/ears`) pack runtime code can require, so the app bundle carries them |
+|  `sdk-modules.ts` | Generated (`npm run sdk-modules:update -w @apackdev/host`, from `../../build/render-sdk-modules.ts`): a static import of every export of the `SHARED_INSTANCE_PACKAGES` (`@apackdev/sdk`, `@apackdev/ears`) pack runtime code can require, so the app bundle carries them |
 | `lifecycle.ts` | `activatePack()` and `teardownPack()` for install, uninstall, enable/disable and update at runtime |
 | `reload.ts` | `reloadPackById()` for the API's `POST /dev/reload` (`transport/websocket.ts`): the caller names a pack, and the registry says which directory it was loaded from |
 | `packs-system.ts` | Every action takes an in-flight lock (install on the slug, the rest on the pack id), so two of the same never interleave. The host `packs` XState system: `INSTALL_PACK`, `UNINSTALL_PACK`, `TOGGLE_PACK_ENABLED`, `UPDATE_PACK`, `CHECK_FOR_UPDATES`, `GET_INSTALLED_PACKS`, and publishes its list on `SEND_STATE` like any other system, whatever caused the ask; emits `PACKS_LIST`, `PACK_ACTIVATED`/`PACK_DEACTIVATED` and install/update/uninstall results. It lists `installedPacks()`: the packs directory, joined with what the record says about each and the registry's load problem for it |
 | `activation-outcome.ts` | `activationProblem()`: why a just-installed or updated pack isn't working (failed to load, with the load problem the registry recorded, or the content error recorded on its installed-packs entry) |
-| `apply.ts` | `contentRevision` (every file under the pack's `runtime/content`, by name and bytes, media included — **content only**: file times were in here so that reinstalling the version already installed would re-apply, which also made a `touch` re-apply and made every `apack dev` backend rebuild re-import every apply, that loop reinstalling. Asking for a pack's data back is `IMPORT_PACK_CONTENT`; a reinstall of a pack whose data failed still reports it, because `recordInstalled` keeps the `lastError` only the applier may clear), and `applyPacks` — **one function for every pack**, whoever ships it. Each pack's hash is recorded as its `AppliedContent.revision` (`appliedContent`, `@apack/host/app-state`), which keeps it while the pack is disabled; every applier the pack registered runs; failures are recorded as the installed-packs entry's `lastError`. A pack is applied when its own compiled data changed, or when its last apply failed and a pack it depends on has applied since — `AppState.failedAgainst` holds what the failed attempt faced, so the retry happens when that changes rather than never, and a pack whose data and dependencies are both settled is skipped. Every key the pack declares is applied: there is no policy saying otherwise, because `content.sources` holds only entries that write entities, and what an apply leaves alone it decides from the merge rather than from a list of keys. **This is where the applied content is read and written**: the record of what the last apply wrote per item goes in, and what this one wrote, removed and flagged comes back out (`ApplyRecord`, `@apack/sdk/utils`). It is what makes an entity the user destroyed known to be theirs — the apply wrote its key and there is nothing behind it now — and what keeps the user's edit to one field of an item from freezing the rest of it. A pack whose content no longer declares an item has that item removed, unless the user has edited it, in which case it is kept and named. The revision is recorded whether or not the run succeeded, because what it wrote is written either way; a user-requested import (`IMPORT_PACK_CONTENT`) carries a write-only record, so it records what it wrote and reads nothing. What it leaves outstanding it records as an **offer** on the item's entry and logs, one line per kind, with the parts in the log event's meta — only for an entry whose `onUserEdit` is `offer`, since under `theirs` the edit is the user's writing and nothing asks them about it. The Packs view draws them (`PackInfo.contentOffers`) and the three resolutions are the `packs` system's `RESTORE_CONTENT_ITEM`, `DISMISS_CONTENT_OFFER` and `DELETE_CONTENT_ITEM` |
+| `apply.ts` | `contentRevision` (every file under the pack's `runtime/content`, by name and bytes, media included — **content only**: file times were in here so that reinstalling the version already installed would re-apply, which also made a `touch` re-apply and made every `apack dev` backend rebuild re-import every apply, that loop reinstalling. Asking for a pack's data back is `IMPORT_PACK_CONTENT`; a reinstall of a pack whose data failed still reports it, because `recordInstalled` keeps the `lastError` only the applier may clear), and `applyPacks` — **one function for every pack**, whoever ships it. Each pack's hash is recorded as its `AppliedContent.revision` (`appliedContent`, `@apackdev/host/app-state`), which keeps it while the pack is disabled; every applier the pack registered runs; failures are recorded as the installed-packs entry's `lastError`. A pack is applied when its own compiled data changed, or when its last apply failed and a pack it depends on has applied since — `AppState.failedAgainst` holds what the failed attempt faced, so the retry happens when that changes rather than never, and a pack whose data and dependencies are both settled is skipped. Every key the pack declares is applied: there is no policy saying otherwise, because `content.sources` holds only entries that write entities, and what an apply leaves alone it decides from the merge rather than from a list of keys. **This is where the applied content is read and written**: the record of what the last apply wrote per item goes in, and what this one wrote, removed and flagged comes back out (`ApplyRecord`, `@apackdev/sdk/utils`). It is what makes an entity the user destroyed known to be theirs — the apply wrote its key and there is nothing behind it now — and what keeps the user's edit to one field of an item from freezing the rest of it. A pack whose content no longer declares an item has that item removed, unless the user has edited it, in which case it is kept and named. The revision is recorded whether or not the run succeeded, because what it wrote is written either way; a user-requested import (`IMPORT_PACK_CONTENT`) carries a write-only record, so it records what it wrote and reads nothing. What it leaves outstanding it records as an **offer** on the item's entry and logs, one line per kind, with the parts in the log event's meta — only for an entry whose `onUserEdit` is `offer`, since under `theirs` the edit is the user's writing and nothing asks them about it. The Packs view draws them (`PackInfo.contentOffers`) and the three resolutions are the `packs` system's `RESTORE_CONTENT_ITEM`, `DISMISS_CONTENT_OFFER` and `DELETE_CONTENT_ITEM` |
 
-In `packages/apack-host/src/packs/` (`@apack/host/packs`):
+In `packages/apack-host/src/packs/` (`@apackdev/host/packs`):
 
 | File | Purpose |
 |------|---------|
@@ -85,12 +85,12 @@ The API's `transport/packs.ts` serves `packs.loaded` from `getLoadedPackEntries(
 ```
 0. initializeLogCapture()          — console calls become log events, each printed once
    openAppStore()                  — (runtime/index.ts) createPackRegistry(), the app's registered packs; open the LMDB store
-                                     (@apack/ears/lmdb) with appPartitionPolicy(), createEarsEngine({ persistence: store.sink }),
+                                     (@apackdev/ears/lmdb) with appPartitionPolicy(), createEarsEngine({ persistence: store.sink }),
                                      bindHost(createHostRuntime({ ..., packs })), which installs the engine's query face
                                      and binds the registry for the SDK's lookups; every step below works on it
 1. registerPack(hostRegistration) — the app's own features as the pack `host`: the application and packs systems and plugins
 2. prepareHostDataDirs()           — record host version; recover staging in packs/
-3. forwardSecretsChanges()         — settings system hears of API key changes (@apack/host/secrets)
+3. forwardSecretsChanges()         — settings system hears of API key changes (@apackdev/host/secrets)
 4. installShippedPacks()           — each pack the app ships into packs/<id>, when its files differ from the
                                      installed copy's; before loading, since a pack is loaded from packs/
 5. loadAppPacks()                  — discover + reconcile installed packs + load enabled, shipped ids first;
@@ -99,18 +99,18 @@ The API's `transport/packs.ts` serves `packs.loaded` from `getLoadedPackEntries(
 7. store.hydrate()                 — EARS policy now sees all entity types
 8. startPacks(registry)            — start.ts; services.appData.reset() runs it too, after the shutdown hooks:
    onInit hooks                    — all packs (built-in + external)
-   runAppMigrations()              — the host's app migrations, then built-in packs', against the app version (@apack/host/migrations); if one fails, nothing below runs
+   runAppMigrations()              — the host's app migrations, then built-in packs', against the app version (@apackdev/host/migrations); if one fails, nothing below runs
    runPackMigrations()             — external packs' migrations, each against its pack version
    applyPacks()                     — every pack's compiled content (hash-checked, in dependency order,
                                      every key each pack content)
-9. start the bus actor             — createAppBus(registry) (@apack/host/bus) with systemId `HOST.bus`, which spawns every registered system
+9. start the bus actor             — createAppBus(registry) (@apackdev/host/bus) with systemId `HOST.bus`, which spawns every registered system
 ```
 
 Every pack registers before hydration, so its entity types are visible to the partition policy resolver.
 
 ## Pack entry contract
 
-A pack's `__generated__/pack-entry.ts` (built-in, and bundled into an external pack's `runtime/index.cjs`) exports a `registration` conforming to `PackRegistration` from `@apack/sdk/framework`, and `setCompiledDir(dir)`:
+A pack's `__generated__/pack-entry.ts` (built-in, and bundled into an external pack's `runtime/index.cjs`) exports a `registration` conforming to `PackRegistration` from `@apackdev/sdk/framework`, and `setCompiledDir(dir)`:
 
 ```typescript
 export const registration: PackRegistration = {
@@ -154,10 +154,10 @@ EARS, designation, service and repository collisions throw before anything is st
 ## Host resolution for pack runtime code
 
 `withHostResolution(fn)` in `bridge.ts` calls `withModuleBridge()` (`../module-bridge.ts`) with:
-- `SDK_BRIDGE` — the loader's own instances (in the app, the API bundle's, which inlines `@apack/sdk`, `@apack/ears` and `@apack/host`) of the shared-instance packages' subpaths (`sdk-modules.ts`, built from each package's exports map minus `APP_UNBRIDGED` and the app-only `@apack/ears/lmdb`). They go into the require cache (under a bridge key and the real resolved path) and `Module._resolveFilename` resolves those specifiers to them, so pack code shares the bundle's bound app (its registered packs and hydrated EARS engine) instead of loading a separate SDK copy. Pack code never requires `@apack/host`, so no host module is bridged.
+- `SDK_BRIDGE` — the loader's own instances (in the app, the API bundle's, which inlines `@apackdev/sdk`, `@apackdev/ears` and `@apackdev/host`) of the shared-instance packages' subpaths (`sdk-modules.ts`, built from each package's exports map minus `APP_UNBRIDGED` and the app-only `@apackdev/ears/lmdb`). They go into the require cache (under a bridge key and the real resolved path) and `Module._resolveFilename` resolves those specifiers to them, so pack code shares the bundle's bound app (its registered packs and hydrated EARS engine) instead of loading a separate SDK copy. Pack code never requires `@apackdev/host`, so no host module is bridged.
 - `getSharedBeDeps()` (`xstate`, `zod`, and every subpath they export: a bundled dependency may require `zod/v4`) — resolved from `import.meta.url` (the API's `dist/server.js` in the app), since an installed pack has no `node_modules`.
 - `bridgedPackages: SHARED_INSTANCE_PACKAGES` — a pack requiring a shared-instance module the map lacks fails with "isn't provided by this apack: rebuild the pack".
-- `appOnly: APP_ONLY_EXPORTS` — a pack requiring `@apack/ears/lmdb` fails saying only the app loads it (`apack build` already rejects the import).
+- `appOnly: APP_ONLY_EXPORTS` — a pack requiring `@apackdev/ears/lmdb` fails saying only the app loads it (`apack build` already rejects the import).
 
 The resolver patch is restored in a `finally`; the bridged cache entries stay, so lazy requires get them too. `tests/packs/runtime/sdk-bridge-drift.spec.ts` guards the list via `getBridgedSdkSpecifiers()` and fails when  `sdk-modules.ts` is stale. The pack test harness calls `withModuleBridge()` with the pack's own SDK.
 
@@ -196,7 +196,7 @@ The renderer loads each such pack's frontend, then calls `trpc.bus.packClientRea
 
 ## External pack FE entry convention
 
-A pack's frontend files are found on disk, not declared in the manifest: `packFrontendFiles(layoutDir)` (`@apack/host/packs`) returns `{ entry?: 'runtime/fe.js', styles?: 'runtime/fe.css' }` for whichever of the two `apack build` emitted.
+A pack's frontend files are found on disk, not declared in the manifest: `packFrontendFiles(layoutDir)` (`@apackdev/host/packs`) returns `{ entry?: 'runtime/fe.js', styles?: 'runtime/fe.css' }` for whichever of the two `apack build` emitted.
 
 The `packs.loaded` query reports them as `feEntry` and `feStyles`. The frontend's `createPackFrontends` (`features/packs/fe/frontends.ts`, over the window's I/O) loads the styles, then imports `pack://{packId}/{feEntry}`. The module's default export must be a `PackFERegistration`-shaped object (or a subset): `{ plugins?, steps?, artifacts?, blocks?, tiptapPlugins?, appExtensions?, dslTypes? }`. It calls the window's registry's `registerPackFE()` with it, and the shell sends itself `PACK_FRONTEND_LOADED` (with no plugins when the load failed), which merges the plugins and calls `bus.packClientReady`.
 

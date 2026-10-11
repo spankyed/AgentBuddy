@@ -2,7 +2,7 @@
  * The pack's own working directory, and what a build keeps there rather than in `dist/`.
  *
  * In host because the two sides cannot reach each other: `apack build` writes the record
- * (`@apack/cli`) and the repo's chain checks read it (`scripts/lib/build-reads.ts`), while a package may
+ * (`@apackdev/cli`) and the repo's chain checks read it (`scripts/lib/build-reads.ts`), while a package may
  * not import the repo's `scripts/` and `scripts/` cannot import the CLI, which publishes no exports map.
  * Two literals agreeing by convention is a rename away from a reader that finds nothing and blames the
  * build for not having run.

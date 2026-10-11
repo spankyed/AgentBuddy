@@ -1,6 +1,6 @@
-// Builds a publishable copy of a workspace package that ships as a bundle (@apack/cli,
-// @apack/testing) into <package>/dist/package. The shared-instance packages (SHARED_INSTANCE_PACKAGES)
-// and the private @apack/host are inlined from source, so the published package can use host-only
+// Builds a publishable copy of a workspace package that ships as a bundle (@apackdev/cli,
+// @apackdev/testing) into <package>/dist/package. The shared-instance packages (SHARED_INSTANCE_PACKAGES)
+// and the private @apackdev/host are inlined from source, so the published package can use host-only
 // modules; every other package stays external and becomes a dependency at the version the workspace uses.
 //
 //   tsx scripts/bundle-package.ts packages/apack-cli
@@ -8,11 +8,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { builtinModules, createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
-import { packageName } from '@apack/host/build/specifiers';
-import { recordBundleReads, runPackageBuild } from '@apack/host/build/packages-built';
-import { replaceDir } from '@apack/host/replace-dir';
-import { manifestPaths, type Manifest } from '@apack/host/build/published-manifest';
-import { SHARED_INSTANCE_PACKAGES } from '@apack/host/build/shared-deps';
+import { packageName } from '@apackdev/host/build/specifiers';
+import { recordBundleReads, runPackageBuild } from '@apackdev/host/build/packages-built';
+import { replaceDir } from '@apackdev/host/replace-dir';
+import { manifestPaths, type Manifest } from '@apackdev/host/build/published-manifest';
+import { SHARED_INSTANCE_PACKAGES } from '@apackdev/host/build/shared-deps';
 import ts from 'typescript';
 import { BareImports } from './lib/published-imports.ts';
 import { build, type BuildOptions, type Plugin } from 'esbuild';
@@ -35,12 +35,12 @@ interface BundleConfig {
 }
 
 const CONFIGS: Record<string, BundleConfig> = {
-  '@apack/cli': {
+  '@apackdev/cli': {
     entries: { cli: 'src/index.ts' },
     copy: ['bin/apack.mjs', 'templates'],
     manifest: { bin: { apack: 'bin/apack.mjs' } },
   },
-  '@apack/testing': {
+  '@apackdev/testing': {
     // vitest-worker and vitest-teardown are loaded by path from dist/vitest.js's isolatedDataDir()
     entries: { index: 'src/index.ts', playwright: 'src/playwright.ts', vitest: 'src/vitest.ts', 'vitest-worker': 'src/vitest-worker.ts', 'vitest-teardown': 'src/vitest-teardown.ts' },
     sharedExternalEntries: { harness: 'src/harness.ts' },
@@ -56,7 +56,7 @@ const CONFIGS: Record<string, BundleConfig> = {
 
 /** Every path the published manifest points at, as [what names it, where it points] */
 function publishedPaths(config: BundleConfig, pkgDir: string): [string, string][] {
-  // The same walk the staged packages' manifests get (`@apack/host/build/published-manifest`), so a generated
+  // The same walk the staged packages' manifests get (`@apackdev/host/build/published-manifest`), so a generated
   // manifest and a derived one are held to one answer about what a manifest names
   const paths: [string, string][] = [...manifestPaths(config.manifest as Manifest)];
   for (const file of config.copy ?? []) {
@@ -110,7 +110,7 @@ const workspaceManifest = (name: string) =>
 const sharedPkgs = SHARED_INSTANCE_PACKAGES.map(workspaceManifest);
 const hostPkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'packages', 'apack-host', 'package.json'), 'utf-8'));
 const SHARED = new Set<string>(SHARED_INSTANCE_PACKAGES);
-const INLINED = new Set([...SHARED, '@apack/host']);
+const INLINED = new Set([...SHARED, '@apackdev/host']);
 
 const builtins = new Set([...builtinModules, ...builtinModules.map((m) => `node:${m}`)]);
 
@@ -130,14 +130,14 @@ function versionOf(name: string): string {
   for (const source of sources) {
     if (source?.[name]) return source[name];
   }
-  throw new Error(`${pkg.name} bundle imports ${name}, which neither ${pkg.name}, the shared-instance packages nor @apack/host declares`);
+  throw new Error(`${pkg.name} bundle imports ${name}, which neither ${pkg.name}, the shared-instance packages nor @apackdev/host declares`);
 }
 
 const externalizeAllButHost: Plugin = {
   name: 'externalize-all-but-host',
   setup(b) {
     b.onResolve({ filter: /^[^./]/ }, (args) => {
-      if (args.kind === 'entry-point' || packageName(args.path) === '@apack/host') return undefined;
+      if (args.kind === 'entry-point' || packageName(args.path) === '@apackdev/host') return undefined;
       return { path: args.path, external: true };
     });
   },
@@ -150,7 +150,7 @@ const sharedOptions = {
   target: 'node22',
   metafile: true,
   logLevel: 'warning',
-  conditions: ['@apack/source', 'module'],
+  conditions: ['@apackdev/source', 'module'],
   banner: { js: "import { createRequire as __apackCreateRequire } from 'node:module'; const require = __apackCreateRequire(import.meta.url);" },
 } satisfies BuildOptions;
 
@@ -204,7 +204,7 @@ async function main(): Promise<void> {
     metafile: true,
     logLevel: 'warning',
     // Inlined workspace packages bundle from source (see their package.json exports)
-    conditions: ['@apack/source', 'module'],
+    conditions: ['@apackdev/source', 'module'],
     // Bundled CommonJS dependencies may call require(); give ESM chunks one
     banner: { js: "import { createRequire as __apackCreateRequire } from 'node:module'; const require = __apackCreateRequire(import.meta.url);" },
     plugins: [externalizeAllButInlined],
@@ -248,7 +248,7 @@ async function main(): Promise<void> {
     }
   }
   // The private host package is inlined, never installed
-  delete dependencies['@apack/host'];
+  delete dependencies['@apackdev/host'];
 
   for (const file of config.copy ?? []) {
     const from = path.join(pkgDir, file);
@@ -265,7 +265,7 @@ async function main(): Promise<void> {
     const entryFiles = [...Object.values(config.entries), ...Object.values(config.sharedExternalEntries ?? {})].map((src) => path.join(pkgDir, src));
     execFileSync(process.execPath, [
       tsc, ...entryFiles, '--declaration', '--emitDeclarationOnly', '--outDir', path.join(stagedDir, 'dist'),
-      '--module', 'esnext', '--moduleResolution', 'bundler', '--customConditions', '@apack/source', '--allowImportingTsExtensions', '--target', 'es2022',
+      '--module', 'esnext', '--moduleResolution', 'bundler', '--customConditions', '@apackdev/source', '--allowImportingTsExtensions', '--target', 'es2022',
       '--strict', '--esModuleInterop', '--skipLibCheck', '--types', 'node',
     ], { stdio: 'inherit' });
   }
@@ -289,13 +289,13 @@ async function main(): Promise<void> {
 
   // The declarations must name only packages a consumer installs. `tsc --emitDeclarationOnly` copies a bare
   // specifier through untouched where esbuild would have inlined the same import — so a type taken from
-  // `@apack/host`, which is inlined and deliberately absent from `dependencies` above, resolves at runtime
+  // `@apackdev/host`, which is inlined and deliberately absent from `dependencies` above, resolves at runtime
   // and is `any` to anyone type-checking. `build-package.ts` and `build-ui-package.ts` have asserted this
   // since they were written; this build emitted declarations without it, which is how one reached
-  // @apack/testing's harness and was found by reading the built file rather than by any check.
+  // @apackdev/testing's harness and was found by reading the built file rather than by any check.
   if (config.declarations) {
     // Reachable from the exports map, not every file tsc emitted. `build-package.ts` walks the whole tree
-    // because for @apack/ears and /sdk every dist module is an export; a bundled package has three entries
+    // because for @apackdev/ears and /sdk every dist module is an export; a bundled package has three entries
     // and tsc writes a declaration per module it compiled, so walking everything reports a module a consumer
     // cannot name — `checkout-freshness.d.ts` takes a host type in an options bag only this package's own
     // spec passes, and no entry's declaration mentions it.

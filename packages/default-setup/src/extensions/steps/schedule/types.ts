@@ -1,4 +1,4 @@
-import type { NodeBase } from '@apack/sdk';
+import type { NodeBase } from '@apackdev/sdk';
 
 export interface ScheduleNode extends NodeBase {
   nodeType: 'schedule';

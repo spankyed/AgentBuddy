@@ -9,9 +9,9 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { registry } from './test-host.ts';
 import { loadExternalPacks, registerExternalPacks } from '../../../src/packs/runtime/loader.ts';
-import { PLUGIN_EVENT_TYPES } from '@apack/sdk/events';
-import { PACK_SNAPSHOT_FORMAT } from '@apack/sdk/build';
-import { _appDirOf } from '@apack/sdk/env';
+import { PLUGIN_EVENT_TYPES } from '@apackdev/sdk/events';
+import { PACK_SNAPSHOT_FORMAT } from '@apackdev/sdk/build';
+import { _appDirOf } from '@apackdev/sdk/env';
 import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */

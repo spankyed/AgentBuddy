@@ -1,5 +1,5 @@
-import { _callOf, newCall } from '@apack/sdk/events';
-import { HOST } from '@apack/host/bus';
+import { _callOf, newCall } from '@apackdev/sdk/events';
+import { HOST } from '@apackdev/host/bus';
 import type { BusMessage } from './api-client.ts';
 
 /**

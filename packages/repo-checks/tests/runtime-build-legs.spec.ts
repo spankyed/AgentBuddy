@@ -7,7 +7,7 @@
 // would build nothing and report success. `doc-links.spec.ts` guards the same npm behaviour for commands
 // quoted in docs.
 import { describe, expect, it } from 'vitest';
-import { population } from '@apack/sdk/testing';
+import { population } from '@apackdev/sdk/testing';
 import { RUNTIME_BUILD_LEGS, BUILD_TIMEOUT, type RuntimeBuildLeg } from '../../../scripts/lib/runtime-build-legs.ts';
 import { CHAIN_STEPS } from '../../../scripts/lib/chain-steps.ts';
 import { workspaceScripts } from '../../../scripts/lib/npm-scripts.ts';

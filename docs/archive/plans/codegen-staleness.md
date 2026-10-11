@@ -11,8 +11,8 @@
 
 # Codegen staleness
 
-`src/__generated__/` is written by `apack generate-entries` (`@apack/cli`'s `commands/generate-entries.ts`,
-over `generatePackFiles` in `@apack/sdk/build`) from inputs that reach it through no module graph: nothing
+`src/__generated__/` is written by `apack generate-entries` (`@apackdev/cli`'s `commands/generate-entries.ts`,
+over `generatePackFiles` in `@apackdev/sdk/build`) from inputs that reach it through no module graph: nothing
 anyone imports connects `apack.json` to the barrels generated from it, so the files can describe a pack that
 is no longer there.
 
@@ -56,7 +56,7 @@ there, does the hash still match. The missing-output check is first on purpose, 
 measurement: recording only the hash let `rm src/__generated__/paths.ts` leave the pack unbuildable while the
 command printed *"inputs unchanged, skipping"*. The list is recorded rather than fixed because the output set
 follows the manifest — a pack with no plugins never writes `fe.ts`, and a hard-coded expectation would call it
-stale for ever. It is the shape `unitStaleReason` (`@apack/host/build/packages-built`) uses for the package
+stale for ever. It is the shape `unitStaleReason` (`@apackdev/host/build/packages-built`) uses for the package
 builds, asked in the same order.
 
 Measured on default-setup, median of 3 on an 86%-idle machine, 2026-10-07: **0.72s when it skips, 1.54s when
@@ -127,7 +127,7 @@ includes. There is none today, because a pack's tsconfig includes its `src/` who
 ## Related: the FE barrel
 
 The investigation that produced this document also found the first instance of a separate rule, which now
-lives in the root `CLAUDE.md`: **frontend-reachable SDK code imports `@apack/sdk/utils/pure` or a specific
-file, never the `@apack/sdk/utils` barrel**, which is Node-only by construction (`paths`, `media`, `export`,
+lives in the root `CLAUDE.md`: **frontend-reachable SDK code imports `@apackdev/sdk/utils/pure` or a specific
+file, never the `@apackdev/sdk/utils` barrel**, which is Node-only by construction (`paths`, `media`, `export`,
 `content`). The instance was `randomId`, pulling `process.env` into the browser bundle through the barrel; it is
 `utils/random-id.ts` now, re-exported from `pure.ts`.

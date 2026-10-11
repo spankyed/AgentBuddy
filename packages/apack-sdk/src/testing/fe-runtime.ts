@@ -23,11 +23,11 @@ const noFrontends: FePackRegistryView = {
 
 /**
  * The shell a test gets when it passes none. The shell is the host's, which the SDK doesn't carry, so reaching this
- * one says where the real one is: `startShell()` from `@apack/testing/harness` binds it
+ * one says where the real one is: `startShell()` from `@apackdev/testing/harness` binds it
  */
 const noShell = new Proxy({} as HostShell, {
   get: (_target, member) => {
-    throw new Error(`This test has no app shell (it reached for its ${String(member)}): start one with startShell() from @apack/testing/harness, which binds the frontend host itself`);
+    throw new Error(`This test has no app shell (it reached for its ${String(member)}): start one with startShell() from @apackdev/testing/harness, which binds the frontend host itself`);
   },
 });
 
@@ -37,7 +37,7 @@ const noShell = new Proxy({} as HostShell, {
  */
 const noSettings = new Proxy({} as SettingsPort, {
   get: (_target, member) => {
-    throw new Error(`This test has no settings (it reached for their ${String(member)}): pass settings: fakeSettings({ … }) from @apack/sdk/testing to startFeTestRuntime`);
+    throw new Error(`This test has no settings (it reached for their ${String(member)}): pass settings: fakeSettings({ … }) from @apackdev/sdk/testing to startFeTestRuntime`);
   },
 });
 

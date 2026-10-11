@@ -163,7 +163,7 @@ describe('withModuleBridge', () => {
     installPackage(lib, `module.exports = { value: 'real copy' };`);
     const runtime = writeRuntime(`module.exports = require('${lib}/gone');`);
     expect(() => withModuleBridge({ modules: {}, resolveFrom, bridgedPackages: [lib] }, () => createRequire(runtime)(runtime)))
-      .toThrow(`${lib}/gone isn't provided by this apack: rebuild the pack with the current @apack/cli`);
+      .toThrow(`${lib}/gone isn't provided by this apack: rebuild the pack with the current @apackdev/cli`);
   });
 
   it('throws for an app-only specifier, saying only the app loads it', () => {

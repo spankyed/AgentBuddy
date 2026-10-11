@@ -3,8 +3,8 @@
 // stored, or refused with the reasons the store gave, which the form shows.
 import { afterAll, beforeEach, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
-import type { Message } from '@apack/sdk/events'
-import { startFeTestRuntime } from '@apack/sdk/testing'
+import type { Message } from '@apackdev/sdk/events'
+import { startFeTestRuntime } from '@apackdev/sdk/testing'
 import { createSettingsMachine } from '../../../../src/features/settings/fe/machine.ts'
 
 const sent = vi.fn<(message: Message) => void>()

@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { ref, onBeforeUnmount } from 'vue'
 import { ContextMenuRoot } from 'reka-ui'
-import { onMenuOpenChange } from '@apack/sdk/fe'
+import { onMenuOpenChange } from '@apackdev/sdk/fe'
 
 const isOpen = ref(false)
 const handleOpen = (open: boolean) => {

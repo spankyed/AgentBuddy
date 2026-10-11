@@ -1,5 +1,5 @@
 import type { QueryHandle } from './query.ts'
-import { createLogger } from '@apack/sdk/logger'
+import { createLogger } from '@apackdev/sdk/logger'
 import { registerThreadTeardown } from '#features/threads/be/thread-teardown.ts'
 
 const logger = createLogger('claude-code-handle-store')

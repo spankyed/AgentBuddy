@@ -356,7 +356,7 @@ export type PublicPluginInboxOf<C> = C extends { inbox: { public: infer Events }
  */
 export type HostPluginEvents = {
   'host/application':
-    // The app's own send after each client connection (`ApplicationConnectedEvent`, @apack/host/bus): whether
+    // The app's own send after each client connection (`ApplicationConnectedEvent`, @apackdev/host/bus): whether
     // the user onboarded, which plugins' tabs show, and the plugin the user last had open
     | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; pluginVisibility: Record<string, boolean>; lastActivePlugin?: string }
     | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
@@ -405,7 +405,7 @@ export const HOST_PLUGIN_EVENT_TYPES = {
 function sendIncoming(message: Message): void {
   if (_isFeHostBound()) boundFeHost().client.send(message);
   else if (_isHostBound()) boundHost().transport.rootEvents.emitIncoming(message);
-  else throw new Error('No host is bound to send events through: call bindHost(runtime) (backend) or bindFeHost(runtime) (frontend) from @apack/sdk/runtime first');
+  else throw new Error('No host is bound to send events through: call bindHost(runtime) (backend) or bindFeHost(runtime) (frontend) from @apackdev/sdk/runtime first');
 }
 
 /**
@@ -641,7 +641,7 @@ export type Reply<E extends { type: string } = { type: string; [key: string]: un
  *
  * **Both are assertions, not gates, and that is why they stay throws.** Nothing can reach either: an asker is
  * built at one of three doors and each door can only build the channel it is — `askerOf`
- * (`@apack/host/bus`'s `delivery.ts`) returns `bus` or `connection`, `connection.ts` in the shell returns
+ * (`@apackdev/host/bus`'s `delivery.ts`) returns `bus` or `connection`, `connection.ts` in the shell returns
  * `bus`, `deliverInWindow` returns `window`, and `usePlugin` builds no asker at all. So the subject is this
  * program's own construction rather than anything a caller passes, and a `reportError` here would turn a
  * proven-impossible state into a line in a log while the process carried on inside it.
@@ -657,7 +657,7 @@ export type Reply<E extends { type: string } = { type: string; [key: string]: un
  *
  * The host is resolved on each call rather than at binding, so building one costs nothing and needs no app.
  *
- * @internal The SDK builds these for handlers (`defineHandlers`, `@apack/sdk/framework`); pack code receives
+ * @internal The SDK builds these for handlers (`defineHandlers`, `@apackdev/sdk/framework`); pack code receives
  * one rather than making it, which is what replaced an exported `reply()` that read the scope itself.
  */
 export function _replyTo(delivery: _Delivery | undefined): Reply | undefined {
@@ -690,7 +690,7 @@ export function _replyTo(delivery: _Delivery | undefined): Reply | undefined {
  * it was serving. A system knows no other window — nothing holds a registry of them — so this is the whole
  * of what `sendToWindow` can address.
  *
- * @internal The SDK hands these to handlers (`defineHandlers`, `@apack/sdk/framework`); pack code receives
+ * @internal The SDK hands these to handlers (`defineHandlers`, `@apackdev/sdk/framework`); pack code receives
  * one rather than asking for it.
  */
 export function _clientOf(delivery: _Delivery | undefined): string | undefined {
@@ -762,7 +762,7 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
 
 /**
  * The sends `#generated/events` builds for pack `packId`. A pack names its own features by id and every other
- * feature, the host's included, as `<packId>/<featureId>` (`@apack/sdk/ids`). The types reject a name nothing declares, and the app reports a
+ * feature, the host's included, as `<packId>/<featureId>` (`@apackdev/sdk/ids`). The types reject a name nothing declares, and the app reports a
  * send it has no receiver for.
  */
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S> {

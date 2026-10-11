@@ -4,10 +4,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { PACK_LAYOUT } from '@apack/host/packs';
-import { startTestRuntime } from '@apack/sdk/testing';
-import { stepRegistry } from '@apack/sdk/steps';
-import { createPackRegistry } from '@apack/host/packs';
+import { PACK_LAYOUT } from '@apackdev/host/packs';
+import { startTestRuntime } from '@apackdev/sdk/testing';
+import { stepRegistry } from '@apackdev/sdk/steps';
+import { createPackRegistry } from '@apackdev/host/packs';
 import { build } from '../../src/commands/build';
 
 const bound = createPackRegistry();
@@ -58,7 +58,7 @@ function pack(stepInFlow: string): string {
  * What the build said it compiled.
  *
  * **Its report rather than its output, because a build that fails now publishes nothing.** The later phases
- * fail here for want of installed dependencies — the facade gate needs `@apack/sdk` resolvable from the pack
+ * fail here for want of installed dependencies — the facade gate needs `@apackdev/sdk` resolvable from the pack
  * — and phase 4, the one this file is about, has already run by then. The compiled content used to be read from
  * `dist` in place; a build assembles that tree aside and removes it when it fails, so what survives a failed
  * build is what it printed. `result.counts` is the count behind that line, so the line is the count.

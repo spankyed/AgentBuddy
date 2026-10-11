@@ -3,7 +3,7 @@
 // loading settles, and one whose pack goes away meanwhile is dropped.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type Actor } from 'xstate';
-import type { Plugin } from '@apack/sdk/fe';
+import type { Plugin } from '@apackdev/sdk/fe';
 import { createShellMachine, type ShellMachine } from '../../../../src/fe/index.ts';
 import type { ShellEvent } from '../../../../src/features/application/fe/types.ts';
 import { fakeShell, settle } from './fakes.ts';

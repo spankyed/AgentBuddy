@@ -2,10 +2,10 @@ import { defineConfig } from 'vitest/config';
 import { defaultServerConditions } from 'vite';
 
 // Vitest's own defaults: Vite's server conditions without 'module'
-const conditions = ['@apack/source', ...defaultServerConditions.filter((c) => c !== 'module')];
+const conditions = ['@apackdev/source', ...defaultServerConditions.filter((c) => c !== 'module')];
 
 export default defineConfig({
-  // The host suites resolve the workspace @apack packages to source. Safe to set here because every
+  // The host suites resolve the workspace @apackdev packages to source. Safe to set here because every
   // project below is a host package: the pack suite is deliberately not one, and runs from its own config
   // in its own process, where it resolves the published dist.
   resolve: { conditions },
@@ -25,7 +25,7 @@ export default defineConfig({
      * **The pack suite is not here, and cannot be.** `@app/default-setup` must resolve the published
      * `dist` while these resolve source, and Node conditions are per process: vitest shares its worker pool
      * across projects and ignores per-project `poolOptions.execArgv`, measured. Under a pooled process
-     * carrying the condition, a `default-setup` spec resolves `@apack/sdk` to `src` where it resolves
+     * carrying the condition, a `default-setup` spec resolves `@apackdev/sdk` to `src` where it resolves
      * `dist` today — it would not have failed, it would have quietly tested something else. So there are
      * two pools, split on the boundary `check:specifiers` already enforces.
      *

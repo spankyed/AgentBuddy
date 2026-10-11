@@ -2,8 +2,8 @@
  * Restarts the API when its bundle is rebuilt, so a host, SDK or API edit costs a reload rather than a
  * manual build and a restarted app.
  *
- * `npm run dev` leaves `tsup --watch` on the bundle; an edit to `packages/api/src`, `@apack/host/src` or
- * `@apack/sdk/src` rewrites `dist/server.js`, and this asks `ApiServer` to replace the child. Measured
+ * `npm run dev` leaves `tsup --watch` on the bundle; an edit to `packages/api/src`, `@apackdev/host/src` or
+ * `@apackdev/sdk/src` rewrites `dist/server.js`, and this asks `ApiServer` to replace the child. Measured
  * 2026-10-10: ~95ms to rebuild, 545ms for the API to come back ready. The window never closes.
  *
  * **The bundle is the trigger because nothing else can be.** Main owns the API child, so the restart has
@@ -40,7 +40,7 @@ export function devReloadArmed(build: string, env: NodeJS.ProcessEnv): boolean {
  * Runs `work` after `delayMs` of quiet, and never drops a request that arrives while it is running.
  *
  * A busy flag that returned would lose that request, leaving the author looking at an app built from the
- * file before the one they saved with nothing reporting anything wrong. `@apack/cli` has this
+ * file before the one they saved with nothing reporting anything wrong. `@apackdev/cli` has this
  * (`build/watch.ts`'s `coalescingRunner`) and cannot be imported from: that package publishes no exports
  * map, being a bin.
  */

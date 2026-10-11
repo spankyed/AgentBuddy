@@ -5,13 +5,13 @@ import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-/** The CLI's source-mode resolve hooks add @apack/source only for packages in the checkout */
+/** The CLI's source-mode resolve hooks add @apackdev/source only for packages in the checkout */
 const HOOKS = pathToFileURL(path.resolve(__dirname, '..', '..', 'bin', 'source-hooks.mjs')).href;
 
 const MANIFEST = JSON.stringify({
-  name: '@apack/sdk',
+  name: '@apackdev/sdk',
   type: 'module',
-  exports: { '.': { '@apack/source': './src/index.js', default: './dist/index.js' } },
+  exports: { '.': { '@apackdev/source': './src/index.js', default: './dist/index.js' } },
 });
 
 let root: string;
@@ -23,16 +23,16 @@ function write(file: string, content: string): void {
 }
 
 function link(target: string, from: string): void {
-  fs.mkdirSync(path.join(from, 'node_modules', '@apack'), { recursive: true });
-  fs.symlinkSync(target, path.join(from, 'node_modules', '@apack', 'sdk'), 'dir');
+  fs.mkdirSync(path.join(from, 'node_modules', '@apackdev'), { recursive: true });
+  fs.symlinkSync(target, path.join(from, 'node_modules', '@apackdev', 'sdk'), 'dir');
 }
 
-/** What @apack/sdk resolves to from `dir` in a Node process with the hooks registered */
+/** What @apackdev/sdk resolves to from `dir` in a Node process with the hooks registered */
 function resolveWithHooks(dir: string): string {
   const script = [
     "import { register } from 'node:module';",
     `register(${JSON.stringify(HOOKS)}, { data: { checkout: ${JSON.stringify(pathToFileURL(checkout).href + '/')} } });`,
-    "process.stdout.write(import.meta.resolve('@apack/sdk'));",
+    "process.stdout.write(import.meta.resolve('@apackdev/sdk'));",
   ].join('\n');
   const url = execFileSync(process.execPath, ['--input-type=module', '-e', script], {
     cwd: dir, env: { PATH: process.env.PATH }, stdio: 'pipe',
@@ -52,7 +52,7 @@ beforeAll(() => {
   // A pack with its own installed SDK, inside and outside the checkout. The copy has a src too, so
   // only the package's location keeps it on dist
   for (const pack of [path.join(root, 'installed-pack'), path.join(checkout, 'tests', 'installed-pack')]) {
-    const installed = path.join(pack, 'node_modules', '@apack', 'sdk');
+    const installed = path.join(pack, 'node_modules', '@apackdev', 'sdk');
     write(path.join(installed, 'package.json'), MANIFEST);
     write(path.join(installed, 'src', 'index.js'), 'export {};');
     write(path.join(installed, 'dist', 'index.js'), 'export {};');
@@ -86,10 +86,10 @@ describe('CLI source hooks', () => {
   });
 
   it('leave an installed package outside the checkout on its dist', () => {
-    expect(resolveWithHooks(path.join(root, 'installed-pack'))).toBe('installed-pack/node_modules/@apack/sdk/dist/index.js');
+    expect(resolveWithHooks(path.join(root, 'installed-pack'))).toBe('installed-pack/node_modules/@apackdev/sdk/dist/index.js');
   });
 
   it('leave an installed package inside the checkout on its dist', () => {
-    expect(resolveWithHooks(path.join(checkout, 'tests', 'installed-pack'))).toBe('checkout/tests/installed-pack/node_modules/@apack/sdk/dist/index.js');
+    expect(resolveWithHooks(path.join(checkout, 'tests', 'installed-pack'))).toBe('checkout/tests/installed-pack/node_modules/@apackdev/sdk/dist/index.js');
   });
 });

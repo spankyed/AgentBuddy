@@ -103,7 +103,7 @@ A rename is held by the typecheck, so what needs a case is only what a rename ca
   finding is a word in a comment, where a missed one is a flag nobody can find. The scan needs the sense
   separated from the word: `err instanceof Error` and *"two instances of Vue"* are not this concept, so it
   reads the strings a command prints and the flags it parses, not every occurrence. **Its population is
-  the repo, not this package** — three of the sites are in `@apack/testing` and in `tests/e2e`, which a
+  the repo, not this package** — three of the sites are in `@apackdev/testing` and in `tests/e2e`, which a
   CLI-scoped scan would pass over.
 
 Then `npm run spec packages/apack-cli` and `npm run chain`.

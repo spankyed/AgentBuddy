@@ -36,7 +36,7 @@ let matchesSecretValue: ((text: string, from: number, to: number) => boolean) | 
  * Takes the check that tells redaction whether a run of characters is one of the key values this process has used, so
  * keys with no recognizable prefix (Mistral, Cohere) are masked too. `bindHost` calls this with the app's
  * `redaction`, and `unbindHost` clears it: the values belong to the host's secrets store, and the only way to decide
- * what counts as one is to be the app. This module is `@apack/sdk/utils/pure`, so it reads the bound app through
+ * what counts as one is to be the app. This module is `@apackdev/sdk/utils/pure`, so it reads the bound app through
  * nothing — the binding pushes the check in, which also keeps the engine out of frontend bundles.
  *
  * @internal

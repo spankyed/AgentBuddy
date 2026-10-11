@@ -10,7 +10,7 @@
 
 import { spawn, type ChildProcess } from 'child_process'
 import { createInterface, type Interface } from 'readline'
-import { createLogger } from '@apack/sdk/logger'
+import { createLogger } from '@apackdev/sdk/logger'
 import { resolveForService } from '../../utils/resolve-cli.ts'
 import type {
   ServerStatus,

@@ -1,8 +1,8 @@
-// A pack that bundles its own @apack/ui (apack.json fe.bundleUi): its editor shares the host's
+// A pack that bundles its own @apackdev/ui (apack.json fe.bundleUi): its editor shares the host's
 // ProseMirror and tiptap core. Run via `npm run test:external-pack` from the repo root.
-import { test, expect } from '@apack/testing';
+import { test, expect } from '@apackdev/testing';
 
-test('renders and edits with its bundled @apack/ui editor', async ({ appPage, app }) => {
+test('renders and edits with its bundled @apackdev/ui editor', async ({ appPage, app }) => {
   const errors: string[] = [];
   appPage.on('pageerror', (error) => errors.push(error.message));
   appPage.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });

@@ -1,4 +1,4 @@
-import type { TriggerRuntimeNode, TriggerRuntimeContext } from '@apack/sdk/steps';
+import type { TriggerRuntimeNode, TriggerRuntimeContext } from '@apackdev/sdk/steps';
 import { services } from '#generated/services.ts';
 
 export function register(node: TriggerRuntimeNode, ctx: TriggerRuntimeContext): void {

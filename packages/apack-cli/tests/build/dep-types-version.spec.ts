@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { generatePackFiles, PACK_SNAPSHOT_FORMAT, PACK_TYPES_DEF, type PackManifest, type PackSnapshot } from '@apack/sdk/build';
+import { generatePackFiles, PACK_SNAPSHOT_FORMAT, PACK_TYPES_DEF, type PackManifest, type PackSnapshot } from '@apackdev/sdk/build';
 import { warnStaleDepTypes } from '../../src/commands/generate-entries';
 
 let root: string;

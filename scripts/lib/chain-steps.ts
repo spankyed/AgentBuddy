@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@apack/host/build/packages-built';
-import { PUBLISH_TREE } from '@apack/host/build/published-manifest';
+import { BUILD_UNITS, repoRelative, REPO_ROOT } from '@apackdev/host/build/packages-built';
+import { PUBLISH_TREE } from '@apackdev/host/build/published-manifest';
 import { coresFor } from './core-budget.ts';
 import type { TimeoutClass } from './step-timeouts.ts';
 import { UNIT_SUITES, type UnitSuite } from './unit-suites.ts';
@@ -15,7 +15,7 @@ import { API_CHECK_TIMEOUT } from './api-report-packages.ts';
  * that module runs the chain when imported, and `check-test-tiers.ts` needs the table without running it.
  *
  *   1 pure      its own package's source, the in-memory runtime, fakes. No build output, no app.
- *   2 contract  the built @apack packages and a pack's build output. Not the app.
+ *   2 contract  the built @apackdev packages and a pack's build output. Not the app.
  *   3 app       the built app.
  *
  * A step that launches the app without saying so is the coupling this exists to catch: it welds a fast
@@ -72,7 +72,7 @@ export interface ChainStep {
    * **Kept on every failure rather than behind a flag, which 68K is what buys**: measured 2026-10-10, one
    * failing `test:smoke` left that much — the fixture's `app-<worker>.log` beside a 39K `trace.zip` and a
    * screenshot, since the repo's own `playwright.config.ts` sets `screenshot: 'on'` and
-   * `trace: 'retain-on-failure'` (the helper in `@apack/testing/playwright` sets neither, so a pack's
+   * `trace: 'retain-on-failure'` (the helper in `@apackdev/testing/playwright` sets neither, so a pack's
    * suite leaves less). Evidence you have to ask for in advance is evidence you do not have, because you
    * learn you wanted it only after the failure.
    */
@@ -477,7 +477,7 @@ export const WORKSPACE_PARTS = [
   // `templates` is the CLI's scaffold: pack code the specifier rules read and the CLI's own suite renders,
   // so a change to one has to invalidate the steps that read the workspace
   'src', 'tests', 'scripts', 'etc', 'templates', 'index.js',
-  // `bench` is in `@apack/ears`' tsconfig `include`, so its typecheck compiles the benchmark and has to
+  // `bench` is in `@apackdev/ears`' tsconfig `include`, so its typecheck compiles the benchmark and has to
   // re-run when it moves. Only that workspace has one; the dep-file gate is what noticed
   'bench',
   // A pack's manifest, which `default-setup`'s specs import directly. Eleven workspaces have none
@@ -507,9 +507,9 @@ const EVERY_WORKSPACE = PACKAGES.flatMap(workspace);
  * `typecheck` is one, since it compiles the whole thing. The others are the repo-wide *guards* — a spec
  * that asks `git ls-files` what exists and then asserts something about all of it. Those live inside one
  * package's suite while their subject is everything, and the pool runs a project only when that project's
- * own inputs moved, so each was blind to the rest of the tree: measured 2026-09-30, `@apack/sdk`'s suite
+ * own inputs moved, so each was blind to the rest of the tree: measured 2026-09-30, `@apackdev/sdk`'s suite
  * was an input to 241 of 1860 tracked code files and `@app/repo-checks`' to 308. `identity-guard` then
- * missed a forbidden path committed to `@apack/cli` and two full chain runs passed over it.
+ * missed a forbidden path committed to `@apackdev/cli` and two full chain runs passed over it.
  *
  * Build output is not in here, because a guard's subject is source. `typecheck` adds its own.
  */
@@ -603,7 +603,7 @@ const APP_RUNNER = ['scripts/build-runtime.ts', 'scripts/lib/runtime-build-legs.
  * What *runs* a unit suite, as against what the suite reads — and an input to every project all the same.
  *
  * These decide what runs and how: the runner picks which projects a pool runs, `unit-suites.ts` says which
- * pool a suite is even in, `with-source.mjs` supplies the `@apack/source` condition the host suites
+ * pool a suite is even in, `with-source.mjs` supplies the `@apackdev/source` condition the host suites
  * resolve under, the bounded runner bounds the spawn, and `spec-durations.ts` and `spec-halves.ts` decide
  * what the run then *accepts* — a `@slow:` marker that is no longer true fails the step, so they are as
  * much a part of the verdict as the runner is. A pass recorded before one of them changed is not evidence
@@ -653,7 +653,7 @@ const PACK_SOURCES = ['packages/default-setup/src', 'packages/default-setup/apac
 /**
  * What a step reads to derive something from the pack's sources, which `build:default-setup` and `facade:check` both do:
  * those sources, the tsconfig the declaration bundler compiles them with, the committed facade report, and
- * the `@apack/cli` bundle that does the deriving.
+ * the `@apackdev/cli` bundle that does the deriving.
  *
  * Named once because the two lists are identical and nothing would notice them drifting apart — the failure
  * `packages:ensure`' inputs are derived to avoid, a few hundred lines up. The two steps differ in what they
@@ -680,7 +680,7 @@ const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name
 
 /**
  * The unit suites that read build output, and which. Every other suite resolves workspace source through
- * the `@apack/source` condition and needs nothing built, which is what lets it start beside the builds.
+ * the `@apackdev/source` condition and needs nothing built, which is what lets it start beside the builds.
  *
  * **This cannot be derived from the spec sources, and a scan of them is not the authority.** `@app/api`'s
  * specs never name the pack's `dist`: they boot the app runtime, and host code resolves the path. Declaring
@@ -694,9 +694,9 @@ const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name
  *     for w in <the UNIT_SUITES workspaces>; do npm test -w $w; done
  *     mv packages/default-setup/.dist-aside packages/default-setup/dist
  *
- * Measured 2026-09-25: default-setup, @apack/cli and @app/api fail without it; the other five pass.
+ * Measured 2026-09-25: default-setup, @apackdev/cli and @app/api fail without it; the other five pass.
  *
- * `@apack/host` is listed anyway, and that is the second thing a scan would get wrong. Its
+ * `@apackdev/host` is listed anyway, and that is the second thing a scan would get wrong. Its
  * `sdk-bridge-drift.spec.ts` reads `dist/runtime/index.cjs` but *skips* when it is missing, so it passes
  * without the pack and would pass vacuously if it raced `build:default-setup`. A check that silently stops checking is
  * worse than one that fails, so its verdict depends on that tree and it declares it.
@@ -706,12 +706,12 @@ const FIXTURE_TEST_OUTPUT = FIXTURE_PACKS.flatMap((name) => [`tests/packs/${name
  * Without it the pool skips the project while the thing it checks moves — see `EVERY_SOURCE`.
  */
 export const SUITE_READS: Record<string, { packages?: true; pack?: true; repo?: true }> = {
-  // `pretest: ensure-packages-built`, `@apack/testing`'s bundle, and its own compiled content under `dist/`
+  // `pretest: ensure-packages-built`, `@apackdev/testing`'s bundle, and its own compiled content under `dist/`
   'default-setup': { packages: true, pack: true },
   // `pretest: ensure-packages-built`; it packs and installs the published packages, and `dependency-runtime`
   // builds a fixture pack against default-setup's `dist`
   'apack-cli': { packages: true, pack: true },
-  // `@apack/testing`'s bundle; and `sdk-bridge-drift.spec.ts` reads `dist/runtime/index.cjs` when it is
+  // `@apackdev/testing`'s bundle; and `sdk-bridge-drift.spec.ts` reads `dist/runtime/index.cjs` when it is
   // there and skips when it is not, so the tree decides whether that check checks anything
   'apack-host': { packages: true, pack: true },
   // Boots the app runtime, which loads the built-in pack: `dist/runtime/index.cjs` and `settings.content.json`.
@@ -850,7 +850,7 @@ function inputsForSuites(suites: readonly UnitSuite[], half: Half): Pick<ChainSt
  * `typecheck-legs.spec.ts` holds the scope itself to what the leg's script names, and this turns that one
  * declaration into the key.
  *
- * **Every leg still declares the built `@apack` packages**, which is broader than most read and is kept
+ * **Every leg still declares the built `@apackdev` packages**, which is broader than most read and is kept
  * that way on purpose: the single `typecheck` step this replaces declared them, the edge into
  * `packages:ensure` derives from them, and the legs with no dep file — the lint, the import rules, the
  * API stamp — are exactly the ones whose reads nothing reports.
@@ -947,7 +947,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // This step has an inner cache too — `ensurePackagesBuilt()` consults the build stamps — and one input the
   // inner layer cannot see: `ensure-packages-built.ts`. That is safe, and worth saying why rather than
   // leaving a reader to check: the file is the command over the rule, so it cannot change what "built"
-  // means, and the rule itself (`BUILD_UNITS` in `@apack/host`) is inside every unit's own inputs. It takes
+  // means, and the rule itself (`BUILD_UNITS` in `@apackdev/host`) is inside every unit's own inputs. It takes
   // no `forceArgs` for a second reason — 18 call sites reach `ensurePackagesBuilt()` in a serial chain, each
   // a stat and a return, so forcing it would turn them into 18 builds behind one lock.
   // Not cached, and the 0.3s that costs is the point. Measured 2026-09-26: with the package stamps removed
@@ -1010,7 +1010,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   // work that rung names. `chain-graph.spec.ts` holds every step to the rung its work implies
   { name: 'api:check', timeout: API_CHECK_TIMEOUT, seconds: 8,
     // The three packages it reports on, and nothing else that was built. It declared every build output
-    // (`PACKAGE_BUILD_OUTPUTS`) until 2026-10-05, which keyed it on the `@apack/cli` and `@apack/testing`
+    // (`PACKAGE_BUILD_OUTPUTS`) until 2026-10-05, which keyed it on the `@apackdev/cli` and `@apackdev/testing`
     // bundles it never opens and on the `publish/` trees, a staged copy of the same declarations — so a CLI
     // edit re-ran it and every declaration counted twice. Measured then: 1438 declared files, 239 of them
     // read. Dropping `publish/` also dropped a mutex, `packages:check` having declared those trees as written.
@@ -1061,7 +1061,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     // Its sources and its manifest, not its tests: `apack build` never reads those
     //
     // The CLI's sources reach here through `PACKAGE_BUILD_OUTPUTS`, since an edit to them makes the
-    // `@apack/cli` build unit stale and `packages:ensure` rewrites the bundle this declares — and what the
+    // `@apackdev/cli` build unit stale and `packages:ensure` rewrites the bundle this declares — and what the
     // bundle does decides what this step writes.
     //
     // `etc` is the committed facade report, which the build reads to warn when the bundle it has just
@@ -1094,7 +1094,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    * **No `forceArgs`, though `generateEntries` keeps a cache of its own** (`.inputs-hash`) that `--all`
    * cannot reach: a skip there cannot make this step a no-op, because the re-bundle and the comparison run
    * either way. The same reasoning `test:external-pack:contract` carries below, and it has to be written
-   * down — that cache lives in `@apack/cli` rather than under `scripts/`, which is where `chain-table`'s
+   * down — that cache lives in `@apackdev/cli` rather than under `scripts/`, which is where `chain-table`'s
    * stamp-reading derivation looks, so nothing would report its absence.
    */
   { name: 'facade:check', timeout: 'quick', seconds: 7, inputs: PACK_DERIVED_READS },
@@ -1150,7 +1150,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
   { name: 'test:external-pack:app', timeout: 'scenario', seconds: 18,
     // Its own Playwright output, rewritten every run
     excludes: FIXTURE_TEST_OUTPUT,
-    // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@apack/testing` resolves to its
+    // PACKAGE_BUILD_OUTPUTS because the fixture it drives *is* one: `@apackdev/testing` resolves to its
     // built bundle, which launches Electron, finds the window and bypasses onboarding. Reached by package
     // name rather than by path, so nothing that reads a step's text can see the edge
     keepsOnFailure: FIXTURE_TEST_OUTPUT,
@@ -1197,7 +1197,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
     neverCachedBecause: 'it drives real Electron, and a flaky pass cached green hides an intermittent failure',
     outputs: ['tests/results'],
     keepsOnFailure: ['tests/results'],
-    // The published trees, because the fixture every spec imports resolves `@apack/testing`'s built bundle
+    // The published trees, because the fixture every spec imports resolves `@apackdev/testing`'s built bundle
     // from one of them — and `packages:check` packs a tarball inside those trees and recreates them, which a
     // reader must not observe. Declaring them is what makes that a mutex instead of a scheduling accident;
     // the step is never cached, so it buys the ordering and costs no precision
@@ -1208,7 +1208,7 @@ export const CHAIN_STEPS: readonly ChainStep[] = [
    *
    * The author half hands over through `tests/authoring-handoff`, its output and the app half's input, so
    * the edge derives like any other. The work dir that names is **outside** the checkout deliberately — a
-   * pack built inside it would resolve `@apack/*` by walking up to the workspace `node_modules`, which is
+   * pack built inside it would resolve `@apackdev/*` by walking up to the workspace `node_modules`, which is
    * what the check exists to disprove — so the handoff carries a path and the archive's digest instead.
    *
    * Neither half deletes that dir: it is the author half's declared output, and a step whose output is gone
