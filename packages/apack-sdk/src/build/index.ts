@@ -1,3 +1,4 @@
+export { compileHelp } from './help.ts';
 // Types
 export type { PackConfig, PackBuildDefinitions, CompilePackOptions, CompilePackResult } from './types.ts';
 

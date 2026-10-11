@@ -38,6 +38,7 @@ export {
 export {
   untypedOpenPlugin,
   openLink,
+  openHelp,
   type PluginEvent,
 } from './navigation.ts'
 

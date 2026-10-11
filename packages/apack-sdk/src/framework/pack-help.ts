@@ -1,21 +1,24 @@
-/**
- * The help entries registered packs declare (apack.json `help`). The app's Settings view lists them under Help,
- * so any pack can answer a question there — which is why they are a contribution like commands or blocks rather
- * than something the view reads from one pack's compiled content.
- *
- * A pack's entries are read the first time the list is, not at registration, so a pack whose help is compiled with
- * its content can read them then.
- */
 import { boundHost } from '../runtime/host-runtime.ts';
 
-/** One help entry: a question, its answer, and where it sits in the list */
-export interface HelpEntry {
+/** A Markdown article contributed by a pack. IDs are unique within that pack. */
+export interface HelpDocument {
   id: string;
-  question: string;
-  answer: string;
+  title: string;
+  body: string;
+  features?: string[];
+  order?: number;
 }
 
-/** Every registered pack's help entries, in the order the packs were first registered */
-export function getPackHelp(): HelpEntry[] {
+/** An article in the app's catalog, qualified by its contributing pack. */
+export interface HelpArticle extends HelpDocument {
+  packId: string;
+  packName: string;
+}
+
+export interface HelpProblem { packId: string; message: string }
+export interface HelpCatalog { articles: HelpArticle[]; problems: HelpProblem[] }
+export interface HelpTarget { packId?: string; articleId?: string; featureId?: string }
+
+export function getPackHelp(): HelpCatalog {
   return boundHost().packs.help();
 }

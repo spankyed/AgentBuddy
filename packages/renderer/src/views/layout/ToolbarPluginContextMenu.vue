@@ -9,8 +9,9 @@
 </template>
 
 <script setup lang="ts">
+import { useContextualHelp } from '@/views/settings/contextual-help';
 import { computed, ref } from 'vue';
-import { ExternalLink, EyeOff, Settings as SettingsIcon } from 'lucide-vue-next';
+import { CircleHelp, ExternalLink, EyeOff, Settings as SettingsIcon } from 'lucide-vue-next';
 import type { Plugin } from '@/types';
 import ContextMenuPopup from '@apackdev/ui/design/ContextMenuPopup';
 import { useShell, untypedOpenPlugin } from '@apackdev/sdk/fe';
@@ -19,6 +20,7 @@ import { useContextMenu, type MenuItem } from '@apackdev/ui/composables/useConte
 
 const { showMenu, menuPos, open: openMenu } = useContextMenu();
 const shell = useShell();
+const { hasHelp, openFeatureHelp } = useContextualHelp();
 const selectedPlugin = ref<Plugin | null>(null);
 
 const menuItems = computed<MenuItem[]>(() => {
@@ -38,6 +40,7 @@ const menuItems = computed<MenuItem[]>(() => {
   }
 
   return [
+    ...(hasHelp(plugin.id) ? [{ label: `${plugin.label} Help`, icon: CircleHelp, class: 'text-neutral-200', iconClass: 'text-neutral-500', action: () => openFeatureHelp(plugin.id) }] : []),
     {
       label: 'Pop Out',
       icon: ExternalLink,

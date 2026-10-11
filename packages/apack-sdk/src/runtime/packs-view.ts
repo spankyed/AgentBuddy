@@ -9,7 +9,7 @@ import type { ContentWriter } from '../content/writers.ts';
 import type { ContentApplier } from '../utils/apply.ts';
 import type { PackSettingsDefaults } from '../framework/pack-settings.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
-import type { HelpEntry } from '../framework/pack-help.ts';
+import type { HelpCatalog } from '../framework/pack-help.ts';
 
 /** Entity types and relation kinds by the name they're declared under (`apack.json` `entities`, `relKinds`) */
 export interface EarsNames {
@@ -57,7 +57,7 @@ export interface PackRegistryView extends PackExtensionsView {
   /** Every registered pack's declared commands, in the order the packs were first registered */
   commands(): PackCommand[];
   /** Every registered pack's help entries, for the Settings view's Help list */
-  help(): HelpEntry[];
+  help(): HelpCatalog;
   /** The app's own entity types and relation kinds and every registered pack's, by the name each declares them under */
   earsNames(): EarsNames;
 }

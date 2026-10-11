@@ -9,13 +9,7 @@ export interface SettingsData {
   assistant: AssistantSettings;
 }
 
-export interface FAQItem {
-  id: string;
-  question: string;
-  answer: string;
-  category?: string;
-  order?: number;
-}
+
 
 export interface GeneralSettings {
   personal: PersonalInfo;

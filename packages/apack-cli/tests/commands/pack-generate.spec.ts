@@ -213,6 +213,19 @@ describe('the inputs stamp', () => {
     expect(said.join('\n')).toMatch(/inputs unchanged/);
   });
 
+  it('ignores Markdown that is not a declared help input', async () => {
+    writeManifest({ id: 'test-pack', name: 'Test', version: '0.1.0' });
+    fs.mkdirSync(path.join(tmpDir, 'src'), { recursive: true });
+    const prose = path.join(tmpDir, 'src/README.md');
+    fs.writeFileSync(prose, 'Draft');
+    await generateEntries([], tmpDir);
+    fs.writeFileSync(prose, 'Updated prose');
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await generateEntries([], tmpDir);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('inputs unchanged'));
+    log.mockRestore();
+  });
+
   // The case that makes the list recorded rather than fixed: a pack with no plugins never writes `fe.ts`,
   // and an expectation hard-coded from a fuller pack would call it stale on every run, forever.
   it('does not treat a file this pack never generates as missing', async () => {
@@ -229,4 +242,28 @@ describe('the inputs stamp', () => {
     log.mockRestore();
     expect(said.join('\n')).toMatch(/inputs unchanged/);
   });
+});
+
+it('regenerates help for Markdown edits, additions and removals, keeping valid output after an invalid edit', async () => {
+  writeManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', help: { path: 'docs/help' } });
+  const help = path.join(tmpDir, 'docs/help');
+  fs.mkdirSync(help, { recursive: true });
+  const file = path.join(help, 'start.md');
+  const entry = path.join(tmpDir, 'src/__generated__/pack-entry.ts');
+  fs.writeFileSync(file, '# Start\nFirst body');
+  await generateEntries([], tmpDir);
+  expect(fs.readFileSync(entry, 'utf8')).toContain('First body');
+  fs.writeFileSync(file, '# Start\nUpdated body');
+  await generateEntries([], tmpDir);
+  expect(fs.readFileSync(entry, 'utf8')).toContain('Updated body');
+  fs.writeFileSync(path.join(help, 'second.md'), '# Second\nSecond body');
+  await generateEntries([], tmpDir);
+  expect(fs.readFileSync(entry, 'utf8')).toContain('Second body');
+  fs.unlinkSync(path.join(help, 'second.md'));
+  await generateEntries([], tmpDir);
+  expect(fs.readFileSync(entry, 'utf8')).not.toContain('Second body');
+  const valid = fs.readFileSync(entry, 'utf8');
+  fs.writeFileSync(file, 'Missing title');
+  await expect(generateEntries([], tmpDir)).rejects.toThrow(/H1/);
+  expect(fs.readFileSync(entry, 'utf8')).toBe(valid);
 });

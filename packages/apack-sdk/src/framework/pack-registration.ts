@@ -114,11 +114,10 @@ export interface PackRegistration {
   appliers?: import('../utils/apply.ts').ContentApplier[];
   /** The slash commands this pack adds to the chat (apack.json `commands`) */
   commands?: import('./pack-commands.ts').PackCommand[];
-  /**
-   * Help entries this pack answers with, listed under Help in the app's Settings view (apack.json `help`).
-   * Called the first time the list is read, so a pack whose help is compiled with its content can read them then.
-   */
-  help?: () => import('./pack-help.ts').HelpEntry[];
+  /** Markdown articles bundled into this pack (apack.json `help`). */
+  help?: import('./pack-help.ts').HelpDocument[];
+  /** Display name used for this pack's contributions. */
+  name?: string;
   /**
    * Sections of the app's settings this pack owns, with their defaults, beside the `plugins` section the app keeps
    * itself (apack.json `settingsSections`). A feature declares only its own slice (`features[].settings`); a

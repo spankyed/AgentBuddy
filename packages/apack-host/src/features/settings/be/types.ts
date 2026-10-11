@@ -1,5 +1,4 @@
 import type { ApplicationHotkeys } from '@apackdev/sdk/types';
-import type { HelpEntry } from '@apackdev/sdk/framework';
 import type { ApplyResult } from '@apackdev/sdk/utils';
 import type { PackContentPreview } from '@apackdev/sdk/content';
 import type { SecretInfo, SecretsStatus } from '@apackdev/sdk/services';
@@ -40,9 +39,8 @@ export type SettingsInternalEvents =
   | { type: 'DATA_REPLACED' }
 
 export type OutgoingSettingsEvents =
-  | { type: 'SETTINGS_LOADED'; data: SettingsDocument; help: HelpEntry[] }
+  | { type: 'SETTINGS_LOADED'; data: SettingsDocument }
   /** The installed packs changed, so what they answer with in Help has too */
-  | { type: 'HELP_UPDATED'; help: HelpEntry[] }
   | { type: 'SETTINGS_UPDATED'; data: SettingsDocument }
   /** A change (`UPDATE_SETTINGS`, `REPLACE_SETTINGS`, `RESET_SETTINGS`) was stored */
   | { type: 'SETTINGS_SAVED' }

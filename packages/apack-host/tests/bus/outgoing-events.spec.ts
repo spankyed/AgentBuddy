@@ -45,6 +45,8 @@ beforeEach(async () => {
   registry.registerPack(hostRegistration());
   bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();
   await connect();
+  // Each case measures its own sends, after host systems publish their initial state.
+  outgoing.length = 0;
 });
 
 afterEach(() => {

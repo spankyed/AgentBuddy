@@ -64,8 +64,8 @@ export function getFeaturesWithSettings(): readonly FeatureRef[];
 // @public
 export function getPackCommands(): PackCommand[];
 
-// @public
-export function getPackHelp(): HelpEntry[];
+// @public (undocumented)
+export function getPackHelp(): HelpCatalog;
 
 // @public
 export function getPackSettingsDefaults(): PackSettingsDefaults;
@@ -92,13 +92,51 @@ export interface Handlers<TContext extends MachineContext, TEvent extends EventO
 }
 
 // @public
-export interface HelpEntry {
+export interface HelpArticle extends HelpDocument {
     // (undocumented)
-    answer: string;
+    packId: string;
+    // (undocumented)
+    packName: string;
+}
+
+// @public (undocumented)
+export interface HelpCatalog {
+    // (undocumented)
+    articles: HelpArticle[];
+    // (undocumented)
+    problems: HelpProblem[];
+}
+
+// @public
+export interface HelpDocument {
+    // (undocumented)
+    body: string;
+    // (undocumented)
+    features?: string[];
     // (undocumented)
     id: string;
     // (undocumented)
-    question: string;
+    order?: number;
+    // (undocumented)
+    title: string;
+}
+
+// @public (undocumented)
+export interface HelpProblem {
+    // (undocumented)
+    message: string;
+    // (undocumented)
+    packId: string;
+}
+
+// @public (undocumented)
+export interface HelpTarget {
+    // (undocumented)
+    articleId?: string;
+    // (undocumented)
+    featureId?: string;
+    // (undocumented)
+    packId?: string;
 }
 
 // @public
@@ -177,10 +215,11 @@ export interface PackRegistration {
     // (undocumented)
     ears?: PackEARS;
     features?: Record<string, PackFeature>;
-    help?: () => HelpEntry[];
+    help?: HelpDocument[];
     // (undocumented)
     id: string;
     migrations?: PackMigrations;
+    name?: string;
     repositories?: Record<string, unknown>;
     // (undocumented)
     services?: Record<string, unknown>;

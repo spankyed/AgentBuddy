@@ -1,5 +1,5 @@
 ---
-category: github
+features: [code]
 order: 3
 ---
 # Why does the PR panel say my GitHub token is missing permissions?

@@ -606,12 +606,6 @@
         "format": "notes"
       }
     },
-    "datasets": {
-      "faqs": {
-        "path": "src/content/faqs",
-        "format": "faqs"
-      }
-    },
     "formats": {
       "notes": {
         "format": "markdown-tree",
@@ -662,9 +656,6 @@
           "name"
         ],
         "media": "media"
-      },
-      "faqs": {
-        "compiler": "src/content/_compilers/faqs.ts"
       }
     },
     "writers": {
@@ -725,5 +716,7 @@
     }
   },
   "settingsSections": "src/app-settings/index.ts#settingsSections",
-  "help": "src/app-settings/index.ts#helpEntries"
+  "help": {
+    "path": "src/help"
+  }
 }

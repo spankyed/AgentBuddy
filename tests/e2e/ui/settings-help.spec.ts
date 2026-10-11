@@ -1,18 +1,29 @@
 import { test, expect } from '@apackdev/testing';
 
-// Help is a pack contribution: the pack reads its compiled entries, the host collects them and the app's Settings
-// view renders them. Only a running app crosses all three, which is how the view kept reading a context field the
-// machine had renamed — every entry held and none shown, with nothing to fail.
-test("the Help tab shows the entries the installed packs contribute", async ({ app, appPage }) => {
+test('Settings Help searches bundled articles and opens feature help', async ({ app, appPage }) => {
   await app.navigate('host/settings');
-  await appPage.evaluate(() =>
-    (window as any).applicationState.system.get('host/settings').send({ type: 'TAB.SELECT', tab: 'help' }));
+  await appPage.getByRole('button', { name: 'Help', exact: true }).click();
+  const reader = appPage.getByTestId('help-reader');
+  await expect(reader.getByRole('button', { name: 'Why does the PR panel say my GitHub token is missing permissions?' })).toBeVisible();
+  await reader.getByRole('textbox', { name: 'Search help' }).fill('fine-grained');
+  await expect(reader.getByRole('button', { name: 'Why does the PR panel say my GitHub token is missing permissions?' })).toBeVisible();
+  await expect(reader.getByRole('button', { name: 'How do I enable TTS?' })).toHaveCount(0);
+  await reader.getByRole('button', { name: 'Why does the PR panel say my GitHub token is missing permissions?' }).click();
+  await expect(reader.getByTestId('help-article-title')).toContainText('GitHub token');
+  await reader.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(reader.getByRole('textbox', { name: 'Search help' })).toHaveValue('fine-grained');
+  await app.navigate('host/settings');
+  await appPage.evaluate(() => (window as any).applicationState.system.get('host/settings').send({ type: 'PLUGIN.SELECT', pluginId: 'default-setup/code' }));
+  await appPage.evaluate(() => (window as any).applicationState.system.get('host/settings').send({ type: 'TAB.SELECT', tab: 'plugins' }));
+  await appPage.getByTestId('feature-help').click();
+  await expect(reader.getByRole('combobox', { name: 'Filter help by feature' })).toHaveValue('default-setup/code');
+});
 
-  const questions: string[] = await appPage.evaluate(() =>
-    (window as any).applicationState.system.get('host/settings').getSnapshot().context.help.map((e: { question: string }) => e.question));
-  expect(questions.length).toBeGreaterThan(0);
-
-  for (const question of questions) {
-    await expect(appPage.getByRole('button').filter({ hasText: question })).toHaveCount(1);
-  }
+test('unavailable help targets explain the problem and return to the index', async ({ app, appPage }) => {
+  await app.navigate('host/settings');
+  await appPage.getByRole('button', { name: 'Help', exact: true }).click();
+  await appPage.evaluate(() => (window as any).applicationState.system.get('host/settings').send({ type: 'HELP.OPEN', target: { packId: 'missing-pack', articleId: 'missing' } }));
+  await expect(appPage.getByRole('heading', { name: 'Article unavailable' })).toBeVisible();
+  await appPage.getByRole('button', { name: 'Browse all help' }).click();
+  await expect(appPage.getByRole('heading', { name: 'How can we help?' })).toBeVisible();
 });

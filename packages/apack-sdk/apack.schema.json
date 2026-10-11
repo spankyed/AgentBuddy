@@ -515,9 +515,18 @@
       "description": "What the pack contributes to the app: steps, artifacts, blocks, commands, services, DSL types and frontend extensions."
     },
     "help": {
-      "type": "string",
-      "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
-      "description": "Help entries this pack answers with, listed under Help in the app's Settings view. \"path#exportName\" of a function returning them; it is called the first time the list is read, so a pack may read its compiled content then."
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false,
+      "description": "Directory of Markdown help articles, bundled into the pack runtime."
     },
     "settingsSections": {
       "type": "string",

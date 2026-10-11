@@ -23,6 +23,7 @@ props {
   onSubDocumentLinkRestored?: ((noteId: string) => any) | undefined;
   onSubmit?: (() => any) | undefined;
   onUpdate:modelValue?: ((value: string) => any) | undefined;
+  openViewerLink?: ((href: string) => void) | undefined;
   pauseAvailable?: boolean | undefined;
   placeholder?: string | undefined;
   showGutter?: boolean | undefined;

@@ -372,6 +372,7 @@ export type HostPluginEvents = {
    * show — the code feature's CLI resolution, for one. The settings themselves are the app's.
    */
   'host/settings':
+    | { type: 'HELP.OPEN'; target: import('../framework/pack-help.ts').HelpTarget }
     | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string };
 };
 
@@ -395,7 +396,7 @@ export const HOST_SYSTEM_EVENT_TYPES = {
  */
 export const HOST_PLUGIN_EVENT_TYPES = {
   'host/application': eventTypes<HostPluginEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_PLUGIN'),
-  'host/settings': eventTypes<HostPluginEvents['host/settings']>()('CLI_TEST_RESULT'),
+  'host/settings': eventTypes<HostPluginEvents['host/settings']>()('CLI_TEST_RESULT', 'HELP.OPEN'),
 } satisfies Record<keyof HostPluginEvents, readonly string[]>;
 
 /**

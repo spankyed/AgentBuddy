@@ -1,5 +1,5 @@
 ---
-category: database
+features: [database, brain]
 order: 1
 ---
 # Where can I view old brain traces?

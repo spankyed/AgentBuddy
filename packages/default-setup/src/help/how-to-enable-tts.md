@@ -1,5 +1,5 @@
 ---
-category: settings
+
 order: 2
 ---
 # How do I enable TTS?

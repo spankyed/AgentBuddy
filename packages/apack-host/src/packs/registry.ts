@@ -439,7 +439,7 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     (reg, undo) => { undo(() => commands.unregister(reg.id)); commands.register(reg.id, reg.commands ?? []); },
     (reg, undo) => {
       undo(() => help.unregister(reg.id));
-      help.register(reg.id, reg.help);
+      help.register(reg.id, reg.help, reg.name);
       undo(() => settingsDefaults.unregister(reg.id));
       settingsDefaults.register(reg.id, featuresOf(reg).map(({ featureId, feature }) => ({ id: featureId, settings: feature.settings })), reg.settingsSections);
     },

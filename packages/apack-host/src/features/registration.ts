@@ -6,6 +6,7 @@ import type { PackFeatureSystem, PackRegistration } from '@apackdev/sdk/framewor
 import { HOST_PACK_ID, splitRef, type FeatureRef } from '@apackdev/sdk/ids';
 import { HOST } from '../refs.ts';
 import type { PackInfo } from '../packs/registry.ts';
+import { helpSystem, helpEvents } from './help/be/system.ts';
 import { SETTINGS_PLUGIN_EVENT_TYPES } from './settings/be/system.ts';
 
 /** What the host `packs` system sends its plugin */
@@ -50,10 +51,11 @@ export function hostRegistration(systems: { application?: PackFeatureSystem; pac
     id: HOST_PACK_ID,
     features: {
       [featureIdOf(HOST.application)]: { ...(systems.application && { system: systems.application }), plugin: { receives: HOST_PLUGIN_EVENT_TYPES['host/application'] } },
+      [featureIdOf(HOST.help)]: { system: { machine: helpSystem, receives: [...helpEvents] } },
       [featureIdOf(HOST.packs)]: { ...(systems.packs && { system: systems.packs }), plugin: { receives: PACKS_PLUGIN_EVENT_TYPES } },
       // The app's settings: the store's system, and the Settings view the renderer draws. It takes what its own
       // system sends, and what a pack may send it (`HOST_PLUGIN_EVENT_TYPES`): only that pack can find those out.
-      [featureIdOf(HOST.settings)]: { ...(systems.settings && { system: systems.settings }), plugin: { receives: [...SETTINGS_PLUGIN_EVENT_TYPES, ...HOST_PLUGIN_EVENT_TYPES['host/settings']] } },
+      [featureIdOf(HOST.settings)]: { ...(systems.settings && { system: systems.settings }), plugin: { receives: ['HELP_CATALOG', ...SETTINGS_PLUGIN_EVENT_TYPES, ...HOST_PLUGIN_EVENT_TYPES['host/settings']] } },
     },
   };
 }

@@ -1,11 +1,7 @@
 // What this pack contributes to the app's settings: the sections it owns, with their defaults, and the help it
 // answers with. The help comes from this pack's compiled content, so it is read the first time the app asks
 // rather than at registration; the base settings are this pack's own source, imported directly.
-import { contentPath } from '@apackdev/sdk/build';
-import { getCompiledDir } from '#generated/appliers.ts';
-import { loadJSON } from '@apackdev/sdk/utils';
 import { isPlainObject } from '@apackdev/sdk/utils/pure';
-import type { HelpEntry } from '@apackdev/sdk/framework';
 import type { SettingsData } from './types.ts';
 import baseSettings from '../content/default-settings.ts';
 
@@ -44,9 +40,4 @@ export function assertNoPluginSlice(settings: unknown, source: string): void {
 export function settingsSections(): Record<string, unknown> {
   const { general, assistant } = getBaseSettings();
   return { general, assistant };
-}
-
-/** This pack's help entries, listed under Help in the app's Settings view */
-export function helpEntries(): HelpEntry[] {
-  return loadJSON<{ records: HelpEntry[] }>(contentPath(getCompiledDir(), 'faqs'))?.records ?? [];
 }

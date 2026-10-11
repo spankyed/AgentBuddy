@@ -30,7 +30,7 @@ Each feature has a `settings.ts` (`src/features/<name>/settings.ts`, `features[]
 
 **`content.sources` is for entries that import rows into the database**, and that is the test for a new one: an entry needing a policy to say "do not import this" is not one. A `.ts` source the pack reads back itself is not one either — a pack imports its own source, which is what `default-settings.ts` does.
 
-**`faqs` is the one entry that fails that test and stays**, so read it as the exception rather than the pattern: its format declares no `entity`, nothing is written, and `src/app-settings/index.ts` reads the `faqs.content.json` the build wrote. Its source is markdown, so an import is not open to it the way it is to `default-settings.ts` — it needs a compiler, and `content.sources` is the only thing in the manifest that runs one. Honouring the rule for it means a manifest key for compiled artifacts that nothing imports, which is a design decision and not a move.
+Help articles live in `src/help` and are bundled directly from the manifest’s `help.path`; they are not content datasets.
 
 The settings hold the user's settings only: the app's own state (onboarding, versions, content hashes) is the host's `AppState`. At runtime `settings/be/defaults.ts` adds every registered pack's feature settings (`getPackSettingsDefaults` from `@apackdev/sdk/framework`; the app's own win), and the settings entity stores only the user's changes over those defaults, so a pack's defaults come and go with the pack. The settings system resends settings (`SETTINGS_UPDATED`) when a pack's feature settings register or unregister.
 
@@ -56,10 +56,6 @@ Markdown under `notes/` (the welcome note), compiled with the `notes` format (`m
 ## Library
 
 Markdown under `library/`, compiled with the `library` format (`_compilers/library.ts`) and written through `hooks/library.ts`. A directory is a Collection (`_meta.md` frontmatter: `name`, `description`); a file is a Document (frontmatter `name`, `tags: [a, b]`; `<!-- section:type -->` markers split its content into sections). `media/` is copied with the content, and `![alt](media/file)` links point at the document's media.
-
-## FAQs
-
-Markdown under `faqs/`, compiled with the `faqs` format (`_compilers/faqs.ts`) for the Help tab: the first `# heading` is the question, the rest the answer; frontmatter `category`, `order`. Not written into the database.
 
 ## Content writers
 
