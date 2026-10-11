@@ -31,7 +31,7 @@ export const rootScripts = (): Record<string, string> =>
 /**
  * A workspace's scripts, by the name its manifest declares.
  *
- * A step that delegates — `npm run build -w @app/default-setup`, which `compile` does — is inspected as
+ * A step that delegates — `npm run build -w @app/default-setup`, which `build:default-setup` does — is inspected as
  * nothing at all without this:
  * the name is not a root script, so there was no text to scan and the step passed vacuously. What is followed
  * is the workspace's *scripts*, which are commands, and not its spec files, which are prose: two of this
@@ -53,7 +53,7 @@ export const workspaceScripts = (name: string): Record<string, string> | undefin
  * separator**.
  *
  * The tail stops at `&`, `|` or `;` because a shell line holds several commands, and a pattern that ran to
- * the newline attributed one command's workspace to another's script name. `compile` is the worked case:
+ * the newline attributed one command's workspace to another's script name. `build:default-setup` is the worked case:
  * `npm run packages:ensure && npm run build -w @app/default-setup && …` reported
  * `@app/default-setup:packages:ensure` — a script that exists nowhere — while missing
  * `@app/default-setup:build`, the expensive thing it actually runs, and never walking root
@@ -77,7 +77,7 @@ export interface Reached {
    *
    * The shape to watch for is a step that delegates to a workspace script which names a repo file: the step's
    * own text mentions neither, so nothing connects the file to the step that reads it. That is what asked for
-   * this field — `compile` running a pack's `facade:check`, whose script was a repo script (it is a CLI
+   * this field — `build:default-setup` running a pack's `facade:check`, whose script was a repo script (it is a CLI
    * command now) that went undeclared for a commit.
    */
   readonly files: ReadonlySet<string>;

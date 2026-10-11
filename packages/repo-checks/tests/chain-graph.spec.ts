@@ -341,7 +341,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * fails five steps, most of them single compilers the pool measurement does not describe.
    *
    * So the two steps that were genuinely tight — `packages:ensure` at 93% of its deadline four times slower,
-   * `compile` at 87% — were found by reading the table, not by this, and moved because they are *bundles*
+   * `build:default-setup` at 87% — were found by reading the table, not by this, and moved because they are *bundles*
    * (`suite` is the rung that says "a test suite or a bundle") rather than the single compilers `quick`
    * describes. What this catches is the next one, as a declared cost grows.
    *
@@ -366,7 +366,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * rung check here is about the deadline fitting — the class exists, the declared cost has room, the
    * measured cost has not outgrown it. The criterion `step-timeouts.ts` actually states is a kind of work,
    * and whether a step is on the right kind was carried by prose. The comment above says so from the other
-   * side: `packages:ensure` and `compile` sat on `quick` while being bundles, and were found *"by reading
+   * side: `packages:ensure` and `build:default-setup` sat on `quick` while being bundles, and were found *"by reading
    * the table, not by this"* — caught at 93% and 87% by proximity to a bound rather than by kind. The
    * opposite direction was unwatched outright: one compiler declared `suite` gets 300s to die rather than
    * 60s, and nothing would have said a word.
@@ -514,12 +514,12 @@ describe('every spawn an orchestrator makes is bounded', () => {
 
     it('states the rope it got, which is its deadline over what it costs healthy', () => {
       // 300s for a 13s step is 23x, and that is the number a kill proves a lower bound on
-      expect(timedOutBecause({ what: 'compile', timeout: 'suite', seconds: 13, measuredOn: HERE }))
+      expect(timedOutBecause({ what: 'build:default-setup', timeout: 'suite', seconds: 13, measuredOn: HERE }))
         .toContain('That is 23x the 13s it costs healthy here');
     });
 
     it('calls it wedged on the machine the costs were measured on', () => {
-      const why = timedOutBecause({ what: 'compile', timeout: 'suite', seconds: 13, measuredOn: HERE });
+      const why = timedOutBecause({ what: 'build:default-setup', timeout: 'suite', seconds: 13, measuredOn: HERE });
       expect(why).toContain('so it is wedged rather than slow');
       expect(why, 'the deadline and its class, so a reader need not look the rung up').toContain('300s (suite)');
     });
@@ -749,7 +749,7 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * Under that flag a package found stale is reported rather than rebuilt, and that is only the right answer
    * when the step cannot be the one with building left to do — which is a property of this graph, not of the
    * step table: nothing declares an edge to `packages:ensure`, the edges come from its outputs meeting another
-   * step's inputs, and the ordering is transitive (`test:unit:host` reaches it through `compile`). So a new
+   * step's inputs, and the ordering is transitive (`test:unit:host` reaches it through `build:default-setup`). So a new
    * step that reads none of the built packages would be unordered against it, run beside it, and refuse on a
    * package the other step is still building.
    *
@@ -769,13 +769,13 @@ describe('every spawn an orchestrator makes is bounded', () => {
   });
 
   /**
-   * `facade:check` runs after `compile`, and that is what makes its one write safe rather than lucky.
+   * `facade:check` runs after `build:default-setup`, and that is what makes its one write safe rather than lucky.
    *
    * `apack facade-report` regenerates `src/__generated__` before it bundles — the chain's step passes no
    * `--skip-generate`, where `npm run typecheck` does, having regenerated once ahead of its own pool. That
    * tree is what `typecheck:pack` compiles and what the two repo-scope steps walk, so a step running beside
-   * it could read it mid-write. None does, because `compile` writes that tree and this one declares it as an
-   * input, so the edge derives; and `compile` runs the same codegen, so the `.inputs-hash` matches and the
+   * it could read it mid-write. None does, because `build:default-setup` writes that tree and this one declares it as an
+   * input, so the edge derives; and `build:default-setup` runs the same codegen, so the `.inputs-hash` matches and the
    * regenerate is a no-op by the time this runs. One declaration gives both the ordering and the quiet.
    *
    * **`chain-inputs`' "a step that reads what another writes depends on it" cannot hold this.** That rule
@@ -784,10 +784,10 @@ describe('every spawn an orchestrator makes is bounded', () => {
    * nothing to require, green, while the edge goes. Checked by hand at the time: `dependsOn` returns `[]`.
    * So the edge is named here, where losing it fails.
    */
-  it('orders facade:check after compile, which is what keeps its codegen a no-op', () => {
+  it('orders facade:check after build:default-setup, which is what keeps its codegen a no-op', () => {
     const step = CHAIN_STEPS.find((candidate) => candidate.name === 'facade:check');
     expect(step, 'no facade:check step, so this would pass over nothing').toBeDefined();
 
-    expect(dependsOn(step!)).toContain('compile');
+    expect(dependsOn(step!)).toContain('build:default-setup');
   });
 });

@@ -100,7 +100,7 @@ describe('where a chain run keeps its evidence', () => {
 
   /** A log that outlives the summary has to say for itself how its step ended */
   it('heads each file with how that step ended', () => {
-    expect(evidenceHeader('compile', ended({ code: 0, ms: 23_700 }))).toBe('# compile — exit 0 after 23.7s');
+    expect(evidenceHeader('build:default-setup', ended({ code: 0, ms: 23_700 }))).toBe('# build:default-setup — exit 0 after 23.7s');
     expect(evidenceHeader('test:smoke', ended({ code: 1, ms: 6_000 }))).toBe('# test:smoke — exit 1 after 6.0s');
     expect(evidenceHeader('build:runtime', { ...ended({ ms: 300_000 }), timedOut: true }))
       .toBe('# build:runtime — timed out after 300.0s');
@@ -119,9 +119,9 @@ describe('where a chain run keeps its evidence', () => {
 
     it('writes the header above the step output, and counts what it kept', () => {
       const run = opened();
-      run.keep('compile', ended({ code: 1, ms: 2_000, output: 'the compiler said this' }));
-      expect(fs.readFileSync(evidenceFile(run.dir, 'compile'), 'utf-8'))
-        .toBe('# compile — exit 1 after 2.0s\nthe compiler said this');
+      run.keep('build:default-setup', ended({ code: 1, ms: 2_000, output: 'the compiler said this' }));
+      expect(fs.readFileSync(evidenceFile(run.dir, 'build:default-setup'), 'utf-8'))
+        .toBe('# build:default-setup — exit 1 after 2.0s\nthe compiler said this');
       expect(run.kept()).toBe(1);
     });
 
@@ -153,7 +153,7 @@ describe('where a chain run keeps its evidence', () => {
     /** A step can fail before writing anything, which is not a second failure to report */
     it('skips a path that is not there, and keeps the ones that are', () => {
       const run = opened();
-      expect(run.keepFiles('compile', ['tests/nothing-wrote-this'])).toEqual([]);
+      expect(run.keepFiles('build:default-setup', ['tests/nothing-wrote-this'])).toEqual([]);
       expect(run.kept()).toBe(0);
       expect(fs.existsSync(run.dir), 'and wrote no directory for it').toBe(false);
     });
@@ -165,7 +165,7 @@ describe('where a chain run keeps its evidence', () => {
      */
     it('names the directory it wrote into', () => {
       const run = opened();
-      run.keep('compile', ended());
+      run.keep('build:default-setup', ended());
       const line = evidenceLine(run.dir, run.kept());
       expect(line).toContain(path.relative(REPO_ROOT, run.dir));
       expect(line).toContain('1 step');

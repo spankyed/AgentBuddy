@@ -359,7 +359,7 @@ const edgeCovers = (suite: UnitSuite, specs: readonly string[]): string =>
 const beyondOf = (edge: { suite: UnitSuite; specs: readonly string[] }, rel: string): BuildEdge =>
   ({ target: rel, covers: edgeCovers(edge.suite, edge.specs), how: `npm run spec:full -- ${rel}` });
 
-/** The build that makes the edge traversable: the pack's own, which is what the root `compile` wraps */
+/** The build that makes the edge traversable: the pack's own, which is what the root `build:default-setup` wraps */
 const packBuildRun = (root: string, suite: UnitSuite): Run => ({
   label: `${suite.workspace}: build, because the edge to its specs runs through one`,
   cwd: root,

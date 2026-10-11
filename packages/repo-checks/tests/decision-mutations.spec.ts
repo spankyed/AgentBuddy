@@ -306,7 +306,7 @@ const MUTATIONS: readonly Mutation[] = [
     from: 'results.filter((result) => result.timedOut !== true)',
     to: 'results',
     call: (lib) => [...lib.measurementsFrom([
-      { step: 'compile', ms: 13_000 },
+      { step: 'build:default-setup', ms: 13_000 },
       { step: 'test:integration', ms: 300_400, timedOut: true },
     ])],
   },
@@ -379,9 +379,9 @@ const MUTATIONS: readonly Mutation[] = [
     in: 'core-budget',
     from: 'Math.min(width.cores, cores)',
     to: 'width.cores',
-    // A one-core box against `compile`'s two: 1 against 2. On any box wider than the width the clamp is
+    // A one-core box against `build:default-setup`'s two: 1 against 2. On any box wider than the width the clamp is
     // invisible, which is why this asks about the smallest machine rather than a plausible one
-    call: (lib) => lib.coresFor('compile', 1),
+    call: (lib) => lib.coresFor('build:default-setup', 1),
   },
   {
     why: 'a share rounds to the nearest core rather than down',

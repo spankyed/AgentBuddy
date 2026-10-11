@@ -86,7 +86,7 @@ carries no comments.
 
 | # | Door | Covers | Where |
 |---|---|---|---|
-| 1 | `npm run packages:ensure &&` in a root script | a repo command: `test`, `test:headed`, `test:explorer`, `test:external-pack`, `typecheck`, `typecheck:pack`, `compile`, `api:update` | root `package.json` |
+| 1 | `npm run packages:ensure &&` in a root script | a repo command: `test`, `test:headed`, `test:explorer`, `test:external-pack`, `typecheck`, `typecheck:pack`, `build:default-setup`, `api:update` | root `package.json` |
 | 2 | that workspace's `pretest` | `npm test -w @apack/cli`, `-w @app/default-setup` and `-w @app/repo-checks` run directly, which no root script wraps | each package's `package.json` |
 | 3 | `ensureCheckoutPackages(packRoot)` | `apack build`, `apack test`, `apack dev` — from any directory, for a pack whose packages are a checkout's | `apack-cli/src/build/checkout-packages.ts`, called from `commands/{build,test,run}.ts` |
 | 4 | the `Build publishable packages` step | CI, whose typecheck step already built them through `typecheck:pack` | `.github/workflows/ci.yml` |
@@ -120,8 +120,8 @@ Three things follow.
 
 One path is deliberately not in the table twice. `npm start` reaches door 3, because its
 `prebuild:be:dev` builds the built-in pack with `apack build --skip-fe`, and that command ensures —
-so the script carries no prefix of its own. For a full app build, run `npm run compile` before
-`npm run build:runtime`; `compile` ensures the package bundles before building the built-in pack.
+so the script carries no prefix of its own. For a full app build, run `npm run build:default-setup` before
+`npm run build:runtime`; `build:default-setup` ensures the package bundles before building the built-in pack.
 
 For an installed pack there is no checkout above it, every one of these is a no-op, and what npm
 delivered is what there is.
@@ -145,7 +145,7 @@ those once, through door 3, and nothing rebuilds them while the app runs.
 The one that bites in practice is the facade. `packages/default-setup/tsconfig.json` declares no
 condition — it is a pack config — so **your editor type-checks default-setup against the packages'
 `dist`**. Change an SDK type and the editor keeps showing the old one until something rebuilds it. Any
-command with a door does (`npm run typecheck`, `typecheck:pack`, `compile`), or `npm run packages:ensure`
+command with a door does (`npm run typecheck`, `typecheck:pack`, `build:default-setup`), or `npm run packages:ensure`
 on its own. This is the cost single mode trades for: a pack, the built-in one included, compiles against
 the layout a pack author has, and in a checkout that layout is only as current as the last build.
 

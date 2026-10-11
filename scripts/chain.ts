@@ -534,7 +534,7 @@ async function main(): Promise<void> {
   // both halves: whether each step is stale, and which of its inputs moved. A fresh sweep, never the dry one.
   //
   // Read before the retry below, which is a diagnostic rather than part of the run and may write into the tree:
-  // a re-run `compile` rewrites PACK_OUTPUTS. No passed step reads a failed step's outputs today — every reader
+  // a re-run `build:default-setup` rewrites PACK_OUTPUTS. No passed step reads a failed step's outputs today — every reader
   // of one declares `needs` on it, and the scheduler skips a failed step's dependents — but `needs` is ordering
   // and `inputs`/`outputs` are caching, so nothing makes them agree. This does not depend on their agreeing.
   const sweep = freshnessSweep();
@@ -573,8 +573,8 @@ async function main(): Promise<void> {
       // would let the next run skip the thing that just failed. Nothing else is executing — `schedule` drains
       // before it returns — so this is the step by itself, which is the whole question being asked.
       //
-      // Demonstrated rather than assumed, with a `compile` that fails then passes: the retry reports passing,
-      // and the next chain still says `compile  no stamp — it has not run yet, or the last run failed`.
+      // Demonstrated rather than assumed, with a `build:default-setup` that fails then passes: the retry reports passing,
+      // and the next chain still says `build:default-setup  no stamp — it has not run yet, or the last run failed`.
       //
       // **Refusing the chain's own stamp is not enough for a step that caches inside itself**, which the three
       // pool steps do. `DIAGNOSTIC_RUN_ENV` is how the refusal reaches them: measured 2026-10-02, a crowded

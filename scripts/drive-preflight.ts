@@ -32,7 +32,7 @@ import { unitFor } from './lib/chain-stamps.ts';
 
 /** The steps that produce the app a driving session opens, in the order the chain runs them */
 const BUILDS = [
-  { step: 'compile', what: "the pack the app ships" },
+  { step: 'build:default-setup', what: "the pack the app ships" },
   { step: 'build:runtime', what: 'the renderer, main, preload and the API' },
 ] as const;
 
@@ -45,7 +45,7 @@ interface Edge { readonly file: string; readonly at: number }
  * the latest edit. For the outputs it is *when the build last produced anything*, and the tempting
  * alternative — the oldest output, "has every product been refreshed" — is wrong because a build need not
  * rewrite all of them: `apack build` overwrites `dist/defs/` without clearing it, by design, so some of
- * `compile`'s outputs keep their mtime across builds and the oldest one reported the pack stale seconds
+ * `build:default-setup`'s outputs keep their mtime across builds and the oldest one reported the pack stale seconds
  * after a successful build.
  *
  * `prune` skips what a fingerprint skips, which is how a CLAUDE.md edit stays free here too.

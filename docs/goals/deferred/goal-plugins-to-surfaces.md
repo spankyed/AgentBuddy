@@ -25,7 +25,7 @@ Finished when:
 - `AppState.surfaceVisibility` and `AppState.lastActiveSurface` hold what the old fields held, for a
   data dir written before this change, proven by a migration spec.
 - npm run typecheck; npm run api:check; npm run schema:check; npm run test:unit;
-  npm run compile; npm run test:external-pack; npm test.
+  npm run build:default-setup; npm run test:external-pack; npm test.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
 Never:
@@ -209,7 +209,7 @@ Mutation: renaming `TiptapPlugin` must fail the guard's allowlist assertion, not
 - Every in-repo pack: default-setup and `tests/packs/*`.
 
 **Done when:** `npm run typecheck`, `npm run api:check`, `npm run schema:check`, `npm run test:unit`,
-`npm run compile` and `npm run test:external-pack` pass. `grep -rIn 'definePlugin\|usePlugin\|features\[\]\.plugin'`
+`npm run build:default-setup` and `npm run test:external-pack` pass. `grep -rIn 'definePlugin\|usePlugin\|features\[\]\.plugin'`
 finds nothing outside `docs/archive`.
 
 ### Phase 3 — the wire: `pluginId` and the event type names
@@ -249,7 +249,7 @@ idempotence case.
 - Flip Phase 1's guard from `it.fails` to live, if it was parked.
 
 **Done when:** the full chain passes: `npm run typecheck`, `npm run api:check`, `npm run schema:check`,
-`npm run test:unit`, `npm run compile`, `npm run test:external-pack`, `npm test`. The `grep` in
+`npm run test:unit`, `npm run build:default-setup`, `npm run test:external-pack`, `npm test`. The `grep` in
 "Finished when" returns only Decision 2's names and `docs/archive`.
 
 ## Deferred
@@ -273,7 +273,7 @@ idempotence case.
   fields, not the typed-EARS contract.
 - Published packages: no `any`, the TypeScript floor, `api:update` after export changes — Phase 2
   renames roughly eighteen public entries and must update `etc/*.api.md` and the declaration stamps.
-- `packages:build` before the CLI suite; `npm run compile` before the api suites and E2E.
+- `packages:build` before the CLI suite; `npm run build:default-setup` before the api suites and E2E.
 - Migrations follow `packages/apack-host/src/migrations/CLAUDE.md`: append to the latest unreleased
   target, never create a new version file, and guard for idempotence.
 - Investigate a failing test rather than loosening it; mutation-check every new guard.

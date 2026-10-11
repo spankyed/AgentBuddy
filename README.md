@@ -83,7 +83,7 @@ npm run start:inspect    # Dev mode with Electron inspection enabled
 ### Build
 
 ```sh
-npm run compile          # Build the built-in pack and ensure package bundles
+npm run build:default-setup          # Build the built-in pack and ensure package bundles
 npm run build:runtime    # Build the app runtime
 npm run build:be         # Build backend only
 npm run build:production       # Full production build
@@ -104,7 +104,7 @@ npm run typecheck        # Type checks for every workspace, plus import specifie
 The built-in pack's content (actions, prompts, flows, library, notes, FAQs, settings) are TypeScript and markdown sources that its build compiles.
 
 ```sh
-npm run compile          # Build the default-setup pack (apack build, DSL defs, runtime)
+npm run build:default-setup          # Build the default-setup pack (apack build, DSL defs, runtime)
 ```
 
 ### Database Tools

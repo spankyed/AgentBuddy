@@ -80,7 +80,7 @@ The release script (`build/release/release.sh`) checks that a release changing `
 
 1. **Target the next release version.** If the current release is `0.2.3`, name your migration `0.2.4.ts` and key it `"0.2.4"` under `migrations.app`. It runs once the app is released at that version.
 2. **Never bump `package.json` version manually.** The release process handles version bumps. Migrations are written ahead of time.
-3. **Declare it in `packages/default-setup/apack.json`**, under `migrations.app`, keyed by the version it targets: `"0.2.4": "src/migrations/0.2.4.ts#migration"`. `apack add migration 0.2.4 --app` writes both the entry and the file. Then `npm run compile`, which regenerates the pack entry the runners read.
+3. **Declare it in `packages/default-setup/apack.json`**, under `migrations.app`, keyed by the version it targets: `"0.2.4": "src/migrations/0.2.4.ts#migration"`. `apack add migration 0.2.4 --app` writes both the entry and the file. Then `npm run build:default-setup`, which regenerates the pack entry the runners read.
 4. **Make `up()` idempotent.** Always guard with checks (e.g. `if (!field) set(field)`) since migrations run again on every development boot, on each beta of their release, and after a database reset.
 5. **Multiple changes per version are fine.** If the upcoming release has several schema changes, add them all to the same migration file.
 

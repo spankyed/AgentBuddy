@@ -59,7 +59,7 @@ The release script (`build/release/release.sh`) runs these steps:
 |------|-------------|
 | 1. Prepare | Selects the production or beta build environment |
 | 2. Install | `npm install`, then create a fresh staging directory |
-| 3. Compile DSL | `npm run compile` (skip with `SKIP_COMPILE=1`) |
+| 3. Compile DSL | `npm run build:default-setup` (skip with `SKIP_DEFAULT_SETUP_BUILD=1`) |
 | 4. Build packages | API (tsc + tsup), main/preload (Vite), renderer (Vite); outputs go to the staging directory |
 | 5. Native helpers | macOS speech recognition binary |
 | 6. Package | electron-builder → `.app`, `.dmg`, `.zip` in `dist/` |

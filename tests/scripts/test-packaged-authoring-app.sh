@@ -8,7 +8,7 @@
 #
 #   8. apack test passes against the app it is told to use (--build; it reads no machine state)
 #   9. the packed CLI's apack db reads and exports the data that app written
-# Requires a built app (npm run compile && npm run build:runtime) and the author half having run.
+# Requires a built app (npm run build:default-setup && npm run build:runtime) and the author half having run.
 # KEEP_WORK=1 keeps the work dir and the app data dir.
 set -euo pipefail
 

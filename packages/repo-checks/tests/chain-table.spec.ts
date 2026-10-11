@@ -81,7 +81,7 @@ const runnerText = (stepName: string): string =>
 // imported or this case loses the independently-derived answer that is its whole point.
 //
 // Two exclusions, and neither is an exception so much as a division of labour. `@app/default-setup`:
-// `compile` runs that exact command, and a second run of it rewrote the `dist` five steps read, which is
+// `build:default-setup` runs that exact command, and a second run of it rewrote the `dist` five steps read, which is
 // what made a warm chain uncacheable. `@apack/sdk`: its `build` is `tsc -p tsconfig.json` over a config
 // setting `noEmit`, so it emits nothing a step whose product is `APP_OUTPUTS` could carry, and
 // `typecheck:sdk` runs that identical compile as its own step.

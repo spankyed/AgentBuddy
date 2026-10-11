@@ -107,7 +107,7 @@ export interface Rung {
  * holds the members that scale worst and has the least room; `scenario` is "mostly waiting" and has the most.
  * That is an artefact of taking Bazel's ladder whole rather than a conclusion anyone reached, and the reason
  * it is left alone is that nothing is out of range — `declaredShare` is what notices if that changes. Two
- * steps were out of range until 2026-10-03: `packages:ensure` and `compile` sat at 93% and 87% four times
+ * steps were out of range until 2026-10-03: `packages:ensure` and `build:default-setup` sat at 93% and 87% four times
  * slower while declared `quick`, because a step that *builds* is a bundle and not one compiler.
  *
  * The values are Bazel's own ladder minus its `short`, which nothing here wants: its `moderate` is 300s and

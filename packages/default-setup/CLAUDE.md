@@ -364,7 +364,7 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
 ## Build
 
 - `apack build` writes the Monaco DSL definitions the renderer imports, one `dist/defs/monaco/<name>-defs.d.ts` per `apack.json` `dsl` entry with a `monaco` target
-- `npm run compile` from the repo root runs this package's `npm run build`
+- `npm run build:default-setup` from the repo root runs this package's `npm run build`
 - `npm run build:dev` runs `apack build --skip-fe`
 - **The pack names its own modules one way: `#` subpath imports.** `#generated/*`, `#features/*`,
   `#extensions/*` and `#app-settings/*`, declared in `package.json` `imports` — a Node standard that Node,

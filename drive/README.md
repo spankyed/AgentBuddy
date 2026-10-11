@@ -28,7 +28,7 @@ npm run drive                    # every script here, windows shown
 npm run drive -- drive/notes.ts  # just one
 ```
 
-**It drives the *built* app**, loaded from `file://` — `npm run build:runtime` and `npm run compile` are what
+**It drives the *built* app**, loaded from `file://` — `npm run build:runtime` and `npm run build:default-setup` are what
 put the thing you are looking at on disk, and the run warns when either has gone stale rather than
 quietly showing you the previous build. So this is not the tool for a question about a dev server: nothing
 here stands one up, and `npm start`'s renderer and `apack dev`'s pack server are not in the picture.

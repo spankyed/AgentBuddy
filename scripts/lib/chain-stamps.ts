@@ -50,7 +50,7 @@ export const flatStepName = (step: string): string => step.replace(/[:/]/g, '-')
  * A chain step as a build unit: the same shape, so it goes through the same freshness check.
  *
  * Here rather than in `chain.ts` because the chain is not the only thing that wants to know whether a
- * step's output is current. `scripts/drive-preflight.ts` asks it of `build:runtime` and `compile` before
+ * step's output is current. `scripts/drive-preflight.ts` asks it of `build:runtime` and `build:default-setup` before
  * launching the app, and asking it any other way would be a second account of what those steps read.
  */
 export function unitFor(step: ChainStep): BuildUnit {

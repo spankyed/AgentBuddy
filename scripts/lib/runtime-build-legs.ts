@@ -57,7 +57,7 @@ export const BUILD_TIMEOUT: TimeoutClass = 'suite';
  * workspaces' `package.json` files are declared inputs and the sdk's is not, so a leg building it would
  * depend on a script the step does not watch.
  *
- * **`@app/default-setup` is absent** because `compile` runs that exact command, and a second run of it
+ * **`@app/default-setup` is absent** because `build:default-setup` runs that exact command, and a second run of it
  * rewrites the `dist` five steps read.
  */
 export const RUNTIME_BUILD_LEGS: readonly RuntimeBuildLeg[] = [

@@ -47,10 +47,10 @@ describe('dim', () => {
 });
 
 describe('writerOf', () => {
-  const steps = [{ name: 'compile', outputs: ['packages/demo-pack/generated'] }, { name: 'typecheck' }];
+  const steps = [{ name: 'build:default-setup', outputs: ['packages/demo-pack/generated'] }, { name: 'typecheck' }];
 
   it('names the step whose outputs hold the file', () => {
-    expect(writerOf('packages/demo-pack/generated/library.content.json', steps)).toBe('compile');
+    expect(writerOf('packages/demo-pack/generated/library.content.json', steps)).toBe('build:default-setup');
   });
 
   /** Nobody's output is the interesting answer: an undeclared write is the one there is something to do about */
@@ -233,10 +233,10 @@ describe('staleLines', () => {
   it('names each file with what happened to it, when, and whose output it is', () => {
     expect(under({ files: [
       { file: 'tests/packs/probe.txt', how: 'changed', when: 'while it ran' },
-      { file: 'packages/demo-pack/dist/content.json', how: 'added', when: 'since it ran', writer: 'compile' },
+      { file: 'packages/demo-pack/dist/content.json', how: 'added', when: 'since it ran', writer: 'build:default-setup' },
     ] })).toEqual([
         '  typecheck  tests/packs/probe.txt                 changed while it ran',
-      "             packages/demo-pack/dist/content.json  added since it ran, compile's declared output",
+      "             packages/demo-pack/dist/content.json  added since it ran, build:default-setup's declared output",
     ]);
   });
 
@@ -287,7 +287,7 @@ describe('declaredAt', () => {
 
   /** A rename degrades to no pointer rather than to a wrong one, which is why the caller takes `undefined` */
   it('answers nothing for a name the table does not hold', () => {
-    expect(declaredAt("  { name: 'test' },", 'compile')).toBeUndefined();
+    expect(declaredAt("  { name: 'test' },", 'build:default-setup')).toBeUndefined();
   });
 
   /**
@@ -549,7 +549,7 @@ describe('driftReport', () => {
    * actually true. A report that says "this reads as the box" when it does not is the only way this lies.
    */
   const QUIET = { idle: 0.88, comparable: 30 };
-  const slowerBy = (over: number) => [{ name: 'compile', declared: 24, measured: 24 + over, peers: 0 }];
+  const slowerBy = (over: number) => [{ name: 'build:default-setup', declared: 24, measured: 24 + over, peers: 0 }];
 
   it('carries the reading and the count, so a figure is not copied blind', () => {
     const report = driftReport(drifted, 10, MEASURED, true, SAME, QUIET);

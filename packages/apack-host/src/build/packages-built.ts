@@ -481,7 +481,7 @@ const digestOf = (contents: Buffer | null): string =>
  * It is the first entry in the root `CLAUDE.md`'s list of time-wasters — a prose edit runs nothing — and that
  * was a claim about the chain that the chain did not hold. Guides sit *inside* declared trees rather than at
  * a package root (`default-setup/src/content`, `apack-host/src/migrations` and `src/packs/runtime`,
- * `default-setup/tests/content`, `tests/e2e`), so a sentence of prose re-ran up to four steps, `compile` among
+ * `default-setup/tests/content`, `tests/e2e`), so a sentence of prose re-ran up to four steps, `build:default-setup` among
  * them. Skipped here rather than excluded per step, because the steps that reach them take their inputs from
  * derived lists where there is no literal array to add an entry to.
  *
@@ -588,7 +588,7 @@ export function fingerprintUnit(unit: BuildUnit, collect?: (file: string, digest
     .update(unit.command ?? '')
     .update('\0')
     // A unit's own output is never its own input, however broadly its inputs are declared. Two steps
-    // declare a whole tree and then write into it — `compile` writes `src/__generated__` under the `src`
+    // declare a whole tree and then write into it — `build:default-setup` writes `src/__generated__` under the `src`
     // it reads, and the fixture-pack check writes each pack's `dist` under the `tests/packs` it reads —
     // which makes them self-invalidating the moment their build stops being byte-identical. Both were
     // surviving on the builds happening to be deterministic, and the pack build is already known not to be

@@ -1,5 +1,5 @@
 // The app's boot, over the real packs it ships: each one installed into the data dir and then loaded from
-// there, which is the one path for every pack (`npm run compile` writes the build it is installed from). A
+// there, which is the one path for every pack (`npm run build:default-setup` writes the build it is installed from). A
 // packaged app's api bundle carries no pack's backend, so this is the path in a packaged build and from
 // source alike, and the one place default-setup's actual runtime is loaded by the app's own boot rather than
 // by a fixture.

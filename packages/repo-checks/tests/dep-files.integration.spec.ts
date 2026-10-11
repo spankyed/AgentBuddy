@@ -322,7 +322,7 @@ describe('a dep file is checked against itself before it is believed', () => {
 /**
  * And the same question of `apack build`, which is the other tool here that can be asked.
  *
- * Two chain steps run it — `compile` and `test:external-pack:contract`, 70s between them — and until the
+ * Two chain steps run it — `build:default-setup` and `test:external-pack:contract`, 70s between them — and until the
  * command started recording, their declared inputs were compared against nothing. The bundlers it runs had
  * the answer all along and threw it away: esbuild's `metafile.inputs`, Rollup's `watchFiles` for the three
  * declaration bundles, and the frontend bundle's module graph.
@@ -372,7 +372,7 @@ describe('apack build says what it read', () => {
   it('finds a build record to read, or says plainly that there is no evidence here', () => {
     const found = buildReads.packsWithReads();
     if (found.length === 0) {
-      expect.fail('no pack has a .apack/reads.json: run npm run compile once, then this can check what '
+      expect.fail('no pack has a .apack/reads.json: run npm run build:default-setup once, then this can check what '
         + 'the build read. An empty run is not a passing one.');
     }
     for (const packDir of found) {
@@ -452,7 +452,7 @@ describe('apack build says what it read', () => {
   });
 
   it('reports a read the step does not declare', () => {
-    const compile = CHAIN_STEPS.find((step) => step.name === 'compile')!;
+    const compile = CHAIN_STEPS.find((step) => step.name === 'build:default-setup')!;
     const elsewhere = 'packages/api/src/server.ts';
     expect(fs.existsSync(path.join(REPO_ROOT, elsewhere)), 'this case needs a real file to be about').toBe(true);
     expect(undeclared([elsewhere], compile)).toEqual([elsewhere]);
@@ -573,9 +573,9 @@ describe('what has looked at a step at all', () => {
    * reach for when a step reads something nothing writes. Two entries because the check is two steps, split at the app boundary. `test:smoke` and
    * `test` are the same shape: Playwright driving a real Electron process.
    *
-   * *A tool could report, and two now are asked.* `compile` and `test:external-pack:contract` both run
+   * *A tool could report, and two now are asked.* `build:default-setup` and `test:external-pack:contract` both run
    * `apack build`, which records what each bundling phase read — the describe above reads it. Measured
-   * 2026-10-02 on its first run: 285 files for `compile`, 131 of them `@apack/sdk`'s and `@apack/ears`'
+   * 2026-10-02 on its first run: 285 files for `build:default-setup`, 131 of them `@apack/sdk`'s and `@apack/ears`'
    * published `dist`, which `PACKAGE_BUILD_OUTPUTS` already declared. So it confirmed the declaration
    * rather than finding a hole, which is what a gate over a correct declaration is supposed to do.
    *
@@ -603,8 +603,8 @@ describe('what has looked at a step at all', () => {
       // (`PACKAGE_BUILD_OUTPUTS`) rather than hand-listed, plus the two trees it compares being declared
       // outright — which is the protection `test:packaged-authoring` relies on for the same reason.
       'api:check',
+      'build:default-setup',
       'build:runtime',
-      'compile',
       'facade:check',
       'packages:check',
       'test',

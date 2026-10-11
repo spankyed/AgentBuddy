@@ -142,7 +142,7 @@ jobs:
         run: npm ci
 
       - name: Build app
-        run: npm run compile && npm run build:runtime
+        run: npm run build:default-setup && npm run build:runtime
 
       - name: External pack E2E
         run: npm run test:external-pack

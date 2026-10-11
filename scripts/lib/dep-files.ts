@@ -27,7 +27,7 @@
  * failed run records a subset and would prune too much.
  *
  * **The number that makes it moot is where the time is.** The 18 legs are 49s of the chain's 423s, and the
- * critical path is 125s through `packages:ensure -> compile -> build:runtime -> test:packaged-authoring`; none
+ * critical path is 125s through `packages:ensure -> build:default-setup -> build:runtime -> test:packaged-authoring`; none
  * of the five most expensive steps is a leg. Pruning every leg to zero would leave that path untouched.
  *
  * Do not read "the legs declare far more than they read" as slack: they do (0-21% of declared files are

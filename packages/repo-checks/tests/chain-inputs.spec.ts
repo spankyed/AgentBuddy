@@ -353,10 +353,10 @@ describe('a step keys on a staged publish tree only if it reads one', () => {
 
   /** The data is a list, so the case mutates it rather than trusting that it could fail */
   it('names a step that starts keying on one', () => {
-    const compile = CHAIN_STEPS.find((step) => step.name === 'compile')!;
+    const compile = CHAIN_STEPS.find((step) => step.name === 'build:default-setup')!;
     const widened = { ...compile, inputs: [...compile.inputs, `packages/apack-ears/${PUBLISH_TREE}`] };
     expect(unexplained([widened]), 'a step given a staged tree was not reported').toEqual([
-      'compile keys on a staged publish tree and does not read one — spread PACKAGE_BUILD_READS',
+      'build:default-setup keys on a staged publish tree and does not read one — spread PACKAGE_BUILD_READS',
     ]);
   });
 
@@ -433,7 +433,7 @@ describe('a step declares the modules its script imports', () => {
 // A suite whose own specs name build output must declare that it reads it. This is deliberately a subset
 // check and not an equality one: a scan of spec text can prove a suite reads the tree, never that it does
 // not. `@app/api`'s specs never name the pack's `dist` — they boot the app runtime and host code resolves
-// the path — so an equality check called it independent, it ran beside `compile` under three lanes, and it
+// the path — so an equality check called it independent, it ran beside `build:default-setup` under three lanes, and it
 // failed. `SUITE_READS`' doc comment carries the measurement that is the authority, and the command that
 // reproduces it. What this catches is the cheap half: a spec that starts naming the tree outright.
 /**
@@ -530,7 +530,7 @@ describe('a unit suite whose specs name build output declares it', () => {
     expect(readsPack(["process.env.APACK_DEV_PACK_DIRS = 'tests/packs/external-pack'"]),
       'a variable whose name contains PACK_DIR but names a pack\'s source').toBe(false);
     expect(readsPack(['packages/default-setup/src/features/notes/fe/canvas.vue']),
-      "the pack's source, which `compile` owns rather than this").toBe(false);
+      "the pack's source, which `build:default-setup` owns rather than this").toBe(false);
   });
 
   it('leaves none of them undeclared', () => {

@@ -143,11 +143,11 @@ describe('driftedSteps', () => {
 describe('measurementsFrom', () => {
   it('leaves out a step whose time is the deadline it was killed at', () => {
     const measured = measurementsFrom([
-      { step: 'compile', ms: 13_000 },
+      { step: 'build:default-setup', ms: 13_000 },
       { step: 'test:integration', ms: 300_400, timedOut: true },
     ]);
 
-    expect([...measured.keys()], 'a killed step measured nothing').toEqual(['compile']);
+    expect([...measured.keys()], 'a killed step measured nothing').toEqual(['build:default-setup']);
   });
 
   it('keeps a step that failed early, whose time is real', () => {
@@ -217,7 +217,7 @@ describe('outgrownRungs', () => {
 
   it('says nothing about a step the run did not measure', () => {
     // A cached step cost no time, so it is evidence of nothing — the same reason `criticalPath` skips it
-    expect(asked([ran('compile', 'suite', 13)], new Map())).toEqual([]);
+    expect(asked([ran('build:default-setup', 'suite', 13)], new Map())).toEqual([]);
   });
 
   /**

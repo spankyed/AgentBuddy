@@ -170,7 +170,7 @@ The test for any field is **does something outside the pack need to know this be
 | `plugin.receives` | generated literal *in* the bundle | generated *into* the artifact | the bus validates every send against it |
 | collision inputs (entities, services, repositories, designations) | discovered by registering | readable at install | moves the throw from boot-with-rollback to an install-time refusal |
 | activation | implicit "load everything" | derived from contributions | see the footgun below |
-| machines, step `compile`, components | in code | **still in code**, behind `load` | only the host needs them, and only when activating |
+| machines, step `build:default-setup`, components | in code | **still in code**, behind `load` | only the host needs them, and only when activating |
 
 ## Footguns
 

@@ -13,7 +13,7 @@ import { sealBuildSession } from '../build/build-metadata.ts';
  * against a floor of 16.0s, which is `@app/renderer`'s vite build and what the run is now bounded by.
  *
  * It is worth doing because of *where* the step sits rather than what it costs: `build:runtime` is on the
- * chain's critical path (`packages:ensure -> compile -> build:runtime -> test:packaged-authoring`) and is the
+ * chain's critical path (`packages:ensure -> build:default-setup -> build:runtime -> test:packaged-authoring`) and is the
  * whole cost of a one-package edit. `api-check.ts` made the same change for the same reason and records
  * the same shape of measurement.
  *
@@ -28,7 +28,7 @@ import { sealBuildSession } from '../build/build-metadata.ts';
  * compiled into the app: a pack's backend is loaded at run time from the `dist/runtime/index.cjs` its own
  * `apack build` wrote, and its frontend is fetched over `pack://` from the bundle beside it. So the app's
  * build reads the app's four workspaces and the built packs' `dist`, and an edit to a pack's `src` reaches
- * this step only through `compile`, which the chain orders ahead of it. A bundler config here that reached
+ * this step only through `build:default-setup`, which the chain orders ahead of it. A bundler config here that reached
  * into a pack's `src` again would make this step's real inputs the whole repo, which is the thing four
  * attempts at a cheaper chain each failed on.
  *
@@ -69,7 +69,7 @@ const done = new Map<string, Outcome>();
 
 const result = await schedule({
   // No edges: the four are independent, and the one ordering constraint they share is the chain's, which
-  // put `compile` ahead of this whole step. `lib/runtime-build-legs.ts` has the evidence for both halves.
+  // put `build:default-setup` ahead of this whole step. `lib/runtime-build-legs.ts` has the evidence for both halves.
   steps: RUNTIME_BUILD_LEGS.map((leg) => ({ ...leg, dependsOn: [] })),
   budget: budgetFrom(parseFlags(process.argv.slice(2), { values: ['cores'], booleans: [] }).values.cores),
   skip: () => false,

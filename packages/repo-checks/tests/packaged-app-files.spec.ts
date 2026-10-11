@@ -147,7 +147,7 @@ describe("the packaged app's file list", () => {
    */
   it('would carry them without the one pattern that excludes them', () => {
     const found = workDirs();
-    expect(found.length, `no pack has a ${PACK_WORK_DIR} directory here, so this case proves nothing: run npm run compile`)
+    expect(found.length, `no pack has a ${PACK_WORK_DIR} directory here, so this case proves nothing: run npm run build:default-setup`)
       .toBeGreaterThan(0);
     const stripped = without(`!packages/*/${PACK_WORK_DIR}/**`);
     expect(found.filter((file) => shipsUnder(stripped, file)).length,
