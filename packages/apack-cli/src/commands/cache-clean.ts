@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { cliDirs, type CliDirs } from '../app/app-target';
+import { cliDirs, type CliDirs } from '../app/pack-host';
 import { dirBytes, size } from '../app/profiles';
 import { betaDownloadLeftovers, cachedBetaBuilds } from '../app/beta-app';
 
@@ -9,7 +9,7 @@ import { betaDownloadLeftovers, cachedBetaBuilds } from '../app/beta-app';
  * megabytes, and they accumulate one per release tested against.
  *
  * **The newest is kept by default, because resolution prefers a cached build.** `cachedBetaApp`
- * (`app-target.ts`) answers from the cache whenever a downloaded build satisfies the pack's range, so
+ * (`pack-host.ts`) answers from the cache whenever a downloaded build satisfies the pack's range, so
  * emptying it on a plain `clean` would turn every later run into a download. `--all` is for when that is
  * what you want — moving to a newer Beta is deleting the one you have.
  *

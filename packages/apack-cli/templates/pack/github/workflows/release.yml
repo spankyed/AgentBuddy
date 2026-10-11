@@ -14,7 +14,7 @@ jobs:
     # apack Beta builds are macOS arm64; the build reads built-in packs (e.g. default-setup) from one
     runs-on: macos-14
     env:
-      APACK_CHANNEL: beta
+      APACK_HOST: beta
     steps:
       - uses: actions/checkout@v4
 

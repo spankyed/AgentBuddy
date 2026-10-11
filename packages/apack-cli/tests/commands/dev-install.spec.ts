@@ -109,15 +109,15 @@ describe('apack pack dev reloads', () => {
 
 describe('the environment apack pack dev targets', () => {
   it('reads the bundle channel even when a beta tag carries a production app', async () => {
-    const { appEnv, developmentHostEnv } = await import('../../src/commands/dev');
-    expect(appEnv({ kind: 'source', root: '/repo' })).toBe('development');
+    const { hostEnvironment, developmentHostEnv } = await import('../../src/commands/dev');
+    expect(hostEnvironment({ kind: 'source', root: '/repo' })).toBe('development');
     const resources = path.join(userDataDir, 'apack.app', 'Contents', 'Resources', 'app');
     fs.mkdirSync(resources, { recursive: true });
     const executable = path.join(userDataDir, 'apack.app', 'Contents', 'MacOS', 'apack');
     for (const channel of ['production', 'beta', 'preview']) {
       fs.writeFileSync(path.join(resources, 'build-manifest.json'), JSON.stringify({ channel }));
       const app = { kind: 'packaged', executable, version: '0.4.0-beta.1' } as const;
-      expect(appEnv(app)).toBe(channel);
+      expect(hostEnvironment(app)).toBe(channel);
       if (channel === 'production') expect(() => developmentHostEnv(app, true)).toThrow('This bundle is production');
       else {
         expect(() => developmentHostEnv(app, false)).toThrow('requires --profile');
@@ -125,6 +125,6 @@ describe('the environment apack pack dev targets', () => {
       }
     }
     fs.writeFileSync(path.join(resources, 'build-manifest.json'), '{"channel":"development"}');
-    expect(() => appEnv({ kind: 'packaged', executable, version: '0.4.0' })).toThrow('Invalid packaged channel');
+    expect(() => hostEnvironment({ kind: 'packaged', executable, version: '0.4.0' })).toThrow('Invalid packaged channel');
   });
 });

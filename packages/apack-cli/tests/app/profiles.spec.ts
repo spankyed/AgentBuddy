@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   profileDir,
   profileFor,
@@ -13,7 +13,7 @@ import {
   removeProfile,
   renameProfile,
 } from '../../src/app/profiles';
-import type { CliDirs } from '../../src/app/app-target';
+import type { CliDirs } from '../../src/app/pack-host';
 import { APP_ENVS, resolveAppContext } from '@apackdev/sdk/env';
 import { askTarget } from '../../src/commands/drive';
 
@@ -178,7 +178,7 @@ describe('renaming a profile', () => {
   // directory, so moving it leaves the app writing somewhere that no longer exists
   it('refuses while an app has it open', () => {
     const live = openProfile(dirs, 'live');
-    const { apiPortFile } = resolveAppContext({ build: 'development', profile: live.dir });
+    const { apiPortFile } = resolveAppContext({ env: 'development', userDataDir: live.dir });
     fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
     fs.writeFileSync(apiPortFile, JSON.stringify({ port: 51234, pid: process.pid }));
 
@@ -277,7 +277,7 @@ describe('a profile an app still has open', () => {
   // Where the API actually publishes it, asked of the same resolver the app uses — a literal path here is a
   // second guess, and the one time it disagreed with the app this assertion still passed
   const publishApi = (dir: string, pid: number) => {
-    const { apiPortFile } = resolveAppContext({ build: 'development', profile: dir });
+    const { apiPortFile } = resolveAppContext({ env: 'development', userDataDir: dir });
     fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
     fs.writeFileSync(apiPortFile, JSON.stringify({ port: 51234, pid }));
   };
@@ -316,7 +316,7 @@ describe("a question's dir and the spawn that opens it", () => {
   const devWouldOpen = (spawnArgs: readonly string[]): string => {
     const { mode } = parseProfileFlags([...spawnArgs]);
     const profile = profileFor(mode, dirs);
-    return resolveAppContext({ build: 'development', ...(profile ? { profile: profile.dir } : {}) }).userDataDir;
+    return resolveAppContext({ env: 'development', ...(profile ? { userDataDir: profile.dir } : {}) }).userDataDir;
   };
 
   it.each([
@@ -389,7 +389,7 @@ describe('--rm on a name', () => {
 
 /**
  * **A profile is never named after a build**, which is the one place this vocabulary could be put back
- * where it started: `--profile beta` and `--channel beta` a letter apart, one a data dir and the other the
+ * where it started: `--profile beta` and `--host beta` a letter apart, one a data dir and the other the
  * app that opens it. A name is the only input here a user picks freely, so it is the only way a build name
  * could reappear as storage.
  *
@@ -399,15 +399,14 @@ describe('--rm on a name', () => {
  */
 describe('a name that is an app data namespace', () => {
   it.each(APP_ENVS)('is refused, and says what each word names: %s', (build) => {
-    expect(profileNameProblem(build)).toMatch(/data namespace/);
-    expect(profileNameProblem(build)).toMatch(/--data/);
-    expect(profileNameProblem(build)).toMatch(/--profile/);
+    expect(profileNameProblem(build)).toMatch(/built-in profile/);
+    expect(profileNameProblem(build)).toContain(`${build}-work`);
   });
 
   /** Every door goes through `profileDir`, so none of them has to remember the rule. */
   it.each(APP_ENVS)('cannot reach a directory either: %s', (build) => {
-    expect(() => profileDir(dirs, build)).toThrow(/data namespace/);
-    expect(() => openProfile(dirs, build)).toThrow(/data namespace/);
+    expect(() => profileDir(dirs, build)).toThrow(/built-in profile/);
+    expect(() => openProfile(dirs, build)).toThrow(/built-in profile/);
     expect(fs.existsSync(path.join(root(), build))).toBe(false);
   });
 
@@ -427,4 +426,15 @@ it('a temporary profile is attachable by its printed name without transferring c
   expect(reused).toMatchObject({ dir: owned.dir, created: false, ephemeral: false });
   expect(() => profileFor({ kind: 'named', name: owned.name, rm: true }, dirs)).toThrow('--rm won');
   expect(fs.existsSync(owned.dir)).toBe(true);
+});
+
+
+it('keeps fresh profile names distinct when a timestamp would consume the ID length budget', () => {
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(36 ** 10);
+  try {
+    const one = mintProfile(dirs, true);
+    const two = mintProfile(dirs, true);
+    expect(one.dir).not.toBe(two.dir);
+    expect(fs.existsSync(one.dir) && fs.existsSync(two.dir)).toBe(true);
+  } finally { clock.mockRestore(); }
 });

@@ -5,18 +5,12 @@ import { replaceDir, stagingDirName } from '@apackdev/host/replace-dir';
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import semver from 'semver';
+import { PRODUCT_NAMES, type PublishedAppChannel } from './channels';
+import type { AppChannel } from '@apackdev/sdk/env';
 import { downloadVerified, listAppReleases, type Download, type Release } from './app-releases.ts';
 import { holdExclusiveLock } from '@apackdev/host/exclusive-lock';
 
 const execFileAsync = promisify(execFile);
-
-/** Product names from electron-builder.mjs; the release artifacts use them with spaces removed */
-export const PRODUCT_NAMES = { production: 'apack', beta: 'apack Beta', preview: 'apack Preview' } as const;
-/** All packaged app channels, including locally built previews. */
-export type AppChannel = keyof typeof PRODUCT_NAMES;
-/** Channels distributed through published releases; previews are local builds. */
-export type PublishedAppChannel = 'production' | 'beta';
-
 
 /** The release this channel wants, and the two assets it needs, or why there is none */
 export interface AppRelease {

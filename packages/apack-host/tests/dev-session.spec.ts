@@ -19,6 +19,8 @@ afterEach(() => {
 });
 
 const session = (over: Partial<DevSession> = {}): DevSession => ({
+  host: { kind: 'source', root: dataDir },
+  env: 'development',
   debugPort: 51873,
   apiPort: 3001,
   logPath: path.join(dataDir, 'dev.log'),

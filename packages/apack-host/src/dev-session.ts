@@ -42,6 +42,8 @@ export type SessionStarter = (typeof SESSION_STARTERS)[number];
 export const STARTED_BY_ENV = 'APACK_SESSION_STARTED_BY';
 
 export interface DevSession {
+  readonly host: { readonly kind: 'source'; readonly root: string };
+  readonly env: 'development';
   /** Chromium's `--remote-debugging-port`, as it reported it. Absent means the app is not attachable */
   readonly debugPort: number;
   /** The app's API, so a session can reach the bus without going through the page */
@@ -71,8 +73,8 @@ export const sessionFile = (dataDir: string): string => path.join(dataDir, 'sess
  * `APACK_ENV=beta npm run dev` opened a port on a **beta** app while the CLI's identical decision had six
  * cases guarding it. One function, both callers, and the asymmetry cannot come back.
  */
-export function debugPortArgsFor(build: AppEnv): string[] {
-  return build === 'development' ? ['--remote-debugging-port=0'] : [];
+export function debugPortArgsFor(env: AppEnv): string[] {
+  return env === 'development' ? ['--remote-debugging-port=0'] : [];
 }
 
 /**
@@ -199,8 +201,8 @@ export function lastAttachedAt(dataDir: string): number | undefined {
  * wrote it whenever one is killed, and `recordIsStale` errs toward stale for exactly this — it never misses
  * a live holder, because inventing a dead one is what would take a running app's dir.
  *
- * Unreadable, malformed and incomplete are all misses too. Nothing downstream can do anything useful with
- * half a record, and a throw here would make every caller handle a case that means "there is no session".
+ * Unreadable and malformed records are misses. A live record lacking host identity is refused,
+ * so an older launcher cannot be mistaken for permission to attach or replace its app.
  */
 export function readSession(dataDir: string): DevSession | undefined {
   const file = sessionFile(dataDir);
@@ -215,5 +217,9 @@ export function readSession(dataDir: string): DevSession | undefined {
   if (typeof session.debugPort !== 'number' || typeof session.supervisorPid !== 'number') return undefined;
   if (typeof session.dataDir !== 'string' || !SESSION_STARTERS.includes(session.startedBy as SessionStarter)) return undefined;
   if (recordIsStale(file, session.supervisorPid)) return undefined;
+  if (session.env !== 'development' || session.host?.kind !== 'source' || typeof session.host.root !== 'string' || !path.isAbsolute(session.host.root)) {
+    throw new Error(`The live session at ${file} has no verifiable development host identity. Close it and restart its development launcher.`);
+  }
+  if (path.resolve(session.dataDir) !== path.resolve(dataDir)) throw new Error(`Session storage identity mismatch at ${file}.`);
   return session as DevSession;
 }

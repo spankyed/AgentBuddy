@@ -17,15 +17,15 @@ import { db } from '../../src/commands/db';
 import { parseDbArgs } from '../../src/commands/db/target';
 import { dbRepl } from '../../src/commands/db/repl';
 import { mintProfile, openProfile } from '../../src/app/profiles';
-import type { CliDirs } from '../../src/app/app-target';
+import type { CliDirs } from '../../src/app/pack-host';
 import { PACK_LAYOUT } from '@apackdev/host/packs';
 
 // `--profile` resolves a name through the CLI's own data dir, which is the real one on this machine.
 // Pointing it at a temp tree is the only way to test the lookup without reading whatever profiles the
 // author happens to have.
 let cliTree: CliDirs;
-vi.mock('../../src/app/app-target', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../src/app/app-target')>()),
+vi.mock('../../src/app/pack-host', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/app/pack-host')>()),
   cliDirs: () => cliTree,
 }));
 
@@ -206,7 +206,7 @@ describe('apack db query', () => {
     expect((await run(['query', '--data-dir', dir])).error?.message).toMatch(/^No code to run\n\nUsage: apack db query/);
     expect((await run(['query', 'return 1', '--nope'])).error?.message).toMatch(/Unknown option '--nope'[\s\S]*Usage: apack db query/);
     expect((await run(['query', 'return 1', '-o', 'xml', '--data-dir', dir])).error?.message).toBe('--output must be one of pretty, json, csv');
-    expect((await run(['query', 'return 1', '--data', 'development', '--data', 'beta'])).error?.message).toMatch(/Specify --data once/);
+    expect((await run(['query', 'return 1', '--profile', 'development', '--profile', 'beta'])).error?.message).toMatch(/Specify --profile once/);
     expect((await run(['query', 'return 1', '--data-dir', tempDir('empty-')])).error?.message).toMatch(/^No apack database in /);
   });
 });
@@ -233,13 +233,13 @@ describe('naming the data dir', () => {
     delete process.env.APACK_USER_DATA_DIR;
     try {
       const targetOf = (args: string[]) => parseDbArgs(args, {}, 'usage').target;
-      for (const [args, env] of [[[], 'production'], [['--data', 'production'], 'production'], [['--data', 'development'], 'development'], [['--data', 'beta'], 'beta']] as const) {
+      for (const [args, env] of [[[], 'production'], [['--profile', 'production'], 'production'], [['--profile', 'development'], 'development'], [['--profile', 'beta'], 'beta']] as const) {
         const target = targetOf([...args]);
-        expect(target.build, args.join(' ') || '(no flag)').toBe(env);
-        expect(target.userDataDir, args.join(' ') || '(no flag)').toBe(resolveAppContext({ build: env }).userDataDir);
+        expect(target.env, args.join(' ') || '(no flag)').toBe(env);
+        expect(target.userDataDir, args.join(' ') || '(no flag)').toBe(resolveAppContext({ env }).userDataDir);
       }
       // Each names a different app's data, so a swap between them can't pass
-      const dirs = [[], ['--data', 'development'], ['--data', 'beta']].map((args) => targetOf(args).userDataDir);
+      const dirs = [[], ['--profile', 'development'], ['--profile', 'beta']].map((args) => targetOf(args).userDataDir);
       expect(new Set(dirs).size).toBe(3);
 
       const given = path.join(os.tmpdir(), 'apack-db-target');
@@ -259,7 +259,7 @@ describe('naming the data dir', () => {
     try {
       expect(parseDbArgs(['--data-dir', dir], {}, 'usage').target.userDataDir).toBe(dir);
       // The app's own data dir, which is what resolveAppContext gives when the variable isn't set
-      for (const [args, env] of [[['--data', 'development'], 'development'], [['--data', 'beta'], 'beta'], [['--data', 'production'], 'production']] as const) {
+      for (const [args, env] of [[['--profile', 'development'], 'development'], [['--profile', 'beta'], 'beta'], [['--profile', 'production'], 'production']] as const) {
         expect(parseDbArgs([...args], {}, 'usage').target.userDataDir, args.join(' ')).toBe(appDataDirFor(env));
       }
       expect(parseDbArgs([], {}, 'usage').target.userDataDir).toBe(fromEnv);
@@ -295,10 +295,10 @@ describe('naming the data dir', () => {
 
   it('refuses two data dirs', async () => {
     const dir = await appDataDir();
-    expect((await run(['query', 'return 1', '--data', 'development', '--data-dir', dir])).error?.message).toMatch(/^Name one data dir, not 2: --data, --data-dir/);
-    expect((await run(['query', 'return 1', '--data', 'production', '--data-dir', dir])).error?.message).toMatch(/^Name one data dir, not 2: --data, --data-dir/);
-    expect((await run(['reset', '--data', 'beta', '--data', 'production'])).error?.message).toMatch(/Specify --data once/);
-    expect((await run(['query', 'return 1', '--data', 'development', '--profile', 'probe'])).error?.message).toMatch(/^Name one data dir, not 2: --data, --profile/);
+    expect((await run(['query', 'return 1', '--profile', 'development', '--data-dir', dir])).error?.message).toMatch(/^Name one data dir, not 2: --profile, --data-dir/);
+    expect((await run(['query', 'return 1', '--profile', 'production', '--data-dir', dir])).error?.message).toMatch(/^Name one data dir, not 2: --profile, --data-dir/);
+    expect((await run(['reset', '--profile', 'beta', '--profile', 'production'])).error?.message).toMatch(/Specify --profile once/);
+    expect((await run(['query', 'return 1', '--profile', 'development', '--profile', 'probe'])).error?.message).toMatch(/Specify --profile once/);
   });
 
   it('makes a command that changes the database name its data dir, and opens none until it does', async () => {
@@ -306,7 +306,7 @@ describe('naming the data dir', () => {
     const changes = [['exec', 'return 1'], ['reset', '--force'], ['clear-settings', '--force'], ['import', dir, '--force'], ['repl', '--write']];
     for (const args of changes) {
       const { error, err, out } = await run(args);
-      expect(error?.message, args.join(' ')).toMatch(/--data <name>, --data-dir <path>, or --profile <name>/);
+      expect(error?.message, args.join(' ')).toMatch(/--profile <name> or --data-dir <path>/);
       expect(`${err}${out}`).toBe('');
     }
   });
@@ -329,7 +329,7 @@ describe('naming the data dir', () => {
     const dir = await appDataDir();
     process.env.APACK_USER_DATA_DIR = dir;
     try {
-      expect(parseDbArgs(['--data', 'production'], {}, 'usage').target.userDataDir).toBe(appDataDirFor('production'));
+      expect(parseDbArgs(['--profile', 'production'], {}, 'usage').target.userDataDir).toBe(appDataDirFor('production'));
 
       const { out, err } = await ok(['exec', "tx('Note-a').put('title', 'Named')", '--data-dir', dir]);
       expect(err).toContain(`Database: ${dir} (offline)`);

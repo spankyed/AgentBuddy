@@ -66,7 +66,7 @@ is untrusted whoever asked, and the two rules live in one module rather than at 
 `initAppContext()` runs first and is the only place the environment is decided:
 
 - `_inferElectronAppEnv` (`@apackdev/sdk/env`) gets `PLAYWRIGHT_TEST === 'true'`, `app.isPackaged`, the channel read from packaged `build-manifest.json`, and `process.env.APACK_ENV`. `build/build-metadata.ts` creates a fresh staging build and one manifest; main and API read that manifest at runtime. Packaging checks file hashes before signing, so no baked-version comparison is needed. See `docs/reference/preview-builds.md`.
-- `resolveAppContext({ build })` gives the app name, data dir, `packsDir`, `urlScheme`, …. It then calls `app.setName` and `app.setPath('userData')` (so Electron's own storage and the single-instance lock follow the **data dir**), and writes `APACK_ENV` / `APACK_USER_DATA_DIR` to `process.env`, which the API child inherits.
+- `resolveAppContext({ env })` gives the app name, data dir, `packsDir`, `urlScheme`, …. It then calls `app.setName` and `app.setPath('userData')` (so Electron's own storage and the single-instance lock follow the **data dir**), and writes `APACK_ENV` / `APACK_USER_DATA_DIR` to `process.env`, which the API child inherits.
 - Everything else reads it with `getAppContext()`, which throws if called first. Don't read `app.getPath('userData')`, `NODE_ENV` or `PLAYWRIGHT_TEST` to choose paths.
 
 ## API server (`src/modules/api-server/`)

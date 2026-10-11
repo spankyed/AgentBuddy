@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { parseReleaseChannel } from '../utils';
+import { parseAppChannel } from '../utils';
+import { PRODUCT_NAMES } from '../app/channels';
 
 const HELP = `
 Usage: apack open [--channel production|beta|preview]
@@ -11,29 +12,19 @@ Options:
   --channel <name>  production (default), beta, preview
 `.trim();
 
-// Product names from electron-builder.mjs
-const PRODUCT_NAMES = {
-  production: 'apack',
-  beta: 'apack Beta',
-  preview: 'apack Preview',
-} as const;
-
 export async function open(args: string[]) {
   if (args.includes('--help') || args.includes('-h')) {
     console.log(HELP);
     return;
   }
 
-  const { env, args: rest } = parseReleaseChannel(args);
+  const { channel, args: rest } = parseAppChannel(args);
   if (rest.length) throw new Error('Unexpected arguments. Use apack open --help.');
-  if (env !== 'production' && env !== 'beta' && env !== 'preview') {
-    throw new Error('There is no installed dev app. Run `npm run dev` in the apack repo instead.');
-  }
   if (process.platform !== 'darwin') {
     throw new Error(`apack open is only supported on macOS (current platform: ${process.platform}).`);
   }
 
-  const appName = PRODUCT_NAMES[env];
+  const appName = PRODUCT_NAMES[channel];
   try {
     // -a resolves the app through Launch Services, wherever it is installed
     execFileSync('open', ['-a', appName], { stdio: 'pipe' });

@@ -90,7 +90,7 @@ export async function findLatestRelease(
 
 function updateChannelIncludesPrereleases(): boolean {
   try {
-    return resolveAppContext().build === 'beta';
+    return resolveAppContext().env === 'beta';
   } catch {
     return false;
   }

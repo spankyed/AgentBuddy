@@ -39,7 +39,7 @@ function appStore(): SecretsStore {
     filePath,
     osVault: () => osKeyVault(context.appName),
     fileVault: () => fileKeyVault(dataKeyFile(filePath)),
-    useFileVault: _useFileVault(context.build, process.env.APACK_SECRETS_VAULT),
+    useFileVault: _useFileVault(context.env, process.env.APACK_SECRETS_VAULT),
   });
   return store;
 }

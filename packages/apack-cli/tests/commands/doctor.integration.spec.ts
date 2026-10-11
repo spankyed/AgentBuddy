@@ -47,7 +47,7 @@ it('fails for an invalid installation and leaves the bundle intact', async () =>
 });
 
 it('fails when a live API record has an unreachable listener', async () => {
-  const context = resolveAppContext({ build: 'production', profile: dataDir });
+  const context = resolveAppContext({ env: 'production', userDataDir: dataDir });
   fs.mkdirSync(path.dirname(context.apiPortFile), { recursive: true });
   fs.writeFileSync(context.apiPortFile, JSON.stringify({ port: 12345, pid: process.pid }));
   await expect(inspectApp('production', { applications, dataDir, probe: async () => false })).rejects.toThrow('health check failed');
@@ -78,6 +78,8 @@ it('app sessions never require a pack; pack sessions do', async () => {
 
 it('app drive ignores the shipped pack manifest in its current directory', () => {
   const pack = path.resolve(import.meta.dirname, '../../../default-setup');
-  expect(driveTarget(pack, 'app').packDir).toBeUndefined();
+  const checkout = path.resolve(import.meta.dirname, '../../../..');
+  expect(driveTarget(checkout, 'app').packDir).toBeUndefined();
+  expect(() => driveTarget(pack, 'app')).toThrow('checkout root');
   expect(driveTarget(pack, 'pack').packDir).toBe(pack);
 });

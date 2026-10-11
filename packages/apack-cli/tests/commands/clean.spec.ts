@@ -10,7 +10,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanApps } from '../../src/commands/cache-clean';
 import { betaCacheDir, packagedExecutable } from '../../src/app/beta-app';
-import type { CliDirs } from '../../src/app/app-target';
+import type { CliDirs } from '../../src/app/pack-host';
 
 let tmp: string;
 let dirs: CliDirs;

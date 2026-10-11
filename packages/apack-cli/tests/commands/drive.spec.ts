@@ -1,8 +1,9 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { answerLine, drive, driveScripts, DRIVE_USAGE, scaffold, takeOneShotFlags } from '../../src/commands/drive';
+import { appDataDirFor } from '@apackdev/sdk/env';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { answerLine, askTarget, drive, driveTarget, driveScripts, DRIVE_USAGE, scaffold, takeOneShotFlags } from '../../src/commands/drive';
 
 let root: string;
 
@@ -199,7 +200,7 @@ describe('takeOneShotFlags', () => {
 /**
  * **A flag a command advertises and ignores reads as having been obeyed**, which is the class `dev` refuses
  * unknown options over. The usage offers `--app` for the script half, and the question half parsed it and
- * never looked at it: `drive --eval x --channel beta` answered from the *development* app while naming beta.
+ * never looked at it: `drive --eval x --host beta` answered from the *development* app while naming beta.
  *
  * Refusing is the right answer rather than honouring it, and the reason is structural: a question attaches
  * over a debug port, and only a development build is given one (`debugPortArgsFor`). There is no beta app
@@ -207,13 +208,13 @@ describe('takeOneShotFlags', () => {
  */
 describe('release selection on a question', () => {
   it('is refused, and says why a question cannot take one', async () => {
-    await expect(drive(['--state', '--channel', 'beta'])).rejects.toThrow(/[Rr]elease channels are not attachable/);
-    await expect(drive(['--eval', 'return 1', '--channel=beta'])).rejects.toThrow(/[Rr]elease channels are not attachable/);
+    await expect(drive(['--state', '--channel', 'beta'])).rejects.toThrow(/not a pack host selector/);
+    await expect(drive(['--eval', 'return 1', '--channel=beta'])).rejects.toThrow(/not a pack host selector/);
   });
 
   /** Still a script flag: the usage offers it, so the refusal must not reach that half. */
   it('is still offered for a script', () => {
-    expect(DRIVE_USAGE).toMatch(/--app <checkout>/);
+    expect(DRIVE_USAGE).not.toContain('--host');
   });
 });
 
@@ -248,4 +249,49 @@ describe("a question's one line", () => {
     expect(parse('').value).toBe('');
     expect(parse(false).value).toBe(false);
   });
+});
+
+
+describe('explicit live launch', () => {
+  it('requires --spawn for fresh state instead of silently opening an app', async () => {
+    await expect(drive(['--state', '--fresh'])).rejects.toThrow(/requires --spawn/);
+  });
+
+  it('keeps repository automation pinned to its checkout', async () => {
+    await expect(drive(['--state', '--spawn', '--host', process.cwd()]))
+      .rejects.toThrow(/own checkout/);
+  });
+});
+
+
+describe('live profile handoff', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('keeps explicit development selection canonical through a spawn', () => {
+    vi.stubEnv('APACK_USER_DATA_DIR', '/tmp/unrelated-data');
+    const target = askTarget({ kind: 'named', name: 'development', rm: false }, false);
+    expect(target.dir).toBe(appDataDirFor('development'));
+    expect(target.spawnArgs).toEqual(['--profile', 'development']);
+  });
+
+  it('uses the same inherited data handoff as a plain development launcher', () => {
+    vi.stubEnv('APACK_USER_DATA_DIR', '/tmp/shared-development-data');
+    expect(askTarget({ kind: 'shared' }, false).dir).toBe('/tmp/shared-development-data');
+  });
+});
+
+
+it('keeps repository driving on its own root when SDK links point to another checkout', () => {
+  const own = path.join(root, 'own');
+  const other = path.join(root, 'other');
+  for (const checkout of [own, other]) {
+    fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
+    fs.writeFileSync(path.join(checkout, 'packages', 'entry-point.mjs'), '');
+  }
+  const sdk = path.join(other, 'packages', 'sdk');
+  fs.mkdirSync(sdk);
+  fs.writeFileSync(path.join(sdk, 'package.json'), JSON.stringify({ name: '@apackdev/sdk', exports: { './package.json': './package.json' } }));
+  fs.mkdirSync(path.join(own, 'node_modules', '@apackdev'), { recursive: true });
+  fs.symlinkSync(sdk, path.join(own, 'node_modules', '@apackdev', 'sdk'), 'dir');
+  expect(driveTarget(own, 'app').root).toBe(own);
 });

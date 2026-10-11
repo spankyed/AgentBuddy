@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { installPack, installPackFromLocal, readHostInfo } from '@apackdev/host/packs';
-import { parseTargetEnv, targetDataContext, envLabel, TARGET_ENV_USAGE } from '../utils';
+import { parseStorageProfile, targetDataContext, profileLabel, TARGET_ENV_USAGE } from '../utils';
 
 /** `registry` is a bare pack name, resolvable only through apack.dev; `undefined` is a GitHub slug. */
 function detectSource(input: string): 'local' | 'url' | 'registry' | undefined {
@@ -19,13 +19,13 @@ async function resolveFromRemoteRegistry(name: string): Promise<string> {
 }
 
 export async function install(args: string[]) {
-  const { env, args: filtered } = parseTargetEnv(args);
+  const { env, profile, args: filtered } = parseStorageProfile(args);
   const source = filtered[0];
-  if (filtered.length > 1 || (source?.startsWith('-') && source !== '--help' && source !== '-h')) throw new Error('Usage: apack pack install <source> [--data <name>]');
+  if (filtered.length > 1 || (source?.startsWith('-') && source !== '--help' && source !== '-h')) throw new Error('Usage: apack pack install <source> [--profile <name>]');
 
   if (!source || source === '--help' || source === '-h') {
     console.log(`
-Usage: apack pack install <source> [--data <name>]
+Usage: apack pack install <source> [--profile <name>]
 
 Source can be:
   ./path/to/pack        Local directory
@@ -62,15 +62,15 @@ Options:
     } else {
       // The app installs the packs it ships when it first starts with a data dir
       console.warn(`\n  Note: ${result.missingDependencies.join(', ')} not installed. That's expected for a pack apack ships,`);
-      console.warn(`  which isn't installed until apack${envLabel(env)} has started with this data dir.`);
+      console.warn(`  which isn't installed until apack${profileLabel(env, profile)} has started with this data dir.`);
     }
   }
 
   if (!hostVersion) {
-    console.warn(`\n  Note: the pack's hostVersion wasn't checked. apack${envLabel(env)} records its version when it starts with this data dir.`);
+    console.warn(`\n  Note: the pack's hostVersion wasn't checked. apack${profileLabel(env, profile)} records its version when it starts with this data dir.`);
   }
 
-  console.log(`\nInstalled "${result.name}" v${result.version}${envLabel(env)}`);
+  console.log(`\nInstalled "${result.name}" v${result.version}${profileLabel(env, profile)}`);
   console.log(`  Location: ${result.dir}`);
   console.log(`\nRestart apack to load the pack.`);
 }

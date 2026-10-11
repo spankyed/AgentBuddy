@@ -27,22 +27,22 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { findPackRoot, readManifest } from '../utils';
-import { cliDirs, parseAppFlags, resolveLaunchApp, resolveDevApp, type CliDirs } from '../app/app-target';
+import { cliDirs, parseHostFlags, resolvePackHost, resolveRepositoryHost, type CliDirs } from '../app/pack-host';
 import {
   freshProfileName, resolveProfileDir, profileFor, dataDirInUse, parseProfileFlags, removeProfile, PROFILE_USAGE,
   type ProfileMode,
 } from '../app/profiles';
 import { askAttached, attachableApp, spawnOrAttach, type AttachableApp } from '../app/drive-attach.ts';
 import type { DevSession } from '@apackdev/host/dev-session';
-import { resolveAppContext } from '@apackdev/sdk/env';
+import { appDataDirFor, resolveAppContext } from '@apackdev/sdk/env';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
 import { fixtureEnv } from './test';
-import { appEnv } from './dev';
+import { hostEnvironment } from './dev';
 import { copySecretsInto } from '../app/profile-secrets.ts';
 import { resolvePlaywrightCli } from '../app/playwright';
 import { renderTemplate } from '../templates.ts';
 import { configCallsHelper } from '../build/config-text.ts';
-import { checkoutFor, ensureCheckoutPackages } from '../build/checkout-packages.ts';
+import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 
 const DRIVE_DIR = 'drive';
 
@@ -59,7 +59,7 @@ Pack authors: run apack pack drive from your pack repository.`;
 export const DRIVE_USAGE = `
 ${APP_CONTEXT}
 
-Usage: npm run dev:drive -- [script | --eval <body>] [--app <checkout>] [profile flags]
+Usage: npm run dev:drive -- [script | --eval <body>] [profile flags]
 
 Launch apack and drive it from a script: navigate, send events, read state, screenshot.
 Mainly for an agent debugging or developing against the app; a person can watch, the windows are shown.
@@ -71,7 +71,8 @@ A script drives a built app of its own: apack pack dev serves your pack's fronte
 launches its own app, so a question about one is not answerable with the other.
 
 By default the app gets a fresh data dir that is thrown away afterwards, so each session starts clean.
-Name a profile to keep its state between sessions.
+Name a custom profile to keep script state between sessions. Scripts refuse built-in profiles.
+Live questions can use the shared development profile or a custom profile.
 
 **One question, without writing a script.** --eval, --query and --state ask the live app one thing, print
 the answer and exit. One JSON object goes to stdout and
@@ -102,7 +103,6 @@ Options:
   --query <code>      the same, for one EARS read over the bus
   --state             the same, for the app shell's state
   --spawn             with none of those running, start an app and keep it, rather than refusing
-  --app <checkout> a local checkout for scripts; live questions select --profile instead
 ${PROFILE_USAGE}
   --help, -h          Show this help
 `.trim();
@@ -162,7 +162,7 @@ const GITIGNORE = `*
 /**
  * The one-shot flags, taken before anything else parses — so a flag this command means for itself is
  * reported by name here rather than surviving every parser and failing inside the Playwright CLI, which is
- * where `parseAppFlags` sends what nobody claimed.
+ * where `parseHostFlags` sends what nobody claimed.
  *
  * The name half is matched **exactly**, after splitting an inline value off — `parseProfileFlags`' shape,
  * and what makes it prefix-safe: `--evaluate` and `--state-dump` fall through to `rest` rather than being
@@ -300,11 +300,10 @@ interface DriveTarget {
 export function driveTarget(cwd: string, scope: 'app' | 'pack'): DriveTarget {
   const pack = scope === 'pack' ? findPackRoot(cwd) : undefined;
   if (pack !== undefined) return { root: pack, packDir: pack, hostVersion: readManifest(pack).hostVersion ?? '*' };
-  const checkout = checkoutFor(cwd);
-  if (checkout === undefined) {
-    throw new Error('App driving scripts require an apack checkout. Use apack pack drive to drive a pack.');
+  if (!fs.existsSync(path.join(cwd, 'packages', 'entry-point.mjs'))) {
+    throw new Error('App driving scripts require the apack checkout root. Use its repository npm scripts.');
   }
-  return { root: checkout, hostVersion: '*' };
+  return { root: cwd, hostVersion: '*' };
 }
 
 /**
@@ -337,12 +336,15 @@ interface AskTarget {
 export function askTarget(mode: ProfileMode, withSecrets: boolean, dirs: CliDirs = cliDirs()): AskTarget {
   const secrets = withSecrets ? ['--with-secrets'] : [];
   if (mode.kind === 'shared') {
-    return { dir: resolveAppContext({ build: 'development' }).userDataDir, spawnArgs: [...secrets] };
+    return { dir: resolveAppContext({ env: 'development' }).userDataDir, spawnArgs: [...secrets] };
+  }
+  if (mode.kind === 'named' && mode.name === 'development' && !mode.rm && !withSecrets) {
+    return { dir: appDataDirFor('development'), spawnArgs: ['--profile', 'development'] };
   }
   const name = mode.kind === 'named' ? mode.name : freshProfileName();
   const rm = mode.rm ? ['--rm'] : [];
   return {
-    dir: resolveAppContext({ build: 'development', profile: resolveProfileDir(dirs, name) }).userDataDir,
+    dir: resolveAppContext({ env: 'development', userDataDir: resolveProfileDir(dirs, name) }).userDataDir,
     spawnArgs: ['--profile', name, ...rm, ...secrets],
     ...(mode.kind === 'fresh' ? {
       note: `Fresh profile ${name}${mode.rm ? ' — removed when the app closes' : ''}.`
@@ -458,7 +460,7 @@ export async function packDrive(args: string[]) {
 
 export async function drive(args: string[], scope: 'app' | 'pack' = 'app') {
   if (args.includes('--help') || args.includes('-h')) {
-    console.log(scope === 'pack' ? HELP.replaceAll('npm run dev:drive --', 'apack pack drive').replaceAll('npm run dev:open --', 'apack pack dev').replace(APP_CONTEXT, 'Run from your pack repository to automate this pack in an app.') : HELP);
+    console.log(scope === 'pack' ? HELP.replace(' [profile flags]', ' [--host <path|beta>] [profile flags]').replace('Options:', 'Options:\n  --host <path|beta>   select a host for scripts or live --spawn; never an installed app').replaceAll('npm run dev:drive --', 'apack pack drive').replaceAll('npm run dev:open --', 'apack pack dev').replace(APP_CONTEXT, 'Run from your pack repository to automate this pack in an app.') : HELP);
     return;
   }
 
@@ -466,7 +468,7 @@ export async function drive(args: string[], scope: 'app' | 'pack' = 'app') {
   if (scope === 'pack') findPackRoot(cwd);
   const { ask, argument, spawn: spawnFlag, rest } = takeOneShotFlags(args);
   const { mode, withSecrets, rest: scriptArgs } = parseProfileFlags(rest);
-  const flags = parseAppFlags(scriptArgs);
+  const flags = parseHostFlags(scriptArgs);
 
   /**
    * **A question is asked of the app something else is holding, and never by launching one.**
@@ -475,25 +477,32 @@ export async function drive(args: string[], scope: 'app' | 'pack' = 'app') {
    * launched — and what answers is not this command's to close. With no live app it refuses, naming
    * `--spawn`, rather than acquiring a process nobody asked for.
    */
+  if (spawnFlag && ask === undefined) throw new Error('--spawn is only for live questions.');
   if (ask !== undefined) {
-    const root = scope === 'pack' ? findPackRoot(cwd) : checkoutFor(cwd) ?? cwd;
-    if (flags.channel || process.env.APACK_CHANNEL) throw new Error('Release channels are not attachable. Live questions require a development session.');
-    if (flags.app) throw new Error('--app selects an executable for scripts. Live questions select an existing development session with --profile.');
+    if (flags.release || flags.prebuilt) throw new Error('Pack build flags belong to script runs, not live questions.');
+    const root = scope === 'pack' ? findPackRoot(cwd) : cwd;
+    if (scope === 'app' && flags.host) throw new Error('Repository automation uses its own checkout; host selection belongs to pack commands.');
+    if (!spawnFlag && flags.host) throw new Error('--host requires --spawn for a live question.');
+    if (!spawnFlag && mode.kind === 'fresh') throw new Error('A fresh live question requires --spawn.');
     const target = askTarget(mode, withSecrets);
-    const live = attachableApp(target.dir);
+    const selected = spawnFlag
+      ? scope === 'app' ? resolveRepositoryHost(root)
+        : await resolvePackHost({ policy: 'development', flags, hostVersion: readManifest(root).hostVersion ?? '*', from: root })
+      : undefined;
+    if (selected && selected.kind !== 'source') throw new Error('Live questions require a source development host; packaged apps are not attachable.');
+    const expectedRoot = scope === 'app' ? root : selected?.kind === 'source' ? selected.root : undefined;
+    const live = attachableApp(target.dir, expectedRoot);
     if (live) return report(await answerAttached(live, root, ask, argument, 'attached'));
-    // `--fresh` names a dir nothing has used, so there is never anything to attach to: the flag would
-    // otherwise ask for a directory and then refuse to use it
-    if (spawnFlag || mode.kind === 'fresh') {
+    if (spawnFlag) {
       if (target.note !== undefined) console.error(target.note);
-      const source = resolveDevApp(flags, root);
-      if (source.kind !== 'source') throw new Error('Only a source development app is attachable.');
-      const { app, state } = await spawnOrAttach(root, target.dir, [...target.spawnArgs, '--app', source.root], { scope });
+      const spawnArgs = scope === 'app' ? target.spawnArgs : [...target.spawnArgs, '--host', selected!.kind === 'source' ? selected!.root : ''];
+      const { app, state } = await spawnOrAttach(root, target.dir, spawnArgs, { scope, expectedRoot });
       return report(await answerAttached(app, root, ask, argument, state));
     }
     return report(noAppHere(target.dir));
   }
 
+  if (scope === 'app' && (flags.host || flags.release || flags.prebuilt)) throw new Error('Repository automation uses its own checkout; pack host and build flags belong to pack commands.');
   const target = driveTarget(cwd, scope);
   const root = target.root;
 
@@ -513,14 +522,13 @@ export async function drive(args: string[], scope: 'app' | 'pack' = 'app') {
     return;
   }
 
-  // One policy whether or not a pack is being driven: `deriveApp` looks for the checkout behind
-  // `from`, which is the pack when there is one and this directory when there is not — and in the second
-  // case that *is* the checkout. It states what it resolved and why; the reasoning is in `app-target.ts`.
-  const app = scope === 'app' ? resolveDevApp(flags, target.root)
-    : await resolveLaunchApp({ flags, hostVersion: target.hostVersion, from: target.packDir ?? target.root });
+  // Repository scripts own their checkout; packs use the explicit development-host policy.
+  if (scope === 'app' && flags.host) throw new Error('Repository automation uses its own checkout; host selection belongs to pack commands.');
+  const app = scope === 'app' ? resolveRepositoryHost(target.root)
+    : await resolvePackHost({ policy: 'development', flags, hostVersion: target.hostVersion, from: target.packDir ?? target.root });
   const profile = profileFor(mode, cliDirs());
   if (profile?.created && withSecrets) {
-    const { count, from } = copySecretsInto(profile, appEnv(app));
+    const { count, from } = copySecretsInto(profile, hostEnvironment(app));
     console.error(`Copied ${count} secret${count === 1 ? '' : 's'} from ${from}\n`);
   }
 
@@ -580,7 +588,7 @@ export async function drive(args: string[], scope: 'app' | 'pack' = 'app') {
     }
 
     // With no pack there is nothing resolving `dist`, and the subject is this checkout's own source
-    const env = fixtureEnv(app, target.packDir, process.env, { keepSourceCondition: target.packDir === undefined });
+    const env = fixtureEnv(app, target.packDir, process.env, { release: flags.release, prebuilt: flags.prebuilt, keepSourceCondition: target.packDir === undefined });
     // Shown, because the whole point of a script is to watch it. Under Playwright the app hides its
     // windows unless this says otherwise (the guards in packages/main)
     env.PLAYWRIGHT_VISIBLE = '1';

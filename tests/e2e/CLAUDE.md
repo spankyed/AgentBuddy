@@ -83,7 +83,7 @@ The test infrastructure lives in `@apackdev/testing` (source: `packages/apack-te
 
 When a test worker starts, the fixture runs this sequence:
 
-1. **Resolve the app** — `resolveApp()` (when `createTest()` runs, at import) takes the first of: `createTest({ appExecutable })`, `createTest({ appRoot })`, `APACK_APP_EXECUTABLE`, `APACK_ROOT`, then auto-detection, walking up from the `@apackdev/testing` package directory for `packages/entry-point.mjs` (always works inside the monorepo). An executable must exist. A checkout goes through `validateAppRoot()`, which checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist` and `packages/renderer/dist` and throws listing what's missing.
+1. **Resolve the app** — `resolveApp()` (when `createTest()` runs, at import) takes the first of: `createTest({ appExecutable })`, `createTest({ appRoot })`, `APACK_HOST_EXECUTABLE`, `APACK_HOST_ROOT`, then auto-detection, walking up from the `@apackdev/testing` package directory for `packages/entry-point.mjs` (always works inside the monorepo). An executable must exist. A checkout goes through `validateAppRoot()`, which checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist` and `packages/renderer/dist` and throws listing what's missing.
 
 2. **Pack setup** (only when `PACK_DIR` is set):
    - Read `apack.json` from `PACK_DIR` to get the pack ID and plugin IDs
@@ -265,8 +265,8 @@ Pack developers can write and run E2E tests without the apack repo. The fixture 
 cd /path/to/my-pack
 apack pack init-tests          # scaffold config + sample test, add @apackdev/testing + @playwright/test
 npm install
-apack pack test                # a Beta matching the pack's hostVersion; --app <path> for a checkout
-apack pack test --channel beta   # CI: never prompts; --app <path> for a checkout
+apack pack test                # a Beta matching the pack's hostVersion; --host <path> for a checkout
+apack pack test --host beta   # CI: never prompts; --host <path> for a checkout
 ```
 
 ### 2. From this repo (quick iteration)
@@ -313,10 +313,10 @@ The renderer exposes on `window`:
 | *(always)* | The same output is written to `tests/results/app-<workerIndex>.log`, wiped each run. `DEBUG_E2E=1` is for watching it live; the file is for reading it afterwards |
 | `PACK_DIR=/path/to/pack` | Builds the pack, installs it into the worker's isolated data dir, waits for plugins before tests run |
 | `E2E_KEEP_DATA=1` | Keep each worker's temp data dir (path is logged) |
-| `APACK_ROOT=/path/to/apack` | A built apack checkout to launch (auto-detected inside the monorepo) |
-| `APACK_APP_EXECUTABLE=/path/to/exe` | A packaged apack executable to launch (set by `apack pack test --channel beta`); wins over `APACK_ROOT` |
+| `APACK_HOST_ROOT=/path/to/apack` | A built apack checkout to launch (auto-detected inside the monorepo) |
+| `APACK_HOST_EXECUTABLE=/path/to/exe` | A packaged apack executable to launch (set by `apack pack test --host beta`); cannot be combined with `APACK_HOST_ROOT` |
 | `APACK_CLI=/path/to/apack.mjs` | The apack bin that builds `PACK_DIR` (set by `apack pack test`) |
-| `APACK_CHANNEL=beta` | Read by `apack pack test` (and `apack pack build`), not the fixture: use the newest matching apack Beta without prompting (CI) |
+| `APACK_HOST=beta` | Read by `apack pack test` (and `apack pack build`), not the fixture: use the newest matching apack Beta without prompting (CI) |
 
 ## Key events for sendEvent()
 

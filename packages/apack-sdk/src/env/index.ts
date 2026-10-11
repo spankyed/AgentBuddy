@@ -22,15 +22,9 @@ export const APP_ENVS = ['production', 'beta', 'preview', 'development', 'test']
 
 export type AppEnv = (typeof APP_ENVS)[number];
 
-/**
- * What `resolveAppContext` takes, under the word the CLI uses for it.
- *
- * Each environment is a build: a release, a beta, a local preview, a checkout or a test run.
- */
-export type AppBuild = AppEnv;
 
 /** Channels recorded in a packaged build manifest. */
-export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta' | 'preview'>;
+export type AppChannel = Extract<AppEnv, 'production' | 'beta' | 'preview'>;
 
 /** The app's own directory inside Electron's `userData`. See `AppContext.appDir`. */
 const APP_DIR = 'apack';
@@ -44,8 +38,8 @@ const APP_NAMES: Record<AppEnv, string> = {
 };
 
 export interface AppContext {
-  /** Which build this app is: its identity, where `userDataDir` is its storage */
-  build: AppBuild;
+  /** Runtime environment; independent of the selected data directory */
+  env: AppEnv;
   /** Electron app name; also the default data dir name. */
   appName: string;
   /**
@@ -98,7 +92,7 @@ function platformDataDir(appName: string): string {
  */
 /**
  * Where an environment's app keeps its data on this machine, whatever `APACK_USER_DATA_DIR` says: the dir a tool
- * means when it names an app (`apack db --data development`), rather than the one a shell happens to point at.
+ * means when it names an app (`apack db --profile development`), rather than the one a shell happens to point at.
  */
 export function appDataDirFor(env: AppEnv): string {
   return platformDataDir(APP_NAMES[env]);
@@ -113,36 +107,22 @@ export function appDataDirFor(env: AppEnv): string {
 export const _appDirOf = (userDataDir: string): string => path.join(userDataDir, APP_DIR);
 
 /**
- * The app's identity and its storage, from one resolver — **a build, and the profile it keeps its data in**.
- *
- * Those are two axes and the word "environment" was doing both jobs: `APP_NAMES[build]` decides the app
- * name, the URL scheme and so Electron's own storage, while the same value decided *where* the data went,
- * as a default a profile overrides. So the word meant identity in one sentence and location in the next,
- * and a reader could not tell which without checking.
- *
- * Named apart now: `build` is the identity, `profile` is the storage. A build keeps its own default
- * storage, which is the fusion kept where it is harmless — a default, stated once, rather than a second
- * meaning the word carries everywhere.
- *
- * **`APACK_ENV` and `APACK_USER_DATA_DIR` stay as they are, and they are a different thing from
- * `--app`.** They are the *handoff*: how a parent process tells a child what it is and where its data is,
- * set by the CLI and by Electron main. `--app`/`APACK_APP` is a *selector* a person types, and
- * collapsing the two would put the choice and the answer under one name — which is the confusion this
- * resolver exists to end.
+ * Resolve runtime identity and storage independently. Explicit inputs override the parent's
+ * APACK_ENV and APACK_USER_DATA_DIR handoffs; omitted storage uses the environment's default.
  */
-export function resolveAppContext(input: { build?: AppBuild; profile?: string } = {}): AppContext {
-  const env = input.build ?? parseAppEnv(process.env.APACK_ENV);
+export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } = {}): AppContext {
+  const env = input.env ?? parseAppEnv(process.env.APACK_ENV);
   if (!env) {
     throw new Error(
-      `App build unknown: pass { build } or set APACK_ENV (${APP_ENVS.join(' | ')}). ` +
+      `App environment unknown: pass { env } or set APACK_ENV (${APP_ENVS.join(' | ')}). ` +
       'Processes spawned by the app receive it automatically.',
     );
   }
   const appName = APP_NAMES[env];
-  const userDataDir = input.profile ?? (process.env.APACK_USER_DATA_DIR || platformDataDir(appName));
+  const userDataDir = input.userDataDir ?? (process.env.APACK_USER_DATA_DIR || platformDataDir(appName));
   const appDir = _appDirOf(userDataDir);
   return {
-    build: env,
+    env,
     appName,
     userDataDir,
     appDir,

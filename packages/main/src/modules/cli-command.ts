@@ -9,8 +9,8 @@ const BIN_DIR = '/usr/local/bin';
 
 /** Packaged channels install alongside production, so their commands get their own names. */
 export function cliCommandName(): string {
-  const build = getAppContext().build;
-  return build === 'beta' ? 'apack-beta' : build === 'preview' ? 'apack-preview' : 'apack';
+  const env = getAppContext().env;
+  return env === 'beta' ? 'apack-beta' : env === 'preview' ? 'apack-preview' : 'apack';
 }
 
 /** Packaged from packages/apack-cli/bin/app-launcher.sh (see electron-builder.mjs). */

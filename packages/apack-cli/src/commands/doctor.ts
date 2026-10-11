@@ -1,17 +1,18 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { connect } from 'node:net';
-import { resolveAppContext, appDataDirFor } from '@apackdev/sdk/env';
+import { resolveAppContext, appDataDirFor, type AppChannel } from '@apackdev/sdk/env';
 import { findRunningApp } from '@apackdev/host/database';
 import { readApiEndpoint } from '@apackdev/host/process-liveness';
 import { API_HOST } from '@apackdev/sdk/utils/pure';
-import { parseReleaseChannel } from '../utils';
-import { validateAppBundle, PRODUCT_NAMES, type AppChannel } from '../app/installed-app';
+import { parseAppChannel } from '../utils';
+import { validateAppBundle } from '../app/installed-app';
+import { PRODUCT_NAMES } from '../app/channels';
 
 export function doctorChannel(args: string[]): AppChannel {
-  const { env, args: rest } = parseReleaseChannel(args);
-  if (rest.length || (env !== 'production' && env !== 'beta' && env !== 'preview')) throw new Error('Usage: apack doctor [--channel production|beta|preview]');
-  return env;
+  const { channel, args: rest } = parseAppChannel(args);
+  if (rest.length) throw new Error('Usage: apack doctor [--channel production|beta|preview]');
+  return channel;
 }
 
 function reachable(port: number): Promise<boolean> {
@@ -32,7 +33,7 @@ export async function inspectApp(channel: AppChannel, options: {
 } = {}): Promise<void> {
   const product = PRODUCT_NAMES[channel];
   const bundle = path.join(options.applications ?? '/Applications', `${product}.app`);
-  const context = resolveAppContext({ build: channel, profile: options.dataDir ?? appDataDirFor(channel) });
+  const context = resolveAppContext({ env: channel, userDataDir: options.dataDir ?? appDataDirFor(channel) });
   let failures = 0;
   const check = async (label: string, run: () => string | Promise<string>) => {
     try { console.log(`  ✓ ${label}: ${await run()}`); }

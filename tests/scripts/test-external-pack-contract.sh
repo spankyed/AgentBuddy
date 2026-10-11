@@ -13,7 +13,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 APACK="$ROOT/node_modules/.bin/apack"
 # Packs depending on a built-in pack (the fixture on default-setup) resolve it from this checkout
-export APACK_APP="$ROOT"
+export APACK_HOST="$ROOT"
 source "$ROOT/tests/scripts/lib/fixture-packs.sh"
 
 for PACK in "${FIXTURE_PACKS[@]}"; do

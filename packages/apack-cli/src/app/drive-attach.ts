@@ -15,7 +15,8 @@ import { createRequire } from 'node:module';
 import type { AttachedSession, AttachedSessionOptions } from '@apackdev/testing';
 import { readSession, touchSession, waitForSession, STARTED_BY_ENV, type DevSession } from '@apackdev/host/dev-session';
 import { holdExclusiveLock, type ExclusiveLock } from '@apackdev/host/exclusive-lock';
-import { checkoutFor } from '../build/checkout-packages.ts';
+import { dataDirInUse } from './profiles';
+import { sourceTarget } from './pack-host';
 
 /** Just the part of `@apackdev/testing` this needs, so a wrong resolve fails on the name rather than later. */
 interface TestingModule {
@@ -58,10 +59,19 @@ export interface AttachableApp {
  * started by something that meant it to be driven. `readSession` already treats a record whose supervisor
  * has gone as absent, so a session file a killed run left behind reads as no app at all.
  */
-export function attachableApp(dataDir: string): AttachableApp | undefined {
+export function attachableApp(dataDir: string, expectedRoot?: string): AttachableApp | undefined {
   const session = readSession(dataDir);
   if (session === undefined) return undefined;
+  verifySessionHost(session, expectedRoot);
   return { session, logPath: session.logPath };
+}
+
+/** A session can be located by profile, but only its recorded checkout establishes ownership. */
+export function verifySessionHost(session: DevSession, expectedRoot?: string): void {
+  const actualRoot = fs.realpathSync(session.host.root);
+  if (expectedRoot && actualRoot !== fs.realpathSync(expectedRoot)) {
+    throw new Error(`The profile is held by another checkout (${session.host.root}); requested ${expectedRoot}. Stop it or choose another profile.`);
+  }
 }
 
 /**
@@ -80,8 +90,7 @@ export function attachableApp(dataDir: string): AttachableApp | undefined {
 export async function spawnDevApp(
   from: string, dataDir: string, profileArgs: readonly string[], scope: 'app' | 'pack' = 'app',
 ): Promise<AttachableApp> {
-  const checkout = scope === 'app' ? checkoutFor(from) : undefined;
-  if (scope === 'app' && !checkout) throw new Error('App automation requires a source checkout. Use npm run dev:drive in the app repository.');
+  const checkout = scope === 'app' ? sourceTarget(from, 'source checkout').root : undefined;
   const command = checkout
     ? ['--conditions=@apackdev/source', path.join(checkout, 'scripts/app-dev.mjs'), 'open']
     : [cliBin(), 'pack', 'dev'];
@@ -133,10 +142,11 @@ const HELD = new Error('another spawn holds this data dir');
 export async function spawnOrAttach(
   from: string, dataDir: string, profileArgs: readonly string[],
   // Seams, because which of the two branches a loser took is the claim and nothing else observes it
-  { spawn, waitFor = waitForSession, scope = 'app' }: {
+  { spawn, waitFor = waitForSession, scope = 'app', expectedRoot }: {
     spawn?: (from: string, dataDir: string, profileArgs: readonly string[]) => Promise<AttachableApp>;
     waitFor?: (dataDir: string) => Promise<DevSession>;
     scope?: 'app' | 'pack';
+    expectedRoot?: string;
   } = {},
 ): Promise<{ app: AttachableApp; state: 'spawned' | 'attached' }> {
   let lock: ExclusiveLock;
@@ -146,12 +156,15 @@ export async function spawnOrAttach(
     if (error !== HELD) throw error;
     // Another question is already starting an app here. What this one wants is an app, not a spawn
     const session = await waitFor(dataDir);
+    verifySessionHost(session, expectedRoot);
     return { app: { session, logPath: session.logPath }, state: 'attached' };
   }
   try {
-    const live = attachableApp(dataDir);
+    const live = attachableApp(dataDir, expectedRoot);
     if (live) return { app: live, state: 'attached' };
+    if (dataDirInUse(dataDir)) throw new Error('An app occupies this profile without a verifiable development session. Close it before spawning.');
     const app = spawn ? await spawn(from, dataDir, profileArgs) : await spawnDevApp(from, dataDir, profileArgs, scope);
+    verifySessionHost(app.session, expectedRoot);
     return { app, state: 'spawned' };
   } finally {
     lock.release();

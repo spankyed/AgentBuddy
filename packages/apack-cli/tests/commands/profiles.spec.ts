@@ -14,7 +14,7 @@ import { create, environmentRows, list, pidHolding, remove, stop, trim } from '.
 import { chromiumHolding, chromiumLockHeld, dataDirInUse, listProfiles, openProfile, REGENERABLE_DIRS } from '../../src/app/profiles';
 import { publishSession } from '@apackdev/host/dev-session';
 import { appLockFile } from '@apackdev/host/database';
-import type { CliDirs } from '../../src/app/app-target';
+import type { CliDirs } from '../../src/app/pack-host';
 
 let tmp: string;
 let dirs: CliDirs;
@@ -91,7 +91,7 @@ describe('a live app on an environment row', () => {
     fs.mkdirSync(appDir, { recursive: true });
     fs.writeFileSync(path.join(appDir, 'host.json'), JSON.stringify({ version: '0.3.14' }));
     fs.writeFileSync(path.join(appDir, 'api-port'), JSON.stringify({ port: 3001, pid }));
-    publishSession({ debugPort: 51873, dataDir: dir, supervisorPid: pid, startedBy });
+    publishSession({ host: { kind: 'source', root: process.cwd() }, env: 'development', debugPort: 51873, dataDir: dir, supervisorPid: pid, startedBy });
   };
 
   it.each(['production', 'beta', 'preview', 'development', 'test'] as const)('says so on the %s row', (env) => {
@@ -324,7 +324,7 @@ describe('trim', () => {
     expect(fs.existsSync(path.join(probe.dir, 'Code Cache'))).toBe(false);
 
     expect(() => trim(dirs, ['nope'], { resolve, bytes: () => 1024 }))
-      .toThrow(/neither a build nor a profile.*production.*probe/s);
+      .toThrow(/not a built-in or custom profile.*production.*probe/s);
   });
 
   it('totals what it freed', () => {
@@ -350,7 +350,7 @@ describe('stop', () => {
   const occupy = (env: AppEnv, { session, lock }: { session?: number; lock?: number }) => {
     const dir = resolve(env);
     fs.mkdirSync(_appDirOf(dir), { recursive: true });
-    if (session !== undefined) publishSession({ debugPort: 1, dataDir: dir, supervisorPid: session, startedBy: 'dev' });
+    if (session !== undefined) publishSession({ host: { kind: 'source', root: process.cwd() }, env: 'development', debugPort: 1, dataDir: dir, supervisorPid: session, startedBy: 'dev' });
     // Through `appLockFile` rather than a join: it is under the app dir, and a spec that joined its own
     // path would be the second opinion `dataDirInUse`'s header records the cost of
     if (lock !== undefined) fs.writeFileSync(appLockFile(dir), JSON.stringify({ pid: lock, machine: os.hostname() }));
@@ -445,8 +445,8 @@ describe('stop', () => {
     }
   });
 
-  it('refuses a name that is neither a build nor a profile', async () => {
-    await expect(stop(dirs, ['nope'], false, { resolve })).rejects.toThrow(/neither a build nor a profile/);
+  it('refuses a name that is not a built-in or custom profile', async () => {
+    await expect(stop(dirs, ['nope'], false, { resolve })).rejects.toThrow(/not a built-in or custom profile/);
   });
 });
 

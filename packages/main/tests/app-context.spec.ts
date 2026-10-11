@@ -40,7 +40,7 @@ describe('the app context', () => {
     app.isPackaged = true;
     vi.spyOn(app, 'getAppPath').mockReturnValue(dir);
     try {
-      expect(getAppContext().build).toBe('preview');
+      expect(getAppContext().env).toBe('preview');
       expect(getAppContext().appName).toBe('apack-preview');
     } finally {
       app.isPackaged = false;

@@ -6,7 +6,7 @@ const { spawn } = vi.hoisted(() => ({ spawn: vi.fn(() => ({ unref: vi.fn(), once
 vi.mock('node:child_process', async importOriginal => ({ ...await importOriginal<typeof import('node:child_process')>(), spawn }));
 vi.mock('@apackdev/host/dev-session', async importOriginal => ({
   ...await importOriginal<typeof import('@apackdev/host/dev-session')>(),
-  waitForSession: async (dataDir: string) => ({ dataDir, debugPort: 1234, supervisorPid: process.pid, startedBy: 'drive' }),
+  waitForSession: async (dataDir: string) => ({ host: { kind: 'source', root: process.cwd() }, env: 'development', dataDir, debugPort: 1234, supervisorPid: process.pid, startedBy: 'drive' }),
 }));
 import { spawnDevApp } from '../../src/app/drive-attach';
 
@@ -23,7 +23,7 @@ it('spawns app development through the repository entry point', async () => {
   const checkout = path.resolve(import.meta.dirname, '../../../..');
   await spawnDevApp(checkout, dataDir, ['--profile', 'review'], 'app');
   expect(spawn).toHaveBeenCalledWith(process.execPath, [
-    '--conditions=@apackdev/source', path.join(checkout, 'scripts/app-dev.mjs'), 'open', '--profile', 'review',
+    '--conditions=@apackdev/source', path.join(fs.realpathSync(checkout), 'scripts/app-dev.mjs'), 'open', '--profile', 'review',
   ], expect.objectContaining({ cwd: checkout, detached: true }));
 });
 

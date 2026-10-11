@@ -330,19 +330,19 @@ Things worth knowing before changing it:
 cd /path/to/my-pack
 apack pack init-tests    # playwright.config.ts + tests/e2e/smoke.spec.ts; adds @apackdev/testing + @playwright/test
 npm install
-apack pack test          # a Beta matching your hostVersion, or --app <path>
+apack pack test          # a Beta matching your hostVersion, or --host <path>
 ```
 
-No monorepo checkout, `APACK_ROOT`, symlinks or PATH changes are needed.
+No monorepo checkout, `APACK_HOST_ROOT`, symlinks or PATH changes are needed.
 
 ## Which app the tests run in
 
 `apack pack test` (source: `packages/apack-cli/src/commands/test.ts`, `src/app/`) resolves the app, in order:
 
-1. `--app <path>` — a local apack checkout (installed and built)
-2. `--channel beta` — the newest apack Beta release (from `spankyed/apack` releases) whose version satisfies the pack's `hostVersion`. The zip is verified against its published `.sha256` and cached per version in the CLI cache dir (`~/Library/Caches/apack-cli/apps/beta/<version>` on macOS). macOS arm64 only.
-3. `APACK_CHANNEL=beta` (the env form of `--channel beta`, for CI), then `APACK_APP` — a local checkout
-4. The newest Beta the pack's `hostVersion` accepts, as `--channel beta` would
+1. `--host <path>` — a local apack checkout (installed and built)
+2. `--host beta` — the newest apack Beta release (from `spankyed/apack` releases) whose version satisfies the pack's `hostVersion`. The zip is verified against its published `.sha256` and cached per version in the CLI cache dir (`~/Library/Caches/apack-cli/apps/beta/<version>` on macOS). macOS arm64 only.
+3. `APACK_HOST=beta` (the env form of `--host beta`, for CI), then `APACK_HOST` — a local checkout
+4. The newest Beta the pack's `hostVersion` accepts, as `--host beta` would
 
 **It reads no machine state and never asks**, which is what makes a test run mean the same thing on a
 fresh machine as on one you have been developing on. It also derives nothing from where the pack sits,
@@ -350,7 +350,7 @@ where `apack pack dev` and `npm run dev:drive --` do (the checkout behind the pa
 
 It then runs the Playwright CLI that the pack's `@apackdev/testing` resolves (never `npx playwright`), so the runner and the fixture share one `@playwright/test`. It passes the fixture:
 
-- `APACK_ROOT` (checkout) or `APACK_APP_EXECUTABLE` (packaged app, e.g. `apack Beta.app/Contents/MacOS/apack Beta`)
+- `APACK_HOST_ROOT` (checkout) or `APACK_HOST_EXECUTABLE` (packaged app, e.g. `apack Beta.app/Contents/MacOS/apack Beta`)
 - `PACK_DIR` — the pack directory
 - `APACK_CLI` — its own bin, which the fixture uses to build the pack
 - `NODE_OPTIONS` without `--conditions=@apackdev/source`: the runner, the fixture and the app it launches all load the `@apackdev` packages' built `dist`, as a pack does. `apack pack test` first runs the checkout's `packages:ensure` when the pack's packages are a checkout's (`apack-cli/src/build/checkout-packages.ts`), so that `dist` is the checkout's current sources; the Playwright and vitest entries check it again themselves for a run started directly.
@@ -359,7 +359,7 @@ Every non-Playwright arg is forwarded (`apack pack test -g "renders"`, `apack pa
 
 ## How the fixture finds apack
 
-The fixture launches, in priority order: `createTest({ appExecutable })`, `createTest({ appRoot })`, `APACK_APP_EXECUTABLE`, `APACK_ROOT`, then the monorepo enclosing `@apackdev/testing` (auto-detected by walking up to `packages/entry-point.mjs`). A checkout is validated first (`packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, `packages/renderer/dist`) so a stale or unbuilt checkout gets a clear list of what's missing.
+The fixture launches, in priority order: `createTest({ appExecutable })`, `createTest({ appRoot })`, `APACK_HOST_EXECUTABLE`, `APACK_HOST_ROOT`, then the monorepo enclosing `@apackdev/testing` (auto-detected by walking up to `packages/entry-point.mjs`). A checkout is validated first (`packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, `packages/renderer/dist`) so a stale or unbuilt checkout gets a clear list of what's missing.
 
 ## Fixture lifecycle
 
@@ -453,10 +453,10 @@ Screenshot output location depends on context:
 
 | Variable | Description |
 |----------|-------------|
-| `APACK_ROOT` | A built apack checkout to launch. Set by `apack pack test` for checkouts; auto-detected inside the monorepo. |
-| `APACK_APP_EXECUTABLE` | A packaged apack executable to launch. Set by `apack pack test --channel beta`. |
+| `APACK_HOST_ROOT` | A built apack checkout to launch. Set by `apack pack test` for checkouts; auto-detected inside the monorepo. |
+| `APACK_HOST_EXECUTABLE` | A packaged apack executable to launch. Set by `apack pack test --host beta`. |
 | `APACK_CLI` | The apack bin that builds the pack. Set by `apack pack test`. |
-| `APACK_CHANNEL` | `beta`: `apack pack test` and `apack pack build` use the newest matching apack Beta (CI; the scaffolded release workflow sets it). |
+| `APACK_HOST` | `beta`: `apack pack test` and `apack pack build` use the newest matching apack Beta (CI; the scaffolded release workflow sets it). |
 | `PACK_DIR` | Path to an external pack directory. Triggers build/install and plugin waiting. |
 | `PACK_ARCHIVE` | A packed `<id>-<version>.tgz` to install instead of building `PACK_DIR`, so the run tests what a release ships. Refused when it is older than the pack's `dist/`: skipping the rebuild is for testing the shipped artifact, not for testing a stale one. |
 | `E2E_KEEP_DATA` | Set to `1` to keep each worker's temp data dir for debugging. |
@@ -471,8 +471,8 @@ Screenshot output location depends on context:
 
 ```bash
 apack pack test                          # a Beta matching the pack's hostVersion
-apack pack test --app ~/apack  # a local checkout
-apack pack test --channel beta               # the newest matching apack Beta
+apack pack test --host ~/apack  # a local checkout
+apack pack test --host beta               # the newest matching apack Beta
 apack pack test -g "renders"             # Playwright args are forwarded
 ```
 
@@ -487,7 +487,7 @@ PACK_DIR=/path/to/my-pack npm run test:e2e -- tests/e2e/scratch
 
 - **Electron binary resolution**: for a checkout the fixture uses `createRequire(appRoot + '/package.json')` to resolve `electron` from its `node_modules`; a packaged app is its own executable. Packs don't need `electron` installed.
 - **App root validation**: `validateAppRoot()` checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, and `packages/renderer/dist` before attempting to launch. Missing files produce a clear error listing exactly what's needed, rather than an opaque Electron crash.
-- **Data dir alignment**: The fixture installs into `resolveAppContext({ build: 'test', profile: userDataDir }).packsDir` for the worker's temp dir and passes that dir as `APACK_USER_DATA_DIR`. The Electron app launched with `PLAYWRIGHT_TEST=true` infers the `test` environment in `packages/main/src/app-context.ts`, which sets the app name and `userData` from the same resolver (`@apackdev/sdk/env`) and passes `APACK_ENV` / `APACK_USER_DATA_DIR` to the API process, so both sides always agree.
+- **Data dir alignment**: The fixture installs into `resolveAppContext({ env: 'test', userDataDir: userDataDir }).packsDir` for the worker's temp dir and passes that dir as `APACK_USER_DATA_DIR`. The Electron app launched with `PLAYWRIGHT_TEST=true` infers the `test` environment in `packages/main/src/app-context.ts`, which sets the app name and `userData` from the same resolver (`@apackdev/sdk/env`) and passes `APACK_ENV` / `APACK_USER_DATA_DIR` to the API process, so both sides always agree.
 - **Pinned viewport**: the fixture sets the main window viewport to 1400×900. The window's default size depends on whether main was built in dev or production mode, so without this, layout and `toHaveScreenshot` baselines differ between `npm run dev` builds and `npm run build:runtime`/CI.
 - **Pack manifest caching**: `getPackManifest()` reads and parses `apack.json` once per process, cached at module scope. Plugin IDs are the keys of `features` entries with a `plugin` (the manifest's `plugin` has no `id`).
 - **Dev server marker**: `apack pack dev` writes `{devUserDataDir}/pack-dev-servers/{packId}.json` containing `{ port, pid }` for the dev app's HMR. The E2E fixture ignores it: tests always run a fresh build in an isolated data dir.

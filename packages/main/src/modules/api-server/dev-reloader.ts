@@ -73,7 +73,7 @@ export function coalescing(work: () => Promise<void>, delayMs: number = DEBOUNCE
 export function createDevApiReloader(apiServer: Pick<ApiServer, 'reloadApiServer'>): AppModule {
   return {
     enable() {
-      if (!devReloadArmed(getAppContext().build, process.env)) return;
+      if (!devReloadArmed(getAppContext().env, process.env)) return;
 
       const paths = getApiPaths();
       // `serverFile` is relative to `apiPath`, as `launchApiServer` spawns it

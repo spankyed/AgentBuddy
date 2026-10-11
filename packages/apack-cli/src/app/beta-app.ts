@@ -72,7 +72,7 @@ export interface CachedBeta {
 /**
  * Every downloaded build, newest tag first — what resolution chooses from and what `apack cache clean`
  * reclaims. Enumerating is this module's business because it owns the layout; *which* build a pack's range
- * accepts is `cachedBetaApp`'s (`app-target.ts`), which reads each app's own version to answer it.
+ * accepts is `cachedBetaApp`'s (`pack-host.ts`), which reads each app's own version to answer it.
  *
  * A version appears here only once fully extracted: `ensureBetaApp` stages under a dot-prefixed name and
  * renames it into place, and `semver.valid` rejects the staging name. `betaDownloadLeftovers` is the other
@@ -99,7 +99,7 @@ export function betaDownloadLeftovers(cacheDir: string): string[] {
  * The newest apack Beta build that satisfies the pack's hostVersion, downloaded once per
  * version into the cache and verified against its published sha256.
  *
- * **The downloader, not the cache policy.** Resolution asks `cachedBetaApp` (`app-target.ts`) first and
+ * **The downloader, not the cache policy.** Resolution asks `cachedBetaApp` (`pack-host.ts`) first and
  * reaches this only when no downloaded build satisfies the range, so listing releases here is the answer to
  * "which build do I fetch". The `existsSync` below is narrower than it looks: it keeps two runs racing one
  * version from downloading it twice.
@@ -107,13 +107,13 @@ export function betaDownloadLeftovers(cacheDir: string): string[] {
 export async function ensureBetaApp(options: BetaAppOptions): Promise<PackagedApp> {
   const { hostVersion, cacheDir, log = console.log } = options;
   if (process.platform !== 'darwin' || process.arch !== 'arm64') {
-    throw new Error('apack Beta builds are published for macOS on Apple Silicon only. Point `apack pack test` at a local apack checkout with --app <path>.');
+    throw new Error('apack Beta builds are published for macOS on Apple Silicon only. Point `apack pack test` at a local apack checkout with --host <path>.');
   }
 
   const releases = await (options.listReleases ?? listAppReleases)();
   const release = pickBetaRelease(releases, hostVersion);
   if (!release) {
-    throw new Error(`No apack Beta release satisfies this pack's hostVersion (${hostVersion}). Use --app <path> to test against a local checkout.`);
+    throw new Error(`No apack Beta release satisfies this pack's hostVersion (${hostVersion}). Use --host <path> to test against a local checkout.`);
   }
 
   const appDir = path.join(betaCacheDir(cacheDir), release.version);

@@ -1,4 +1,6 @@
 import {getNodeMajorVersion} from '@app/electron-versions';
+import {realpathSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
 import {spawn} from 'child_process';
 import electronPath from 'electron';
 import {defineConfig, defaultServerConditions} from 'vite';
@@ -116,7 +118,7 @@ function handleHotReload() {
        */
       const { _inferElectronAppEnv, resolveAppContext } = await import('@apackdev/sdk/env');
       const { debugPortArgsFor, publishSession, readDevToolsPort } = await import('@apackdev/host/dev-session');
-      const build = _inferElectronAppEnv({
+      const env = _inferElectronAppEnv({
         playwrightTest: process.env.PLAYWRIGHT_TEST === 'true',
         isPackaged: false,
         channel: process.env.APACK_ENV ?? '',
@@ -124,7 +126,7 @@ function handleHotReload() {
       });
 
       // The same gate `apack pack dev` passes, through the same function: development only, and nothing else
-      electronArgs.push(...debugPortArgsFor(build));
+      electronArgs.push(...debugPortArgsFor(env));
 
       // Before the spawn, so the port file below is this app's rather than one a previous run left in the
       // data dir — Chromium's `DevToolsActivePort` outlives the browser that wrote it
@@ -152,10 +154,10 @@ function handleHotReload() {
         try {
           // An app with no port is not attachable, and a record with a hole in it is not the honest answer:
           // the file means attachable, so a beta or test run publishes none
-          if (debugPortArgsFor(build).length === 0) return;
+          if (debugPortArgsFor(env).length === 0) return;
           // The build this spawn resolves, not a guess: asking with no argument threw here, which published
           // nothing and reported `not attachable` on a run that was otherwise perfectly fine
-          const { userDataDir } = resolveAppContext({ build });
+          const { userDataDir } = resolveAppContext({ env });
           const debugPort = await readDevToolsPort(userDataDir, { after: launchedAt });
           if (spawned !== electronApp) return;  // a rebuild replaced it while the port was being waited for
           // **No fallback to this process's pid.** The field means "the process to signal to end this", and
@@ -165,6 +167,8 @@ function handleHotReload() {
           // throws rather than publishing a record that names the wrong process.
           if (spawned.pid === undefined) throw new Error('the app was spawned without a pid');
           const unpublish = publishSession({
+            host: {kind: 'source', root: realpathSync(fileURLToPath(new URL('../../', import.meta.url)))},
+            env: 'development',
             debugPort, dataDir: userDataDir, supervisorPid: spawned.pid, startedBy: 'dev',
           });
           spawned.addListener('exit', unpublish);

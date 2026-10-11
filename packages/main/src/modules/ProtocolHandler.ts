@@ -6,8 +6,8 @@ import {getAppContext} from '../app-context.ts';
 
 class ProtocolHandler implements AppModule {
   enable({app}: ModuleContext): void {
-    const {build, urlScheme} = getAppContext();
-    if (build !== 'test') app.setAsDefaultProtocolClient(urlScheme);
+    const {env, urlScheme} = getAppContext();
+    if (env !== 'test') app.setAsDefaultProtocolClient(urlScheme);
 
     // macOS: URL opened while app is running
     app.on('open-url', (event, url) => {

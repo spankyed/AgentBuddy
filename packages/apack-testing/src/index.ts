@@ -76,11 +76,13 @@ function packagedApp(executable: string): AppLaunch {
 }
 
 function resolveApp(options: CreateTestOptions): AppLaunch {
+  if (options.appExecutable && options.appRoot) throw new Error('Choose one test host identity.');
+  if (process.env.APACK_HOST_ROOT && process.env.APACK_HOST_EXECUTABLE) throw new Error('Choose one resolved host identity.');
   if (options.appExecutable) return packagedApp(options.appExecutable);
   if (options.appRoot) return sourceApp(options.appRoot);
   // Set by `apack pack test` for a downloaded app build
-  if (process.env.APACK_APP_EXECUTABLE) return packagedApp(process.env.APACK_APP_EXECUTABLE);
-  if (process.env.APACK_ROOT) return sourceApp(process.env.APACK_ROOT);
+  if (process.env.APACK_HOST_EXECUTABLE) return packagedApp(process.env.APACK_HOST_EXECUTABLE);
+  if (process.env.APACK_HOST_ROOT) return sourceApp(process.env.APACK_HOST_ROOT);
 
   // Auto-detect: walk up from this package looking for packages/entry-point.mjs (inside the monorepo)
   let dir = path.resolve(import.meta.dirname, '..', '..');
@@ -93,8 +95,8 @@ function resolveApp(options: CreateTestOptions): AppLaunch {
 
   throw new Error(
     'Could not find an apack app to test against. Run the tests with `apack pack test`, which ' +
-    'resolves one (--app <path>, --channel beta, or the apack checkout behind your pack), or set\n' +
-    'APACK_ROOT to a built apack checkout.',
+    'resolves one (--host <path|beta>, or a release matching hostVersion), or set\n' +
+    'APACK_HOST_ROOT to a built apack checkout.',
   );
 }
 
@@ -183,7 +185,7 @@ const E2E_VIEWPORT = { width: 1400, height: 900 };
 /** The pack's recorded install or apply error in the test app's installed packs, if any. */
 function readPackLastError(packId: string, userDataDir: string): string | undefined {
   try {
-    const registry = JSON.parse(fs.readFileSync(resolveAppContext({ build: 'test', profile: userDataDir }).installedPacksFile, 'utf-8'));
+    const registry = JSON.parse(fs.readFileSync(resolveAppContext({ env: 'test', userDataDir }).installedPacksFile, 'utf-8'));
     return registry.packs?.find((p: { id: string }) => p.id === packId)?.lastError;
   } catch {
     return undefined;
@@ -529,7 +531,7 @@ export function createTest(options: CreateTestOptions = {}) {
             }
           }
           // Install through the same bundle path users get (stage → verify → place)
-          const { packsDir } = resolveAppContext({ build: 'test', profile: userDataDir });
+          const { packsDir } = resolveAppContext({ env: 'test', userDataDir });
           console.log(`[pack] Installing ${manifest.id} from ${archive ?? packDir} into an isolated test data dir...`);
           // `hostVersion` is the launched app's own (its package.json), so this is that app's answer rather than a
           // second opinion. No `packFormat`: whether this app can read the pack's build is the app's to decide, and
@@ -690,7 +692,7 @@ export function createTest(options: CreateTestOptions = {}) {
   return { test, expect: base.expect };
 }
 
-// Direct exports — the app comes from `apack pack test` (APACK_APP_EXECUTABLE / APACK_ROOT) or the enclosing monorepo
+// Direct exports — the app comes from `apack pack test` (APACK_HOST_EXECUTABLE / APACK_HOST_ROOT) or the enclosing monorepo
 const _default = createTest();
 export const test = _default.test;
 

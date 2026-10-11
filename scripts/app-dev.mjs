@@ -1,16 +1,24 @@
 // Repository-only entry point; load shared CLI internals through their TypeScript runtime.
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { tsImport } from 'tsx/esm/api';
 
 const [operation, ...args] = process.argv.slice(2);
+const repositoryRoot = realpathSync(fileURLToPath(new URL('..', import.meta.url)));
+process.chdir(repositoryRoot);
 try {
+  if (!args.includes('--help') && !args.includes('-h') && args.some(arg => /^--(?:app|host|build|channel)(?:=|$)/.test(arg))) {
+    throw new Error('Repository scripts always use this checkout. Run the other checkout’s npm scripts to develop it.');
+  }
+  for (const key of ['APACK_HOST', 'APACK_APP', 'APACK_BUILD', 'APACK_CHANNEL', 'APACK_HOST_ROOT', 'APACK_HOST_EXECUTABLE']) delete process.env[key];
   if (operation === 'open') {
     if (args.includes('--help') || args.includes('-h')) {
       console.log(`App contributor tool: run from the root of the apack source monorepo.
 
-Usage: npm run dev:open -- [--app <checkout>] [--profile <name> | --fresh [--rm]] [--with-secrets]
+Usage: npm run dev:open -- [--profile <name> | --fresh [--rm]] [--with-secrets]
 
 Launch the built source app and hold its development session until Ctrl-C.
-Defaults to this checkout; --app selects another apack source checkout.
+Always uses the apack checkout containing this script.
 Use npm run dev for source watchers and HMR.
 
 Pack authors: run apack pack dev from your pack repository.`);

@@ -24,7 +24,7 @@ import { readHostInfo } from '@apackdev/host/packs';
 import { readSession } from '@apackdev/host/dev-session';
 import { findRunningApp } from '@apackdev/host/database';
 import { errorMessage } from '@apackdev/sdk/utils/pure';
-import { cliDirs, type CliDirs } from '../app/app-target';
+import { cliDirs, type CliDirs } from '../app/pack-host';
 import {
   REGENERABLE_DIRS, chromiumLockHeld, dirBytes, dataDirInUse, profileNameProblem, listProfiles, mintProfile, openProfile,
   chromiumHolding, endAppHolding, removeProfile, renameProfile, size, trimDataDir, type ListedProfile,
@@ -35,8 +35,8 @@ Usage: apack profiles [--sizes] [--all]
        apack profiles new [name]
        apack profiles rename <from> <to>
        apack profiles rm <name>... | --leaked
-       apack profiles trim [<build> | <name>]...
-       apack profiles stop <build> | <name> | --all
+       apack profiles trim [<name>...]
+       apack profiles stop <name> | --all
 
 List every apack data dir on this machine: the environments an app of each channel uses, and the
 profiles you created. Works outside a pack — a data dir belongs to you rather than to any pack.
@@ -210,10 +210,10 @@ export function remove(dirs: CliDirs, names: string[], leaked: boolean): void {
 }
 
 /**
- * The data dirs a name stands for: a build's, a profile's, or every one there is.
+ * The data directories for built-in and custom profile names, or all known profiles.
  *
  * **One lookup for both kinds, which only works because the two cannot collide.** A profile may not be
- * named after a build (`profileNameProblem`), so a name is unambiguously one or the other and nobody has to
+ * named after a built-in profile (`profileNameProblem`), so a name is unambiguously one or the other and nobody has to
  * say which with a flag. A name that is neither lists what there is rather than resolving to a path the
  * caller never typed.
  */
@@ -232,7 +232,7 @@ function dataDirsNamed(
     const found = profiles.find((profile) => profile.name === name);
     if (found) return { label: found.name, dir: found.dir };
     const known = [...APP_ENVS, ...profiles.map((profile) => profile.name)].join(', ');
-    throw new Error(`"${name}" is neither a build nor a profile. There is: ${known}.`);
+    throw new Error(`"${name}" is not a built-in or custom profile. There is: ${known}.`);
   });
 }
 
@@ -321,9 +321,9 @@ export function pidHolding(dir: string): number | undefined {
   const session = readSession(dir);
   if (session !== undefined) return session.supervisorPid;
   // Through the resolver rather than a join of its own, for `dataDirInUse`'s reason: the API writes that
-  // file and a second opinion about where it is becomes a refusal that never fires. The build is immaterial
+  // file and a second opinion about where it is becomes a refusal that never fires. The runtime environment is immaterial
   // — every path in the context is joined onto the dir it is given
-  const { apiPortFile } = resolveAppContext({ build: 'development', profile: dir });
+  const { apiPortFile } = resolveAppContext({ env: 'development', userDataDir: dir });
   // Last, the browser's own lock: an app whose session, app lock and port file have all gone is still one
   return findRunningApp({ userDataDir: dir, apiPortFile })?.pid ?? chromiumHolding(dir);
 }
@@ -375,7 +375,7 @@ export async function profiles(args: string[]): Promise<void> {
     case 'stop': {
       const all = flags.includes('--all');
       if (!all && rest.length === 0) {
-        throw new Error('apack profiles stop takes a build or a profile name, or --all for every app running.');
+        throw new Error('apack profiles stop takes a profile name, or --all for every app running.');
       }
       await stop(dirs, rest, all);
       return;

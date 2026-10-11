@@ -87,19 +87,19 @@ npm install --silent --prefer-offline --no-audit --no-fund
 
 step "Name the checkout the build resolves a shipped pack through"
 # `apack pack build` reads a dependency on a shipped pack out of an app's `packages/` (fetch-deps'
-# `configuredAppPackagesDir`), so something has to name an app before step 2 adds that dependency.
+# `configuredHostPackagesDir`), so something has to name an app before step 2 adds that dependency.
 #
-# **APACK_APP, and only for the commands that build.** That function derives the apack checkout
+# **APACK_HOST, and only for the commands that build.** That function derives the apack checkout
 # *behind the pack* when nothing names an app — and this pack is deliberately outside any checkout,
 # installing the packages from packed tarballs, which is the population this script exists to represent.
 # So the derivation correctly finds nothing here and the checkout has to be named. It used to be named by
 # writing the first-run prompt's config file by hand; there is no prompt and no config file now.
 #
-# Per-command rather than exported, so step 8 still means something: `apack pack test` reads APACK_APP like
+# Per-command rather than exported, so step 8 still means something: `apack pack test` reads APACK_HOST like
 # any other caller, and exporting it would hand that step a build without its asking. Left unset, step 8 has
 # no build at all but the one it names on the command line — which is what makes it a check of hermeticity
 # rather than a restatement of it.
-BUILD_ENV=(env "APACK_APP=$ROOT")
+BUILD_ENV=(env "APACK_HOST=$ROOT")
 
 step "2. A flow using keepAlive from default-setup"
 node -e '

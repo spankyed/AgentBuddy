@@ -3,18 +3,17 @@ import { refusePackRuleViolations } from '../build/pack-rules.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { appLabel, parseAppFlags, resolvePinnedApp, type AppTarget } from '../app/app-target';
+import { hostLabel, parseHostFlags, resolvePackHost, setHostHandoff, type PackHost } from '../app/pack-host';
 import { resolvePlaywrightCli } from '../app/playwright';
 import { withoutSourceCondition } from '@apackdev/host/build/source-resolution';
 import { cliBin, findPackRoot, readManifest, resolveVitestCli } from '../utils';
 import { VITEST_CONFIG_FILES } from './init.ts';
 
-export const TEST_USAGE = `Usage: apack pack test [--app <path> | --channel beta] [--release] [--prebuilt] [playwright args...]
+export const TEST_USAGE = `Usage: apack pack test [--host <path|beta>] [--release] [--prebuilt] [playwright args...]
        apack pack test --contract [vitest args...]
 
-Runs the pack's Playwright tests in isolated test data. --app selects a checkout or .app bundle;
---channel beta selects a cached/downloaded host satisfying hostVersion. APACK_APP and
-APACK_CHANNEL provide the corresponding environment selectors. With none, resolve a beta
+Runs the pack's Playwright tests in isolated test data. --host selects a checkout or .app bundle;
+--host beta selects a cached/downloaded host satisfying hostVersion. APACK_HOST supplies the default host selection. With none, resolve a beta
 from hostVersion. No checkout is implicitly derived for tests.
 
 --prebuilt installs the build already in dist/ instead of making a new one, for a caller that built the
@@ -32,7 +31,7 @@ output, generated types and the harness. Nothing to download, nothing to build b
  * the @apackdev/source condition only when @apackdev/testing is a checkout's source.
  */
 export function fixtureEnv(
-  app: AppTarget,
+  app: PackHost,
   packDir: string | undefined,
   base: NodeJS.ProcessEnv,
   options: { release?: boolean; prebuilt?: boolean; keepSourceCondition?: boolean } = {},
@@ -47,15 +46,8 @@ export function fixtureEnv(
   const nodeOptions = options.keepSourceCondition === true ? base.NODE_OPTIONS : withoutSourceCondition(base.NODE_OPTIONS);
   if (nodeOptions) env.NODE_OPTIONS = nodeOptions;
   else delete env.NODE_OPTIONS;
-  delete env.APACK_ROOT;
-  // ELECTRON_RUN_AS_NODE (app-bundled launcher) stays: the runner and its workers run on
-  // process.execPath. The fixture drops it for the app it launches (appLaunchEnv).
-  delete env.APACK_APP_EXECUTABLE;
-  // APACK_APP as well as the executable: the fixture builds the pack, and resolving its dependencies
-  // on built-in packs reads the app choice, not the launch target. Without it a `--channel beta` run
-  // resolves against the checkout behind the pack, or finds nothing at all in CI.
-  delete env.APACK_APP;
-  delete env.APACK_CHANNEL;
+  // The runner inherits Node mode; the fixture clears it for Electron.
+  setHostHandoff(app, env);
   // Where the app's data goes, and where its screenshots and reports land, is this run's to decide and
   // never the shell's. All three are read straight from the environment by the fixture, because the `test`
   // a spec imports is built at module scope and no option can reach it — so an exported E2E_DATA_DIR would
@@ -64,11 +56,6 @@ export function fixtureEnv(
   delete env.E2E_DATA_DIR;
   delete env.E2E_SCREENSHOT_DIR;
   delete env.E2E_REPORT_DIR;
-  if (app.kind === 'source') { env.APACK_ROOT = app.root; env.APACK_APP = app.root; }
-  else {
-    env.APACK_APP_EXECUTABLE = app.executable;
-    env.APACK_APP = path.dirname(path.dirname(path.dirname(app.executable)));
-  }
   // Cleared when there is none, as APACK_PACK_RELEASE below is: `apack pack test` runs the pack it is in,
   // so an exported PACK_DIR in a directory that holds no manifest would have it build and install a
   // pack the caller never named. `tests/scripts/test-packaged-authoring.sh` used to `unset` it by hand
@@ -113,7 +100,7 @@ export async function contractTest(cwd: string, args: string[], run: ContractRun
   // follows, and the reason a checkout's own condition must not reach this run
   // **This inherits the environment where `fixtureEnv` scrubs it, and that is deliberate.** No app starts
   // here, so there is no app to pin — and `tests/scripts/test-external-pack-contract.sh` exports
-  // `APACK_ROOT` precisely so the pack's build resolves this checkout. Scrubbing it the way the fixture
+  // `APACK_HOST_ROOT` precisely so the pack's build resolves this checkout. Scrubbing it the way the fixture
   // path does would break that step. Nothing on this path reads `E2E_DATA_DIR`, `E2E_SCREENSHOT_DIR` or
   // `PACK_DIR`, which is why the hermeticity those get in `fixtureEnv` is not needed here.
   const env: NodeJS.ProcessEnv = { ...process.env };
@@ -133,6 +120,8 @@ export async function test(args: string[], run?: ContractRunner): Promise<void> 
   }
   const cwd = findPackRoot(process.cwd());
 
+  if (args.some(arg => /^--(?:profile|fresh|rm|with-secrets|data-dir)(?:=|$)/.test(arg))) throw new Error('Pack tests always use disposable state; profile and secret-copy flags are unsupported.');
+  if (args.includes('--contract') && args.some(arg => /^--(?:host|app|channel|build)(?:=|$)/.test(arg))) throw new Error('Contract tests launch no app; executable selection is unsupported.');
   if (args.includes('--contract')) return contractTest(cwd, args.filter((arg) => arg !== '--contract'), run);
 
   if (!fs.existsSync(path.join(cwd, 'playwright.config.ts'))) {
@@ -141,15 +130,15 @@ export async function test(args: string[], run?: ContractRunner): Promise<void> 
 
   const manifest = readManifest(cwd);
 
-  const flags = parseAppFlags(args);
+  const flags = parseHostFlags(args);
   const playwrightCli = resolvePlaywrightCli(cwd);
-  const app = await resolvePinnedApp({ flags, hostVersion: manifest.hostVersion ?? '*' });
+  const app = await resolvePackHost({ policy: 'test', flags, hostVersion: manifest.hostVersion ?? '*' });
 
   refusePackRuleViolations(cwd, TEST_DIRS);
   // The harness bundle this run loads is built from the checkout's source, so bring it up to date first
   ensureCheckoutPackages(cwd);
 
-  console.log(`Testing in ${appLabel(app)}`);
+  console.log(`Testing in ${hostLabel(app)}`);
   const result = spawnSync(process.execPath, [playwrightCli, 'test', ...flags.args], {
     cwd,
     env: fixtureEnv(app, cwd, process.env, { release: flags.release, prebuilt: flags.prebuilt }),

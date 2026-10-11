@@ -2,41 +2,56 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import { parseManifest, type PackManifest } from '@apackdev/sdk/build';
-import { APP_ENVS, parseAppEnv, appDataDirFor, resolveAppContext, type AppEnv } from '@apackdev/sdk/env';
+import { cliDirs } from './app/pack-host';
+import { resolveStoredProfile } from './app/profiles';
+import { APP_ENVS, parseAppEnv, resolveAppContext, type AppEnv, type AppChannel } from '@apackdev/sdk/env';
 
 /** Data commands may default to the bundled CLI's channel; installed-app commands select production explicitly. */
-export const defaultDataBuild = (): AppEnv => parseAppEnv(process.env.APACK_CLI_CHANNEL) ?? 'production';
+export const defaultDataEnv = (): AppEnv => parseAppEnv(process.env.APACK_CLI_CHANNEL) ?? 'production';
 
-/** Parse one explicit target. Repeated or conflicting selectors are errors. */
-function parseSelection(args: string[], flag: string, allowed: readonly string[], fallback: AppEnv): { env: AppEnv; args: string[] } {
+/** Installed/published app selection never takes a storage or host default. */
+export function parseAppChannel(args: string[]): { channel: AppChannel; args: string[] } {
+  const allowed = ['production', 'beta', 'preview'] as const;
   const rest: string[] = [];
-  let env: AppEnv | undefined;
+  let channel: AppChannel | undefined;
   for (let i = 0; i < args.length; i++) {
     const [name, inline] = args[i]!.split(/=(.*)/s, 2);
-    if (name !== flag) { rest.push(args[i]!); continue; }
-    if (env !== undefined) throw new Error(`Specify ${flag} once.`);
+    if (name !== '--channel') { rest.push(args[i]!); continue; }
+    if (channel !== undefined) throw new Error('Specify --channel once.');
     const value = inline ?? args[++i];
-    if (!value || !allowed.includes(value)) throw new Error(`${flag} needs one of: ${allowed.join(', ')}`);
-    env = value as AppEnv;
+    const selected = allowed.find(channel => channel === value);
+    if (!selected) throw new Error(`--channel needs one of: ${allowed.join(', ')}`);
+    channel = selected;
   }
-  return { env: env ?? fallback, args: rest };
+  return { channel: channel ?? 'production', args: rest };
 }
 
-export const parseTargetEnv = (args: string[]) => parseSelection(args, '--data', APP_ENVS, defaultDataBuild());
-export const parseReleaseChannel = (args: string[]) => parseSelection(args, '--channel', ['production', 'beta', 'preview'], 'production');
+export function parseStorageProfile(args: string[]) {
+  const rest: string[] = [];
+  let profile: string | undefined;
+  for (let i = 0; i < args.length; i++) {
+    const [name, inline] = args[i]!.split(/=(.*)/s, 2);
+    if (name === '--data') throw new Error('Use --profile <name> to select stored state.');
+    if (name !== '--profile') { rest.push(args[i]!); continue; }
+    if (profile !== undefined) throw new Error('Specify --profile once.');
+    profile = inline ?? args[++i];
+    if (!profile || profile.startsWith('-')) throw new Error('--profile needs a name');
+  }
+  return { env: APP_ENVS.find(env => env === profile) ?? defaultDataEnv(), profile, args: rest };
+}
 
 /** An explicit namespace uses its canonical storage; an unnamed target may honor a caller's data override. */
 export function targetDataContext(env: AppEnv, args: string[]) {
-  const named = args.some(arg => arg === '--data' || arg.startsWith('--data='));
-  return resolveAppContext({ build: env, ...(named ? { profile: appDataDirFor(env) } : {}) });
+  const { profile } = parseStorageProfile(args);
+  return resolveAppContext({ env, ...(profile !== undefined ? { userDataDir: resolveStoredProfile(cliDirs(), profile) } : {}) });
 }
 
-export function envLabel(env: AppEnv): string {
-  if (env === 'production') return '';
-  return ` (${env})`;
+export function profileLabel(env: AppEnv, profile?: string): string {
+  if (profile === undefined && env === 'production') return '';
+  return ` (profile ${profile ?? env})`;
 }
 
-export const TARGET_ENV_USAGE = '--data <name>  App data namespace: ' + APP_ENVS.join(', ');
+export const TARGET_ENV_USAGE = '--profile <name>  Built-in or custom stored profile; built-ins: ' + APP_ENVS.join(', ');
 
 /**
  * The pack at or above `from`, or undefined.

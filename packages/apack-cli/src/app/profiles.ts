@@ -6,7 +6,7 @@
  * is that dir, somewhere else, created on demand and disposable.
  *
  * **It is a data dir and nothing more.** `appName` stays `APP_NAMES[env]`, so the environment, the
- * Electron app identity and the URL scheme are untouched, and `--channel beta` works: a packaged build stamps
+ * Electron app identity and the URL scheme are untouched, and `--host beta` works: a packaged build stamps
  * its own channel and ignores `APACK_ENV`, where `APACK_USER_DATA_DIR` reaches it. Nothing here is a new
  * concept the app has to learn — an empty directory is already a valid data dir, which is what the E2E
  * fixture has relied on all along.
@@ -19,16 +19,16 @@
  * **profile** is an extra one, created by name, carrying no environment.
  *
  * A profile is not bound to the kind of app that opens it: `npm run dev:open -- --profile x` against a checkout and
- * against `--channel beta` mean the same directory, because one layout puts both their stores in the same
+ * against `--host beta` mean the same directory, because one layout puts both their stores in the same
  * places inside it.
  */
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { APP_ENVS, resolveAppContext } from '@apackdev/sdk/env';
+import { APP_ENVS, appDataDirFor, resolveAppContext } from '@apackdev/sdk/env';
 import { lockIsHeld, readApiEndpoint } from '@apackdev/host/process-liveness';
 import { _pathSegmentProblem, randomId } from '@apackdev/sdk/utils/pure';
-import type { CliDirs } from './app-target';
+import type { CliDirs } from './pack-host';
 
 /** What a profile records about itself, in `.apack-profile.json` at its root. */
 interface ProfileRecord {
@@ -50,17 +50,15 @@ const profilesRoot = (dirs: CliDirs) => path.join(dirs.data, 'profiles');
  * The rule itself is `_pathSegmentProblem`: a pack's data directory name needs the same one, and the copy
  * that governed it was missing the filesystem's reserved names.
  *
- * **And a profile is never named after a build.** `--profile beta` and `--channel beta` would otherwise be
- * two different things a letter apart — one a data dir, the other the app that opens it — which is the
- * collision this vocabulary exists to end, reintroduced by the one input a user picks freely. The names
- * come from `APP_ENVS` rather than a list of their own, so a fifth build cannot arrive nameable.
+ * Built-in profile names are reserved. Creating a custom profile with the same name would make
+ * storage lookup ambiguous; APP_ENVS defines those names once.
  */
 export const profileNameProblem = (name: string): string | undefined => {
   const segment = _pathSegmentProblem(name, 'profile name');
   if (segment) return segment;
   if ((APP_ENVS as readonly string[]).includes(name)) {
-    return `"${name}" is an app data namespace, so it can't also be a profile name.`
-      + ` Use --data ${name} for app data or --profile ${name}-work for a separate profile.`;
+    return `"${name}" is a built-in profile, so it cannot name a custom profile.`
+      + ` Choose ${name}-work as a custom profile name instead.`;
   }
   return undefined;
 };
@@ -129,7 +127,7 @@ const writeRecord = (dir: string, record: ProfileRecord): void => {
  * the dir open.
  */
 export function dataDirInUse(dir: string): boolean {
-  return readApiEndpoint(resolveAppContext({ build: 'development', profile: dir }).apiPortFile) !== null
+  return readApiEndpoint(resolveAppContext({ env: 'development', userDataDir: dir }).apiPortFile) !== null
     || chromiumLockHeld(dir);
 }
 
@@ -297,7 +295,7 @@ export function openProfile(dirs: CliDirs, name: string): OpenedProfile {
  * seeing rather than a silent reuse of someone else's data.
  */
 export function mintProfile(dirs: CliDirs, ephemeral: boolean): OpenedProfile {
-  const name = randomId({ length: 10 });
+  const name = freshProfileName();
   const dir = ephemeral
     ? path.join(profilesRoot(dirs), EPHEMERAL, `${process.pid}-${name}`)
     : profileDir(dirs, name);
@@ -458,8 +456,8 @@ export const PROFILE_USAGE = [
 ].join('\n');
 
 /**
- * Takes the profile flags out of the arguments, leaving the rest for `parseAppFlags`. They live here
- * rather than in `AppFlags` because `apack pack test` shares that parser and must never take them: its data
+ * Takes the profile flags out of the arguments, leaving the rest for `parseHostFlags`. They live here
+ * rather than in `HostFlags` because `apack pack test` shares that parser and must never take them: its data
  * dir is a fresh temp one every run, which is what makes a test mean the same thing on any machine.
  */
 export function parseProfileFlags(argv: string[]): { mode: ProfileMode; withSecrets: boolean; rest: string[] } {
@@ -474,6 +472,7 @@ export function parseProfileFlags(argv: string[]): { mode: ProfileMode; withSecr
     if (name === '--profile') {
       const value = inline ?? argv[++i];
       if (!value) throw new Error('--profile needs a name');
+      if (named !== undefined) throw new Error('Specify --profile once.');
       named = value;
     } else if (name === '--fresh') {
       fresh = true;
@@ -538,5 +537,15 @@ export function profileFor(mode: ProfileMode, dirs: CliDirs): OpenedProfile | un
  * an ephemeral dir's name while the app outlives it.
  */
 export function freshProfileName(): string {
-  return randomId({ length: 10 });
+  return randomId({ includeTimestamp: false });
+}
+
+/** Stored-state operations look up existing custom profiles; built-ins have canonical locations. */
+export function resolveStoredProfile(dirs: CliDirs, name: string): string {
+  const env = APP_ENVS.find(env => env === name);
+  if (env) return appDataDirFor(env);
+  const dir = resolveProfileDir(dirs, name);
+  if (fs.existsSync(dir)) return dir;
+  const names = listProfiles(dirs).map(profile => profile.name).sort();
+  throw new Error(`No profile named "${name}". ${names.length ? `There is: ${names.join(', ')}.` : 'There are none: apack pack dev --fresh makes one.'}`);
 }

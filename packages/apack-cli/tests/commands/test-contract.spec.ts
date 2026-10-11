@@ -78,6 +78,19 @@ describe('apack pack test --contract', () => {
     expect(spawned.calls[0].args).toContain('--bail');
   });
 
+  it('refuses host and persistent-state selectors before running a contract test', async () => {
+    const cwd = process.cwd();
+    const spawned = recorder();
+    try {
+      process.chdir(pack());
+      await expect(runTest(['--contract', '--host', 'beta'], spawned.run)).rejects.toThrow(/launch no app/);
+      for (const flag of ['--profile=production', '--fresh', '--rm', '--with-secrets', '--data-dir=/tmp/profile']) {
+        await expect(runTest(['--contract', flag], spawned.run)).rejects.toThrow(/disposable state/);
+      }
+      expect(spawned.calls).toEqual([]);
+    } finally { process.chdir(cwd); }
+  });
+
   it('does nothing, and does not fail, in a pack with no vitest config', async () => {
     const spawned = recorder();
     await expect(contractTest(pack({}, { vitest: false }), [], spawned.run)).resolves.toBeUndefined();

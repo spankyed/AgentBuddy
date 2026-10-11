@@ -3,17 +3,17 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import envPaths from 'env-paths';
 import semver from 'semver';
-import { parseAppEnv, type AppEnv } from '@apackdev/sdk/env';
+import { parseAppEnv, type AppChannel } from '@apackdev/sdk/env';
 import { cachedBetaBuilds, ensureBetaApp, type PackagedApp } from './beta-app';
 import { checkoutFor } from '../build/checkout-packages';
 
 /** An app to launch a pack in: a built monorepo checkout, or a packaged app build. */
-export type AppTarget =
+export type PackHost =
   | { kind: 'source'; root: string }
   | { kind: 'packaged'; executable: string; version: string };
 
 /** A kind of app, as a place that names one says it: a checkout at a path, or a Beta build. */
-export type AppChoice = { source: string } | { beta: true };
+export type HostSelection = { path: string } | { beta: true };
 
 export interface CliDirs {
   cache: string;
@@ -42,13 +42,13 @@ export function sourceAppProblems(root: string): string[] {
   return problems;
 }
 
-export function sourceTarget(root: string, from: string): AppTarget {
+export function sourceTarget(root: string, from: string): PackHost & { kind: 'source' } {
   const resolved = path.resolve(expandHome(root));
   const problems = sourceAppProblems(resolved);
   if (problems.length > 0) {
     throw new Error(`${from} (${resolved}) can't be used:\n${problems.map(p => `  - ${p}`).join('\n')}`);
   }
-  return { kind: 'source', root: resolved };
+  return { kind: 'source', root: fs.realpathSync(resolved) };
 }
 
 /** The app package inside a packaged build, which electron-builder ships unpacked (`asar: false`). */
@@ -72,39 +72,34 @@ function packagedAppVersion(executable: string): string | undefined {
 }
 
 /** Reads the packaged app's authoritative channel; release tags and executable names can differ. */
-export function packagedAppEnv(executable: string): AppEnv {
+export function packagedHostChannel(executable: string): AppChannel {
   const manifest = path.join(packagedAppDir(executable), 'build-manifest.json');
-  const build = parseAppEnv(JSON.parse(fs.readFileSync(manifest, 'utf-8')).channel);
-  if (build !== 'production' && build !== 'beta' && build !== 'preview') throw new Error(`Invalid packaged channel in ${manifest}`);
-  return build;
+  const channel = parseAppEnv(JSON.parse(fs.readFileSync(manifest, 'utf-8')).channel);
+  if (channel !== 'production' && channel !== 'beta' && channel !== 'preview') throw new Error(`Invalid packaged channel in ${manifest}`);
+  return channel;
 }
 
 /** Select an explicit .app bundle, or a built source checkout. */
-function pathTarget(input: string, from: string): AppTarget {
+function pathTarget(input: string, from: string): PackHost {
   const root = path.resolve(expandHome(input));
   if (!root.endsWith('.app')) return sourceTarget(root, from);
   const resources = path.join(root, 'Contents', 'Resources', 'app');
   const metadata = JSON.parse(fs.readFileSync(path.join(resources, 'build-manifest.json'), 'utf-8'));
   const executable = path.join(root, 'Contents', 'MacOS', metadata.productName);
-  packagedAppEnv(executable);
+  packagedHostChannel(executable);
   fs.accessSync(executable, fs.constants.X_OK);
   return { kind: 'packaged', executable, version: metadata.version };
 }
 
-/** App development never falls back to a downloaded release. */
-export function resolveDevApp(flags: AppFlags, from: string, env: NodeJS.ProcessEnv = process.env): AppTarget {
-  const named = namedApp(flags, env);
-  if (named && 'beta' in named.choice) throw new Error('App development requires a source checkout; release channels are not attachable.');
-  const root = named && 'source' in named.choice ? named.choice.source : checkoutFor(from);
-  if (!root) throw new Error('No apack checkout found. Use --app <checkout> or run inside the app repository.');
-  const app = pathTarget(root, named?.from ?? 'the current checkout');
-  if (app.kind !== 'source') throw new Error('App development requires a source checkout; packaged apps are not attachable.');
-  announceApp(app, named?.from ?? 'the current checkout');
-  return app;
+/** Repository entry points supply their own checkout, never a public selection request. */
+export function resolveRepositoryHost(root: string): PackHost & { kind: 'source' } {
+  const host = sourceTarget(root, 'the repository checkout');
+  announceHost(host, 'the repository checkout');
+  return host;
 }
 
 /** What every lookup here needs: where to look, and how to reach a beta when the answer is one. */
-export interface AppLookupOptions {
+export interface HostLookupOptions {
   dirs?: CliDirs;
   env?: NodeJS.ProcessEnv;
   /** The pack's hostVersion, for choosing or downloading a beta */
@@ -113,51 +108,55 @@ export interface AppLookupOptions {
   betaApp?: (hostVersion: string, cacheDir: string) => Promise<PackagedApp>;
 }
 
-export interface ConfiguredAppOptions extends AppLookupOptions {
+export interface HostPackagesOptions extends HostLookupOptions {
   /** The pack whose checkout to look for, when nothing names an app. Absent means "do not derive" */
   from?: string;
   /** Injected for tests; defaults to `checkoutFor` */
   checkout?: (from: string) => string | undefined;
 }
 
-const betaAppFrom = (options: AppLookupOptions) =>
+const betaAppFrom = (options: HostLookupOptions) =>
   options.betaApp ?? ((range: string, cacheDir: string) => ensureBetaApp({ hostVersion: range, cacheDir }));
 
-/** A place an app can be named; `from` is what an error message and `announceApp` call it. */
-interface NamedApp {
-  choice: AppChoice;
+/** A place an app can be named; `from` is what an error message and `announceHost` call it. */
+interface NamedHost {
+  choice: HostSelection;
   from: string;
 }
 
-function namedApp(flags: AppFlags | undefined, env: NodeJS.ProcessEnv): NamedApp | undefined {
-  if (env.APACK_APP && env.APACK_CHANNEL) throw new Error('Use APACK_APP or APACK_CHANNEL, not both.');
-  if (env.APACK_CHANNEL && env.APACK_CHANNEL !== 'beta') throw new Error('APACK_CHANNEL must be beta for downloaded authoring hosts.');
-  if (flags?.app && flags.channel) throw new Error('Choose one --app or --channel.');
-  if (flags?.app) return { choice: { source: flags.app }, from: `--app ${flags.app}` };
-  if (flags?.channel) return { choice: { beta: true }, from: '--channel beta' };
-  if (env.APACK_APP) return { choice: { source: path.resolve(expandHome(env.APACK_APP)) }, from: `APACK_APP=${env.APACK_APP}` };
-  if (env.APACK_CHANNEL) return { choice: { beta: true }, from: 'APACK_CHANNEL=beta' };
-  return undefined;
+function namedHost(flags: HostFlags | undefined, env: NodeJS.ProcessEnv): NamedHost | undefined {
+  const selected = flags?.host ?? env.APACK_HOST;
+  if (!flags?.host && (env.APACK_APP || env.APACK_CHANNEL || env.APACK_BUILD)) {
+    throw new Error('Use APACK_HOST for pack host selection; legacy host selectors are unsupported.');
+  }
+  if (!selected) return undefined;
+  return {
+    choice: selected === 'beta' ? { beta: true } : { path: path.resolve(expandHome(selected)) },
+    from: flags?.host ? `--host ${selected}` : `APACK_HOST=${selected}`,
+  };
 }
 
-export async function configuredAppPackagesDir(options: ConfiguredAppOptions = {}): Promise<{ dir: string; label: string } | null> {
+export async function configuredHostPackagesDir(options: HostPackagesOptions = {}): Promise<{ dir: string; label: string } | null> {
   const { dirs = cliDirs(), env = process.env, hostVersion = '*', from, checkout = checkoutFor } = options;
   const betaApp = betaAppFrom(options);
   const asPackages = (app: PackagedApp) =>
     ({ dir: packagedAppPackagesDir(app.executable), label: `apack Beta ${app.version}` });
 
-  const named = namedApp(undefined, env);
+  if (env.APACK_HOST_ROOT && env.APACK_HOST_EXECUTABLE) throw new Error('Choose one resolved host identity.');
+  if (env.APACK_HOST_ROOT) return { dir: path.join(env.APACK_HOST_ROOT, 'packages'), label: `apack checkout ${env.APACK_HOST_ROOT}` };
+  if (env.APACK_HOST_EXECUTABLE) return { dir: packagedAppPackagesDir(env.APACK_HOST_EXECUTABLE), label: `apack bundle ${env.APACK_HOST_EXECUTABLE}` };
+  const named = namedHost(undefined, env);
   if (!named) {
     const found = from === undefined ? undefined : checkout(from);
     if (found === undefined) return null;
     return { dir: path.join(found, 'packages'), label: `apack checkout ${found}` };
   }
 
-  if ('source' in named.choice) {
+  if ('path' in named.choice) {
     // No `sourceAppProblems` here, and that is the point of the branch being its own: a build reads the
     // checkout's `packages/`, where launching it needs main/dist, renderer/dist and electron. Validating
     // would fail `apack pack build` on a checkout nobody has run `npm run build:default-setup && npm run build:runtime` in.
-    const root = path.resolve(expandHome(named.choice.source));
+    const root = path.resolve(expandHome(named.choice.path));
     return root.endsWith('.app')
       ? { dir: path.join(root, 'Contents', 'Resources', 'app', 'packages'), label: `apack bundle ${root}` }
       : { dir: path.join(root, 'packages'), label: `apack checkout ${root}` };
@@ -183,11 +182,9 @@ function cachedBetaApp(dirs: CliDirs, hostVersion: string): PackagedApp | null {
   return null;
 }
 
-export interface AppFlags {
+export interface HostFlags {
   /** Explicit checkout or .app bundle path. */
-  app?: string;
-  /** Downloaded pack authoring host channel. */
-  channel?: 'beta';
+  host?: string;
   /** Build the pack as a release before testing it, so the tests run what a release ships */
   release?: boolean;
   args: string[];
@@ -201,20 +198,20 @@ export interface AppFlags {
 }
 
 /** Parse executable selection separately from release channels and pack build options. */
-export function parseAppFlags(argv: string[]): AppFlags {
-  const flags: AppFlags = { args: [] };
+export function parseHostFlags(argv: string[]): HostFlags {
+  const flags: HostFlags = { args: [] };
   let selected = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     const [name, inline] = arg.split(/=(.*)/s, 2);
-    if (name === '--app' || name === '--channel') {
-      if (selected) throw new Error('Choose one --app or --channel.');
+    if (name === '--host') {
+      if (selected) throw new Error('Specify --host once.');
       const value = inline ?? argv[++i];
-      if (!value || value.startsWith('--')) throw new Error(`${name} needs a value`);
-      if (name === '--channel' && value !== 'beta') throw new Error('Only --channel beta supplies a downloaded pack authoring host.');
-      if (name === '--app') flags.app = path.resolve(expandHome(value));
-      else flags.channel = 'beta';
+      if (!value || value.startsWith('-')) throw new Error('--host needs a path or beta');
+      flags.host = value === 'beta' ? value : path.resolve(expandHome(value));
       selected = true;
+    } else if (name === '--app' || name === '--channel' || name === '--build') {
+      throw new Error(`${name} is not a pack host selector. Use --host <path|beta>.`);
     } else if (name === '--release') flags.release = true;
     else if (name === '--prebuilt') flags.prebuilt = true;
     else flags.args.push(arg);
@@ -222,26 +219,27 @@ export function parseAppFlags(argv: string[]): AppFlags {
   return flags;
 }
 
-export interface ResolveAppOptions extends AppLookupOptions {
-  flags: AppFlags;
+export interface ResolveHostOptions extends HostLookupOptions {
+  flags: HostFlags;
   hostVersion: string;
 }
 
 /** What a derivation needs beyond a lookup: where the pack is, so a checkout can be found behind it */
-export interface DeriveAppOptions extends ResolveAppOptions {
+export interface HostResolutionOptions extends ResolveHostOptions {
   /** The pack being worked on, or the directory a command was run from when there is no pack */
-  from: string;
+  from?: string;
+  policy: 'development' | 'test';
   /** Injected for tests; defaults to `checkoutFor` */
   checkout?: (from: string) => string | undefined;
 }
 
 /** The Beta build the pack's `hostVersion` asks for, downloaded if it isn't cached. */
-async function packagedTarget(options: ResolveAppOptions): Promise<AppTarget> {
+async function packagedTarget(options: ResolveHostOptions): Promise<PackHost> {
   const { hostVersion, dirs = cliDirs() } = options;
   // Cached first, which is what the sentence above has always said and what this did not do: it listed
-  // releases every run and skipped only the download. See `configuredAppPackagesDir` for the one rule.
+  // releases every run and skipped only the download. See `configuredHostPackagesDir` for the one rule.
   const app = cachedBetaApp(dirs, hostVersion) ?? await betaAppFrom(options)(hostVersion, dirs.cache);
-  return { kind: 'packaged', ...app };
+  return { kind: 'packaged', executable: app.executable, version: packagedAppVersion(app.executable) ?? app.version };
 }
 
 
@@ -249,42 +247,47 @@ async function packagedTarget(options: ResolveAppOptions): Promise<AppTarget> {
  * What a command is running against, as one sentence fragment.
  *
  * One rendering, because three commands describing the same app differently is how a reader stops trusting
- * the line — and the line is the whole point of `announceApp`.
+ * the line — and the line is the whole point of `announceHost`.
  */
-export function appLabel(app: AppTarget): string {
-  return app.kind === 'source' ? `apack from ${app.root}` : `apack ${packagedAppEnv(app.executable)} ${app.version}`;
+export function hostLabel(app: PackHost): string {
+  return app.kind === 'source' ? `apack from ${app.root}` : `apack ${packagedHostChannel(app.executable)} ${app.version}`;
 }
 
-function announceApp(app: AppTarget, from: string): void {
-  console.error(`Using ${appLabel(app)} (${from})`);
+function announceHost(app: PackHost, from: string): void {
+  console.error(`Using ${hostLabel(app)} (${from})`);
 }
 
-export async function resolvePinnedApp(options: ResolveAppOptions): Promise<AppTarget> {
-  const { flags, env = process.env } = options;
-
-  const named = namedApp(flags, env);
-  if (named && 'source' in named.choice) return pathTarget(named.choice.source, named.from);
-  // The default, not just the `--channel beta` case: a pinned run always has an answer, from the manifest
-  return packagedTarget(options);
-}
-
-export async function deriveApp(options: DeriveAppOptions): Promise<NamedApp & { target: AppTarget }> {
+export async function deriveHost(options: HostResolutionOptions): Promise<NamedHost & { target: PackHost }> {
   const { flags, env = process.env, from, checkout = checkoutFor } = options;
-  const named = namedApp(flags, env);
+  const named = namedHost(flags, env);
   if (named) {
-    const target = 'source' in named.choice ? pathTarget(named.choice.source, named.from) : await packagedTarget(options);
+    const target = 'path' in named.choice ? pathTarget(named.choice.path, named.from) : await packagedTarget(options);
     return { ...named, target };
   }
-  const found = checkout(from);
+  const found = options.policy === 'test' ? undefined : checkout(from ?? process.cwd());
   if (found !== undefined) {
-    return { choice: { source: found }, from: 'the checkout this pack is built against', target: sourceTarget(found, 'The apack checkout behind this pack') };
+    return { choice: { path: found }, from: 'the checkout this pack is built against', target: sourceTarget(found, 'The apack checkout behind this pack') };
   }
   return { choice: { beta: true }, from: `hostVersion ${options.hostVersion}`, target: await packagedTarget(options) };
 }
 
 /** The app a command **launches**, derived and validated, and stated so the derivation is never silent. */
-export async function resolveLaunchApp(options: DeriveAppOptions): Promise<AppTarget> {
-  const { target, from } = await deriveApp(options);
-  announceApp(target, from);
+export async function resolvePackHost(options: HostResolutionOptions): Promise<PackHost> {
+  const { target, from } = await deriveHost(options);
+  if (options.hostVersion !== '*') {
+    const version = target.kind === 'packaged' ? target.version
+      : JSON.parse(fs.readFileSync(path.join(target.root, 'package.json'), 'utf-8')).version;
+    if (typeof version !== 'string' || !semver.satisfies(version, options.hostVersion, { includePrerelease: true })) {
+      throw new Error(`Host ${version} does not satisfy hostVersion ${options.hostVersion}.`);
+    }
+  }
+  announceHost(target, from);
   return target;
+}
+
+/** Pin dependency resolution and execution to one artifact; discard inherited selection requests. */
+export function setHostHandoff(host: PackHost, env: NodeJS.ProcessEnv): void {
+  for (const key of ['APACK_HOST', 'APACK_APP', 'APACK_BUILD', 'APACK_CHANNEL', 'APACK_HOST_ROOT', 'APACK_HOST_EXECUTABLE']) delete env[key];
+  if (host.kind === 'source') env.APACK_HOST_ROOT = host.root;
+  else env.APACK_HOST_EXECUTABLE = host.executable;
 }

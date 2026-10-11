@@ -13,7 +13,7 @@ const person = { startedBy: 'dev' } as const;
 
 describe('which app closes itself when nothing attaches', () => {
   it('is a drive app in a profile, which nothing else reclaims', () => {
-    expect(reapsWhenIdle(drive, { build: 'development', profile: '/p/probe' })).toBe(true);
+    expect(reapsWhenIdle(drive, { env: 'development', userDataDir: '/p/probe' })).toBe(true);
   });
 
   /**
@@ -22,7 +22,7 @@ describe('which app closes itself when nothing attaches', () => {
    * that fails, where a `--spawn` with no flags lands exactly here.
    */
   it('is not a drive app in the development dir', () => {
-    expect(reapsWhenIdle(drive, { build: 'development' })).toBe(false);
+    expect(reapsWhenIdle(drive, { env: 'development' })).toBe(false);
   });
 
   /**
@@ -30,15 +30,15 @@ describe('which app closes itself when nothing attaches', () => {
    * `startedBy` clause — and this is the case that fails.
    */
   it('is not an app a person started, wherever it is', () => {
-    expect(reapsWhenIdle(person, { build: 'development', profile: '/p/mine' })).toBe(false);
-    expect(reapsWhenIdle(person, { build: 'development' })).toBe(false);
+    expect(reapsWhenIdle(person, { env: 'development', userDataDir: '/p/mine' })).toBe(false);
+    expect(reapsWhenIdle(person, { env: 'development' })).toBe(false);
   });
 
   it('is never a build that has no debug port to attach to', () => {
     // `debugPortArgs` publishes no session for these, so no supervisor arms the timer — but the rule must
     // not be the one place that would say yes if one ever did
-    expect(reapsWhenIdle(drive, { build: 'beta', profile: '/p/probe' })).toBe(true);
-    expect(reapsWhenIdle(person, { build: 'beta', profile: '/p/probe' })).toBe(false);
+    expect(reapsWhenIdle(drive, { env: 'beta', userDataDir: '/p/probe' })).toBe(true);
+    expect(reapsWhenIdle(person, { env: 'beta', userDataDir: '/p/probe' })).toBe(false);
   });
 });
 

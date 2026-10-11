@@ -1,6 +1,6 @@
 // The environment the fixture hands the app under test: what it must strip from the runner's own.
 //
-// It lived in @apackdev/cli's app-target spec, which tests the CLI's `apack pack test` target resolution and
+// It lived in @apackdev/cli's pack-host spec, which tests the CLI's `apack pack test` target resolution and
 // imported this from here to cover the two together. `appLaunchEnv` is this package's, and a pure function,
 // so it is checked here and the CLI's spec keeps only what is the CLI's.
 import { describe, expect, it } from 'vitest';

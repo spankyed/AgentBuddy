@@ -102,7 +102,7 @@ export const getEnvironment = (port: number, options: { apiToken: string; startu
     APACK_LOG_DIR: options.logDir,
     SHIPPED_PACKS_DIR: shippedPacksDir(),
     // Identity for the API process; resolveAppContext() there reads these
-    APACK_ENV: getAppContext().build,
+    APACK_ENV: getAppContext().env,
     APACK_APP_MANIFEST: app.isPackaged ? path.join(app.getAppPath(), 'build-manifest.json') : undefined,
     APACK_USER_DATA_DIR: getAppContext().userDataDir,
     ELECTRON_RUN_AS_NODE: '1',

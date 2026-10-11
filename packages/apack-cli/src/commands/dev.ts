@@ -11,8 +11,9 @@ import {
 } from '@apackdev/host/dev-session';
 import { findFEEntry, packDevServerConfig } from '../build/fe-bundler';
 import { reloadPack, type AppPlace, type DevReload } from '../build/dev-reload.ts';
-import { cliDirs, parseAppFlags, resolveLaunchApp, resolveDevApp, packagedAppEnv, appLabel, type AppTarget } from '../app/app-target';
+import { cliDirs, parseHostFlags, resolvePackHost, resolveRepositoryHost, packagedHostChannel, hostLabel, setHostHandoff, type PackHost } from '../app/pack-host';
 import { endAppHolding, profileFor, parseProfileFlags, removeProfile, PROFILE_USAGE } from '../app/profiles';
+import { verifySessionHost } from '../app/drive-attach';
 import { copySecretsInto } from '../app/profile-secrets.ts';
 import { createDevHold } from '../app/dev-hold.ts';
 import { resolveAppContext } from '@apackdev/sdk/env';
@@ -24,7 +25,7 @@ import { installPackFromLocal, readHostInfo } from '@apackdev/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@apackdev/host/packs/dev-server';
 
 const HELP = `
-Usage: apack pack dev [--app <path> | --channel beta]
+Usage: apack pack dev [--host <path|beta>]
 
 Build and install this pack, then watch it: FE changes reload through Vite,
 BE changes rebuild, reinstall, and reload in place. Requires a pack directory.
@@ -36,13 +37,14 @@ An app already running on the same data dir is used as it is; otherwise one is l
 closing this command closes the app it started.
 
 Options:
-  --app <path> | --channel beta an explicit checkout or .app bundle; --channel beta selects a cached/downloaded host
+  --host <path|beta> an explicit checkout or .app bundle; --host beta selects a cached/downloaded host
 ${PROFILE_USAGE}
   --help, -h          Show this help
 
 With no app named: the apack checkout this pack is built against, if there is one, else the newest
 Beta build its hostVersion accepts. A packaged host requires --profile or --fresh.
 Production bundles are refused. Other packaged hosts never enable development debugging. Nothing is remembered and nothing is asked.
+Named profiles must be custom. A source host also accepts --profile development for its shared data.
 For a checkout with no profile named, the shared development data dir is used.
 
 Packaged hosts refuse in-place backend reloads. After a backend rebuild, restart the
@@ -54,13 +56,13 @@ pack development command to apply it. Frontend changes still use Vite HMR.
  * (`_inferElectronAppEnv`), so this reports what the app will decide rather than deciding it: passing
  * APACK_ENV to a beta binary would change nothing.
  */
-export function appEnv(app: AppTarget): AppEnv {
-  return app.kind === 'source' ? 'development' : packagedAppEnv(app.executable);
+export function hostEnvironment(app: PackHost): AppEnv {
+  return app.kind === 'source' ? 'development' : packagedHostChannel(app.executable);
 }
 
 /** Live pack development never touches production; packaged non-production hosts need isolated data. */
-export function developmentHostEnv(app: AppTarget, isolated: boolean): AppEnv {
-  const env = appEnv(app);
+export function developmentHostEnv(app: PackHost, isolated: boolean): AppEnv {
+  const env = hostEnvironment(app);
   if (env === 'production') throw new Error('This bundle is production, regardless of its release tag. Use a checkout for development, or apack pack test for isolated release verification.');
   if (app.kind === 'packaged' && !isolated) throw new Error('Pack development on a packaged app requires --profile <name> or --fresh to isolate release data.');
   return env;
@@ -75,7 +77,7 @@ function reportReload(result: DevReload, what: string): void {
 }
 
 /** Installs into the app's data dir, checking hostVersion and the build format against the app that last used it. */
-export function installToApp(root: string, place: AppPlace = { build: 'development' }) {
+export function installToApp(root: string, place: AppPlace = { env: 'development' }) {
   const { packsDir, userDataDir } = resolveAppContext(place);
   const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
   return installPackFromLocal(root, packsDir, { hostVersion, packFormat });
@@ -94,15 +96,15 @@ function appLaunchEnv(place: AppPlace): NodeJS.ProcessEnv {
   const nodeOptions = withoutSourceCondition(out.NODE_OPTIONS);
   if (nodeOptions) out.NODE_OPTIONS = nodeOptions;
   else delete out.NODE_OPTIONS;
-  // Only a source run reads this; a packaged build stamps its channel (see `appEnv`)
-  out.APACK_ENV = place.build;
+  // Only a source run reads this; a packaged build stamps its channel (see `hostEnvironment`)
+  out.APACK_ENV = place.env;
   delete out.PLAYWRIGHT_TEST;
-  if (place.profile !== undefined) {
+  if (place.userDataDir !== undefined) {
     // Set only for a profile, and deliberately: it is also what tells Electron the run was pointed at
     // its own dir, which moves the logs inside it (`main/src/app-context.ts`). A plain `apack pack dev` should
     // keep writing to the platform log dir, and should keep honouring an APACK_USER_DATA_DIR the caller
     // exported, which naming one here would override.
-    out.APACK_USER_DATA_DIR = place.profile;
+    out.APACK_USER_DATA_DIR = place.userDataDir;
     // A profile holds its own keys, so the data key goes beside them rather than into the OS keychain,
     // where every profile of one channel would share a service name. The app reads this in any
     // environment but production.
@@ -126,11 +128,11 @@ function appLaunchEnv(place: AppPlace): NodeJS.ProcessEnv {
  * which `readDevToolsPort` reads.
  */
 export function debugPortArgs(place: AppPlace): string[] {
-  return debugPortArgsFor(resolveAppContext(place).build);
+  return debugPortArgsFor(resolveAppContext(place).env);
 }
 
 /** Starts the app. A checkout runs its own sources with its own electron, so a pack needs none installed. */
-function launchApp(app: AppTarget, place: AppPlace): ChildProcess {
+function launchApp(app: PackHost, place: AppPlace): ChildProcess {
   const options = { env: appLaunchEnv(place), stdio: 'ignore' as const, detached: false };
   const debug = debugPortArgs(place);
   if (app.kind === 'source') {
@@ -171,7 +173,7 @@ export const IDLE_REAP_MS = 10 * 60_000;
  * without this it holds a data dir until the machine is rebooted.
  */
 export function reapsWhenIdle(session: Pick<DevSession, 'startedBy'>, place: AppPlace): boolean {
-  return session.startedBy === 'drive' && place.profile !== undefined;
+  return session.startedBy === 'drive' && place.userDataDir !== undefined;
 }
 
 /** Close the app now, or ask again in this many milliseconds. */
@@ -263,7 +265,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   }
 
   const { mode, withSecrets, rest } = parseProfileFlags(args);
-  const flags = parseAppFlags(rest);
+  const flags = parseHostFlags(rest);
   if (flags.release || flags.prebuilt) throw new Error('--release and --prebuilt belong to apack pack test.');
   // `dev` forwards nothing, so a leftover flag is a typo rather than an argument for something else —
   // where `drive` hands its own leftovers to Playwright and must not refuse them. Ignoring one silently
@@ -272,15 +274,20 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   if (unknown.length > 0) {
     throw new Error(`Unknown option${unknown.length === 1 ? '' : 's'} ${unknown.join(', ')}. See ${target === 'pack' ? 'apack pack dev' : 'npm run dev:open --'} --help.`);
   }
-  const app = target === 'app' ? resolveDevApp(flags, process.cwd())
-    : await resolveLaunchApp({ flags, hostVersion: pack!.manifest.hostVersion ?? '*', from: pack!.root });
-  const env = developmentHostEnv(app, mode.kind !== 'shared');
-  const profile = profileFor(mode, cliDirs());
+  if (target === 'app' && flags.host) throw new Error('Repository launch uses its own checkout; host selection belongs to pack commands.');
+  const app = target === 'app' ? resolveRepositoryHost(process.cwd())
+    : await resolvePackHost({ policy: 'development', flags, hostVersion: pack!.manifest.hostVersion ?? '*', from: pack!.root });
+  const sharedDevelopment = mode.kind === 'named' && mode.name === 'development';
+  if (sharedDevelopment && (app.kind !== 'source' || mode.rm || withSecrets)) throw new Error('The development profile requires a source host and cannot use --rm or --with-secrets.');
+  if (sharedDevelopment) delete process.env.APACK_USER_DATA_DIR;
+  const env = developmentHostEnv(app, mode.kind !== 'shared' && !sharedDevelopment);
+  setHostHandoff(app, process.env);
+  const profile = sharedDevelopment ? undefined : profileFor(mode, cliDirs());
   if (profile?.created && withSecrets) {
     const { count, from } = copySecretsInto(profile, env);
     console.log(`Copied ${count} secret${count === 1 ? '' : 's'} from ${from}`);
   }
-  const place: AppPlace = { build: env, ...(profile ? { profile: profile.dir } : {}) };
+  const place: AppPlace = { env, ...(profile ? { userDataDir: profile.dir } : {}) };
   const { userDataDir, apiPortFile } = resolveAppContext(place);
 
   /**
@@ -312,10 +319,12 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
    * hole in it: the file means "attachable", and a `test` or packaged context is not.
    */
   async function publish(launchedAt: number): Promise<void> {
-    if (debugPortArgs(place).length === 0) return;
+    if (app.kind !== 'source' || debugPortArgs(place).length === 0) return;
     try {
       const debugPort = await readDevToolsPort(userDataDir, { after: launchedAt });
       hold.holdsSession(publishSession({
+        host: { kind: 'source', root: app.root },
+        env: 'development',
         debugPort,
         apiPort: readApiEndpoint(apiPortFile)?.port,
         dataDir: userDataDir,
@@ -393,7 +402,17 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
    * After it, the two commands converge rather than compete: the next question attaches to the app the
    * developer now has.
    */
+  function verifyRunningSession(): void {
+    if (app.kind !== 'source') return;
+    const session = readSession(userDataDir);
+    if (!session) throw new Error('The running app has no development session. Close it and restart its development launcher.');
+    verifySessionHost(session, app.root);
+  }
   const reclaimable = readSession(userDataDir);
+  if (reclaimable) {
+    if (app.kind !== 'source') throw new Error('This profile is occupied by a source development session. Choose another profile.');
+    verifySessionHost(reclaimable, app.root);
+  }
   if (mayReclaim(reclaimable)) {
     console.log(`Reclaiming the app a question started (pid ${reclaimable!.supervisorPid})...`);
     await endAppHolding(userDataDir, reclaimable!.supervisorPid);
@@ -403,10 +422,10 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
   // An app already on this data dir is the one to use: a second Electron over the same LMDB store is not a
   // choice anyone wants. Only an app this command started is one it may close.
   if (readApiEndpoint(apiPortFile)) {
-    if (env === 'development' && !readSession(userDataDir)) throw new Error('The running app has no development session. Close it and launch with npm run dev:open -- or npm run dev.');
+    verifyRunningSession();
     console.log(`Using the ${env} app already running.\n`);
   } else {
-    console.log(`Starting ${appLabel(app)}...`);
+    console.log(`Starting ${hostLabel(app)}...`);
     // Before the launch, so the port file this waits for is the one this app writes rather than whatever a
     // previous app on this data dir left behind
     const launchedAt = Date.now();
@@ -417,6 +436,7 @@ async function session(args: string[], hooks: SessionHooks, target: 'app' | 'pac
       // Ours was refused the data dir and another app has it. Forgetting it is what keeps the release
       // honest: it closes an app this command started, and this one started none that lived
       hold.forgetApp();
+      verifyRunningSession();
       console.log(`Using the ${env} app that took the directory first.\n`);
     } else {
       console.log(`  up on ${env} data in ${userDataDir}\n`);
