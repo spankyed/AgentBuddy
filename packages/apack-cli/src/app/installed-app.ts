@@ -12,7 +12,10 @@ const execFileAsync = promisify(execFile);
 
 /** Product names from electron-builder.mjs; the release artifacts use them with spaces removed */
 export const PRODUCT_NAMES = { production: 'apack', beta: 'apack Beta', preview: 'apack Preview' } as const;
-export type Channel = 'production' | 'beta';
+/** All packaged app channels, including locally built previews. */
+export type AppChannel = keyof typeof PRODUCT_NAMES;
+/** Channels distributed through published releases; previews are local builds. */
+export type PublishedAppChannel = 'production' | 'beta';
 
 
 /** The release this channel wants, and the two assets it needs, or why there is none */
@@ -23,7 +26,7 @@ export interface AppRelease {
 }
 
 /** Select the requested tag or newest channel release. Its ZIP and checksum must both be present. */
-export function pickAppRelease(releases: Release[], channel: Channel, version?: string): AppRelease | null {
+export function pickAppRelease(releases: Release[], channel: PublishedAppChannel, version?: string): AppRelease | null {
   const prefix = PRODUCT_NAMES[channel].replace(/ /g, '-');
   const zipPattern = new RegExp(`^${prefix}-(.+)-mac-arm64\\.zip$`);
 
@@ -60,7 +63,7 @@ export function installedVersion(appPath: string): string | null {
 }
 
 /** Quit this bundle gracefully, including instances using nondefault profiles. Never kill it. */
-export async function quitApp(product: string, _channel: Channel, log: (message: string) => void,
+export async function quitApp(product: string, _channel: PublishedAppChannel, log: (message: string) => void,
   appPath = path.join('/Applications', `${product}.app`)): Promise<void> {
   const running = async () => {
     const { stdout } = await execFileAsync('ps', ['-axo', 'pid=,command='], { timeout: 5_000 });
@@ -86,7 +89,7 @@ export async function quitApp(product: string, _channel: Channel, log: (message:
 
 export interface AppCommandOptions {
   action: 'install' | 'upgrade' | 'uninstall';
-  channel: Channel;
+  channel: PublishedAppChannel;
   version?: string;
   replace?: boolean;
   force?: boolean;
@@ -114,7 +117,7 @@ function bundleExists(appPath: string): boolean {
   }
 }
 
-export function validateAppBundle(incoming: string, channel: Channel | 'preview', expectedVersion?: string): string {
+export function validateAppBundle(incoming: string, channel: AppChannel, expectedVersion?: string): string {
   if (!bundleExists(incoming)) throw new Error(`Download does not contain ${PRODUCT_NAMES[channel]}.app.`);
   const plist = path.join(incoming, 'Contents', 'Info.plist');
   const id = execFileSync('plutil', ['-extract', 'CFBundleIdentifier', 'raw', plist], { encoding: 'utf8' }).trim();

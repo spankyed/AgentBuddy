@@ -6,9 +6,9 @@ import { findRunningApp } from '@apackdev/host/database';
 import { readApiEndpoint } from '@apackdev/host/process-liveness';
 import { API_HOST } from '@apackdev/sdk/utils/pure';
 import { parseReleaseChannel } from '../utils';
-import { validateAppBundle, PRODUCT_NAMES, type Channel } from '../app/installed-app';
+import { validateAppBundle, PRODUCT_NAMES, type AppChannel } from '../app/installed-app';
 
-export function doctorChannel(args: string[]): Channel | 'preview' {
+export function doctorChannel(args: string[]): AppChannel {
   const { env, args: rest } = parseReleaseChannel(args);
   if (rest.length || (env !== 'production' && env !== 'beta' && env !== 'preview')) throw new Error('Usage: apack doctor [--channel production|beta|preview]');
   return env;
@@ -25,7 +25,7 @@ function reachable(port: number): Promise<boolean> {
 }
 
 /** Read-only diagnostics. Tests supply temporary installation and data paths. */
-export async function inspectApp(channel: Channel | 'preview', options: {
+export async function inspectApp(channel: AppChannel, options: {
   applications?: string;
   dataDir?: string;
   probe?: (port: number) => Promise<boolean>;
