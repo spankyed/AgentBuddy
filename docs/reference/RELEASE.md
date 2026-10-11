@@ -18,9 +18,24 @@ Validates, bumps version, generates changelog, tags, and pushes — triggering C
 | `npm run release -- --dry-run` | Preview without making changes |
 | `npm run build:production` | Local production build (unsigned) |
 | `npm run build:production:signed` | Local build with signing (reads `.env.signing`) |
-| `npm run start:production` | Launch the built app with logging |
-| `npm run reset:production` | Delete all prod data and build artifacts |
+| `npm run start:packaged` | Launch the built app with logging |
+| `npm run diagnostics:packaged` | Collect the selected app’s diagnostics |
+| `npm run reset:packaged` | Delete the selected app’s runtime data and logs |
 | `npm run verify-signing` | Verify code signature and notarization |
+
+Packaged-app tools currently support macOS. They default to production and prefer a local build over
+`/Applications`. Select beta or preview with `--channel`; use `--app` to select a specific bundle.
+An existing bundle must have a matching build manifest before any process is stopped or data removed.
+
+```bash
+npm run start:packaged -- --channel preview
+npm run diagnostics:packaged -- --channel preview
+npm run reset:packaged -- --channel preview
+```
+
+Reset deletes the selected channel’s runtime data, logs and preferences; it preserves packaged builds,
+collected diagnostics and other channels. `--data-dir <directory>` selects an isolated profile for all
+three commands, matching `APACK_USER_DATA_DIR`; its logs are collected from that profile.
 
 ## Installing (Unsigned Builds)
 
@@ -127,18 +142,18 @@ This is a JSONL sidecar for backend/in-app log events emitted through the app ev
 For a terminal-captured production run, use:
 
 ```bash
-npm run start:production
+npm run start:packaged
 ```
 
-That command writes an additional session log under `build/prod/logs/`, but the installed app's canonical production log remains `~/Library/Logs/apack/main.log`.
+That command writes an additional session log under `diagnostics/production/`, but the installed app's canonical production log remains `~/Library/Logs/apack/main.log`.
 
 To collect a production diagnostics bundle:
 
 ```bash
-npm run diagnostics:prod
+npm run diagnostics:packaged
 ```
 
-The command creates `diagnostics/apack-prod-<timestamp>/` with production logs, recent crash reports, process state, installed app metadata, bundle hashes, and git status.
+The command creates `diagnostics/production/<timestamp>/` with production logs, recent crash reports, process state, selected app metadata, bundled API hash, and git status.
 
 If the UI disappears or Force Quit does not show the app, check for orphaned API child processes:
 

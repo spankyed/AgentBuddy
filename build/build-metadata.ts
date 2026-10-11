@@ -28,9 +28,13 @@ export function resolveBuildMetadata(env: NodeJS.ProcessEnv = process.env): Buil
   if (channel === 'preview' && !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-preview\.(0|[1-9]\d*)$/.test(version)) {
     throw new Error('Preview builds require APACK_BUILD_VERSION=<version>-preview.<iteration>. Use npm run build:preview -- --version <version>.');
   }
+  return { version, ...resolveBuildIdentity(channel) };
+}
+
+/** Channel identity is shared by packaging and the local packaged-app tools. */
+export function resolveBuildIdentity(channel: string): Omit<BuildMetadata, 'version'> {
   const suffix = channel === 'beta' ? 'beta' : channel === 'preview' ? 'preview' : null;
   return {
-    version,
     channel,
     appId: suffix ? `dev.apack.${suffix}` : 'dev.apack.app',
     productName: suffix ? `apack ${suffix === 'beta' ? 'Beta' : 'Preview'}` : 'apack',

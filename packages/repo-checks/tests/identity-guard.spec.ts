@@ -36,9 +36,6 @@ const ALLOWED: Record<string, { patterns: readonly PatternId[]; why: string }> =
     patterns: ['env-read'], why: 'main-process bootstrap: infers the environment once',
   },
   'packages/main/vite.config.js': { patterns: ['env-read'], why: 'development launcher: resolves the environment of the app it spawns' },
-  'build/prod/clean.sh': {
-    patterns: ['data-dir'], why: 'manual cleanup script that deliberately removes a packaged app\'s data dir',
-  },
   'packages/repo-checks/tests/identity-guard.spec.ts': {
     patterns: ['data-dir', 'channel'], why: 'this guard, which has to spell the patterns it looks for',
   },

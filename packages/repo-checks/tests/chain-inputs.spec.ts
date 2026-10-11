@@ -33,8 +33,6 @@ const NOT_A_CHAIN_INPUT: Record<string, string> = {
   // signs or releases it, so none of this runs in any step — listed per file rather than as a `build/`
   // prefix so that something chain-relevant landing there has to be noticed.
   'build/build.sh': 'npm run build:production; packaging, which no chain step does',
-  'build/prod/clean.sh': 'part of build:production',
-  'build/prod/run.sh': 'part of build:production',
   'build/prod/verify-signing.sh': 'checks a signed artifact, which only build:production produces',
   'build/release/release.sh': 'the release path, which the chain never runs',
   'build/release/beta-tag.sh': 'the release path; its rule is covered by release-beta-rule.test.sh',
@@ -121,7 +119,7 @@ describe('the chain reads every source file', () => {
    *
    * Measured before this existed: the root `lint:check` grew from `oxlint scripts tests` to `oxlint .` minus two
    * directories, which took in three packaging modules that `typecheck` did not declare — so an unused binding in
-   * `build/prod/diagnostics.mjs` failed `lint:check` while the chain planned `typecheck` as cached.
+   * `scripts/packaged-app.ts` failed `lint:check` while the chain planned `typecheck` as cached.
    *
    * `lint:check` lints in two passes and both are derived here. The root one is `oxlint .` minus `docs/**` and
    * the CLI's scaffold templates (`lint-scope.spec.ts` holds that second exclusion, which nothing else reads —
