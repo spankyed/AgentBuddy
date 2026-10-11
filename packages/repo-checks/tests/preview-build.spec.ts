@@ -1,12 +1,15 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { pathToFileURL } from 'node:url';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { previewEnvironment, previewVersion } from '../../../scripts/lib/preview-build.ts';
-import { resolveBuildMetadata, createBuildSession, readBuildManifest, sealBuildSession, verifyBuildArtifacts, verifyPackagedBuild } from '../../../build/build-metadata.ts';
+import { APP_WORKSPACES, resolveBuildMetadata, createBuildSession, readBuildManifest, verifyBuildArtifacts, verifyPackagedBuild } from '../../../build/build-metadata.ts';
+
+import { completeBuildFixture } from './_support/app-build.ts';
 
 const dirs: string[] = [];
-afterEach(() => { for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
+afterEach(() => { vi.unstubAllEnvs(); for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
 
 describe('local preview builds', () => {
   it('versions previews without changing release metadata', () => {
@@ -38,16 +41,15 @@ describe('local preview builds', () => {
     expect(() => verifyBuildArtifacts(preview)).toThrow();
     const app = fs.mkdtempSync(path.join(os.tmpdir(), 'preview-package-'));
     dirs.push(app);
-    for (const workspace of ['main', 'api', 'renderer', 'preload']) {
-      const dist = path.join(preview, 'packages', workspace, 'dist');
-      fs.mkdirSync(dist, { recursive: true });
-      fs.writeFileSync(path.join(dist, 'index.js'), workspace);
-    }
-    sealBuildSession(preview);
+    completeBuildFixture(preview);
+    const receipt = path.join(preview, 'build-artifacts.json');
+    const hashes = JSON.parse(fs.readFileSync(receipt, 'utf8'));
+    fs.writeFileSync(receipt, JSON.stringify(Object.fromEntries(Object.entries(hashes).reverse())));
+    expect(() => verifyBuildArtifacts(preview)).not.toThrow();
     fs.cpSync(preview, app, { recursive: true });
     fs.writeFileSync(path.join(app, 'package.json'), JSON.stringify({ version: '0.4.0-preview.1' }));
     expect(() => verifyPackagedBuild(app, preview)).not.toThrow();
-    for (const workspace of ['main', 'api', 'renderer', 'preload']) {
+    for (const workspace of APP_WORKSPACES) {
       const file = path.join(app, 'packages', workspace, 'dist/index.js');
       fs.writeFileSync(file, 'stale');
       expect(() => verifyPackagedBuild(app, preview)).toThrow(/artifacts differ/);
@@ -61,4 +63,19 @@ describe('local preview builds', () => {
     fs.writeFileSync(path.join(preview, 'packages/api/dist/index.js'), 'changed after build');
     expect(() => verifyBuildArtifacts(preview)).toThrow(/artifacts differ/);
   });
+
+  it('names beta artifacts with characters GitHub preserves, using the staged manifest', async () => {
+    const stage = createBuildSession({ APACK_ENV: 'beta' });
+    dirs.push(stage);
+    completeBuildFixture(stage);
+    vi.stubEnv('APACK_BUILD_ROOT', stage);
+    vi.resetModules();
+    const configUrl = pathToFileURL(path.resolve(__dirname, '../../../electron-builder.mjs')).href;
+    const config = (await import(configUrl)).default as { artifactName: string; extraMetadata: { version: string } };
+    expect(config.extraMetadata.version).toBe(readBuildManifest(stage).version);
+    const name = config.artifactName
+      .replace('${version}', '0.4.0-beta.1').replace('${os}', 'mac').replace('${arch}', 'arm64').replace('${ext}', 'zip');
+    expect(name).toBe('apack-Beta-0.4.0-beta.1-mac-arm64.zip');
+  });
+
 });

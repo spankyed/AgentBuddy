@@ -5,7 +5,6 @@ import {defineConfig, defaultServerConditions} from 'vite';
 import {viteStaticCopy} from 'vite-plugin-static-copy';
 import {appBuildOutput} from '../../build/build-metadata.ts';
 
-
 export default defineConfig(({mode}) => /** @type {import('vite').UserConfig} */ ({
   // Bundle SDK and host source into main: packaged builds strip .ts files, so they can't be imported at runtime
   ssr: {

@@ -3,7 +3,6 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { Readable } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureBetaApp, packagedExecutable, pickBetaRelease } from '../../src/app/beta-app';
@@ -40,43 +39,6 @@ describe('pickBetaRelease', () => {
     expect(promoted?.version).toBe('0.4.2-beta.0');
     expect(promoted?.zip.name).toBe('apack-Beta-0.4.2-mac-arm64.zip');
     expect(promoted?.checksum.name).toBe('apack-Beta-0.4.2-mac-arm64.zip.sha256');
-  });
-});
-
-describe('beta release file names', () => {
-  it('match what electron-builder.mjs names the apack Beta zip, with only characters GitHub keeps', async () => {
-    const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'beta-packaging-'));
-    const manifest = { version: '0.4.0-beta.1', channel: 'beta', appId: 'dev.apack.beta', productName: 'apack Beta', urlScheme: 'apack-beta' };
-    const hashes: Record<string, string> = {};
-    for (const workspace of ['main', 'api', 'renderer', 'preload']) {
-      const file = `packages/${workspace}/dist/index.js`;
-      fs.mkdirSync(path.dirname(path.join(stage, file)), { recursive: true });
-      fs.writeFileSync(path.join(stage, file), workspace);
-      hashes[file] = createHash('sha256').update(workspace).digest('hex');
-    }
-    const json = JSON.stringify(manifest);
-    fs.writeFileSync(path.join(stage, 'build-manifest.json'), json);
-    hashes['build-manifest.json'] = createHash('sha256').update(json).digest('hex');
-    fs.writeFileSync(path.join(stage, 'build-artifacts.json'), JSON.stringify(hashes));
-    vi.stubEnv('APACK_BUILD_ROOT', stage);
-    vi.resetModules();
-    const configUrl = pathToFileURL(path.resolve(__dirname, '..', '..', '..', '..', 'electron-builder.mjs')).href;
-    let config: { artifactName: string };
-    try {
-      config = (await import(configUrl)).default as { artifactName: string };
-    } finally {
-      vi.unstubAllEnvs();
-      fs.rmSync(stage, { recursive: true, force: true });
-    }
-
-    const version = '0.4.0-beta.1';
-    const name = config.artifactName
-      .replace('${version}', version).replace('${os}', 'mac').replace('${arch}', 'arm64').replace('${ext}', 'zip');
-
-    // GitHub rewrites any other character in release asset names (spaces become dots)
-    expect(name).toMatch(/^[0-9A-Za-z._-]+$/);
-    const release = { tag_name: `v${version}`, prerelease: true, assets: [asset(name), asset(`${name}.sha256`)] };
-    expect(pickBetaRelease([release], '>=0.3.0')?.zip.name).toBe(name);
   });
 });
 

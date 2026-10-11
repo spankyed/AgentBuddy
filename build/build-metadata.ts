@@ -1,9 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import pkg from '../package.json' with { type: 'json' };
 
-/** Shared by the main/API bundlers and electron-builder; release metadata stays in package.json. */
+export const APP_WORKSPACES = ['main', 'api', 'renderer', 'preload'] as const;
+type AppWorkspace = (typeof APP_WORKSPACES)[number];
+
+/** Identity recorded once for each packaged build. */
 export interface BuildMetadata {
   version: string;
   channel: string;
@@ -51,31 +55,28 @@ export function readBuildManifest(root: string): BuildMetadata {
   return metadata;
 }
 
-export function appBuildOutput(workspace: string): string {
+export function appBuildOutput(workspace: AppWorkspace): string {
   const root = process.env.APACK_BUILD_ROOT;
   if (!root) return 'dist';
   readBuildManifest(root);
   return path.join(root, 'packages', workspace, 'dist');
 }
 
-const WORKSPACES = ['main', 'api', 'renderer', 'preload'] as const;
 function artifactHashes(root: string): Record<string, string> {
-  const hashes: Record<string, string> = {};
-  function walk(relative: string): void {
-    for (const entry of fs.readdirSync(path.join(root, relative), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      const file = `${relative}/${entry.name}`;
-      if (entry.isDirectory()) walk(file);
-      else if (entry.isFile()) hashes[file] = createHash('sha256').update(fs.readFileSync(path.join(root, file))).digest('hex');
-      else throw new Error(`Unexpected build artifact: ${file}`);
-    }
-  }
-  for (const workspace of WORKSPACES) {
-    const dir = `packages/${workspace}/dist`;
-    walk(dir);
-    if (!Object.keys(hashes).some(file => file.startsWith(`${dir}/`))) throw new Error(`Missing build output: ${workspace}`);
-  }
-  hashes['build-manifest.json'] = createHash('sha256').update(fs.readFileSync(path.join(root, 'build-manifest.json'))).digest('hex');
-  return hashes;
+  const files = APP_WORKSPACES.flatMap(workspace => {
+    const dir = path.join(root, 'packages', workspace, 'dist');
+    const entries = fs.readdirSync(dir, { recursive: true, withFileTypes: true });
+    const unexpected = entries.find(entry => !entry.isFile() && !entry.isDirectory());
+    if (unexpected) throw new Error(`Unexpected build artifact: ${path.join(unexpected.parentPath, unexpected.name)}`);
+    const output = entries.filter(entry => entry.isFile()).map(entry => path.join(entry.parentPath, entry.name));
+    if (!output.length) throw new Error(`Missing build output: ${workspace}`);
+    return output;
+  });
+  files.push(path.join(root, 'build-manifest.json'));
+  return Object.fromEntries(files.sort().map(file => [
+    path.relative(root, file).split(path.sep).join('/'),
+    createHash('sha256').update(fs.readFileSync(file)).digest('hex'),
+  ]));
 }
 
 /** Written only after all four bundlers succeed; an interrupted run cannot be packaged. */
@@ -87,7 +88,7 @@ export function sealBuildSession(root: string): void {
 export function verifyBuildArtifacts(root: string, appDir = root): void {
   const expected = JSON.parse(fs.readFileSync(path.join(root, 'build-artifacts.json'), 'utf8'));
   const actual = artifactHashes(appDir);
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('Build artifacts differ from the completed staging build');
+  if (!isDeepStrictEqual(actual, expected)) throw new Error('Build artifacts differ from the completed staging build');
 }
 
 /** Packaging consumes only a completed stage, then verifies the actual packaged files. */

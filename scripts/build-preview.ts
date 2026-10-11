@@ -18,10 +18,12 @@ if (process.argv.includes('--help')) {
     ['npm', ['run', 'generate:entries', '-w', '@app/default-setup']],
     ['npm', ['run', 'compile']],
     ['npm', ['run', 'build:app']],
-    ...(process.platform === 'darwin' ? [['npm', ['run', 'build:speech-macos']] as [string, string[]]] : []),
+  ];
+  if (process.platform === 'darwin') commands.push(['npm', ['run', 'build:speech-macos']]);
+  commands.push(
     ['npx', ['electron-rebuild', '--only', 'node-pty']],
     ['npx', ['electron-builder', 'build', '--config', 'electron-builder.mjs', '--dir', '--publish', 'never', `--${platform}`, `--${process.arch}`]],
-  ];
+  );
   console.log(`Building ${metadata.productName} ${metadata.version}`);
   for (const [command, args] of commands) {
     console.log(`\n${command} ${args.join(' ')}`);

@@ -1,7 +1,7 @@
 import pkg from './package.json' with {type: 'json'};
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {readBuildManifest, verifyBuildArtifacts, verifyPackagedBuild} from './build/build-metadata.ts';
+import {APP_WORKSPACES, readBuildManifest, verifyBuildArtifacts, verifyPackagedBuild} from './build/build-metadata.ts';
 
 /**
  * Electron Builder Configuration
@@ -161,7 +161,7 @@ export default /** @type import('electron-builder').Configuration */
     '!packages/renderer/public/**',
     // Include compiled output
     'packages/*/dist/**',
-    ...['main', 'api', 'renderer', 'preload'].map(name => `!packages/${name}/dist/**`),
+    ...APP_WORKSPACES.map(name => `!packages/${name}/dist/**`),
     // ...but not the tree each publishable package stages for npm (stagePublishTree): a second copy of the same
     // dist, which the app never loads — it resolves @apack/sdk through node_modules to packages/apack-sdk/dist.
     // electron-builder reads no .gitignore, so ignoring it there was not enough: 'packages/**/*' above took it.
@@ -185,7 +185,7 @@ export default /** @type import('electron-builder').Configuration */
     '!**/node_modules/**/docs/**',
     '!**/node_modules/**/CHANGELOG*',
     '!**/node_modules/**/.eslintrc*',
-    ...['main', 'api', 'renderer', 'preload'].map(name => ({
+    ...APP_WORKSPACES.map(name => ({
       from: path.join(buildRoot, 'packages', name, 'dist'), to: `packages/${name}/dist`, filter: ['**/*'],
     })),
   ],

@@ -3,8 +3,6 @@ import * as path from 'node:path';
 import {readFileSync} from 'node:fs';
 import {_inferElectronAppEnv, resolveAppContext, type AppContext} from '@apack/sdk/env';
 
-
-
 /** The app's environment and paths, plus the log directory only this process can resolve. */
 export interface MainAppContext extends AppContext {
   /**
