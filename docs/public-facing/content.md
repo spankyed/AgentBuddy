@@ -716,7 +716,7 @@ An edited item you stopped shipping is kept, and under an `offer` entry it is na
 
 A slash command is a `/name` the chat composer recognizes. The composer's list is two sources merged:
 
-1. **The manifest**: `commands: [{ "name": "standup", "placeholder": "Topic" }]` at the top level of `abuddy.json`. They come with the pack: installing or enabling it adds them, disabling or uninstalling it takes them away. A name another registered pack declares is refused, and with it the whole pack, so `abuddy build` fails for a name one of your dependencies declares. Names are `^[a-z][a-z0-9-]*$` and unique across the app.
+1. **The manifest**: `"commands": { "standup": { "placeholder": "Topic" } }` under `extensions` in `abuddy.json`, keyed by the name. They come with the pack: installing or enabling it adds them, disabling or uninstalling it takes them away. A name another registered pack declares is refused, and with it the whole pack, so `abuddy build` fails for a name one of your dependencies declares. Names are `^[a-z][a-z0-9-]*$` and unique across the app.
 2. **The library**: every document in the `internal/commands` folder, each with a field section of `**name**: placeholder` lines. Users edit those from the Library, so a pack content there what it wants them to change; default-setup content `Claude Code commands` and `Codex commands` from `src/content/library/internal/commands/`, and declares its own `pr2md` and `instructions` in the manifest.
 
 Declared commands come first, in the order their packs were first registered (a pack rebuilt or updated keeps its place); a document repeating a declared name is ignored, and a name two documents define keeps the first. The threads system sends the list whenever it is asked to publish, and only when it has changed since — so a pack changing while the app runs (installed, updated, enabled, disabled, uninstalled or rebuilt, or its content imported from Settings; the bus's `PACK_CHANGED`) or a library change alters it (a document in the folder, or the folder, created, edited, moved, renamed or deleted).
@@ -727,6 +727,6 @@ Sending `/name args` fires a `user.command` event (`$.event.data.payload.command
 
 1. Write the action that does the work (its `category` only groups it in the Actions UI).
 2. Handle it in a flow: an `on("user.command", ...)` branch whose switch compares `payload.command` (`command-listener-flow.ts` for standalone commands; the Claude Code and Codex flows route `cc-*` and `cdx-*`).
-3. List it: add it to `commands` in `abuddy.json`, or add `**name**: placeholder` to a document in `internal/commands` (in default-setup, one of the files under `src/content/library/internal/commands/`).
+3. List it: add it to `extensions.commands` in `abuddy.json`, or add `**name**: placeholder` to a document in `internal/commands` (in default-setup, one of the files under `src/content/library/internal/commands/`).
 
 A command listed without a handler does nothing, and a handled command that isn't listed is sent as a plain message.

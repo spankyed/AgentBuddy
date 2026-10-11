@@ -412,15 +412,10 @@
           "description": "Message blocks this pack contributes. Each names where its code lives. The type is the key, so a pack cannot declare one twice."
         },
         "commands": {
-          "type": "array",
-          "items": {
+          "type": "object",
+          "additionalProperties": {
             "type": "object",
             "properties": {
-              "name": {
-                "type": "string",
-                "pattern": "^[a-z][a-z0-9-]*$",
-                "description": "The command as typed after the \"/\", without it."
-              },
               "placeholder": {
                 "type": "string",
                 "minLength": 1,
@@ -428,12 +423,14 @@
               }
             },
             "required": [
-              "name",
               "placeholder"
             ],
             "additionalProperties": false
           },
-          "description": "Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack's flows handle; a name must be unique across the app."
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "description": "Slash commands this pack adds to the chat, keyed by the name typed after the \"/\". Sending one fires a `user.command` event the pack's flows handle. The type is the key, so a pack cannot declare one twice."
         },
         "services": {
           "type": "object",

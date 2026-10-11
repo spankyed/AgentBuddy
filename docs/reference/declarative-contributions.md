@@ -27,7 +27,8 @@ the pack's contributions sit, as against what it is made of (`features`) or what
 | `extensions.blocks` | `{ <type>: { kind?, fe?, be? } }` |
 | `extensions.artifacts` | `{ <type>: { icon, fe? } }` |
 | `extensions.dsl` | `{ <name>: { entry, targets, prefix?, globals? } }` |
-| `extensions.commands`, `extensions.services`, `extensions.fe` | the rest of what the pack gives the app |
+| `extensions.commands` | `{ <name>: { placeholder } }` |
+| `extensions.services`, `extensions.fe` | the rest of what the pack gives the app |
 
 See [`extensions.md`](../public-facing/extensions.md) for each. The key is the item's identity, which is
 what makes a duplicate unrepresentable: JSON cannot hold one key twice, so nothing has to check for one and
@@ -152,7 +153,7 @@ the `manifest` the snapshot already carries:
   "steps":     [{ "type": "action", "kind": "step", "dsl": { "custom": true }, "load": "#step/action" }],
   "blocks":    [{ "type": "markdown", "kind": "display", "load": "#block/markdown" }],
   "artifacts": [{ "type": "todo", "load": "#artifact/todo" }],
-  "commands":  [{ "name": "pr2md", "placeholder": "PR number or GitHub URL (optional)" }]
+  "commands":  { "pr2md": { "placeholder": "PR number or GitHub URL (optional)" } }
 }
 ```
 

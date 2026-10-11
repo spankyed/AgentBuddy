@@ -866,16 +866,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
             be?: string | undefined;
         }>>>;
-        commands: z.ZodOptional<z.ZodArray<z.ZodObject<{
-            name: z.ZodString;
+        commands: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
             placeholder: z.ZodString;
         }, "strict", z.ZodTypeAny, {
-            name: string;
             placeholder: string;
         }, {
-            name: string;
             placeholder: string;
-        }>, "many">>;
+        }>>>;
         services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
         dsl: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
             entry: z.ZodString;
@@ -950,10 +947,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
             be?: string | undefined;
         }> | undefined;
-        commands?: {
-            name: string;
+        commands?: Record<string, {
             placeholder: string;
-        }[] | undefined;
+        }> | undefined;
     }, {
         services?: Record<string, string> | undefined;
         fe?: {
@@ -998,10 +994,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
             be?: string | undefined;
         }> | undefined;
-        commands?: {
-            name: string;
+        commands?: Record<string, {
             placeholder: string;
-        }[] | undefined;
+        }> | undefined;
     }>>;
     help: z.ZodOptional<z.ZodString>;
     settingsSections: z.ZodOptional<z.ZodString>;
@@ -1332,10 +1327,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
             be?: string | undefined;
         }> | undefined;
-        commands?: {
-            name: string;
+        commands?: Record<string, {
             placeholder: string;
-        }[] | undefined;
+        }> | undefined;
     } | undefined;
     help?: string | undefined;
     settingsSections?: string | undefined;
@@ -1464,10 +1458,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
             be?: string | undefined;
         }> | undefined;
-        commands?: {
-            name: string;
+        commands?: Record<string, {
             placeholder: string;
-        }[] | undefined;
+        }> | undefined;
     } | undefined;
     help?: string | undefined;
     settingsSections?: string | undefined;
@@ -1596,10 +1589,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
             be?: string | undefined;
         }> | undefined;
-        commands?: {
-            name: string;
+        commands?: Record<string, {
             placeholder: string;
-        }[] | undefined;
+        }> | undefined;
     } | undefined;
     help?: string | undefined;
     settingsSections?: string | undefined;
@@ -1728,10 +1720,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             fe?: string | undefined;
             be?: string | undefined;
         }> | undefined;
-        commands?: {
-            name: string;
+        commands?: Record<string, {
             placeholder: string;
-        }[] | undefined;
+        }> | undefined;
     } | undefined;
     help?: string | undefined;
     settingsSections?: string | undefined;
@@ -1990,9 +1981,7 @@ export interface ProvenanceManifest {
     entities?: Record<string, string>;
     // (undocumented)
     extensions?: {
-        commands?: ReadonlyArray<{
-            name: string;
-        }>;
+        commands?: Readonly<Record<string, unknown>>;
     };
     // (undocumented)
     features?: Record<string, {

@@ -501,16 +501,14 @@
         "fe": "src/extensions/blocks/input/ProjectSelectInput.vue"
       }
     },
-    "commands": [
-      {
-        "name": "pr2md",
+    "commands": {
+      "pr2md": {
         "placeholder": "PR number or GitHub URL (optional)"
       },
-      {
-        "name": "instructions",
+      "instructions": {
         "placeholder": "Thread instructions text"
       }
-    ],
+    },
     "dsl": {
       "action": {
         "entry": "src/defs/action.ts",

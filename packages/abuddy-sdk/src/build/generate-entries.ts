@@ -11,6 +11,7 @@ import { createModuleExports, type ExportInfo, type ModuleExports } from './modu
 import { hasOwn } from '../utils/shared.ts';
 import { compareVersions } from '../utils/compare-versions.ts';
 import type { StepDefinition } from '../steps/types.ts';
+import type { PackCommand } from '../framework/pack-commands.ts';
 
 const HEADER = `// @generated from abuddy.json — do not edit by hand
 // Regenerate: abuddy generate-entries\n`;
@@ -381,19 +382,20 @@ export function generatePackFiles(
   const depsWithPlugins = depIds.filter((depId) => publishesPluginState(depSnapshots.get(depId)!.manifest, depId));
 
   /**
-   * The slash commands the pack declares. A name a dependency declares too fails the build: the app would
-   * refuse to register the pack.
+   * The slash commands the pack declares, as the registration carries them: the name is the manifest key,
+   * so it is read from there rather than restated in the entry. A name a dependency declares too fails the
+   * build — the app would refuse to register the pack — and that check is the one the key cannot make
+   * unrepresentable, since the two names are in two manifests.
    */
-  function declaredCommands(): NonNullable<NonNullable<PackManifest['extensions']>['commands']> {
-    const commands = manifest.extensions?.commands ?? [];
+  function declaredCommands(): PackCommand[] {
     const taken = _mergeProvenance('commands', [...depSnapshots]);
-    for (const { name } of commands) {
+    return Object.entries(manifest.extensions?.commands ?? {}).map(([name, entry]) => {
       const owner = taken[name];
       if (owner) {
         throw new Error(`Command "${name}" is declared by "${owner}", which this pack depends on: the app refuses a pack whose command another pack declares, so rename it in abuddy.json \`commands\``);
       }
-    }
-    return commands;
+      return { name, ...entry };
+    });
   }
   const commands = declaredCommands();
 

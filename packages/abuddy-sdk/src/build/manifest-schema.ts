@@ -292,10 +292,15 @@ export const BootConfigSchema = z.object({
 
 const ServicesSchema = z.record(IdentifierSchema, ExportTargetSchema);
 
+/**
+ * A command's name, which is its key: what the user types after the `/`. Stricter than a contributed
+ * type's, which admits an underscore — a command is typed, so it keeps to letters, digits and hyphens.
+ */
+const COMMAND_NAME_SCHEMA = z.string()
+  .regex(/^[a-z][a-z0-9-]*$/, 'Must be a lowercase letter, then lowercase letters, digits and hyphens');
+
 /** A slash command a pack declares: the chat lists it, and a `user.command` event carries its name */
 export const CommandEntrySchema = z.object({
-  name: z.string().regex(/^[a-z][a-z0-9-]*$/, 'Must be a lowercase letter, then lowercase letters, digits and hyphens')
-    .describe('The command as typed after the "/", without it.'),
   placeholder: z.string().min(1).describe('What the chat shows after the command: the argument it takes, or what it does.'),
 }).strict();
 
@@ -356,8 +361,9 @@ const FEConfigSchema = z.object({
 function extensionPoint<T extends z.ZodTypeAny>(
   entry: T,
   what: string,
-): z.ZodOptional<z.ZodRecord<typeof EXTENSION_TYPE_SCHEMA, T>> {
-  return z.record(EXTENSION_TYPE_SCHEMA, entry)
+  key: z.ZodString = EXTENSION_TYPE_SCHEMA,
+): z.ZodOptional<z.ZodRecord<z.ZodString, T>> {
+  return z.record(key, entry)
     .describe(`${what} The type is the key, so a pack cannot declare one twice.`)
     .optional();
 }
@@ -371,8 +377,11 @@ const ExtensionsSchema = z.object({
   steps: extensionPoint(StepEntrySchema, 'Flow step types this pack contributes. Each names where its node, build, frontend and runtime facets live.'),
   artifacts: extensionPoint(ArtifactEntrySchema, 'Artifact types this pack contributes. Each names its icon and viewer.'),
   blocks: extensionPoint(BlockEntrySchema, 'Message blocks this pack contributes. Each names where its code lives.'),
-  commands: z.array(CommandEntrySchema)
-    .describe('Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack\'s flows handle; a name must be unique across the app.').optional(),
+  commands: extensionPoint(
+    CommandEntrySchema,
+    'Slash commands this pack adds to the chat, keyed by the name typed after the "/". Sending one fires a `user.command` event the pack\'s flows handle.',
+    COMMAND_NAME_SCHEMA,
+  ),
   services: ServicesSchema
     .describe('Pack-level services, belonging to no one feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file. A feature\'s own are its `services`.').optional(),
   dsl: z.record(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
@@ -521,15 +530,6 @@ export const ManifestSchema = z.object({
       ctx.addIssue({ code: 'custom', path: ['content', 'datasets', key], message: `"${key}" is both a content source and a dataset: they compile to the same file` });
     }
   }
-  // The chat lists each name once, so a pack declares it once
-  const commandNames = new Set<string>();
-  manifest.extensions?.commands?.forEach((command, index) => {
-    if (commandNames.has(command.name)) {
-      ctx.addIssue({ code: 'custom', path: ['extensions', 'commands', index, 'name'], message: `Command "${command.name}" is declared twice` });
-      return;
-    }
-    commandNames.add(command.name);
-  });
   const declared = new Set(Object.values(manifest.entities ?? {}));
   for (const entity of Object.keys(manifest.content?.writers ?? {})) {
     if (!declared.has(entity)) {

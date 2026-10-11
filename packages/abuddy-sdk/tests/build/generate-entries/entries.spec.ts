@@ -132,7 +132,7 @@ describe('generated backend entry', () => {
   });
 
   it("carries the pack's declared slash commands, so registering it registers them", () => {
-    const withCommands = generate({ commands: [{ name: 'note', placeholder: 'Text' }], features: [system('brain')] });
+    const withCommands = generate({ commands: { note: { placeholder: 'Text' } }, features: [system('brain')] });
     expect(withCommands['src/__generated__/pack-entry.ts']).toContain('commands: [{"name":"note","placeholder":"Text"}],');
 
     // A pack that declares none says nothing
@@ -140,10 +140,10 @@ describe('generated backend entry', () => {
   });
 
   it('fails for a command a dependency declares, which the app would refuse to register', () => {
-    const base = { 'base-pack': dependency({ commands: [{ name: 'instructions', placeholder: 'Theirs' }] }) };
-    expect(() => generate({ commands: [{ name: 'instructions', placeholder: 'Mine' }], features: [system('brain')] }, base))
+    const base = { 'base-pack': dependency({ commands: { instructions: { placeholder: 'Theirs' } } }) };
+    expect(() => generate({ commands: { instructions: { placeholder: 'Mine' } }, features: [system('brain')] }, base))
       .toThrow('Command "instructions" is declared by "base-pack", which this pack depends on');
-    expect(generate({ commands: [{ name: 'memo', placeholder: 'Mine' }], features: [system('brain')] }, base)['src/__generated__/pack-entry.ts'])
+    expect(generate({ commands: { memo: { placeholder: 'Mine' } }, features: [system('brain')] }, base)['src/__generated__/pack-entry.ts'])
       .toContain('commands: [{"name":"memo","placeholder":"Mine"}],');
   });
 
@@ -154,21 +154,21 @@ describe('generated backend entry', () => {
    */
   it('accepts a command named after something on Object.prototype, which no pack declared', () => {
     expect(() => generate(
-      { dependencies: { 'base-pack': '1.0.0' }, commands: [{ name: 'constructor' }] },
+      { dependencies: { 'base-pack': '1.0.0' }, commands: { constructor: { placeholder: 'x' } } },
       { 'base-pack': dependency({ id: 'base-pack' }) },
     )).not.toThrow();
   });
 
   it('still fails when a dependency really does declare that name', () => {
     expect(() => generate(
-      { dependencies: { 'base-pack': '1.0.0' }, commands: [{ name: 'constructor' }] },
-      { 'base-pack': dependency({ id: 'base-pack', commands: [{ name: 'constructor' }] }) },
+      { dependencies: { 'base-pack': '1.0.0' }, commands: { constructor: { placeholder: 'x' } } },
+      { 'base-pack': dependency({ id: 'base-pack', commands: { constructor: { placeholder: 'x' } } }) },
     )).toThrow('Command "constructor" is declared by "base-pack"');
   });
 
   it("fails for a command a dependency's own dependency declares, from the snapshot's provenance", () => {
     const mid = { 'mid-pack': { ...dependency({ id: 'mid-pack' }), provenance: { commands: { pr2md: 'default-setup' } } } };
-    expect(() => generate({ commands: [{ name: 'pr2md', placeholder: 'Mine' }], features: [system('brain')] }, mid))
+    expect(() => generate({ commands: { pr2md: { placeholder: 'Mine' } }, features: [system('brain')] }, mid))
       .toThrow('Command "pr2md" is declared by "default-setup", which this pack depends on');
   });
 });

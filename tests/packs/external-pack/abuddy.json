@@ -72,12 +72,11 @@
         "fe": "src/extensions/blocks/display/StampBlock.vue"
       }
     },
-    "commands": [
-      {
-        "name": "memo-note",
+    "commands": {
+      "memo-note": {
         "placeholder": "Memo text"
       }
-    ]
+    }
   },
   "dependencies": {
     "default-setup": "*"
